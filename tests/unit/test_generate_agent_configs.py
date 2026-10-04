@@ -877,6 +877,25 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             path.index("{{ .chezmoi.homeDir }}/.local/bin/common"),
         )
 
+    def test_worker_gh_dir_is_shell_safe_and_defaults_to_separate_config(self) -> None:
+        manifest = sample_manifest()
+        for value in ("~/.config/gh-worker", "/tmp/worker gh 'quoted' $(false)"):
+            manifest["worker_gh_config_dir"] = value
+            rendered = self.module.render_model_profiles_env(manifest)
+            result = subprocess.run(
+                ["bash", "-c", rendered + '\nprintf "%s" "$WORKER_GH_CONFIG_DIR"'],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            self.assertEqual(value, result.stdout)
+        manifest.pop("worker_gh_config_dir")
+        self.assertIn("gh-worker", self.module.render_model_profiles_env(manifest))
+        for value in ("", "relative/path", 123, "~/bad\npath"):
+            manifest["worker_gh_config_dir"] = value
+            with self.subTest(value=value), self.assertRaises(SystemExit):
+                self.module.render_model_profiles_env(manifest)
+
     def test_model_profiles_env_renders_worker_kind(self) -> None:
         manifest = sample_manifest()
         manifest["worker_kind"] = "claude"

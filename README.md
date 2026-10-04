@@ -969,44 +969,120 @@ counted toward the diff that decides whether review is required.
 review runs only when explicitly requested, and lets CodeRabbit request
 changes. No workflow posts review requests automatically.
 
-`main` is protected by this ruleset, applied on 2026-10-03. It is the only
-boundary for `main`; no client-side push hook duplicates it. The payload below
-is the applied form. Change the ruleset with
-`gh api -X PUT repos/mryfmo/dotfiles/rulesets/<id>` (`gh api
-repos/mryfmo/dotfiles/rulesets` lists the id), never by disabling enforcement.
+`main` is protected by the ruleset installed on 2026-10-03. The payload below
+is a **draft; do not apply it yet**. Adding one required approval alone lets a
+worker merge its own PR through the API after another account approves, and
+blocks orchestrator-authored `.orchestration` boundary PRs because GitHub
+refuses self-approval. **T90b** will design a `main` update restriction with the
+orchestrator account as the sole bypass actor in `pull_request` mode, together
+with the activation order. Committing this draft does not update GitHub.
 The repository merge settings are squash-only with auto-merge enabled, and
 `delete_branch_on_merge` stays off.
 
-```bash
-gh api -X POST repos/mryfmo/dotfiles/rulesets --input - <<'JSON'
+```json
 {
   "name": "main integration gate",
   "target": "branch",
   "enforcement": "active",
-  "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+  "conditions": {
+    "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] }
+  },
   "rules": [
-    {"type": "deletion"},
-    {"type": "non_fast_forward"},
-    {"type": "pull_request", "parameters": {
-      "required_approving_review_count": 0,
-      "dismiss_stale_reviews_on_push": true,
-      "require_code_owner_review": false,
-      "require_last_push_approval": false,
-      "required_review_thread_resolution": true}},
-    {"type": "required_status_checks", "parameters": {
-      "strict_required_status_checks_policy": true,
-      "required_status_checks": [
-        {"context": "validate"},
-        {"context": "test (ubuntu-24.04, server)"},
-        {"context": "test (ubuntu-24.04, client)"},
-        {"context": "test (macos-14, client)"},
-        {"context": "public-bootstrap (ubuntu-24.04, server)"},
-        {"context": "public-bootstrap (ubuntu-24.04, client)"},
-        {"context": "public-bootstrap (macos-14, client)"}]}}
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [
+          { "context": "validate" },
+          { "context": "test (ubuntu-24.04, server)" },
+          { "context": "test (ubuntu-24.04, client)" },
+          { "context": "test (macos-14, client)" },
+          { "context": "public-bootstrap (ubuntu-24.04, server)" },
+          { "context": "public-bootstrap (ubuntu-24.04, client)" },
+          { "context": "public-bootstrap (macos-14, client)" }
+        ]
+      }
+    }
   ]
 }
-JSON
 ```
+
+GitHub roles are configured separately. Workers (Claude and Codex, in the
+pair, restarted pair workers, and `--add-worker` seats) use the manifest's
+`worker_gh_config_dir`, default `~/.config/gh-worker`; the generated
+`WORKER_GH_CONFIG_DIR` selects that directory at launch. The orchestrator
+keeps the default gh configuration (`~/.config/gh`, or `$XDG_CONFIG_HOME/gh`).
+Worker launches clear `GH_TOKEN`, `GITHUB_TOKEN` and their enterprise variants,
+which otherwise take precedence over stored credentials. Codex workers also
+receive a worker-only `shell_environment_policy.set.GH_CONFIG_DIR` override so
+their shell tools retain the selection with `inherit=core`.
+
+Operator phase (once per machine, outside the sandbox): authenticate the
+orchestrator with the merging account in its default gh config, then log into
+the worker config as a different account with repository write access. Do not
+give the worker a ruleset bypass. Use the manifest path if customized:
+
+```bash
+unset GH_CONFIG_DIR GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN
+gh auth login --hostname github.com
+gh api user --jq .login
+umask 077
+mkdir -p "$HOME/.config/gh-worker"
+GH_CONFIG_DIR="$HOME/.config/gh-worker" gh auth login --hostname github.com --git-protocol https --insecure-storage
+chmod 600 "$HOME/.config/gh-worker/hosts.yml"
+GH_CONFIG_DIR="$HOME/.config/gh-worker" gh auth setup-git --hostname github.com
+GH_CONFIG_DIR="$HOME/.config/gh-worker" gh auth status --active --hostname github.com
+make doctor
+```
+
+`--insecure-storage` deliberately uses gh's token file: the Claude Linux
+sandbox cannot reach the host keyring. Keep `hosts.yml` user-owned, mode 0600,
+and outside the repository. The default path is readable under the managed
+Claude and Codex sandbox policies; a custom path must also be readable.
+Doctor warns when the worker directory is absent, but an existing directory
+requires authenticated file storage, mode 0600, and two different logins.
+The HTTPS credential helper installed by `gh auth setup-git` inherits
+`GH_CONFIG_DIR`. SSH pushes use SSH keys instead; this repository's SSH
+`pushInsteadOf` rewrite must be avoided when testing worker HTTPS credentials,
+for example by setting an explicit HTTPS push URL in the test repository.
+The operator phase **stops after `make doctor` until T90b**. Do not apply the
+draft payload or raise the required approval count yet. T90b must specify the
+activation order, worker restart and login verification, and live checks that
+workers cannot push or merge `main` while the orchestrator can merge its own
+boundary PRs. Those checks require operator provisioning and are not performed
+by installation.
+
+The integration gate (`BASE=origin/main make require-crit-review`) activates
+its role check only when the worker `hosts.yml` exists and effective rules for
+`main` require at least one approval. Otherwise it prints a `notice:` naming
+the missing condition. The role check remains inactive while the existing
+ruleset requires no approvals, including after credential setup alone. Once
+the file exists, failed or malformed GitHub rule
+queries fail closed. When active, the current login must differ from the PR
+author and its latest decisive review must approve the current head. Approve
+**before** collecting final feedback, so that approval is included in the
+sweep. Every new head needs another approval and sweep.
+
+Required approval prevents merging an unapproved PR; it does not restrict who
+may merge after approval. This setup also does not isolate credentials from
+other processes sharing the same OS user. The local gate enforces the
+orchestrator acceptance procedure; it is not a server-side merge-actor rule.
+See [gh environment precedence](https://cli.github.com/manual/gh_help_environment),
+[gh file storage](https://cli.github.com/manual/gh_auth_login),
+[GitHub required reviews](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets),
+and [Codex shell environment policy](https://learn.chatgpt.com/docs/config-file/config-advanced#shell-environment-policy).
 
 Bot-review presence is not gated. The `CodeRabbit` status is not a required
 check (it reports success even when it skipped the review); with `BASE`, the

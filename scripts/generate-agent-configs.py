@@ -6,9 +6,9 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 import sys
 from pathlib import Path
-import re
 from typing import Any, NoReturn
 
 try:
@@ -772,6 +772,9 @@ sys.stdout.write(merge_config(sys.stdin.read()))
 
 
 def render_model_profiles_env(manifest: dict[str, Any]) -> str:
+    gh_dir = manifest.get("worker_gh_config_dir", "~/.config/gh-worker")
+    if not isinstance(gh_dir, str) or not gh_dir.startswith(("~/", "/")) or any(ord(c) < 32 for c in gh_dir):
+        fail("worker_gh_config_dir must be an absolute or ~/ path without control characters")
     profiles = model_profiles(manifest)
     interactive_profile(manifest)
     lines = [
@@ -779,6 +782,7 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
         f"# {GENERATED_HEADER}",
         f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
         f'HERDR_AGENTS_WORKER_KIND="{worker_kind(manifest)}"',
+        f"WORKER_GH_CONFIG_DIR={shlex.quote(gh_dir)}",
     ]
     if (profile_name := worker_profile(manifest)) is not None:
         lines.append(f'HERDR_AGENTS_WORKER_PROFILE="{profile_name}"')

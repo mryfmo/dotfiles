@@ -1124,7 +1124,7 @@ EOF
             ("", 0, "required failures: 0"),
             ("missing:chezmoi", 1, "required failures: 1"),
             ("git:--version", 1, "required failures: 1"),
-            ("gh:extension list", 0, "optional warnings: 1"),
+            ("gh:extension list", 0, "optional warnings: 2"),
         )
         for fail, expected_status, summary in cases:
             with self.subTest(fail=fail):
@@ -1141,6 +1141,65 @@ EOF
         )
         self.assertNotEqual(0, result.returncode)
         self.assertIn("required missing: brew", result.stderr)
+
+    def test_doctor_github_role_activation_and_file_storage(self) -> None:
+        home = self.temp_dir / "role-home"
+        worker = home / ".config/worker gh"
+        profiles = home / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True)
+        profiles.write_text("WORKER_GH_CONFIG_DIR='~/.config/worker gh'\n")
+        bin_dir = self.temp_dir / "role-bin"
+        self.executable(
+            bin_dir / "gh",
+            r"""
+            [[ -z ${GH_TOKEN:-}${GITHUB_TOKEN:-}${GH_ENTERPRISE_TOKEN:-}${GITHUB_ENTERPRISE_TOKEN:-} ]] || exit 8
+            if [[ $1 == auth ]]; then
+                printf '{"hosts":{"github.com":[{"active":true,"state":"%s","login":"worker","tokenSource":"%s"}]}}\n' "${TEST_AUTH_STATE:-success}" "${TEST_SOURCE:-$GH_CONFIG_DIR/hosts.yml}"
+            elif [[ $1 == api ]]; then
+                [[ $GH_CONFIG_DIR == "${XDG_CONFIG_HOME:-$HOME/.config}/gh" ]] || exit 7
+                printf '%s\n' "${TEST_LOGIN:-orchestrator}"
+            else exit 9; fi
+        """,
+        )
+        command = [
+            "bash",
+            "-c",
+            f"source {ROOT / 'scripts/check-tools.sh'}; check_github_identities; echo failures=$required_failures,warnings=$optional_warnings",
+        ]
+        env = {
+            "HOME": str(home),
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "GH_TOKEN": "dummy-env",
+            "GITHUB_TOKEN": "dummy-env",
+        }
+        missing = self.run_test_command(command, env=env)
+        self.assertIn("warnings=1", missing.stdout)
+        self.assertIn("insecure-storage", missing.stderr)
+        worker.mkdir(parents=True)
+        hosts = worker / "hosts.yml"
+        hosts.write_text("fixture: never-displayed\n")
+        hosts.chmod(0o600)
+        for extra, fails in (
+            ({}, 0),
+            ({"XDG_CONFIG_HOME": ""}, 0),
+            ({"XDG_CONFIG_HOME": str(home / "custom-xdg")}, 0),
+            ({"TEST_LOGIN": "worker"}, 1),
+            ({"TEST_SOURCE": "keyring"}, 1),
+            ({"TEST_AUTH_STATE": "error"}, 1),
+        ):
+            with self.subTest(extra=extra):
+                result = self.run_test_command(command, env={**env, **extra})
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn(f"failures={fails}", result.stdout)
+                self.assertNotIn("never-displayed", result.stdout + result.stderr)
+        hosts.chmod(0o644)
+        self.assertIn("failures=1", self.run_test_command(command, env=env).stdout)
+        hosts.unlink()
+        target = self.temp_dir / "hosts.yml"
+        target.write_text("fixture\n")
+        target.chmod(0o600)
+        hosts.symlink_to(target)
+        self.assertIn("failures=1", self.run_test_command(command, env=env).stdout)
 
     def test_doctor_reports_claude_sandbox_prerequisites(self) -> None:
         bin_dir = self.temp_dir / "sandbox-bin"

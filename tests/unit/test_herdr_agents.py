@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import shutil
 import socket
 import sqlite3
@@ -79,6 +80,9 @@ class HerdrAgentsTest(unittest.TestCase):
         # Exit code the fake audit pane reports in its AUDIT-EXIT marker.
         self.audit_exit_path = self.temp_dir / "audit-exit.txt"
         self.home_dir = self.temp_dir / "home"
+        self.github_override = "shell_environment_policy.set.GH_CONFIG_DIR=" + json.dumps(
+            str(self.home_dir / ".config/gh-worker")
+        )
         (self.home_dir / ".config/herdr").mkdir(parents=True)
         self.workdir = self.temp_dir / "project"
         self.workdir.mkdir()
@@ -1275,7 +1279,7 @@ fi
             calls,
         )
         self.assertIn(
-            "agent start codex-worker-w-test --kind codex --pane w-test:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true",
+            f"agent start codex-worker-w-test --kind codex --pane w-test:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true -c {self.github_override}",
             calls,
         )
         self.assertIn("pane rename w-test:p3 codex-worker", calls)
@@ -1375,7 +1379,7 @@ fi
         self.assertTrue(
             any(
                 call.endswith(
-                    "--sandbox workspace-write --profile review --ask-for-approval never -c sandbox_workspace_write.network_access=true"
+                    f"--sandbox workspace-write --profile review --ask-for-approval never -c sandbox_workspace_write.network_access=true -c {self.github_override}"
                 )
                 for call in self.calls_path.read_text().splitlines()
                 if call.startswith("agent start codex-worker-")
@@ -1393,7 +1397,7 @@ fi
         self.assertTrue(
             any(
                 call.endswith(
-                    "--sandbox workspace-write --profile express --ask-for-approval never -c sandbox_workspace_write.network_access=true"
+                    f"--sandbox workspace-write --profile express --ask-for-approval never -c sandbox_workspace_write.network_access=true -c {self.github_override}"
                 )
                 for call in self.calls_path.read_text().splitlines()
                 if call.startswith("agent start codex-worker-")
@@ -1413,7 +1417,7 @@ fi
         self.assertTrue(
             any(
                 call.endswith(
-                    "--sandbox workspace-write --profile deep --ask-for-approval never -c sandbox_workspace_write.network_access=true"
+                    f"--sandbox workspace-write --profile deep --ask-for-approval never -c sandbox_workspace_write.network_access=true -c {self.github_override}"
                 )
                 for call in self.calls_path.read_text().splitlines()
                 if call.startswith("agent start codex-worker-")
@@ -2351,7 +2355,7 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         self.assertEqual(len(starts), 1, starts)
         self.assertTrue(
             starts[0].endswith(
-                f" -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true -c sandbox_workspace_write.writable_roots={roots}"
+                f" -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true -c {self.github_override} -c sandbox_workspace_write.writable_roots={roots}"
             ),
             starts[0],
         )
@@ -2596,6 +2600,79 @@ exit {despawn_exit}
         )
         return path
 
+    def test_worker_github_pair_env(self) -> None:
+        self.register_claude_worker_identity()
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True, exist_ok=True)
+        path = str(self.home_dir / "github worker's # $(false)")
+        profiles.write_text("WORKER_GH_CONFIG_DIR=" + shlex.quote(path) + "\n")
+        for kind in ("codex", "claude"):
+            with self.subTest(kind=kind):
+                self.calls_path.write_text("")
+                result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": kind})
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                calls = self.calls_path.read_text().splitlines()
+                env_calls = [line for line in calls if line.startswith("pane run ") and "GH_CONFIG_DIR=" in line]
+                self.assertEqual(len(env_calls), 1, calls)
+                self.assertNotIn("w-test:p1 ", env_calls[0])
+                command = env_calls[0].split(" ", 3)[3]
+                probe = subprocess.run(
+                    ["bash", "-c", command + "; python3 -c 'import os,json; print(json.dumps(dict(os.environ)))'"],
+                    env={**os.environ, "GH_TOKEN": "inherited", "GITHUB_TOKEN": "inherited"},
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                )
+                received = json.loads(probe.stdout)
+                self.assertEqual(received["GH_CONFIG_DIR"], path)
+                self.assertNotIn("GH_TOKEN", received)
+                self.assertNotIn("GITHUB_TOKEN", received)
+                starts = [line for line in calls if line.startswith("agent start ")]
+                self.assertFalse(any("GH_CONFIG_DIR" in line for line in starts if "orchestrator" in line))
+                if kind == "codex":
+                    self.assertTrue(any("shell_environment_policy.set.GH_CONFIG_DIR=" in line for line in starts))
+                self.workspace_list_path.write_text('{"result":{"workspaces":[]}}')
+                self.pane_list_path.write_text('{"result":{"panes":[]}}')
+
+    def test_added_worker_github_environment_reaches_boot(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        options = self.write_seat_lifecycle_fakes()
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        spawn = scripts / "spawn.sh"
+        spawn.write_text(
+            spawn.read_text()
+            + '\nherdr tab create --workspace "$HERDR_WORKSPACE_ID" --label worker --cwd "$PWD"\nherdr pane run w-test:p9 \'python3 -c "import os,json; print(json.dumps(dict(os.environ)))"\'\n'
+        )
+        fake = self.bin_dir / "herdr"
+        fake.write_text(
+            fake.read_text().replace(
+                "if [[ $1 == pane && $2 == run ]]; then\n    exit 0",
+                'if [[ $1 == pane && $2 == run ]]; then\n    GH_CONFIG_DIR=from-shell GH_TOKEN=from-shell bash -c "$4" > '
+                + shlex.quote(str(self.temp_dir / "boot-env.json"))
+                + "\n    exit 0",
+            )
+        )
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        path = str(self.home_dir / "worker's # $(false)")
+        with profiles.open("a") as handle:
+            handle.write("WORKER_GH_CONFIG_DIR=" + shlex.quote(path) + "\n")
+        for kind in ("codex", "claude"):
+            with self.subTest(kind=kind):
+                self.workspace_list_path.write_text('{"result":{"workspaces":[]}}')
+                self.pane_list_path.write_text('{"result":{"panes":[]}}')
+                result = self.run_helper("--add-worker", ".claude/worktrees/github-" + kind, "--kind", kind)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                received = json.loads((self.temp_dir / "boot-env.json").read_text())
+                self.assertEqual(received["GH_CONFIG_DIR"], path)
+                self.assertNotIn("GH_TOKEN", received)
+                if kind == "codex":
+                    override = next(
+                        line.split(": ", 1)[1]
+                        for line in options.read_text().splitlines()
+                        if "shell_environment_policy.set.GH_CONFIG_DIR=" in line
+                    )
+                    self.assertEqual(tomllib.loads(override)["shell_environment_policy"]["set"]["GH_CONFIG_DIR"], path)
+
     def test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         options = self.write_seat_lifecycle_fakes()
@@ -2671,7 +2748,8 @@ exit {despawn_exit}
 
         self.assertEqual(
             options,
-            "codex:\n  --profile: review\n  --sandbox: workspace-write\n  --ask-for-approval: never\n  --config: sandbox_workspace_write.network_access=true\n",
+            "codex:\n  --profile: review\n  --sandbox: workspace-write\n  --ask-for-approval: never\n  --config: sandbox_workspace_write.network_access=true\n"
+            f"  --config: {self.github_override}\n",
         )
         self.assertIn("cannot read sandbox_workspace_write.writable_roots in ", result.stderr)
         self.assertIn("gets no git metadata roots", result.stderr)
@@ -2716,6 +2794,7 @@ exit {despawn_exit}
         self.assertEqual(
             options.read_text(),
             "codex:\n  --profile: review\n  --sandbox: workspace-write\n  --ask-for-approval: never\n  --config: sandbox_workspace_write.network_access=true\n"
+            f"  --config: {self.github_override}\n"
             f"  --config: sandbox_workspace_write.writable_roots={roots}\n",
         )
         # The seat never prompts and reaches the network inside the sandbox.
@@ -3756,7 +3835,7 @@ exit {exit_code}
 
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
-            "did not reach an interactive shell prompt; refusing agent start",
+            "is not shell-ready; refusing identity setup",
             result.stderr,
         )
         calls = self.calls_path.read_text().splitlines()
@@ -4757,7 +4836,7 @@ exit {exit_code}
             any(
                 c.startswith("agent start codex-worker-")
                 and c.endswith(
-                    "--sandbox workspace-write --profile express --ask-for-approval never -c sandbox_workspace_write.network_access=true"
+                    f"--sandbox workspace-write --profile express --ask-for-approval never -c sandbox_workspace_write.network_access=true -c {self.github_override}"
                 )
                 for c in calls
             ),
@@ -5009,7 +5088,7 @@ exit {exit_code}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            "agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true",
+            f"agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true -c {self.github_override}",
             calls,
         )
         self.assertFalse(any("w-old:p9" in call for call in calls), calls)
@@ -5039,7 +5118,7 @@ exit {exit_code}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            "agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true",
+            f"agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true -c {self.github_override}",
             calls,
         )
         self.assertFalse(any("w-old:p5" in call for call in calls), calls)
@@ -5193,7 +5272,7 @@ exit {exit_code}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            "agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true",
+            f"agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true -c {self.github_override}",
             calls,
         )
         self.assertIn("pane rename w-old:p3 codex-worker", calls)
@@ -5217,7 +5296,7 @@ exit {exit_code}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            "agent start codex-worker-w-old --kind codex --pane w-old:p2 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true",
+            f"agent start codex-worker-w-old --kind codex --pane w-old:p2 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true -c {self.github_override}",
             calls,
         )
         self.assertIn(

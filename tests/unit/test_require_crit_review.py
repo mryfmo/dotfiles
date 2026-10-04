@@ -564,6 +564,30 @@ class ReviewGuardTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn("current feedback item(s) for PR #1", result.stdout)
 
+    def test_pr_feedback_bodies_are_compared_after_secret_masking(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        key_shaped = "ghp_" + "a" * 25
+        collected = {
+            "source": "review_comment",
+            "level": "comment",
+            "url": "https://x/r1",
+            "body": f"quotes {key_shaped} here",
+        }
+        for name, body, returncode in (
+            ("masked body", "quotes <redacted:secret-pattern> here", 0),
+            ("verbatim body", f"quotes {key_shaped} here", 0),
+            ("different body", "quotes something else here", 1),
+        ):
+            with self.subTest(case=name):
+                feedback = self.write_feedback(
+                    [{**collected, "body": body, "disposition": "not-applicable:quoted only"}]
+                )
+                self.write_collected([collected])
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, returncode, result.stdout)
+                if returncode:
+                    self.assertIn("current feedback item(s) for PR #1", result.stdout)
+
     def test_pr_feedback_requires_the_github_head_to_match(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])

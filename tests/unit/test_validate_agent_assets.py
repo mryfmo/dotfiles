@@ -960,6 +960,20 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
 
+    def test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries(self) -> None:
+        binary = self.temp_dir / "home/dot_local/share/blob.bin"
+        binary.parent.mkdir(parents=True, exist_ok=True)
+        binary.write_bytes(b"\x00\x01ghp_" + b"x" * 25)
+        self.module.validate_no_obvious_secrets()
+
+        evidence = self.temp_dir / ".orchestration/validation/t-a01.md"
+        evidence.parent.mkdir(parents=True)
+        evidence.write_bytes(b"heading\x00ghp_" + b"x" * 25)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn(".orchestration/validation/t-a01.md holds a NUL byte at offset 7", stderr.getvalue())
+
     def test_secret_scan_checks_utf16_bom_text(self) -> None:
         path = self.temp_dir / "docs/reference/leaky-utf16.md"
         path.parent.mkdir(parents=True, exist_ok=True)

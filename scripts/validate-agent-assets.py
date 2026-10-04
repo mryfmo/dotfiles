@@ -1174,7 +1174,11 @@ def read_scannable_text(path: Path) -> str | None:
             return data.decode("utf-16")
         except UnicodeDecodeError:
             return None
-    if b"\0" in data:
+    offset = data.find(b"\0")
+    if offset != -1:
+        # Orchestration evidence is text; a NUL there would hide it from the scan.
+        if path.relative_to(ROOT).parts[:1] == (".orchestration",):
+            fail(f"{path.relative_to(ROOT)} holds a NUL byte at offset {offset}; evidence must be text")
         return None
     try:
         return data.decode("utf-8")

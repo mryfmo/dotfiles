@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -960,6 +961,74 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
 # Built at runtime so this test file never contains a literal SECRET_PATTERN match.
 FIELD = "tok" + "en"
+
+
+class SecretPatternBoundaryTest(unittest.TestCase):
+    """Key prefixes match only at a word boundary, so hyphenated slugs stay clean."""
+
+    def test_a_key_prefix_inside_a_hyphenated_word_is_clean(self) -> None:
+        pattern = load_validator().SECRET_PATTERN
+        for text in (
+            "dotfiles-T67-audit-task-level-a01-review-receipt.md",
+            "the dotfiles-T75-shell-dead-code-a01 report",
+        ):
+            with self.subTest(text=text):
+                self.assertIsNone(pattern.search(text))
+
+    def test_a_real_key_prefix_is_still_flagged(self) -> None:
+        pattern = load_validator().SECRET_PATTERN
+        openai, github = "s" + "k-" + "a1" * 12, "gh" + "p_" + "a1" * 12
+        for text in (f"x {openai}", f'"{openai}"', openai, f"KEY={openai}", f"x {github}"):
+            with self.subTest(text=text):
+                self.assertIsNotNone(pattern.search(text))
+
+    def test_a_key_after_json_escaped_whitespace_is_flagged(self) -> None:
+        # Audit evidence holds JSON-encoded transcripts: the character before the
+        # key is then the n/r/t of an escape sequence, a word character.
+        pattern = load_validator().SECRET_PATTERN
+        keys = ("s" + "k-" + "a1" * 12, "gh" + "p_" + "a1" * 12, "github" + "_pat_" + "a1" * 12)
+        for key in keys:
+            for text in (json.dumps({"m": "\n" + key}), json.dumps({"m": "\t" + key}), json.dumps({"m": "\r" + key})):
+                with self.subTest(text=text):
+                    self.assertIsNotNone(pattern.search(text))
+            # Any escape sequence (a backslash, then up to nine letters or digits)
+            # right before the key: JSON \uXXXX, \b, \f, TOML \UXXXXXXXX, YAML \x, \0.
+            escapes = ("\\u000a", "\\u000d", "\\u0009", "\\u0020", "\\b", "\\f", "\\U0000000A", "\\x0a", "\\0")
+            for escape in escapes:
+                text = '{"m": "' + escape + key + '"}'
+                with self.subTest(text=text):
+                    self.assertIsNotNone(pattern.search(text))
+
+    def test_an_sk_key_body_needs_a_hyphen_free_run(self) -> None:
+        pattern = load_validator().SECRET_PATTERN
+        bare, project = "s" + "k-" + "a1" * 12, "s" + "k-" + "proj-" + "a1" * 12
+        for text in (f"x {bare}", f"x {project}", json.dumps({"m": "\n" + project})):
+            with self.subTest(text=text):
+                self.assertIsNotNone(pattern.search(text))
+        slug = "dotfiles-T91-secret-scan-" + "s" + "k-boundary-a01"
+        for text in (f"{slug}-audit-1845139e.md", f"{slug}-pr-feedback.json", f"{slug}-review-receipt.md"):
+            with self.subTest(text=text):
+                self.assertIsNone(pattern.search(text))
+
+    def test_a_long_hyphenated_run_scans_in_linear_time(self) -> None:
+        pattern = load_validator().SECRET_PATTERN
+        text = "-s" + "k-a" * 1 + ("-s" + "k-a") * (64 * 1024 // 5)
+        started = time.monotonic()
+        self.assertIsNone(pattern.search(text))
+        self.assertLess(time.monotonic() - started, 1.0)
+
+    def test_masking_keeps_the_escape_before_the_key(self) -> None:
+        module = load_validator()
+        key = "s" + "k-" + "a1" * 12
+        for escape in ("\\n", "\\u000a", "\\U0000000A"):
+            text = '{"m": "x' + escape + key + '"}'
+            with self.subTest(escape=escape):
+                masked, count = module.mask_secret_matches(text)
+                self.assertEqual(count, 1)
+                self.assertEqual(masked, '{"m": "x' + escape + module.SECRET_MASK + '"}')
+                self.assertNotIn(key, masked)
+                if escape != "\\U0000000A":  # \U is a TOML escape, not JSON.
+                    json.loads(masked)
 
 
 class MaskSecretsModeTest(unittest.TestCase):

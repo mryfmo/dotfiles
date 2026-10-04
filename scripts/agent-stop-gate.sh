@@ -75,11 +75,13 @@ fi
 active="$(jq -r '.stop_hook_active // false' <<< "${input}" 2> /dev/null)"
 [[ ${active} == true ]] || active=false
 cwd="$(jq -r '.cwd // empty' <<< "${input}" 2> /dev/null)"
-cwd="${cwd:-${PWD}}"
+# Claude Code keeps CLAUDE_PROJECT_DIR at the session's project while `cwd`
+# follows a `cd`, so the project, not the current directory, names the seat.
+cwd="${CLAUDE_PROJECT_DIR:-${cwd:-${PWD}}}"
 
 # Repository discovered from cwd alone: inherited overrides would select
 # another repository, index, or object store.
-unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CEILING_DIRECTORIES
 top="$(git -C "${cwd}" rev-parse --show-toplevel 2> /dev/null)" || exit 0
 # Seat by Git's own layout, not by path suffix: the main worktree is the one
 # whose git dir is the common dir (true with --separate-git-dir too, where
@@ -117,6 +119,10 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
         if exempt "${path}" && { [[ -z ${from} ]] || exempt "${from}"; }; then
             continue
         fi
+        # Paths are repository data on their way to Claude (stderr of an exit 2
+        # Stop hook), so control characters are shell-quoted, never raw.
+        printf -v path '%q' "${path}"
+        [[ -z ${from} ]] || printf -v from '%q' "${from}"
         reasons+=("uncommitted change outside .orchestration: ${path}${from:+ (from ${from})} (delegate it to a worker task or revert it)")
     done < <(
         GIT_OPTIONAL_LOCKS=0 git -C "${top}" status --porcelain -z --untracked-files=all 2> /dev/null

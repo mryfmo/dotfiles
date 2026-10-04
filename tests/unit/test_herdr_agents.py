@@ -5064,7 +5064,9 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn(f"no managed Herdr workspace for {self.workdir.resolve()}", result.stderr)
-        self.assertIn("run the audit headless as the agmsg-orchestration SKILL task-level audit bullet shows", result.stderr)
+        self.assertIn(
+            "run the audit headless as the agmsg-orchestration SKILL task-level audit bullet shows", result.stderr
+        )
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(
             any(call.startswith(("tab ", "pane run", "pane split")) for call in calls),

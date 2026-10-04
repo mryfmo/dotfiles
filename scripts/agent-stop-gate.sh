@@ -23,11 +23,42 @@
 #   directly). The hook never writes and needs no network. Without an agmsg
 #   install it passes; a failing identity lookup or an unreadable store blocks
 #   unless `stop_hook_active` is true.
+# @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
 # @exitcode 2 Work is pending; one reason line per violation on stderr.
 # @example
 #   echo '{"stop_hook_active":false,"cwd":"'"$PWD"'"}' | scripts/agent-stop-gate.sh
 set -uo pipefail
+
+scripts="${HOME}/.agents/skills/agmsg/scripts"
+
+# Team-wide history as `from<TAB>to<TAB>body` rows, chronological. This is the
+# storage facade history.sh itself calls, without its per-recipient unread pass
+# (~3 s on a 600-message team; the facade reads all of it in ~0.1 s).
+# AGMSG_BUSY_TIMEOUT (agmsg's documented knob, default 5000 ms per sqlite call)
+# shortens each wait on a contended store. storage_history runs storage_init, which writes unless
+# the store is already at the current schema revision; for the sqlite driver,
+# read that revision first (the same read as storage_init's fast path) and
+# treat any other store as unreadable rather than letting it be re-initialized.
+# storage_init can still write if its own revision read fails under
+# SQLITE_BUSY; only a non-initializing storage_history upstream would close that.
+read_history() {
+    export AGMSG_BUSY_TIMEOUT=1000
+    # shellcheck disable=SC1091
+    source "${scripts}/lib/storage.sh" && agmsg_storage_load || return 1
+    storage_store_exists "$1" || return 0
+    if [[ ${_AGMSG_STORAGE_LOADED:-} == sqlite ]]; then
+        [[ "$(agmsg_sqlite "$(_sqlite_db "$1")" 'PRAGMA user_version;' 2> /dev/null)" == "${_AGMSG_STORAGE_SCHEMA_REV:-}" ]] || return 1
+    fi
+    storage_history "$1" | jq -r '[.from, .to, .body] | @tsv'
+}
+
+# `--read-history <team>` is the read alone, so the gate can run it under
+# timeout as a child of itself.
+if [[ ${1:-} == --read-history ]]; then
+    read_history "$2"
+    exit
+fi
 
 # Same bounded stdin read as agmsg check-inbox.sh; jq decodes JSON escapes.
 input=""
@@ -57,7 +88,6 @@ else
     exit 0
 fi
 
-scripts="${HOME}/.agents/skills/agmsg/scripts"
 # Without an agmsg install this is not a regime machine.
 [[ -e ${scripts}/identities.sh ]] || exit 0
 reasons=()
@@ -87,29 +117,6 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
     )
 fi
 
-# Team-wide history as `from<TAB>to<TAB>body` rows, chronological. This is the
-# storage facade history.sh itself calls, without its per-recipient unread pass
-# (~3 s on a 600-message team; the facade reads all of it in ~0.1 s).
-# AGMSG_BUSY_TIMEOUT (agmsg's documented knob, default 5000 ms per sqlite call)
-# shortens each wait on a contended store. storage_history runs storage_init, which writes unless
-# the store is already at the current schema revision; for the sqlite driver,
-# read that revision first (the same read as storage_init's fast path) and
-# treat any other store as unreadable rather than letting it be re-initialized.
-# storage_init can still write if its own revision read fails under
-# SQLITE_BUSY; only a non-initializing storage_history upstream would close that.
-# shellcheck disable=SC2329 # invoked through `bash -c` under timeout below
-read_history() {
-    set -o pipefail # the child bash does not inherit it
-    export AGMSG_BUSY_TIMEOUT=1000
-    # shellcheck disable=SC1091
-    source "${scripts}/lib/storage.sh" && agmsg_storage_load || return 1
-    storage_store_exists "$1" || return 0
-    if [[ ${_AGMSG_STORAGE_LOADED:-} == sqlite ]]; then
-        [[ "$(agmsg_sqlite "$(_sqlite_db "$1")" 'PRAGMA user_version;' 2> /dev/null)" == "${_AGMSG_STORAGE_SCHEMA_REV:-}" ]] || return 1
-    fi
-    storage_history "$1" | jq -r '[.from, .to, .body] | @tsv'
-}
-
 # A lookup that runs but fails must not read as "no seat here"; it blocks once,
 # like an unreadable store.
 if ! identities="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${top}" claude-code 2> /dev/null)"; then
@@ -125,8 +132,6 @@ block() {
 # All history reads share one 3 s budget inside the 5 s hook timeout: a
 # timed-out hook's output is discarded, which would let the seat stop, so
 # running out of budget blocks at once.
-export scripts
-export -f read_history
 deadline=$((SECONDS + 3))
 
 # The orchestrator is the unsuffixed identity at the main checkout; any
@@ -139,8 +144,7 @@ while IFS=$'\t' read -r -u 3 team name; do
     # `timeout 0` would mean no limit, so a spent budget blocks before the read.
     remaining=$((deadline - SECONDS))
     if [[ ${remaining} -gt 0 ]]; then
-        # shellcheck disable=SC2016 # $1 expands in the child bash
-        history="$(timeout "${remaining}" bash -c 'read_history "$1"' _ "${team}" 2> /dev/null)"
+        history="$(timeout "${remaining}" bash "${BASH_SOURCE[0]}" --read-history "${team}" 2> /dev/null)"
         rc=$?
     else
         rc=124

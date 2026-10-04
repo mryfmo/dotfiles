@@ -23,7 +23,7 @@ For pull requests, keep the description aligned with the full current PR content
 5. If additional commits are pushed after PR creation, inspect the updated commits/diff with `gh` and refresh the PR description so it reflects the full current PR, not only the latest increment.
 6. Include inspected URLs in the response.
 7. Write commit messages in Conventional Commit format.
-8. Before merging or accepting a PR, follow the PR integration rule: optionally request `@coderabbitai full review` on the final head (when a CodeRabbit review exists it is swept and dispositioned like any other item; the gate does not require a bot review), run `scripts/pr-feedback.py <pr> --json <out>`, give every item a `fixed:<commit>` (root-cause fix) or `not-applicable:<reason>` disposition, save the JSON as `.orchestration/validation/<task>-pr-feedback.json`, and pass it to `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review`.
+8. Before merging or accepting a PR, run the task-level audit and the gate as the agmsg-orchestration SKILL's Orchestrator Playbook step 10 and the PR integration rule describe. The step starts with the `scripts/pr-feedback.py` sweep, where every item gets a `fixed:<commit>` (root-cause fix) or `not-applicable:<reason>` disposition, and ends with the gate built on `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review`.
 
 ## Output Checklist
 

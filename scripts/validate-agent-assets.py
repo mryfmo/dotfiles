@@ -24,9 +24,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SECRET_PATTERN = re.compile(
     r"""(?ix)
     (
-        ghp_[A-Za-z0-9_]{20,}
-        | github_pat_[A-Za-z0-9_]{20,}
-        | sk-[A-Za-z0-9_-]{20,}
+        \bghp_[A-Za-z0-9_]{20,}
+        | \bgithub_pat_[A-Za-z0-9_]{20,}
+        | \bsk-[A-Za-z0-9_-]{20,}
         | api[_-]?key\s*[:=]\s*["'][^"']+["']
         | password\s*=\s*["'][^"']+["']
         | secret\s*[:=]\s*["'][^"']+["']

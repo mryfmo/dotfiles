@@ -930,6 +930,26 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 FIELD = "tok" + "en"
 
 
+class SecretPatternBoundaryTest(unittest.TestCase):
+    """Key prefixes match only at a word boundary, so hyphenated slugs stay clean."""
+
+    def test_a_key_prefix_inside_a_hyphenated_word_is_clean(self) -> None:
+        pattern = load_validator().SECRET_PATTERN
+        for text in (
+            "dotfiles-T67-audit-task-level-a01-review-receipt.md",
+            "the dotfiles-T75-shell-dead-code-a01 report",
+        ):
+            with self.subTest(text=text):
+                self.assertIsNone(pattern.search(text))
+
+    def test_a_real_key_prefix_is_still_flagged(self) -> None:
+        pattern = load_validator().SECRET_PATTERN
+        openai, github = "s" + "k-" + "a1" * 12, "gh" + "p_" + "a1" * 12
+        for text in (f"x {openai}", f'"{openai}"', openai, f"KEY={openai}", f"x {github}"):
+            with self.subTest(text=text):
+                self.assertIsNotNone(pattern.search(text))
+
+
 class MaskSecretsModeTest(unittest.TestCase):
     """`--mask-secrets` rewrites SECRET_PATTERN matches in place (audit evidence)."""
 

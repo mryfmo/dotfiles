@@ -115,8 +115,8 @@ line follows, as it follows seat_claim= inside the orchestrator's Herdr pane.
 Full, attach and restart-worker modes seat a Claude orchestrator, so they exit 2
 before touching Herdr when HERDR_AGENTS_ORCHESTRATOR_KIND (default
 orchestrator_kind from ~/.agents/model-profiles.env, then claude) is codex; the
-other modes work under either kind, and a claude worker's own attach in its
-linked worktree still exits quietly. Directive mode prints the
+other modes work under either kind, and the manifest worker's own attach in its
+worker_worktree still exits quietly. Directive mode prints the
 agmsg-orchestration directive line for the current directory when it is a
 regime repository (the orchestrator identity is looked up as the kind's agmsg
 type, claude-code or codex), and nothing otherwise; it needs no Herdr server.
@@ -557,14 +557,14 @@ function is_main_checkout() {
         [[ ${git_dir} == "${common_dir}" ]]
 }
 
-# @description Succeed when DIR is a linked git worktree (a worker seat), not a main checkout.
-# @arg $1 dir Directory to check.
-function is_linked_worktree() {
-    local git_dir common_dir
+# @description Succeed when DIR is its repository's manifest worker_worktree seat.
+# @arg $1 dir Absolute directory to check.
+function is_manifest_worker_seat() {
+    local dir="$1" seat common_dir
 
-    git_dir="$(git -C "$1" rev-parse --path-format=absolute --git-dir 2> /dev/null)" &&
-        common_dir="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" &&
-        [[ ${git_dir} != "${common_dir}" ]]
+    seat="$(resolve_worker_worktree 2> /dev/null)" && [[ -n ${seat} ]] || return 1
+    common_dir="$(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" || return 1
+    [[ "$(cd -- "${common_dir%/.git}/${seat}" 2> /dev/null && pwd -P)" == "${dir}" ]]
 }
 
 # @description Print the pid of the nearest `claude` ancestor of this shell.
@@ -1939,13 +1939,12 @@ fi
 
 # The Claude pair (full mode, --attach, --restart-worker) seats a Claude
 # orchestrator, so it refuses before touching Herdr when the manifest names Codex.
-# A Claude worker's own SessionStart --attach runs in its linked worktree and
-# keeps its quiet worker-pane exit below.
+# The manifest worker's own SessionStart --attach keeps its quiet exit below.
 case "${1:-}" in
 --bootstrap-agmsg | --add-worker | --remove-worker | --audit) ;;
 *)
     orchestrator_kind="$(resolve_orchestrator_kind)" || exit 2
-    if [[ ${orchestrator_kind} == codex ]] && ! { [[ ${1:-} == --attach ]] && is_linked_worktree "$(pwd -P)"; }; then
+    if [[ ${orchestrator_kind} == codex ]] && ! { [[ ${1:-} == --attach ]] && is_manifest_worker_seat "$(pwd -P)"; }; then
         printf 'herdr-agents: orchestrator_kind=codex: use codex-orchestrate\n' >&2
         exit 2
     fi
@@ -2452,9 +2451,7 @@ workdir="$(pwd -P)"
 HERDR_AGENTS_WORKER_PROFILE="$(resolve_worker_profile)"
 worker_worktree="$(resolve_worker_worktree)"
 worker_seat_dir="${workdir}"
-if [[ ${attach_mode} == true && -n ${worker_worktree} ]] &&
-    repo_common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" &&
-    [[ "$(cd -- "${repo_common_dir%/.git}/${worker_worktree}" 2> /dev/null && pwd -P)" == "${workdir}" ]]; then
+if [[ ${attach_mode} == true ]] && is_manifest_worker_seat "${workdir}"; then
     # The worktree-seated worker's own SessionStart hook: attach is for the orchestrator pane.
     exit 0
 fi

@@ -719,6 +719,29 @@ fi
         self.assertEqual(result.stderr, "")
         self.assertFalse(self.calls_path.exists() and self.calls_path.read_text())
 
+    def test_codex_orchestrator_kind_refuses_attach_in_another_linked_worktree(self) -> None:
+        self.write_worktree_seat()
+        other = self.workdir.resolve() / ".claude/worktrees/other"
+        subprocess.run(
+            ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(other), "origin/main"],
+            check=True,
+            capture_output=True,
+        )
+        if self.calls_path.exists():
+            self.calls_path.unlink()
+        self.workdir = other
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            workspace_id="w-old",
+            pane_id="w-old:p3",
+            extra_env={"HERDR_AGENTS_ORCHESTRATOR_KIND": "codex"},
+        )
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, "herdr-agents: orchestrator_kind=codex: use codex-orchestrate\n")
+        self.assertFalse(self.calls_path.exists())
+
     def test_attach_without_herdr_environment_names_the_seated_worker(self) -> None:
         worktree = self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a005")
         worktree.mkdir(parents=True)

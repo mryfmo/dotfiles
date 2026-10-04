@@ -33,8 +33,8 @@ model_profiles:
   standard:
     claude: { model: claude-opus-5-5, effort: high, advisor: fable }
     codex:
-      model: gpt-5.6-terra
-      model_reasoning_effort: medium
+      model: gpt-6.1-sol
+      model_reasoning_effort: high
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
   review:
     # One capability tier above the worker at reduced effort.
@@ -58,8 +58,8 @@ model_profiles:
     # Auditor tier (監査役): cross-vendor read-only audit of worker changesets.
     claude: { model: claude-fable-5-1, effort: high }
     codex:
-      model: gpt-6.1-sol
-      model_reasoning_effort: xhigh
+      model: gpt-6-astra
+      model_reasoning_effort: high
       sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
   # ADH V4 program profile; fallback and effort downgrade are forbidden.

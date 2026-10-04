@@ -21,17 +21,15 @@
       "Bash(curl * | sh)",
       "Bash(wget * | sh)",
       "Read(secrets/**)",
-      "Read(config/credentials.json)"
-    ],
-    "defaultMode": "plan",
-    "ask": [
-      "Bash(git push:*)",
+      "Read(config/credentials.json)",
       "Bash(gh release:*)",
       "Bash(npm publish:*)",
       "Bash(uv publish:*)",
       "Bash(terraform apply:*)",
       "Bash(kubectl apply:*)"
-    ]
+    ],
+    "defaultMode": "auto",
+    "ask": []
   },
   "sandbox": {
     "enabled": true,

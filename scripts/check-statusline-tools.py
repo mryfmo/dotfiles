@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import time
+import tomllib
 from pathlib import Path
 
 
@@ -17,7 +18,13 @@ CLAUDE_STATUS = {
     "session_id": "offline-test",
     "transcript_path": "/private/tmp/nonexistent.jsonl",
 }
-EXPECTED_VERSIONS = {"ccstatusline": "2.2.30", "ccusage": "20.0.24"}
+MISE_CONFIG = Path(__file__).resolve().parents[1] / "home/dot_mise/config.toml"
+
+
+def expected_versions() -> dict[str, str]:
+    """The pins in home/dot_mise/config.toml, the one place they are declared."""
+    tools = tomllib.loads(MISE_CONFIG.read_text())["tools"]
+    return {name: tools[f"npm:{name}"] for name in ("ccstatusline", "ccusage")}
 
 
 def run(command: list[str], stdin: str | None = None) -> subprocess.CompletedProcess[str]:
@@ -49,11 +56,11 @@ def main() -> None:
     parser.add_argument("--ccusage", type=Path, required=True)
     args = parser.parse_args()
 
-    for name in EXPECTED_VERSIONS:
+    for name, version in expected_versions().items():
         binary = getattr(args, name)
         if not binary.is_file():
             raise SystemExit(f"missing {name} binary: {binary}")
-        require_version(binary, EXPECTED_VERSIONS[name])
+        require_version(binary, version)
 
     status_json = json.dumps(CLAUDE_STATUS) + "\n"
     run([str(args.ccstatusline)], status_json)

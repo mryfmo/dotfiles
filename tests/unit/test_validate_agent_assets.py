@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -1008,6 +1009,13 @@ class SecretPatternBoundaryTest(unittest.TestCase):
         for text in (f"{slug}-audit-1845139e.md", f"{slug}-pr-feedback.json", f"{slug}-review-receipt.md"):
             with self.subTest(text=text):
                 self.assertIsNone(pattern.search(text))
+
+    def test_a_long_hyphenated_run_scans_in_linear_time(self) -> None:
+        pattern = load_validator().SECRET_PATTERN
+        text = "-s" + "k-a" * 1 + ("-s" + "k-a") * (64 * 1024 // 5)
+        started = time.monotonic()
+        self.assertIsNone(pattern.search(text))
+        self.assertLess(time.monotonic() - started, 1.0)
 
     def test_masking_keeps_the_escape_before_the_key(self) -> None:
         module = load_validator()

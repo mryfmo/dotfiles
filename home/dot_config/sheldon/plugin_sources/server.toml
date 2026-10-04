@@ -27,15 +27,6 @@ zsh-defer _server_path
 inline = 'eval "$(starship init zsh)"'
 
 #
-# Alias for Server Machine
-#
-
-[plugins.alias]
-local = '~/.config/alias'
-use = ['server.sh']
-apply = ['source']
-
-#
 #
 #
 

@@ -54,8 +54,6 @@ class RuntimeHealthTest(unittest.TestCase):
         server.mkdir(parents=True)
         common.mkdir(parents=True)
         for path in (
-            server / "history.sh",
-            server / "cache.sh",
             common / "dev",
             common / "git-delete-merged-branches",
         ):

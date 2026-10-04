@@ -390,6 +390,13 @@ class AgentStopGateTest(unittest.TestCase):
         self.assertNotIn(".claude/agents", stderr)
         self.assertIn("sandbox placeholders ignored: 2", stderr)
 
+    def test_user_bind_mount_of_a_real_file_is_not_a_placeholder(self):
+        env_file = self.main / ".env"
+        env_file.write_text("SECRET=1\n")
+        stderr = self.assert_gate(self.main, 2, env=self.mountinfo([env_file]))
+        self.assertIn(".env", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
+
     def test_untracked_symlink_to_a_mount_point_is_not_a_placeholder(self):
         # "/" is a mount point everywhere, so following the link would skip it.
         (self.main / "link").symlink_to("/")

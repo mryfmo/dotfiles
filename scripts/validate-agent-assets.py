@@ -585,7 +585,9 @@ def validate_assets(manifest: dict[str, Any]) -> None:
     assets = manifest.get("assets")
     if not isinstance(assets, dict) or not assets:
         fail("agent-config.yaml must declare third-party assets under assets:")
-    rendered: dict[tuple[str, str], tuple[str, str]] = {}
+    rendered: set[tuple[str, str]] = set()
+    # Keyed on the resolved real path, so symlinked aliases of one file collide.
+    render_claims: dict[tuple[Path, str], tuple[str, str, str]] = {}
     for name, asset in assets.items():
         missing = [key for key in ("source", "upstream", "pin", "verify") if not asset.get(key)]
         if missing:
@@ -627,13 +629,15 @@ def validate_assets(manifest: dict[str, Any]) -> None:
                     f"assets.{name}.render entries must each be a mapping with a normalized relative file and a "
                     f"non-empty constants mapping of string to string: {entry!r}"
                 )
+            real = (ROOT / entry["file"]).resolve()
             for constant, field in constants.items():
+                rendered.add((entry["file"], constant))
                 # Two entries rendering one assignment would overwrite each other.
-                source = rendered.setdefault((entry["file"], constant), (name, field))
-                if source != (name, field):
+                source = render_claims.setdefault((real, constant), (name, field, entry["file"]))
+                if source[:2] != (name, field):
                     fail(
                         f"{entry['file']} {constant} is rendered from both assets.{source[0]}.{source[1]} "
-                        f"and assets.{name}.{field}; render each assignment from one field"
+                        f"(via {source[2]}) and assets.{name}.{field}; render each assignment from one field"
                     )
     for root in ("install", "scripts"):
         for path in sorted((ROOT / root).rglob("*.sh")):

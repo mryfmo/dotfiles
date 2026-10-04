@@ -496,13 +496,34 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_assets(manifest)
         self.assertIn(
-            "install/common/mise.sh MISE_VERSION is rendered from both assets.mise.pin and assets.mise.sha256",
+            "install/common/mise.sh MISE_VERSION is rendered from both assets.mise.pin "
+            "(via install/common/mise.sh) and assets.mise.sha256",
             stderr.getvalue(),
         )
 
         mise["render"] = [mise["render"][0], dict(mise["render"][0])]
         self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
         self.module.validate_assets(manifest)
+
+    def test_assets_reject_one_assignment_rendered_through_a_symlink_alias(self) -> None:
+        target = self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
+        alias = target.parent / "alias.sh"
+        alias.symlink_to(target.name)
+        manifest = self.asset_manifest()
+        mise = manifest["assets"]["mise"]
+        mise["sha256"] = "abc"
+        mise["render"] = [
+            mise["render"],
+            {"file": "install/common/alias.sh", "constants": {"MISE_VERSION": "sha256"}},
+        ]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_assets(manifest)
+        self.assertIn(
+            "install/common/alias.sh MISE_VERSION is rendered from both assets.mise.pin "
+            "(via install/common/mise.sh) and assets.mise.sha256",
+            stderr.getvalue(),
+        )
 
     def test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts(
         self,

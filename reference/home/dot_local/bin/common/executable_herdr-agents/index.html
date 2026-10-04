@@ -3601,6 +3601,7 @@
 <li><code>claim_seat_and_print_directive</code></li>
 <li><code>claude_ancestor_pid</code></li>
 <li><code>close_worker_tab</code></li>
+<li><code>codex_worker_github_config</code></li>
 <li><code>codex_worktree_writable_roots</code></li>
 <li><code>despawn_worker_seat</code></li>
 <li><code>distinct_agmsg_identity_count</code></li>
@@ -3610,6 +3611,7 @@
 <li><code>ensure_worker_worktree</code></li>
 <li><code>find_managed_workspaces</code></li>
 <li><code>has_claude_pane</code></li>
+<li><code>herdr</code></li>
 <li><code>is_main_checkout</code></li>
 <li><code>json_agent_pane_id</code></li>
 <li><code>json_root_pane_id</code></li>
@@ -3649,6 +3651,7 @@
 <li><code>wait_for_agent_ready</code></li>
 <li><code>wait_for_shell_prompt</code></li>
 <li><code>worker_agmsg_type</code></li>
+<li><code>worker_github_shell_env</code></li>
 <li><code>worker_seat_applies</code></li>
 <li><code>write_spawn_options</code></li>
 </ul>
@@ -4031,6 +4034,54 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
+<span class="c1"># @description Resolve the manifest's worker-only GitHub CLI config directory.</span>
+<span class="c1"># @stdout Absolute config path; no credentials are read.</span>
+<span class="k">function</span><span class="w"> </span>worker_github_config_dir<span class="o">()</span><span class="w"> </span><span class="o">(</span>
+<span class="w">    </span><span class="nv">WORKER_GH_CONFIG_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/gh-worker"</span>
+<span class="w">    </span><span class="c1"># shellcheck source=/dev/null</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/model-profiles.env<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/model-profiles.env"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">WORKER_GH_CONFIG_DIR</span><span class="p">/#</span><span class="se">\~\/</span><span class="p">/</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">)</span>
+
+<span class="c1"># @description Print shell commands that select worker credentials after shell</span>
+<span class="c1">#   startup. Environment tokens take precedence over gh file storage.</span>
+<span class="c1"># @stdout Shell-quoted unset/export commands, without credential values.</span>
+<span class="k">function</span><span class="w"> </span>worker_github_shell_env<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN; export GH_CONFIG_DIR=%q'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>worker_github_config_dir<span class="k">)</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Preserve the worker identity in Codex tools with inherit=core.</span>
+<span class="c1">#   Encode hash signs for agmsg's spawn-options comment parser.</span>
+<span class="c1"># @stdout One TOML CLI override.</span>
+<span class="k">function</span><span class="w"> </span>codex_worker_github_config<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>jq<span class="w"> </span>-nr<span class="w"> </span>--arg<span class="w"> </span>path<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>worker_github_config_dir<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s1">'"shell_environment_policy.set.GH_CONFIG_DIR=" + ($path | tojson | gsub("#"; "\\u0023"))'</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Carry worker identity across agmsg's Herdr driver hand-offs.</span>
+<span class="c1">#   The adapter exists only in spawn.sh's subprocess. Tab creation sets the</span>
+<span class="c1">#   initial environment; the boot prefix restores it after shell startup.</span>
+<span class="c1"># @arg $@ string The spawn.sh executable and its arguments.</span>
+<span class="k">function</span><span class="w"> </span>spawn_worker_with_github<span class="o">()</span><span class="w"> </span><span class="o">(</span>
+<span class="w">    </span><span class="nv">HERDR_WORKER_REAL_CLI</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">type</span><span class="w"> </span>-P<span class="w"> </span>herdr<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">HERDR_WORKER_GH_DIR</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>worker_github_config_dir<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">HERDR_WORKER_GH_SHELL</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>worker_github_shell_env<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">export</span><span class="w"> </span>HERDR_WORKER_REAL_CLI<span class="w"> </span>HERDR_WORKER_GH_DIR<span class="w"> </span>HERDR_WORKER_GH_SHELL
+<span class="w">    </span><span class="c1"># The exported adapter is invoked by the upstream Bash driver.</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2329</span>
+<span class="w">    </span><span class="k">function</span><span class="w"> </span>herdr<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>tab<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>create<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">3</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>--workspace<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">4</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_WORKSPACE_ID</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_WORKER_REAL_CLI</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span>--env<span class="w"> </span><span class="s2">"GH_CONFIG_DIR=</span><span class="si">${</span><span class="nv">HERDR_WORKER_GH_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                </span>--env<span class="w"> </span><span class="nv">GH_TOKEN</span><span class="o">=</span><span class="w"> </span>--env<span class="w"> </span><span class="nv">GITHUB_TOKEN</span><span class="o">=</span><span class="w"> </span>--env<span class="w"> </span><span class="nv">GH_ENTERPRISE_TOKEN</span><span class="o">=</span><span class="w"> </span>--env<span class="w"> </span><span class="nv">GITHUB_ENTERPRISE_TOKEN</span><span class="o">=</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>pane<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>run<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_WORKER_REAL_CLI</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_WORKER_GH_SHELL</span><span class="si">}</span><span class="s2">; </span><span class="nv">$4</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_WORKER_REAL_CLI</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nb">export</span><span class="w"> </span>-f<span class="w"> </span>herdr
+<span class="w">    </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
+<span class="o">)</span>
+
 <span class="c1"># @description Print the agmsg spawn options YAML that carries a worker</span>
 <span class="c1">#   profile's launch arguments (spawn.sh splices the type section into the boot</span>
 <span class="c1">#   command): MODEL_PROFILE_&lt;NAME&gt;_CLAUDE_ARGS for claude, and `--profile &lt;name&gt;</span>
@@ -4073,6 +4124,9 @@
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  %s: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">words</span><span class="p">[index]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">words</span><span class="p">[index + 1]</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>codex<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  --config: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>codex_worker_github_config<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>codex<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">roots</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>codex_worktree_writable_roots<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">roots</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  --config: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">roots</span><span class="si">}</span><span class="s2">"</span>
@@ -4797,6 +4851,12 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>roots
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">worker_args</span><span class="o">=()</span>
 
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>wait_for_shell_prompt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>prompt<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Herdr worker pane %s is not shell-ready; refusing identity setup.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>herdr<span class="w"> </span>pane<span class="w"> </span>run<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>worker_github_shell_env<span class="k">)</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>claude<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">local</span><span class="w"> </span>profile_env_key
 <span class="w">        </span><span class="nb">local</span><span class="w"> </span>profile_args
@@ -4822,6 +4882,7 @@
 <span class="w">        </span>accept_claude_workspace_trust_dialog<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span><span class="nv">worker_args</span><span class="o">=(</span>--sandbox<span class="w"> </span>workspace-write<span class="w"> </span>--profile<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_AGENTS_WORKER_PROFILE</span><span class="k">:-</span><span class="nv">standard</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--ask-for-approval<span class="w"> </span>never<span class="w"> </span>-c<span class="w"> </span>sandbox_workspace_write.network_access<span class="o">=</span><span class="nb">true</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">worker_args</span><span class="o">+=(</span>-c<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>codex_worker_github_config<span class="k">)</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">        </span><span class="nv">roots</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>codex_worktree_writable_roots<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_seat_dir</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">roots</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">worker_args</span><span class="o">+=(</span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">roots</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">        </span>start_agent_in_pane<span class="w"> </span>codex<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">newly_created</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
@@ -5706,7 +5767,7 @@
 <span class="w">    </span><span class="c1"># out of project resolution. It runs in the background so a claude worker's</span>
 <span class="w">    </span><span class="c1"># trust dialog is accepted during the readiness wait, not after it.</span>
 <span class="w">    </span><span class="nv">HERDR_WORKSPACE_ID</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nv">AGMSG_SPAWN_OPTIONS_FILE</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_options</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/spawn.sh"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>worker_agmsg_type<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_kind</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>spawn_worker_with_github<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/spawn.sh"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>worker_agmsg_type<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_kind</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>--project<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--team<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--terminal-driver<span class="w"> </span>herdr<span class="w"> </span>--window<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="si">${</span><span class="nv">seat_ready_timeout</span><span class="p">:+--ready-timeout </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_ready_timeout</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="w"> </span><span class="p">&amp;</span>
 <span class="w">    </span><span class="nv">spawn_pid</span><span class="o">=</span><span class="nv">$!</span>

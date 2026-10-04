@@ -26,12 +26,12 @@
 #   agmsg install it passes; a failing identity lookup or an unreadable store blocks
 #   unless `stop_hook_active` is true.
 #
-#   An untracked empty read-only regular file that is a mount point in the
+#   An untracked empty regular file that is a read-only mount point in the
 #   hook's own namespace is a Claude Code sandbox placeholder (a 0-byte bind
-#   mount over a protected path), not a change, and is skipped. Mount points
-#   are read once from field 5 of /proc/self/mountinfo and matched exactly, so
-#   no symlink is followed (AGENT_STOP_GATE_MOUNTINFO overrides that file, for
-#   tests only).
+#   mount over a protected path), not a change, and is skipped. Read-only
+#   mount points are read once from fields 5 and 6 of /proc/self/mountinfo and
+#   matched exactly, so no symlink is followed (AGENT_STOP_GATE_MOUNTINFO
+#   overrides that file, for tests only).
 # @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
 # @exitcode 2 Work is pending; one reason line per violation on stderr.
@@ -122,11 +122,12 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
     # compared as text in mountinfo's own octal escaping of \, space, tab and
     # newline. No /proc (macOS) means no mounts, which is right: the macOS
     # sandbox creates no placeholders.
-    mounts=$'\n'"$(awk '{ print $5 }' "${AGENT_STOP_GATE_MOUNTINFO:-/proc/self/mountinfo}" 2> /dev/null)"$'\n'
-    # Only Claude's kind of mount counts: an empty, read-only regular file. A
+    mounts=$'\n'"$(awk '$6 ~ /^ro(,|$)/ { print $5 }' "${AGENT_STOP_GATE_MOUNTINFO:-/proc/self/mountinfo}" 2> /dev/null)"$'\n'
+    # Only Claude's kind of mount counts: an empty regular file mounted
+    # read-only (mountinfo field 6, not `-w`, which root always passes). A
     # user's own bind mount of a real file (say a nonempty .env) is reported.
     placeholder() {
-        [[ -f ${top}/$1 && ! -s ${top}/$1 && ! -w ${top}/$1 ]] || return 1
+        [[ -f ${top}/$1 && ! -s ${top}/$1 ]] || return 1
         local mount="${top}/$1"
         mount="${mount//\\/\\134}"
         mount="${mount// /\\040}"

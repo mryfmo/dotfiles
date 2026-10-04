@@ -371,12 +371,12 @@ class AgentStopGateTest(unittest.TestCase):
             path.chmod(0o444)
         return paths
 
-    def mountinfo(self, mounts):
+    def mountinfo(self, mounts, options="ro,nosuid"):
         """A mountinfo fixture: resolved paths (as the kernel lists them) in its octal escaping."""
         encoded = [os.path.realpath(p).replace("\\", "\\134").replace(" ", "\\040") for p in mounts]
         path = self.home / "mountinfo"
         path.write_text(
-            "".join(f"{40 + i} 35 0:5 /null {p} ro,nosuid - devtmpfs udev rw\n" for i, p in enumerate(encoded))
+            "".join(f"{40 + i} 35 0:5 /null {p} {options} - devtmpfs udev rw\n" for i, p in enumerate(encoded))
         )
         return {"AGENT_STOP_GATE_MOUNTINFO": str(path)}
 
@@ -395,6 +395,12 @@ class AgentStopGateTest(unittest.TestCase):
         env_file.write_text("SECRET=1\n")
         stderr = self.assert_gate(self.main, 2, env=self.mountinfo([env_file]))
         self.assertIn(".env", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
+
+    def test_read_write_mount_is_not_a_placeholder(self):
+        # Decided by the mount's own options, not by -w, which root always passes.
+        stderr = self.assert_gate(self.main, 2, env=self.mountinfo(self.make_placeholders(), options="rw,relatime"))
+        self.assertIn(".zshrc", stderr)
         self.assertNotIn("placeholders ignored", stderr)
 
     def test_untracked_symlink_to_a_mount_point_is_not_a_placeholder(self):

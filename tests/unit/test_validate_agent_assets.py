@@ -448,6 +448,83 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.write_text_file("home/.chezmoiremove", f".claude/skills/agmsg/**\n{pattern}\n")
                 self.assert_agmsg_ownership_rejected(f"entry {pattern!r} would remove")
 
+    def test_assets_report_an_unrendered_declare_r_version(self) -> None:
+        relative = "install/ubuntu/common/tool.sh"
+        path = self.write_text_file(relative, 'declare -r X_VERSION="1"\n')
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_assets(self.asset_manifest())
+        self.assertIn(f"{relative} hard-codes X_VERSION", stderr.getvalue())
+
+        manifest = self.asset_manifest()
+        manifest["assets"]["mise"]["render"] = [
+            manifest["assets"]["mise"]["render"],
+            {"file": relative, "constants": {"X_VERSION": "pin"}},
+        ]
+        self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
+        self.module.validate_assets(manifest)
+        path.unlink()
+
+    def test_assets_reject_a_malformed_render_entry(self) -> None:
+        for render in (
+            ["install/common/mise.sh"],
+            [{"file": "install/common/mise.sh", "constants": {}}],
+            [{"file": 1, "constants": {"MISE_VERSION": "pin"}}],
+            {"file": "install/common/mise.sh", "constants": {"MISE_VERSION": 1}},
+            [{"file": "install/../install/common/mise.sh", "constants": {"MISE_VERSION": "pin"}}],
+            [{"file": "./install/common/mise.sh", "constants": {"MISE_VERSION": "pin"}}],
+            [{"file": "/etc/mise.sh", "constants": {"MISE_VERSION": "pin"}}],
+            [{"file": "../outside.sh", "constants": {"MISE_VERSION": "pin"}}],
+        ):
+            with self.subTest(render=render):
+                manifest = self.asset_manifest()
+                manifest["assets"]["mise"]["render"] = render
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_assets(manifest)
+                self.assertIn("assets.mise.render entries must each be a mapping", stderr.getvalue())
+
+    def test_assets_reject_one_assignment_rendered_from_two_fields(self) -> None:
+        manifest = self.asset_manifest()
+        mise = manifest["assets"]["mise"]
+        mise["sha256"] = "abc"
+        mise["render"] = [
+            mise["render"],
+            {"file": "install/common/mise.sh", "constants": {"MISE_VERSION": "sha256"}},
+        ]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_assets(manifest)
+        self.assertIn(
+            "install/common/mise.sh MISE_VERSION is rendered from both assets.mise.pin "
+            "(via install/common/mise.sh) and assets.mise.sha256",
+            stderr.getvalue(),
+        )
+
+        mise["render"] = [mise["render"][0], dict(mise["render"][0])]
+        self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
+        self.module.validate_assets(manifest)
+
+    def test_assets_reject_one_assignment_rendered_through_a_symlink_alias(self) -> None:
+        target = self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
+        alias = target.parent / "alias.sh"
+        alias.symlink_to(target.name)
+        manifest = self.asset_manifest()
+        mise = manifest["assets"]["mise"]
+        mise["sha256"] = "abc"
+        mise["render"] = [
+            mise["render"],
+            {"file": "install/common/alias.sh", "constants": {"MISE_VERSION": "sha256"}},
+        ]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_assets(manifest)
+        self.assertIn(
+            "install/common/alias.sh MISE_VERSION is rendered from both assets.mise.pin "
+            "(via install/common/mise.sh) and assets.mise.sha256",
+            stderr.getvalue(),
+        )
+
     def test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts(
         self,
     ) -> None:

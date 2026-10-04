@@ -6,6 +6,7 @@ from __future__ import annotations
 import configparser
 import fnmatch
 import json
+import posixpath
 import re
 import subprocess
 import sys
@@ -503,7 +504,7 @@ INSTALLING_ASSET_SOURCES = {
 # A literal value is double-quoted without $, single-quoted, or an unquoted
 # token without quotes, $, backticks, or parentheses; derived values pass.
 LITERAL_VERSION_ASSIGNMENT = re.compile(
-    r"""^\s*(?:readonly |export |local )?([A-Z0-9_]*_VERSION|[a-z0-9_]*version)="""
+    r"""^\s*(?:readonly |declare -r |export |local )?([A-Z0-9_]*_VERSION|[a-z0-9_]*version)="""
     r"""(?:"[^"$`]*"|'[^']*'|[^\s"'$`;()]+)(?=\s|;|$)""",
     re.MULTILINE,
 )
@@ -585,6 +586,8 @@ def validate_assets(manifest: dict[str, Any]) -> None:
     if not isinstance(assets, dict) or not assets:
         fail("agent-config.yaml must declare third-party assets under assets:")
     rendered: set[tuple[str, str]] = set()
+    # Keyed on the resolved real path, so symlinked aliases of one file collide.
+    render_claims: dict[tuple[Path, str], tuple[str, str, str]] = {}
     for name, asset in assets.items():
         missing = [key for key in ("source", "upstream", "pin", "verify") if not asset.get(key)]
         if missing:
@@ -607,9 +610,35 @@ def validate_assets(manifest: dict[str, Any]) -> None:
         for field, value in asset_pin_values(asset):
             if not isinstance(value, str):
                 fail(f"assets.{name}.{field} must be a string, not {type(value).__name__}: {value!r}")
-        render = asset.get("render") or {}
-        for constant in render.get("constants", {}):
-            rendered.add((render["file"], constant))
+        render = asset.get("render")
+        for entry in (render if isinstance(render, list) else [render]) if render else []:
+            constants = entry.get("constants") if isinstance(entry, dict) else None
+            if (
+                not isinstance(entry, dict)
+                or not isinstance(entry.get("file"), str)
+                # One canonical relative spelling per target: no "..", "./" or
+                # absolute path, so conflict detection sees every file once.
+                or posixpath.normpath(entry["file"]) != entry["file"]
+                or entry["file"].startswith(("/", "../"))
+                or entry["file"] == ".."
+                or not isinstance(constants, dict)
+                or not constants
+                or not all(isinstance(key, str) and isinstance(value, str) for key, value in constants.items())
+            ):
+                fail(
+                    f"assets.{name}.render entries must each be a mapping with a normalized relative file and a "
+                    f"non-empty constants mapping of string to string: {entry!r}"
+                )
+            real = (ROOT / entry["file"]).resolve()
+            for constant, field in constants.items():
+                rendered.add((entry["file"], constant))
+                # Two entries rendering one assignment would overwrite each other.
+                source = render_claims.setdefault((real, constant), (name, field, entry["file"]))
+                if source[:2] != (name, field):
+                    fail(
+                        f"{entry['file']} {constant} is rendered from both assets.{source[0]}.{source[1]} "
+                        f"(via {source[2]}) and assets.{name}.{field}; render each assignment from one field"
+                    )
     for root in ("install", "scripts"):
         for path in sorted((ROOT / root).rglob("*.sh")):
             relative = str(path.relative_to(ROOT))

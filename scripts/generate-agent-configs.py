@@ -251,6 +251,21 @@ def render_asset_constants(manifest: dict[str, Any]) -> dict[Path, str]:
     return outputs
 
 
+def codex_command_hook_lines(event: str, hook: dict[str, Any]) -> list[str]:
+    """Render one Codex command hook as a [[hooks.<event>]] matcher group."""
+    return [
+        "",
+        f"[[hooks.{quote_toml_key(event)}]]",
+        'matcher = "*"',
+        "",
+        f"[[hooks.{quote_toml_key(event)}.hooks]]",
+        'type = "command"',
+        f"command = {quote_toml(hook['command'])}",
+        f"timeout = {quote_toml(hook['timeout'])}",
+        "statusMessage = " + quote_toml(hook["status_message"]),
+    ]
+
+
 def render_codex(manifest: dict[str, Any]) -> str:
     codex = manifest["codex"]
     lines = [
@@ -351,21 +366,11 @@ def render_codex(manifest: dict[str, Any]) -> str:
         for key, value in marketplace_config.items():
             lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
     hooks = codex.get("hooks", {})
-    permission_request = hooks.get("permission_request")
-    if permission_request:
-        lines.extend(
-            [
-                "",
-                "[[hooks.PermissionRequest]]",
-                'matcher = "*"',
-                "",
-                "[[hooks.PermissionRequest.hooks]]",
-                'type = "command"',
-                f"command = {quote_toml(permission_request['command'])}",
-                f"timeout = {quote_toml(permission_request['timeout'])}",
-                "statusMessage = " + quote_toml(permission_request["status_message"]),
-            ]
-        )
+    if hooks.get("permission_request"):
+        lines.extend(codex_command_hook_lines("PermissionRequest", hooks["permission_request"]))
+    # Each entry gets its own [[hooks.<Event>]] table, in manifest order; Codex merges the arrays.
+    for hook in hooks.get("command_hooks", []):
+        lines.extend(codex_command_hook_lines(hook["event"], hook))
     if hooks.get("state"):
         lines.extend(["", "[hooks.state]"])
         for hook_key, hook_config in hooks["state"].items():

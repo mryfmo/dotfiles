@@ -379,6 +379,69 @@ def validate_claude_settings(manifest: dict[str, Any]) -> None:
         fail("Claude Code Crit review rule must require /crit")
 
 
+# The HooksToml event properties of https://developers.openai.com/codex/config-schema.json.
+CODEX_HOOK_EVENTS = frozenset(
+    {
+        "Interrupt",
+        "PermissionRequest",
+        "PostCompact",
+        "PostToolUse",
+        "PreCompact",
+        "PreToolUse",
+        "SessionEnd",
+        "SessionStart",
+        "Stop",
+        "SubagentStart",
+        "SubagentStop",
+        "UserPromptSubmit",
+    }
+)
+
+
+CODEX_SHORT_HOOK_EVENTS = frozenset({"Interrupt", "SessionEnd"})
+
+
+def codex_hook_table(hook: dict[str, Any]) -> dict[str, Any]:
+    """The parsed [[hooks.<Event>]] matcher group that generate-agent-configs.py renders for one hook."""
+    handler = {"type": "command", "command": hook["command"], "timeout": hook["timeout"]}
+    return {"matcher": "*", "hooks": [{**handler, "statusMessage": hook["status_message"]}]}
+
+
+def validate_codex_command_hooks(
+    manifest_hooks: dict[str, Any], rendered_hooks: dict[str, Any], codex_path: Path
+) -> None:
+    """Check codex.hooks.command_hooks and require the template to hold exactly the declared hook tables."""
+    # Only a missing key defaults to no hooks; a falsey non-list value is a malformed declaration.
+    command_hooks = manifest_hooks.get("command_hooks", [])
+    if not isinstance(command_hooks, list):
+        fail("codex.hooks.command_hooks must be a list")
+    expected: dict[str, list[dict[str, Any]]] = {}
+    if manifest_hooks.get("permission_request"):
+        expected["PermissionRequest"] = [codex_hook_table(manifest_hooks["permission_request"])]
+    for index, hook in enumerate(command_hooks):
+        label = f"codex.hooks.command_hooks[{index}]"
+        if not isinstance(hook, dict):
+            fail(f"{label} must be a mapping")
+        if hook.get("event") not in CODEX_HOOK_EVENTS:
+            fail(f"{label} event {hook.get('event')!r} is not a Codex hook event: {sorted(CODEX_HOOK_EVENTS)}")
+        if not isinstance(hook.get("command"), str) or not hook["command"].strip():
+            fail(f"{label} must set a non-empty command")
+        timeout = hook.get("timeout")
+        if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout <= 0:
+            fail(f"{label} timeout must be a positive integer: {timeout!r}")
+        # https://developers.openai.com/codex/hooks/: these two events support up to 3 seconds.
+        if hook["event"] in CODEX_SHORT_HOOK_EVENTS and timeout > 3:
+            fail(f"{label} timeout must be at most 3 seconds for {hook['event']}: {timeout!r}")
+        if not isinstance(hook.get("status_message"), str):
+            fail(f"{label} must set status_message as a string")
+        expected.setdefault(hook["event"], []).append(codex_hook_table(hook))
+    rendered = {event: tables for event, tables in rendered_hooks.items() if event != "state"}
+    if rendered != expected:
+        counts = {event: len(tables) if isinstance(tables, list) else tables for event, tables in rendered.items()}
+        declared = {event: len(tables) for event, tables in expected.items()}
+        fail(f"{codex_path} must hold exactly the manifest's Codex hook tables: rendered {counts}, declared {declared}")
+
+
 def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
     codex_path = ROOT / manifest.get("codex", {}).get("config_path", "home/.chezmoitemplates/codex-config-managed.toml")
     text = render_template_text(codex_path)
@@ -448,6 +511,7 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
     manifest_hook_state = manifest_codex.get("hooks", {}).get("state", {})
     if data.get("hooks", {}).get("state", {}) != manifest_hook_state:
         fail(f"{codex_path} must render Codex hook trust state from the shared manifest")
+    validate_codex_command_hooks(manifest_codex.get("hooks", {}), data.get("hooks", {}), codex_path)
     for project_path, project_config in manifest_codex.get("projects", {}).items():
         if data.get("projects", {}).get(project_path) != project_config:
             fail(f"{codex_path} must render Codex project trust for {project_path}")

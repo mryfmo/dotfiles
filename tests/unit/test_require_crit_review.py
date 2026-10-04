@@ -899,6 +899,202 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("CRIT_REVIEW=off", result.stdout)
 
+    def audit_guard(
+        self,
+        audit_text: str | None,
+        *,
+        transcript: str = "exec\ngit diff\ncodex\nreview\n",
+        sha: str | None = None,
+        audit_path: str | None = None,
+        dispositions: str | None = None,
+        last_symlink: Path | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        """Run --base on a reviewed lifecycle change whose feedback and review evidence pass.
+
+        The transcript goes to the audit file and audit_text to its `.last.md` companion
+        (codex's final message); last_symlink makes the companion a symlink instead.
+        """
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("scripts/update-agent-assets.sh")
+        feedback = self.write_feedback([])
+        source = ".agents/worklog/review/crit-comments.json"
+        self.write_review_file(
+            source, json.dumps([{"id": "c1", "body": "approved", "scope": "review", "resolved": True}])
+        )
+        receipt = self.write_review_file(
+            ".agents/worklog/review/receipt.md",
+            f"review_surface: crit-data\nreviewer: claude-code\nreview_source: {source}\nreview_outcome: approved\n",
+        )
+        env = {
+            "PR_FEEDBACK_EVIDENCE": feedback,
+            "AGENT_REVIEWED": "1",
+            "REVIEW_EVIDENCE": str(receipt),
+            "AUDIT_EVIDENCE": "",
+            "AUDIT_DISPOSITIONS": "",
+        }
+        if audit_text is not None:
+            audit = audit_path or f".orchestration/validation/test-audit-{sha or self.head_commit()[:7]}.md"
+            self.write_review_file(audit, transcript)
+            if last_symlink is not None:
+                (self.temp_dir / f"{audit}.last.md").symlink_to(last_symlink)
+            else:
+                self.write_review_file(f"{audit}.last.md", audit_text)
+            env["AUDIT_EVIDENCE"] = audit
+        if dispositions is not None:
+            env["AUDIT_DISPOSITIONS"] = ".orchestration/acceptance/t1.md"
+            self.write_review_file(env["AUDIT_DISPOSITIONS"], dispositions)
+        return self.guard_base(env)
+
+    def test_base_requires_audit_evidence_for_a_reviewed_change(self) -> None:
+        result = self.audit_guard(None)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("AUDIT_EVIDENCE must point to the task-level audit of HEAD", result.stdout)
+        self.assertIn("agent lifecycle path changed: scripts/update-agent-assets.sh", result.stdout)
+
+    def test_base_accepts_a_correct_audit_of_head(self) -> None:
+        result = self.audit_guard("[P3] high spec a:1 nit\nVerdict: correct\n")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Audit evidence accepted: .orchestration/validation/test-audit-", result.stdout)
+        self.assertIn("Review requirement satisfied by AGENT_REVIEWED=1", result.stdout)
+
+    def test_audit_must_name_head_and_live_under_validation(self) -> None:
+        for label, kwargs, message in (
+            ("wrong sha", {"sha": "0000000"}, "audits 0000000, not HEAD"),
+            (
+                "other task",
+                {"audit_path": ".orchestration/validation/other-audit-abcdef0.md"},
+                "audits task 'other', not 'test'",
+            ),
+            (
+                "outside validation",
+                {"audit_path": "docs/t1-audit-abcdef0.md"},
+                "must live under .orchestration/validation/",
+            ),
+            (
+                "bad name",
+                {"audit_path": ".orchestration/validation/t1-review-abcdef0.md"},
+                "must be named <id>-audit-<sha7>.md",
+            ),
+        ):
+            with self.subTest(label):
+                self.tearDown()
+                self.setUp()
+                result = self.audit_guard(
+                    "Verdict: correct\n", sha=kwargs.get("sha"), audit_path=kwargs.get("audit_path")
+                )
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stdout)
+
+    def test_verdict_comes_only_from_the_last_message_file(self) -> None:
+        blocked = self.audit_guard("cannot assess\nVerdict: blocked\n", transcript="codex\nVerdict: correct\n")
+        self.assertEqual(blocked.returncode, 1, blocked.stdout)
+        self.assertIn("verdict is blocked", blocked.stdout)
+
+        for label, kwargs in (
+            ("empty companion", {"audit_text": "\n"}),
+            ("no companion", {"audit_text": "Verdict: correct\n", "last_symlink": Path("/nonexistent/last.md")}),
+        ):
+            with self.subTest(label):
+                self.tearDown()
+                self.setUp()
+                result = self.audit_guard(
+                    kwargs["audit_text"],
+                    transcript="exec\n+ echo 'Verdict: correct'\ncodex\nVerdict: correct\n",
+                    last_symlink=kwargs.get("last_symlink"),
+                )
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("must exist with codex's final message", result.stdout)
+
+    def test_companion_must_be_this_audits_own_last_message(self) -> None:
+        outside = Path(tempfile.mkdtemp(prefix="crit-guard-outside-"))
+        self.addCleanup(shutil.rmtree, outside)
+        (outside / "last.md").write_text("Verdict: correct\n")
+        result = self.audit_guard("Verdict: incorrect\n", last_symlink=outside / "last.md")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("its companion", result.stdout)
+
+        for other in ("other-audit-abcdef0.md.last.md", "test-audit-0000000.md.last.md"):
+            with self.subTest(other):
+                self.tearDown()
+                self.setUp()
+                target = self.write_review_file(f".orchestration/validation/{other}", "Verdict: correct\n")
+                result = self.audit_guard("Verdict: incorrect\n", last_symlink=target)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f"resolves to {other}; it must be this audit's own last message", result.stdout)
+
+    def test_blocked_or_missing_audit_verdict_fails(self) -> None:
+        for text, message in (
+            ("Verdict: blocked\n", "verdict is blocked"),
+            ("no verdict here\n", "verdict is missing"),
+        ):
+            with self.subTest(message):
+                self.tearDown()
+                self.setUp()
+                result = self.audit_guard(text)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stdout)
+
+    def test_incorrect_audit_needs_not_applicable_dispositions(self) -> None:
+        audit = "[P2] high impl a:1 one\n  - [P3] low impl b:2 two\nVerdict: incorrect\n"
+        reason = "not-applicable:the flagged path is generated output outside this task"
+        for label, dispositions, message in (
+            ("no dispositions", None, "AUDIT_DISPOSITIONS must name the acceptance record"),
+            ("fixed commit", f"audit-finding: 1 fixed:{'a' * 7}\naudit-finding: 2 {reason}\n", "a fix moves HEAD"),
+            ("short reason", f"audit-finding: 1 not-applicable:nope\naudit-finding: 2 {reason}\n", "at least 20"),
+            ("one missing", f"audit-finding: 1 {reason}\n", "leaves audit finding(s) 2 of 2 without a disposition"),
+            ("unnumbered repeat", f"audit-finding: x {reason}\naudit-finding: x {reason}\n", "must name its finding"),
+            (
+                "same finding twice",
+                f"audit-finding: 1 {reason}\naudit-finding: 1 {reason}\n",
+                "finding 1 more than once",
+            ),
+            ("out of range", f"audit-finding: 1 {reason}\naudit-finding: 3 {reason}\n", "<1-2>"),
+            ("accepted", f"# acceptance\naudit-finding: 1 {reason}\naudit-finding: 2 {reason}\n", None),
+        ):
+            with self.subTest(label):
+                self.tearDown()
+                self.setUp()
+                result = self.audit_guard(audit, dispositions=dispositions)
+                if message is None:
+                    self.assertEqual(result.returncode, 0, result.stdout)
+                    self.assertIn("Audit evidence accepted", result.stdout)
+                else:
+                    self.assertEqual(result.returncode, 1, result.stdout)
+                    self.assertIn(message, result.stdout)
+
+    def test_incorrect_audit_without_findings_fails(self) -> None:
+        result = self.audit_guard(
+            "Verdict: incorrect\n", dispositions="audit-finding: x not-applicable:nothing to see here at all\n"
+        )
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("lists no [P0-P3] finding", result.stdout)
+
+    def test_orchestration_only_pr_needs_no_audit(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch(".orchestration/reports/t1.md")
+        feedback = self.write_feedback([])
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "AUDIT_EVIDENCE": ""})
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Review not required", result.stdout)
+        self.assertNotIn("AUDIT_EVIDENCE", result.stdout)
+
+    def test_broad_orchestration_only_pr_needs_no_audit(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        run(["git", "switch", "-c", "feature"], self.temp_dir)
+        for index in range(5):
+            self.write_review_file(f".orchestration/reports/t{index}.md", "line\n" * 50)
+        run(["git", "add", ".orchestration"], self.temp_dir)
+        run(["git", "commit", "-m", "boundary"], self.temp_dir)
+        feedback = self.write_feedback([])
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "AUDIT_EVIDENCE": ""})
+
+        self.assertIn("broad diff touches", result.stdout)
+        self.assertNotIn("AUDIT_EVIDENCE", result.stdout)
+        self.assertNotIn("Task-level audit evidence is required", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

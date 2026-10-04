@@ -41,7 +41,7 @@ def sample_manifest() -> dict:
             },
             "standard": {
                 "claude": {"model": "sonnet", "effort": "high"},
-                "codex": {"model": "gpt-5.6-terra", "model_reasoning_effort": "medium"},
+                "codex": {"model": "gpt-6.1-sol", "model_reasoning_effort": "high"},
             },
         },
         "interactive_profile": "standard",
@@ -487,8 +487,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         codex_path = self.temp_dir / "home/.chezmoitemplates/codex-config-managed.toml"
         self.assertIn(codex_path, outputs)
-        self.assertIn('model = "gpt-5.6-terra"', outputs[codex_path])
-        self.assertIn('model_reasoning_effort = "medium"', outputs[codex_path])
+        self.assertIn('model = "gpt-6.1-sol"', outputs[codex_path])
+        self.assertIn('model_reasoning_effort = "high"', outputs[codex_path])
         self.assertIn('model_reasoning_summary = "concise"', outputs[codex_path])
         self.assertIn('model_verbosity = "low"', outputs[codex_path])
         self.assertIn('personality = "pragmatic"', outputs[codex_path])
@@ -519,8 +519,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('model = "gpt-5.6-terra"', result.stdout)
-        self.assertIn('model_reasoning_effort = "medium"', result.stdout)
+        self.assertIn('model = "gpt-6.1-sol"', result.stdout)
+        self.assertIn('model_reasoning_effort = "high"', result.stdout)
         self.assertIn("[hooks.state]", result.stdout)
         self.assertIn("trusted = true", result.stdout)
         self.assertNotIn(self.temp_dir / "home/dot_codex/standard.config.toml", outputs)
@@ -591,8 +591,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest["model_profiles"]["audit"] = {
             "claude": {"model": "claude-fable-5-1", "effort": "high"},
             "codex": {
-                "model": "gpt-6.1-sol",
-                "model_reasoning_effort": "xhigh",
+                "model": "gpt-6-astra",
+                "model_reasoning_effort": "high",
                 "sandbox_mode": "read-only",
             },
         }
@@ -640,8 +640,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             '# Codex model profile "standard"; launch with: codex --profile standard\n'
             f"# {self.module.GENERATED_HEADER}\n"
             "\n"
-            'model = "gpt-5.6-terra"\n'
-            'model_reasoning_effort = "medium"\n'
+            'model = "gpt-6.1-sol"\n'
+            'model_reasoning_effort = "high"\n'
             "\n"
             "[features]\n"
             "hooks = true\n"
@@ -670,8 +670,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             '# Codex model profile "standard"; launch with: codex --profile standard\n'
             f"# {self.module.GENERATED_HEADER}\n"
             "\n"
-            'model = "gpt-5.6-terra"\n'
-            'model_reasoning_effort = "medium"\n'
+            'model = "gpt-6.1-sol"\n'
+            'model_reasoning_effort = "high"\n'
             "\n"
             "[features]\n"
             "hooks = true\n"

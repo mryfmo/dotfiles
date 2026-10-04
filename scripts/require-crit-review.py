@@ -566,23 +566,15 @@ def orchestration_path_error(root: Path, path: Path, env: str, directory: str) -
     return None
 
 
-def final_codex_block(transcript: str) -> str:
-    """Port of herdr-agents' fallback: text after the last line that is exactly `codex`,
-    skipping the `tokens used` footer and a bare count right after it."""
-    final: list[str] = []
-    found = footer = False
-    for line in transcript.splitlines():
-        if line == "codex":
-            final, found, footer = [], True, False
-        elif line == "tokens used":
-            footer = True
-        elif footer and re.fullmatch(r"[0-9,]+", line):
-            footer = False
-        else:
-            footer = False
-            if found:
-                final.append(line)
-    return "\n".join(final)
+def audit_name_error(name: str, head: str, task: str) -> str | None:
+    match = AUDIT_NAME.fullmatch(name)
+    if not match:
+        return f"{AUDIT_ENV} must be named <id>-audit-<sha7>.md, not {name}"
+    if match.group("task") != task:
+        return f"{AUDIT_ENV} audits task {match.group('task')!r}, not {task!r} named by {PR_FEEDBACK_ENV} (<task>-pr-feedback.json)"
+    if not head.startswith(match.group("sha")):
+        return f"{AUDIT_ENV} audits {match.group('sha')}, not HEAD {head}; audit the final head"
+    return None
 
 
 def audit_errors(root: Path, head: str, task: str) -> list[str]:
@@ -599,27 +591,28 @@ def audit_errors(root: Path, head: str, task: str) -> list[str]:
     if path_error:
         return [path_error]
     for name in (path.name, path.resolve().name):
-        match = AUDIT_NAME.fullmatch(name)
-        if not match:
-            return [f"{AUDIT_ENV} must be named <id>-audit-<sha7>.md, not {name}"]
-        if match.group("task") != task:
-            return [
-                f"{AUDIT_ENV} audits task {match.group('task')!r}, not {task!r} named by {PR_FEEDBACK_ENV} (<task>-pr-feedback.json)"
-            ]
-        if not head.startswith(match.group("sha")):
-            return [f"{AUDIT_ENV} audits {match.group('sha')}, not HEAD {head}; audit the final head"]
+        name_error = audit_name_error(name, head, task)
+        if name_error:
+            return [name_error]
     if not path.is_file():
         return [f"{AUDIT_ENV} file does not exist: {path}"]
-    # Same verdict source as herdr-agents: the codex last-message file when it has content,
-    # else only the transcript's final codex block, never repository text quoted before it.
-    last = path.with_name(f"{path.name}.last.md")
-    if last.is_file() and last.read_text().strip():
-        last_error = orchestration_path_error(root, last, AUDIT_ENV, "validation")
-        if last_error:
-            return [f"{last_error} (its companion {last.name})"]
-        source, text = last, last.read_text()
-    else:
-        source, text = path, final_codex_block(path.read_text())
+    # The verdict comes only from codex's final message (`codex exec -o`), never from the
+    # transcript, where repository text the auditor quoted could end in a verdict line.
+    source = path.with_name(f"{path.name}.last.md")
+    if not source.is_file() or not source.read_text().strip():
+        return [
+            f"{AUDIT_ENV} verdict is missing: {source.name} must exist with codex's final message; re-run the audit"
+        ]
+    source_error = orchestration_path_error(root, source, AUDIT_ENV, "validation")
+    if source_error:
+        return [f"{source_error} (its companion {source.name})"]
+    resolved = source.resolve().name
+    if resolved != source.name:
+        return [f"{AUDIT_ENV} companion {source.name} resolves to {resolved}; it must be this audit's own last message"]
+    name_error = audit_name_error(resolved.removesuffix(".last.md"), head, task)
+    if name_error:
+        return [f"{name_error} (its companion {source.name})"]
+    text = source.read_text()
     lines = [line for line in text.splitlines() if line.strip()]
     match = AUDIT_VERDICT.fullmatch(lines[-1]) if lines else None
     verdict = match.group(1) if match else "missing"

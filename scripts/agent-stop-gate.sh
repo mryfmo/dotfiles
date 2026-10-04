@@ -87,10 +87,20 @@ fi
 # Team-wide history as `from<TAB>to<TAB>body` rows, chronological. This is the
 # storage facade history.sh itself calls, without its per-recipient unread pass
 # (~3 s on a 600-message team; the facade reads all of it in ~0.1 s).
+# AGMSG_BUSY_TIMEOUT (agmsg's documented knob, default 5000 ms per sqlite call)
+# keeps a contended store inside the 5 s hook timeout, so it fails closed
+# instead of timing out. storage_history runs storage_init, which writes unless
+# the store is already at the current schema revision; for the sqlite driver,
+# read that revision first (the same read as storage_init's fast path) and
+# treat any other store as unreadable rather than letting it be re-initialized.
 read_history() {
+    export AGMSG_BUSY_TIMEOUT=1000
     # shellcheck disable=SC1091
     source "${scripts}/lib/storage.sh" && agmsg_storage_load || return 1
     storage_store_exists "$1" || return 0
+    if [[ ${_AGMSG_STORAGE_LOADED:-} == sqlite ]]; then
+        [[ "$(agmsg_sqlite "$(_sqlite_db "$1")" 'PRAGMA user_version;' 2> /dev/null)" == "${_AGMSG_STORAGE_SCHEMA_REV:-}" ]] || return 1
+    fi
     storage_history "$1" | jq -r '[.from, .to, .body] | @tsv'
 }
 

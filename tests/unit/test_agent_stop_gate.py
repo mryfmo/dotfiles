@@ -18,11 +18,18 @@ case "$1" in
 esac
 """
 # Stand-in for the agmsg storage facade: team-wide history only, from JSONL files.
+# With $HOME/sqlite-rev present it poses as the sqlite driver whose store is at
+# that schema revision (current revision: 9); storage_history fails if the store
+# would have been re-initialized or the busy timeout was left at its default.
 STORAGE_SH = """
-agmsg_storage_load() { :; }
+_AGMSG_STORAGE_SCHEMA_REV=9
+agmsg_storage_load() { [[ -e $HOME/sqlite-rev ]] && _AGMSG_STORAGE_LOADED=sqlite; :; }
+_sqlite_db() { printf '%s/history-%s.jsonl' "$HOME" "$1"; }
+agmsg_sqlite() { cat "$HOME/sqlite-rev"; }
 storage_store_exists() { [[ -f $HOME/history-$1.jsonl ]]; }
 storage_history() {
-    [[ $# == 1 && ! -e $HOME/store-down ]] || return 9
+    [[ $# == 1 && ! -e $HOME/store-down && ${AGMSG_BUSY_TIMEOUT:-} == 1000 ]] || return 9
+    [[ ! -e $HOME/sqlite-rev || $(cat "$HOME/sqlite-rev") == 9 ]] || return 9
     cat "$HOME/history-$1.jsonl"
 }
 """
@@ -217,6 +224,15 @@ class AgentStopGateTest(unittest.TestCase):
         self.assertIn("\\", str(self.main))
         self.history(row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"))
         self.assertIn("task_id=T1", self.assert_gate(self.main, 2))
+
+    def test_sqlite_store_off_the_current_schema_is_not_initialized(self):
+        self.history(row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"))
+        (self.home / "sqlite-rev").write_text("9\n")
+        self.assertIn("task_id=T1", self.assert_gate(self.main, 2))
+        (self.home / "sqlite-rev").write_text("0\n")
+        stderr = self.assert_gate(self.main, 2)
+        self.assertIn("unreadable", stderr)
+        self.assertNotIn("task_id=T1", stderr)
 
     def test_checkout_outside_any_seat_passes(self):
         self.assert_gate(self.home, 0)

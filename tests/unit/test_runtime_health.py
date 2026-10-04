@@ -1156,6 +1156,7 @@ EOF
             if [[ $1 == auth ]]; then
                 printf '{"hosts":{"github.com":[{"active":true,"state":"%s","login":"worker","tokenSource":"%s"}]}}\n' "${TEST_AUTH_STATE:-success}" "${TEST_SOURCE:-$GH_CONFIG_DIR/hosts.yml}"
             elif [[ $1 == api ]]; then
+                [[ $GH_CONFIG_DIR == "${XDG_CONFIG_HOME:-$HOME/.config}/gh" ]] || exit 7
                 printf '%s\n' "${TEST_LOGIN:-orchestrator}"
             else exit 9; fi
         """,
@@ -1180,6 +1181,8 @@ EOF
         hosts.chmod(0o600)
         for extra, fails in (
             ({}, 0),
+            ({"XDG_CONFIG_HOME": ""}, 0),
+            ({"XDG_CONFIG_HOME": str(home / "custom-xdg")}, 0),
             ({"TEST_LOGIN": "worker"}, 1),
             ({"TEST_SOURCE": "keyring"}, 1),
             ({"TEST_AUTH_STATE": "error"}, 1),

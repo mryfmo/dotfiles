@@ -222,7 +222,7 @@ import subprocess
 import sys
 
 worker = Path(sys.argv[1])
-default = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "gh"
+default = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "gh"
 
 def fail(message):
     sys.exit("required failed: GitHub roles: " + message)

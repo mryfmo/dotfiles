@@ -10,6 +10,7 @@ import posixpath
 import re
 import subprocess
 import sys
+from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -1169,16 +1170,20 @@ def validate_no_removed_claude_skill() -> None:
 
 def read_scannable_text(path: Path) -> str | None:
     data = path.read_bytes()
+    offset = data.find(b"\0")
+    # Orchestration evidence is UTF-8 text; a NUL or a UTF-16 encoding there
+    # would hide it from the scan, so both fail before any decode.
+    if path.relative_to(ROOT).parts[:1] == (".orchestration",):
+        if offset != -1:
+            fail(f"{path.relative_to(ROOT)} holds a NUL byte at offset {offset}; evidence must be UTF-8 text")
+        if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+            fail(f"{path.relative_to(ROOT)} is UTF-16; evidence must be UTF-8 text")
     if data.startswith((b"\xff\xfe", b"\xfe\xff")):
         try:
             return data.decode("utf-16")
         except UnicodeDecodeError:
             return None
-    offset = data.find(b"\0")
     if offset != -1:
-        # Orchestration evidence is text; a NUL there would hide it from the scan.
-        if path.relative_to(ROOT).parts[:1] == (".orchestration",):
-            fail(f"{path.relative_to(ROOT)} holds a NUL byte at offset {offset}; evidence must be text")
         return None
     try:
         return data.decode("utf-8")
@@ -1235,14 +1240,26 @@ def mask_json_strings(value: Any) -> tuple[Any, int]:
         pairs = [mask_json_strings(item) for item in value]
         return [item for item, _ in pairs], sum(count for _, count in pairs)
     if isinstance(value, dict):
-        # ponytail: two key-shaped keys masked to one name keep only the last value.
-        masked, count = {}, 0
-        for key, item in value.items():
-            key, key_count = mask_secret_matches(key)
-            masked[key], item_count = mask_json_strings(item)
-            count += key_count + item_count
-        return masked, count
+        return mask_members(value.items())
     return value, 0
+
+
+class MaskedKeyCollision(Exception):
+    """Two distinct object keys mask to one name, so masking would drop a member."""
+
+
+def mask_members(pairs: Iterable[tuple[str, Any]]) -> tuple[dict[str, Any], int]:
+    """Mask an object's keys and values; a repeated original key keeps its last value."""
+    masked: dict[str, Any] = {}
+    originals: dict[str, str] = {}
+    count = 0
+    for key, item in pairs:
+        masked_key, key_count = mask_secret_matches(key)
+        if originals.setdefault(masked_key, key) != key:
+            raise MaskedKeyCollision(f"keys {originals[masked_key]!r} and {key!r} both mask to {masked_key!r}")
+        masked[masked_key], item_count = mask_json_strings(item)
+        count += key_count + item_count
+    return masked, count
 
 
 def json_strings(text: str) -> list[str] | None:
@@ -1270,7 +1287,7 @@ def json_strings(text: str) -> list[str] | None:
 
 
 def mask_secrets(paths: list[str]) -> int:
-    """Mask SECRET_PATTERN matches in place (audit evidence); 2 if any file is missing.
+    """Mask SECRET_PATTERN matches in place (audit evidence); 2 if any file is missing, 1 on a key collision.
 
     A `.json` file that parses is masked per key and string value and rewritten
     in the pr-feedback.py layout, so a saved body equals mask_secret_matches()
@@ -1283,24 +1300,26 @@ def mask_secrets(paths: list[str]) -> int:
         for name in missing:
             print(f"--mask-secrets: no such file: {name}", file=sys.stderr)
         return 2
+    status = 0
     for name in paths:
         path = Path(name)
         text = path.read_text()
         member_count = 0
 
-        def mask_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        def mask_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             nonlocal member_count
-            masked = {}
-            for key, item in pairs:
-                (key, key_count), (item, item_count) = mask_secret_matches(key), mask_json_strings(item)
-                member_count += key_count + item_count
-                masked[key] = item
+            masked, count = mask_members(pairs)
+            member_count += count
             return masked
 
         try:
-            document = json.loads(text, object_pairs_hook=mask_members) if path.suffix == ".json" else None
+            document = json.loads(text, object_pairs_hook=mask_object) if path.suffix == ".json" else None
         except json.JSONDecodeError:
             document = None
+        except MaskedKeyCollision as error:
+            print(f"--mask-secrets: {path}: {error}; rename one key, the file is unchanged", file=sys.stderr)
+            status = 1
+            continue
         if document is None:
             masked, count = mask_secret_matches(text)
         else:
@@ -1311,7 +1330,7 @@ def mask_secrets(paths: list[str]) -> int:
         if count:
             path.write_text(masked)
         print(f"masked {count} match(es) in {path}")
-    return 0
+    return status
 
 
 def validate_no_obvious_secrets() -> None:

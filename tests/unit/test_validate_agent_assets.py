@@ -974,6 +974,21 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_no_obvious_secrets()
         self.assertIn(".orchestration/validation/t-a01.md holds a NUL byte at offset 7", stderr.getvalue())
 
+    def test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset(self) -> None:
+        evidence = self.temp_dir / ".orchestration/validation/t-utf16.md"
+        evidence.parent.mkdir(parents=True)
+        evidence.write_bytes(("ghp_" + "f" * 25 + "\n").encode("utf-16"))
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn(".orchestration/validation/t-utf16.md holds a NUL byte at offset 3", stderr.getvalue())
+
+        evidence.write_bytes("\u3042\u3044".encode("utf-16"))  # UTF-16 with no NUL byte
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn(".orchestration/validation/t-utf16.md is UTF-16; evidence must be UTF-8 text", stderr.getvalue())
+
     def test_secret_scan_reads_json_per_key_and_string_value(self) -> None:
         key = "ghp_" + "d" * 25
         path = self.temp_dir / ".orchestration/validation/t-pr-feedback.json"
@@ -1232,6 +1247,20 @@ class MaskSecretsModeTest(unittest.TestCase):
         module = load_validator()
         strings = module.json_strings(evidence.read_text())
         self.assertFalse(any(module.SECRET_PATTERN.search(s) for s in strings))
+
+    def test_a_masked_key_collision_fails_and_leaves_the_file_unchanged(self) -> None:
+        evidence = self.temp_dir / "t-pr-feedback.json"
+        first, second = "ghp_" + "g" * 25, "ghp_" + "h" * 25
+        original = json.dumps({"items": [{first: "one", second: "two"}]}) + "\n"
+        evidence.write_text(original)
+
+        result = self.run_mask(evidence)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(str(evidence), result.stderr)
+        self.assertIn(repr(first), result.stderr)
+        self.assertIn(repr(second), result.stderr)
+        self.assertEqual(evidence.read_text(), original)
 
     def test_missing_file_exits_2_without_touching_others(self) -> None:
         evidence = self.temp_dir / "audit.md"

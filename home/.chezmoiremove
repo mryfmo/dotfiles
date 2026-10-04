@@ -2,3 +2,9 @@
 .claude/ccgate.jsonnet
 .local/bin/common/start-cognee-mcp
 .claude/skills/agmsg/**
+.config/alias/client.sh
+.config/alias/server.sh
+.config/tango.yml
+.local/bin/common/setup-python-env
+.local/bin/server/history.sh
+.local/bin/server/cache.sh

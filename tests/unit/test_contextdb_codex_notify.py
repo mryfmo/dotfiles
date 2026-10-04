@@ -134,6 +134,27 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
         self.assertEqual(result.stderr, "contextdb-codex-notify: ingest failed\n")
         self.assertFalse(self.capture.exists())
 
+    def test_modules_in_the_session_cwd_cannot_shadow_the_stdlib(self) -> None:
+        self.write_capturing_cli()
+        hijack = self.root / "hijacked"
+        (self.project / "json.py").write_text(f"open({str(hijack)!r}, 'w').write('ran')\n", encoding="utf-8")
+        payload = json.dumps({"cwd": str(self.project), "hook_event_name": "SessionEnd", "session_id": "cwd"})
+
+        result = subprocess.run(
+            ["bash", str(RECEIVER)],
+            input=payload,
+            text=True,
+            capture_output=True,
+            cwd=self.project,
+            env={**os.environ, "HOME": str(self.home)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertFalse(hijack.exists())
+        self.assertEqual(json.loads(json.loads(self.capture.read_text(encoding="utf-8"))["input"])["session_id"], "cwd")
+
     def test_missing_trusted_runtime_is_silent(self) -> None:
         result = self.run_receiver()
 

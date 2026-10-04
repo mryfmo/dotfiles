@@ -7,7 +7,9 @@
 #   hooks (PreCompact, PostCompact, SessionEnd) deliver it on stdin. Either way
 #   the payload is only ingested, never pruned or vacuumed, so the SessionEnd
 #   hook stays within Codex's 3-second limit. Failures print one stderr line
-#   and exit 0 so Codex is never blocked.
+#   and exit 0 so Codex is never blocked. Python runs isolated (`-I`), so a
+#   module committed in the session's working directory (for example a
+#   `json.py` in an untrusted repository) cannot shadow the standard library.
 # @arg $1 string Optional JSON payload; read from stdin when absent.
 
 if ! command -v python3 > /dev/null 2>&1; then
@@ -17,7 +19,7 @@ fi
 
 payload="${1:-$(cat)}"
 
-if ! python3 - "${payload}" 2> /dev/null << 'PY'
+if ! python3 -I - "${payload}" 2> /dev/null << 'PY'
 import json
 import subprocess
 import sys

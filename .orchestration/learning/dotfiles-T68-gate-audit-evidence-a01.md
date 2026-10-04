@@ -1,0 +1,10 @@
+# dotfiles-T68-gate-audit-evidence-a01 — learning triage
+
+1. **The gate reads the verdict only from codex's final message; it does not mirror herdr-agents' transcript fallback.** This changed during the task.
+   - First the gate mirrored herdr-agents: an empty `.last.md` fell back to `<path>`, and later only to the transcript's final `codex` block.
+   - The task-level audit of 3ba270d6 showed that a transcript can end in a quoted `Verdict:` line. Revise round 1 (`5168613a`) therefore made `<path>.last.md` mandatory: it must exist with non-blank content, and a missing or empty companion is a missing verdict ("re-run the audit"). `final_codex_block` was deleted.
+   - The resolved companion must also be this audit's own `<audit>.md.last.md`, with the same task and HEAD sha prefix.
+   - herdr-agents may keep its transcript fallback for display; the gate is deliberately stricter. Reusable lesson: an integration gate should accept only the producer's structured output, never a best-effort parse of a transcript that contains untrusted text.
+2. **An `incorrect` verdict with zero `[P0-P3]` lines is rejected.** Otherwise "dispositions ≥ findings" would pass vacuously and an unexplained `incorrect` would be accepted.
+3. **Failure output keeps the review triggers.** The audit check sits between "review required" and the review-evidence check. Printing the triggers with the audit errors kept the existing `test_base_reviews_committed_branch_changes` assertion unchanged.
+4. **Open point for the orchestrator.** `is_ignored` excludes only the PR-feedback JSON from diff sizing. A large untracked audit transcript in the gating checkout counts as changed lines. That is harmless today, because a PR without other review triggers needs no audit, and the gate runs on a checkout where `.orchestration` files are not part of the PR diff. If the gate ever runs where the audit file is untracked and the PR is docs-only, the transcript's line count could create a review trigger. Excluding `AUDIT_EVIDENCE`/`.last.md` there would mean changing the shared sizing logic, which this task forbade. Status: candidate.

@@ -1,0 +1,18 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t93_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T93-gate-masked-feedback-bodies-a01 at PR #251 head 254d9ebf (substantive commits 7d7a9777, 935399c0, 4db6083a, 63e8fd90, dd155f2b, 56546541, 62cf4aa9, 09784303, 254d9ebf; update-branch merges 10c03df2, c70878d4, ba920163, aa5b061e onto main c6b348ba). Orchestrator read the gate and validator diffs: the gate loads the validator next to it and accepts each collected feedback item when a saved item equals it verbatim or equals its exact masked form (every string field, path included, through mask_secret_matches, placeholders stripped only from bodies that hold a match); `--mask-secrets` masks a parseable JSON file per string value in the pr-feedback layout so the document stays valid; `read_scannable_text` fails with the byte offset on a NUL inside an .orchestration text file instead of skipping it; the pr-integration bullet and its Codex mirror say the JSON may be masked. Round 1 (task-level audit of dd155f2b): the masked comparison applies to body and path only (source, url, level, line byte-exact); the repository scan reads a JSON document per key and string value so no match spans JSON syntax (this also fixed the thread first deferred as a follow-up); object keys and duplicate members are masked as parsed; the NUL prerequisite evidence is pasted. Round 2 (task-level audit of aa5b061e): for .orchestration evidence the NUL rejection runs before any BOM decode and UTF-16 is refused outright; two keys that would mask to one name fail the masking run instead of silently merging; the report summary corrected (254d9ebf). Eight Codex threads: seven fixed in-PR, one not-applicable (masked urls: the url is the byte-exact identity and would fail closed), all replied and resolved. 773 unit tests, asset validation exit 0, CI green on dd155f2b, Bot thumbs-up, up to date with main f2b5c115.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {
+        "id": "r_t93_01_r1",
+        "body": "Resolved: approval recorded after reading the gate and validator diffs.",
+        "author": "claude-code"
+      }
+    ]
+  }
+]

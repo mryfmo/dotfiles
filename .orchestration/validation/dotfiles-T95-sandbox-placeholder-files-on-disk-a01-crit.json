@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t95_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T95-sandbox-placeholder-files-on-disk-a01 at PR #252 head b9beca20 (substantive commits d0515ddd, 5cac2493; update-branch merge b9beca20 onto febd0cb7; 3 files, +118). Orchestrator read the diff: `.gitignore` ignores, root-anchored, the file form of the 19 paths the Claude Code sandbox leaves behind as empty read-only files, with `!/<path>/` re-including a real directory of each name and `.claude/settings*.json` untouched; the stop gate header says host-persisted placeholders are handled by `.gitignore`; a new test checks `git check-ignore` for every path and that `.claude/settings.json` stays visible. Two Codex threads: directory re-include fixed in 5cac2493; a real root `.mcp.json` being hidden is not-applicable (the task mandates the ignore, nothing tracked lives at those paths, `git add -f` for a deliberate file). Worker evidence: the placeholders do not appear in worker-c but a removed main-checkout `.ripgreprc` reappeared unattributed, consistent with the sandbox creating targets in its cwd. CI green on b9beca20 after one snapcraft 408 flake rerun, Bot thumbs-up, up to date with main febd0cb7.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t95_01_r1", "body": "Resolved: approval recorded after reading the diff and the check-ignore test.", "author": "claude-code"}]
+  }
+]

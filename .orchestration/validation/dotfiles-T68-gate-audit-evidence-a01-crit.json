@@ -1,0 +1,18 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t68_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T68-gate-audit-evidence-a01 at PR #246 head 4fe3427f (substantive commits abf9933f, 83074eea, 22efc32c, 46f14681, 5168613a; update-branch merges 3ba270d6 onto 8922f13b and 4fe3427f onto 312fef3f; 4 files). Orchestrator read the whole gate diff: `audit_errors(root, head, task)` runs only with BASE, a non-empty review trigger and a diff that is not .orchestration-only; AUDIT_EVIDENCE must be repo-local under .orchestration/validation/ (given and link-resolved), named <task>-audit-<sha7..40>.md with the feedback JSON's <task> and a sha prefix of HEAD; the verdict comes only from codex's final message `<audit>.md.last.md`, which must exist with content and whose resolved name must be this audit's own companion with the same <task> and a sha prefix of HEAD (round 1, after the task-level audit of 3ba270d6 found a symlinked companion and the transcript fallback could pass a forged verdict); `correct` passes, `blocked`/missing fail, `incorrect` needs \u22651 [P0-P3] finding and AUDIT_DISPOSITIONS under .orchestration/acceptance/ with exactly one numbered `audit-finding: <n> \u2026 not-applicable:<\u226520 chars>` line per finding, `fixed:` rejected. The pr-integration rule bullet and its Codex AGENTS.md mirror state the same contract and name `herdr-agents --audit <head-sha> --task <task>`. 69 tests. Ten Codex threads: eight fixed in-PR (83074eea, 22efc32c, 46f14681), two not-applicable (the other gate mentions belong to T69; restoring the transcript fallback is refused by decision), all replied and resolved; Eleven threads in total after the update-branch: the provenance P1 on 4fe3427f is not-applicable by documented design (shape, not provenance). CI green on 4fe3427f, mergeable CLEAN; the task-level audit of 4fe3427f is incorrect on the same provenance point and on pre-update evidence, both dispositioned in the acceptance record. Consequence accepted: from the merge on, every code PR's gate run needs a task-level audit of its final head, which the repo's herdr-agents `--task` mode produces until `make update` deploys it.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {
+        "id": "r_t68_01_r1",
+        "body": "Resolved: approval recorded after reading the gate diff and both rule mirrors.",
+        "author": "claude-code"
+      }
+    ]
+  }
+]

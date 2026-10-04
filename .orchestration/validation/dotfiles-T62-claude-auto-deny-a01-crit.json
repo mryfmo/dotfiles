@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t62_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T62-claude-auto-deny-a01 at PR #254 head de8b8b2e (one commit on main 6de95167; 3 files, +19/-9), authored by the Codex seat codex-standard-dot-a007 because a Claude seat may not edit the source of its own permission policy (T88 routing). Orchestrator read the whole diff: `claude.permissions.defaultMode` plan → auto with a comment that it must be user-level (project settings do not honour auto; the Stop gate and the deny list are the boundaries); the five publish-class rules (gh release, npm publish, uv publish, terraform apply, kubectl apply) move from ask to deny; `Bash(git push:*)` leaves ask (the main ruleset is the guard); `ask: []` kept without changing the generator; the rendered claude-settings-managed.json follows and the generator test gains assertions for the rendered policy. render-check, unit tests and asset validation pass (worker, verbatim in the worktree-written validation copied to the main checkout). CI green, no Codex thread, mergeable CLEAN. Consequence: after `make update` every Claude seat starts in auto and the permission prompts the operator has been answering stop; the Stop gate (T65/T92/T95) is the completion boundary.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t62_01_r1", "body": "Resolved: approval recorded after reading the diff and the rendered template.", "author": "claude-code"}]
+  }
+]

@@ -2156,7 +2156,7 @@ if [[ ${audit_mode} == true ]]; then
     [[ ${audit_out} == /* ]] || audit_out="${workdir}/${audit_out}"
     workspace_id="$(single_managed_workspace "$(basename "${workdir}") agents" "${workdir}")"
     if [[ -z ${workspace_id} ]]; then
-        printf 'herdr-agents: no managed Herdr workspace for %q; run herdr-agents %q (full mode) to create one, or run codex --profile audit review headless.\n' "${workdir}" "${workdir}" >&2
+        printf 'herdr-agents: no managed Herdr workspace for %q; run herdr-agents %q (full mode) to create one, or run the audit headless as the agmsg-orchestration SKILL task-level audit bullet shows ("codex <audit profile args> exec --sandbox read-only -C <repo> -o <out>.last.md <prompt>").\n' "${workdir}" "${workdir}" >&2
         exit 2
     fi
     mkdir -p -- "$(dirname -- "${audit_out}")"

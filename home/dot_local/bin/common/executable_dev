@@ -3,8 +3,7 @@
 # @file home/dot_local/bin/common/executable_dev
 # @brief Change into a repository selected from `ghq`.
 # @description
-#   Lets the user choose a repository path from `ghq`, changes into it, and
-#   renames the current tmux session to match the selected repository.
+#   Lets the user choose a repository path from `ghq` and changes into it.
 # @example
 #   dev
 
@@ -16,19 +15,11 @@ function ghq-path() {
     printf '%s\n' "$selected_path"
 }
 
-# @description Change into a selected `ghq` repository and rename tmux session.
+# @description Change into a selected `ghq` repository.
 function dev() {
     local moveto
     moveto=$(ghq-path) || return 0
     cd -- "$moveto" || exit 1
-
-    # rename session if in tmux
-    if [[ -n ${TMUX} ]]; then
-        local repo_name
-        repo_name="${moveto##*/}"
-
-        tmux rename-session "${repo_name//./-}"
-    fi
 }
 
 if [ -n "$($SHELL -c "echo ${ZSH_VERSION}")" ]; then

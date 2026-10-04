@@ -5,7 +5,6 @@
     files_exists=(
         "${HOME}/.config/git/ignore"
         "${HOME}/.config/git/config"
-        "${HOME}/.config/tango.yml"
         "${HOME}/.local/bin/common/dev"
         "${HOME}/.local/bin/common/setup-gh"
         "${HOME}/.local/bin/common/setup-gpg"

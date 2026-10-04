@@ -371,13 +371,13 @@ class AgentStopGateTest(unittest.TestCase):
             path.chmod(0o444)
         return paths
 
-    def mountinfo(self, mounts, options="ro,nosuid"):
+    def mountinfo(self, mounts, options="ro,nosuid", root=None):
         """`--mountinfo <fixture>` args: resolved directories (as the kernel lists them) in its octal escaping."""
         resolved = [os.path.join(os.path.realpath(Path(p).parent), Path(p).name) for p in mounts]
         encoded = [p.replace("\\", "\\134").replace(" ", "\\040") for p in resolved]
         path = self.home / "mountinfo"
         path.write_text(
-            "".join(f"{40 + i} 35 0:5 /null {p} {options} - devtmpfs udev rw\n" for i, p in enumerate(encoded))
+            "".join(f"{40 + i} 35 0:5 {root or p} {p} {options} - devtmpfs udev rw\n" for i, p in enumerate(encoded))
         )
         return ["--mountinfo", str(path)]
 
@@ -408,12 +408,18 @@ class AgentStopGateTest(unittest.TestCase):
         # Stands in for a /dev/null mask: the mount point is a character device.
         mask = self.main / ".gitconfig"
         mask.symlink_to("/dev/null")
-        self.assertEqual(self.assert_gate(self.main, 0, args=self.mountinfo([mask])), "")
+        self.assertEqual(self.assert_gate(self.main, 0, args=self.mountinfo([mask], root="/null")), "")
 
     def test_mountinfo_cannot_be_redirected_through_the_environment(self):
         fixture = self.mountinfo(self.make_placeholders())[1]
         stderr = self.assert_gate(self.main, 2, env={"AGENT_STOP_GATE_MOUNTINFO": fixture})
         self.assertIn(".zshrc", stderr)
+
+    def test_read_only_bind_of_another_empty_file_is_not_a_placeholder(self):
+        # Same shape as a placeholder except the root: it was bound from elsewhere.
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), root="/srv/empty.env"))
+        self.assertIn(".zshrc", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
 
     def test_untracked_symlink_to_a_mount_point_is_not_a_placeholder(self):
         # "/" is a mount point everywhere, so following the link would skip it.

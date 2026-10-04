@@ -26,11 +26,12 @@
 #   agmsg install it passes; a failing identity lookup or an unreadable store blocks
 #   unless `stop_hook_active` is true.
 #
-#   An untracked empty regular file or character device that is a read-only
-#   mount point in the hook's own namespace is a Claude Code sandbox
-#   placeholder (a bind mount over a protected path), not a change, and is
-#   skipped. Read-only mount points are read once from fields 5 and 6 of
-#   /proc/self/mountinfo and matched exactly, so no symlink is followed.
+#   An untracked path that is a read-only mount point in the hook's own
+#   namespace and is either an empty regular file bound onto itself or a
+#   character device bound from /dev/null is a Claude Code sandbox
+#   placeholder, not a change, and is skipped. Mounts are read once from
+#   fields 4-6 of /proc/self/mountinfo and matched exactly, so no symlink is
+#   followed.
 # @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
 # @option --mountinfo <file> Test only: read mount points from <file>. The Stop hook passes no arguments, so its inherited environment cannot redirect the table.
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
@@ -126,19 +127,26 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
     # compared as text in mountinfo's own octal escaping of \, space, tab and
     # newline. No /proc (macOS) means no mounts, which is right: the macOS
     # sandbox creates no placeholders.
-    mounts=$'\n'"$(awk '$6 ~ /^ro(,|$)/ { print $5 }' "${mountinfo}" 2> /dev/null)"$'\n'
-    # Only Claude's kind of mount counts: an empty regular file or a character
-    # device (a /dev/null mask) mounted read-only (mountinfo field 6, not `-w`,
-    # which root always passes). A user's own bind mount of a real file (say a
-    # nonempty .env) is reported.
+    # Only Claude's kind of mount counts, and only read-only (mountinfo field
+    # 6, not `-w`, which root always passes): an `S` self-bind (root, field 4,
+    # equal to the mount point) of an empty regular file, or an `N` bind of
+    # /dev/null over a character device. A bind of another file (say a user's
+    # own .env from elsewhere) has a different root and is reported.
+    mounts=$'\n'"$(awk '$6 ~ /^ro(,|$)/ { if ($4 == $5) print "S" $5; else if ($4 == "/null") print "N" $5 }' "${mountinfo}" 2> /dev/null)"$'\n'
     placeholder() {
-        [[ -c ${top}/$1 ]] || [[ -f ${top}/$1 && ! -s ${top}/$1 ]] || return 1
-        local mount="${top}/$1"
+        local kind mount="${top}/$1"
+        if [[ -c ${mount} ]]; then
+            kind=N
+        elif [[ -f ${mount} && ! -s ${mount} ]]; then
+            kind=S
+        else
+            return 1
+        fi
         mount="${mount//\\/\\134}"
         mount="${mount// /\\040}"
         mount="${mount//$'\t'/\\011}"
         mount="${mount//$'\n'/\\012}"
-        [[ ${mounts} == *$'\n'"${mount}"$'\n'* ]]
+        [[ ${mounts} == *$'\n'"${kind}${mount}"$'\n'* ]]
     }
     # -z rows are `XY <path>`; a rename or copy row is followed by its source
     # path, and it is exempt only when both endpoints are. A trailing `rc=<n>`

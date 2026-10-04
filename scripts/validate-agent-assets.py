@@ -408,7 +408,8 @@ def validate_codex_command_hooks(
     manifest_hooks: dict[str, Any], rendered_hooks: dict[str, Any], codex_path: Path
 ) -> None:
     """Check codex.hooks.command_hooks and require the template to hold exactly the declared hook tables."""
-    command_hooks = manifest_hooks.get("command_hooks") or []
+    # Only a missing key defaults to no hooks; a falsey non-list value is a malformed declaration.
+    command_hooks = manifest_hooks.get("command_hooks", [])
     if not isinstance(command_hooks, list):
         fail("codex.hooks.command_hooks must be a list")
     expected: dict[str, list[dict[str, Any]]] = {}

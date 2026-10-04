@@ -369,7 +369,7 @@ def render_codex(manifest: dict[str, Any]) -> str:
     if hooks.get("permission_request"):
         lines.extend(codex_command_hook_lines("PermissionRequest", hooks["permission_request"]))
     # Each entry gets its own [[hooks.<Event>]] table, in manifest order; Codex merges the arrays.
-    for hook in hooks.get("command_hooks") or []:
+    for hook in hooks.get("command_hooks", []):
         lines.extend(codex_command_hook_lines(hook["event"], hook))
     if hooks.get("state"):
         lines.extend(["", "[hooks.state]"])

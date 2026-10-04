@@ -32,15 +32,6 @@ use = ["p10k.zsh"]
 apply = ["source"]
 
 #
-# Alias for Client Machine
-#
-
-[plugins.alias]
-local = '~/.config/alias'
-use = ['client.sh']
-apply = ['source']
-
-#
 # git related plugins
 #
 

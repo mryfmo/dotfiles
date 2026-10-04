@@ -1,0 +1,8 @@
+[
+  {
+    "id": "codex-t62-approval",
+    "body": "Reviewed the manifest, generated settings, and regression test. The deny-first policy remains intact, publish rules are denied, and removing the git push ask matches the approved task scope.",
+    "scope": "review",
+    "resolved": true
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t74_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T74-bootstrap-dead-code-a01 at PR #247 head c0ea3e7f (substantive commits 2487b05a, c0ea3e7f; 14 files, +4/-391, base 138e6a72, no update-branch needed). Orchestrator read every hunk outside the deleted nix tree: install/macos/arm64/run.sh gone (prepare_arm64_system.sh kept and still included by the macOS run_once script); `make init` reduced to `chezmoi init --apply --verbose` with the lifecycle test asserting exactly that line (the private layer is initialized by run_once_after_01-setup-chezmoi-private, setup.sh never calls chezmoi-private, nothing calls `make init`); setup.sh loses the disabled restart_shell family and the commented call; the two empty OS chezmoiexternal templates are deleted and the common include stays behind a platform guard rewritten as one `if not (or darwin (and linux debian))` → fail (Codex P2 4175951414, accepted deviation from the task text; rendered output byte-identical on supported hosts, Go template `or`/`and` short-circuit so the osRelease lookup is not evaluated on darwin); flake.nix, flake.lock, nix/** and the CI `should_nix` filter and `nix` job deleted with the supply-chain test case; `json` import still used. The ruleset's seven required contexts never included nix. CI green on c0ea3e7f (16 checks), Codex Bot reviewed 2487b05a (two P2) and posted nothing on c0ea3e7f within the wait; the nix-docs P2 is not-applicable here (plan prose owned by T78/T83, stale lines enumerated in the report).",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t74_01_r1", "body": "Resolved: approval recorded after reading the diff and confirming the private-layer bootstrap path.", "author": "claude-code"}]
+  }
+]

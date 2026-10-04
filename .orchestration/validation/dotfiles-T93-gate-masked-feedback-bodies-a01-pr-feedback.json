@@ -1,0 +1,532 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 251,
+  "head_sha": "254d9ebf86e7d986b418aa74098ae546b4bdd843",
+  "base_ref": "main",
+  "base_sha": "c6b348ba5d271717292962c2b47c6c87b133fd2a",
+  "generated_at": "2026-10-04T11:46:34+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251746/job/111427368024"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251746/job/111427367994"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251746/job/111427367977"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251746/job/111427367945"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251761/job/111427342061"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251761/job/111427342059"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251761/job/111427342047"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251761/job/111427342043"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251761/job/111427342042"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251761/job/111427341891"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251746/job/111427341746"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251765/job/111427341736"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `17a74495-8818-4c81-9d47-70e41a657b1e`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=251)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#issuecomment-5978096213",
+      "disposition": "not-applicable:CodeRabbit summary comment (automatic reviews disabled); no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `935399c0f0`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405067088",
+      "commit": "935399c0f05672bdaa1e2f8e17f0f1d28299f2c6",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `4db6083a66`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405087429",
+      "commit": "4db6083a66680119b97abbdea73a4d1d290ff7b0",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `10c03df22d`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405230905",
+      "commit": "10c03df22d132b946313db2a77ebfb951c61cb37",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405369555",
+      "commit": "dd155f2b6f90430e2c573c9103cb38d1ea387d96",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405369773",
+      "commit": "dd155f2b6f90430e2c573c9103cb38d1ea387d96",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405370163",
+      "commit": "dd155f2b6f90430e2c573c9103cb38d1ea387d96",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405370297",
+      "commit": "dd155f2b6f90430e2c573c9103cb38d1ea387d96",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405370375",
+      "commit": "dd155f2b6f90430e2c573c9103cb38d1ea387d96",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `c70878d4f4`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405536829",
+      "commit": "c70878d4f432b7d3e26c032856d7103693966ca2",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `ba9201632c`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405597931",
+      "commit": "ba9201632cea58368b5c44225918be626ee5c2ad",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `aa5b061e73`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405668288",
+      "commit": "aa5b061e73d8ad91d46bdfdb0e24c90722d82ff1",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405705526",
+      "commit": "aa5b061e73d8ad91d46bdfdb0e24c90722d82ff1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405705593",
+      "commit": "aa5b061e73d8ad91d46bdfdb0e24c90722d82ff1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405705806",
+      "commit": "aa5b061e73d8ad91d46bdfdb0e24c90722d82ff1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#pullrequestreview-5405706055",
+      "commit": "aa5b061e73d8ad91d46bdfdb0e24c90722d82ff1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 441,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve placeholder-only text in evidence comparisons**\n\nWhen live GitHub feedback contains `GITHUB_PERSONAL_ACCESS_TOKEN` or `FIGMA_OAUTH_TOKEN` as ordinary text but no secret-pattern match, this pre-strips the token even though `--mask-secrets` preserves it. A saved item with that text inserted or removed therefore has the same key as the live item and can pass the guard despite not reproducing the collected feedback body; call `mask_secret_matches` directly so comparison matches the documented masking behavior.\n\nAGENTS.md reference: [AGENTS.md:L60-L64](https://github.com/mryfmo/dotfiles/blob/935399c0f05672bdaa1e2f8e17f0f1d28299f2c6/AGENTS.md#L60-L64)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4176779660",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:4db6083a"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 453,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Match the file masker's serialized-body semantics**\n\n`--mask-secrets` operates on serialized JSON, so a review body such as `<redacted:secret-pattern>` is written as `\"token = \\\"live-secret\\\"\"` and does not match `SECRET_PATTERN`; it remains unchanged in saved evidence. Here the body has already been JSON-decoded, so both that body and `<redacted:secret-pattern>` are reduced to the same redaction token and the `Counter` accepts an altered saved body. Unlike the existing placeholder-only comment, this mismatch is caused by JSON-escaped quotes. Normalize according to the serialized evidence (or avoid masking decoded-only matches) so only redactions actually applied by `--mask-secrets` are ignored.\n\nAGENTS.md reference: [AGENTS.md:L60-L64](https://github.com/mryfmo/dotfiles/blob/4db6083a66680119b97abbdea73a4d1d290ff7b0/AGENTS.md#L60-L64)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4176797732",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:63e8fd90"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_config/claude/rules/pr-integration.md",
+      "line": 6,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Keep masked PR-feedback JSON parseable**\n\nWhen a feedback body ends with an assignment prefix such as `token = `, the closing JSON string quote satisfies `SECRET_PATTERN` and its `[^\"']+` portion consumes the JSON syntax through the next field's opening quote. Running the newly advertised `--mask-secrets` command then rewrites valid feedback into text such as `\"body\": \"<redacted:secret-pattern>url\": ...`, which cannot be parsed by the integration guard and prevents the dispositions from being accepted. Mask parsed string values (or constrain matches not to cross JSON syntax) before documenting this workflow.\n\nAGENTS.md reference: [AGENTS.md:L60-L64](https://github.com/mryfmo/dotfiles/blob/4db6083a66680119b97abbdea73a4d1d290ff7b0/AGENTS.md#L60-L64)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4176797738",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:63e8fd90"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/validate-agent-assets.py",
+      "line": 1329,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Keep harmless assignment suffixes from blocking masked evidence**\n\nWhen a collected feedback body ends in an assignment prefix such as `token = ` and is followed by another JSON string field, per-value masking finds no secret and leaves the document unchanged, but the repository-wide raw scan matches from the body's closing quote through the next field's opening quote (for example, `<redacted:secret-pattern>`). The agent-assets CI then rejects the otherwise valid evidence, so the newly documented `--mask-secrets` workflow still blocks integration for this feedback shape. Fresh evidence: this remains true after the new parseable JSON rewrite; mask/scan JSON by parsed string values consistently, or prevent the raw pattern from crossing JSON syntax.\n\nAGENTS.md reference: [AGENTS.md:L79-L79](https://github.com/mryfmo/dotfiles/blob/10c03df22d132b946313db2a77ebfb951c61cb37/AGENTS.md#L79-L79)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4176920521",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:56546541"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 455,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Match redacted feedback paths as well as bodies**\n\nFor a review comment on a file whose path contains a key-shaped string such as `ghp_` followed by 25 characters, `mask_json_strings` redacts the saved `path`, but this key still requires the re-collected path to be byte-exact. The saved evidence therefore fails the integration guard, while retaining the original path makes the repository secret scan fail; normalize the identity fields that the masker can redact before comparing them.\n\nAGENTS.md reference: [AGENTS.md:L79-L79](https://github.com/mryfmo/dotfiles/blob/10c03df22d132b946313db2a77ebfb951c61cb37/AGENTS.md#L79-L79)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4176920525",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:dd155f2b"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 441,
+      "body": "Disposition (orchestrator acceptance): fixed in 4db6083a (placeholders are stripped only from bodies that hold a match; placeholder-only text is preserved).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4176997352",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:reply on a resolved Codex thread (worker fix note or orchestrator disposition), not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 453,
+      "body": "Disposition (orchestrator acceptance): fixed in 63e8fd90 (the file masker masks a parseable JSON evidence file per string value, so a saved body equals mask_secret_matches of the collected one).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4176997451",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:reply on a resolved Codex thread (worker fix note or orchestrator disposition), not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_config/claude/rules/pr-integration.md",
+      "line": 6,
+      "body": "Disposition (orchestrator acceptance): fixed in 63e8fd90 (per-string masking keeps the JSON parseable; the rule text says so).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4176997538",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:reply on a resolved Codex thread (worker fix note or orchestrator disposition), not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 455,
+      "body": "Disposition (orchestrator acceptance): fixed in dd155f2b (every string field of an item, path included, is compared verbatim or in its exact masked form).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4176997620",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:reply on a resolved Codex thread (worker fix note or orchestrator disposition), not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/validate-agent-assets.py",
+      "line": 1329,
+      "body": "Disposition (orchestrator acceptance): not-applicable. A body that ends in an assignment prefix followed by the next JSON string's quote can match the repository-wide text scan across JSON syntax; the result is fail-closed (CI rejects the file, never a bypass) and the fix is a JSON-aware repository scan, which is a separate change recorded as a follow-up in the T93 acceptance record.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4176997692",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:reply on a resolved Codex thread (worker fix note or orchestrator disposition), not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/validate-agent-assets.py",
+      "line": 1288,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve duplicate JSON members while masking**\n\nWhen a valid hand-edited feedback JSON contains duplicate member names and an earlier occurrence contains a secret (for example, an earlier `\"body\"` followed by a safe replacement), this plain `json.loads` discards that earlier occurrence before `mask_json_strings` runs. `--mask-secrets` then reports zero matches and leaves the file unchanged, while `validate_no_obvious_secrets()` deliberately scans duplicate pairs and rejects the same file, so the documented masking workflow cannot clear the evidence. Preserve pairs while masking, or explicitly reject duplicate-key JSON consistently.\n\nAGENTS.md reference: [AGENTS.md:L58-L63](https://github.com/mryfmo/dotfiles/blob/c70878d4f432b7d3e26c032856d7103693966ca2/AGENTS.md#L58-L63)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4177133524",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:62cf4aa9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 453,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Compare all unmasked feedback fields**\n\nWhen a saved PR-feedback item keeps the six fields in this key but changes an unmasked collector field such as `author`, `bot`, `check`, `resolved`, or `outdated`, `missing_feedback()` still considers it present (the current collector emits those fields for relevant item types). This contradicts the new integration rule that every field other than a maskable body/path must match exactly, and permits acceptance evidence to misrepresent the feedback's author or review-thread state; include the remaining item fields in the comparison or explicitly validate them before matching.\n\nAGENTS.md reference: [AGENTS.md:L58-L64](https://github.com/mryfmo/dotfiles/blob/ba9201632cea58368b5c44225918be626ee5c2ad/AGENTS.md#L58-L64)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4177181654",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:09784303"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 458,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Support masked feedback URLs**\n\nFor check-run and status feedback, `scripts/pr-feedback.py` uses externally supplied `html_url`/`target_url` values. If one contains a key-shaped token, `--mask-secrets` redacts it because it masks every JSON string value, while this loop only normalizes `path` and `body`; keeping the URL unmasked makes the repository secret scan fail, and saving the masked URL makes the integration guard reject the evidence. Normalize `url` to its exact masked form as well so this documented masking workflow remains usable without weakening item identity.\n\nAGENTS.md reference: [AGENTS.md:L79-L79](https://github.com/mryfmo/dotfiles/blob/aa5b061e73d8ad91d46bdfdb0e24c90722d82ff1/AGENTS.md#L79-L79)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4177248224",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the url is the identity of a feedback item and stays byte-exact by decision; a key-shaped url would fail closed at the gate and none exists in this repository; the orchestrator would keep that one url verbatim"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/validate-agent-assets.py",
+      "line": 1329,
+      "body": "Disposition update (orchestrator acceptance): the task-level audit rejected the earlier deferral, so this is now fixed in 56546541 (the repository scan reads a JSON document per key and string value, so no match spans JSON syntax between fields).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4177282108",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:reply on a resolved Codex thread (worker fix note or orchestrator disposition), not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/validate-agent-assets.py",
+      "line": 1288,
+      "body": "Disposition (orchestrator acceptance): fixed in 62cf4aa9 (every duplicate member is masked as it is parsed, before json.loads drops the earlier one).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4177282179",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:reply on a resolved Codex thread (worker fix note or orchestrator disposition), not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 453,
+      "body": "Disposition (orchestrator acceptance): fixed in 09784303 (the rule names the six-field identity the gate compares instead of claiming every field).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4177282330",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:reply on a resolved Codex thread (worker fix note or orchestrator disposition), not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 458,
+      "body": "Disposition (orchestrator acceptance): not-applicable by decision. The url is the identity of a feedback item and stays byte-exact (revise round 1, item 1); a key-shaped token in an externally supplied html_url or target_url would make that item fail closed at the gate, never pass unseen, and no GitHub check-run or status URL in this repository carries one. If it ever happens the orchestrator keeps that one url verbatim in the saved evidence.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/251#discussion_r4177282567",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:reply on a resolved Codex thread (worker fix note or orchestrator disposition), not a finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251746/job/111427367945",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251761/job/111427342047",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37199251761/job/111427342042",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit status context reports review skipped; the gate does not require a bot review"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t66_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T66-permgate-dead-lanes-a01 at PR #240 head a31dcf86 (substantive commits 8ae3fdc9, a93fcb94 and a31dcf86; update-branch merges f26975ab and 55933ff8). Orchestrator verified: permgate 788 → 252 lines keeps only policy loading (schema_version 3 required), deny_patterns then allow_patterns for non-Bash tools or a bounded single command, `hook_output` with both hook schemas, the append-only 0600 decisions log and the `PERMGATE_INNER` guard; the LLM shadow lane, cli lane, bench and their policy validation are gone; the policy keeps the unchanged 9 allow and 1 deny patterns and drops providers/cli/enablement/categories/classifier_*/metrics (metrics read by nothing, PONG decision 1(3)); validate-agent-assets now requires exactly {schema_version, allow_patterns, deny_patterns}; lifecycle.bats drops the four approved pins and keeps PERMGATE_INNER; README, model-selection.md and codex/AGENTS.md:55 say deterministic-only; 17 permgate tests remain including the golden-bytes and undecided → empty-stdout contracts. Orchestrator probe of the head executable against the head policy: `gh pr view 1` and `git status` → allow JSON (layer deterministic), `rm -rf /` → deny JSON, `ls` and `gh pr merge 1` → empty stdout (layer fallthrough): behaviour identical to before for everything the deterministic lanes decided. Deploy note accepted: until `chezmoi apply` delivers both files, the new executable logs config-error on the schema-2 live policy and falls through (fails closed). Codex Bot reviewed the update-branch heads and raised three P2s, all fixed at the root: the stale classifier-model sentence in home/dot_config/codex/AGENTS.md (a93fcb94), the validator now requiring a JSON object with the exact key set and schema_version 3 plus pattern entries as objects with string tool/regex (a93fcb94, a31dcf86), and `decide` catching AttributeError so a malformed entry fails closed (a31dcf86); all three threads replied and resolved; thumbs-up on a31dcf86. CI green on the head. The worker closed its own Plan Mode crit server as instructed.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {
+        "id": "r_t66_01_r1",
+        "body": "Resolved: approval recorded after reading the diff and probing the head executable with the head policy.",
+        "author": "claude-code"
+      }
+    ]
+  }
+]

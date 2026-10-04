@@ -1,0 +1,18 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t92_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T92-stop-gate-sandbox-placeholders-a01 at PR #248 head 3371cc81 (substantive commits cbbd26cd, 776cbfec, 5d4928fb, 68d8e142, bbd3d3fb, adca1e6b, 153a647d, 8535b3f3, a8a87bd9; update-branch merges onto 0ea5948b and 65915b93; two files). Orchestrator read the gate diff: the orchestrator seat's dirty-tree loop skips an untracked entry only when it is an empty regular file or a character device whose exact path (mountinfo octal escaping) is a read-only mount point in the hook's own namespace, read once from /proc/self/mountinfo fields 5-6 (one awk, no per-path process, no symlink following, read-only from mount options rather than -w); the count is printed only when the gate blocks for another reason; the test override is argv `--mountinfo`, which the Stop hook never passes. Independently verified inside the orchestrator's sandbox: the PR head's script ignores the 19 placeholders (`sandbox placeholders ignored: 19`) and still reports the pending RESULT, while main's script reports the 19 as uncommitted changes. Round 1 (task-level audit of bbd3d3fb): mountinfo field 4 separates a self-bind (sandbox placeholder) from a bind of another file, so a placeholder is now an `S` self-bind of an empty regular file or an `N` /dev/null bind over a character device, both read-only (adca1e6b, with the earlier not-applicable withdrawn), plus verbatim mutation, live-count and timing evidence (153a647d). Round 2 (task-level audit of 153a647d): `$4 == $5` failed when /home is its own filesystem, so a mount root is now joined onto the mount point of its source filesystem's root mount (same device, two-pass awk); a self-bind must join to exactly its own mount point and an N placeholder to exactly /dev/null (8535b3f3, a8a87bd9, with a separate-/home fixture). Nine Codex threads in total, all fixed in-PR, replied and resolved. CI green on bbd3d3fb, up to date with main f32f33a0, Bot 'no major issues' on the final head.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {
+        "id": "r_t92_01_r1",
+        "body": "Resolved: approval recorded after reading the diff and running the PR head's gate inside the sandbox.",
+        "author": "claude-code"
+      }
+    ]
+  }
+]

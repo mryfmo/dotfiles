@@ -1,1 +1,4 @@
+{{ if not (or (eq .chezmoi.os "darwin") (and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.idLike "debian"))) -}}
+{{   fail (printf "Unknown OS for client system: %s" .chezmoi.os) }}
+{{ end -}}
 {{ template "chezmoiexternal.d/common.yaml.tmpl" . }}

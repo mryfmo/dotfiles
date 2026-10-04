@@ -197,7 +197,7 @@ function check_apparmor_userns() {
     if [ -f "${profile}" ]; then
         printf 'required failed: bwrap user-namespace probe; %s exists but is not effective (sudo apparmor_parser -r %s)\n' "${profile}" "${profile}" >&2
     else
-        printf 'required failed: bwrap user-namespace probe; AppArmor profile %s is missing, so sandboxed codex runs fail (chezmoi apply installs it)\n' "${profile}" >&2
+        printf 'required failed: bwrap user-namespace probe; AppArmor profile %s is missing, so sandboxed codex runs fail (sudo -v && bash install/ubuntu/common/apparmor_userns.sh)\n' "${profile}" >&2
     fi
     ((required_failures += 1))
 }

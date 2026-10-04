@@ -38,6 +38,7 @@ class AgmsgOrchestrationDocsParityTest(unittest.TestCase):
                 "gh pr update-branch",
                 "Self-Modification",
                 "home/dot_claude/modify_private_settings.json",
+                "`claude.sandbox`",
                 "AGMSG-PONG v1 status=blocked",
                 "--ask-for-approval never",
             ):

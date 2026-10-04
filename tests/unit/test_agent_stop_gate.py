@@ -113,10 +113,47 @@ class AgentStopGateTest(unittest.TestCase):
         self.assert_gate(self.main, 0)
 
     def test_failing_git_status_blocks(self):
-        bad_index = self.home / "not-an-index"
-        bad_index.write_text("garbage")
-        stderr = self.assert_gate(self.main, 2, env={"GIT_INDEX_FILE": str(bad_index)})
-        self.assertIn("git status failed", stderr)
+        (self.main / ".git/index").write_text("garbage")
+        self.assertIn("git status failed", self.assert_gate(self.main, 2))
+
+    def test_inherited_alternate_index_does_not_hide_a_staged_change(self):
+        (self.main / "a.txt").write_text("one\n")
+        self.git("add", "a.txt")
+        self.git("commit", "-q", "-m", "a")
+        alt = self.home / "alt-index"
+        subprocess.run(
+            ["git", "read-tree", "HEAD"], cwd=self.main, check=True, env={**os.environ, "GIT_INDEX_FILE": str(alt)}
+        )
+        (self.main / "a.txt").write_text("two\n")
+        self.git("add", "a.txt")
+        (self.main / "a.txt").write_text("one\n")
+        self.assertIn("a.txt", self.assert_gate(self.main, 2, env={"GIT_INDEX_FILE": str(alt)}))
+
+    def test_separate_git_dir_main_worktree_is_a_seat(self):
+        main = self.home / "sep"
+        env = {**os.environ, "HOME": str(self.home)}
+        subprocess.run(
+            ["git", "init", "-q", "--separate-git-dir", str(self.home / "sep.git"), str(main)], check=True, env=env
+        )
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@example.com",
+                "commit",
+                "-q",
+                "--allow-empty",
+                "-m",
+                "init",
+            ],
+            cwd=main,
+            check=True,
+            env=env,
+        )
+        self.history(row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"))
+        self.assertIn("task_id=T1", self.assert_gate(main, 2))
 
     def test_result_without_acceptance_blocks(self):
         self.history(
@@ -174,6 +211,26 @@ class AgentStopGateTest(unittest.TestCase):
         self.history(row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"))
         env = {"GIT_DIR": str(self.home / "no-such-repo"), "GIT_WORK_TREE": str(self.home)}
         self.assertIn("task_id=T1", self.assert_gate(self.main, 2, env=env))
+
+    def test_worker_result_to_another_member_keeps_the_task_open(self):
+        self.history(
+            row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T6 repo=/r"),
+            row("worker-a001", "someone-else", "AGMSG-RESULT v1 task_id=T6 status=ready_for_review"),
+        )
+        self.assertIn("task_id=T6", self.assert_gate(self.worker, 2))
+        self.history(
+            row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T6 repo=/r"),
+            row("worker-a001", "someone-else", "AGMSG-RESULT v1 task_id=T6 status=ready_for_review"),
+            row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T6 status=ready_for_review"),
+        )
+        self.assert_gate(self.worker, 0)
+
+    def test_orchestrator_acceptance_to_another_member_keeps_the_result_open(self):
+        self.history(
+            row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T7 status=ready_for_review"),
+            row("orch", "someone-else", "AGMSG-ACCEPTANCE v1 task_id=T7 status=accepted"),
+        )
+        self.assertIn("task_id=T7", self.assert_gate(self.main, 2))
 
     def test_worker_after_result_passes(self):
         self.history(
@@ -256,6 +313,21 @@ class AgentStopGateTest(unittest.TestCase):
         self.assertIn("unreadable", stderr)
         self.assertNotIn("task_id=T1", stderr)
         self.assertFalse((self.home / "history-called").exists())
+
+    @unittest.skipUnless(shutil.which("timeout"), "the hard read budget needs timeout(1)")
+    def test_slow_store_blocks_within_the_budget_with_gtimeout_only(self):
+        # A PATH with gtimeout (as Homebrew coreutils installs it) and no timeout.
+        bindir = self.home / "gbin"
+        bindir.mkdir()
+        for tool in ("bash", "git", "jq", "awk", "sed", "grep", "cat", "sleep", "env"):
+            (bindir / tool).symlink_to(shutil.which(tool))
+        (bindir / "gtimeout").symlink_to(shutil.which("timeout"))
+        self.history(row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T5 repo=/r"))
+        (self.home / "store-slow").write_text("")
+        started = time.monotonic()
+        stderr = self.assert_gate(self.worker, 2, env={"PATH": str(bindir)})
+        self.assertLess(time.monotonic() - started, 4.5)
+        self.assertIn("exceeded the hook budget", stderr)
 
     @unittest.skipUnless(shutil.which("timeout"), "the hard read budget needs timeout(1)")
     def test_slow_store_blocks_within_the_budget(self):

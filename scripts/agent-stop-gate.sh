@@ -60,11 +60,14 @@ if [[ ${1:-} == --read-history ]]; then
     exit
 fi
 
+# GNU timeout, or Homebrew coreutils' gtimeout on macOS; empty when neither.
+runner="$(command -v timeout || command -v gtimeout || true)"
+
 # Same bounded stdin read as agmsg check-inbox.sh; jq decodes JSON escapes.
 input=""
 if [[ ! -t 0 ]]; then
-    if command -v timeout > /dev/null 2>&1; then
-        input="$(timeout 2 cat 2> /dev/null || true)"
+    if [[ -n ${runner} ]]; then
+        input="$("${runner}" 2 cat 2> /dev/null || true)"
     else
         input="$(cat 2> /dev/null || true)"
     fi
@@ -74,15 +77,19 @@ active="$(jq -r '.stop_hook_active // false' <<< "${input}" 2> /dev/null)"
 cwd="$(jq -r '.cwd // empty' <<< "${input}" 2> /dev/null)"
 cwd="${cwd:-${PWD}}"
 
-# Main checkout as in check-regime-boundary.sh, discovered from cwd alone: an
-# inherited GIT_DIR or GIT_WORK_TREE would select another repository.
-unset GIT_DIR GIT_WORK_TREE
+# Repository discovered from cwd alone: inherited overrides would select
+# another repository, index, or object store.
+unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
 top="$(git -C "${cwd}" rev-parse --show-toplevel 2> /dev/null)" || exit 0
+# Seat by Git's own layout, not by path suffix: the main worktree is the one
+# whose git dir is the common dir (true with --separate-git-dir too, where
+# `worktree list` prints the metadata dir); a worker is a linked worktree under
+# <main>/.claude/worktrees/ whose <main> owns the same common dir.
+gitdir="$(git -C "${cwd}" rev-parse --path-format=absolute --git-dir 2> /dev/null)" || exit 0
 common="$(git -C "${cwd}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" || exit 0
-main="${common%/.git}"
-if [[ ${top} == "${main}" ]]; then
+if [[ ${gitdir} == "${common}" ]]; then
     seat=orchestrator
-elif [[ ${top} == "${main}"/.claude/worktrees/* ]]; then
+elif [[ ${top} == */.claude/worktrees/* && "$(git -C "${top%/.claude/worktrees/*}" rev-parse --path-format=absolute --git-dir 2> /dev/null)" == "${common}" ]]; then
     seat=worker
 else
     exit 0
@@ -144,12 +151,11 @@ while IFS=$'\t' read -r -u 3 team name; do
     # `timeout 0` would mean no limit, so a spent budget blocks before the read.
     remaining=$((deadline - SECONDS))
     if [[ ${remaining} -gt 0 ]]; then
-        if command -v timeout > /dev/null 2>&1; then
-            history="$(timeout "${remaining}" bash "${BASH_SOURCE[0]}" --read-history "${team}" 2> /dev/null)"
+        if [[ -n ${runner} ]]; then
+            history="$("${runner}" "${remaining}" bash "${BASH_SOURCE[0]}" --read-history "${team}" 2> /dev/null)"
         else
-            # ponytail: stock macOS has no timeout(1), as agmsg check-inbox.sh
-            # notes; the budget is then only checked between teams. Install
-            # coreutils' timeout for the hard cap.
+            # ponytail: without timeout or gtimeout (stock macOS) the budget is
+            # only checked between teams; install coreutils for the hard cap.
             history="$(read_history "${team}" 2> /dev/null)"
         fi
         rc=$?
@@ -178,14 +184,19 @@ while IFS=$'\t' read -r -u 3 team name; do
                 if (status == "" && w[i] ~ /^status=/) status = substr(w[i], 8)
             }
             if (id == "") next
+            # pending[id] holds the peer: the RESULT sender (orchestrator) or the
+            # TASK / revise ACCEPTANCE sender (worker). Only a message between
+            # me and that peer closes the task.
             if (seat == "orchestrator") {
-                if ($2 == me && kind == "AGMSG-RESULT") pending[id] = 1
-                else if ($1 == me && (kind == "AGMSG-ACCEPTANCE" || kind == "AGMSG-TASK")) delete pending[id]
+                if ($2 == me && kind == "AGMSG-RESULT") pending[id] = $1
+                else if ((id in pending) && $1 == me && $2 == pending[id] && (kind == "AGMSG-ACCEPTANCE" || kind == "AGMSG-TASK")) delete pending[id]
             } else if ($2 == me && (kind == "AGMSG-TASK" || (kind == "AGMSG-ACCEPTANCE" && status == "revise"))) {
-                pending[id] = 1
-            } else if ($1 == me && (kind == "AGMSG-RESULT" || (kind == "AGMSG-PONG" && status == "blocked"))) {
+                pending[id] = $1
+            } else if (!(id in pending)) {
+                next
+            } else if ($1 == me && $2 == pending[id] && (kind == "AGMSG-RESULT" || (kind == "AGMSG-PONG" && status == "blocked"))) {
                 delete pending[id]
-            } else if ($2 == me && kind == "AGMSG-ACCEPTANCE") {
+            } else if ($1 == pending[id] && $2 == me && kind == "AGMSG-ACCEPTANCE") {
                 delete pending[id]
             }
         }

@@ -115,7 +115,8 @@ line follows, as it follows seat_claim= inside the orchestrator's Herdr pane.
 Full, attach and restart-worker modes seat a Claude orchestrator, so they exit 2
 before touching Herdr when HERDR_AGENTS_ORCHESTRATOR_KIND (default
 orchestrator_kind from ~/.agents/model-profiles.env, then claude) is codex; the
-other modes work under either kind, and the manifest worker's own attach in its
+other modes work under either kind (the worker modes name, link and despawn
+workers under the kind's orchestrator identity), and the manifest worker's own attach in its
 worker_worktree still exits quietly. Directive mode prints the
 agmsg-orchestration directive line for the current directory when it is a
 regime repository (the orchestrator identity is looked up as the kind's agmsg
@@ -307,11 +308,11 @@ function ensure_worker_identity() {
         head -n 1 <<< "${seated}"
         return 0
     fi
-    orchestrator="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
+    orchestrator="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" "${orchestrator_agmsg_type}" 2> /dev/null |
         awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/' | sort -u)" || orchestrator=""
     if [[ -z ${orchestrator} || ${orchestrator} == *$'\n'* ]]; then
-        printf 'herdr-agents: need exactly one orchestrator claude-code identity at %s to name the worker; register the worker yourself with: AGMSG_RESOLVE_PROJECT=0 %s/join.sh <team> <name> %s %q\n' \
-            "${workdir}" "${scripts}" "${agent_type}" "${worktree}" >&2
+        printf 'herdr-agents: need exactly one orchestrator %s identity at %s to name the worker; register the worker yourself with: AGMSG_RESOLVE_PROJECT=0 %s/join.sh <team> <name> %s %q\n' \
+            "${orchestrator_agmsg_type}" "${workdir}" "${scripts}" "${agent_type}" "${worktree}" >&2
         exit 2
     fi
     team="${orchestrator%%$'\t'*}"
@@ -1922,18 +1923,20 @@ if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
     exit 0
 fi
 
+# The orchestrator's agmsg identity type: the leader the worker modes name,
+# link and despawn under, and the identity --directive looks up.
+orchestrator_kind="$(resolve_orchestrator_kind)" || exit 2
+orchestrator_agmsg_type=claude-code
+[[ ${orchestrator_kind} == codex ]] && orchestrator_agmsg_type=codex
+
 # --directive needs neither Herdr nor a pane, so a Codex orchestrator's first turn can carry it.
 if [[ ${1:-} == "--directive" ]]; then
     if [[ $# -ne 1 ]]; then
         usage >&2
         exit 2
     fi
-    orchestrator_kind="$(resolve_orchestrator_kind)" || exit 2
-    if [[ ${orchestrator_kind} == codex ]]; then
-        print_regime_directive "$(pwd -P)" codex
-    else
-        print_regime_directive "$(pwd -P)"
-    fi
+    # Identities are registered at the checkout root, so a subdirectory start resolves to it.
+    print_regime_directive "$(git rev-parse --show-toplevel 2> /dev/null || pwd -P)" "${orchestrator_agmsg_type}"
     exit 0
 fi
 
@@ -1943,7 +1946,6 @@ fi
 case "${1:-}" in
 --bootstrap-agmsg | --add-worker | --remove-worker | --audit) ;;
 *)
-    orchestrator_kind="$(resolve_orchestrator_kind)" || exit 2
     if [[ ${orchestrator_kind} == codex ]] && ! { [[ ${1:-} == --attach ]] && is_manifest_worker_seat "$(pwd -P)"; }; then
         printf 'herdr-agents: orchestrator_kind=codex: use codex-orchestrate\n' >&2
         exit 2
@@ -2199,17 +2201,17 @@ if [[ ${add_worker_mode} == true ]]; then
     # only when the PING was not read (spawn's own code when it also failed).
     # Exactly one orchestrator (the claim_orchestrator_seat rule): the PING
     # must not be routed through whichever of several leaders sorts first.
-    seat_leader="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
+    seat_leader="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" "${orchestrator_agmsg_type}" 2> /dev/null |
         awk -F '\t' -v team="${seat_team}" '$1 == team && $2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || seat_leader=""
     linkage_rc=0
     if [[ -n ${seat_leader} && ${seat_leader} != *$'\n'* ]]; then
         check_worker_linkage "${seat_team}" "${seat_leader}" "${seat_name}" "${seat_workspace_id}" "${seat_panes}" || linkage_rc=$?
     else
         if [[ -z ${seat_leader} ]]; then
-            printf 'herdr-agents: no orchestrator claude-code identity in team %s at %s; linkage PING not sent.\n' "${seat_team}" "${workdir}" >&2
+            printf 'herdr-agents: no orchestrator %s identity in team %s at %s; linkage PING not sent.\n' "${orchestrator_agmsg_type}" "${seat_team}" "${workdir}" >&2
         else
-            printf 'herdr-agents: several orchestrator claude-code identities in team %s at %s (%s); linkage PING not sent.\n' \
-                "${seat_team}" "${workdir}" "$(tr '\n' ' ' <<< "${seat_leader}" | sed 's/ $//')" >&2
+            printf 'herdr-agents: several orchestrator %s identities in team %s at %s (%s); linkage PING not sent.\n' \
+                "${orchestrator_agmsg_type}" "${seat_team}" "${workdir}" "$(tr '\n' ' ' <<< "${seat_leader}" | sed 's/ $//')" >&2
         fi
         printf 'linkage=unreached rc=2 hint=agmsg-dispatch\n'
         linkage_rc=2
@@ -2226,13 +2228,13 @@ if [[ ${remove_worker_mode} == true ]]; then
         printf 'herdr-agents: %s has uncommitted changes; commit them or pass --force.\n' "${seat_dir}" >&2
         exit 2
     fi
-    leader="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
+    leader="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" "${orchestrator_agmsg_type}" 2> /dev/null |
         awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || leader=""
     for seat_type in claude-code codex; do
         while IFS=$'\t' read -r seat_team seat_name; do
             [[ -n ${seat_name} ]] || continue
             if [[ -z ${leader} || ${leader} == *$'\n'* ]]; then
-                printf 'herdr-agents: need exactly one orchestrator claude-code identity at %s to despawn %s.\n' "${workdir}" "${seat_name}" >&2
+                printf 'herdr-agents: need exactly one orchestrator %s identity at %s to despawn %s.\n' "${orchestrator_agmsg_type}" "${workdir}" "${seat_name}" >&2
                 exit 2
             fi
             if ! despawn_worker_seat "${seat_team}" "${leader}" "${seat_name}"; then

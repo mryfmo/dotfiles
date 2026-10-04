@@ -646,7 +646,7 @@ fi
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(result.stdout.startswith("herdr-agents: not in a Herdr pane"), result.stdout)
 
-    def run_directive(self, kind: str = "claude") -> subprocess.CompletedProcess[str]:
+    def run_directive(self, kind: str = "claude", cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{os.pathsep}".join(("/usr/bin", "/bin"))  # no herdr anywhere on PATH
@@ -655,7 +655,7 @@ fi
         env["HERDR_AGENTS_ORCHESTRATOR_KIND"] = kind
         return subprocess.run(
             ["bash", str(SCRIPT), "--directive"],
-            cwd=self.workdir,
+            cwd=cwd or self.workdir,
             env=env,
             check=False,
             text=True,
@@ -680,6 +680,11 @@ fi
             lines[0],
         )
         self.assertTrue(all(not call.startswith("herdr") for call in self.calls_path.read_text().splitlines()))
+
+        # A start from a subdirectory resolves to the checkout root, where identities are registered.
+        subdirectory = self.workdir / "docs"
+        subdirectory.mkdir()
+        self.assertEqual(self.run_directive(cwd=subdirectory).stdout, seated.stdout)
 
     def test_directive_looks_up_a_codex_orchestrator_identity(self) -> None:
         self.write_worktree_seat()
@@ -2836,6 +2841,28 @@ exit {despawn_exit}
         self.assertIn(
             f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})", result.stdout
         )
+
+    def test_add_worker_names_the_seat_from_a_codex_orchestrator_identity(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tcodex-deep-dot")
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        # Only a codex-type orchestrator is registered at the main checkout.
+        (scripts / "identities.sh").write_text(
+            "#!/usr/bin/env bash\n"
+            f'printf \'identities %s resolve=%s\\n\' "$*" "${{AGMSG_RESOLVE_PROJECT:-}}" >> {self.calls_path}\n'
+            f"[[ $1 == {self.workdir.resolve()} && $2 == codex ]] && cat {scripts / 'at-main.txt'}\n"
+            "exit 0\n"
+        )
+        self.write_seat_lifecycle_fakes()
+
+        claude = self.run_helper("--add-worker", ".claude/worktrees/b1")
+        codex = self.run_helper(
+            "--add-worker", ".claude/worktrees/b1", extra_env={"HERDR_AGENTS_ORCHESTRATOR_KIND": "codex"}
+        )
+
+        self.assertEqual(claude.returncode, 2, claude.stdout + claude.stderr)
+        self.assertIn("need exactly one orchestrator claude-code identity", claude.stderr)
+        self.assertEqual(codex.returncode, 0, codex.stdout + codex.stderr)
+        self.assertIn("Herdr agents worker added:", codex.stdout)
 
     def write_codex_config_roots(self, body: str | None = None) -> list[str]:
         """A ~/.codex/config.toml whose writable_roots are the agmsg store (generated layout by default).

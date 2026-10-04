@@ -1,66 +1,5 @@
 {
-  "schema_version": 2,
-  "providers": {
-    "claude": {
-      "llm_enabled": false,
-      "model": "claude-haiku-4-5-20251001",
-      "timeout_seconds": 7,
-      "minimum_confidence": 0.9
-    },
-    "codex": {
-      "llm_enabled": false,
-      "model": "gpt-5.6-luna",
-      "timeout_seconds": 7,
-      "minimum_confidence": 0.9
-    }
-  },
-  "cli": {
-    "decision_layers": ["deny_patterns", "workspace_write", "allow_patterns"],
-    "llm_enabled": false,
-    "workspace_write": true,
-    "read_deny_patterns": [
-      {"id": "dotenv", "regex": "(?:.*/)?\\.env[^/]*"},
-      {"id": "credentials", "regex": "(?:.*/)?[^/]*credentials[^/]*(?:/.*)?"},
-      {"id": "ssh-key", "regex": "(?:.*/)?id_(?:rsa|dsa|ecdsa|ed25519)"},
-      {"id": "ssh-dir", "regex": "(?:.*/)?\\.ssh(?:/.*)?"},
-      {"id": "aws-dir", "regex": "(?:.*/)?\\.aws(?:/.*)?"},
-      {"id": "gnupg-dir", "regex": "(?:.*/)?\\.gnupg(?:/.*)?"},
-      {"id": "pem", "regex": ".*\\.pem"},
-      {"id": "agent-auth", "regex": "~/(?:\\.pi|\\.codex|\\.claude)(?:/.*)?/auth\\.json"}
-    ]
-  },
-  "enablement": {
-    "minimum_successes": 5,
-    "maximum_p50_ms": 3000,
-    "maximum_p95_ms": 7000
-  },
-  "categories": [
-    "read_only_inspection",
-    "search",
-    "status",
-    "diff",
-    "version_check"
-  ],
-  "classifier_prompt": "Classify the normalized operation metadata as exactly one whitelisted category or unknown. A whitelisted category is valid only when the entire operation is unambiguously read-only and a single action. Reads, searches, status checks, diffs, and version checks are safe. Writes, edits, deletes, process control, publishing, merging, pushing, credential access, shell composition, and ambiguous operations are unknown. Never deny; return unknown when unsure.",
-  "classifier_actions": {
-    "read_only_inspection": [
-      "gh.repo.view"
-    ],
-    "search": [],
-    "status": [
-      "gh.issue.list",
-      "gh.issue.view",
-      "gh.pr.checks",
-      "gh.pr.view",
-      "gh.run.list",
-      "gh.run.view",
-      "git.status"
-    ],
-    "diff": [
-      "gh.pr.diff"
-    ],
-    "version_check": []
-  },
+  "schema_version": 3,
   "allow_patterns": [
     {
       "id": "gh-pr-read",
@@ -143,16 +82,5 @@
       "message": "Refusing recursive deletion of the filesystem root.",
       "sources": [{"kind": "safety_invariant", "count": 0}]
     }
-  ],
-  "metrics": {
-    "window": "2026-07-18..2026-07-24",
-    "ccgate_codex": {
-      "fallthrough": 370,
-      "tools": {"apply_patch": 268, "Bash": 102}
-    },
-    "ccgate_claude": {
-      "fallthrough": 9,
-      "tools": {"Bash": 7, "Monitor": 2}
-    }
-  }
+  ]
 }

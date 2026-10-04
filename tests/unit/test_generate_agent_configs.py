@@ -801,6 +801,18 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertIn("agmsg-dispatch", claude["sandbox"]["excludedCommands"])
         self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
+        self.assertEqual("auto", claude["permissions"]["defaultMode"])
+        self.assertEqual([], claude["permissions"]["ask"])
+        self.assertEqual(
+            [
+                "Bash(gh release:*)",
+                "Bash(npm publish:*)",
+                "Bash(uv publish:*)",
+                "Bash(terraform apply:*)",
+                "Bash(kubectl apply:*)",
+            ],
+            claude["permissions"]["deny"][-5:],
+        )
 
     def test_managed_codex_path_includes_installed_common_bin(self) -> None:
         codex = tomllib.loads((ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text())

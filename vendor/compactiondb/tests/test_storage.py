@@ -278,6 +278,35 @@ class StorageTests(unittest.TestCase):
         finally:
             conn.close()
 
+    def test_size_cap_under_fts_keeps_events_that_fit(self) -> None:
+        conn = self.p.store.connect()
+        try:
+            with conn:
+                for i in range(400):
+                    event = normalize_hook_payload(
+                        {
+                            "hook_event_name": "UserPromptSubmit",
+                            "session_id": "fts",
+                            "cwd": str(self.p.root),
+                            "prompt": " ".join(f"word{i}x{j}" for j in range(150)),
+                        },
+                        self.p.paths,
+                        self.p.config,
+                    )
+                    self.p.store.insert_event(conn, event, ingested_from="test")
+                if self.p.store.fts_tokenizer(conn) != "none":
+                    conn.execute("INSERT INTO events_fts(events_fts) VALUES('optimize')")
+            full, _ = self.p.store._page_bytes(conn)
+            cap = full * 6 // 10
+            with conn:
+                removed = self.p.store.enforce_size_cap(conn, self.p.paths.project_id, cap)
+            remaining = int(conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+            self.assertGreater(remaining, 0)  # dead FTS pages no longer force deleting everything
+            self.assertEqual(400, removed + remaining)
+            self.assertLessEqual(self.p.store._page_bytes(conn)[0], cap)
+        finally:
+            conn.close()
+
     def test_size_cap_reclaims_orphaned_candidates_before_any_newer_event(self) -> None:
         conn = self.p.store.connect()
         try:
@@ -299,6 +328,8 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(0, int(conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]))
             self.assertEqual(200, int(conn.execute("SELECT COUNT(*) FROM memory_candidates").fetchone()[0]))
             self._bulk_events(conn, 10)
+            with conn:
+                self.p.store.optimize_fts(conn)  # measure as enforce_size_cap does
             used, _ = self.p.store._page_bytes(conn)
             with conn:
                 removed = self.p.store.enforce_size_cap(conn, self.p.paths.project_id, used - 1)

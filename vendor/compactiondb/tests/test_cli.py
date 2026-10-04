@@ -6,6 +6,7 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
 from contextdb.cli import main
+from contextdb.normalize import normalize_hook_payload
 
 from tests.support import TempProject
 
@@ -138,6 +139,71 @@ class CliTests(unittest.TestCase):
             conn.close()
         self.assertEqual(["decision"], [row["kind"] for row in rows])
         self.assertIsNotNone(rows[0]["promoted_memory_uuid"])
+
+    def _bulk_events_expiring(self, count: int, expired: int) -> int:
+        """Insert count FTS-heavy events, mark the first `expired` as expired, return the file bytes."""
+        conn = self.p.store.connect()
+        try:
+            with conn:
+                for i in range(count):
+                    event = normalize_hook_payload(
+                        {
+                            "hook_event_name": "UserPromptSubmit",
+                            "session_id": "bulk",
+                            "cwd": str(self.p.root),
+                            "prompt": " ".join(f"token{i}x{j}" for j in range(150)),
+                        },
+                        self.p.paths,
+                        self.p.config,
+                    )
+                    self.p.store.insert_event(conn, event, ingested_from="test")
+                conn.execute(
+                    "UPDATE events SET expires_at_utc='2000-01-01T00:00:00.000Z' WHERE id IN "
+                    "(SELECT id FROM events ORDER BY id LIMIT ?)",
+                    (expired,),
+                )
+            used, free = self.p.store._page_bytes(conn)
+            return used + free
+        finally:
+            conn.close()
+
+    def _set_cap(self, max_db_bytes: int) -> None:
+        config = json.loads(self.p.paths.config_path.read_text(encoding="utf-8"))
+        config["capture"]["max_db_bytes"] = max_db_bytes
+        self.p.paths.config_path.write_text(json.dumps(config), encoding="utf-8")
+
+    def _file_bytes(self) -> int:
+        conn = self.p.store.connect()
+        try:
+            used, free = self.p.store._page_bytes(conn)
+            return used + free
+        finally:
+            conn.close()
+
+    def test_prune_vacuums_after_a_retention_only_shrink(self) -> None:
+        before = self._bulk_events_expiring(300, expired=200)
+        self._set_cap(before - 1)
+
+        code, out, err = self.invoke(["--json", "prune"])
+
+        self.assertEqual(0, code, err)
+        result = json.loads(out)
+        self.assertEqual((200, 0, True), (result["removed_events"], result["size_cap_removed_events"], result["vacuumed"]))
+        self.assertLess(self._file_bytes(), before - 1)
+
+    def test_prune_reclaims_the_fts_pages_when_retention_empties_the_table(self) -> None:
+        fresh = self._file_bytes()
+        before = self._bulk_events_expiring(300, expired=302)  # every event, including the two from setUp
+        self._set_cap(fresh * 4)
+        self.assertGreater(before, fresh * 4)
+
+        code, out, err = self.invoke(["--json", "prune"])
+
+        self.assertEqual(0, code, err)
+        result = json.loads(out)
+        self.assertEqual((0, True), (result["size_cap_removed_events"], result["vacuumed"]))
+        self.assertEqual(0, self.p.count("events"))
+        self.assertLessEqual(self._file_bytes(), fresh * 4)
 
     def test_ingest_rejects_invalid_source(self) -> None:
         code, out, err = self.invoke(["ingest", "missing.json", "--ingested-from", "Codex!"])

@@ -1077,6 +1077,9 @@ class ContextStore:
         """
         removed = 0
         unpromoted = "DELETE FROM memory_candidates WHERE project_id=? AND promoted_memory_uuid IS NULL"
+        # Earlier deletions (retention included) leave dead FTS segment pages that would
+        # otherwise count as in use, so merge the index before every measurement.
+        self.optimize_fts(conn)
         if self._page_bytes(conn)[0] > max_bytes:
             # Candidates whose source events retention already removed go before any newer event.
             conn.execute(
@@ -1085,7 +1088,6 @@ class ContextStore:
             )
         while self._page_bytes(conn)[0] > max_bytes:
             rows = conn.execute(
-                # ponytail: fixed batches can overshoot the cap by up to 99 events; fine at ledger scale.
                 "SELECT id, event_uuid FROM events WHERE project_id=? ORDER BY id LIMIT 100",
                 (project_id,),
             ).fetchall()
@@ -1098,10 +1100,15 @@ class ContextStore:
             )
             self._delete_event_ids(conn, [int(row[0]) for row in rows])
             removed += len(rows)
-        if removed and self.fts_tokenizer(conn) != "none":
-            # Deleted FTS rows keep their segment pages until the index is merged; VACUUM alone keeps them.
-            conn.execute("INSERT INTO events_fts(events_fts) VALUES('optimize')")
+            # ponytail: one FTS merge per batch of 100 rewrites the index each time; bounded by
+            # how far the ledger is over the cap, and prune is an explicit command.
+            self.optimize_fts(conn)
         return removed
+
+    def optimize_fts(self, conn: sqlite3.Connection) -> None:
+        """Merge the FTS5 index so deleted rows release their segment pages."""
+        if self.fts_tokenizer(conn) != "none":
+            conn.execute("INSERT INTO events_fts(events_fts) VALUES('optimize')")
 
     def vacuum_if_fragmented(self, conn: sqlite3.Connection, *, threshold_bytes: int, force: bool = False) -> bool:
         """VACUUM when free pages exceed threshold_bytes (or when forced); outside any transaction."""

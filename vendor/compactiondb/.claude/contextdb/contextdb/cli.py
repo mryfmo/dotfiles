@@ -346,9 +346,13 @@ def run(args: argparse.Namespace) -> int:
             max_db_bytes = int(config["capture"]["max_db_bytes"])
             with conn:
                 removed = store.prune_expired(conn, project_id, days=args.days)
+                # enforce_size_cap merges the FTS index first, so retention's deletions are reclaimed too.
                 capped = store.enforce_size_cap(conn, project_id, max_db_bytes)
-            # VACUUM cannot run inside a transaction, so it follows the commit.
-            vacuumed = store.vacuum_if_fragmented(conn, threshold_bytes=VACUUM_FREE_BYTES, force=capped > 0)
+            in_use, free = store._page_bytes(conn)
+            # VACUUM cannot run inside a transaction, so it follows the commit; it is forced whenever
+            # rows were deleted or the file itself is still over the cap.
+            force = removed > 0 or capped > 0 or in_use + free > max_db_bytes
+            vacuumed = store.vacuum_if_fragmented(conn, threshold_bytes=VACUUM_FREE_BYTES, force=force)
             result = {
                 "removed_events": removed,
                 "days_override": args.days,

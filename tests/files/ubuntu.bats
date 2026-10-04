@@ -20,7 +20,7 @@ assert_link_target() {
     assert_file_matches "${HOME}/.config/yazi/yazi.toml" "${REPO_ROOT}/home/dot_config/yazi/yazi.toml"
     assert_file_matches "${HOME}/.local/bin/common/dev" "${REPO_ROOT}/home/dot_local/bin/common/executable_dev"
     assert_mode "${HOME}/.local/bin/common/dev" 755
-    assert_absent "${HOME}/.local/bin/server/cache.sh"
+    assert_absent "${HOME}/.local/bin/server/ssh_agent.sh"
     [ -f "${HOME}/.config/systemd/user/usage-snapshot.service" ]
     [ -f "${HOME}/.config/systemd/user/usage-snapshot.timer" ]
 }
@@ -54,7 +54,7 @@ assert_link_target() {
 @test "[ubuntu-server] representative manifest" {
     assert_link_target "${HOME}/.bashrc" ".bash/server/bashrc"
     assert_file_matches "${HOME}/.bashrc" "${REPO_ROOT}/home/dot_bash/server/bashrc"
-    assert_file_matches "${HOME}/.local/bin/server/cache.sh" "${REPO_ROOT}/home/dot_local/bin/server/cache.sh"
+    assert_file_matches "${HOME}/.local/bin/server/ssh_agent.sh" "${REPO_ROOT}/home/dot_local/bin/server/ssh_agent.sh"
     assert_absent "${HOME}/.bash/client/bashrc"
     assert_absent "${HOME}/.config/powerlevel10k/p10k.zsh"
 }
@@ -64,20 +64,20 @@ assert_link_target() {
     managed_targets=(
         "${HOME}/.bashrc"
         "${HOME}/.bash/server/bashrc"
-        "${HOME}/.local/bin/server/cache.sh"
+        "${HOME}/.local/bin/server/ssh_agent.sh"
     )
     assert_idempotent_apply ubuntu-server "${managed_targets[@]}"
 }
 
 # bats test_tags=ubuntu:server
 @test "[ubuntu-server] manifest assertion rejects a removed required target" {
-    target="${HOME}/.local/bin/server/cache.sh"
-    backup="${BATS_TEST_TMPDIR}/cache.sh"
+    target="${HOME}/.local/bin/server/ssh_agent.sh"
+    backup="${BATS_TEST_TMPDIR}/ssh_agent.sh"
     mv "${target}" "${backup}"
 
-    run assert_file_matches "${target}" "${REPO_ROOT}/home/dot_local/bin/server/cache.sh"
+    run assert_file_matches "${target}" "${REPO_ROOT}/home/dot_local/bin/server/ssh_agent.sh"
     [ "$status" -ne 0 ]
 
     mv "${backup}" "${target}"
-    assert_file_matches "${target}" "${REPO_ROOT}/home/dot_local/bin/server/cache.sh"
+    assert_file_matches "${target}" "${REPO_ROOT}/home/dot_local/bin/server/ssh_agent.sh"
 }

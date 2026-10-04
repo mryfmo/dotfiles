@@ -61,5 +61,30 @@ class ChezmoiRemoveAgmsgTest(unittest.TestCase):
             self.assertEqual(state.read_bytes(), b"live state")
 
 
+class ChezmoiRemoveRetiredShellFilesTest(unittest.TestCase):
+    """T75: deleted shell files are retired on machines that applied them before."""
+
+    RETIRED = (
+        ".config/alias/client.sh",
+        ".config/alias/server.sh",
+        ".config/tango.yml",
+        ".local/bin/common/setup-python-env",
+        ".local/bin/server/history.sh",
+        ".local/bin/server/cache.sh",
+    )
+
+    def test_retired_targets_are_listed_and_have_no_source(self) -> None:
+        entries = (ROOT / "home/.chezmoiremove").read_text().splitlines()
+        sources = {
+            path.relative_to(ROOT / "home").as_posix().replace("dot_", ".").replace("executable_", "")
+            for path in (ROOT / "home").rglob("*")
+            if path.is_file()
+        }
+        for target in self.RETIRED:
+            with self.subTest(target=target):
+                self.assertIn(target, entries)
+                self.assertNotIn(target, sources)
+
+
 if __name__ == "__main__":
     unittest.main()

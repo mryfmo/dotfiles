@@ -39,6 +39,7 @@ class AgmsgOrchestrationRuleTest(unittest.TestCase):
             "`make require-crit-review` stay with the orchestrator and are never delegated",
             "one task-level audit of its final head",
             "AGMSG-PONG v1 status=blocked",
+            "except the few commands Worker Playbook step 4 sends through the permission gate",
             "Agent-to-agent permission approval is forbidden",
             "never pushes a repository change to `main` directly",
             "gh pr merge --squash",
@@ -192,6 +193,13 @@ class AgmsgOrchestrationSingleSourceTest(unittest.TestCase):
         codex = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
         self.assertIn("「Codex seat worklogs」", codex)
         self.assertIn("\n## Codex seat worklogs\n", SKILL.read_text())
+
+    def test_skill_masks_evidence_with_a_runnable_command(self) -> None:
+        # The validator is not executable (mode 100644), so the SKILL names it only through uv run.
+        text = SKILL.read_text()
+        runnable = "`uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets"
+        self.assertGreaterEqual(text.count(runnable), 3)
+        self.assertEqual(text.count("scripts/validate-agent-assets.py --mask-secrets"), text.count(runnable))
 
     def test_contextdb_cli_is_invoked_with_uv_run(self) -> None:
         paths = [

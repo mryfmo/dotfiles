@@ -15,6 +15,21 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = ROOT / "home/dot_codex/modify_private_config.toml"
+# A profile table whose multiline strings hold header-like lines, with and without a trailing comment.
+MULTILINE_PROFILE = (
+    "[agents.reviewer]\n"
+    'developer_instructions = """\n'
+    "Examples:\n"
+    '[hooks.state."custom-hook"] # example\n'
+    '[projects."/x"]\n'
+    'An escaped \\""" stays inside.\n'
+    '"""\n'
+    "notes = '''\n"
+    "[[mcp_servers.example]] # literal\n"
+    "[tui]\n"
+    "'''\n"
+    'one_line = """[a] # b"""\n'
+)
 
 
 class CodexConfigMergeTest(unittest.TestCase):
@@ -402,6 +417,40 @@ class CodexConfigMergeTest(unittest.TestCase):
         ):
             with self.subTest(header=header):
                 self.assertEqual(table_name(header), name)
+
+    def test_header_like_lines_inside_multiline_strings_stay_string_content(self) -> None:
+        home = self.source_dir / "target-home"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text('[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n')
+        current = '[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n\n' + MULTILINE_PROFILE
+        result = subprocess.run([str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True)
+
+        self.assertIn(MULTILINE_PROFILE, result.stdout)
+        merged = tomllib.loads(result.stdout)
+        self.assertEqual(merged["agents"], tomllib.loads(MULTILINE_PROFILE)["agents"])
+        self.assertEqual(merged["hooks"]["state"], {"custom-hook": {"enabled": True}})
+
+    def test_multiline_string_after_tracks_basic_and_literal_strings(self) -> None:
+        after = runpy.run_path(str(MERGE_SCRIPT), run_name="codex_config_merge")["multiline_string_after"]
+        basic, literal = '"""', "'''"
+        for line, before, expected in (
+            ('a = """', None, basic),
+            ("a = '''", None, literal),
+            ('a = """x"""', None, None),
+            ('a = """x""""', None, None),
+            ('a = "\\"""" # """', None, None),
+            ("a = 'x\"\"\"' # '''", None, None),
+            ('# """', None, None),
+            ('[a] # """', None, None),
+            ('x \\""" y', basic, basic),
+            ('x \\\\"""', basic, None),
+            ('x """', literal, literal),
+            ("x ''' b = '''", literal, literal),
+            ('[hooks.state."x"] # c', basic, basic),
+        ):
+            with self.subTest(line=line, before=before):
+                self.assertEqual(after(line + "\n", before), expected)
 
     def test_make_update_refreshes_codex_hook_trust_after_the_plugin_update(self) -> None:
         script = (ROOT / "scripts/update-agent-assets.sh").read_text()

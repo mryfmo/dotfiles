@@ -318,13 +318,49 @@ def table_name(header: str) -> str | None:
     return stripped[start:index].strip()
 
 
+def multiline_string_after(line: str, delimiter: str | None) -> str | None:
+    """The multiline string delimiter still open after this line, given the one open before it, else None."""
+    index = 0
+    while index < len(line):
+        if delimiter is not None:
+            if delimiter == '"""' and line[index] == "\\":
+                index += 2
+            elif line.startswith(delimiter, index):
+                # Up to two more quotes before the closing delimiter belong to the string.
+                index += len(line[index:]) - len(line[index:].lstrip(delimiter[0]))
+                delimiter = None
+            else:
+                index += 1
+            continue
+        char = line[index]
+        if char == "#":
+            return None
+        if line.startswith('"""', index) or line.startswith("'''", index):
+            delimiter = line[index : index + 3]
+            index += 3
+        elif char == '"':
+            index += 1
+            while index < len(line) and line[index] != '"':
+                index += 2 if line[index] == "\\" else 1
+            index += 1
+        elif char == "'":
+            end = line.find("'", index + 1)
+            index = len(line) if end == -1 else end + 1
+        else:
+            index += 1
+    return delimiter
+
+
 def split_chunks(text: str) -> list[tuple[str | None, str]]:
     chunks: list[tuple[str | None, str]] = []
     current_name: str | None = None
     current_lines: list[str] = []
     pending_lines: list[str] = []
+    string = None
     for line in text.splitlines(keepends=True):
-        name = table_name(line)
+        # A header-like line inside a multiline string is string content, never a chunk boundary.
+        name = table_name(line) if string is None else None
+        string = multiline_string_after(line, string)
         if name is None:
             if current_name is None:
                 pending_lines.append(line)

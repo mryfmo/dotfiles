@@ -22,6 +22,21 @@ sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[2]
 GENERATOR = ROOT / "scripts/generate-agent-configs.py"
+# The same fixture as test_codex_config_merge: a profile table whose multiline strings hold header-like lines, with and without a trailing comment.
+MULTILINE_PROFILE = (
+    "[agents.reviewer]\n"
+    'developer_instructions = """\n'
+    "Examples:\n"
+    '[hooks.state."custom-hook"] # example\n'
+    '[projects."/x"]\n'
+    'An escaped \\""" stays inside.\n'
+    '"""\n'
+    "notes = '''\n"
+    "[[mcp_servers.example]] # literal\n"
+    "[tui]\n"
+    "'''\n"
+    'one_line = """[a] # b"""\n'
+)
 
 
 def load_generator():
@@ -977,6 +992,19 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(state["custom-hook"], {"trusted_hash": "sha256:custom"})
                 self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
                 self.assertIn("replacing sha256:stale with", result.stderr)
+
+    def test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        current = '[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n\n' + MULTILINE_PROFILE
+
+        result = self.run_profile(manifest, home, current)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(MULTILINE_PROFILE, result.stdout)
+        merged = tomllib.loads(result.stdout)
+        self.assertEqual(merged["agents"], tomllib.loads(MULTILINE_PROFILE)["agents"])
+        self.assertEqual(merged["hooks"]["state"]["custom-hook"], {"enabled": True})
 
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())

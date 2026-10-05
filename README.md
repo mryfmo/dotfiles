@@ -366,8 +366,8 @@ declares the hooks this repository ships or installs: the four config hooks
 (the three CompactionDB hooks `PreCompact`, `PostCompact` and `SessionEnd`,
 which run `contextdb-codex-notify`, and the permgate `PermissionRequest` hook)
 plus the Crit and Ponytail plugin hooks. The Codex modify scripts hash each
-declared hook at apply time with Codex's own algorithm, from its definition on
-that host: a config hook from the merged config, a plugin hook from the
+declared hook at apply time with Codex's own algorithm: a config hook from its
+manifest definition embedded in the modify script, a plugin hook from the
 installed plugin file under `~/.codex/plugins/cache/`. The result replaces any
 existing entry for that key, and keys the manifest does not declare are kept.
 Config-hook trust follows the manifest definition, so a hook hand-edited in

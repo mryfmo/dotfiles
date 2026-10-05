@@ -555,6 +555,54 @@ class CodexConfigMergeTest(unittest.TestCase):
                 self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
                 self.assertNotIn("WARN", result.stderr)
 
+    def test_declared_dotted_keys_under_hooks_and_at_the_root_are_replaced(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        others = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        for current in (
+            f'[hooks]\nstate."{key}".trusted_hash = "sha256:stale"\nstate . "{key}" . enabled = false\n' + others,
+            f'hooks.state."{key}".trusted_hash = "sha256:stale"\n"hooks".state."{key}".enabled = false\n' + others,
+        ):
+            with self.subTest(current=current.splitlines()[0]):
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True
+                )
+
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
+    def test_declared_keys_inside_an_inline_table_container_leave_the_file_to_the_guard(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        # Rewriting an inline table's interior is out of scope by design; the parse guard keeps the file.
+        current = f'[hooks]\nstate = {{ "{key}" = {{ trusted_hash = "sha256:stale" }} }}\n'
+
+        result = subprocess.run(
+            [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=False
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, current)
+        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+
     def test_invalid_merge_output_keeps_the_current_content(self) -> None:
         home = self.source_dir / "target-home"
         env = os.environ.copy()

@@ -156,7 +156,7 @@ codex:
         timeout: 3
         status_message: Recording to CompactionDB
     # The hooks this repository ships or installs, trusted by `make update`: the modify scripts hash each
-    # one at apply time from its definition on that host (a config hook from the merged config, a plugin
+    # one at apply time (a config hook from its manifest definition embedded in the modify script, a plugin
     # hook from the installed plugin file). trusted_hash is only the fallback when a plugin file is absent.
     state:
       '{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0':

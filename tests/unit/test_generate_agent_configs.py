@@ -1061,6 +1061,28 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
                 self.assertNotIn("WARN", result.stderr)
 
+    def test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        others = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        for current in (
+            f'[hooks]\nstate."{key}".trusted_hash = "sha256:stale"\nstate . "{key}" . enabled = false\n' + others,
+            f'hooks.state."{key}".trusted_hash = "sha256:stale"\n"hooks".state."{key}".enabled = false\n' + others,
+        ):
+            with self.subTest(current=current.splitlines()[0]):
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
     def test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid(self) -> None:
         manifest = self.hook_trust_manifest()
         home = self.temp_dir / "target-home"

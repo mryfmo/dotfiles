@@ -437,7 +437,11 @@ def declared_trusted_hash(chunk: str):
     return match.group(1) if match else None
 
 
-LEADING_HOOK_STATE_KEY = re.compile(r"""^\s*("(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+)\s*[=.]""")
+DOTTED_KEY_ASSIGNMENT = re.compile(
+    r"""^\s*((?:"(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+)(?:\s*\.\s*(?:"(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+))*)\s*="""
+)
+# The key path each chunk opens (the root, [hooks], [hooks.state]); an assignment's dotted key extends it.
+HOOK_STATE_SCOPES = {None: [], "hooks": ["hooks"], "hooks.state": ["hooks", "state"]}
 INLINE_TRUSTED_HASH = re.compile(r'trusted_hash\s*=\s*"([^"]+)"')
 
 
@@ -491,19 +495,15 @@ def canonical_table_name(raw: str) -> str:
     )
 
 
-def is_hook_state_parent(name) -> bool:
-    """True for the `[hooks.state]` table; split_chunks names tables canonically."""
-    return name == "hooks.state"
-
-
-def drop_declared_assignments(chunk: str, declared: dict) -> str:
-    """Drop the inline-table and dotted assignments of declared keys from the `[hooks.state]` chunk."""
+def drop_declared_assignments(chunk: str, declared: dict, scope: list) -> str:
+    """Drop the assignments of declared keys (inline tables or dotted keys) from a chunk whose key path is scope."""
     kept, removed = [], {}
     string = removing = None
     for line in chunk.splitlines(keepends=True):
         if removing is None and string is None:
-            match = LEADING_HOOK_STATE_KEY.match(line)
-            key = hook_state_key(f"hooks.state.{match.group(1)}") if match else None
+            match = DOTTED_KEY_ASSIGNMENT.match(line)
+            path = scope + (key_path(match.group(1)) or []) if match else []
+            key = path[2] if len(path) > 2 and path[:2] == ["hooks", "state"] else None
             removing = key if key in declared else None
         if removing is None:
             kept.append(line)
@@ -528,8 +528,8 @@ def drop_declared_hook_state(chunks: list, declared: list) -> list:
         if key is not None and key in by_key:
             report_divergence(name, declared_trusted_hash(chunk), declared_trusted_hash(by_key[key][1]))
             continue
-        if is_hook_state_parent(name):
-            chunk = drop_declared_assignments(chunk, by_key)
+        if name in HOOK_STATE_SCOPES:
+            chunk = drop_declared_assignments(chunk, by_key, HOOK_STATE_SCOPES[name])
         kept.append((name, chunk))
     return kept
 

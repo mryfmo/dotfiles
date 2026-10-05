@@ -237,6 +237,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "model_profiles": profiles,
             "interactive_profile": "deep",
             "worker_kind": "claude",
+            "orchestrator_kind": "claude",
             "worker_profile": "standard",
             "claude": {},
             "codex": {"plugins": {"crit@mryfmo-personal-plugins": {"enabled": True}}},
@@ -245,7 +246,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.load_yaml = lambda _path: manifest
         self.write_text_file(
             "README.md",
-            "worker kind (currently `claude`; codex)\nherdr-agents --restart-worker\n",
+            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`; codex)\nherdr-agents --restart-worker\n"
+            "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
         )
         return manifest
 
@@ -263,6 +265,16 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.validate_agent_manifest()
                 self.assertIn("worker_kind must be codex or claude", stderr.getvalue())
+
+    def test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind(self) -> None:
+        for value in ("banana", None):
+            with self.subTest(orchestrator_kind=value):
+                manifest = self.write_valid_agent_manifest()
+                manifest["orchestrator_kind"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn("orchestrator_kind must be claude or codex", stderr.getvalue())
 
     def test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees(self) -> None:
         manifest = self.write_valid_agent_manifest()
@@ -316,9 +328,42 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_agent_manifest()
         self.assertIn("(currently `codex`;", stderr.getvalue())
 
+    def test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence(self) -> None:
+        self.write_valid_agent_manifest()
+        self.write_text_file(
+            "README.md",
+            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `codex`; codex)\n"
+            "herdr-agents --restart-worker\n"
+            "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
+        )
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+        self.assertIn(
+            "must state the manifest worker_kind as `worker_kind` in "
+            "`home/dot_agents/agent-config.yaml` (currently `claude`;",
+            stderr.getvalue(),
+        )
+
+    def test_agent_manifest_requires_readme_to_state_the_orchestrator_kind(self) -> None:
+        manifest = self.write_valid_agent_manifest()
+        manifest["orchestrator_kind"] = "codex"
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+        self.assertIn(
+            "must state the manifest orchestrator_kind as `orchestrator_kind` in "
+            "`home/dot_agents/agent-config.yaml` (currently `codex`;",
+            stderr.getvalue(),
+        )
+
     def test_agent_manifest_requires_readme_to_document_restart_worker(self) -> None:
         self.write_valid_agent_manifest()
-        self.write_text_file("README.md", "worker kind (currently `claude`; codex)\n")
+        self.write_text_file(
+            "README.md",
+            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`; codex)\n"
+            "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
+        )
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_agent_manifest()

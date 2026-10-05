@@ -758,8 +758,18 @@ def validate_agent_manifest() -> dict[str, Any]:
     if worker_kind not in {"codex", "claude"}:
         fail(f"{manifest_path} worker_kind must be codex or claude: {worker_kind!r}")
     readme = (ROOT / "README.md").read_text()
-    if f"(currently `{worker_kind}`;" not in readme:
-        fail(f"README.md must state the manifest worker_kind as (currently `{worker_kind}`;")
+    readme_words = " ".join(readme.split())
+    readme_worker = f"`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `{worker_kind}`;"
+    if readme_worker not in readme_words:
+        fail(f"README.md must state the manifest worker_kind as {readme_worker}")
+    orchestrator_kind = manifest.get("orchestrator_kind")
+    if orchestrator_kind not in {"claude", "codex"}:
+        fail(f"{manifest_path} orchestrator_kind must be claude or codex: {orchestrator_kind!r}")
+    readme_orchestrator = (
+        f"`orchestrator_kind` in `home/dot_agents/agent-config.yaml` (currently `{orchestrator_kind}`;"
+    )
+    if readme_orchestrator not in readme_words:
+        fail(f"README.md must state the manifest orchestrator_kind as {readme_orchestrator}")
     if "herdr-agents --restart-worker" not in readme:
         fail("README.md must document herdr-agents --restart-worker for worker relaunches")
     worker_worktree = manifest.get("worker_worktree")
@@ -1124,6 +1134,7 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     env_text = env_path.read_text()
     for token in (
         "MODEL_PROFILE_INTERACTIVE",
+        "HERDR_AGENTS_ORCHESTRATOR_KIND",
         "MODEL_PROFILE_STANDARD_CODEX_ARGS",
         "MODEL_PROFILE_EXPRESS_CLAUDE_ARGS",
     ):

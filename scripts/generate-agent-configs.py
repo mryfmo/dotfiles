@@ -131,6 +131,13 @@ def worker_kind(manifest: dict[str, Any]) -> str:
     return kind
 
 
+def orchestrator_kind(manifest: dict[str, Any]) -> str:
+    kind = manifest.get("orchestrator_kind", "claude")
+    if kind not in WORKER_KINDS:
+        fail(f"orchestrator_kind must be one of {WORKER_KINDS}: {kind!r}")
+    return kind
+
+
 def worker_profile(manifest: dict[str, Any]) -> str | None:
     name = manifest.get("worker_profile")
     if name is not None and name not in model_profiles(manifest):
@@ -770,6 +777,7 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
         f"# {GENERATED_HEADER}",
         f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
         f'HERDR_AGENTS_WORKER_KIND="{worker_kind(manifest)}"',
+        f'HERDR_AGENTS_ORCHESTRATOR_KIND="{orchestrator_kind(manifest)}"',
         f"WORKER_GH_CONFIG_DIR={shlex.quote(gh_dir)}",
     ]
     if (profile_name := worker_profile(manifest)) is not None:

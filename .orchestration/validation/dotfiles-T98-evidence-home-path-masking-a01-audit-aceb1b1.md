@@ -10285,7 +10285,7 @@ index 716a8c10..73d4291a 100644
 +    def test_normalises_home_paths_in_text_and_json_evidence(self) -> None:
 +        home = str(Path.home())
 +        evidence = self.temp_dir / "T1-audit-abcdef1.md"
-+        evidence.write_text(f"$ cat {home}/.agents/skills/a/SKILL.md\n/home/runner/work/x\nVerdict: correct\n")
++        evidence.write_text(f"$ cat {home}/.agents/skills/a/SKILL.md\n~/work/x\nVerdict: correct\n")
 +        feedback = self.temp_dir / "T1-pr-feedback.json"
 +        feedback.write_text(json.dumps({"items": [{"body": f"see {home}/x", "path": "home/dot_config/a"}]}) + "\n")
 +

@@ -14585,7 +14585,7 @@ index 716a8c10..f38b0704 100644
 +    def test_normalises_home_paths_in_text_and_json_evidence(self) -> None:
 +        home = str(Path.home())
 +        evidence = self.temp_dir / "T1-audit-abcdef1.md"
-+        evidence.write_text(f"$ cat {home}/.agents/skills/a/SKILL.md\n/home/runner/work/x\nVerdict: correct\n")
++        evidence.write_text(f"$ cat {home}/.agents/skills/a/SKILL.md\n~/work/x\nVerdict: correct\n")
 +        feedback = self.temp_dir / "T1-pr-feedback.json"
 +        feedback.write_text(json.dumps({"items": [{"body": f"see {home}/x", "path": "home/dot_config/a"}]}) + "\n")
 +
@@ -16080,7 +16080,7 @@ assert json.loads(fixtures[\"evidence.md\"])=={\"path\":\"~/.ssh/id\"}
 assert fixtures[\"prose.md\"]==b\"progress 10%\\rprogress 100%\\r\\n~/x\\n\"
 print(\"PASS JSON-by-content and CR preservation (in-memory files)\")
 with mock.patch.dict(os.environ,{\"HOME\":\"/srv/operator\"}):
- masked,count=mod.mask_home_paths(\"F/home/runner/.ssh/id\")
+ masked,count=mod.mask_home_paths(\"F~/.ssh/id\")
 with mock.patch.dict(os.environ,{\"HOME\":\"~\"}):
  print(\"Cross-host claim counterexample:\",repr(masked),\"workstation replacements=\",count,\"CI flags=\",bool(mod.home_path_pattern().search(masked)))
 old=subprocess.check_output([\"git\",\"show\",\"94409ec43bf34263b2fa230bb460921627731fde:scripts/validate-agent-assets.py\"]).decode()
@@ -16092,14 +16092,14 @@ PASS test_home_paths_normalise_to_tilde_and_repository_paths_stay (in-memory, no
 PASS test_a_root_home_keeps_sub_agent_identifiers (in-memory, no fixture writes)
 PASS test_a_one_segment_home_keeps_namespace_roots_intact (in-memory, no fixture writes)
 PASS JSON-by-content and CR preservation (in-memory files)
-Cross-host claim counterexample: 'F/home/runner/.ssh/id' workstation replacements= 0 CI flags= True
+Cross-host claim counterexample: 'F~/.ssh/id' workstation replacements= 0 CI flags= True
 PASS SECRET_PATTERN unchanged
 
 **Summarizing final audit results**
 **Clarifying evidence and scope issues**
 codex
 - [P3] high confidence evidence-reality `.orchestration/reports/dotfiles-T98-evidence-home-path-masking-a01.md:144` claims unresolved threads block merging, but validation line 17956 reports `clean`, and the final-head feedback JSON marks all 12 Bot threads resolved. Correct the final status.
-- [P3] high confidence evidence-reality `.orchestration/learning/dotfiles-T98-evidence-home-path-masking-a01.md:4` claims masking guarantees portable scan success despite the accepted `$HOME` dependency. Reproduced: `F/home/runner/.ssh/id` survives masking under `HOME=/srv/operator` but is flagged under `HOME=~`. Update this lesson to reflect the documented limitation.
+- [P3] high confidence evidence-reality `.orchestration/learning/dotfiles-T98-evidence-home-path-masking-a01.md:4` claims masking guarantees portable scan success despite the accepted `$HOME` dependency. Reproduced: `F~/.ssh/id` survives masking under `HOME=/srv/operator` but is flagged under `HOME=~`. Update this lesson to reflect the documented limitation.
 
 Otherwise, scope and implementation checks passed: all expected artifacts exist; all 749 evidence changes match mechanical masking (747 byte-exact, two JSON-equivalent); credential detection is unchanged. Read-only behavioral checks passed, and supplied final-head CI records show 12 successful checks.
 
@@ -16111,7 +16111,7 @@ hook: Stop Completed
 tokens used
 90,677
 - [P3] high confidence evidence-reality `.orchestration/reports/dotfiles-T98-evidence-home-path-masking-a01.md:144` claims unresolved threads block merging, but validation line 17956 reports `clean`, and the final-head feedback JSON marks all 12 Bot threads resolved. Correct the final status.
-- [P3] high confidence evidence-reality `.orchestration/learning/dotfiles-T98-evidence-home-path-masking-a01.md:4` claims masking guarantees portable scan success despite the accepted `$HOME` dependency. Reproduced: `F/home/runner/.ssh/id` survives masking under `HOME=/srv/operator` but is flagged under `HOME=~`. Update this lesson to reflect the documented limitation.
+- [P3] high confidence evidence-reality `.orchestration/learning/dotfiles-T98-evidence-home-path-masking-a01.md:4` claims masking guarantees portable scan success despite the accepted `$HOME` dependency. Reproduced: `F~/.ssh/id` survives masking under `HOME=/srv/operator` but is flagged under `HOME=~`. Update this lesson to reflect the documented limitation.
 
 Otherwise, scope and implementation checks passed: all expected artifacts exist; all 749 evidence changes match mechanical masking (747 byte-exact, two JSON-equivalent); credential detection is unchanged. Read-only behavioral checks passed, and supplied final-head CI records show 12 successful checks.
 

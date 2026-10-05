@@ -1287,11 +1287,12 @@ HOME_MASK = "~"
 def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
     repo_home = root / "home"
     entries = sorted(entry.name for entry in repo_home.iterdir()) if repo_home.is_dir() else []
-    not_repo_path = "".join(f"(?!{re.escape(name)}(?![A-Za-z0-9._-]))" for name in entries)
+    not_repo_path = "".join(f"(?!{re.escape(name)}(?![\\w.-]))" for name in entries)
     # Not glued to a word (`dotfiles/home/x`), except right after a namespace root (`/proc/self/root/home/x`).
     boundary = r"(?:(?<![\w.~-])|(?<=/root))"
     forms = [
-        rf"{boundary}/(?:home|Users)/{not_repo_path}[A-Za-z0-9_][A-Za-z0-9._-]*",
+        # Any Unicode account name (`/home/éclair`), also under `/var/home` (Fedora Atomic) and `/export/home`.
+        rf"{boundary}(?:(?:/var|/export)?/home|/Users)/{not_repo_path}[\w][\w.-]*",
         # macOS root's home, any child (`/var/root/Library/...`), also through its physical `/private/var`.
         rf"{boundary}(?:/private)?/var/root",
         # ponytail: plain `/root` only bare or as `/root/.<dir>` (where credentials live); a Codex
@@ -1299,10 +1300,11 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
         # `/root/<dir>` paths.
         rf"{boundary}/root(?=/\.|(?!/))",
     ]
-    if home:
-        # A one-segment home such as `/root` is also a path component (`/proc/self/root`), so it keeps the boundary.
+    # Root's `/root` is covered by its restricted form above; adding it here would bypass that restriction.
+    if home and home != "/root":
+        # A one-segment home is also a path component (`/proc/self/root`), so it keeps the boundary.
         forms.insert(0, re.escape(home) if home.count("/") > 1 else boundary + re.escape(home))
-    return re.compile(rf"(?:{'|'.join(forms)})(?![A-Za-z0-9._-])")
+    return re.compile(rf"(?:{'|'.join(forms)})(?![\w.-])")
 
 
 def home_path_pattern() -> re.Pattern[str]:

@@ -123,6 +123,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "/private/var/root/Library/x and /proc/1/root/var/root/Library/x",
                     "~/Library/x and /proc/1/root~/Library/x",
                 ),
+                ("/home/éclair/.ssh/id and /Users/ユーザー/x", "~/.ssh/id and ~/x"),
+                ("/var/home/alice/x and /export/home/bob/y", "~/x and ~/y"),
                 ("agent /root/t97_evidence_review and /proc/self/root/etc", None),
             ):
                 with self.subTest(text=text):
@@ -130,6 +132,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.assertEqual(masked, expected or text)
                     self.assertEqual(count, 0 if expected is None else expected.count("~") - text.count("~"))
                     self.assertIsNone(self.module.home_path_pattern().search(masked))
+
+    def test_a_root_home_keeps_sub_agent_identifiers(self) -> None:
+        with mock.patch.dict(os.environ, {"HOME": "/root"}):
+            masked, count = self.module.mask_home_paths("agent /root/t97_evidence_review read /root/.ssh/id")
+        self.assertEqual(masked, "agent /root/t97_evidence_review read ~/.ssh/id")
+        self.assertEqual(count, 1)
 
     def test_secret_scan_flags_the_running_users_home_as_a_backstop(self) -> None:
         self.write_text_file(".orchestration/validation/T1.md", "$ cat /srv/operator/.ssh/id_ed25519\n")
@@ -143,9 +151,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_a_one_segment_home_keeps_namespace_roots_intact(self) -> None:
         with mock.patch.dict(os.environ, {"HOME": "/root"}):
             masked, count = self.module.mask_home_paths(
-                "cd /root/x; ls /proc/self/root/home/alice/.ssh /proc/self/root/etc"
+                "cd /root/.cache; ls /proc/self/root/home/alice/.ssh /proc/self/root/etc"
             )
-        self.assertEqual(masked, "cd ~/x; ls /proc/self/root~/.ssh /proc/self/root/etc")
+        self.assertEqual(masked, "cd ~/.cache; ls /proc/self/root~/.ssh /proc/self/root/etc")
         self.assertEqual(count, 2)
         self.assertIsNone(self.module.home_path_pattern().search(masked))
         self.assertIsNotNone(self.module.home_path_pattern().search("/proc/self/root/home/alice/.ssh"))

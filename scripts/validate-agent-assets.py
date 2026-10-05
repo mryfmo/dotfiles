@@ -1216,7 +1216,8 @@ def gitignored_paths(root: Path) -> frozenset[Path]:
     )
     if result.returncode != 0:
         return frozenset()
-    return frozenset(root / name.rstrip("/") for name in result.stdout.decode().split("\0") if name)
+    # Filesystem decoding, as Path uses: git emits a non-UTF-8 file name as raw bytes.
+    return frozenset(root / os.fsdecode(name).rstrip("/") for name in result.stdout.split(b"\0") if name)
 
 
 def is_gitignored(path: Path) -> bool:
@@ -1290,11 +1291,11 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
     # Not glued to a word (`dotfiles/home/x`), except right after a namespace root (`/proc/self/root/home/x`).
     boundary = r"(?:(?<![\w.~-])|(?<=/root))"
     forms = [
-        rf"{boundary}/(?:home|Users)/{not_repo_path}[A-Za-z0-9][A-Za-z0-9._-]*",
+        rf"{boundary}/(?:home|Users)/{not_repo_path}[A-Za-z0-9_][A-Za-z0-9._-]*",
         # ponytail: root's home (`/root`, macOS `/var/root`) only bare or as `<home>/.<dir>` (where credentials live);
         # a Codex sub-agent path such as `/root/t97_evidence_review` stays. Widen when evidence quotes
         # other `/root/<dir>` paths.
-        r"(?<![\w.~-])(?:/var)?/root(?=/\.|(?!/))",
+        r"(?<![\w.~-])(?:(?:/private)?/var)?/root(?=/\.|(?!/))",
     ]
     if home:
         # A one-segment home such as `/root` is also a path component (`/proc/self/root`), so it keeps the boundary.

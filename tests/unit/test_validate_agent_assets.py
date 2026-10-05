@@ -113,6 +113,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 ("cat /root/.ssh/id_ed25519", "cat ~/.ssh/id_ed25519"),
                 ("HOME=/root;", "HOME=~;"),
                 ("cat /var/root/.ssh/id_ed25519", "cat ~/.ssh/id_ed25519"),
+                ("cat /private/var/root/.ssh/id and /home/_build/.ssh/id", "cat ~/.ssh/id and ~/.ssh/id"),
                 ("agent /root/t97_evidence_review and /proc/self/root/etc", None),
             ):
                 with self.subTest(text=text):
@@ -157,6 +158,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.write_text_file(".gitignore", ".claude/contextdb/state/*\n")
         ledger_text = "high-impact" + "-journal-publishing " + "ghp_" + "x" * 25 + " /home/alice/x\n"
         self.write_text_file(".claude/contextdb/state/context.db", ledger_text)
+        # A non-UTF-8 ignored file name must not abort the scans.
+        (self.temp_dir / os.fsdecode(b".claude/contextdb/state/raw-\xff")).write_text(ledger_text)
         for scan_name in ("validate_no_removed_claude_skill", "validate_no_obvious_secrets"):
             with self.subTest(scan=scan_name):
                 getattr(self.module, scan_name)()

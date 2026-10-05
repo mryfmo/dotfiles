@@ -452,6 +452,61 @@ class CodexConfigMergeTest(unittest.TestCase):
             with self.subTest(line=line, before=before):
                 self.assertEqual(after(line + "\n", before), expected)
 
+    def test_declared_hook_trust_replaces_inline_table_and_dotted_forms(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        for entry in (
+            f'"{key}" = {{ trusted_hash = "sha256:stale", enabled = false }}\n',
+            f'"{key}".trusted_hash = "sha256:stale"\n"{key}" . enabled = false\n',
+        ):
+            with self.subTest(entry=entry):
+                current = (
+                    f'[hooks.state]\n{entry}"other" = {{ trusted_hash = "sha256:other" }}\n\n'
+                    '[projects."/work"]\ntrust_level = "trusted"\n'
+                )
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True
+                )
+
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertTrue(state[key]["trusted_hash"].startswith("sha256:"))
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(state["other"], {"trusted_hash": "sha256:other"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
+    def test_invalid_merge_output_keeps_the_current_content(self) -> None:
+        home = self.source_dir / "target-home"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text('[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n')
+        # A splitter that emits every chunk twice stands in for any representation the merge mishandles.
+        source = MERGE_SCRIPT.read_text()
+        broken = source.replace(
+            '\nif __name__ == "__main__":',
+            '\n_split_chunks = split_chunks\nsplit_chunks = lambda text: _split_chunks(text) * 2\n\nif __name__ == "__main__":',
+        )
+        self.assertNotEqual(broken, source)
+        script = self.source_dir / "broken-merge"
+        script.write_text(broken)
+        script.chmod(0o755)
+        current = '[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n\n[projects."/work"]\ntrust_level = "trusted"\n'
+
+        result = subprocess.run([str(script)], input=current, text=True, capture_output=True, env=env, check=False)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, current)
+        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+
     def test_make_update_refreshes_codex_hook_trust_after_the_plugin_update(self) -> None:
         script = (ROOT / "scripts/update-agent-assets.sh").read_text()
         main = script.split("\nfunction main() {\n", 1)[1].split("\n}\n", 1)[0]

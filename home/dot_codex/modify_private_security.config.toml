@@ -274,19 +274,78 @@ def declared_trusted_hash(chunk: str):
     return match.group(1) if match else None
 
 
+LEADING_HOOK_STATE_KEY = re.compile(r"""^\s*("(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+)\s*[=.]""")
+INLINE_TRUSTED_HASH = re.compile(r'trusted_hash\s*=\s*"([^"]+)"')
+
+
+def report_divergence(name: str, old, new) -> None:
+    if old != new:
+        print(f"warning: hook trust divergence for {name}: replacing {old} with {new}", file=sys.stderr)
+
+
+def is_hook_state_parent(name) -> bool:
+    """True for the `[hooks.state]` table name, however it is spelled."""
+    if not name:
+        return False
+    if hook_trust_toml is not None:
+        try:
+            return hook_trust_toml.loads(f"[{name}]\n") == {"hooks": {"state": {}}}
+        except ValueError:
+            return False
+    return re.fullmatch(r"hooks\s*\.\s*state", name) is not None
+
+
+def drop_declared_assignments(chunk: str, declared: dict) -> str:
+    """Drop the inline-table and dotted assignments of declared keys from the `[hooks.state]` chunk."""
+    kept, removed = [], {}
+    string = removing = None
+    for line in chunk.splitlines(keepends=True):
+        if removing is None and string is None:
+            match = LEADING_HOOK_STATE_KEY.match(line)
+            key = hook_state_key(f"hooks.state.{match.group(1)}") if match else None
+            removing = key if key in declared else None
+        if removing is None:
+            kept.append(line)
+        else:
+            removed.setdefault(removing, []).append(line)
+        string = multiline_string_after(line, string)
+        if string is None:
+            removing = None
+    for key, lines in removed.items():
+        name, declared_chunk = declared[key]
+        match = INLINE_TRUSTED_HASH.search("".join(lines))
+        report_divergence(name, match.group(1) if match else None, declared_trusted_hash(declared_chunk))
+    return "".join(kept)
+
+
 def drop_declared_hook_state(chunks: list, declared: list) -> list:
     """Drop existing entries for declared keys (the managed ones replace them), reporting each change once."""
-    by_key = {hook_state_key(name): chunk for name, chunk in declared}
+    by_key = {hook_state_key(name): (name, chunk) for name, chunk in declared}
     kept = []
     for name, chunk in chunks:
         key = hook_state_key(name)
         if key is not None and key in by_key:
-            old, new = declared_trusted_hash(chunk), declared_trusted_hash(by_key[key])
-            if old != new:
-                print(f"warning: hook trust divergence for {name}: replacing {old} with {new}", file=sys.stderr)
+            report_divergence(name, declared_trusted_hash(chunk), declared_trusted_hash(by_key[key][1]))
             continue
+        if is_hook_state_parent(name):
+            chunk = drop_declared_assignments(chunk, by_key)
         kept.append((name, chunk))
     return kept
+
+
+def guarded_merge(merged: str, current: str, declared_keys) -> str:
+    """The merged config, or the current content unchanged unless it is valid TOML holding every declared key."""
+    if hook_trust_toml is None:
+        return merged
+    try:
+        state = hook_trust_toml.loads(merged).get("hooks", {}).get("state", {})
+        valid = isinstance(state, dict) and all(key in state for key in declared_keys)
+    except (ValueError, AttributeError):  # tomllib.TOMLDecodeError is a ValueError.
+        valid = False
+    if valid:
+        return merged
+    print("WARN: codex config merge produced invalid TOML; keeping the existing file", file=sys.stderr)
+    return current
 # <<< codex hook trust <<<
 
 def table_name(header: str) -> str | None:
@@ -494,7 +553,7 @@ def merge_config(current: str) -> str:
             output.append(current_chunk)
             emitted_current.add(current_name)
     merged = "".join(output)
-    return merged if merged.endswith("\n") else merged + "\n"
+    return guarded_merge(merged if merged.endswith("\n") else merged + "\n", current, declared_keys)
 
 
 sys.stdout.write(merge_config(sys.stdin.read()))

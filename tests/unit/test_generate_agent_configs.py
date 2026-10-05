@@ -1006,6 +1006,61 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(merged["agents"], tomllib.loads(MULTILINE_PROFILE)["agents"])
         self.assertEqual(merged["hooks"]["state"]["custom-hook"], {"enabled": True})
 
+    def test_profile_modify_scripts_replace_inline_table_and_dotted_forms(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        for entry in (
+            f'"{key}" = {{ trusted_hash = "sha256:stale", enabled = false }}\n',
+            f'"{key}".trusted_hash = "sha256:stale"\n"{key}" . enabled = false\n',
+        ):
+            with self.subTest(entry=entry):
+                current = (
+                    f'[hooks.state]\n{entry}"other" = {{ trusted_hash = "sha256:other" }}\n\n'
+                    '[projects."/work"]\ntrust_level = "trusted"\n'
+                )
+
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(state["other"], {"trusted_hash": "sha256:other"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
+    def test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        self.module.write_outputs(self.module.expected_outputs(manifest))
+        profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
+        # A splitter that emits every chunk twice stands in for any representation the merge mishandles.
+        source = profile.read_text()
+        broken = source.replace(
+            "\nsys.stdout.write(merge_config(sys.stdin.read()))",
+            "\n_split_chunks = split_chunks\nsplit_chunks = lambda text: _split_chunks(text) * 2\n"
+            "sys.stdout.write(merge_config(sys.stdin.read()))",
+        )
+        self.assertNotEqual(broken, source)
+        profile.write_text(broken)
+        current = '[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n\n[projects."/work"]\ntrust_level = "trusted"\n'
+
+        result = subprocess.run(
+            [str(profile)],
+            input=current,
+            text=True,
+            capture_output=True,
+            env={**os.environ, "HOME": str(home)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, current)
+        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"

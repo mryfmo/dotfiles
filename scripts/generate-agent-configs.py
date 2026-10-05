@@ -945,12 +945,36 @@ MANAGED = {managed!r}
 __HOOK_TRUST_BLOCK__
 
 def table_name(header: str) -> str | None:
+    """The raw name of a `[table]` or `[[array]]` header line, which may end in a `# comment`, else None."""
     stripped = header.strip()
-    if stripped.startswith("[[") and stripped.endswith("]]"):
-        return stripped[2:-2].strip()
-    if stripped.startswith("[") and stripped.endswith("]"):
-        return stripped[1:-1].strip()
-    return None
+    if not stripped.startswith("["):
+        return None
+    double = stripped.startswith("[[")
+    start = index = 2 if double else 1
+    quote = None
+    while index < len(stripped):
+        char = stripped[index]
+        if quote == '"' and char == "\\\\":
+            index += 2
+            continue
+        if char == quote:
+            quote = None
+        elif quote is None and char in ('"', "'"):
+            quote = char
+        elif quote is None and char == "]":
+            break
+        index += 1
+    else:
+        return None
+    rest = stripped[index + 1 :]
+    if double:
+        if not rest.startswith("]"):
+            return None
+        rest = rest[1:]
+    rest = rest.lstrip()
+    if rest and not rest.startswith("#"):
+        return None
+    return stripped[start:index].strip()
 
 
 def split_chunks(text: str) -> list[tuple[str | None, str]]:

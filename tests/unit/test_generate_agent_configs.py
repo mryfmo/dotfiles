@@ -954,6 +954,30 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(result.stdout.count(key), 1)
         self.assertIn("replacing sha256:stale with", result.stderr)
 
+    def test_profile_modify_scripts_handle_table_headers_with_trailing_comments(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        others = (
+            '[hooks.state."custom-hook"] # mine\ntrusted_hash = "sha256:custom"\n\n'
+            '[projects."/work"]  # trusted\ntrust_level = "trusted"\n'
+        )
+        # A commented declared header, then an uncommented one followed by commented unrelated tables.
+        for declared in (f'[hooks.state."{key}"] # declared', f'[hooks.state."{key}"]'):
+            with self.subTest(declared=declared):
+                current = f'[hooks.state]\n\n{declared}\ntrusted_hash = "sha256:stale"\n\n' + others
+
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(state["custom-hook"], {"trusted_hash": "sha256:custom"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertIn("replacing sha256:stale with", result.stderr)
+
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"

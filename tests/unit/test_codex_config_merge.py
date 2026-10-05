@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import runpy
 import subprocess
 import tempfile
 import textwrap
@@ -351,6 +352,56 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
         self.assertEqual(result.stdout.count(key), 1)
         self.assertIn("replacing sha256:stale with", result.stderr)
+
+    def test_declared_hook_trust_handles_table_headers_with_trailing_comments(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        others = (
+            '[hooks.state."custom-hook"] # mine\ntrusted_hash = "sha256:custom"\n\n'
+            '[projects."/work"]  # trusted\ntrust_level = "trusted"\n'
+        )
+        # A commented declared header, then an uncommented one followed by commented unrelated tables.
+        for declared in (f'[hooks.state."{key}"] # declared', f'[hooks.state."{key}"]'):
+            with self.subTest(declared=declared):
+                current = f'[hooks.state]\n\n{declared}\ntrusted_hash = "sha256:stale"\n\n' + others
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True
+                )
+
+                # A commented header is still a header: the declared one is replaced once and the others survive.
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(state["custom-hook"], {"trusted_hash": "sha256:custom"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertIn("replacing sha256:stale with", result.stderr)
+
+    def test_table_name_reads_headers_with_trailing_comments(self) -> None:
+        table_name = runpy.run_path(str(MERGE_SCRIPT), run_name="codex_config_merge")["table_name"]
+        for header, name in (
+            ("[a]", "a"),
+            ("[[a.b]]", "a.b"),
+            ("  [ a . b ]  ", "a . b"),
+            ('[hooks.state."x"] # c', 'hooks.state."x"'),
+            ('[hooks.state."a]#b"]#c', 'hooks.state."a]#b"'),
+            ("[hooks.state.'a]b'] # c", "hooks.state.'a]b'"),
+            ('[hooks.state."q\\"]"]', 'hooks.state."q\\"]"'),
+            ("[[a]] # c", "a"),
+            ("[a] = 1", None),
+            ("[a] x", None),
+            ("[[a] ]", None),
+            ('[a."b]', None),
+            ("a = [1]", None),
+        ):
+            with self.subTest(header=header):
+                self.assertEqual(table_name(header), name)
 
     def test_make_update_refreshes_codex_hook_trust_after_the_plugin_update(self) -> None:
         script = (ROOT / "scripts/update-agent-assets.sh").read_text()

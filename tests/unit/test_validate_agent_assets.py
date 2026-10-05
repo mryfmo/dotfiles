@@ -133,6 +133,19 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.assertEqual(count, 0 if expected is None else expected.count("~") - text.count("~"))
                     self.assertIsNone(self.module.home_path_pattern().search(masked))
 
+    def test_runner_homes_match_anywhere(self) -> None:
+        with mock.patch.dict(os.environ, {"HOME": "/home/alice"}):
+            for text, expected in (
+                ("..F/home/runner/.ssh/id", "..F~/.ssh/id"),
+                ("x/Users/runner/y", "x~/y"),
+                ("/home/runner-up/x and /home/runners/y", "~/x and ~/y"),
+                ("a/home/runner-up/x and a/home/runners/y", None),
+            ):
+                with self.subTest(text=text):
+                    masked, _ = self.module.mask_home_paths(text)
+                    self.assertEqual(masked, expected or text)
+                    self.assertEqual(self.module.home_path_pattern().search(text) is not None, expected is not None)
+
     def test_a_root_home_keeps_sub_agent_identifiers(self) -> None:
         with mock.patch.dict(os.environ, {"HOME": "/root"}):
             masked, count = self.module.mask_home_paths("agent /root/t97_evidence_review read /root/.ssh/id")

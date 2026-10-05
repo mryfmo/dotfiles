@@ -1291,6 +1291,9 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
     # Not glued to a word (`dotfiles/home/x`), except right after a namespace root (`/proc/self/root/home/x`).
     boundary = r"(?:(?<![\w.~-])|(?<=/root))"
     forms = [
+        # GitHub-hosted runner homes match anywhere, like a multi-segment `$HOME`, so a workstation
+        # rewrites a glued runner path (`..F/home/runner/.ssh/id` from an Actions log) as a runner flags it.
+        r"/(?:home|Users)/runner",
         # Any Unicode account name (`/home/éclair`), also under `/var/home` (Fedora Atomic) and `/export/home`.
         rf"{boundary}(?:(?:/var|/export)?/home|/Users)/{not_repo_path}[\w][\w.-]*",
         # macOS root's home, any child (`/var/root/Library/...`), also through its physical `/private/var`.

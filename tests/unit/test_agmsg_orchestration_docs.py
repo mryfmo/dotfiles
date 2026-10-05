@@ -138,6 +138,8 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
             "needs green CI but no new Bot wait",
             "CI on the new head, then the sweep, then the audit",
             "audit-finding: <n>",
+            "Such a review-body finding is listed alongside the top-level inline comments and fixed or dispositioned the same way.",
+            "A `review` sweep item whose body carries a `P0`–`P3` badge is a finding with its own `fixed:<commit>` or `not-applicable:<reason>` disposition, never a container for its inline threads.",
             "Deferral",
             "is not a disposition",
         ):

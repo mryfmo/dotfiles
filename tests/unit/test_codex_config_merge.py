@@ -327,6 +327,31 @@ class CodexConfigMergeTest(unittest.TestCase):
         # A declared key the template does not carry (crit) is left alone, not injected.
         self.assertNotIn("crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0", state)
 
+    def test_declared_hook_trust_replaces_a_single_quoted_existing_entry(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        result = subprocess.run(
+            [str(MERGE_SCRIPT)],
+            input=f"[hooks.state]\n\n[hooks.state.'{key}']\ntrusted_hash = \"sha256:stale\"\n",
+            text=True,
+            capture_output=True,
+            env=env,
+            check=True,
+        )
+
+        # A literal-quoted existing entry is the same TOML key: it is replaced, not duplicated.
+        state = tomllib.loads(result.stdout)["hooks"]["state"]
+        self.assertTrue(state[key]["trusted_hash"].startswith("sha256:"))
+        self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+        self.assertEqual(result.stdout.count(key), 1)
+        self.assertIn("replacing sha256:stale with", result.stderr)
+
     def test_make_update_refreshes_codex_hook_trust_after_the_plugin_update(self) -> None:
         script = (ROOT / "scripts/update-agent-assets.sh").read_text()
         main = script.split("\nfunction main() {\n", 1)[1].split("\n}\n", 1)[0]

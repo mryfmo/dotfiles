@@ -77,46 +77,87 @@ SEMVER = re.compile(
 PLUGIN_VERSION_SEGMENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
 
-def compare_identifiers(left: str, right: str) -> int:
-    """Order dot-separated semver identifiers: numeric before alphanumeric, numerically or lexically."""
-    for a, b in zip(left.split("."), right.split(".")):
-        if a.isdigit() and b.isdigit():
-            if int(a) != int(b):
-                return -1 if int(a) < int(b) else 1
-        elif a.isdigit() != b.isdigit():
-            return -1 if a.isdigit() else 1
-        elif a != b:
-            return -1 if a < b else 1
-    return (len(left.split(".")) > len(right.split("."))) - (len(left.split(".")) < len(right.split(".")))
+U64_MAX = 2**64 - 1
+
+
+def all_ascii_digits(text: str) -> bool:
+    """Rust's bytes().all(u8::is_ascii_digit): true for the empty string."""
+    return all("0" <= ch <= "9" for ch in text)
+
+
+def compare_prerelease(left: str, right: str) -> int:
+    """semver 1.0.27 Prerelease::cmp: a release (empty) sorts above any pre-release."""
+    if left == right:
+        return 0
+    if not left:
+        return 1
+    if not right:
+        return -1
+    lhs, rhs = left.split("."), right.split(".")
+    for index, a in enumerate(lhs):
+        if index >= len(rhs):
+            return 1
+        b = rhs[index]
+        if all_ascii_digits(a) and all_ascii_digits(b):
+            ordering = (len(a) > len(b)) - (len(a) < len(b)) or (a > b) - (a < b)
+        elif all_ascii_digits(a) != all_ascii_digits(b):
+            return -1 if all_ascii_digits(a) else 1
+        else:
+            ordering = (a > b) - (a < b)
+        if ordering:
+            return ordering
+    return 0 if len(rhs) == len(lhs) else -1
+
+
+def compare_build(left: str, right: str) -> int:
+    """semver 1.0.27 BuildMetadata::cmp: empty < non-empty; numeric identifiers by stripped length,
+    stripped value, then original length (0 < 00 < 1 < 01 < 001 < 2)."""
+    if left == right:
+        return 0
+    lhs, rhs = left.split("."), right.split(".")
+    for index, a in enumerate(lhs):
+        if index >= len(rhs):
+            return 1
+        b = rhs[index]
+        if all_ascii_digits(a) and all_ascii_digits(b):
+            sa, sb = a.lstrip("0"), b.lstrip("0")
+            key_a, key_b = (len(sa), sa, len(a)), (len(sb), sb, len(b))
+            ordering = (key_a > key_b) - (key_a < key_b)
+        elif all_ascii_digits(a) != all_ascii_digits(b):
+            return -1 if all_ascii_digits(a) else 1
+        else:
+            ordering = (a > b) - (a < b)
+        if ordering:
+            return ordering
+    return 0 if len(rhs) == len(lhs) else -1
 
 
 def parse_semver(version: str):
-    """A semver match as the `semver` crate accepts it, else None.
+    """A semver match as the `semver` crate (1.0.27) accepts it, else None.
 
-    Numeric pre-release identifiers may not have leading zeros (build identifiers may).
+    Numeric pre-release identifiers may not have leading zeros (build identifiers may), and
+    major, minor and patch must fit in a u64.
     """
     match = SEMVER.match(version)
-    if match and match.group(4):
+    if not match or any(int(part) > U64_MAX for part in match.groups()[:3]):
+        return None
+    if match.group(4):
         for identifier in match.group(4).split("."):
-            if identifier.isdigit() and len(identifier) > 1 and identifier.startswith("0"):
+            if all_ascii_digits(identifier) and len(identifier) > 1 and identifier.startswith("0"):
                 return None
     return match
 
 
 def compare_plugin_versions(left: str, right: str) -> int:
-    """Codex's version order (core-plugin-common installed.rs compare_plugin_versions, rust-v0.160.0)."""
+    """Codex's version order (core-plugin-common installed.rs compare_plugin_versions, rust-v0.160.0):
+    semver Version::cmp (major, minor, patch, pre, build) when both parse, else plain string order."""
     a, b = parse_semver(left), parse_semver(right)
     if not (a and b):
         return (left > right) - (left < right)
     for x, y in zip(a.groups()[:3], b.groups()[:3]):
         if int(x) != int(y):
             return -1 if int(x) < int(y) else 1
-    pre_a, pre_b = a.group(4), b.group(4)
-    if pre_a != pre_b:
-        if pre_a is None or pre_b is None:
-            return 1 if pre_a is None else -1
-        return compare_identifiers(pre_a, pre_b)
-    return compare_identifiers(a.group(5) or "", b.group(5) or "") if (a.group(5) or b.group(5)) else 0
+    return compare_prerelease(a.group(4) or "", b.group(4) or "") or compare_build(a.group(5) or "", b.group(5) or "")
 
 
 def active_plugin_version(root: Path):
@@ -193,6 +234,41 @@ def declared_hook_state(home: str) -> list:
     return chunks
 
 
+try:
+    import tomllib as hook_trust_toml
+except ModuleNotFoundError:  # Python < 3.11: fall back to the key grammar below.
+    hook_trust_toml = None
+HOOK_STATE_TABLE = re.compile(
+    r"""^hooks\s*\.\s*state\s*\.\s*(?:"((?:[^"\\]|\\.)*)"|'([^']*)'|([A-Za-z0-9_-]+))\s*$"""
+)
+
+
+def hook_state_key(name):
+    """The decoded TOML key of a `hooks.state.<key>` table name, however it is quoted, else None."""
+    if not name:
+        return None
+    if hook_trust_toml is not None:
+        try:
+            data = hook_trust_toml.loads(f"[{name}]\n")
+        except ValueError:
+            return None
+        hooks = data.get("hooks") if list(data) == ["hooks"] else None
+        state = hooks.get("state") if isinstance(hooks, dict) and list(hooks) == ["state"] else None
+        if isinstance(state, dict) and len(state) == 1:
+            key, value = next(iter(state.items()))
+            return key if value == {} else None
+        return None
+    match = HOOK_STATE_TABLE.match(name)
+    if not match:
+        return None
+    if match.group(1) is not None:
+        try:
+            return json.loads('"' + match.group(1) + '"')
+        except ValueError:
+            return None
+    return match.group(2) if match.group(2) is not None else match.group(3)
+
+
 def declared_trusted_hash(chunk: str):
     match = re.search(r'^trusted_hash = "([^"]+)"$', chunk, re.MULTILINE)
     return match.group(1) if match else None
@@ -200,11 +276,12 @@ def declared_trusted_hash(chunk: str):
 
 def drop_declared_hook_state(chunks: list, declared: list) -> list:
     """Drop existing entries for declared keys (the managed ones replace them), reporting each change once."""
-    by_name = dict(declared)
+    by_key = {hook_state_key(name): chunk for name, chunk in declared}
     kept = []
     for name, chunk in chunks:
-        if name in by_name:
-            old, new = declared_trusted_hash(chunk), declared_trusted_hash(by_name[name])
+        key = hook_state_key(name)
+        if key is not None and key in by_key:
+            old, new = declared_trusted_hash(chunk), declared_trusted_hash(by_key[key])
             if old != new:
                 print(f"warning: hook trust divergence for {name}: replacing {old} with {new}", file=sys.stderr)
             continue
@@ -286,7 +363,7 @@ def merge_config(current: str) -> str:
     """Keep profile trust authoritative and only warn when base trust diverges."""
     managed_chunks = split_chunks(render_managed_paths(MANAGED))
     declared = declared_hook_state(str(Path.home()))
-    declared_names = {name for name, _ in declared}
+    declared_keys = {hook_state_key(name) for name, _ in declared}
     current_chunks = drop_declared_hook_state(split_chunks(current) if current.strip() else [], declared)
     current_by_name: dict[str, list[str]] = {}
     current_by_runtime_prefix: dict[str, list[tuple[int, str, str]]] = {}
@@ -303,7 +380,7 @@ def merge_config(current: str) -> str:
             managed_by_runtime_prefix.setdefault(prefix, []).append((managed_name, managed_chunk))
     managed_by_runtime_prefix.setdefault("hooks.state", []).extend(declared)
     for base_name, base_chunk in base_hook_state():
-        if base_name in declared_names:
+        if hook_state_key(base_name) in declared_keys:
             continue
         if base_name in current_by_name:
             profile_hash = trusted_hash(current_by_name[base_name][0])

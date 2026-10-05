@@ -926,6 +926,34 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             (other / version).mkdir(parents=True)
         self.assertEqual(active_plugin_version(other), "1.9.0")
 
+    def test_plugin_versions_order_build_metadata_like_the_semver_crate(self) -> None:
+        namespace = self.hook_trust_namespace(sample_manifest())
+        compare = namespace["compare_plugin_versions"]
+        # semver 1.0.27 BuildMetadata: empty < non-empty; numeric by stripped length, value, then length.
+        self.assertGreater(compare("1.0.0+123", "1.0.0"), 0)
+        self.assertGreater(compare("1.0.0+01", "1.0.0+1"), 0)
+        self.assertLess(compare("1.0.0+0", "1.0.0+00"), 0)
+        self.assertGreater(compare("1.0.0+a", "1.0.0+1"), 0)
+        self.assertEqual(compare("1.0.0+1", "1.0.0+1"), 0)
+        root = self.temp_dir / "cache/market/build"
+        for version in ("1.0.0", "1.0.0+123"):
+            (root / version).mkdir(parents=True)
+        self.assertEqual(namespace["active_plugin_version"](root), "1.0.0+123")
+
+    def test_profile_modify_scripts_replace_a_single_quoted_declared_entry(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        current = f"[hooks.state]\n\n[hooks.state.'{key}']\ntrusted_hash = \"sha256:stale\"\n"
+
+        result = self.run_profile(manifest, home, current)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        state = tomllib.loads(result.stdout)["hooks"]["state"]
+        self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+        self.assertEqual(result.stdout.count(key), 1)
+        self.assertIn("replacing sha256:stale with", result.stderr)
+
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"

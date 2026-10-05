@@ -32,6 +32,10 @@ GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
 ZSHRC = ROOT / "home/dot_zshrc"
 AUDIT_SHA = "926d9f1"
+WORKER_GITHUB_NOTICE = (
+    "herdr-agents: worker GitHub credential missing: {path}; "
+    "the worker seat cannot run gh or push until the operator provisions it (README, operator provisioning)"
+)
 # Built at runtime so this test file never contains a literal SECRET_PATTERN match.
 SECRET_FIELD = "tok" + "en"
 AUDIT_PROMPT = (
@@ -2739,6 +2743,65 @@ exit {despawn_exit}
             capture_output=True,
         )
         return path
+
+    def test_add_worker_notices_missing_github_credential(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        worktree = self.workdir.resolve() / ".claude/worktrees/github-notice"
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/github-notice")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            result.stdout,
+            f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})\n"
+            "linkage=ok read_at=2026-10-01T00:00:00Z pong=no\n",
+        )
+        notice = WORKER_GITHUB_NOTICE.format(path=self.home_dir / ".config/gh-worker/hosts.yml")
+        self.assertEqual(result.stderr.splitlines().count(notice), 1, result.stderr)
+
+    def test_restart_worker_notices_missing_github_credential(self) -> None:
+        self.write_claude_pair_state(
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}'
+        )
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, "Herdr agents worker restarted in pane w-old:p2\n")
+        notice = WORKER_GITHUB_NOTICE.format(path=self.home_dir / ".config/gh-worker/hosts.yml")
+        self.assertEqual(result.stderr.splitlines().count(notice), 1, result.stderr)
+
+    def test_full_mode_notices_missing_github_credential(self) -> None:
+        self.register_claude_worker_identity()
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, "orchestrator_profile=none args=none\nHerdr agents workspace: w-test\n")
+        notice = WORKER_GITHUB_NOTICE.format(path=self.home_dir / ".config/gh-worker/hosts.yml")
+        self.assertEqual(result.stderr.splitlines().count(notice), 1, result.stderr)
+
+    def test_add_worker_omits_notice_when_configured_github_credential_exists(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        hosts = self.home_dir / "custom gh/hosts.yml"
+        hosts.parent.mkdir()
+        hosts.touch()
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        with profiles.open("a") as handle:
+            handle.write("WORKER_GH_CONFIG_DIR='~/custom gh'\n")
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/github-present")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        worktree = self.workdir.resolve() / ".claude/worktrees/github-present"
+        self.assertEqual(
+            result.stdout,
+            f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})\n"
+            "linkage=ok read_at=2026-10-01T00:00:00Z pong=no\n",
+        )
+        self.assertNotIn("worker GitHub credential missing:", result.stderr)
 
     def test_worker_github_pair_env(self) -> None:
         self.register_claude_worker_identity()

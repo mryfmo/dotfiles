@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../executable_setup-gh/">
+        <link rel="prev" href="../executable_chezmoi-cd/">
       
       
-        <link rel="next" href="../executable_ua-symbol-coverage/">
+        <link rel="next" href="../executable_compactiondb-install/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>home/dot_local/bin/common/executable_setup-gpg - Dotfiles Docs</title>
+        <title>home/dot_local/bin/common/executable_codex-orchestrate - Dotfiles Docs</title>
       
     
     
@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#homedot_localbincommonexecutable_setup-gpg" class="md-skip">
+        <a href="#homedot_localbincommonexecutable_codex-orchestrate" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              home/dot_local/bin/common/executable_setup-gpg
+              home/dot_local/bin/common/executable_codex-orchestrate
             
           </span>
         </div>
@@ -1078,10 +1078,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../executable_codex-orchestrate/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_codex-orchestrate
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1097,6 +1124,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1386,37 +1466,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_setup-gpg
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../executable_setup-gpg/" class="md-nav__link">
         
   
   
@@ -1432,59 +1485,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Functions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3606,64 +3606,177 @@
 
 
 
-<h1 id="homedot_localbincommonexecutable_setup-gpg">home/dot_local/bin/common/executable_setup-gpg<a class="headerlink" href="#homedot_localbincommonexecutable_setup-gpg" title="Permanent link">&para;</a></h1>
-<p>Checks whether a local GnuPG secret key already exists. If not, starts the standard interactive <code>gpg --full-generate-key</code> flow. Secret keys and trust databases are intentionally not stored in the public chezmoi source state.</p>
+<h1 id="homedot_localbincommonexecutable_codex-orchestrate">home/dot_local/bin/common/executable_codex-orchestrate<a class="headerlink" href="#homedot_localbincommonexecutable_codex-orchestrate" title="Permanent link">&para;</a></h1>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Source: <code>home/dot_local/bin/common/executable_setup-gpg</code></li>
+<li>Source: <code>home/dot_local/bin/common/executable_codex-orchestrate</code></li>
 <li>Category: shell executable</li>
 <li>Renderer: <code>shell-fallback</code></li>
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>generate_gpg_secret_key</code></li>
-<li><code>has_gpg_secret_key</code></li>
-<li><code>main</code></li>
+<li><code>die</code></li>
+<li><code>restore</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
-
-<span class="c1"># @file home/dot_local/bin/common/executable_setup-gpg</span>
-<span class="c1"># @brief Prepare the local GnuPG secret keyring when no private source restored it.</span>
-<span class="c1"># @description</span>
-<span class="c1">#   Checks whether a local GnuPG secret key already exists. If not, starts the</span>
-<span class="c1">#   standard interactive `gpg --full-generate-key` flow. Secret keys and trust</span>
-<span class="c1">#   databases are intentionally not stored in the public chezmoi source state.</span>
-<span class="c1"># @example</span>
-<span class="c1">#   setup-gpg</span>
-
-<span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
-
-<span class="c1"># @description Return success when at least one GnuPG secret key exists.</span>
-<span class="k">function</span><span class="w"> </span>has_gpg_secret_key<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>gpg<span class="w"> </span>--batch<span class="w"> </span>--list-secret-keys<span class="w"> </span>--with-colons<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s1">'^sec:'</span>
+<span class="c1"># @file codex-orchestrate</span>
+<span class="c1"># @brief Run sequential Codex orchestrator turns with a reversible agmsg seat.</span>
+<span class="c1"># @description Run from the main repository root; restore previous seats on exit.</span>
+<span class="c1"># @arg $1 string Operator task after any options.</span>
+<span class="c1"># @option --max-turns N Maximum Codex invocations (default 40).</span>
+<span class="c1"># @option --timeout SECONDS Maximum idle inbox wait (default 1800).</span>
+<span class="c1"># @option --team T Select the team when more than one is registered.</span>
+<span class="c1"># @exitcode 2 Invalid configuration, identity, or turn limit.</span>
+<span class="c1"># @exitcode 124 Inbox wait timed out.</span>
+<span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
+<span class="nb">umask</span><span class="w"> </span><span class="m">077</span>
+<span class="nv">max_turns</span><span class="o">=</span><span class="m">40</span><span class="w"> </span><span class="nv">timeout_seconds</span><span class="o">=</span><span class="m">1800</span><span class="w"> </span><span class="nv">team</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">delivery</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_ORCHESTRATE_DELIVERY</span><span class="k">:-</span><span class="nv">poll</span><span class="si">}</span><span class="s2">"</span>
+die<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'codex-orchestrate: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$*</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="o">}</span>
-
-<span class="c1"># @description Create a GnuPG secret key through the standard interactive flow.</span>
-<span class="k">function</span><span class="w"> </span>generate_gpg_secret_key<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'No local GnuPG secret key was found.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Run `gpg --full-generate-key` interactively or restore keys from the private chezmoi source.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="k">while</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>--max-turns<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>--timeout<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>--team<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-ge<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"missing value: </span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>--max-turns<span class="o">)</span>
+<span class="w">        </span><span class="nv">max_turns</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>--timeout<span class="o">)</span>
+<span class="w">        </span><span class="nv">timeout_seconds</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>--team<span class="o">)</span>
+<span class="w">        </span><span class="nv">team</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>--<span class="o">)</span>
+<span class="w">        </span><span class="nb">shift</span>
+<span class="w">        </span><span class="k">break</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>--*<span class="o">)</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"unknown option: </span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="k">break</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="nb">shift</span><span class="w"> </span><span class="m">2</span>
+<span class="k">done</span>
+<span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'usage: codex-orchestrate [--max-turns N] [--timeout SECONDS] [--team T] "task"'</span>
+<span class="o">[[</span><span class="w"> </span><span class="nv">$max_turns</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">1</span>-9<span class="o">][</span><span class="m">0</span>-9<span class="o">]{</span><span class="m">0</span>,8<span class="o">}</span>$<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">$timeout_seconds</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">1</span>-9<span class="o">][</span><span class="m">0</span>-9<span class="o">]{</span><span class="m">0</span>,8<span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'limits must be positive integers of at most 9 digits'</span>
+<span class="o">[[</span><span class="w"> </span><span class="nv">$delivery</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>hook<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'hook delivery not validated; T87'</span>
+<span class="o">[[</span><span class="w"> </span><span class="nv">$delivery</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>poll<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'CODEX_ORCHESTRATE_DELIVERY must be poll or hook'</span>
+<span class="nv">repo</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="k">)</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">$(</span>git<span class="w"> </span>worktree<span class="w"> </span>list<span class="w"> </span>--porcelain<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="k">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"worktree </span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'run from the main checkout root'</span>
+<span class="nv">HERDR_AGENTS_ORCHESTRATOR_KIND</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">MODEL_PROFILE_INTERACTIVE</span><span class="o">=</span><span class="s2">""</span>
+<span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="nv">$HOME</span>/.agents/model-profiles.env<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'deploy model-profiles.env for herdr-agents first'</span>
+<span class="c1"># shellcheck source=/dev/null</span>
+<span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/.agents/model-profiles.env"</span>
+<span class="o">[[</span><span class="w"> </span><span class="nv">$HERDR_AGENTS_ORCHESTRATOR_KIND</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>codex<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'select the codex orchestrator in the manifest used by herdr-agents'</span>
+<span class="nv">profile</span><span class="o">=</span><span class="s2">"</span><span class="nv">$MODEL_PROFILE_INTERACTIVE</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span><span class="nv">$profile</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span>a-zA-Z<span class="o">][</span>a-zA-Z0-9_<span class="o">]</span>*$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'invalid interactive profile'</span>
+<span class="nv">key</span><span class="o">=</span><span class="s2">"MODEL_PROFILE_</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$profile</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'[:lower:]'</span><span class="w"> </span><span class="s1">'[:upper:]'</span><span class="k">)</span><span class="s2">_CODEX_ARGS"</span>
+<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$profile</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="p">!key</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'missing interactive Codex profile arguments'</span>
+<span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>model_args<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!key</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">scripts</span><span class="o">=</span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/.agents/skills/agmsg/scripts"</span>
+<span class="nv">private</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s1">'import os, pathlib, sys</span>
+<span class="s1">state = pathlib.Path(os.environ.get("XDG_STATE_HOME") or pathlib.Path.home() / ".local/state")</span>
+<span class="s1">path = (state / "codex-orchestrate").resolve()</span>
+<span class="s1">roots = [pathlib.Path(p).resolve() for p in sys.argv[1:]]</span>
+<span class="s1">if not state.is_absolute() or any(path == p or p in path.parents for p in roots):</span>
+<span class="s1">    sys.exit("codex-orchestrate: unsafe private state directory")</span>
+<span class="s1">path.mkdir(mode=0o700, parents=True, exist_ok=True)</span>
+<span class="s1">print(path)</span>
+<span class="s1">'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/.."</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TMPDIR</span><span class="k">:-</span><span class="p">/tmp</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>.orchestration/validation<span class="w"> </span><span class="s2">"</span><span class="nv">$private</span><span class="s2">/locks"</span>
+<span class="nv">lock</span><span class="o">=</span><span class="s2">"</span><span class="nv">$private</span><span class="s2">/locks/</span><span class="k">$(</span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s1">'import hashlib,sys; print(hashlib.sha256(sys.argv[1].encode()).hexdigest())'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+mkdir<span class="w"> </span><span class="s2">"</span><span class="nv">$lock</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"another launcher is active; inspect </span><span class="nv">$lock</span><span class="s2">"</span>
+<span class="nv">restores</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">joined</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="nv">snapshot</span><span class="o">=</span><span class="s2">""</span>
+<span class="c1"># @description Restore only registrations exchanged by this invocation, on any exit.</span>
+restore<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">result</span><span class="o">=</span><span class="nv">$?</span><span class="w"> </span><span class="nv">restore_rc</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>restore_team<span class="w"> </span>restore_name
+<span class="w">    </span><span class="nb">trap</span><span class="w"> </span>-<span class="w"> </span>EXIT
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">$joined</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/reset.sh"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span>codex<span class="w"> </span><span class="s2">"</span><span class="nv">$name</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">restore_rc</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>restore_team<span class="w"> </span>restore_name<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$restore_team</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">            </span>bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/join.sh"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$restore_team</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$restore_name</span><span class="s2">"</span><span class="w"> </span>codex<span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">restore_rc</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$existing</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'No local GnuPG secret key was found. Starting interactive key generation.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span>gpg<span class="w"> </span>--full-generate-key
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>restore_team<span class="w"> </span>restore_name<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$restore_team</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span>bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/join.sh"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$restore_team</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$restore_name</span><span class="s2">"</span><span class="w"> </span>claude-code<span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">restore_rc</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$restores</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$restores</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span>bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/delivery.sh"</span><span class="w"> </span><span class="nb">set</span><span class="w"> </span>both<span class="w"> </span>claude-code<span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">restore_rc</span><span class="o">=</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="nv">$snapshot</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'restore_exit=%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$restore_rc</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$snapshot</span><span class="s2">/context.txt"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span>restore_rc<span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="w">    </span>rmdir<span class="w"> </span><span class="s2">"</span><span class="nv">$lock</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="s2">"</span><span class="nv">$result</span><span class="s2">"</span>
 <span class="o">}</span>
-
-<span class="c1"># @description Run the GnuPG setup flow.</span>
-<span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_gpg_secret_key<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'GnuPG secret key already exists. Nothing to do.\n'</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span>generate_gpg_secret_key
-<span class="o">}</span>
-
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span>main
-<span class="k">fi</span>
+<span class="nb">trap</span><span class="w"> </span>restore<span class="w"> </span>EXIT
+<span class="nb">trap</span><span class="w"> </span><span class="s1">'exit 130'</span><span class="w"> </span>INT
+<span class="nb">trap</span><span class="w"> </span><span class="s1">'exit 143'</span><span class="w"> </span>TERM
+<span class="nb">export</span><span class="w"> </span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span>
+<span class="nv">previous</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/identities.sh"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span>claude-code<span class="k">)</span><span class="s2">"</span>
+<span class="nv">workers</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/identities.sh"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">/</span><span class="si">${</span><span class="nv">HERDR_AGENTS_WORKER_WORKTREE</span><span class="p">:?</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>claude-code<span class="k">)</span><span class="s2">"</span>
+<span class="nv">previous</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span>-v<span class="w"> </span><span class="nv">workers</span><span class="o">=</span><span class="s2">"</span><span class="nv">$workers</span><span class="s2">"</span><span class="w"> </span><span class="s1">'BEGIN {n=split(workers,rows,"\n"); for(i=1;i&lt;=n;i++) {split(rows[i],parts,"\t");excluded[parts[2]]=1}} NF==2 &amp;&amp; $2 !~ /-a[0-9][0-9][0-9]$/ &amp;&amp; !($2 in excluded)'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$previous</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="nv">existing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/identities.sh"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span>codex<span class="k">)</span><span class="s2">"</span>
+<span class="nv">seats</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$previous</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$existing</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span><span class="s1">'NF==2 &amp;&amp; $2 !~ /-a[0-9][0-9][0-9]$/'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="k">)</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$team</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">team</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>cut<span class="w"> </span>-f<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$seats</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="k">)</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$team</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">$team</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'select one registered team with --team'</span>
+<span class="nv">suffix</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span>-v<span class="w"> </span><span class="nv">team</span><span class="o">=</span><span class="s2">"</span><span class="nv">$team</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$1==team {n=split($2,a,"-");print a[n]}'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$seats</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="k">)</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$suffix</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">$suffix</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'ambiguous or missing project suffix; check herdr-agents registration'</span>
+<span class="nv">name</span><span class="o">=</span><span class="s2">"codex-</span><span class="nv">$profile</span><span class="s2">-</span><span class="nv">$suffix</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="nv">$existing</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">$(</span>cut<span class="w"> </span>-f<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$existing</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="k">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="nv">$name</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'another Codex seat exists at this checkout'</span>
+<span class="nv">conflicts</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s1">'import json, pathlib, sys</span>
+<span class="s1">for config in pathlib.Path(sys.argv[1]).glob("*/config.json"):</span>
+<span class="s1">    agent = json.loads(config.read_text()).get("agents", {}).get(sys.argv[2], {})</span>
+<span class="s1">    for row in agent.get("registrations", [agent]):</span>
+<span class="s1">        if row.get("project") not in (None, sys.argv[3]): print(row["project"])</span>
+<span class="s1">'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/../teams"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$name</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="nv">$conflicts</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"Codex name </span><span class="nv">$name</span><span class="s2"> is registered at another project: </span><span class="nv">$conflicts</span><span class="s2">"</span>
+<span class="nv">date_tag</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>date<span class="w"> </span>+%F<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="nv">run</span><span class="o">=</span><span class="m">1</span>
+<span class="nv">prefix</span><span class="o">=</span><span class="s2">".orchestration/validation/codex-orchestrate-</span><span class="nv">$date_tag</span><span class="s2">"</span>
+<span class="k">while</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="nv">$prefix</span>-<span class="nv">$run</span>.md<span class="w"> </span><span class="o">||</span><span class="w"> </span>-L<span class="w"> </span><span class="nv">$prefix</span>-<span class="nv">$run</span>.md<span class="w"> </span><span class="o">||</span><span class="w"> </span>-e<span class="w"> </span><span class="nv">$private</span>/<span class="nv">$date_tag</span>-<span class="nv">$run</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-L<span class="w"> </span><span class="nv">$private</span>/<span class="nv">$date_tag</span>-<span class="nv">$run</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="nv">run</span><span class="o">=</span><span class="k">$((</span><span class="nv">run</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
+<span class="nv">private</span><span class="o">=</span><span class="s2">"</span><span class="nv">$private</span><span class="s2">/</span><span class="nv">$date_tag</span><span class="s2">-</span><span class="nv">$run</span><span class="s2">"</span>
+mkdir<span class="w"> </span>-m<span class="w"> </span><span class="m">700</span><span class="w"> </span><span class="s2">"</span><span class="nv">$private</span><span class="s2">"</span>
+<span class="nv">snapshot</span><span class="o">=</span><span class="s2">"</span><span class="nv">$private</span><span class="s2">"</span>
+<span class="nb">printf</span><span class="w"> </span><span class="s1">'repo=%s\nlock=%s\ncodex_team=%s\ncodex_name=%s\nexisting_codex=%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$lock</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$team</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$name</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$existing</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$snapshot</span><span class="s2">/context.txt"</span>
+awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span>-v<span class="w"> </span><span class="nv">repo</span><span class="o">=</span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span><span class="s1">'NF==2 {printf "%s\t%s\tclaude-code\t%s\n", $1, $2, repo}'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$previous</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$snapshot</span><span class="s2">/registrations.tsv"</span>
+awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span>-v<span class="w"> </span><span class="nv">repo</span><span class="o">=</span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span><span class="s1">'NF==2 {printf "%s\t%s\tcodex\t%s\n", $1, $2, repo}'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$existing</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$snapshot</span><span class="s2">/registrations.tsv"</span>
+<span class="nb">exec</span><span class="w"> </span><span class="m">3</span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$prefix</span><span class="s2">-</span><span class="nv">$run</span><span class="s2">.md"</span>
+<span class="nv">restores</span><span class="o">=</span><span class="s2">"</span><span class="nv">$previous</span><span class="s2">"</span>
+<span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>old_team<span class="w"> </span>old_name<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$old_team</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">    </span>bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/reset.sh"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="w"> </span>claude-code<span class="w"> </span><span class="s2">"</span><span class="nv">$old_name</span><span class="s2">"</span>
+<span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$previous</span><span class="s2">"</span>
+<span class="k">while</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>join_team<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="k">$(</span>awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span>-v<span class="w"> </span><span class="nv">team</span><span class="o">=</span><span class="s2">"</span><span class="nv">$join_team</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$1==team {print $2}'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$existing</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="nv">$name</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">    </span><span class="nv">joined</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">    </span>bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/join.sh"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$join_team</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$name</span><span class="s2">"</span><span class="w"> </span>codex<span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span>
+<span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$team</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$previous</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span><span class="s1">'NF {print $1}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="o">)</span>
+bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/delivery.sh"</span><span class="w"> </span><span class="nb">set</span><span class="w"> </span>turn<span class="w"> </span>codex<span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span>
+<span class="nv">prompt</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr-agents<span class="w"> </span>--directive<span class="k">)</span><span class="s2">"</span><span class="s1">$'\n'</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="nv">prompt</span><span class="o">+=</span><span class="s1">$'\n'</span><span class="s2">"When the orchestration is complete, end your final message with the line \`ORCHESTRATION-DONE\`; otherwise end the turn and wait for the next agmsg delivery."</span>
+<span class="nv">command_args</span><span class="o">=(</span><span class="nb">exec</span><span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="nv">$repo</span><span class="s2">"</span><span class="o">)</span>
+<span class="k">for</span><span class="w"> </span><span class="o">((</span><span class="nv">turn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span>turn<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>max_turns<span class="p">;</span><span class="w"> </span>turn++<span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="nv">out</span><span class="o">=</span><span class="s2">"</span><span class="nv">$private</span><span class="s2">/</span><span class="nv">$turn</span><span class="s2">"</span><span class="w"> </span><span class="nv">started</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>date<span class="w"> </span>-u<span class="w"> </span>+%FT%TZ<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="nv">turn_rc</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="k">done</span><span class="o">=</span><span class="nb">false</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$prompt</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.prompt.txt"</span>
+<span class="w">    </span>:<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.final.md"</span>
+<span class="w">    </span>codex<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">model_args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">command_args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.final.md"</span><span class="w"> </span>--<span class="w"> </span>-<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.prompt.txt"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.console.txt"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="m">3</span>&gt;<span class="p">&amp;</span>-<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">turn_rc</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">'NF {last=$0} END {print last}'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.final.md"</span><span class="k">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>ORCHESTRATION-DONE<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="k">done</span><span class="o">=</span>true<span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'turn=%s started=%s ended=%s exit=%s prompt_bytes=%s final_bytes=%s done=%s\nprompt=%s\nfinal=%s\nconsole=%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$turn</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$started</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>date<span class="w"> </span>-u<span class="w"> </span>+%FT%TZ<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$turn_rc</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(($(</span>wc<span class="w"> </span>-c<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.prompt.txt"</span><span class="k">)))</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(($(</span>wc<span class="w"> </span>-c<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.final.md"</span><span class="k">)))</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$done</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.prompt.txt"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.final.md"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">.console.txt"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">3</span>
+<span class="w">    </span><span class="o">((</span><span class="nv">turn_rc</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="s2">"</span><span class="nv">$turn_rc</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">$done</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">((</span>turn<span class="w"> </span>&lt;<span class="w"> </span>max_turns<span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s1">'max-turns reached without ORCHESTRATION-DONE'</span>
+<span class="w">    </span><span class="nv">command_args</span><span class="o">=(</span><span class="nb">exec</span><span class="w"> </span>resume<span class="w"> </span>--last<span class="o">)</span>
+<span class="w">    </span><span class="nv">prompt</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">deadline</span><span class="o">=</span><span class="k">$((</span><span class="nv">SECONDS</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nv">timeout_seconds</span><span class="k">))</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="nv">$prompt</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">remaining</span><span class="o">=</span><span class="k">$((</span><span class="nv">deadline</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">SECONDS</span><span class="k">))</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">((</span>remaining<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'codex-orchestrate: inbox timeout\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">124</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">prompt</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>bash<span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/inbox.sh"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$team</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$name</span><span class="s2">"</span><span class="w"> </span>--quiet<span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="nv">$prompt</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">break</span>
+<span class="w">        </span>sleep<span class="w"> </span><span class="s2">"</span><span class="k">$((</span><span class="nv">remaining</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="m">15</span><span class="w"> </span>?<span class="w"> </span><span class="nv">remaining</span><span class="w"> </span>:<span class="w"> </span><span class="m">15</span><span class="k">))</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="k">done</span>
 </code></pre></div>
 
 

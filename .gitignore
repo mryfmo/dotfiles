@@ -7,6 +7,7 @@ site/
 
 .DS_Store
 .agents/worklog/
+# Run artifacts (raw prompts and agent output) left by the agent-fanout helper retired in #260.
 .agents/runs/
 __pycache__/
 *.pyc

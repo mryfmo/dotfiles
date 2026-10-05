@@ -43,6 +43,7 @@ class AgmsgOrchestrationRuleTest(unittest.TestCase):
             "gh pr merge --squash",
             "AGMSG_RESOLVE_PROJECT=0 join.sh <team> <name> <type> <worktree>",
             "pairwise-disjoint",
+            "disjoint code tasks run concurrently while overlapping code files run serially",
             "gh pr update-branch",
             "never edits the source of its own execution boundary",
             "make check-regime-boundary",
@@ -151,7 +152,7 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
             "-worker-crit.json",
             "the orchestrator moves them into the main checkout",
             "uv run .claude/hooks/contextdb_cli.py memory candidates --limit 20",
-            "memory promote <id> --scope project",
+            "uv run .claude/hooks/contextdb_cli.py memory promote <id> --scope project",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
@@ -183,6 +184,11 @@ class AgmsgOrchestrationSingleSourceTest(unittest.TestCase):
         for path in self.POINTERS:
             with self.subTest(path=path.name):
                 self.assertNotIn("exec --sandbox read-only", path.read_text())
+
+    def test_codex_agents_points_at_the_worklog_section(self) -> None:
+        codex = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+        self.assertIn("「Codex seat worklogs」", codex)
+        self.assertIn("\n## Codex seat worklogs\n", SKILL.read_text())
 
     def test_contextdb_cli_is_invoked_with_uv_run(self) -> None:
         paths = [

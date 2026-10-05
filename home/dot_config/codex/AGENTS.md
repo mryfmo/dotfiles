@@ -11,7 +11,7 @@
 
 ## プロジェクトの構成について
 
-- リポジトリ作業では `agmsg-orchestration` skill の「Codex worker worklogs」を読み、plan と todo を常に更新してください。
+- リポジトリ作業では `agmsg-orchestration` skill の「Codex seat worklogs」を読み、plan と todo を常に更新してください。
 - plan/todo/learn はコミットせず、`active` な todo は `owner` ごとに 1 件までにしてください。
 
 ## コーディング全般について

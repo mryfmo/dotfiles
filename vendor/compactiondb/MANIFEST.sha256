@@ -2,7 +2,7 @@
 298d9058c8a79aec100cc7dae777975fd398fa60113725a19b33ad386b5127d8  ./.claude/contextdb/contextdb/__init__.py
 89d4e2f07a579826366b5c48810f86a7f1c9e9e8a5995cae9978de0d3a21d511  ./.claude/contextdb/contextdb/cli.py
 72f3ebb79600eb87f7e42ee48f59aeb506e141927732fbb56354fca6325d7184  ./.claude/contextdb/contextdb/config.py
-74cacd72f038a9821bc3493325a0b97cf2e2f11c118d8d60f79992a10f48edc3  ./.claude/contextdb/contextdb/hook.py
+a5323e3a6fad37a2313b2b7b9ac28aa00c2e45427462d408e854fae863bb5c9e  ./.claude/contextdb/contextdb/hook.py
 e845da0aa6f920d6ad6327bb88624785ffc7d3b69812a794dc96d784ccff0d74  ./.claude/contextdb/contextdb/memory.py
 f492e3596efb9e7ebe2e544928c9ddcd978953d59853042fac052d9155a79c1a  ./.claude/contextdb/contextdb/normalize.py
 c16f9769929a6e8a5c45509e5f86999c69689726ddb74f69c6ed63b72777919f  ./.claude/contextdb/contextdb/paths.py

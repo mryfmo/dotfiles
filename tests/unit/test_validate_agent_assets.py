@@ -7,6 +7,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,7 @@ import time
 import tomllib
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.dont_write_bytecode = True
 
@@ -89,6 +91,52 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
+
+    def test_home_paths_normalise_to_tilde_and_repository_paths_stay(self) -> None:
+        with mock.patch.dict(os.environ, {"HOME": "/srv/operator"}):
+            for text, expected in (
+                ("cd /srv/operator/Workspace/dotfiles", "cd ~/Workspace/dotfiles"),
+                ("`/home/alice/.agents/skills/x`", "`~/.agents/skills/x`"),
+                ('"/Users/bob/Library/x"', '"~/Library/x"'),
+                ("file:/home/carol", "file:~"),
+                ("worker-c/home/dot_codex/x and (repo)/home/dot_codex/y", None),
+                ("/home/.chezmoitemplates/x", None),
+                ("/home/... and /home/<user> and ~/.codex", None),
+                ("/srv/operatorX/x", None),
+            ):
+                with self.subTest(text=text):
+                    masked, count = self.module.mask_home_paths(text)
+                    self.assertEqual(masked, expected or text)
+                    self.assertEqual(count, 0 if expected is None else 1)
+
+    def test_secret_scan_rejects_home_paths_in_orchestration_evidence_only(self) -> None:
+        self.write_text_file("docs/notes.md", "see /home/alice/x\n")
+        self.module.validate_no_obvious_secrets()
+        evidence = self.write_text_file(".orchestration/validation/T1.md", "$ ls /home/alice/x\n")
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn(".orchestration/validation/T1.md names a home directory", stderr.getvalue())
+        evidence.write_text(self.module.mask_secret_matches(evidence.read_text())[0])
+        self.assertEqual(evidence.read_text(), "$ ls ~/x\n")
+        self.module.validate_no_obvious_secrets()
+
+    def test_recursive_scans_skip_gitignored_local_state(self) -> None:
+        git = ["git", "-C", str(self.temp_dir), "-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+        subprocess.run([*git, "init", "-q"], check=True)
+        self.write_text_file(".gitignore", ".claude/contextdb/state/*\n")
+        ledger_text = "high-impact" + "-journal-publishing " + "ghp_" + "x" * 25 + " /home/alice/x\n"
+        self.write_text_file(".claude/contextdb/state/context.db", ledger_text)
+        for scan_name in ("validate_no_removed_claude_skill", "validate_no_obvious_secrets"):
+            with self.subTest(scan=scan_name):
+                getattr(self.module, scan_name)()
+        self.write_text_file("tracked.txt", ledger_text)
+        for scan_name in ("validate_no_removed_claude_skill", "validate_no_obvious_secrets"):
+            with self.subTest(scan=scan_name, ignored=False):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    getattr(self.module, scan_name)()
+                self.assertIn("tracked.txt", stderr.getvalue())
 
     def test_recursive_scans_skip_nested_git_trees_only(self) -> None:
         (self.temp_dir / ".git").mkdir()
@@ -1393,6 +1441,20 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(last.read_text(), "No findings.\nVerdict: correct\n")
         module = load_validator()
         self.assertIsNone(module.SECRET_PATTERN.search(text))
+
+    def test_normalises_home_paths_in_text_and_json_evidence(self) -> None:
+        home = str(Path.home())
+        evidence = self.temp_dir / "T1-audit-abcdef1.md"
+        evidence.write_text(f"$ cat {home}/.agents/skills/a/SKILL.md\n/home/runner/work/x\nVerdict: correct\n")
+        feedback = self.temp_dir / "T1-pr-feedback.json"
+        feedback.write_text(json.dumps({"items": [{"body": f"see {home}/x", "path": "home/dot_config/a"}]}) + "\n")
+
+        result = self.run_mask(evidence, feedback)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(evidence.read_text(), "$ cat ~/.agents/skills/a/SKILL.md\n~/work/x\nVerdict: correct\n")
+        self.assertEqual(json.loads(feedback.read_text())["items"], [{"body": "see ~/x", "path": "home/dot_config/a"}])
+        self.assertIn(f"masked 2 match(es) in {evidence}", result.stdout)
 
     def test_leaves_allowed_placeholders_the_scan_accepts(self) -> None:
         evidence = self.temp_dir / "audit.md"

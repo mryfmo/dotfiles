@@ -1456,6 +1456,15 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(json.loads(feedback.read_text())["items"], [{"body": "see ~/x", "path": "home/dot_config/a"}])
         self.assertIn(f"masked 2 match(es) in {evidence}", result.stdout)
 
+    def test_keeps_carriage_returns_and_every_unmasked_byte(self) -> None:
+        evidence = self.temp_dir / "T1.md"
+        evidence.write_bytes(b"progress 10%\rprogress 100%\r\nline\r\n/home/alice/x\n")
+
+        result = self.run_mask(evidence)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(evidence.read_bytes(), b"progress 10%\rprogress 100%\r\nline\r\n~/x\n")
+
     def test_leaves_allowed_placeholders_the_scan_accepts(self) -> None:
         evidence = self.temp_dir / "audit.md"
         placeholder = "GITHUB_PERSONAL_ACCESS_" + FIELD.upper()

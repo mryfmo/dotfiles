@@ -1413,7 +1413,9 @@ def mask_secrets(paths: list[str]) -> int:
     status = 0
     for name in paths:
         path = Path(name)
-        text = path.read_text()
+        # Bytes in and out: universal newlines would turn a carriage return in
+        # pasted terminal output into a newline and change evidence beyond the masks.
+        text = path.read_bytes().decode()
         member_count = 0
 
         def mask_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -1438,7 +1440,7 @@ def mask_secrets(paths: list[str]) -> int:
             count += member_count
             masked = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
         if count:
-            path.write_text(masked)
+            path.write_bytes(masked.encode())
         print(f"masked {count} match(es) in {path}")
     return status
 

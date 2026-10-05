@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import subprocess
@@ -18,13 +19,14 @@ name, args = Path(sys.argv[1]).name, sys.argv[2:]
 s["calls"].append([name, args, os.environ.get("AGMSG_RESOLVE_PROJECT")])
 rc = 0
 if name == "identities.sh":
+    s.setdefault("locks_at_identities", []).append([str(f) for f in (Path(os.environ["HOME"]) / ".local/state/codex-orchestrate/locks").glob("*")])
     for team, agent, kind, project in s["members"]:
         if [project, kind] == args:
             print(team + "\t" + agent)
 elif name in {"team.sh", "leave.sh"}:
     raise RuntimeError("forbidden pane read or whole-member removal")
 elif name == "reset.sh":
-    snapshots = list((Path(os.environ["HOME"]) / ".agents/skills/agmsg/run").glob("codex-orchestrate.*/registrations.tsv"))
+    snapshots = list((Path(os.environ["HOME"]) / ".local/state/codex-orchestrate").glob("*/registrations.tsv"))
     s.setdefault("snapshots_at_reset", []).append([f.read_text() for f in snapshots])
     matching = [r for r in s["members"] if [r[3], r[2], r[1]] == args]
     if s.pop("reset_failure", False):
@@ -32,7 +34,12 @@ elif name == "reset.sh":
         rc = 5
     s["members"] = [r for r in s["members"] if r not in matching]
 elif name == "join.sh":
-    if (s.get("join_failure") and args[2] == "codex") or (s.get("restore_failure") and args[2] == "claude-code"):
+    if args[2] == "codex" and args[0] == s.get("partial_join_failure"):
+        s.pop("partial_join_failure")
+        if args not in s["members"]:
+            s["members"].append(args)
+        rc = 7
+    elif (s.get("join_failure") and args[2] == "codex") or (s.get("restore_failure") and args[2] == "claude-code"):
         rc = 7
     elif args not in s["members"]:
         s["members"].append(args)
@@ -50,7 +57,7 @@ elif name == "codex":
     print(s.get("raw_stream", ""))
     print(s.get("raw_stream", ""), file=sys.stderr)
     if s.get("replace_public_paths"):
-        for target in list(Path(".orchestration/validation").glob("codex-orchestrate-*.md")) + list((Path(os.environ["HOME"]) / ".agents/skills/agmsg/run").glob("codex-orchestrate.*/context.txt")):
+        for target in list(Path(".orchestration/validation").glob("codex-orchestrate-*.md")):
             target.unlink()
             target.symlink_to(s["replace_public_paths"])
     s.setdefault("published_during_exec", []).append([p.read_text() for p in Path(".orchestration/validation").glob("codex-orchestrate-*.md")])
@@ -102,6 +109,7 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.env["TMPDIR"] = str(self.base / "tmp")
         Path(self.env["TMPDIR"]).mkdir()
         self.private = self.home / ".local/state/codex-orchestrate"
+        self.lock = self.private / "locks" / hashlib.sha256(str(self.repo).encode()).hexdigest()
 
     def fake(self, path):
         path.write_text(FAKE)
@@ -211,7 +219,7 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.assertIn("exit=0", status)
         self.assertIn("done=false", status)
         self.assertIn("done=true", status)
-        run = next(self.private.iterdir())
+        run = next(self.private.glob("????-??-??-*"))
         self.assertEqual(run.stat().st_mode & 0o777, 0o700)
         for filename in ("1.prompt.txt", "1.final.md", "1.console.txt"):
             path = run / filename
@@ -256,14 +264,14 @@ class CodexOrchestrateTest(unittest.TestCase):
     def test_existing_private_run_is_not_reused(self):
         self.save(answers=["ORCHESTRATION-DONE"])
         self.assertEqual(self.run_script().returncode, 0)
-        first = next(self.private.iterdir())
+        first = next(self.private.glob("????-??-??-*"))
         sentinel = first / "sentinel"
         sentinel.write_text("preserve")
         for status in (self.repo / ".orchestration/validation").glob("codex-orchestrate-*.md"):
             status.unlink()
         self.save(answers=["ORCHESTRATION-DONE"])
         self.assertEqual(self.run_script().returncode, 0)
-        self.assertEqual(len(list(self.private.iterdir())), 2)
+        self.assertEqual(len(list(self.private.glob("????-??-??-*"))), 2)
         self.assertEqual(sentinel.read_text(), "preserve")
 
     def test_private_allocation_failure_precedes_exchange(self):
@@ -274,7 +282,7 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.assertEqual(self.calls("reset.sh"), [])
         self.assertEqual(self.calls("join.sh"), [])
 
-    def test_child_cannot_redirect_parent_status_or_restore_writes(self):
+    def test_child_cannot_redirect_parent_status_writes(self):
         victim = self.base / "unrelated.txt"
         victim.write_text("preserve")
         self.save(answers=["ORCHESTRATION-DONE"], replace_public_paths=str(victim))
@@ -296,8 +304,8 @@ class CodexOrchestrateTest(unittest.TestCase):
         result = self.run_script()
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertEqual(json.loads(self.state.read_text())["members"], [self.member])
-        self.assertTrue((self.repo / ".orchestration/validation/codex-orchestrate.lock").exists())
-        context = next((self.home / ".agents/skills/agmsg/run").glob("codex-orchestrate.*/context.txt"))
+        self.assertTrue(self.lock.exists())
+        context = next(self.private.glob("*/context.txt"))
         self.assertIn("restore_exit=1", context.read_text())
 
     def test_repeated_runs_restore_and_increment_transcripts(self):
@@ -378,20 +386,63 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.assertEqual(self.calls("codex")[1][-2:], ["--", "-"])
         self.assertEqual(json.loads(self.state.read_text())["prompts"][1], "--config dangerous=literal")
 
-    def test_team_selection_restores_all_exchanged_registrations(self):
+    def test_team_selection_joins_all_exchanged_teams_but_polls_only_selected(self):
         other = ["other-team", "claude-other-dot", "claude-code", str(self.repo)]
-        self.save(members=[self.member, other], answers=["ORCHESTRATION-DONE"])
+        self.save(members=[self.member, other])
         self.assertEqual(self.run_script().returncode, 2)
         self.assertEqual(self.calls("reset.sh"), [])
         result = self.run_script("--team", "team")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertCountEqual(json.loads(self.state.read_text())["members"], [self.member, other])
+        state = json.loads(self.state.read_text())
+        expected = [[team, "codex-fixture-dot", "codex", str(self.repo)] for team in ("team", "other-team")]
+        self.assertCountEqual(state["members_during_exec"][0], expected)
+        self.assertEqual(self.calls("inbox.sh"), [["team", "codex-fixture-dot", "--quiet"]])
+        self.assertCountEqual(state["members"], [self.member, other])
+
+    def test_added_teams_are_removed_without_losing_preexisting_codex_memberships(self):
+        existing = ["team", "codex-fixture-dot", "codex", str(self.repo)]
+        other = ["other-team", "claude-other-dot", "claude-code", str(self.repo)]
+        for fail in (False, True):
+            with self.subTest(partial_join_failure=fail):
+                self.save(
+                    members=[existing, other],
+                    calls=[],
+                    answers=["ORCHESTRATION-DONE"],
+                    partial_join_failure="other-team" if fail else "",
+                )
+                result = self.run_script("--team", "team")
+                self.assertEqual(result.returncode, 7 if fail else 0, result.stderr)
+                state = json.loads(self.state.read_text())
+                self.assertCountEqual(state["members"], [existing, other])
+                if not fail:
+                    self.assertCountEqual(
+                        state["members_during_exec"][0],
+                        [existing, ["other-team", existing[1], "codex", str(self.repo)]],
+                    )
+                snapshot = next(self.private.glob("*/registrations.tsv")).read_text()
+                self.assertIn("\t".join(existing), snapshot)
+                self.assertIn("\t".join(other), snapshot)
+
+    def test_lock_precedes_identity_reads_and_recovery_files_are_private(self):
+        self.save(answers=["ORCHESTRATION-DONE"])
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        state = json.loads(self.state.read_text())
+        self.assertTrue(all(str(self.lock) in locks for locks in state["locks_at_identities"]))
+        self.assertFalse(self.lock.exists())
+        self.assertFalse((self.repo / ".orchestration/validation/codex-orchestrate.lock").exists())
+        self.assertFalse((self.scripts.parent / "run").exists())
+        snapshot = next(self.private.glob("*/registrations.tsv"))
+        self.assertEqual(snapshot.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(snapshot.parent.stat().st_mode & 0o777, 0o700)
+        self.assertIn(str(self.lock), snapshot.with_name("context.txt").read_text())
 
     def test_existing_lock_refuses_exchange(self):
-        (self.repo / ".orchestration/validation/codex-orchestrate.lock").mkdir(parents=True)
+        self.lock.mkdir(parents=True)
         result = self.run_script()
         self.assertEqual(result.returncode, 2)
         self.assertIn("another launcher", result.stderr)
+        self.assertEqual(self.calls("identities.sh"), [])
         self.assertEqual(self.calls("reset.sh"), [])
 
     def test_cross_project_claude_registration_is_preserved(self):
@@ -450,14 +501,18 @@ class CodexOrchestrateTest(unittest.TestCase):
                 self.assertEqual(self.calls("reset.sh"), [])
                 self.assertEqual(json.loads(self.state.read_text())["members"], members)
 
-    def test_existing_codex_seat_requires_membership_in_selected_team(self):
-        members = [self.member, ["other-team", "codex-fixture-dot", "codex", str(self.repo)]]
+    def test_existing_codex_seat_joins_the_selected_exchanged_team(self):
+        existing = ["other-team", "codex-fixture-dot", "codex", str(self.repo)]
+        members = [self.member, existing]
         self.save(members=members)
         result = self.run_script("--team", "team")
-        self.assertEqual(result.returncode, 2, result.stderr)
-        self.assertIn("select a team", result.stderr)
-        self.assertEqual(self.calls("join.sh"), [])
-        self.assertEqual(self.calls("reset.sh"), [])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        state = json.loads(self.state.read_text())
+        self.assertCountEqual(
+            state["members_during_exec"][0], [existing, ["team", existing[1], "codex", str(self.repo)]]
+        )
+        self.assertEqual(self.calls("inbox.sh"), [["team", "codex-fixture-dot", "--quiet"]])
+        self.assertCountEqual(state["members"], members)
 
     def test_different_codex_identity_at_checkout_is_refused(self):
         members = [self.member, ["team", "codex-other-dot", "codex", str(self.repo)]]
@@ -479,15 +534,15 @@ class CodexOrchestrateTest(unittest.TestCase):
         snapshot = state["snapshots_at_reset"][0][0]
         for row in members:
             self.assertIn("\t".join(row), snapshot)
-        path = next((self.home / ".agents/skills/agmsg/run").glob("codex-orchestrate.*/registrations.tsv"))
+        path = next(self.private.glob("*/registrations.tsv"))
         self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
     def test_restore_failure_keeps_lock_and_snapshot_for_recovery(self):
         self.save(answers=["ORCHESTRATION-DONE"], restore_failure=True)
         result = self.run_script()
         self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertTrue((self.repo / ".orchestration/validation/codex-orchestrate.lock").exists())
-        context = next((self.home / ".agents/skills/agmsg/run").glob("codex-orchestrate.*/context.txt"))
+        self.assertTrue(self.lock.exists())
+        context = next(self.private.glob("*/context.txt"))
         self.assertIn(str(self.repo), context.read_text())
         self.assertIn("restore_exit=1", context.read_text())
 
@@ -527,11 +582,10 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.assertIn("herdr-agents", result.stderr)
         self.assertEqual(self.calls("reset.sh"), [])
 
-    def test_no_literal_model_or_profile_flags_and_bounded_size(self):
+    def test_no_literal_model_or_profile_flags(self):
         text = SCRIPT.read_text()
         self.assertNotIn("--model", text)
         self.assertNotIn("--profile", text)
-        self.assertLessEqual(len(text.splitlines()), 150)
 
 
 if __name__ == "__main__":

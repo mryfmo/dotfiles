@@ -539,8 +539,12 @@ exchanges the main checkout's Claude orchestrator registrations for
 It configures agmsg `turn` delivery for Codex before the first invocation. On
 normal exit, failure, or INT/TERM, it restores the exchanged Claude registrations
 and their `both` delivery mode. The Codex project delivery setting remains `turn`.
-An existing matching Codex seat is reused across all its same-checkout teams;
-`--team` selects one of those memberships for inbox polling. A different Codex
+The replacement Codex identity joins every team whose Claude registration was
+exchanged. An existing matching Codex seat keeps its original memberships;
+any memberships added for the exchange are removed on exit. `--team` selects
+only the inbox to poll (required when several teams are available). Memberships
+in other teams let workers address the seat, but this loop does not read those
+inboxes; route results needed by this run to the selected team. A different Codex
 identity at this checkout, or the target name registered at another project in
 any local team, is refused before the exchange. The launcher uses Python 3 to
 read registration metadata without inspecting panes. The exchange uses
@@ -577,19 +581,29 @@ does not resolve custom Codex permission overrides.
 The repository file `.orchestration/validation/codex-orchestrate-<date>-<n>.md`
 contains only turn numbers, timestamps, exit codes, prompt/final byte counts,
 completion-marker status and private file paths. No prompt, final message or
-`.last.md` file is published there. Each run increments `<n>`; a directory lock
-prevents concurrent launcher runs. Before any reset, the launcher saves every exchanged team/name row in a private
-`~/.agents/skills/agmsg/run/codex-orchestrate.<random>/registrations.tsv`
-(`team`, `name`, `type`, `project` columns). Its `context.txt` records the repository,
-Codex seat, pre-existing Codex registration, and restoration outcome. These files remain after exit for recovery. A failed
-restoration also retains the lock. After an uncatchable termination or restoration
-failure, confirm the launcher has stopped, inspect the snapshot, reset only its new
-Codex registration with `AGMSG_RESOLVE_PROJECT=0 bash ~/.agents/skills/agmsg/scripts/reset.sh <repo> codex <name>`
-(skip this when `existing_codex` is nonempty), and re-join each TSV row with
+`.last.md` file is published there. Each run increments `<n>`.
+
+Before reading identities, the launcher acquires a private directory lock at
+`…/codex-orchestrate/locks/<sha256-of-canonical-repository-path>/`.
+Before any reset, it saves exchanged Claude registrations and original Codex
+memberships in `…/codex-orchestrate/<date>-<n>/registrations.tsv`
+(`team`, `name`, `type`, `project` columns). The adjacent `context.txt` records
+the repository, lock path, selected team, Codex identity, original memberships,
+and restoration outcome. Both files remain for recovery, outside the child
+writable roots under the same assumption as the raw transcripts. No launcher
+lock or recovery snapshot is stored in the repository or agmsg/run.
+
+A failed restoration retains the private lock. After an uncatchable termination
+or restoration failure, confirm the launcher has stopped and inspect that run's
+snapshot. Reset its Codex registration with
+`AGMSG_RESOLVE_PROJECT=0 bash ~/.agents/skills/agmsg/scripts/reset.sh <repo> codex <name>`,
+then re-join every TSV row, including original Codex memberships, with
 `AGMSG_RESOLVE_PROJECT=0 bash ~/.agents/skills/agmsg/scripts/join.sh <team> <name> <type> <project>`.
 If Claude rows were restored, also run
 `bash ~/.agents/skills/agmsg/scripts/delivery.sh set both claude-code <repo>`.
-Remove the stale repository lock only after restoring registrations and delivery.
+Remove the lock named in `context.txt` only after restoring registrations and
+delivery. A preflight failure before any exchange creates no recovery snapshot;
+a lock left at that stage can be removed after confirming its launcher stopped.
 
 `CODEX_ORCHESTRATE_DELIVERY=poll` is the default. T87 still needs to verify whether
 the trusted project Stop hook consumes messages under `codex exec`: the worker

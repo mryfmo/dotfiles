@@ -53,6 +53,43 @@ key="MODEL_PROFILE_$(printf '%s' "$profile" | tr '[:lower:]' '[:upper:]')_CODEX_
 [[ -n $profile && -n ${!key:-} ]] || die 'missing interactive Codex profile arguments'
 read -r -a model_args <<< "${!key}"
 scripts="$HOME/.agents/skills/agmsg/scripts"
+private="$(python3 -c 'import os, pathlib, sys
+state = pathlib.Path(os.environ.get("XDG_STATE_HOME") or pathlib.Path.home() / ".local/state")
+path = (state / "codex-orchestrate").resolve()
+roots = [pathlib.Path(p).resolve() for p in sys.argv[1:]]
+if not state.is_absolute() or any(path == p or p in path.parents for p in roots):
+    sys.exit("codex-orchestrate: unsafe private state directory")
+path.mkdir(mode=0o700, parents=True, exist_ok=True)
+print(path)
+' "$repo" "$scripts/.." "${TMPDIR:-/tmp}")" || exit 2
+mkdir -p .orchestration/validation "$private/locks"
+lock="$private/locks/$(python3 -c 'import hashlib,sys; print(hashlib.sha256(sys.argv[1].encode()).hexdigest())' "$repo")"
+mkdir "$lock" 2> /dev/null || die "another launcher is active; inspect $lock"
+restores="" joined=false snapshot=""
+# @description Restore only registrations exchanged by this invocation, on any exit.
+restore() {
+    local result=$? restore_rc=0 restore_team restore_name
+    trap - EXIT
+    if $joined; then
+        bash "$scripts/reset.sh" "$repo" codex "$name" || restore_rc=1
+        while IFS=$'\t' read -r restore_team restore_name; do
+            [[ -n $restore_team ]] || continue
+            bash "$scripts/join.sh" "$restore_team" "$restore_name" codex "$repo" || restore_rc=1
+        done <<< "$existing"
+    fi
+    while IFS=$'\t' read -r restore_team restore_name; do
+        [[ -n $restore_team ]] || continue
+        bash "$scripts/join.sh" "$restore_team" "$restore_name" claude-code "$repo" || restore_rc=1
+    done <<< "$restores"
+    if [[ -n $restores ]]; then bash "$scripts/delivery.sh" set both claude-code "$repo" || restore_rc=1; fi
+    [[ -z $snapshot ]] || printf 'restore_exit=%s\n' "$restore_rc" >> "$snapshot/context.txt"
+    if ((restore_rc)); then exit 1; fi
+    rmdir "$lock"
+    exit "$result"
+}
+trap restore EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 export AGMSG_RESOLVE_PROJECT=0
 previous="$(bash "$scripts/identities.sh" "$repo" claude-code)"
 workers="$(bash "$scripts/identities.sh" "$repo/${HERDR_AGENTS_WORKER_WORKTREE:?}" claude-code)"
@@ -65,7 +102,6 @@ suffix="$(awk -F '\t' -v team="$team" '$1==team {n=split($2,a,"-");print a[n]}' 
 [[ -n $suffix && $suffix != *$'\n'* ]] || die 'ambiguous or missing project suffix; check herdr-agents registration'
 name="codex-$profile-$suffix"
 [[ -z $existing || $(cut -f 2 <<< "$existing" | sort -u) == "$name" ]] || die 'another Codex seat exists at this checkout'
-[[ -z $existing || $(awk -F '\t' -v team="$team" '$1==team {print $2}' <<< "$existing") == "$name" ]] || die 'select a team containing the existing Codex seat'
 conflicts="$(python3 -c 'import json, pathlib, sys
 for config in pathlib.Path(sys.argv[1]).glob("*/config.json"):
     agent = json.loads(config.read_text()).get("agents", {}).get(sys.argv[2], {})
@@ -73,54 +109,26 @@ for config in pathlib.Path(sys.argv[1]).glob("*/config.json"):
         if row.get("project") not in (None, sys.argv[3]): print(row["project"])
 ' "$scripts/../teams" "$name" "$repo")"
 [[ -z $conflicts ]] || die "Codex name $name is registered at another project: $conflicts"
-private="$(python3 -c 'import os, pathlib, sys
-state = pathlib.Path(os.environ.get("XDG_STATE_HOME") or pathlib.Path.home() / ".local/state")
-path = (state / "codex-orchestrate").resolve()
-roots = [pathlib.Path(p).resolve() for p in sys.argv[1:]]
-if not state.is_absolute() or any(path == p or p in path.parents for p in roots):
-    sys.exit("codex-orchestrate: unsafe private state directory")
-path.mkdir(mode=0o700, parents=True, exist_ok=True)
-print(path)
-' "$repo" "$scripts/.." "${TMPDIR:-/tmp}")" || exit 2
-mkdir -p .orchestration/validation "$scripts/../run"
-lock=.orchestration/validation/codex-orchestrate.lock
-mkdir "$lock" 2> /dev/null || die 'another launcher is active; inspect codex-orchestrate.lock'
-restores="" joined=false snapshot=""
-# @description Restore only registrations exchanged by this invocation, on any exit.
-restore() {
-    local result=$? restore_rc=0 restore_team restore_name
-    trap - EXIT
-    if $joined; then bash "$scripts/reset.sh" "$repo" codex "$name" || restore_rc=1; fi
-    while IFS=$'\t' read -r restore_team restore_name; do
-        [[ -n $restore_team ]] || continue
-        bash "$scripts/join.sh" "$restore_team" "$restore_name" claude-code "$repo" || restore_rc=1
-    done <<< "$restores"
-    if [[ -n $restores ]]; then bash "$scripts/delivery.sh" set both claude-code "$repo" || restore_rc=1; fi
-    [[ -z $snapshot ]] || printf 'restore_exit=%s\n' "$restore_rc" >&4
-    if ((restore_rc)); then exit 1; fi
-    rmdir "$lock"
-    exit "$result"
-}
-trap restore EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
-snapshot="$(mktemp -d "$scripts/../run/codex-orchestrate.XXXXXX")"
-exec 4> "$snapshot/context.txt"
-printf 'repo=%s\ncodex_team=%s\ncodex_name=%s\nexisting_codex=%s\n' "$repo" "$team" "$name" "$existing" >&4
-awk -F '\t' -v repo="$repo" 'NF==2 {printf "%s\t%s\tclaude-code\t%s\n", $1, $2, repo}' <<< "$previous" > "$snapshot/registrations.tsv"
 date_tag="$(date +%F)" run=1
 prefix=".orchestration/validation/codex-orchestrate-$date_tag"
 while [[ -e $prefix-$run.md || -L $prefix-$run.md || -e $private/$date_tag-$run || -L $private/$date_tag-$run ]]; do run=$((run + 1)); done
 private="$private/$date_tag-$run"
 mkdir -m 700 "$private"
+snapshot="$private"
+printf 'repo=%s\nlock=%s\ncodex_team=%s\ncodex_name=%s\nexisting_codex=%s\n' "$repo" "$lock" "$team" "$name" "$existing" > "$snapshot/context.txt"
+awk -F '\t' -v repo="$repo" 'NF==2 {printf "%s\t%s\tclaude-code\t%s\n", $1, $2, repo}' <<< "$previous" > "$snapshot/registrations.tsv"
+awk -F '\t' -v repo="$repo" 'NF==2 {printf "%s\t%s\tcodex\t%s\n", $1, $2, repo}' <<< "$existing" >> "$snapshot/registrations.tsv"
 exec 3> "$prefix-$run.md"
 restores="$previous"
 while IFS=$'\t' read -r old_team old_name; do
     [[ -n $old_team ]] || continue
     bash "$scripts/reset.sh" "$repo" claude-code "$old_name"
 done <<< "$previous"
-if [[ -z $existing ]]; then joined=true; fi
-if $joined; then bash "$scripts/join.sh" "$team" "$name" codex "$repo"; fi
+while read -r join_team; do
+    [[ $(awk -F '\t' -v team="$join_team" '$1==team {print $2}' <<< "$existing") != "$name" ]] || continue
+    joined=true
+    bash "$scripts/join.sh" "$join_team" "$name" codex "$repo"
+done < <(printf '%s\n' "$team" "$previous" | awk -F '\t' 'NF {print $1}' | sort -u)
 bash "$scripts/delivery.sh" set turn codex "$repo"
 prompt="$(herdr-agents --directive)"$'\n'"$1"
 prompt+=$'\n'"When the orchestration is complete, end your final message with the line \`ORCHESTRATION-DONE\`; otherwise end the turn and wait for the next agmsg delivery."
@@ -129,7 +137,7 @@ for ((turn = 1; turn <= max_turns; turn++)); do
     out="$private/$turn" started="$(date -u +%FT%TZ)" turn_rc=0 done=false
     printf '%s' "$prompt" > "$out.prompt.txt"
     : > "$out.final.md"
-    codex "${model_args[@]}" "${command_args[@]}" -o "$out.final.md" -- - < "$out.prompt.txt" > "$out.console.txt" 2>&1 3>&- 4>&- || turn_rc=$?
+    codex "${model_args[@]}" "${command_args[@]}" -o "$out.final.md" -- - < "$out.prompt.txt" > "$out.console.txt" 2>&1 3>&- || turn_rc=$?
     if [[ $(awk 'NF {last=$0} END {print last}' "$out.final.md") == ORCHESTRATION-DONE ]]; then done=true; fi
     printf 'turn=%s started=%s ended=%s exit=%s prompt_bytes=%s final_bytes=%s done=%s\nprompt=%s\nfinal=%s\nconsole=%s\n' "$turn" "$started" "$(date -u +%FT%TZ)" "$turn_rc" "$(($(wc -c < "$out.prompt.txt")))" "$(($(wc -c < "$out.final.md")))" "$done" "$out.prompt.txt" "$out.final.md" "$out.console.txt" >&3
     ((turn_rc == 0)) || exit "$turn_rc"

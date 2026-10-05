@@ -121,10 +121,10 @@ def build_recovery_context(
         "If the compact summary conflicts with the sections below, the ledger-derived sections are authoritative.\n\n"
         "## Verification commands\n"
         "Use the explicit session ID to prevent cross-session contamination:\n"
-        f"- python3 .claude/hooks/contextdb_cli.py recent 30 --session {shell_session}\n"
-        f"- python3 .claude/hooks/contextdb_cli.py prompts 10 --session {shell_session}\n"
-        f"- python3 .claude/hooks/contextdb_cli.py files --session {shell_session}\n"
-        f"- python3 .claude/hooks/contextdb_cli.py search <keyword> --session {shell_session}\n"
+        f"- uv run --no-project .claude/hooks/contextdb_cli.py recent 30 --session {shell_session}\n"
+        f"- uv run --no-project .claude/hooks/contextdb_cli.py prompts 10 --session {shell_session}\n"
+        f"- uv run --no-project .claude/hooks/contextdb_cli.py files --session {shell_session}\n"
+        f"- uv run --no-project .claude/hooks/contextdb_cli.py search <keyword> --session {shell_session}\n"
         "Before resuming edits, compare the recovered evidence with the current filesystem and `git diff`."
     )
 

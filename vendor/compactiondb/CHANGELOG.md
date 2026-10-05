@@ -2,6 +2,8 @@
 
 ## 2.0.0+dotfiles.9
 
+- Generated instruction snippets and recovery verification commands use `uv run --no-project` so the stdlib CLI does not synchronize the target project environment.
+
 - Reclaim orphaned project session rows before evicting newer events and after every size-cap batch.
 - Preserve installed hook positions and leave settings bytes, timestamps and backups untouched on a no-op reinstall.
 - Run vendor test discovery from the dotfiles repository root as well as the vendor directory.

@@ -71,6 +71,25 @@ class GhAuthStoresTest(unittest.TestCase):
         self.assertIn(f"work store {self.home}/.config/gh-work has no token; run", result.stderr)
         self.assertFalse(any("auth login" in call for call in self.logged_calls()))
 
+    def test_setup_skips_the_logins_in_ci_without_calling_gh(self) -> None:
+        # The public-bootstrap CI jobs run setup.sh with CI=true and no terminal: nothing may prompt.
+        script = self.home / ".local/share/chezmoi/scripts/gh-auth-stores.sh"
+        script.parent.mkdir(parents=True)
+        shutil.copy(SCRIPT, script)
+        result = subprocess.run(
+            ["bash", "-c", f'source "{ROOT}/setup.sh"; authenticate_github'],
+            stdin=subprocess.DEVNULL,
+            env={**self.env, "CI": "true"},
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Skipping the GitHub logins; run `make gh-auth`", result.stdout)
+        self.assertFalse(self.calls.exists())
+
     def test_on_a_terminal_it_logs_in_only_the_empty_stores(self) -> None:
         primary, secondary = pty.openpty()
         try:

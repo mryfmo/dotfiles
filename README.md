@@ -1262,8 +1262,12 @@ again at any time. For each store, `gh auth status` decides:
 When chezmoi-private provides an `encrypted_private_hosts.yml` per store,
 the files are already in place and the step prompts for nothing. `make update`
 never prompts and never logs in. No store holds two accounts, so `gh auth
-switch` is not used. With `XDG_CONFIG_HOME` set, gh's own default directory is
-`$XDG_CONFIG_HOME/gh`; set `owner_gh_config_dir` to match. When the worker
+switch` is not used. The orchestrator seat uses gh's default directory
+without `GH_CONFIG_DIR`. So `owner_gh_config_dir` only tells `make gh-auth` and
+`make doctor` where that directory is, and must equal it: `$XDG_CONFIG_HOME/gh`
+when `XDG_CONFIG_HOME` is set. `gh auth status` needs the network. Offline, a
+store that holds a token looks empty, and `make gh-auth` offers its login
+again. When the worker
 store's `hosts.yml` is absent, `herdr-agents` prints a one-line provisioning
 notice to stderr in full, `--restart-worker` and `--add-worker` modes and
 continues seating the worker.

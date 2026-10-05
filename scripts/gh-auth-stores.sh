@@ -70,7 +70,7 @@ function main() {
         label="${pair%%:*}"
         var="${pair#*:}"
         if [[ -z ${!var:-} ]]; then
-            printf 'gh-auth: %s is not set in %s\n' "${var}" "${env_file}" >&2
+            printf 'gh-auth: %s is not set in %s; run "make update" first\n' "${var}" "${env_file}" >&2
             failures=$((failures + 1))
             continue
         fi

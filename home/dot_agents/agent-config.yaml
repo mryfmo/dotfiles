@@ -85,7 +85,8 @@ worker_worktree: .claude/worktrees/worker-c
 # login: the owner account (gh's default directory), the work account, and the worker
 # machine account. Directories only, never logins or tokens. `make gh-auth` (and
 # ./setup.sh on a terminal) logs in any store that has no token; `make update` never
-# prompts.
+# prompts. The orchestrator uses gh's default directory without GH_CONFIG_DIR, so
+# owner_gh_config_dir must equal it ($XDG_CONFIG_HOME/gh when that is set).
 owner_gh_config_dir: ~/.config/gh
 work_gh_config_dir: ~/.config/gh-work
 worker_gh_config_dir: ~/.config/gh-worker

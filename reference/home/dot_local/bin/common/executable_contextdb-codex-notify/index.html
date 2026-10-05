@@ -3557,6 +3557,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_contextdb-codex-notify">home/dot_local/bin/common/executable_contextdb-codex-notify<a class="headerlink" href="#homedot_localbincommonexecutable_contextdb-codex-notify" title="Permanent link">&para;</a></h1>
+<p>Codex <code>notify</code> passes the JSON payload as the first argument; Codex command hooks (PreCompact, PostCompact, SessionEnd) deliver it on stdin. Either way the payload is ingested with <code>--no-maintenance</code>, which skips the SessionEnd retention pass, and the CLI gets 2 seconds, so the SessionEnd hook returns within Codex's 3-second limit; retention stays on the explicit <code>prune</code> command and on Claude Code's own SessionEnd hook. Failures print one stderr line and exit 0 so Codex is never blocked. Python runs isolated (<code>-I</code>), so a module committed in the session's working directory (for example a <code>json.py</code> in an untrusted repository) cannot shadow the standard library.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_contextdb-codex-notify</code></li>
@@ -3567,15 +3568,29 @@
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
 <span class="c1"># @file home/dot_local/bin/common/executable_contextdb-codex-notify</span>
-<span class="c1"># @brief Ingest a Codex turn-complete notification into an opted-in project's CompactionDB.</span>
+<span class="c1"># @brief Ingest a Codex notification or hook event into an opted-in project's CompactionDB.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Codex `notify` passes the JSON payload as the first argument; Codex command</span>
+<span class="c1">#   hooks (PreCompact, PostCompact, SessionEnd) deliver it on stdin. Either way</span>
+<span class="c1">#   the payload is ingested with `--no-maintenance`, which skips the SessionEnd</span>
+<span class="c1">#   retention pass, and the CLI gets 2 seconds, so the SessionEnd hook returns</span>
+<span class="c1">#   within Codex's 3-second limit; retention stays on the explicit `prune`</span>
+<span class="c1">#   command and on Claude Code's own SessionEnd hook. Failures print one stderr</span>
+<span class="c1">#   line and exit 0 so Codex is never blocked. Python runs isolated (`-I`), so a</span>
+<span class="c1">#   module committed in the session's working directory (for example a</span>
+<span class="c1">#   `json.py` in an untrusted repository) cannot shadow the standard library.</span>
+<span class="c1"># @arg $1 string Optional JSON payload; read from stdin when absent.</span>
 
 <span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>python3<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s1">'contextdb-codex-notify: ingest failed'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 
-<span class="k">if</span><span class="w"> </span>!<span class="w"> </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="p">-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="s">&lt;&lt; 'PY'</span>
+<span class="nv">payload</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="k">:-$(</span>cat<span class="k">)</span><span class="si">}</span><span class="s2">"</span>
+
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span>python3<span class="w"> </span>-I<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">payload</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="s">&lt;&lt; 'PY'</span>
 <span class="s">import json</span>
+<span class="s">import os</span>
 <span class="s">import subprocess</span>
 <span class="s">import sys</span>
 <span class="s">from pathlib import Path</span>
@@ -3591,8 +3606,22 @@
 <span class="s">    project_dir = (Path(cwd) if cwd else Path.cwd()).resolve()</span>
 <span class="s">    opt_in = project_dir / ".claude" / "contextdb"</span>
 <span class="s">    cli = Path.home() / ".agents" / "compactiondb" / ".claude" / "hooks" / "contextdb_cli.py"</span>
-<span class="s">    if not opt_in.is_dir() or not cli.is_file():</span>
+<span class="s">    # Only a real directory inside the project opts in: a repository could point</span>
+<span class="s">    # .claude or .claude/contextdb elsewhere with a symlink, and the CLI would</span>
+<span class="s">    # then create its state there.</span>
+<span class="s">    if not opt_in.is_dir() or opt_in.resolve() != opt_in or not cli.is_file():</span>
 <span class="s">        raise SystemExit(0)</span>
+<span class="s">    # The CLI creates, chmods and writes under this tree, so a symlink at any</span>
+<span class="s">    # depth would send its writes outside the project: refuse every symlink,</span>
+<span class="s">    # and require each storage directory to be a real directory or absent.</span>
+<span class="s">    for root, dirs, files in os.walk(opt_in, followlinks=False):</span>
+<span class="s">        for name in dirs + files:</span>
+<span class="s">            if os.path.islink(os.path.join(root, name)):</span>
+<span class="s">                raise ValueError(f"{os.path.join(root, name)} must not be a symlink")</span>
+<span class="s">    for child in ("state", "spool", "spool/incoming", "spool/quarantine", "health"):</span>
+<span class="s">        storage = opt_in / child</span>
+<span class="s">        if storage.exists() and not storage.is_dir():</span>
+<span class="s">            raise ValueError(f"{storage} must be a directory")</span>
 <span class="s">    subprocess.run(</span>
 <span class="s">        [</span>
 <span class="s">            sys.executable,</span>
@@ -3602,12 +3631,13 @@
 <span class="s">            "ingest",</span>
 <span class="s">            "--ingested-from",</span>
 <span class="s">            "codex",</span>
+<span class="s">            "--no-maintenance",</span>
 <span class="s">        ],</span>
 <span class="s">        input=payload,</span>
 <span class="s">        text=True,</span>
 <span class="s">        stdout=subprocess.DEVNULL,</span>
 <span class="s">        stderr=subprocess.DEVNULL,</span>
-<span class="s">        timeout=5,</span>
+<span class="s">        timeout=2,</span>
 <span class="s">        check=True,</span>
 <span class="s">        cwd=project_dir,</span>
 <span class="s">    )</span>

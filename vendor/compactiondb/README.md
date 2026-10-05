@@ -311,6 +311,23 @@ raw eventは既定30日で期限切れになります。`prune`は期限切れ�
 
 端末全体の暗号化、access control、retention policyと併用してください。
 
+## Storage directory safety (dotfiles.9)
+
+Storage construction requires POSIX directory descriptors and `O_NOFOLLOW`
+(Linux/macOS). Each directory is opened without following symlinks, and creation
+and permission changes use its parent descriptor. The Codex receiver's symlink
+walk plus vendor no-follow construction close pre-construction directory races.
+This is not lifetime binding: after construction, ordinary file operations and
+`sqlite3.connect` reopen paths by name. A same-user process swapping a storage
+path afterwards remains outside this protection; portable stdlib SQLite cannot
+bind a directory fd. State is still stored in the workspace.
+
+Implicit session cwd lookup selects the nearest `.claude/contextdb` within the
+nearest `.git` directory/gitfile boundary. Outside Git, only cwd is checked.
+Explicit CLI project roots and `CLAUDE_PROJECT_DIR` retain their priority.
+Explicit `prune` applies `operations.error_log_retention_days` to `errors.jsonl`
+and quarantined spool files, independently of which runtime emitted SessionEnd.
+
 ## 開発・検証
 
 runtimeはPython標準libraryのみで動作します。Python 3.10以上を対象にしています。
@@ -318,6 +335,13 @@ runtimeはPython標準libraryのみで動作します。Python 3.10以上を対�
 ```bash
 make test
 make validate
+```
+
+From the dotfiles repository root, either entry point runs the vendor suite:
+
+```bash
+make -C vendor/compactiondb test
+uv run python -m unittest discover -s vendor/compactiondb/tests
 ```
 
 本配布物では、39件のunit/integration testに加え、別projectへの二重install、既存hook保持、実wrapper経由のhook ingest、secret redaction、SQLite整合性検証、PostCompact recoveryまでをrelease validatorで確認しています。生成環境にはClaude Code executableがないため、Claude Code UI上の実auto-compaction E2EとWindows実機E2Eだけは未実施です。

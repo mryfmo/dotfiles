@@ -3,13 +3,37 @@ from __future__ import annotations
 import json
 import sys
 import time
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .config import load_config
 from .normalize import normalize_hook_payload
-from .paths import project_paths
+from .paths import ProjectPaths, project_paths
 from .spool import drain_spool, record_error, spool_event
+
+
+def prune_health_artifacts(paths: ProjectPaths, *, days: int) -> None:
+    """Apply the health retention policy shared by hooks and explicit prune."""
+    cutoff_utc = datetime.now(timezone.utc) - timedelta(days=days)
+    if paths.error_log_path.exists():
+        retained = []
+        for line in paths.error_log_path.read_text(encoding="utf-8").splitlines():
+            try:
+                ts = datetime.fromisoformat(str(json.loads(line).get("ts_utc", "")).replace("Z", "+00:00"))
+            except (ValueError, TypeError, json.JSONDecodeError):
+                retained.append(line)
+                continue
+            if ts.tzinfo is None or ts >= cutoff_utc:
+                retained.append(line)
+        if retained:
+            paths.error_log_path.write_text("\n".join(retained) + "\n", encoding="utf-8")
+        else:
+            paths.error_log_path.unlink()
+    cutoff = time.time() - days * 86400
+    for path in paths.quarantine_dir.glob("*"):
+        if path.name != ".gitkeep" and path.is_file() and path.stat().st_mtime < cutoff:
+            path.unlink()
 
 
 def process_payload(
@@ -34,27 +58,9 @@ def process_payload(
                 from .storage import ContextStore
                 days = int(config.get("operations", {}).get("error_log_retention_days", 30))
                 store = ContextStore(paths, config)
-                with store.connect() as conn:
+                with closing(store.connect()) as conn, conn:
                     store.prune_expired(conn, paths.project_id, days=days)
-                cutoff_utc = datetime.now(timezone.utc) - timedelta(days=days)
-                if paths.error_log_path.exists():
-                    retained = []
-                    for line in paths.error_log_path.read_text(encoding="utf-8").splitlines():
-                        try:
-                            ts = datetime.fromisoformat(str(json.loads(line).get("ts_utc", "")).replace("Z", "+00:00"))
-                        except (ValueError, TypeError, json.JSONDecodeError):
-                            retained.append(line)
-                            continue
-                        if ts >= cutoff_utc:
-                            retained.append(line)
-                    if retained:
-                        paths.error_log_path.write_text("\n".join(retained) + "\n", encoding="utf-8")
-                    else:
-                        paths.error_log_path.unlink()
-                cutoff = time.time() - days * 86400
-                for path in paths.quarantine_dir.glob("*"):
-                    if path.exists() and path.stat().st_mtime < cutoff:
-                        path.unlink()
+                prune_health_artifacts(paths, days=days)
             except Exception:
                 pass
     except Exception as exc:

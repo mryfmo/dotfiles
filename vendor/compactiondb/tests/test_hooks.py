@@ -5,7 +5,7 @@ import os
 import time
 import unittest
 
-from tests.support import TempProject
+from support import TempProject
 from contextdb.hook import process_payload
 from contextdb.recover_hook import recovery_output
 from contextdb.spool import drain_spool

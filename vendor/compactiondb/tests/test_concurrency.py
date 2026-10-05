@@ -7,7 +7,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from tests.support import TempProject
+from support import TempProject
 from contextdb.spool import drain_spool
 
 

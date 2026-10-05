@@ -7,10 +7,10 @@ import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
+from support import TempProject
 from contextdb.cli import main
 from contextdb.normalize import normalize_hook_payload
 
-from tests.support import TempProject
 
 
 class CliTests(unittest.TestCase):
@@ -76,6 +76,27 @@ class CliTests(unittest.TestCase):
         finally:
             conn.close()
         self.assertEqual("codex", row["ingested_from"])
+
+    def test_explicit_prune_applies_configured_health_retention(self) -> None:
+        from datetime import datetime, timedelta, timezone
+        config = json.loads(self.p.paths.config_path.read_text()) if self.p.paths.config_path.exists() else {}
+        config["operations"] = {"error_log_retention_days": 3}
+        self.p.paths.config_path.write_text(json.dumps(config))
+        old = datetime.now(timezone.utc) - timedelta(days=5)
+        recent = datetime.now(timezone.utc) - timedelta(days=1)
+        lines = [json.dumps({"ts_utc": t.isoformat()}) for t in (old, recent)]
+        self.p.paths.error_log_path.write_text("\n".join([*lines, "invalid"]) + "\n")
+        for name, timestamp in (("old.json", old.timestamp()), ("recent.json", recent.timestamp()), (".gitkeep", old.timestamp())):
+            path = self.p.paths.quarantine_dir / name
+            path.write_text("{}")
+            os.utime(path, (timestamp, timestamp))
+        code, _, err = self.invoke(["prune"])
+        self.assertEqual(0, code, err)
+        self.assertEqual([lines[1], "invalid"], self.p.paths.error_log_path.read_text().splitlines())
+        self.assertEqual({"recent.json", ".gitkeep"}, {p.name for p in self.p.paths.quarantine_dir.iterdir()})
+        self.p.paths.error_log_path.write_text(lines[0] + "\n")
+        self.invoke(["prune"])
+        self.assertFalse(self.p.paths.error_log_path.exists())
 
     def test_ingest_no_maintenance_records_session_end_without_retention(self) -> None:
         conn = self.p.store.connect()

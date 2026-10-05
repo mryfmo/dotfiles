@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.0+dotfiles.9
+
+- Reclaim orphaned project session rows before evicting newer events and after every size-cap batch.
+- Preserve installed hook positions and leave settings bytes, timestamps and backups untouched on a no-op reinstall.
+- Run vendor test discovery from the dotfiles repository root as well as the vendor directory.
+- Find enclosing opted-in projects from nested session working directories, stopping at the nearest Git directory or worktree gitfile. Explicit project roots keep their meaning.
+- Apply configured error-log and quarantine retention from explicit `prune` and existing SessionEnd maintenance.
+- Construct storage directories using descriptor-relative `mkdir`, `open(O_NOFOLLOW)` and `fchmod` on POSIX. This closes directory symlink races during construction. Residual: subsequent pathname-based I/O, including `sqlite3.connect`, can still follow a same-user swap after construction; portable stdlib SQLite cannot bind a directory fd. Storage remains in the workspace.
+
 ## 2.0.0+dotfiles.8
 
 - Added `ingest --no-maintenance`: the event is normalised, spooled and committed, but the SessionEnd retention pass (expired-event pruning and error-log/quarantine cleanup) is skipped, so a caller with a short budget, such as Codex's 3-second `SessionEnd` hook, only records the event. Retention still runs on the explicit `prune` command and on Claude Code's own `SessionEnd` hook.

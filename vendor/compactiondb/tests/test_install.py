@@ -78,6 +78,25 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual(1, serialized.count("contextdb_recover.py"))
             self.assertTrue((target / ".claude" / "hooks" / "contextdb_cli.py").exists())
 
+    def test_reinstall_preserves_hook_positions_bytes_and_mtime_without_backup(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            settings_path = target / ".claude" / "settings.json"
+            settings_path.parent.mkdir()
+            settings = json.loads((ROOT / ".claude" / "settings.fragment.json").read_text())
+            for groups in settings["hooks"].values():
+                groups.insert(0, {"hooks": [{"command": "before"}]})
+                groups.append({"hooks": [{"command": "after"}]})
+            settings_path.write_text(json.dumps(settings, indent=4) + "\n\n")
+            original = settings_path.read_bytes()
+            mtime = settings_path.stat().st_mtime_ns
+            command = [sys.executable, str(ROOT / "install.py"), "--project", str(target), "--skip-instructions"]
+            for _ in range(2):
+                subprocess.run(command, check=True, capture_output=True)
+                self.assertEqual(original, settings_path.read_bytes())
+                self.assertEqual(mtime, settings_path.stat().st_mtime_ns)
+                self.assertEqual([], list(settings_path.parent.glob("settings.json.compactiondb-backup-*")))
+
     def test_installer_can_run_against_its_own_extracted_root(self) -> None:
         with tempfile.TemporaryDirectory(prefix="contextdb-self-") as temp:
             copy = Path(temp) / "package"

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .config import load_config
-from .hook import process_payload
+from .hook import process_payload, prune_health_artifacts
 from .paths import project_paths
 from .probe import generate_probes
 from .recall import recall
@@ -363,6 +363,7 @@ def run(args: argparse.Namespace) -> int:
             # rows were deleted or the file itself is still over the cap.
             force = removed > 0 or capped > 0 or in_use + free > max_db_bytes
             vacuumed = store.vacuum_if_fragmented(conn, threshold_bytes=VACUUM_FREE_BYTES, force=force)
+            prune_health_artifacts(paths, days=int(config["operations"]["error_log_retention_days"]))
             result = {
                 "removed_events": removed,
                 "days_override": args.days,

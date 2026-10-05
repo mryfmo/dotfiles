@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import unittest
 
-from tests.support import TempProject
 
+from support import TempProject
 
 class RedactionTests(unittest.TestCase):
     def setUp(self) -> None:

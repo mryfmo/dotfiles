@@ -79,15 +79,21 @@ def merge_settings(existing: dict[str, Any], fragment: dict[str, Any]) -> tuple[
     removed = 0
     for event, groups in fragment.get("hooks", {}).items():
         current = hooks.setdefault(event, [])
-        retained = [group for group in current if not _is_contextdb_group(group)]
-        removed += len(current) - len(retained)
-        existing_keys = {canonical(group) for group in retained}
-        for group in groups:
-            key = canonical(group)
-            if key not in existing_keys:
+        replacements = iter(groups)
+        retained = []
+        for group in current:
+            if not _is_contextdb_group(group):
                 retained.append(group)
-                existing_keys.add(key)
-                added += 1
+                continue
+            replacement = next(replacements, None)
+            if replacement != group:
+                removed += 1
+                added += replacement is not None
+            if replacement is not None:
+                retained.append(replacement)
+        for group in replacements:
+            retained.append(group)
+            added += 1
         hooks[event] = retained
     return result, added, removed
 
@@ -193,7 +199,8 @@ def main() -> int:
     fragment = replace_python(fragment, python)
     merged, added, removed = merge_settings(current, fragment)
     settings_backup = backup(settings_path) if settings_path.exists() and canonical(current) != canonical(merged) else None
-    settings_path.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if not settings_path.exists() or canonical(current) != canonical(merged):
+        settings_path.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     instructions_changed = False
     if not args.skip_instructions:

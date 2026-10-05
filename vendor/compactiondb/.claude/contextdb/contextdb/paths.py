@@ -4,11 +4,12 @@ import os
 import re
 import time
 import uuid
+from contextlib import ExitStack
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from .util import ensure_dir, safe_chmod, write_text_exclusive
+from .util import safe_chmod, write_text_exclusive
 
 
 @dataclass(frozen=True)
@@ -29,21 +30,46 @@ class ProjectPaths:
     project_id: str
 
     def ensure(self) -> None:
-        for path in (
-            self.base,
-            self.state_dir,
-            self.spool_dir,
-            self.incoming_dir,
-            self.quarantine_dir,
-            self.health_dir,
-        ):
-            ensure_dir(path, 0o700)
+        """Create storage directories without following substituted directory entries.
+
+        This binds creation and permission changes, not later pathname-based I/O.
+        """
+        self.root.mkdir(parents=True, exist_ok=True)
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        with ExitStack() as opened:
+            root_fd = os.open(self.root, flags)
+            opened.callback(os.close, root_fd)
+            descriptors = {self.root: root_fd}
+            for path in (
+                self.root / ".claude", self.base, self.state_dir, self.spool_dir,
+                self.incoming_dir, self.quarantine_dir, self.health_dir,
+            ):
+                parent_fd = descriptors[path.parent]
+                try:
+                    os.mkdir(path.name, 0o700, dir_fd=parent_fd)
+                except FileExistsError:
+                    pass
+                fd = os.open(path.name, flags, dir_fd=parent_fd)
+                opened.callback(os.close, fd)
+                if path != self.root / ".claude":
+                    os.fchmod(fd, 0o700)
+                descriptors[path] = fd
 
 
 def resolve_project_root(payload: dict[str, Any] | None = None, explicit: str | Path | None = None) -> Path:
     data = payload or {}
     raw = explicit or os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
-    return Path(raw).expanduser().resolve()
+    root = Path(raw).expanduser().resolve()
+    if explicit or os.environ.get("CLAUDE_PROJECT_DIR"):
+        return root
+    ancestors = (root, *root.parents)
+    boundary = next((p for p in ancestors if os.path.lexists(p / ".git")), root)
+    for candidate in ancestors:
+        if (candidate / ".claude" / "contextdb").is_dir():
+            return candidate
+        if candidate == boundary:
+            break
+    return root
 
 
 _PROJECT_ID = re.compile(r"^[0-9a-f]{32}$")

@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 import unittest
 
+from support import TempProject
 from contextdb.config import load_config
 
-from tests.support import TempProject
 
 
 class ConfigTests(unittest.TestCase):

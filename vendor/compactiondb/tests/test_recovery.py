@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import unittest
 
+from support import TempProject
 from contextdb.recovery import build_recovery_context
 
-from tests.support import TempProject
 
 
 class RecoveryTests(unittest.TestCase):

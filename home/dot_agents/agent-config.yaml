@@ -135,6 +135,21 @@ codex:
       command: '{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex'
       timeout: 10
       status_message: Evaluating permission request
+    # Compaction and session end reach CompactionDB like Claude's hooks do; the
+    # profiles' notify entries still carry each turn's assistant message.
+    command_hooks:
+      - event: PreCompact
+        command: '{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify'
+        timeout: 10
+        status_message: Recording to CompactionDB
+      - event: PostCompact
+        command: '{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify'
+        timeout: 10
+        status_message: Recording to CompactionDB
+      - event: SessionEnd
+        command: '{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify'
+        timeout: 3
+        status_message: Recording to CompactionDB
     state:
       crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0:
         trusted_hash: sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8
@@ -454,7 +469,7 @@ assets:
   compactiondb:
     source: vendored
     upstream: unknown
-    pin: 2.0.0+dotfiles.7
+    pin: 2.0.0+dotfiles.8
     verify: manifest-sha256
     manifest: vendor/compactiondb/MANIFEST.sha256
     note: local-fork-vendored-under-vendor/compactiondb

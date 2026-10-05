@@ -59,6 +59,33 @@ command = "{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex"
 timeout = 10
 statusMessage = "Evaluating permission request"
 
+[[hooks.PreCompact]]
+matcher = "*"
+
+[[hooks.PreCompact.hooks]]
+type = "command"
+command = "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"
+timeout = 10
+statusMessage = "Recording to CompactionDB"
+
+[[hooks.PostCompact]]
+matcher = "*"
+
+[[hooks.PostCompact.hooks]]
+type = "command"
+command = "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"
+timeout = 10
+statusMessage = "Recording to CompactionDB"
+
+[[hooks.SessionEnd]]
+matcher = "*"
+
+[[hooks.SessionEnd.hooks]]
+type = "command"
+command = "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"
+timeout = 3
+statusMessage = "Recording to CompactionDB"
+
 [hooks.state]
 
 [hooks.state."crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0"]

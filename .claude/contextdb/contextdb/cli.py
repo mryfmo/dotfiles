@@ -91,6 +91,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("ingest", help="ingest one hook-compatible JSON object from a file or stdin")
     p.add_argument("source", nargs="?", default="-", help="JSON file or - for stdin")
     p.add_argument("--ingested-from", help="trusted local ingestion source token")
+    p.add_argument(
+        "--no-maintenance",
+        action="store_true",
+        help="record the event only; skip the SessionEnd retention pass (pruning and log/quarantine cleanup)",
+    )
 
     memory = sub.add_parser("memory", help="durable-memory operations")
     memsub = memory.add_subparsers(dest="memory_command", required=True)
@@ -173,7 +178,12 @@ def run(args: argparse.Namespace) -> int:
         payload = json.loads(raw)
         if not isinstance(payload, dict):
             raise ValueError("ingest input must be a JSON object")
-        process_payload(payload, project_root=str(paths.root), ingested_from=ingested_from)
+        process_payload(
+            payload,
+            project_root=str(paths.root),
+            ingested_from=ingested_from,
+            maintenance=not args.no_maintenance,
+        )
         result = drain_spool(paths, config, blocking_lock=True)
         _print_json_or_lines(args, result.__dict__, [f"ingested={result.inserted} pending={result.remaining}"])
         return 0

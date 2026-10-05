@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
@@ -74,6 +76,37 @@ class CliTests(unittest.TestCase):
         finally:
             conn.close()
         self.assertEqual("codex", row["ingested_from"])
+
+    def test_ingest_no_maintenance_records_session_end_without_retention(self) -> None:
+        conn = self.p.store.connect()
+        try:
+            with conn:
+                conn.execute("UPDATE events SET ts_utc='2000-01-01T00:00:00.000Z'")
+        finally:
+            conn.close()
+        self.p.paths.error_log_path.write_text('{"ts_utc":"2000-01-01T00:00:00Z"}\n', encoding="utf-8")
+        quarantined = self.p.paths.quarantine_dir / "old.json"
+        quarantined.write_text("{}", encoding="utf-8")
+        old = time.time() - 40 * 86400
+        os.utime(quarantined, (old, old))
+        source = self.p.root / "codex-session-end.json"
+        source.write_text(
+            json.dumps({"hook_event_name": "SessionEnd", "session_id": "codex-end", "cwd": str(self.p.root)}),
+            encoding="utf-8",
+        )
+
+        code, out, err = self.invoke(["ingest", str(source), "--ingested-from", "codex", "--no-maintenance"])
+
+        self.assertEqual(0, code, err)
+        conn = self.p.store.connect()
+        try:
+            rows = conn.execute("SELECT session_id, event_type FROM events ORDER BY id").fetchall()
+        finally:
+            conn.close()
+        self.assertEqual(["s1", "s2", "codex-end"], [row["session_id"] for row in rows])
+        self.assertEqual("session_end", rows[-1]["event_type"])
+        self.assertTrue(quarantined.exists())
+        self.assertTrue(self.p.paths.error_log_path.exists())
 
     def test_ingest_normalizes_a_codex_notify_payload(self) -> None:
         source = self.p.root / "codex-notify.json"

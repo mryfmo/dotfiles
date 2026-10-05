@@ -123,7 +123,8 @@ and required CI checks contain real assertions.
 ## Phase 1 — Protect agent run artifacts
 
 > **Note (2026-10-05):** retired. The run-artifact helper this phase hardened
-> was deleted in #260, and its ignore rule went with it (T83).
+> was deleted in #260. `.gitignore` keeps `.agents/runs/` on purpose: checkouts
+> that ran the helper can still hold its raw prompts and agent output (T83).
 
 ## Phase 2 — Make doctor and upgrade exit codes truthful
 

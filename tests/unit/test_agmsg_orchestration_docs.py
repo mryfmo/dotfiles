@@ -154,6 +154,8 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
             "until the worker gh credential is provisioned on this host (README operator phase, T90/T90b)",
             "`gh`, `git push`, and an authenticated `git fetch`",
             "-worker-crit.json",
+            "writing the task's artifacts at their expected main-checkout paths and masking them with the repository masker, through the permission gate because the main checkout is not writable from a worktree sandbox",
+            "(a Claude seat writes them through the permission gate, step 4)",
             "never run `git worktree prune` from a sandboxed seat",
             "`git worktree remove <path>` only",
             "the orchestrator moves them into the main checkout",

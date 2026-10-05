@@ -1,7 +1,7 @@
 # T67: Pi model-access verification — headless harness + operator procedure (π1 前段)
 
 task_id: T67
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-pi-worker-integration.md (Phase 3)

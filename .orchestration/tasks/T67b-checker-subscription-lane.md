@@ -1,7 +1,7 @@
 # T67b: Model-access checker — subscription-auth lane (gap found in live run)
 
 task_id: T67b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (Phase 3; live gap)

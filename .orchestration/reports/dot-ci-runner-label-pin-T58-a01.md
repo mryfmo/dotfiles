@@ -45,7 +45,7 @@
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T58 (operator 2026-10-02): CI runner labels are explicit (`ubuntu-24.04`, `macos-14`), never `*-latest`; a new OS image is adopted through a non-required canary cell first, then by changing the explicit label.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T58 (operator 2026-10-02): CI runner labels are explicit (`ubuntu-24.04`, `macos-14`), never `*-latest`; a new OS image is adopted through a non-required canary cell first, then by changing the explicit label.'
 e6bdb8d4-9297-4616-998d-b7a108578112
 ```
 

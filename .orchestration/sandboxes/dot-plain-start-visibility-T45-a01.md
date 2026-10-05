@@ -1,7 +1,7 @@
 # Sandbox: dot-plain-start-visibility-T45-a01
 
 - worker: claude-standard-dot-a005 (claude-code, standard profile), herdr pane `wP:p2`
-- isolation: dedicated git worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`,
+- isolation: dedicated git worktree `~/Workspace/dotfiles/.claude/worktrees/worker-c`,
   branch `fix/plain-start-visibility` created from `origin/main` (`fa5ce03`); the previous
   branch `fix/sandbox-unix-sockets` (`c2c1f62`, PR #215) was left intact (switch, no reset).
 - Bash ran inside the Claude Code sandbox (bubblewrap) by default. Unsandboxed calls, each
@@ -38,12 +38,12 @@ Bash call. `stat -c '%n mode=%A size=%s ctime=%z'` output, verbatim:
 .vscode mode=-r--r--r-- size=0 ctime=2026-09-30 08:21:59.571205507 +0900
 .zprofile mode=-r--r--r-- size=0 ctime=2026-09-30 08:21:59.570411003 +0900
 .zshrc mode=-r--r--r-- size=0 ctime=2026-09-30 08:21:59.570152836 +0900
-/home/moriya/Workspace/dotfiles/.git/config.lock mode=-r--r--r-- size=0 ctime=2026-09-30 08:21:59.565658943 +0900
+~/Workspace/dotfiles/.git/config.lock mode=-r--r--r-- size=0 ctime=2026-09-30 08:21:59.565658943 +0900
 ```
 
 The same instant also produced the zero-byte `.git/config.lock` in the shared `.git` (last
 line above). It made `git switch -c` fail to write upstream config
-(`error: could not lock config file /home/moriya/Workspace/dotfiles/.git/config: ファイルが存在します` (EEXIST));
+(`error: could not lock config file ~/Workspace/dotfiles/.git/config: ファイルが存在します` (EEXIST));
 the branch was still created at `origin/main`, and the task avoided every further config
 write (`--no-track`, push without `-u`). The lock was not removed, as the task requires.
 

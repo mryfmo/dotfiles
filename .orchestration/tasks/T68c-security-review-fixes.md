@@ -1,7 +1,7 @@
 # T68c: PR #134 review security fixes — trusted-runtime invocation, identifier grammar, shdoc
 
 task_id: T68c
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (Phase 7; PR #134 bot review, three P1s)

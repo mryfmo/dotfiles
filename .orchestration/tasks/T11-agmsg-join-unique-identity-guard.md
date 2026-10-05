@@ -5,7 +5,7 @@
 - Task ID: `T11-agmsg-join-unique-identity-guard`
 - Executor model: `gpt-5.6-sol`
 - Reasoning effort: `high`
-- Repo: `/Users/mryfmo/Workspace/dotfiles` (work in the current working tree; do NOT create a worktree)
+- Repo: `~/Workspace/dotfiles` (work in the current working tree; do NOT create a worktree)
 - Base: current `main` working tree. Pre-existing dirty files `home/dot_mise/config.toml` and `home/dot_mise/mise.lock` are NOT yours — do not touch or revert them.
 
 ## Background

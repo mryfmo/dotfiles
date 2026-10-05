@@ -1,6 +1,6 @@
 # Validation
 
-Worktree: `/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/herdr-sheldon`. Empty blocks denote no output. rg stale-text exit 1 means no matches. No local Bats or Docker/VM commands ran.
+Worktree: `~/Workspace/dotfiles/.claude/worktrees/herdr-sheldon`. Empty blocks denote no output. rg stale-text exit 1 means no matches. No local Bats or Docker/VM commands ran.
 
 ## bash .agents/worklog/codex/reload-a02.sh
 
@@ -93,7 +93,7 @@ Exit: 0
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/a83b67838d9d/review.json",
+  "review_file": "~/.crit/reviews/a83b67838d9d/review.json",
   "review_file_exists": true,
   "round": 1,
   "sessions": [],
@@ -107,29 +107,29 @@ Exit: 0
 
 ```text
 24462c766e8c363f39e0fe5f0fdf97a04084cf5f8083c07dde7cb03799fce854  .orchestration/tasks/dot-herdr-sheldon-T1-a01.md
-24462c766e8c363f39e0fe5f0fdf97a04084cf5f8083c07dde7cb03799fce854  /Users/mryfmo/Workspace/dotfiles/.orchestration/tasks/dot-herdr-sheldon-T1-a01.md
+24462c766e8c363f39e0fe5f0fdf97a04084cf5f8083c07dde7cb03799fce854  ~/Workspace/dotfiles/.orchestration/tasks/dot-herdr-sheldon-T1-a01.md
 2bfa1a957f8baf13c5bd2fbcdabf46765295f7ede3831dd552dcdf13f9b6eda8  .orchestration/tasks/dot-docs-align-T1-a01.md
-2bfa1a957f8baf13c5bd2fbcdabf46765295f7ede3831dd552dcdf13f9b6eda8  /Users/mryfmo/Workspace/dotfiles/.orchestration/tasks/dot-docs-align-T1-a01.md
+2bfa1a957f8baf13c5bd2fbcdabf46765295f7ede3831dd552dcdf13f9b6eda8  ~/Workspace/dotfiles/.orchestration/tasks/dot-docs-align-T1-a01.md
 d23ce3c6888f15b9121e4da869b7d3f7f7335519611911555a4a76c14e47dbbc  .orchestration/reports/dot-herdr-sheldon-T1-a01.md
-d23ce3c6888f15b9121e4da869b7d3f7f7335519611911555a4a76c14e47dbbc  /Users/mryfmo/Workspace/dotfiles/.orchestration/reports/dot-herdr-sheldon-T1-a01.md
+d23ce3c6888f15b9121e4da869b7d3f7f7335519611911555a4a76c14e47dbbc  ~/Workspace/dotfiles/.orchestration/reports/dot-herdr-sheldon-T1-a01.md
 5f485b107d0968be60afb575fad4519f836b20a4827c608f70f54e3b1fedfa4d  .orchestration/reports/dot-docs-align-T1-a01.md
-5f485b107d0968be60afb575fad4519f836b20a4827c608f70f54e3b1fedfa4d  /Users/mryfmo/Workspace/dotfiles/.orchestration/reports/dot-docs-align-T1-a01.md
+5f485b107d0968be60afb575fad4519f836b20a4827c608f70f54e3b1fedfa4d  ~/Workspace/dotfiles/.orchestration/reports/dot-docs-align-T1-a01.md
 44b22a8f74b6a48618773502b524f7b4866afa57b81e7b67d98d189f24806435  .orchestration/validation/dot-herdr-sheldon-T1-a01.md
-44b22a8f74b6a48618773502b524f7b4866afa57b81e7b67d98d189f24806435  /Users/mryfmo/Workspace/dotfiles/.orchestration/validation/dot-herdr-sheldon-T1-a01.md
+44b22a8f74b6a48618773502b524f7b4866afa57b81e7b67d98d189f24806435  ~/Workspace/dotfiles/.orchestration/validation/dot-herdr-sheldon-T1-a01.md
 d2315d8acbaa62fe1d6661efdbc2111f6a487a417a15f1f58773d0f03fab2c28  .orchestration/validation/dot-docs-align-T1-a01.md
-d2315d8acbaa62fe1d6661efdbc2111f6a487a417a15f1f58773d0f03fab2c28  /Users/mryfmo/Workspace/dotfiles/.orchestration/validation/dot-docs-align-T1-a01.md
+d2315d8acbaa62fe1d6661efdbc2111f6a487a417a15f1f58773d0f03fab2c28  ~/Workspace/dotfiles/.orchestration/validation/dot-docs-align-T1-a01.md
 64fc39d0a68ae4d19129b60776aa903257e1ba497e10a2a732e81f38163ac898  .orchestration/sandboxes/dot-herdr-sheldon-T1-a01.md
-64fc39d0a68ae4d19129b60776aa903257e1ba497e10a2a732e81f38163ac898  /Users/mryfmo/Workspace/dotfiles/.orchestration/sandboxes/dot-herdr-sheldon-T1-a01.md
+64fc39d0a68ae4d19129b60776aa903257e1ba497e10a2a732e81f38163ac898  ~/Workspace/dotfiles/.orchestration/sandboxes/dot-herdr-sheldon-T1-a01.md
 9974644ab49d3e52b81c91c5e4b4a792a5ce2b019a33575486376f4f83eb3742  .orchestration/sandboxes/dot-docs-align-T1-a01.md
-9974644ab49d3e52b81c91c5e4b4a792a5ce2b019a33575486376f4f83eb3742  /Users/mryfmo/Workspace/dotfiles/.orchestration/sandboxes/dot-docs-align-T1-a01.md
+9974644ab49d3e52b81c91c5e4b4a792a5ce2b019a33575486376f4f83eb3742  ~/Workspace/dotfiles/.orchestration/sandboxes/dot-docs-align-T1-a01.md
 a429199155e12b6ec4c5bd298ea2803287297d6ab90424699dc879cc8c6db3f2  .orchestration/learning/dot-herdr-sheldon-T1-a01.md
-a429199155e12b6ec4c5bd298ea2803287297d6ab90424699dc879cc8c6db3f2  /Users/mryfmo/Workspace/dotfiles/.orchestration/learning/dot-herdr-sheldon-T1-a01.md
+a429199155e12b6ec4c5bd298ea2803287297d6ab90424699dc879cc8c6db3f2  ~/Workspace/dotfiles/.orchestration/learning/dot-herdr-sheldon-T1-a01.md
 52d19c631d78752a7f41035a2ff4515632e5f7fb3cd54b15af07f461eb16c896  .orchestration/learning/dot-docs-align-T1-a01.md
-52d19c631d78752a7f41035a2ff4515632e5f7fb3cd54b15af07f461eb16c896  /Users/mryfmo/Workspace/dotfiles/.orchestration/learning/dot-docs-align-T1-a01.md
+52d19c631d78752a7f41035a2ff4515632e5f7fb3cd54b15af07f461eb16c896  ~/Workspace/dotfiles/.orchestration/learning/dot-docs-align-T1-a01.md
 e7ed0cb8b74cdc61068cf355ce035c5bb03601ae1040b1764b38c7bdb745055c  .orchestration/autoskill/runs/dot-herdr-sheldon-T1-a01.md
-e7ed0cb8b74cdc61068cf355ce035c5bb03601ae1040b1764b38c7bdb745055c  /Users/mryfmo/Workspace/dotfiles/.orchestration/autoskill/runs/dot-herdr-sheldon-T1-a01.md
+e7ed0cb8b74cdc61068cf355ce035c5bb03601ae1040b1764b38c7bdb745055c  ~/Workspace/dotfiles/.orchestration/autoskill/runs/dot-herdr-sheldon-T1-a01.md
 404524c688bb26b773fe27b05514a271eb0b5fdbd7e6b534348631f20470094a  .orchestration/autoskill/runs/dot-docs-align-T1-a01.md
-404524c688bb26b773fe27b05514a271eb0b5fdbd7e6b534348631f20470094a  /Users/mryfmo/Workspace/dotfiles/.orchestration/autoskill/runs/dot-docs-align-T1-a01.md
+404524c688bb26b773fe27b05514a271eb0b5fdbd7e6b534348631f20470094a  ~/Workspace/dotfiles/.orchestration/autoskill/runs/dot-docs-align-T1-a01.md
 ```
 
 ## shellcheck scripts/update-agent-assets.sh
@@ -653,7 +653,7 @@ test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.Vali
 test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-orurn5q4/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-orurn5q4/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok

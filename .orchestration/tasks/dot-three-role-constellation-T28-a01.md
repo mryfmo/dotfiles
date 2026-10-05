@@ -88,7 +88,7 @@ authority remains orchestrator-only (operator 2026-09-27).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`, then
   `git switch -c feat/three-role-constellation origin/main`.
   (Base must contain this task's commit; verify the dispatched task_rev
@@ -235,7 +235,7 @@ If anything else changes, stop and report.
 uv run --with pyyaml scripts/generate-agent-configs.py --check
 make validate-agent-assets
 make unit-test
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

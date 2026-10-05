@@ -1,7 +1,7 @@
 # T45: Acceptance-time memory consolidation + AGMSG-TASK marker contract (rules only)
 
 task_id: T45
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-compactiondb-research-integration.md (Phase 1)

@@ -1,7 +1,7 @@
 # T83: Understand-Anything 知識グラフ増分更新(Pi pivot + context diet 反映)
 
 task_id: T83
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: housekeeping (repo rule: graph rebuilds go to a Codex worker under the regime)

@@ -5,8 +5,8 @@ PR #259 (https://github.com/mryfmo/dotfiles/pull/259), branch `feat/codex-worker
 ## Task file verification
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T96-codex-worker-gpt61-sol-high-a01.md
-c0393c976703d30897073d06aef579502a1ead3fb50e90d35c835d90b0e2ddc1  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T96-codex-worker-gpt61-sol-high-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T96-codex-worker-gpt61-sol-high-a01.md
+c0393c976703d30897073d06aef579502a1ead3fb50e90d35c835d90b0e2ddc1  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T96-codex-worker-gpt61-sol-high-a01.md
 dispatched task_rev c7c17e0f… (initial), 3f25aae3… (PONG decision 1), c0393c97… (PONG decision 2); the sha256 above matches the latest
 ```
 
@@ -35,7 +35,7 @@ session id: 01a10780-7c62-7ef1-a713-366eeb06fa99
 --------
 user
 Reply with the single word OK.
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart Completed
 codex
@@ -67,7 +67,7 @@ session id: 01a10785-0d26-7021-a2e9-42dff00353fb
 --------
 user
 Reply with the single word OK.
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 codex
 OK
 hook: Stop
@@ -214,6 +214,6 @@ author 2026-10-05T00:21:53+09:00 | committer 2026-10-05T00:26:05+09:00
 ## CompactionDB (main checkout, unsandboxed; text per PONG decision 2)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T96 (operator 2026-10-04): the role constellation is orchestrator fable-5.1 high (`deep`), auditor Codex gpt-6-astra high (`audit`), worker Codex gpt-6.1-sol high and Claude opus-5.5 high (`standard`); both Codex models answered under the ChatGPT login (probe 2026-10-05: `codex --profile audit exec` gpt-6.1-sol OK, `--profile security` gpt-6-astra OK), so neither seat needs Codex API-key auth; the 2026-10-01 rejection no longer reproduces.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T96 (operator 2026-10-04): the role constellation is orchestrator fable-5.1 high (`deep`), auditor Codex gpt-6-astra high (`audit`), worker Codex gpt-6.1-sol high and Claude opus-5.5 high (`standard`); both Codex models answered under the ChatGPT login (probe 2026-10-05: `codex --profile audit exec` gpt-6.1-sol OK, `--profile security` gpt-6-astra OK), so neither seat needs Codex API-key auth; the 2026-10-01 rejection no longer reproduces.'
 152b5006-d663-42a0-88c6-6d886e45f695
 ```

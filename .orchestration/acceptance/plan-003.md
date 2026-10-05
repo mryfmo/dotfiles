@@ -14,4 +14,4 @@ All round-1 and round-2 findings are closed. No other finding was reopened. Bats
 
 The repository exposes no plan-quality validator, hook, subagent definition, or dedicated CI entry point, so the installed plan-quality-gate checklist was applied manually to this bounded closure review; no validator command was available to run.
 
-REVIEW-RESULT v1 task_id=plan-003 verdict=ACCEPT report=/Users/mryfmo/Workspace/dotfiles/.orchestration/acceptance/plan-003.md
+REVIEW-RESULT v1 task_id=plan-003 verdict=ACCEPT report=~/Workspace/dotfiles/.orchestration/acceptance/plan-003.md

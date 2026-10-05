@@ -33,13 +33,13 @@ Usage: herdr-agents [DIR]
        herdr-agents --attach
        herdr-agents --restart-worker [DIR]
 rc=2
-$ (cd /home/moriya/Workspace/dotfiles && HERDR_AGENTS_ORCHESTRATOR_KIND=codex bash <this branch script> --attach "$PWD"; echo "rc=$?")   (the main checkout: refused)
+$ (cd ~/Workspace/dotfiles && HERDR_AGENTS_ORCHESTRATOR_KIND=codex bash <this branch script> --attach "$PWD"; echo "rc=$?")   (the main checkout: refused)
 herdr-agents: orchestrator_kind=codex: use codex-orchestrate
 rc=2
 $ bash home/dot_local/bin/common/executable_herdr-agents --directive; echo "rc=$?"   (in worker-c, a linked worktree, so no regime line)
 rc=0
-$ (cd /home/moriya/Workspace/dotfiles/docs && PATH=/usr/bin:/bin bash <this branch script> --directive; echo "rc=$?")   (read-only, from a subdirectory of the main checkout; no herdr on PATH)
-agmsg-orchestration: this session is the orchestrator seat claude-remediation-dot for /home/moriya/Workspace/dotfiles (worker seat .claude/worktrees/worker-c). Before any other action, invoke the agmsg-orchestration skill. Delegate every repository-mutating change, make upgrade pin diffs included, to the seated worker as an AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --restart-worker in the pair, herdr-agents --add-worker .claude/worktrees/worker-c otherwise): no worker is never an implicit opt-out. Before acting directly under an exemption, declare which one in one line. Never push to main yourself: main accepts only pull requests (GitHub ruleset), so every change, the .orchestration boundary commit included, travels as a PR merged with gh pr merge --squash.
+$ (cd ~/Workspace/dotfiles/docs && PATH=/usr/bin:/bin bash <this branch script> --directive; echo "rc=$?")   (read-only, from a subdirectory of the main checkout; no herdr on PATH)
+agmsg-orchestration: this session is the orchestrator seat claude-remediation-dot for ~/Workspace/dotfiles (worker seat .claude/worktrees/worker-c). Before any other action, invoke the agmsg-orchestration skill. Delegate every repository-mutating change, make upgrade pin diffs included, to the seated worker as an AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --restart-worker in the pair, herdr-agents --add-worker .claude/worktrees/worker-c otherwise): no worker is never an implicit opt-out. Before acting directly under an exemption, declare which one in one line. Never push to main yourself: main accepts only pull requests (GitHub ruleset), so every change, the .orchestration boundary commit included, travels as a PR merged with gh pr merge --squash.
 rc=0
 ```
 

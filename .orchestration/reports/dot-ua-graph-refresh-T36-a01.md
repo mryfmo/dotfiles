@@ -98,7 +98,7 @@ prepare-incremental's 30-file threshold and forced a second full rebuild of
 ## CompactionDB (main checkout)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T36: the .ua/ knowledge graph is refreshed incrementally by a worker task whenever the SessionStart hook reports it stale; the orchestrator never runs the graph update in its own session (operator 2026-09-28)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T36: the .ua/ knowledge graph is refreshed incrementally by a worker task whenever the SessionStart hook reports it stale; the orchestrator never runs the graph update in its own session (operator 2026-09-28)."
 c99ba88c-c4da-4e34-a776-f53f538d8be8
 ```
 

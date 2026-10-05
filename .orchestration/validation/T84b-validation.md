@@ -29,14 +29,14 @@ The initially specified literal export was rejected by live evidence:
 
 ```text
 {{ .chezmoi.sourceDir | quote }}
-=> "/Users/mryfmo/Workspace/dotfiles/home"
+=> "~/Workspace/dotfiles/home"
 ```
 
 That path lacks `vendor/compactiondb`. The implemented expression renders correctly:
 
 ```text
 #!/usr/bin/env bash
-export DOTFILES_SOURCE_DIR="/Users/mryfmo/Workspace/dotfiles"
+export DOTFILES_SOURCE_DIR="~/Workspace/dotfiles"
 ```
 
 The complete `chezmoi execute-template` output passes `bash -n`. A regression invokes `chezmoi execute-template --source <repo>/home --file <wrapper>` and pins the two rendered lines above, preventing the live exec-format regression where `export` became line 1.

@@ -27,7 +27,7 @@ ShellCheck findings: none.
 Environment warning emitted by mise while resolving the command:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3c8cd.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3c8cd.msgpack.z Operation not permitted (os error 1)
 ```
 
 The warning is unrelated to the checked script and did not affect the exit code.

@@ -49,8 +49,8 @@ $ grep -n "AGMSG_SELF_NAME\|name its own pane\|when it ACTS" ~/.agents/skills/ag
 63:: "${SKILL_DIR:=$(cd "$_agmsg_self_name_dir/../.." && pwd)}"
 95:_agmsg_self_name_env_corroborated() {   # <terminal> <id> <team> <agent>
 $ grep -n "agmsg_self_name_on_action" ~/.agents/skills/agmsg/scripts/send.sh ~/.agents/skills/agmsg/scripts/inbox.sh
-/home/moriya/.agents/skills/agmsg/scripts/send.sh:77:agmsg_self_name_on_action "$TEAM" "$FROM"
-/home/moriya/.agents/skills/agmsg/scripts/inbox.sh:23:agmsg_self_name_on_action "$TEAM" "$AGENT"
+~/.agents/skills/agmsg/scripts/send.sh:77:agmsg_self_name_on_action "$TEAM" "$FROM"
+~/.agents/skills/agmsg/scripts/inbox.sh:23:agmsg_self_name_on_action "$TEAM" "$AGENT"
 $ herdr workspace --help | sed -n 1,14p
 Manage workspaces over the socket API
 
@@ -69,9 +69,9 @@ Are you an AI? Use these resources ONLY IF your task specifically asks you to:
 $ herdr workspace list | jq -c ".result.workspaces[] | {workspace_id,label,keys:keys}"
 {"workspace_id":"wJ","label":"dotfiles","keys":["active_tab_id","agent_status","focused","label","number","pane_count","tab_count","workspace_id"]}
 $ herdr pane list --workspace wJ | jq -c ".result.panes[] | {pane_id,tab_id,label,agent,cwd}"
-{"pane_id":"wJ:p1","tab_id":"wJ:t1","label":"dotfiles:claude-remediation-dot","agent":"claude","cwd":"/home/moriya/Workspace/dotfiles"}
-{"pane_id":"wJ:p2","tab_id":"wJ:t1","label":"dotfiles:claude-standard-dot-a005","agent":"claude","cwd":"/home/moriya/Workspace/dotfiles"}
-{"pane_id":"wJ:p5","tab_id":"wJ:t4","label":"audit","agent":null,"cwd":"/home/moriya/Workspace/dotfiles"}
+{"pane_id":"wJ:p1","tab_id":"wJ:t1","label":"dotfiles:claude-remediation-dot","agent":"claude","cwd":"~/Workspace/dotfiles"}
+{"pane_id":"wJ:p2","tab_id":"wJ:t1","label":"dotfiles:claude-standard-dot-a005","agent":"claude","cwd":"~/Workspace/dotfiles"}
+{"pane_id":"wJ:p5","tab_id":"wJ:t4","label":"audit","agent":null,"cwd":"~/Workspace/dotfiles"}
 $ herdr agent list | jq -c ".result.agents[] | {name,pane_id,agent}"
 {"name":"a449a05f399333edd28a0dac1","pane_id":"wJ:p1","agent":"claude"}
 {"name":"a46054f860901eb4904f5a133","pane_id":"wJ:p2","agent":"claude"}
@@ -98,7 +98,7 @@ FFFFFF
 FAIL: test_attach_from_the_self_named_worker_pane_exits_quietly (tests.unit.test_herdr_agents.HerdrAgentsTest.test_attach_from_the_self_named_worker_pane_exits_quietly)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2951, in test_attach_from_the_self_named_worker_pane_exits_quietly
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2951, in test_attach_from_the_self_named_worker_pane_exits_quietly
     self.assertFalse(any(c.startswith(("pane rename", "pane split", "agent start")) for c in self.calls()), self.calls())
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false : ['identities /tmp/herdr-agents-test-eor_u4bx/project claude-code', 'pane list --workspace w-old', 'agent get claude-worker-w-old', 'agent get claude-worker-w-old', 'pane rename w-old:p2 claude-orchestrator']
@@ -107,7 +107,7 @@ AssertionError: True is not false : ['identities /tmp/herdr-agents-test-eor_u4bx
 FAIL: test_attach_leaves_a_self_named_pair_alone (tests.unit.test_herdr_agents.HerdrAgentsTest.test_attach_leaves_a_self_named_pair_alone)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2943, in test_attach_leaves_a_self_named_pair_alone
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2943, in test_attach_leaves_a_self_named_pair_alone
     self.assertFalse(any(c.startswith(("pane rename", "pane swap", "pane split", "agent start")) for c in calls), calls)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false : ['identities /tmp/herdr-agents-test-e128lk2v/project claude-code', 'pane list --workspace w-old', 'agent get claude-worker-w-old', 'agent get claude-worker-w-old', 'pane rename w-old:p1 claude-orchestrator']
@@ -116,7 +116,7 @@ AssertionError: True is not false : ['identities /tmp/herdr-agents-test-e128lk2v
 FAIL: test_audit_finds_the_self_named_pair_workspace (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_finds_the_self_named_pair_workspace)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2932, in test_audit_finds_the_self_named_pair_workspace
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2932, in test_audit_finds_the_self_named_pair_workspace
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : herdr-agents: no managed Herdr workspace for /tmp/herdr-agents-test-0vnvdbjj/project; run herdr-agents /tmp/herdr-agents-test-0vnvdbjj/project (full mode) to create one, or run codex --profile audit review headless.
@@ -126,7 +126,7 @@ AssertionError: 2 != 0 : herdr-agents: no managed Herdr workspace for /tmp/herdr
 FAIL: test_full_mode_heals_nothing_in_a_healthy_self_named_pair (tests.unit.test_herdr_agents.HerdrAgentsTest.test_full_mode_heals_nothing_in_a_healthy_self_named_pair)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2975, in test_full_mode_heals_nothing_in_a_healthy_self_named_pair
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2975, in test_full_mode_heals_nothing_in_a_healthy_self_named_pair
     self.assertFalse(any(c.startswith(("workspace create", "pane split", "agent start", "pane rename", "agent prompt")) for c in calls), calls)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false : ['identities /tmp/herdr-agents-test-zsjenw64/project claude-code', 'workspace list', 'pane list --workspace w-old', 'workspace create --cwd /tmp/herdr-agents-test-zsjenw64/project --label project agents --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --focus', 'pane rename w-test:p1 claude-orchestrator', 'pane process-info --pane w-test:p1', 'pane read w-test:p1 --source recent-unwrapped --lines 50', 'agent start claude-orchestrator-w-test --kind claude --pane w-test:p1 --timeout 30000 --', 'pane split w-test:p1 --direction right --cwd /tmp/herdr-agents-test-zsjenw64/project --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0 --no-focus', 'pane process-info --pane w-test:p3', 'pane read w-test:p3 --source recent-unwrapped --lines 50', 'agent start claude-worker-w-test --kind claude --pane w-test:p3 --timeout 30000 -- --model opus --effort high', 'pane wait-output w-test:p3 --match trust this folder --timeout 3000', 'pane rename w-test:p3 claude-worker', 'delivery set both claude-code /tmp/herdr-agents-test-zsjenw64/project', 'doctor --project /tmp/herdr-agents-test-zsjenw64/project --type claude-code', 'identities /tmp/herdr-agents-test-zsjenw64/project claude-code']
@@ -135,7 +135,7 @@ AssertionError: True is not false : ['identities /tmp/herdr-agents-test-zsjenw64
 FAIL: test_restart_worker_finds_the_worker_by_its_seat_label (tests.unit.test_herdr_agents.HerdrAgentsTest.test_restart_worker_finds_the_worker_by_its_seat_label)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2958, in test_restart_worker_finds_the_worker_by_its_seat_label
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2958, in test_restart_worker_finds_the_worker_by_its_seat_label
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : herdr-agents: no managed Herdr workspace for /tmp/herdr-agents-test-sd25jc7c/project; run herdr-agents /tmp/herdr-agents-test-sd25jc7c/project (full mode) to create one.
@@ -145,7 +145,7 @@ AssertionError: 2 != 0 : herdr-agents: no managed Herdr workspace for /tmp/herdr
 FAIL: test_two_self_named_pair_workspaces_still_refuse (tests.unit.test_herdr_agents.HerdrAgentsTest.test_two_self_named_pair_workspaces_still_refuse)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2984, in test_two_self_named_pair_workspaces_still_refuse
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2984, in test_two_self_named_pair_workspaces_still_refuse
     self.assertIn("multiple managed Herdr workspaces", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'multiple managed Herdr workspaces' not found in 'herdr-agents: no managed Herdr workspace for /tmp/herdr-agents-test-adijcpyc/project; run herdr-agents /tmp/herdr-agents-test-adijcpyc/project (full mode) to create one, or run codex --profile audit review headless.\n'
@@ -165,7 +165,7 @@ FF.......F
 FAIL: test_another_team_members_pane_is_not_a_second_worker (tests.unit.test_herdr_agents.HerdrAgentsTest.test_another_team_members_pane_is_not_a_second_worker)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2988, in test_another_team_members_pane_is_not_a_second_worker
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2988, in test_another_team_members_pane_is_not_a_second_worker
     self.assertIn("refusing restart", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'refusing restart' not found in 'herdr-agents: no claude worker pane in Herdr workspace w-old; run herdr-agents /tmp/herdr-agents-test-er5pwe4d/project (full mode) to heal it.\n'
@@ -174,7 +174,7 @@ AssertionError: 'refusing restart' not found in 'herdr-agents: no claude worker 
 FAIL: test_attach_completes_bootstrap_on_a_self_named_pair (tests.unit.test_herdr_agents.HerdrAgentsTest.test_attach_completes_bootstrap_on_a_self_named_pair)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2996, in test_attach_completes_bootstrap_on_a_self_named_pair
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2996, in test_attach_completes_bootstrap_on_a_self_named_pair
     self.assertNotIn("refusing repair", result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'refusing repair' unexpectedly found in 'Herdr attach panes are ambiguous or include unmanaged panes; refusing repair.\n'
@@ -183,7 +183,7 @@ AssertionError: 'refusing repair' unexpectedly found in 'Herdr attach panes are 
 FAIL: test_worker_seat_label_comes_from_the_worker_worktree_registration (tests.unit.test_herdr_agents.HerdrAgentsTest.test_worker_seat_label_comes_from_the_worker_worktree_registration)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 3033, in test_worker_seat_label_comes_from_the_worker_worktree_registration
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 3033, in test_worker_seat_label_comes_from_the_worker_worktree_registration
     self.assertIn(f"identities {worktree} claude-code", self.calls())
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'identities /tmp/herdr-agents-test-su4hdka1/project/.claude/worktrees/worker-c claude-code' not found in ['identities /tmp/herdr-agents-test-su4hdka1/project claude-code', 'team dotfiles --json', 'identities /tmp/herdr-agents-test-su4hdka1/project claude-code', 'pane list --workspace w-old', 'agent get claude-worker-w-old']
@@ -304,7 +304,7 @@ FFF
 FAIL: test_explicit_worker_kind_and_profile_survive_seat_label_loading (tests.unit.test_herdr_agents.HerdrAgentsTest.test_explicit_worker_kind_and_profile_survive_seat_label_loading)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 3080, in test_explicit_worker_kind_and_profile_survive_seat_label_loading
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 3080, in test_explicit_worker_kind_and_profile_survive_seat_label_loading
     self.assertTrue(
     ~~~~~~~~~~~~~~~^
         any(c.startswith("agent start codex-worker-") and c.endswith("--sandbox workspace-write --profile express") for c in calls),
@@ -319,7 +319,7 @@ AssertionError: False is not true : ['identities /tmp/herdr-agents-test-chn0_gdg
 FAIL: test_full_mode_does_not_duplicate_a_solo_codex_worker_seat (tests.unit.test_herdr_agents.HerdrAgentsTest.test_full_mode_does_not_duplicate_a_solo_codex_worker_seat)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 3068, in test_full_mode_does_not_duplicate_a_solo_codex_worker_seat
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 3068, in test_full_mode_does_not_duplicate_a_solo_codex_worker_seat
     self.assertFalse(any(c.startswith(("pane split", "agent start")) for c in self.calls()), self.calls())
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false : ['identities /tmp/herdr-agents-test-eottkxb5/project claude-code', 'identities /tmp/herdr-agents-test-eottkxb5/project codex', 'workspace list', 'pane list --workspace w-old', 'pane list --workspace w-old', 'agent get codex-worker-w-old', 'pane split w-old:p1 --direction right --cwd /tmp/herdr-agents-test-eottkxb5/project --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env AGMSG_RESOLVE_PROJECT=0 --no-focus', 'pane process-info --pane w-old:p3', 'pane read w-old:p3 --source recent-unwrapped --lines 50', 'agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard', 'pane list --workspace w-old', 'pane rename w-old:p3 codex-worker', 'pane list --workspace w-old', 'pane list --workspace w-old', 'delivery set turn codex /tmp/herdr-agents-test-eottkxb5/project', 'delivery set both claude-code /tmp/herdr-agents-test-eottkxb5/project', 'doctor --project /tmp/herdr-agents-test-eottkxb5/project --type codex', 'identities /tmp/herdr-agents-test-eottkxb5/project codex', 'doctor --project /tmp/herdr-agents-test-eottkxb5/project --type claude-code', 'identities /tmp/herdr-agents-test-eottkxb5/project claude-code', 'workspace focus w-old']
@@ -328,7 +328,7 @@ AssertionError: True is not false : ['identities /tmp/herdr-agents-test-eottkxb5
 FAIL: test_restart_worker_finds_a_solo_codex_worker_seat (tests.unit.test_herdr_agents.HerdrAgentsTest.test_restart_worker_finds_a_solo_codex_worker_seat)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 3057, in test_restart_worker_finds_a_solo_codex_worker_seat
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 3057, in test_restart_worker_finds_a_solo_codex_worker_seat
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : herdr-agents: no codex worker pane in Herdr workspace w-old; run herdr-agents /tmp/herdr-agents-test-fxac9dlq/project (full mode) to heal it.

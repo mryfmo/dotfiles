@@ -65,7 +65,7 @@ $ python3 --version
 Python 3.14.7
 
 $ python3 -c 'import os, sys; assert sys.version_info >= (3, 10); print(os.path.realpath(".", strict=True))'
-/Users/mryfmo/Workspace/dotfiles
+~/Workspace/dotfiles
 
 `strict=` was added to os.path.realpath in Python 3.10. Repository pins:
 - home/dot_mise/config.toml:5: python = "3.14.7"
@@ -135,7 +135,7 @@ T66e LOGICAL DIFF (shared T66b-T68b base omitted)
 ```
 
 REVIEW
-- Crit review file: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Crit review file: ~/.crit/reviews/dfcf30aea611/review.json
 - Record: r_f6df4f; resolved=true.
 - Finding: terminal `..` containment escape; addressed and regression-pinned.
 - Evidence: .agents/worklog/codex/review/T66e-crit-comments.json

@@ -76,14 +76,14 @@ STDOUT:
   repaired: missing file /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json (chezmoi apply /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json)
   repaired: content differs /private/tmp/t59-fake-home-0s3d2eky/home/.agents/model-profiles.env (chezmoi apply /private/tmp/t59-fake-home-0s3d2eky/home/.agents/model-profiles.env)
   repaired: executable bit missing /private/tmp/t59-fake-home-0s3d2eky/home/.claude/hooks/enforce-uv.sh (chmod +x /private/tmp/t59-fake-home-0s3d2eky/home/.claude/hooks/enforce-uv.sh)
-  repaired: asset step missing /private/tmp/t59-fake-home-0s3d2eky/home/.agents/compactiondb (bash -c 'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"' bash /Users/mryfmo/Workspace/dotfiles/scripts/update-agent-assets.sh update_compactiondb)
+  repaired: asset step missing /private/tmp/t59-fake-home-0s3d2eky/home/.agents/compactiondb (bash -c 'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"' bash ~/Workspace/dotfiles/scripts/update-agent-assets.sh update_compactiondb)
   active agent runtime files match this chezmoi source tree
 
 Exact stub calls (one each):
   chezmoi apply /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json
   chezmoi apply /private/tmp/t59-fake-home-0s3d2eky/home/.agents/model-profiles.env
   chmod +x /private/tmp/t59-fake-home-0s3d2eky/home/.claude/hooks/enforce-uv.sh
-  bash -c 'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"' bash /Users/mryfmo/Workspace/dotfiles/scripts/update-agent-assets.sh update_compactiondb
+  bash -c 'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"' bash ~/Workspace/dotfiles/scripts/update-agent-assets.sh update_compactiondb
 
 The ORPHAN warning remained suggestion-only and produced no action. The re-scan found no repairable errors.
 

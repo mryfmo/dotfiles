@@ -100,7 +100,7 @@ I did not reply to or resolve any thread.
 ## CompactionDB
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T81 (operator 2026-10-03): CompactionDB normalises the Codex `notify` payload (`agent-turn-complete` → `Stop`/`turn_stop`, `thread-id` → session, `client` → agent), bounds the ledger (`capture.max_db_bytes` 512 MiB, VACUUM over 64 MiB of free pages, both only on the explicit `prune`), ships as vendored `2.0.0+dotfiles.7`, and the project copy is validated byte-identical to the vendor tree.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T81 (operator 2026-10-03): CompactionDB normalises the Codex `notify` payload (`agent-turn-complete` → `Stop`/`turn_stop`, `thread-id` → session, `client` → agent), bounds the ledger (`capture.max_db_bytes` 512 MiB, VACUUM over 64 MiB of free pages, both only on the explicit `prune`), ships as vendored `2.0.0+dotfiles.7`, and the project copy is validated byte-identical to the vendor tree.'
 d9f34450-0001-4e36-a2bc-c5cda89c798d
 [exit 0]
 ```

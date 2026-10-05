@@ -353,7 +353,7 @@ session id: 01a100a9-91c9-7ac1-ae11-30d223fcf9c9
 --------
 user
 Run exactly this shell command once and report verbatim what the tool returned: gh pr merge 1
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 **Planning single command execution**
 codex
 指定されたコマンドをそのまま1回だけ実行します。
@@ -447,7 +447,7 @@ resolved=false outdated=true home/dot_codex/rules/default.rules | Forbid the set
 ## CompactionDB (main checkout, unsandboxed)
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T63 (operator 2026-10-03): the Codex execpolicy forbidden set (sudo, rm -rf, gh pr merge, gh release, npm/uv publish, terraform/kubectl apply, chezmoi apply) is declared once in `home/dot_codex/rules/default.rules` and overwrites the live rules on every chezmoi apply; no repository-managed allow rules exist.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T63 (operator 2026-10-03): the Codex execpolicy forbidden set (sudo, rm -rf, gh pr merge, gh release, npm/uv publish, terraform/kubectl apply, chezmoi apply) is declared once in `home/dot_codex/rules/default.rules` and overwrites the live rules on every chezmoi apply; no repository-managed allow rules exist.'
 9ccb9164-013d-4f77-b034-407ad252d0d0
 ```
 
@@ -455,7 +455,7 @@ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py mem
 
 ```
 $ sha256sum <task file>
-4258ed09375ca5233c3d5cc7eee37445fc1e87e9eb205f0274428e8eebbe695a  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+4258ed09375ca5233c3d5cc7eee37445fc1e87e9eb205f0274428e8eebbe695a  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T63-codex-execpolicy-forbidden-a01.md
 - head: 8770ed665b96748c8aaffbda04e424026ed77cbd
 $ git log --oneline origin/main..HEAD
 8770ed66 fix(codex): forbid chezmoi update and edit --apply, init =true aliases, terraform destroy and kubectl delete
@@ -619,7 +619,7 @@ $ git ls-remote origin refs/heads/chore/codex-execpolicy-forbidden
 $ codex execpolicy check --rules home/dot_codex/rules/default.rules -- <argv>   (decision of the last JSON line)
 ./setup.sh                                                                       forbidden
 setup.sh --help                                                                  forbidden
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/setup.sh              no-match
+~/Workspace/dotfiles/.claude/worktrees/worker-c/setup.sh              no-match
 bash -lc ./setup.sh                                                              no-match
 shellcheck setup.sh                                                              no-match
 setup-gh                                                                         no-match
@@ -653,7 +653,7 @@ $ codex execpolicy check --rules home/dot_codex/rules/default.rules -- ./setup.s
 Error: failed to parse policy at home/dot_codex/rules/default.rules
 
 Caused by:
-    expected example to not match rule `PrefixRuleMatch { matched_prefix: ["setup.sh"], decision: Forbidden, resolved_program: Some(AbsolutePathBuf("/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/setup.sh")), justification: Some("setup.sh bootstraps the machine and runs chezmoi apply (operator lifecycle; make setup wraps it); ask the operator.") }`: ./scripts/setup.sh
+    expected example to not match rule `PrefixRuleMatch { matched_prefix: ["setup.sh"], decision: Forbidden, resolved_program: Some(AbsolutePathBuf("~/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/setup.sh")), justification: Some("setup.sh bootstraps the machine and runs chezmoi apply (operator lifecycle; make setup wraps it); ask the operator.") }`: ./scripts/setup.sh
 rc=1
 ```
 

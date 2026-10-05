@@ -133,13 +133,13 @@ Removing: /opt/homebrew/Cellar/mosh/1.4.0_42... (16 files, 878.1KB)
 Removing: /opt/homebrew/Cellar/uv/0.12.15... (17 files, 44.5MB)
 Removing: /opt/homebrew/Cellar/mole/1.54.0... (63 files, 10.9MB)
 Removing: /opt/homebrew/Cellar/ffmpeg/9.0.1_1... (290 files, 53.8MB)
-Removing: /Users/mryfmo/Library/Caches/Homebrew/uv--0.12.15... (18.5MB)
-Removing: /Users/mryfmo/Library/Caches/Homebrew/uv_bottle_manifest--0.12.15... (18.8KB)
-Removing: /Users/mryfmo/Library/Caches/Homebrew/mole--1.54.0... (4MB)
-Removing: /Users/mryfmo/Library/Caches/Homebrew/mole_bottle_manifest--1.54.0... (8.8KB)
+Removing: ~/Library/Caches/Homebrew/uv--0.12.15... (18.5MB)
+Removing: ~/Library/Caches/Homebrew/uv_bottle_manifest--0.12.15... (18.8KB)
+Removing: ~/Library/Caches/Homebrew/mole--1.54.0... (4MB)
+Removing: ~/Library/Caches/Homebrew/mole_bottle_manifest--1.54.0... (8.8KB)
 Removing: /opt/homebrew/Cellar/awscli/2.36.47... (14,680 files, 162.4MB)
-Removing: /Users/mryfmo/Library/Caches/Homebrew/awscli--2.36.47... (23.4MB)
-Removing: /Users/mryfmo/Library/Caches/Homebrew/awscli_bottle_manifest--2.36.47... (138.5KB)
+Removing: ~/Library/Caches/Homebrew/awscli--2.36.47... (23.4MB)
+Removing: ~/Library/Caches/Homebrew/awscli_bottle_manifest--2.36.47... (138.5KB)
 Disable this behaviour by setting `HOMEBREW_NO_INSTALL_CLEANUP=1`.
 Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
 ==> Caveats
@@ -149,8 +149,8 @@ zsh completions and functions have been installed to:
   /opt/homebrew/share/zsh/site-functions
 ==> uv
 The following uv executables are shadowed by other commands earlier in your PATH:
-  uv (shadowed by /Users/mryfmo/.local/share/mise/shims/uv)
-  uvx (shadowed by /Users/mryfmo/.local/share/mise/shims/uvx)
+  uv (shadowed by ~/.local/share/mise/shims/uv)
+  uvx (shadowed by ~/.local/share/mise/shims/uvx)
 Running these by name will not invoke the version provided by Homebrew.
 Disable this behaviour by setting `HOMEBREW_NO_PATH_SHADOW_CHECK=1`.
 Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
@@ -182,7 +182,7 @@ codexbar 0.60.4 -> 0.63.0
 ==> Purging files for version 0.60.4 of Cask codexbar
 🍺  codexbar was successfully upgraded!
 ==> Cleanup
-Removing: /Users/mryfmo/Library/Caches/Homebrew/Cask/codexbar--0.60.4.zip... (70.5MB)
+Removing: ~/Library/Caches/Homebrew/Cask/codexbar--0.60.4.zip... (70.5MB)
 Disable this behaviour by setting `HOMEBREW_NO_INSTALL_CLEANUP=1`.
 Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
 ==> Upgraded 1 requested outdated package
@@ -194,7 +194,7 @@ Checking current version... v2026.9.10
 Looking for tag: v2026.9.12
 
 mise release status:
-  * Current exe: /Users/mryfmo/.local/bin/mise
+  * Current exe: ~/.local/bin/mise
   * New exe release: "mise-v2026.9.12-macos-arm64.tar.gz"
   * New exe download url: "https://api.github.com/repos/jdx/mise/releases/assets/576717088"
 
@@ -1627,17 +1627,17 @@ Claude Code Understand-Anything plugin is already enabled.
 Codex Superpowers plugin installed.
 
 ==> Codex Crit plugin
-  Installed: /Users/mryfmo/.agents/plugins/marketplace.json
+  Installed: ~/.agents/plugins/marketplace.json
   Installed: .agents/skills/crit/SKILL.md
   Installed: .agents/skills/crit-cli/SKILL.md
   Installed: .agents/skills/crit-story/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/.codex-plugin/plugin.json
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit-cli/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit-story/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/hooks/hooks.json
-  Installed: /Users/mryfmo/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
-  Skipped:   /Users/mryfmo/.codex/config.toml (Codex plugin already enabled)
+  Installed: ~/.codex/plugins/crit/.codex-plugin/plugin.json
+  Installed: ~/.codex/plugins/crit/skills/crit/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-cli/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-story/SKILL.md
+  Installed: ~/.codex/plugins/crit/hooks/hooks.json
+  Installed: ~/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
+  Skipped:   ~/.codex/config.toml (Codex plugin already enabled)
   Use $crit in Codex to start a review loop
   The crit-cli skill is available to Codex agents when needed
   Use $crit-story in Codex to author a story and continue the review loop
@@ -1656,20 +1656,20 @@ Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new
 Ponytail default mode is full. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.
 
 ==> Codex Understand-Anything skills
-→ Updating existing checkout at /Users/mryfmo/.understand-anything/repo
+→ Updating existing checkout at ~/.understand-anything/repo
 Already up to date.
-→ Linking skills for codex (per-skill → /Users/mryfmo/.agents/skills)
-  ✓ /Users/mryfmo/.agents/skills/understand-chat → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-chat
-  ✓ /Users/mryfmo/.agents/skills/understand-dashboard → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-dashboard
-  ✓ /Users/mryfmo/.agents/skills/understand-diff → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-diff
-  ✓ /Users/mryfmo/.agents/skills/understand-domain → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-domain
-  ✓ /Users/mryfmo/.agents/skills/understand-explain → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-explain
-  ✓ /Users/mryfmo/.agents/skills/understand-figma → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-figma
-  ✓ /Users/mryfmo/.agents/skills/understand-knowledge → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-knowledge
-  ✓ /Users/mryfmo/.agents/skills/understand-onboard → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-onboard
-  ✓ /Users/mryfmo/.agents/skills/understand → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand
+→ Linking skills for codex (per-skill → ~/.agents/skills)
+  ✓ ~/.agents/skills/understand-chat → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-chat
+  ✓ ~/.agents/skills/understand-dashboard → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-dashboard
+  ✓ ~/.agents/skills/understand-diff → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-diff
+  ✓ ~/.agents/skills/understand-domain → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-domain
+  ✓ ~/.agents/skills/understand-explain → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-explain
+  ✓ ~/.agents/skills/understand-figma → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-figma
+  ✓ ~/.agents/skills/understand-knowledge → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-knowledge
+  ✓ ~/.agents/skills/understand-onboard → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-onboard
+  ✓ ~/.agents/skills/understand → ~/.understand-anything/repo/understand-anything-plugin/skills/understand
 → Linking universal plugin root
-  • /Users/mryfmo/.understand-anything-plugin already exists, leaving as-is
+  • ~/.understand-anything-plugin already exists, leaving as-is
 
 ✓ Installed Understand-Anything for codex
   Restart your CLI or IDE to pick up the skills.
@@ -1684,11 +1684,11 @@ tode v0.3.4 is already installed.
 terminal-browser v0.11.1 is already installed.
 
 ==> herdr integrations
-installed claude integration hook to /Users/mryfmo/.claude/hooks/herdr-agent-state.sh
-ensured claude settings at /Users/mryfmo/.claude/settings.json
-installed codex integration hook to /Users/mryfmo/.codex/herdr-agent-state.sh
-ensured codex hooks at /Users/mryfmo/.codex/hooks.json
-ensured codex config at /Users/mryfmo/.codex/config.toml
+installed claude integration hook to ~/.claude/hooks/herdr-agent-state.sh
+ensured claude settings at ~/.claude/settings.json
+installed codex integration hook to ~/.codex/herdr-agent-state.sh
+ensured codex hooks at ~/.codex/hooks.json
+ensured codex config at ~/.codex/config.toml
 
 ==> uv tools
 Nothing to upgrade
@@ -1758,11 +1758,11 @@ awscli        2.36.49 -> 2.36.50 (23.4MB)
 ==> Cleanup
 Removing: /opt/homebrew/Cellar/aws-c-s3/1.1.2... (19 files, 433.8KB)
 Removing: /opt/homebrew/Cellar/aws-c-common/1.0.0... (109 files, 1MB)
-Removing: /Users/mryfmo/Library/Caches/Homebrew/aws-c-s3--1.1.2... (131.4KB)
-Removing: /Users/mryfmo/Library/Caches/Homebrew/aws-c-s3_bottle_manifest--1.1.2... (70KB)
+Removing: ~/Library/Caches/Homebrew/aws-c-s3--1.1.2... (131.4KB)
+Removing: ~/Library/Caches/Homebrew/aws-c-s3_bottle_manifest--1.1.2... (70KB)
 Removing: /opt/homebrew/Cellar/awscli/2.36.49... (14,680 files, 162.5MB)
-Removing: /Users/mryfmo/Library/Caches/Homebrew/awscli--2.36.49... (23.4MB)
-Removing: /Users/mryfmo/Library/Caches/Homebrew/awscli_bottle_manifest--2.36.49... (138.5KB)
+Removing: ~/Library/Caches/Homebrew/awscli--2.36.49... (23.4MB)
+Removing: ~/Library/Caches/Homebrew/awscli_bottle_manifest--2.36.49... (138.5KB)
 Disable this behaviour by setting `HOMEBREW_NO_INSTALL_CLEANUP=1`.
 Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
 ==> Caveats
@@ -1783,7 +1783,7 @@ Checking current version... v2026.9.10
 Looking for tag: v2026.9.12
 
 mise release status:
-  * Current exe: /Users/mryfmo/.local/bin/mise
+  * Current exe: ~/.local/bin/mise
   * New exe release: "mise-v2026.9.12-macos-arm64.tar.gz"
   * New exe download url: "https://api.github.com/repos/jdx/mise/releases/assets/576717088"
 
@@ -3087,17 +3087,17 @@ Claude Code Understand-Anything plugin is already enabled.
 Codex Superpowers plugin installed.
 
 ==> Codex Crit plugin
-  Installed: /Users/mryfmo/.agents/plugins/marketplace.json
+  Installed: ~/.agents/plugins/marketplace.json
   Installed: .agents/skills/crit/SKILL.md
   Installed: .agents/skills/crit-cli/SKILL.md
   Installed: .agents/skills/crit-story/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/.codex-plugin/plugin.json
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit-cli/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit-story/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/hooks/hooks.json
-  Installed: /Users/mryfmo/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
-  Skipped:   /Users/mryfmo/.codex/config.toml (Codex plugin already enabled)
+  Installed: ~/.codex/plugins/crit/.codex-plugin/plugin.json
+  Installed: ~/.codex/plugins/crit/skills/crit/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-cli/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-story/SKILL.md
+  Installed: ~/.codex/plugins/crit/hooks/hooks.json
+  Installed: ~/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
+  Skipped:   ~/.codex/config.toml (Codex plugin already enabled)
   Use $crit in Codex to start a review loop
   The crit-cli skill is available to Codex agents when needed
   Use $crit-story in Codex to author a story and continue the review loop
@@ -3116,20 +3116,20 @@ Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new
 Ponytail default mode is full. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.
 
 ==> Codex Understand-Anything skills
-→ Updating existing checkout at /Users/mryfmo/.understand-anything/repo
+→ Updating existing checkout at ~/.understand-anything/repo
 Already up to date.
-→ Linking skills for codex (per-skill → /Users/mryfmo/.agents/skills)
-  ✓ /Users/mryfmo/.agents/skills/understand-chat → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-chat
-  ✓ /Users/mryfmo/.agents/skills/understand-dashboard → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-dashboard
-  ✓ /Users/mryfmo/.agents/skills/understand-diff → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-diff
-  ✓ /Users/mryfmo/.agents/skills/understand-domain → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-domain
-  ✓ /Users/mryfmo/.agents/skills/understand-explain → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-explain
-  ✓ /Users/mryfmo/.agents/skills/understand-figma → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-figma
-  ✓ /Users/mryfmo/.agents/skills/understand-knowledge → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-knowledge
-  ✓ /Users/mryfmo/.agents/skills/understand-onboard → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-onboard
-  ✓ /Users/mryfmo/.agents/skills/understand → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand
+→ Linking skills for codex (per-skill → ~/.agents/skills)
+  ✓ ~/.agents/skills/understand-chat → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-chat
+  ✓ ~/.agents/skills/understand-dashboard → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-dashboard
+  ✓ ~/.agents/skills/understand-diff → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-diff
+  ✓ ~/.agents/skills/understand-domain → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-domain
+  ✓ ~/.agents/skills/understand-explain → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-explain
+  ✓ ~/.agents/skills/understand-figma → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-figma
+  ✓ ~/.agents/skills/understand-knowledge → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-knowledge
+  ✓ ~/.agents/skills/understand-onboard → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-onboard
+  ✓ ~/.agents/skills/understand → ~/.understand-anything/repo/understand-anything-plugin/skills/understand
 → Linking universal plugin root
-  • /Users/mryfmo/.understand-anything-plugin already exists, leaving as-is
+  • ~/.understand-anything-plugin already exists, leaving as-is
 
 ✓ Installed Understand-Anything for codex
   Restart your CLI or IDE to pick up the skills.
@@ -3144,11 +3144,11 @@ tode v0.3.4 is already installed.
 terminal-browser v0.11.1 is already installed.
 
 ==> herdr integrations
-installed claude integration hook to /Users/mryfmo/.claude/hooks/herdr-agent-state.sh
-ensured claude settings at /Users/mryfmo/.claude/settings.json
-installed codex integration hook to /Users/mryfmo/.codex/herdr-agent-state.sh
-ensured codex hooks at /Users/mryfmo/.codex/hooks.json
-ensured codex config at /Users/mryfmo/.codex/config.toml
+installed claude integration hook to ~/.claude/hooks/herdr-agent-state.sh
+ensured claude settings at ~/.claude/settings.json
+installed codex integration hook to ~/.codex/herdr-agent-state.sh
+ensured codex hooks at ~/.codex/hooks.json
+ensured codex config at ~/.codex/config.toml
 
 ==> uv tools
 Nothing to upgrade
@@ -3164,14 +3164,14 @@ CCR gates G2/G3 require manual primary-source verification before any canary.
 Upgrade summary: required failures: 0; optional warnings: 0
 /Library/Developer/CommandLineTools/usr/bin/make agmsg-bootstrap
 First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.
-No agmsg Claude Code identity for /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/upgrade-regen; run: /Users/mryfmo/.agents/skills/agmsg/scripts/join.sh <team> <agent-name> claude-code "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/upgrade-regen"
+No agmsg Claude Code identity for ~/Workspace/dotfiles/.claude/worktrees/upgrade-regen; run: ~/.agents/skills/agmsg/scripts/join.sh <team> <agent-name> claude-code "~/Workspace/dotfiles/.claude/worktrees/upgrade-regen"
 ```
 
 ## Initial unittest attempt blocked by sandbox (exit 2)
 
 ```text
-error: Failed to initialize cache at `/Users/mryfmo/.cache/uv`
-  Caused by: failed to open file `/Users/mryfmo/.cache/uv/sdists-v9/.git`: Operation not permitted (os error 1)
+error: Failed to initialize cache at `~/.cache/uv`
+  Caused by: failed to open file `~/.cache/uv/sdists-v9/.git`: Operation not permitted (os error 1)
 ```
 
 ## Required unittest with uv cache access (exit 0)
@@ -3306,7 +3306,7 @@ Focused statusline test before exact-consumer updates (exit 1):
 FAIL: test_mise_config_and_lock_pin_exact_npm_versions (tests.unit.test_statusline_tools.StatuslineToolsTest.test_mise_config_and_lock_pin_exact_npm_versions)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/upgrade-regen/tests/unit/test_statusline_tools.py", line 37, in test_mise_config_and_lock_pin_exact_npm_versions
+  File "~/Workspace/dotfiles/.claude/worktrees/upgrade-regen/tests/unit/test_statusline_tools.py", line 37, in test_mise_config_and_lock_pin_exact_npm_versions
     self.assertEqual(config["tools"] | EXPECTED_TOOLS, config["tools"])
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: {'nod[568 chars]2.2.27', 'npm:ccusage': '20.0.19', 'npm:pyrigh[1422 chars]'}}}} != {'nod[568 chars]2.2.29', 'npm:ccusage': '20.0.20', 'npm:pyrigh[1422 chars]'}}}}
@@ -3406,7 +3406,7 @@ F....
 FAIL: test_ci_smokes_exact_tools_with_network_denied (tests.unit.test_statusline_tools.StatuslineToolsTest.test_ci_smokes_exact_tools_with_network_denied)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/upgrade-regen/tests/unit/test_statusline_tools.py", line 112, in test_ci_smokes_exact_tools_with_network_denied
+  File "~/Workspace/dotfiles/.claude/worktrees/upgrade-regen/tests/unit/test_statusline_tools.py", line 112, in test_ci_smokes_exact_tools_with_network_denied
     self.assertIn(token, workflow)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
 AssertionError: 'mise -C "${RUNNER_TEMP}/statusline-mise" install --locked node' not found in 'name: Unit test\n\non:\n  # Required checks must always report a final status for PRs into `main`.\n  # Do not add workflow-level path or branch filters here: GitHub can leave\n  # skipped required checks in a pending state and block merges.\n  # Keep this workflow unconditional and decide inside jobs whether the full\n  # test matrix is necessary for the current diff.\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\npermissions:\n  contents: read\n\njobs:\n  changes:\n    runs-on: ubuntu-latest\n    outputs:\n      should_test: ${{ steps.filter.outputs.should_test }}\n      should_nix: ${{ steps.filter.outputs.should_nix }}\n      diff_range: ${{ steps.filter.outputs.diff_range }}\n\n    steps:\n      - name: Configure Git defaults\n        run: git config --global init.defaultBranch main\n\n      - name: Checkout repository\n        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7\n        with:\n          fetch-depth: 0\n          persist-credentials: false\n\n      - name: Detect unit-test-relevant changes\n        id: filter\n        env:\n          EVENT_NAME: ${{ github.event_name }}\n          BASE_REF: ${{ github.base_ref }}\n          BEFORE_SHA: ${{ github.event.before }}\n          HEAD_SHA: ${{ github.sha }}\n        run: |\n          set -euo pipefail\n\n          # Keep the diff calculation here so the required workflow can always\n          # start and report a final status before we decide whether to run the\n          # heavier test steps.\n          if [ "${EVENT_NAME}" = "pull_request" ]; then\n            git fetch --no-tags --depth=1 origin "${BASE_REF}"\n            diff_range="origin/${BASE_REF}...${HEAD_SHA}"\n          elif [ -n "${BEFORE_SHA}" ] && [ "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]; then\n            diff_range="${BEFORE_SHA}...${HEAD_SHA}"\n          else\n            diff_range="${HEAD_SHA}^...${HEAD_SHA}"\n          fi\n\n          echo "diff_range=${diff_range}" >> "${GITHUB_OUTPUT}"\n\n          # One option would be to predefine CI-relevant path groups such as\n          # `.github/workflows/`, `home/`, `install/`, and `tests/` in an env-\n          # var-like form to make the rule reusable. For this workflow, keeping\n          # the pattern inline is still easier to read because the rule is only\n          # used once and only decides whether the expensive unit-test steps\n          # should run. It does not decide whether the required workflow itself\n          # reports a status. If more workflows need the same rule later,\n          # extract a shared script instead of hiding the pattern in env.\n          if git diff --name-only "${diff_range}" | grep -Eq \'^(\\.github/workflows/|home/|install/|scripts/|tests/|setup\\.sh$|Makefile$|README\\.md$)\'; then\n            echo "should_test=true" >> "${GITHUB_OUTPUT}"\n          else\n            echo "should_test=false" >> "${GITHUB_OUTPUT}"\n          fi\n\n          if git diff --name-only "${diff_range}" | grep -Eq \'^(flake\\.(nix|lock)$|nix/)\'; then\n            echo "should_nix=true" >> "${GITHUB_OUTPUT}"\n          else\n            echo "should_nix=false" >> "${GITHUB_OUTPUT}"\n          fi\n\n  test:\n    needs: changes\n    # Run the same test suite on each target OS/system pair.\n    # We intentionally keep macOS as `client` only because this repository\n    # does not define a macOS `server` test target.\n    strategy:\n      matrix:\n        os: [ubuntu-latest, macos-14]\n        system: [client, server]\n        exclude:\n          - os: macos-14\n            system: server\n\n    runs-on: ${{ matrix.os }}\n    env:\n      # Export matrix values to shell scripts so existing test helpers can use\n      # simple `OS`/`SYSTEM` checks without depending on GitHub expression syntax.\n      OS: ${{ matrix.os }}\n      SYSTEM: ${{ matrix.system }}\n      # Keep Codecov naming deterministic per job. This makes it easy to trace\n      # upload sessions in Codecov API/UI and avoids accidental session overlap.\n      CODECOV_FLAGS: ${{ matrix.os }}-${{ matrix.system }}\n      CODECOV_NAME: codecov-dotfiles-${{ matrix.os }}-${{ matrix.system }}\n      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n\n    steps:\n      - name: Configure Git defaults\n        run: git config --global init.defaultBranch main\n\n      - name: Checkout repository\n        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7\n        with:\n          persist-credentials: false\n\n      - name: Skip full unit test run for unrelated changes\n        if: ${{ needs.changes.outputs.should_test != \'true\' }}\n        run: |\n          echo "No unit-test-relevant files changed."\n          echo "Compared diff range: ${{ needs.changes.outputs.diff_range }}"\n\n      - name: Install tools\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        run: |\n          if [ "${OS}" == "macos-14" ]; then\n            # GitHub macOS runners can include preconfigured taps that Homebrew\n            # warns about during install operations. Trust them explicitly so CI\n            # logs stay warning-clean as Homebrew tightens tap trust defaults.\n            brew trust aws/tap azure/bicep || true\n\n            # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the\n            # system Bash 3.2 parser limitations that produced empty coverage.\n            # `gawk` is available for shell tooling used by the test suite.\n            # `chezmoi` is installed so Bats can render chezmoi templates\n            # behaviorally instead of grepping template syntax.\n            brew install bash bats-core chezmoi gawk parallel shellcheck\n\n          elif [ "${OS}" == "ubuntu-latest" ]; then\n            # Ruby is required for bashcov/simplecov formatters. Install chezmoi\n            # explicitly so template tests can verify rendered behavior.\n            sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck\n            chezmoi_version=2.70.5\n            artifact="chezmoi_${chezmoi_version}_linux_amd64.tar.gz"\n            base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"\n            curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"\n            curl -fsSL "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \\\n              | grep "  ${artifact}$" \\\n              | (cd "${RUNNER_TEMP}" && sha256sum --check --strict)\n            tar -xzf "${RUNNER_TEMP}/${artifact}" -C "${RUNNER_TEMP}" chezmoi\n            sudo install -m 0755 "${RUNNER_TEMP}/chezmoi" /usr/local/bin/chezmoi\n\n          else\n            echo "${OS} and ${SYSTEM} are not supported" >&2\n            exit 1\n          fi\n\n          files_test_chezmoi="$(command -v chezmoi)"\n          case "${files_test_chezmoi}" in\n            /*/mise/shims/*|"")\n              echo "Files test chezmoi must resolve outside mise shims: ${files_test_chezmoi:-missing}" >&2\n              exit 1\n              ;;\n            /*) ;;\n            *)\n              echo "Files test chezmoi must be an absolute path: ${files_test_chezmoi}" >&2\n              exit 1\n              ;;\n          esac\n          test -x "${files_test_chezmoi}"\n          printf \'FILES_TEST_CHEZMOI=%s\\n\' "${files_test_chezmoi}" >> "${GITHUB_ENV}"\n\n          # Install coverage tooling as user gems and expose gem bin dir on PATH\n          # before installation so RubyGems can expose executables immediately.\n          # `--no-document` keeps CI faster and deterministic.\n          gem_bin_dir="$(ruby -r rubygems -e \'puts Gem.user_dir\')/bin"\n          echo "${gem_bin_dir}" >> "${GITHUB_PATH}"\n          export PATH="${gem_bin_dir}:${PATH}"\n          gem install --user-install --no-document bashcov --version 3.3.0\n          gem install --user-install --no-document simplecov-cobertura --version 3.1.0\n\n      - name: Prepare exact statusline tool config\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        run: |\n          statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"\n          mkdir -p "${statusline_mise_dir}"\n          cp home/dot_mise/config.toml "${statusline_mise_dir}/mise.toml"\n          cp home/dot_mise/mise.lock "${statusline_mise_dir}/mise.lock"\n\n      - name: Setup mise for statusline smoke\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4\n        with:\n          version: 2026.9.12\n          install: false\n          cache: true\n\n      - name: Install exact statusline tools\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        run: |\n          mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"\n          mise -C "${RUNNER_TEMP}/statusline-mise" install --locked \\\n            npm:ccstatusline@2.2.29 \\\n            npm:ccusage@20.0.20\n\n      - name: Smoke-test statusline tools without network\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        run: |\n          set -euo pipefail\n\n          statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"\n          ccstatusline_bin="$(mise -C "${statusline_mise_dir}" which ccstatusline)"\n          ccusage_bin="$(mise -C "${statusline_mise_dir}" which ccusage)"\n          ccstatusline_root="$(mise -C "${statusline_mise_dir}" where npm:ccstatusline@2.2.29)"\n          ccusage_root="$(mise -C "${statusline_mise_dir}" where npm:ccusage@20.0.20)"\n\n          case "${ccstatusline_bin}" in\n            "${ccstatusline_root}"/*) ;;\n            *) echo "ccstatusline did not resolve from mise\'s exact install" >&2; exit 1 ;;\n          esac\n          case "${ccusage_bin}" in\n            "${ccusage_root}"/*) ;;\n            *) echo "ccusage did not resolve from mise\'s exact install" >&2; exit 1 ;;\n          esac\n\n          smoke_home="${RUNNER_TEMP}/statusline-smoke-home"\n          mkdir -p "${smoke_home}"\n          smoke=(\n            /usr/bin/env\n            "HOME=${smoke_home}"\n            "PATH=${PATH}"\n            "HTTP_PROXY=http://127.0.0.1:1"\n            "HTTPS_PROXY=http://127.0.0.1:1"\n            NO_PROXY=\n            python3 scripts/check-statusline-tools.py\n            --ccstatusline "${ccstatusline_bin}"\n            --ccusage "${ccusage_bin}"\n          )\n\n          if [ "${OS}" = "ubuntu-latest" ]; then\n            sudo unshare --net -- sh -c \'test -z "$(ip route show)"\'\n            sudo unshare --net -- "${smoke[@]}"\n          elif [ "${OS}" = "macos-14" ]; then\n            sandbox_profile=\'(version 1)(allow default)(deny network*)\'\n            if /usr/bin/sandbox-exec -p "${sandbox_profile}" \\\n              python3 -c \'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0))\'; then\n              echo "macOS network-denial oracle unexpectedly bound a socket" >&2\n              exit 1\n            fi\n            /usr/bin/sandbox-exec -p "${sandbox_profile}" "${smoke[@]}"\n          else\n            echo "${OS} is not supported" >&2\n            exit 1\n          fi\n\n      - name: Run `shfmt`\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        run: |\n          # shfmt is version-pinned via mise: brew/apt ship divergent versions\n          # (3.14 changed heredoc-in-if formatting) and unpinned runners disagree.\n          git ls-files -- \':(glob)install/**/*.sh\' \':(glob)scripts/**/*.sh\' | xargs mise x shfmt@3.14.1 -- shfmt -i 4 -sr -d\n\n      - name: Run `ShellCheck`\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        run: |\n          git ls-files -z \'setup.sh\' \'install/*.sh\' \'install/**/*.sh\' \'scripts/*.sh\' | xargs -0 shellcheck -x\n\n      - name: Setup uv\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7\n        with:\n          enable-cache: false\n\n      - name: Run Python unit tests\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        run: |\n          if [ "${OS}" == "ubuntu-latest" ]; then\n            sudo apt-get update && sudo apt-get install -y jq zsh\n          elif [ "${OS}" == "macos-14" ]; then\n            command -v jq > /dev/null 2>&1 || brew install jq\n            command -v zsh > /dev/null 2>&1 || brew install zsh\n          fi\n\n          make unit-test\n\n      - name: Prepare public dotfiles fixture\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        run: |\n          set -euo pipefail\n\n          files_test_home="${RUNNER_TEMP}/dotfiles-files-${OS}-${SYSTEM}"\n          files_test_source="${RUNNER_TEMP}/dotfiles-public-source-${OS}-${SYSTEM}"\n          files_test_config="${files_test_home}/.config/chezmoi/chezmoi.yaml"\n          if [ -e "${files_test_source}" ]; then\n            echo "Fixture source already exists: ${files_test_source}" >&2\n            exit 1\n          fi\n          cp -R "${GITHUB_WORKSPACE}/home" "${files_test_source}"\n          rm -f "${files_test_source}/.chezmoiexternal.yaml.tmpl"\n          rm -rf "${files_test_source}/.chezmoitemplates/chezmoiexternal.d"\n          mkdir -p "${files_test_home}" "$(dirname "${files_test_config}")"\n          printf \'sourceDir: "%s"\\ndata:\\n  email: "ci@example.invalid"\\n  system: "%s"\\n\' \\\n            "${files_test_source}" "${SYSTEM}" > "${files_test_config}"\n\n          # Remove external definitions only from the fixture copy, then apply\n          # everything else so role-specific ignores determine both boundaries.\n          # Regenerate the full config from its managed template first so\n          # subsequent `chezmoi diff` output contains only target drift.\n          CI=true HOME="${files_test_home}" "${FILES_TEST_CHEZMOI}" \\\n            --source "${files_test_source}" \\\n            --destination "${files_test_home}" \\\n            --config "${files_test_config}" \\\n            init\n          HOME="${files_test_home}" "${FILES_TEST_CHEZMOI}" \\\n            --source "${files_test_source}" \\\n            --destination "${files_test_home}" \\\n            --config "${files_test_config}" \\\n            --refresh-externals=never \\\n            apply --exclude=scripts,externals\n          {\n            printf \'FILES_TEST_HOME=%s\\n\' "${files_test_home}"\n            printf \'FILES_TEST_SOURCE=%s\\n\' "${files_test_source}"\n            printf \'FILES_TEST_CONFIG=%s\\n\' "${files_test_config}"\n          } >> "${GITHUB_ENV}"\n\n      - name: Run unit test\n        if: ${{ needs.changes.outputs.should_test == \'true\' }}\n        run: |\n          if [ "${OS}" == "macos-14" ]; then\n            # Bats uses its own tracing internals on macOS, and bashcov can\n            # misread those records as coverage trace entries. Keep macOS in\n            # the test matrix for platform validation, but collect Codecov\n            # reports from the Ubuntu jobs where bashcov parses Bats output\n            # reliably.\n            ./scripts/run_unit_test.sh\n            exit 0\n          fi\n\n          # Shared bashcov defaults:\n          # - `--skip-uncovered`: limit report to executed files.\n          # - `--root .`: normalize paths relative to repository root.\n          bashcov_args=(--skip-uncovered --root .)\n\n          # Use a unique command name per matrix job so SimpleCov keeps each\n          # session separated before Codecov merges by flag/name.\n          BASHCOV_COMMAND_NAME="unit-test-${OS}-${SYSTEM}" \\\n            ruby ./scripts/run_bashcov_unit_test.rb "${bashcov_args[@]}" -- ./scripts/run_unit_test.sh\n\n      - name: Setup for Codecov\n        if: ${{ needs.changes.outputs.should_test == \'true\' && matrix.os == \'ubuntu-latest\' && !endsWith(github.actor, \'[bot]\') }}\n        run: |\n          # codecov-action uses these tools while preparing and uploading the\n          # explicit Cobertura report in this repository setup.\n          sudo apt-get install -y jq curl\n\n      - name: Upload coverage to Codecov\n        if: ${{ needs.changes.outputs.should_test == \'true\' && matrix.os == \'ubuntu-latest\' && !endsWith(github.actor, \'[bot]\') }}\n        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7\n        env:\n          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n        with:\n          files: ./coverage/coverage.xml\n          # Upload only the explicit report file generated in this workflow.\n          # This prevents unexpected auto-discovery from old/temporary files.\n          disable_search: true\n          env_vars: OS,SYSTEM\n          fail_ci_if_error: false\n          flags: ${{ env.CODECOV_FLAGS }}\n          name: ${{ env.CODECOV_NAME }}\n          # Avoid language auto-discovery warnings for gcov/coverage.py in this\n          # shell-only workflow; upload the explicit Cobertura report only.\n          plugins: noop\n          # Use the PyPI-distributed CLI in CI to avoid non-actionable GPG trust\n          # warnings emitted by the standalone binary signature verifier.\n          use_pypi: true\n          verbose: false\n\n  nix:\n    needs: changes\n    if: ${{ needs.changes.outputs.should_nix == \'true\' }}\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-latest, macos-14]\n    runs-on: ${{ matrix.os }}\n    steps:\n      - name: Checkout repository\n        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7\n        with:\n          persist-credentials: false\n\n      - name: Install Nix\n        uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31\n\n      - name: Evaluate flake outputs\n        run: |\n          nix flake check --no-build --no-update-lock-file\n          nix eval --no-update-lock-file .#homeConfigurations.mryfmo-linux.activationPackage.drvPath\n          nix eval --no-update-lock-file .#homeConfigurations.mryfmo-darwin.activationPackage.drvPath\n          nix eval --no-update-lock-file .#darwinConfigurations.mryfmo-mac.system.drvPath\n'

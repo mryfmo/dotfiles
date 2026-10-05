@@ -1,7 +1,7 @@
 # T66: permgate × Pi — decision protocol + tool_call gate extension (π2)
 
 task_id: T66
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-pi-worker-integration.md (Phase 2, incl. the PR #132 review-hardened decision protocol)

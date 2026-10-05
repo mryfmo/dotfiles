@@ -1,6 +1,6 @@
 # T13 sandbox record
 
-- Work stayed in `/Users/mryfmo/Workspace/dotfiles` on the requested current working tree.
+- Work stayed in `~/Workspace/dotfiles` on the requested current working tree.
 - The only git state change was `git switch -c rule/agmsg-orchestration` from `main`.
 - The new rule remains untracked and unstaged.
 - Supplemental source work is limited to the new agmsg symlink template and the allowed one-line Ponytail symlink correction; neither is staged.

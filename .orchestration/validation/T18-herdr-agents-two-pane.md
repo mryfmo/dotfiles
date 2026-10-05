@@ -1,6 +1,6 @@
 # T18 validation
 
-Worktree: `/Users/mryfmo/Workspace/dotfiles-t18`
+Worktree: `~/Workspace/dotfiles-t18`
 Commit: `b9b5eab`
 
 ## `uv run pytest tests/unit/test_herdr_agents.py`
@@ -10,7 +10,7 @@ Exit: `0`
 ```text
 ============================= test session starts ==============================
 platform darwin -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0
-rootdir: /Users/mryfmo/Workspace/dotfiles-t18
+rootdir: ~/Workspace/dotfiles-t18
 collected 51 items
 
 tests/unit/test_herdr_agents.py ........................................ [ 78%]

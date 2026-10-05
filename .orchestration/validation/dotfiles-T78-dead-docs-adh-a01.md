@@ -5,8 +5,8 @@ PR #261 (https://github.com/mryfmo/dotfiles/pull/261), branch `chore/dead-docs-a
 ## Task file verification
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T78-dead-docs-adh-a01.md
-51154a41101b6bb996db170be812a87fae19dc67a21738cba90607cdc2b6c8f6  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T78-dead-docs-adh-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T78-dead-docs-adh-a01.md
+51154a41101b6bb996db170be812a87fae19dc67a21738cba90607cdc2b6c8f6  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T78-dead-docs-adh-a01.md
 dispatched task_rev 8262026d… (initial) and 51154a41… (PONG decision); the sha256 above matches the latest
 ```
 
@@ -135,6 +135,6 @@ Useful? React with 👍 / 👎.
 ## CompactionDB (main checkout, unsandboxed)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T78 (operator 2026-10-03): the ADH clauses and `reviews/ADH_Integrated_Plan/` leave dotfiles, the Hermes and `learn_index.md` references are deleted, `.github/copilot-instructions.md` is deleted, and the Conventional Commit rules live only in `gh-first-workflow/references/gh-git-rules.md`.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T78 (operator 2026-10-03): the ADH clauses and `reviews/ADH_Integrated_Plan/` leave dotfiles, the Hermes and `learn_index.md` references are deleted, `.github/copilot-instructions.md` is deleted, and the Conventional Commit rules live only in `gh-first-workflow/references/gh-git-rules.md`.'
 86309afa-7762-4bb2-8e4b-ed6e6f3b7fb0
 ```

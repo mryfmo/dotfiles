@@ -1,7 +1,7 @@
 # T33c report — dot-ua-graph-refresh-T33c-a01 (revision 2)
 
 - worker: `claude-standard-dot-a005`; orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `chore/ua-graph-refresh` from `origin/main` = `935e198`
 - task_rev: sha256 `42d2f7e7083f9797b21d4e354250f72f52da30b37b83cea05000e2e75ecdb392`, checked
 - PR: https://github.com/mryfmo/dotfiles/pull/198, head `6f46a1123fe3bcaba12e68277fbe07e34faed10e` (rev2; rev1 head `297f25f`)

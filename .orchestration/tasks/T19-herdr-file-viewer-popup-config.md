@@ -5,7 +5,7 @@
 - Task ID: `T19-herdr-file-viewer-popup-config`
 - Executor model: `gpt-5.6-sol`
 - Reasoning effort: `high`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`
+- Repo: `~/Workspace/dotfiles`
 - Continue on branch `feat/herdr-file-viewer-popup` in the T18 worktree
   (path reported in the T18 result; orchestrator confirms in the AGMSG-TASK
   message). Do NOT touch the main worktree except the `.orchestration/`

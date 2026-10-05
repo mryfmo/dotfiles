@@ -16,7 +16,7 @@ test_mise_versions_are_exact_and_locking_is_enforced (tests.unit.test_supply_cha
 FAIL: test_upgrade_changes_checkout_not_live_mise_symlink_target (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_changes_checkout_not_live_mise_symlink_target) (override=False)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
     self.assertEqual((main_config / name).read_text(), "main-original\n")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'generated config\n' != 'main-original\n'
@@ -28,7 +28,7 @@ AssertionError: 'generated config\n' != 'main-original\n'
 FAIL: test_upgrade_changes_checkout_not_live_mise_symlink_target (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_changes_checkout_not_live_mise_symlink_target) (override=True)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
     self.assertEqual((main_config / name).read_text(), "main-original\n")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'generated config\n' != 'main-original\n'
@@ -40,7 +40,7 @@ AssertionError: 'generated config\n' != 'main-original\n'
 FAIL: test_mise_versions_are_exact_and_locking_is_enforced (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_mise_versions_are_exact_and_locking_is_enforced)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_supply_chain_policy.py", line 188, in test_mise_versions_are_exact_and_locking_is_enforced
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_supply_chain_policy.py", line 188, in test_mise_versions_are_exact_and_locking_is_enforced
     self.assertFalse((ROOT / f"home/dot_config/mise/symlink_{name}.tmpl").exists())
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false
@@ -65,7 +65,7 @@ test_mise_versions_are_exact_and_locking_is_enforced (tests.unit.test_supply_cha
 FAIL: test_upgrade_changes_checkout_not_live_mise_symlink_target (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_changes_checkout_not_live_mise_symlink_target) (override=False)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
     self.assertEqual((main_config / name).read_text(), "main-original\n")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'generated config\n' != 'main-original\n'
@@ -77,7 +77,7 @@ AssertionError: 'generated config\n' != 'main-original\n'
 FAIL: test_upgrade_changes_checkout_not_live_mise_symlink_target (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_changes_checkout_not_live_mise_symlink_target) (override=True)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
     self.assertEqual((main_config / name).read_text(), "main-original\n")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'generated config\n' != 'main-original\n'
@@ -110,8 +110,8 @@ shellcheck scripts/upgrade-tools.sh && shfmt -i 4 -sr -d scripts/upgrade-tools.s
 ```
 Exit code: 2
 ```text
-error: Failed to initialize cache at `/Users/mryfmo/.cache/uv`
-  cause: failed to open file `/Users/mryfmo/.cache/uv/sdists-v9/.git`: Operation not permitted (os error 1)
+error: Failed to initialize cache at `~/.cache/uv`
+  cause: failed to open file `~/.cache/uv/sdists-v9/.git`: Operation not permitted (os error 1)
 ```
 
 ```sh
@@ -128,7 +128,7 @@ bash -c 'source scripts/upgrade-tools.sh; run_mise_with_isolated_git_config conf
 Exit code: 0
 ```text
 mise WARN  tool purgatory cleanup failed: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/home/dot_mise/config.toml /Users/mryfmo/.local/state/mise/tracked-configs/f658dd667046b201: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/mise-symlink/home/dot_mise/config.toml ~/.local/state/mise/tracked-configs/f658dd667046b201: Operation not permitted (os error 1)
 ~/Workspace/dotfiles/.claude/worktrees/mise-symlink/home/dot_mise/config.toml  node, rust, python, age, bun, chezmoi, cmake, dotenvx, cargo:eza, fd, jq, hugo-extended, uv, yazi, aqua:micro-editor/micro, aqua:mikefarah/yq, shellcheck, shfmt, aqua:watchexec/watchexec, npm:@anthropic-ai/claude-code, npm:@openai/codex, npm:bash-language-server, npm:ccstatusline, npm:ccusage, npm:pyright, npm:fast-cli, github:x-motemen/ghq, github:d-kuro/gwq, github:cli/cli, github:ogulcancelik/herdr, github:shuntaka9576/blocc, cargo:pueue, http:bats, http:gcloud
 ```
 
@@ -197,7 +197,7 @@ make: *** [require-crit-review] Error 1
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/c6f17917064c/review.json",
+  "review_file": "~/.crit/reviews/c6f17917064c/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -205,7 +205,7 @@ make: *** [require-crit-review] Error 1
 ```
 
 ```sh
-crit status --json && crit comments --all --json /Users/mryfmo/.crit/reviews/c6f17917064c/review.json
+crit status --json && crit comments --all --json ~/.crit/reviews/c6f17917064c/review.json
 ```
 Exit code: 0
 ```text
@@ -218,7 +218,7 @@ Exit code: 0
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/c6f17917064c/review.json",
+  "review_file": "~/.crit/reviews/c6f17917064c/review.json",
   "review_file_exists": true,
   "round": 1,
   "sessions": [],
@@ -710,7 +710,7 @@ test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.Vali
 test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-13hdg3zv/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-13hdg3zv/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -730,7 +730,7 @@ test_workflows_have_no_job_level_permission_overrides (test_workflow_security.Wo
 FAIL: test_upgrade_changes_checkout_not_live_mise_symlink_target (test_runtime_health.RuntimeHealthTest.test_upgrade_changes_checkout_not_live_mise_symlink_target) (override=False)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
     self.assertEqual((main_config / name).read_text(), "main-original\n")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'generated config\n' != 'main-original\n'
@@ -742,7 +742,7 @@ AssertionError: 'generated config\n' != 'main-original\n'
 FAIL: test_upgrade_changes_checkout_not_live_mise_symlink_target (test_runtime_health.RuntimeHealthTest.test_upgrade_changes_checkout_not_live_mise_symlink_target) (override=True)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1134, in test_upgrade_changes_checkout_not_live_mise_symlink_target
     self.assertEqual((main_config / name).read_text(), "main-original\n")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'generated config\n' != 'main-original\n'
@@ -1198,7 +1198,7 @@ test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.Vali
 test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-uhir99zn/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-uhir99zn/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1662,7 +1662,7 @@ test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.Vali
 test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-0lzbhcad/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-0lzbhcad/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1709,7 +1709,7 @@ test_upgrade_applies_mise_only_from_successful_canonical_checkout (test_runtime_
 FAIL: test_upgrade_applies_mise_only_from_successful_canonical_checkout (test_runtime_health.RuntimeHealthTest.test_upgrade_applies_mise_only_from_successful_canonical_checkout) (canonical=True, fail_phase='none')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1123, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1123, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
     self.assertIn(
     ~~~~~~~~~~~~~^
         f"chezmoi apply {env['HOME']}/.config/mise/config.toml {env['HOME']}/.config/mise/mise.lock",
@@ -1724,7 +1724,7 @@ AssertionError: 'chezmoi apply /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/
 FAIL: test_upgrade_applies_mise_only_from_successful_canonical_checkout (test_runtime_health.RuntimeHealthTest.test_upgrade_applies_mise_only_from_successful_canonical_checkout) (canonical=False, fail_phase='none')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1130, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1130, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
     self.assertIn(
     ~~~~~~~~~~~~~^
         f"pins updated in {repo.resolve()}; ~/.config/mise follows after merge and make update",
@@ -1739,7 +1739,7 @@ AssertionError: 'pins updated in /private/var/folders/r2/_gkywj713g54lbxkc_hv7j4
 FAIL: test_upgrade_applies_mise_only_from_successful_canonical_checkout (test_runtime_health.RuntimeHealthTest.test_upgrade_applies_mise_only_from_successful_canonical_checkout) (canonical=True, fail_phase='chezmoi_apply')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1119, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1119, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
     self.assertEqual(0 if fail_phase == "none" else 1, result.returncode,
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                      result.stdout + result.stderr)
@@ -1787,7 +1787,7 @@ test_upgrade_applies_mise_only_from_successful_canonical_checkout (test_runtime_
 FAIL: test_upgrade_applies_mise_only_from_successful_canonical_checkout (test_runtime_health.RuntimeHealthTest.test_upgrade_applies_mise_only_from_successful_canonical_checkout) (canonical=True, fail_phase='none')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1123, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1123, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
     self.assertIn(
     ~~~~~~~~~~~~~^
         f"chezmoi apply {env['HOME']}/.config/mise/config.toml {env['HOME']}/.config/mise/mise.lock",
@@ -1802,7 +1802,7 @@ AssertionError: 'chezmoi apply /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/
 FAIL: test_upgrade_applies_mise_only_from_successful_canonical_checkout (test_runtime_health.RuntimeHealthTest.test_upgrade_applies_mise_only_from_successful_canonical_checkout) (canonical=False, fail_phase='none')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1130, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1130, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
     self.assertIn(
     ~~~~~~~~~~~~~^
         f"pins updated in {repo.resolve()}; ~/.config/mise follows after merge and make update",
@@ -1817,7 +1817,7 @@ AssertionError: 'pins updated in /private/var/folders/r2/_gkywj713g54lbxkc_hv7j4
 FAIL: test_upgrade_applies_mise_only_from_successful_canonical_checkout (test_runtime_health.RuntimeHealthTest.test_upgrade_applies_mise_only_from_successful_canonical_checkout) (canonical=True, fail_phase='chezmoi_apply')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1119, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
+  File "~/Workspace/dotfiles/.claude/worktrees/mise-symlink/tests/unit/test_runtime_health.py", line 1119, in test_upgrade_applies_mise_only_from_successful_canonical_checkout
     self.assertEqual(0 if fail_phase == "none" else 1, result.returncode,
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                      result.stdout + result.stderr)
@@ -1915,7 +1915,7 @@ Exit: 0
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/c6f17917064c/review.json",
+  "review_file": "~/.crit/reviews/c6f17917064c/review.json",
   "review_file_exists": true,
   "round": 1,
   "sessions": [],
@@ -1978,76 +1978,76 @@ test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.Che
 test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
 test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
 test_check_uses_same_modified_for_codex_profiles (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_uses_same_modified_for_codex_profiles) ... ok
-test_chezmoi_drift_status_failure_is_warning (test_check_agent_runtime.CheckAgentRuntimeTest.test_chezmoi_drift_status_failure_is_warning) ... /Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1072198a0>
+test_chezmoi_drift_status_failure_is_warning (test_check_agent_runtime.CheckAgentRuntimeTest.test_chezmoi_drift_status_failure_is_warning) ... ~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1072198a0>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x107219b70>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x107219b70>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1072196c0>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1072196c0>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1072195d0>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1072195d0>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x107219f30>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x107219f30>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a020>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a020>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a110>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a110>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a200>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a200>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a2f0>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a2f0>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a3e0>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a3e0>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a4d0>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a4d0>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a5c0>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a5c0>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a6b0>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a6b0>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a7a0>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a7a0>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a890>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a890>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a980>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721a980>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721aa70>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721aa70>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721ab60>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721ab60>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721ac50>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721ac50>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721ad40>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721ad40>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721ae30>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721ae30>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721af20>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721af20>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721b010>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721b010>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721b100>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/unittest/mock.py:2253: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10721b100>
   def __init__(self, name, parent):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -2394,7 +2394,7 @@ test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.Vali
 test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-y_s766xy/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-y_s766xy/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok

@@ -3,7 +3,7 @@ status: ready_for_review
 cost: n/a
 
 ## Result
-Worktree: /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees
+Worktree: ~/Workspace/dotfiles/.claude/worktrees/validator-worktrees
 Branch: fix/validator-skip-nested-worktrees.
 Only scripts/validate-agent-assets.py and tests/unit/test_validate_agent_assets.py changed.
 One functools.cache directory-ancestor helper recognizes a .git file or directory below ROOT. Both recursive scans use it while retaining all existing skips. ROOT itself is not excluded. No hardcoded worktree location.

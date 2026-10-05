@@ -5109,6 +5109,35 @@ exit {exit_code}
         )
         self.assertIn("Audit verdict: correct\n", result.stdout)
 
+    def test_audit_task_normalises_home_paths_with_the_repository_masker(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        _, head = self.write_task_audit_repo()
+        validator = self.workdir / "scripts/validate-agent-assets.py"
+        validator.parent.mkdir(parents=True)
+        shutil.copyfile(ROOT / "scripts/validate-agent-assets.py", validator)
+        if not (self.bin_dir / "python3").exists():
+            (self.bin_dir / "python3").symlink_to(sys.executable)
+        self.commit_repo_validator()
+        task = self.workdir.resolve() / ".orchestration/tasks/T1.md"
+        task.parent.mkdir(parents=True)
+        task.write_text("x\n")
+        evidence = self.workdir.resolve() / f".orchestration/validation/T1-audit-{head[:7]}.md"
+        last = Path(f"{evidence}.last.md")
+        home = str(self.home_dir)
+        self.write_audit_evidence(
+            self.transcript("No findings.", exec_output=f"{home}/.agents/skills/a/SKILL.md\n/Users/alice/x\n"), evidence
+        )
+        self.write_audit_evidence(f"Read {home}/.codex/x and /home/alice/y.\nVerdict: correct\n", last)
+
+        result = self.run_helper("--audit", head, "--task", "T1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"masked 2 match(es) in {evidence}", result.stdout)
+        self.assertIn("~/.agents/skills/a/SKILL.md\n~/x\n", evidence.read_text())
+        self.assertEqual(last.read_text(), "Read ~/.codex/x and ~/y.\nVerdict: correct\n")
+        self.assertNotIn(home, evidence.read_text() + last.read_text())
+        self.assertIn("Audit verdict: correct\n", result.stdout)
+
     def test_audit_task_names_only_the_task_file_when_no_artifact_exists(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
         _, head = self.write_task_audit_repo()

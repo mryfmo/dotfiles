@@ -75,7 +75,7 @@ sandbox at pane start and a herdr-paned orchestrator is woken by worker
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`,
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`,
   sequentially after the task in flight there; branch
   `fix/orchestrator-delivery-sandbox` from `origin/main` (`git fetch` first).
 - Sandbox deny-mount stubs are not dirt; explicit-path `git add`; push without

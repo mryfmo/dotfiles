@@ -164,7 +164,7 @@ First update, verbatim relevant output:
 
 ```text
 === literal make update: first ===
-Notice: local source not pulled (current branch is detached, not main); run 'git -C /home/dotmktgate/dotfiles pull' to fetch remote updates.
+Notice: local source not pulled (current branch is detached, not main); run 'git -C ~/dotfiles pull' to fetch remote updates.
 chezmoi apply --verbose
 Warning: private chezmoi source/config not found. Skipping private dotfiles.
 mise install --locked node
@@ -174,8 +174,8 @@ mise-stub install --locked npm:ccstatusline npm:ccusage
 ./scripts/update-agent-assets.sh
 
 ==> Codex Crit plugin
-  Installed: /home/dotmktgate/.agents/plugins/marketplace.json
-  Skipped:   /home/dotmktgate/.codex/config.toml (Codex plugin already enabled)
+  Installed: ~/.agents/plugins/marketplace.json
+  Skipped:   ~/.codex/config.toml (Codex plugin already enabled)
 
 Herdr command not found; skipping config reload.
 make agmsg-bootstrap
@@ -194,7 +194,7 @@ Second update and final gate, verbatim relevant output:
 
 ```text
 === literal make update: second drift gate ===
-Notice: local source not pulled (current branch is detached, not main); run 'git -C /home/dotmktgate/dotfiles pull' to fetch remote updates.
+Notice: local source not pulled (current branch is detached, not main); run 'git -C ~/dotfiles pull' to fetch remote updates.
 chezmoi apply --verbose
 Warning: private chezmoi source/config not found. Skipping private dotfiles.
 mise install --locked node
@@ -204,8 +204,8 @@ mise-stub install --locked npm:ccstatusline npm:ccusage
 ./scripts/update-agent-assets.sh
 
 ==> Codex Crit plugin
-  Installed: /home/dotmktgate/.agents/plugins/marketplace.json
-  Skipped:   /home/dotmktgate/.codex/config.toml (Codex plugin already enabled)
+  Installed: ~/.agents/plugins/marketplace.json
+  Skipped:   ~/.codex/config.toml (Codex plugin already enabled)
 
 Herdr command not found; skipping config reload.
 make agmsg-bootstrap

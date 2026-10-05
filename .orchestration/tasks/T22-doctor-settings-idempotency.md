@@ -56,7 +56,7 @@ byte-idempotency property: `modify(modify(x)) == modify(x)`.
 ## Verification (log everything to the validation artifact)
 
 1. `uv run python -m unittest discover -s tests/unit` → all green.
-2. Live E2E in /Users/mryfmo/Workspace/dotfiles (allowed for this task):
+2. Live E2E in ~/Workspace/dotfiles (allowed for this task):
    `make update && ./scripts/check-agent-runtime.py; make update && ./scripts/check-agent-runtime.py`
    → NO `Claude settings managed keys differ` error in either run. The known
    pre-existing `agmsg/db-flue-pi` failure is expected and out of scope.

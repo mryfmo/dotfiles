@@ -73,8 +73,8 @@ $ sed -n 1,24p ~/.agents/skills/agmsg/scripts/lib/spawn-options.sh
 [ -n "${_AGMSG_SPAWN_OPTIONS_SH:-}" ] && return 0
 _AGMSG_SPAWN_OPTIONS_SH=1
 $ grep -n model_arg ~/.agents/skills/agmsg/scripts/drivers/types/{claude-code,codex}/type.conf
-/home/moriya/.agents/skills/agmsg/scripts/drivers/types/claude-code/type.conf:6:model_arg=--model
-/home/moriya/.agents/skills/agmsg/scripts/drivers/types/codex/type.conf:115:model_arg=-m
+~/.agents/skills/agmsg/scripts/drivers/types/claude-code/type.conf:6:model_arg=--model
+~/.agents/skills/agmsg/scripts/drivers/types/codex/type.conf:115:model_arg=-m
 $ grep MODEL_PROFILE_.*_ARGS ~/.agents/model-profiles.env
 MODEL_PROFILE_ADH_CLAUDE_ARGS="--model claude-fable-5-1 --effort high"
 MODEL_PROFILE_ADH_CODEX_ARGS="--profile adh"
@@ -129,7 +129,7 @@ $ python3 -m unittest tests.unit.test_herdr_agents -k worktree -k reseats -k wor
 FAIL: test_attach_from_the_worker_worktree_exits_quietly (tests.unit.test_herdr_agents.HerdrAgentsTest.test_attach_from_the_worker_worktree_exits_quietly)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2030, in test_attach_from_the_worker_worktree_exits_quietly
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2030, in test_attach_from_the_worker_worktree_exits_quietly
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : herdr-agents: worker_kind=claude would share the orchestrator's claude-code agmsg identity on /tmp/herdr-agents-test-c05sqele/project/.claude/worktrees/worker-c (0 claude-code identity registered); refusing so messages do not collide silently. Registering a second identity (AGMSG_RESOLVE_PROJECT=0 /tmp/herdr-agents-test-c05sqele/home/.agents/skills/agmsg/scripts/join.sh <team> <role> claude-code /tmp/herdr-agents-test-c05sqele/project/.claude/worktrees/worker-c) lifts this guard but does not give the two sessions distinct delivery until agmsg roles land; use worker_kind=codex for separate delivery now. See the herdr-agents section of the dotfiles README.
@@ -139,7 +139,7 @@ AssertionError: 2 != 0 : herdr-agents: worker_kind=claude would share the orches
 FAIL: test_full_mode_splits_the_worker_pane_in_its_worktree (tests.unit.test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1987, in test_full_mode_splits_the_worker_pane_in_its_worktree
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1987, in test_full_mode_splits_the_worker_pane_in_its_worktree
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : herdr-agents: worker_kind=claude would share the orchestrator's claude-code agmsg identity on /tmp/herdr-agents-test-ag4k8qfd/project (1 claude-code identity registered); refusing so messages do not collide silently. Registering a second identity (AGMSG_RESOLVE_PROJECT=0 /tmp/herdr-agents-test-ag4k8qfd/home/.agents/skills/agmsg/scripts/join.sh <team> <role> claude-code /tmp/herdr-agents-test-ag4k8qfd/project) lifts this guard but does not give the two sessions distinct delivery until agmsg roles land; use worker_kind=codex for separate delivery now. See the herdr-agents section of the dotfiles README.
@@ -149,7 +149,7 @@ AssertionError: 2 != 0 : herdr-agents: worker_kind=claude would share the orches
 FAIL: test_restart_worker_reseats_a_main_path_worker_into_its_worktree (tests.unit.test_herdr_agents.HerdrAgentsTest.test_restart_worker_reseats_a_main_path_worker_into_its_worktree)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1948, in test_restart_worker_reseats_a_main_path_worker_into_its_worktree
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1948, in test_restart_worker_reseats_a_main_path_worker_into_its_worktree
     self.assertIn(f"worktree {worktree}\n", listed)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'worktree /tmp/herdr-agents-test-p59_hxg_/project/.claude/worktrees/worker-c\n' not found in 'worktree /tmp/herdr-agents-test-p59_hxg_/project\nHEAD 37ad40b76b1025dd23882832e9d4954a18840321\nbranch refs/heads/master\n\n'
@@ -158,7 +158,7 @@ AssertionError: 'worktree /tmp/herdr-agents-test-p59_hxg_/project/.claude/worktr
 FAIL: test_worker_seat_refuses_a_path_that_is_not_a_worktree (tests.unit.test_herdr_agents.HerdrAgentsTest.test_worker_seat_refuses_a_path_that_is_not_a_worktree)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2004, in test_worker_seat_refuses_a_path_that_is_not_a_worktree
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2004, in test_worker_seat_refuses_a_path_that_is_not_a_worktree
     self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : Herdr agents worker restarted in pane w-old:p2
@@ -168,7 +168,7 @@ AssertionError: 0 != 2 : Herdr agents worker restarted in pane w-old:p2
 FAIL: test_worker_seat_refuses_an_ambiguous_orchestrator_identity (tests.unit.test_herdr_agents.HerdrAgentsTest.test_worker_seat_refuses_an_ambiguous_orchestrator_identity)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2015, in test_worker_seat_refuses_an_ambiguous_orchestrator_identity
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2015, in test_worker_seat_refuses_an_ambiguous_orchestrator_identity
     self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : Herdr agents worker restarted in pane w-old:p2
@@ -178,7 +178,7 @@ AssertionError: 0 != 2 : Herdr agents worker restarted in pane w-old:p2
 FAIL: test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree (tests.unit.test_herdr_agents.HerdrAgentsTest.test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1979, in test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1979, in test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree
     self.assertIn(f"identities {worktree} claude-code resolve=0", calls)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'identities /tmp/herdr-agents-test-73at50sk/project/.claude/worktrees/worker-c claude-code resolve=0' not found in ['identities /tmp/herdr-agents-test-73at50sk/project claude-code resolve=', 'workspace list', 'pane list --workspace w-old', 'pane list --workspace w-old', 'agent get claude-worker-w-old', 'agent prompt w-old:p2 /exit', 'pane process-info --pane w-old:p2', 'pane process-info --pane w-old:p2', 'pane read w-old:p2 --source recent-unwrapped --lines 50', 'agent start claude-worker-w-old --kind claude --pane w-old:p2 --timeout 30000 -- --model opus --effort high', 'pane wait-output w-old:p2 --match trust this folder --timeout 3000', 'pane rename w-old:p2 claude-worker']
@@ -198,7 +198,7 @@ FFFFFFFFFFF
 FAIL: test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2089, in test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2089, in test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Usage: herdr-agents [DIR]
@@ -233,7 +233,7 @@ incorrect verdict); it exits 2 without a managed workspace.
 FAIL: test_add_worker_rejects_a_worktree_outside_claude_worktrees (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_rejects_a_worktree_outside_claude_worktrees) (path='../elsewhere')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2117, in test_add_worker_rejects_a_worktree_outside_claude_worktrees
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2117, in test_add_worker_rejects_a_worktree_outside_claude_worktrees
     self.assertIn("the worker worktree must be a path under .claude/worktrees/", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'the worker worktree must be a path under .claude/worktrees/' not found in "Usage: herdr-agents [DIR]\n       herdr-agents --attach\n       herdr-agents --restart-worker [DIR]\n       herdr-agents --bootstrap-agmsg [DIR]\n       herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]\n\nCreate a Herdr workspace for DIR with equal-width Claude Code and worker\npanes from left to right, and open DIR in Zed when available. Herdr, jq,\nClaude Code, and the worker's own CLI (codex, or claude when\nHERDR_AGENTS_WORKER_KIND=claude) are required. DIR defaults to the current\ndirectory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind\n(codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,\nthen codex.\nFull mode heals an existing managed workspace for DIR instead of creating a\nsecond one, and exits 2 when more than one managed workspace exists.\nAttach mode uses the current Herdr pane for Claude.\nRestart-worker mode exits the worker agent in the existing pair's worker pane\nand starts it again in the same pane with the current worker_kind and\nworker_profile launch arguments; it never creates panes or workspaces.\nBootstrap mode only configures missing repo-scoped agmsg hooks.\nAudit mode runs the read-only Codex audit of <sha> in the existing pair\nworkspace's audit tab (created once, then reused and left open), tees it to\nPATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits\nnonzero when the audit does or when the concluding line of PATH.last.md (the\ncodex exec -o last message) is not `Verdict: correct` (a missing, blocked, or\nincorrect verdict); it exits 2 without a managed workspace.\n"
@@ -242,7 +242,7 @@ AssertionError: 'the worker worktree must be a path under .claude/worktrees/' no
 FAIL: test_add_worker_rejects_a_worktree_outside_claude_worktrees (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_rejects_a_worktree_outside_claude_worktrees) (path='.claude/worktrees/..')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2117, in test_add_worker_rejects_a_worktree_outside_claude_worktrees
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2117, in test_add_worker_rejects_a_worktree_outside_claude_worktrees
     self.assertIn("the worker worktree must be a path under .claude/worktrees/", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'the worker worktree must be a path under .claude/worktrees/' not found in "Usage: herdr-agents [DIR]\n       herdr-agents --attach\n       herdr-agents --restart-worker [DIR]\n       herdr-agents --bootstrap-agmsg [DIR]\n       herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]\n\nCreate a Herdr workspace for DIR with equal-width Claude Code and worker\npanes from left to right, and open DIR in Zed when available. Herdr, jq,\nClaude Code, and the worker's own CLI (codex, or claude when\nHERDR_AGENTS_WORKER_KIND=claude) are required. DIR defaults to the current\ndirectory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind\n(codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,\nthen codex.\nFull mode heals an existing managed workspace for DIR instead of creating a\nsecond one, and exits 2 when more than one managed workspace exists.\nAttach mode uses the current Herdr pane for Claude.\nRestart-worker mode exits the worker agent in the existing pair's worker pane\nand starts it again in the same pane with the current worker_kind and\nworker_profile launch arguments; it never creates panes or workspaces.\nBootstrap mode only configures missing repo-scoped agmsg hooks.\nAudit mode runs the read-only Codex audit of <sha> in the existing pair\nworkspace's audit tab (created once, then reused and left open), tees it to\nPATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits\nnonzero when the audit does or when the concluding line of PATH.last.md (the\ncodex exec -o last message) is not `Verdict: correct` (a missing, blocked, or\nincorrect verdict); it exits 2 without a managed workspace.\n"
@@ -251,7 +251,7 @@ AssertionError: 'the worker worktree must be a path under .claude/worktrees/' no
 FAIL: test_add_worker_rejects_a_worktree_outside_claude_worktrees (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_rejects_a_worktree_outside_claude_worktrees) (path='.claude/worktrees/a/b')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2117, in test_add_worker_rejects_a_worktree_outside_claude_worktrees
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2117, in test_add_worker_rejects_a_worktree_outside_claude_worktrees
     self.assertIn("the worker worktree must be a path under .claude/worktrees/", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'the worker worktree must be a path under .claude/worktrees/' not found in "Usage: herdr-agents [DIR]\n       herdr-agents --attach\n       herdr-agents --restart-worker [DIR]\n       herdr-agents --bootstrap-agmsg [DIR]\n       herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]\n\nCreate a Herdr workspace for DIR with equal-width Claude Code and worker\npanes from left to right, and open DIR in Zed when available. Herdr, jq,\nClaude Code, and the worker's own CLI (codex, or claude when\nHERDR_AGENTS_WORKER_KIND=claude) are required. DIR defaults to the current\ndirectory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind\n(codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,\nthen codex.\nFull mode heals an existing managed workspace for DIR instead of creating a\nsecond one, and exits 2 when more than one managed workspace exists.\nAttach mode uses the current Herdr pane for Claude.\nRestart-worker mode exits the worker agent in the existing pair's worker pane\nand starts it again in the same pane with the current worker_kind and\nworker_profile launch arguments; it never creates panes or workspaces.\nBootstrap mode only configures missing repo-scoped agmsg hooks.\nAudit mode runs the read-only Codex audit of <sha> in the existing pair\nworkspace's audit tab (created once, then reused and left open), tees it to\nPATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits\nnonzero when the audit does or when the concluding line of PATH.last.md (the\ncodex exec -o last message) is not `Verdict: correct` (a missing, blocked, or\nincorrect verdict); it exits 2 without a managed workspace.\n"
@@ -260,7 +260,7 @@ AssertionError: 'the worker worktree must be a path under .claude/worktrees/' no
 FAIL: test_add_worker_rejects_a_worktree_outside_claude_worktrees (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_rejects_a_worktree_outside_claude_worktrees) (path='/tmp/x')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2117, in test_add_worker_rejects_a_worktree_outside_claude_worktrees
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2117, in test_add_worker_rejects_a_worktree_outside_claude_worktrees
     self.assertIn("the worker worktree must be a path under .claude/worktrees/", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'the worker worktree must be a path under .claude/worktrees/' not found in "Usage: herdr-agents [DIR]\n       herdr-agents --attach\n       herdr-agents --restart-worker [DIR]\n       herdr-agents --bootstrap-agmsg [DIR]\n       herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]\n\nCreate a Herdr workspace for DIR with equal-width Claude Code and worker\npanes from left to right, and open DIR in Zed when available. Herdr, jq,\nClaude Code, and the worker's own CLI (codex, or claude when\nHERDR_AGENTS_WORKER_KIND=claude) are required. DIR defaults to the current\ndirectory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind\n(codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,\nthen codex.\nFull mode heals an existing managed workspace for DIR instead of creating a\nsecond one, and exits 2 when more than one managed workspace exists.\nAttach mode uses the current Herdr pane for Claude.\nRestart-worker mode exits the worker agent in the existing pair's worker pane\nand starts it again in the same pane with the current worker_kind and\nworker_profile launch arguments; it never creates panes or workspaces.\nBootstrap mode only configures missing repo-scoped agmsg hooks.\nAudit mode runs the read-only Codex audit of <sha> in the existing pair\nworkspace's audit tab (created once, then reused and left open), tees it to\nPATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits\nnonzero when the audit does or when the concluding line of PATH.last.md (the\ncodex exec -o last message) is not `Verdict: correct` (a missing, blocked, or\nincorrect verdict); it exits 2 without a managed workspace.\n"
@@ -269,7 +269,7 @@ AssertionError: 'the worker worktree must be a path under .claude/worktrees/' no
 FAIL: test_add_worker_reuses_a_seated_workspace (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seated_workspace)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2104, in test_add_worker_reuses_a_seated_workspace
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2104, in test_add_worker_reuses_a_seated_workspace
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Usage: herdr-agents [DIR]
@@ -304,7 +304,7 @@ incorrect verdict); it exits 2 without a managed workspace.
 FAIL: test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2067, in test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2067, in test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Usage: herdr-agents [DIR]
@@ -339,7 +339,7 @@ incorrect verdict); it exits 2 without a managed workspace.
 FAIL: test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes (tests.unit.test_herdr_agents.HerdrAgentsTest.test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2131, in test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2131, in test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Usage: herdr-agents [DIR]
@@ -374,7 +374,7 @@ incorrect verdict); it exits 2 without a managed workspace.
 FAIL: test_remove_worker_force_passes_through_to_despawn (tests.unit.test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_passes_through_to_despawn)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2166, in test_remove_worker_force_passes_through_to_despawn
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2166, in test_remove_worker_force_passes_through_to_despawn
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Usage: herdr-agents [DIR]
@@ -409,7 +409,7 @@ incorrect verdict); it exits 2 without a managed workspace.
 FAIL: test_remove_worker_refuses_a_dirty_worktree_without_force (tests.unit.test_herdr_agents.HerdrAgentsTest.test_remove_worker_refuses_a_dirty_worktree_without_force)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2152, in test_remove_worker_refuses_a_dirty_worktree_without_force
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2152, in test_remove_worker_refuses_a_dirty_worktree_without_force
     self.assertIn("has uncommitted changes; commit them or pass --force", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'has uncommitted changes; commit them or pass --force' not found in "Usage: herdr-agents [DIR]\n       herdr-agents --attach\n       herdr-agents --restart-worker [DIR]\n       herdr-agents --bootstrap-agmsg [DIR]\n       herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]\n\nCreate a Herdr workspace for DIR with equal-width Claude Code and worker\npanes from left to right, and open DIR in Zed when available. Herdr, jq,\nClaude Code, and the worker's own CLI (codex, or claude when\nHERDR_AGENTS_WORKER_KIND=claude) are required. DIR defaults to the current\ndirectory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind\n(codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,\nthen codex.\nFull mode heals an existing managed workspace for DIR instead of creating a\nsecond one, and exits 2 when more than one managed workspace exists.\nAttach mode uses the current Herdr pane for Claude.\nRestart-worker mode exits the worker agent in the existing pair's worker pane\nand starts it again in the same pane with the current worker_kind and\nworker_profile launch arguments; it never creates panes or workspaces.\nBootstrap mode only configures missing repo-scoped agmsg hooks.\nAudit mode runs the read-only Codex audit of <sha> in the existing pair\nworkspace's audit tab (created once, then reused and left open), tees it to\nPATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits\nnonzero when the audit does or when the concluding line of PATH.last.md (the\ncodex exec -o last message) is not `Verdict: correct` (a missing, blocked, or\nincorrect verdict); it exits 2 without a managed workspace.\n"
@@ -418,7 +418,7 @@ AssertionError: 'has uncommitted changes; commit them or pass --force' not found
 FAIL: test_remove_worker_stops_when_a_graceful_despawn_fails (tests.unit.test_herdr_agents.HerdrAgentsTest.test_remove_worker_stops_when_a_graceful_despawn_fails)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2182, in test_remove_worker_stops_when_a_graceful_despawn_fails
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2182, in test_remove_worker_stops_when_a_graceful_despawn_fails
     self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 1 : Usage: herdr-agents [DIR]
@@ -464,7 +464,7 @@ F.EFFFFF.
 ERROR: test_full_mode_heal_moves_a_reused_empty_pane_into_the_worktree (tests.unit.test_herdr_agents.HerdrAgentsTest.test_full_mode_heal_moves_a_reused_empty_pane_into_the_worktree)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2050, in test_full_mode_heal_moves_a_reused_empty_pane_into_the_worktree
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2050, in test_full_mode_heal_moves_a_reused_empty_pane_into_the_worktree
     cd_call = calls.index(f"pane run w-old:p2 cd -- {worktree}")
 ValueError: list.index(x): x not in list
 
@@ -472,7 +472,7 @@ ValueError: list.index(x): x not in list
 FAIL: test_add_worker_refuses_an_undefined_profile_before_any_change (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_an_undefined_profile_before_any_change)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2135, in test_add_worker_refuses_an_undefined_profile_before_any_change
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2135, in test_add_worker_refuses_an_undefined_profile_before_any_change
     self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : Herdr agents worker added: claude-missing-dot-a007 in workspace w-test (/tmp/herdr-agents-test-lc5qkjsn/project/.claude/worktrees/b3)
@@ -482,7 +482,7 @@ AssertionError: 0 != 2 : Herdr agents worker added: claude-missing-dot-a007 in w
 FAIL: test_remove_worker_forces_despawn_for_a_codex_seat (tests.unit.test_herdr_agents.HerdrAgentsTest.test_remove_worker_forces_despawn_for_a_codex_seat)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2154, in test_remove_worker_forces_despawn_for_a_codex_seat
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2154, in test_remove_worker_forces_despawn_for_a_codex_seat
     self.assertIn("despawn dotfiles claude-remediation-dot codex-standard-dot-a008 --force", calls)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'despawn dotfiles claude-remediation-dot codex-standard-dot-a008 --force' not found in ['workspace list', 'despawn dotfiles claude-remediation-dot codex-standard-dot-a008', 'delivery set off codex /tmp/herdr-agents-test-9bu7phkr/project/.claude/worktrees/b1', 'leave dotfiles codex-standard-dot-a008']
@@ -491,7 +491,7 @@ AssertionError: 'despawn dotfiles claude-remediation-dot codex-standard-dot-a008
 FAIL: test_restart_worker_refuses_to_start_outside_the_seat_when_the_pane_hangs (tests.unit.test_herdr_agents.HerdrAgentsTest.test_restart_worker_refuses_to_start_outside_the_seat_when_the_pane_hangs)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2126, in test_restart_worker_refuses_to_start_outside_the_seat_when_the_pane_hangs
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2126, in test_restart_worker_refuses_to_start_outside_the_seat_when_the_pane_hangs
     self.assertIn(f"never reached a shell prompt; refusing to start the worker outside {worktree}", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'never reached a shell prompt; refusing to start the worker outside /tmp/herdr-agents-test-0vxyliyc/project/.claude/worktrees/worker-c' not found in 'Herdr agents worker seat: /tmp/herdr-agents-test-0vxyliyc/project/.claude/worktrees/worker-c (agmsg claude-standard-dot-a005)\nHerdr pane w-old:p2 did not reach an interactive shell prompt; refusing agent start.\n'
@@ -500,7 +500,7 @@ AssertionError: 'never reached a shell prompt; refusing to start the worker outs
 FAIL: test_worker_seat_ambiguity_leaves_no_worktree_behind (tests.unit.test_herdr_agents.HerdrAgentsTest.test_worker_seat_ambiguity_leaves_no_worktree_behind)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2099, in test_worker_seat_ambiguity_leaves_no_worktree_behind
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2099, in test_worker_seat_ambiguity_leaves_no_worktree_behind
     self.assertFalse(worktree.exists())
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false
@@ -509,7 +509,7 @@ AssertionError: True is not false
 FAIL: test_worker_seat_is_skipped_in_a_non_git_directory (tests.unit.test_herdr_agents.HerdrAgentsTest.test_worker_seat_is_skipped_in_a_non_git_directory)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2086, in test_worker_seat_is_skipped_in_a_non_git_directory
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2086, in test_worker_seat_is_skipped_in_a_non_git_directory
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : herdr-agents: unable to create worker worktree /tmp/herdr-agents-test-55tav5m9/project/.claude/worktrees/worker-c from origin/main in /tmp/herdr-agents-test-55tav5m9/project.
@@ -519,7 +519,7 @@ AssertionError: 2 != 0 : herdr-agents: unable to create worker worktree /tmp/her
 FAIL: test_worker_seat_is_skipped_in_an_unregistered_repository (tests.unit.test_herdr_agents.HerdrAgentsTest.test_worker_seat_is_skipped_in_an_unregistered_repository)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2060, in test_worker_seat_is_skipped_in_an_unregistered_repository
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2060, in test_worker_seat_is_skipped_in_an_unregistered_repository
     self.assertIn("would share the orchestrator's claude-code agmsg identity", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: "would share the orchestrator's claude-code agmsg identity" not found in 'herdr-agents: need exactly one orchestrator claude-code identity at /tmp/herdr-agents-test-hlmahtdz/project to name the worker; register the worker yourself with: AGMSG_RESOLVE_PROJECT=0 /tmp/herdr-agents-test-hlmahtdz/home/.agents/skills/agmsg/scripts/join.sh <team> <name> claude-code /tmp/herdr-agents-test-hlmahtdz/project/.claude/worktrees/worker-c\n'
@@ -683,7 +683,7 @@ F.EFF...
 ERROR: test_remove_worker_force_retries_a_failed_graceful_despawn (tests.unit.test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_retries_a_failed_graceful_despawn)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2295, in test_remove_worker_force_retries_a_failed_graceful_despawn
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2295, in test_remove_worker_force_retries_a_failed_graceful_despawn
     graceful = calls.index("despawn dotfiles claude-remediation-dot claude-standard-dot-a007")
 ValueError: list.index(x): x not in list
 
@@ -691,7 +691,7 @@ ValueError: list.index(x): x not in list
 FAIL: test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record (tests.unit.test_herdr_agents.HerdrAgentsTest.test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2342, in test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2342, in test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : herdr-agents: despawn of codex-standard-dot-a008 did not complete; re-run with --force.
@@ -701,7 +701,7 @@ AssertionError: 1 != 0 : herdr-agents: despawn of codex-standard-dot-a008 did no
 FAIL: test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds (tests.unit.test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2306, in test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2306, in test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds
     self.assertFalse(any(c.endswith(" --force") and c.startswith("despawn") for c in self.calls_path.read_text().splitlines()))
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false
@@ -710,7 +710,7 @@ AssertionError: True is not false
 FAIL: test_remove_worker_forces_despawn_when_graceful_reports_needs_force (tests.unit.test_herdr_agents.HerdrAgentsTest.test_remove_worker_forces_despawn_when_graceful_reports_needs_force)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2314, in test_remove_worker_forces_despawn_when_graceful_reports_needs_force
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2314, in test_remove_worker_forces_despawn_when_graceful_reports_needs_force
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : status=needs-force name=x team=dotfiles note=no-live-lock-recorded

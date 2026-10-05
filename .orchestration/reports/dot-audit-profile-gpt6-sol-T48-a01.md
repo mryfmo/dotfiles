@@ -70,7 +70,7 @@ At head 8956c3d, all output is verbatim in the validation file, with every exit 
 The current decision is **90843027-5c79-4107-9bcb-8d2174d6b36b** (`gpt-6.1-sol`). It supersedes **ae7ca177-4bce-4581-88ae-03f9c01299aa**, which was written before the override and says `gpt-6-sol`; its text says so. Please drop or ignore ae7ca177 at consolidation. Both commands and outputs are in the validation file:
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the [memory:decision] text above>"
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the [memory:decision] text above>"
 ```
 
 ## Effects

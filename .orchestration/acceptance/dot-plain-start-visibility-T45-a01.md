@@ -25,7 +25,7 @@ standard = opus-5.5 high), spawn-seated at Herdr wP:p2 by
 ## Decision
 
 **PAUSED — not accepted, not rejected.** Resume in the rule-conformant pair
-workspace created by `herdr-agents /home/moriya/Workspace/dotfiles` (full
+workspace created by `herdr-agents ~/Workspace/dotfiles` (full
 mode). The next orchestrator (pane p1 of that workspace) resumes T45 by:
 
 1. reading the worker's paused report (path in the RESULT message) and

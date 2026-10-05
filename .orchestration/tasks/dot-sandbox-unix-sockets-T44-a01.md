@@ -51,7 +51,7 @@ sandboxed Bash on Linux; file and network isolation are unchanged
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`;
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`;
   branch `fix/sandbox-unix-sockets` from `origin/main`. Verify the dispatched
   task_rev sha256 against this file on your base, else stop and PONG. If the
   worktree has uncommitted files, stop and PONG.

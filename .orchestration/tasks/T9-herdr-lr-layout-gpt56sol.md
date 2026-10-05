@@ -1,7 +1,7 @@
 # T9: herdr agents layout left/right + codex gpt-5.6-sol, drop Ghostty auto-start
 
 task_id: T9
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-gpt55-high
 
@@ -22,7 +22,7 @@ the default model back; the user confirmed the managed default must move to
 `gpt-5.6-sol` too.
 
 Approved plan (reference, read-only):
-/Users/mryfmo/.agents/worklog/claude/dotfiles-ghostty-herdr-herdr-claude-code-stateless-wand.md
+~/.agents/worklog/claude/dotfiles-ghostty-herdr-herdr-claude-code-stateless-wand.md
 
 ## Goal
 

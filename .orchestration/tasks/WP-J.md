@@ -1,7 +1,7 @@
 # WP-J: Make the real ghostty config chezmoi-managed
 
 task_id: WP-J
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wpj
 

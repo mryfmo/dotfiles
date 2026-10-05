@@ -19,7 +19,7 @@ Unknown profile is silently ignored (base model gpt-5.6-sol applies), so it prov
 $ timeout 15 codex --profile nonexistent-probe review --commit HEAD </dev/null 2>&1 | head -5
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c
+workdir: ~/Workspace/dotfiles/.claude/worktrees/worker-c
 model: gpt-5.6-sol
 provider: openai
 ```
@@ -28,11 +28,11 @@ Existing profile layer reaches the review subcommand (global flag before the sub
 $ timeout 8 codex --profile security review --commit HEAD </dev/null 2>&1 | sed -n 1,12p
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c
+workdir: ~/Workspace/dotfiles/.claude/worktrees/worker-c
 model: gpt-daybreak-blue-latest
 provider: openai
 approval: never
-sandbox: workspace-write [workdir, /tmp, $TMPDIR, /home/moriya/.agents/skills/agmsg/db, /home/moriya/.agents/skills/agmsg/teams, /home/moriya/.agents/skills/agmsg/run]
+sandbox: workspace-write [workdir, /tmp, $TMPDIR, ~/.agents/skills/agmsg/db, ~/.agents/skills/agmsg/teams, ~/.agents/skills/agmsg/run]
 reasoning effort: high
 reasoning summaries: concise
 session id: 01a0e0f0-a927-7bc1-97ac-fd636cbae63e
@@ -59,7 +59,7 @@ $ ./home/dot_codex/modify_private_audit.config.toml </dev/null | sed -n 1,11p
 model = "gpt-6-astra"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
-notify = ["/home/moriya/.local/bin/common/contextdb-codex-notify"]
+notify = ["~/.local/bin/common/contextdb-codex-notify"]
 
 [features]
 hooks = true
@@ -77,7 +77,7 @@ test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_
 ERROR: test_audit_profile_renders_read_only_sandbox_override (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_generate_agent_configs.py", line 517, in test_audit_profile_renders_read_only_sandbox_override
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_generate_agent_configs.py", line 517, in test_audit_profile_renders_read_only_sandbox_override
     self.assertEqual(render("audit")["sandbox_mode"], "read-only")
                      ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
 KeyError: 'sandbox_mode'
@@ -86,7 +86,7 @@ KeyError: 'sandbox_mode'
 FAIL: test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_generate_agent_configs.py", line 531, in test_model_profiles_reject_invalid_sandbox_mode
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_generate_agent_configs.py", line 531, in test_model_profiles_reject_invalid_sandbox_mode
     with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                                              ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
 AssertionError: SystemExit not raised
@@ -109,17 +109,17 @@ ERROR
 ERROR: test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 220, in test_agent_manifest_accepts_exact_security_profile_set
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 220, in test_agent_manifest_accepts_exact_security_profile_set
     self.module.validate_agent_manifest()
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/validate-agent-assets.py", line 631, in validate_agent_manifest
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/validate-agent-assets.py", line 631, in validate_agent_manifest
     fail(
     ~~~~^
         f"{manifest_path} must define the five base profiles and only the optional adh profile"
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/validate-agent-assets.py", line 71, in fail
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/validate-agent-assets.py", line 71, in fail
     raise SystemExit(1)
 SystemExit: 1
 
@@ -127,7 +127,7 @@ SystemExit: 1
 FAIL: test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 401, in test_agent_manifest_rejects_missing_audit_profile
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 401, in test_agent_manifest_rejects_missing_audit_profile
     with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                                              ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
 AssertionError: SystemExit not raised
@@ -136,7 +136,7 @@ AssertionError: SystemExit not raised
 FAIL: test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) (key='model', value='gpt-5.6-sol')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 422, in test_agent_manifest_pins_the_audit_codex_profile
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 422, in test_agent_manifest_pins_the_audit_codex_profile
     self.assertIn(
     ~~~~~~~~~~~~~^
         f"audit profile must set codex.{key}:", stderr.getvalue()
@@ -149,7 +149,7 @@ AssertionError: 'audit profile must set codex.model:' not found in 'ERROR: /tmp/
 FAIL: test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) (key='model_reasoning_effort', value='medium')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 422, in test_agent_manifest_pins_the_audit_codex_profile
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 422, in test_agent_manifest_pins_the_audit_codex_profile
     self.assertIn(
     ~~~~~~~~~~~~~^
         f"audit profile must set codex.{key}:", stderr.getvalue()
@@ -162,7 +162,7 @@ AssertionError: 'audit profile must set codex.model_reasoning_effort:' not found
 FAIL: test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) (key='sandbox_mode', value='workspace-write')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 422, in test_agent_manifest_pins_the_audit_codex_profile
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 422, in test_agent_manifest_pins_the_audit_codex_profile
     self.assertIn(
     ~~~~~~~~~~~~~^
         f"audit profile must set codex.{key}:", stderr.getvalue()
@@ -175,7 +175,7 @@ AssertionError: 'audit profile must set codex.sandbox_mode:' not found in 'ERROR
 FAIL: test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) (key='sandbox_mode', value=None)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 422, in test_agent_manifest_pins_the_audit_codex_profile
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 422, in test_agent_manifest_pins_the_audit_codex_profile
     self.assertIn(
     ~~~~~~~~~~~~~^
         f"audit profile must set codex.{key}:", stderr.getvalue()
@@ -312,7 +312,7 @@ test_unknown_worker_profile_fails (test_generate_agent_configs.GenerateAgentConf
 ok
 test_cli_workspace_resolves_macos_var_alias_identically (test_permgate.PermgateTest.test_cli_workspace_resolves_macos_var_alias_identically) ... skipped 'macOS /var alias only'
 test_upgrade_uses_current_mise_node_after_runtime_replacement (test_runtime_health.RuntimeHealthTest.test_upgrade_uses_current_mise_node_after_runtime_replacement)
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-r7p3xxdt/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-r7p3xxdt/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 
 ----------------------------------------------------------------------
@@ -323,7 +323,7 @@ exit=0
 ```
 (454 per-test `... ok` lines elided from the make unit-test block; full log retained locally. Remaining ERROR: lines are expected stderr from passing negative tests.)
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
  AGENTS.md                                          |  21 +++
  README.md                                          |  11 ++
  .../.chezmoitemplates/claude-settings-managed.json |   2 +-

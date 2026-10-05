@@ -3,7 +3,7 @@
 ## Assignment
 
 - Task ID: `T29-agmsg-regime-default-on`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`
+- Repo: `~/Workspace/dotfiles`
 - The main worktree is dirty with UNRELATED changes (`home/dot_mise/*`).
   Create a separate git worktree from `origin/main` (e.g. `git worktree add
 ../dotfiles-t29 -b docs/agmsg-regime-default-on origin/main`) and do ALL

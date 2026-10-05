@@ -7,7 +7,7 @@ Session header:
 ```
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never

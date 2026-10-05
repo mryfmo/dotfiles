@@ -460,13 +460,13 @@ Output: 984 nodes, 1774 edges
 Imports edge recovery:
   Recovered 0 `imports` edges from importMap (368 entries scanned)
 
-Written to /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (924 KB)
+Written to ~/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (924 KB)
 ```
 
 ## CompactionDB (main checkout, unsandboxed)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T55 (operator 2026-10-02): the .ua/ graph is rebuilt in full as the semantic index before the whole-repository review of tools, libraries and content; the orchestrator never runs the graph build in its own session."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T55 (operator 2026-10-02): the .ua/ graph is rebuilt in full as the semantic index before the whole-repository review of tools, libraries and content; the orchestrator never runs the graph build in its own session."
 958a79ca-0099-4276-9294-b834ee886185
 (exit 0)
 ```
@@ -540,8 +540,8 @@ stats {"totalNodes": 984, "totalEdges": 1774, "totalLayers": 9, "tourSteps": 15,
 ## Round-1 commands (verbatim)
 
 ```
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T55-a01.md
-6540ebdd0584630f3b97d43ebaafd45f255401611c94c179cc146bd872254f36  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T55-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T55-a01.md
+6540ebdd0584630f3b97d43ebaafd45f255401611c94c179cc146bd872254f36  ~/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T55-a01.md
 $ git log --oneline -3
 8694200f fix(ua): restore lost calls edges and numeric lineRanges in the T55 graph
 98bdf43f chore(ua): rebuild the Understand-Anything graph in full at 940a3a2b
@@ -632,7 +632,7 @@ $ node /tmp/claude-1000/ua-validate.mjs .ua/knowledge-graph.json  (same, on the 
 {'success': True, 'validNodes': 982, 'validEdges': 1754, 'inputNodes': 984, 'inputEdges': 1774, 'issueCount': 22}
 $ cat /tmp/claude-1000/ua-validate.mjs
 import { readFileSync } from "node:fs";
-import { validateGraph } from "/home/moriya/.claude/plugins/cache/understand-anything/understand-anything/2.9.7/packages/core/dist/schema.js";
+import { validateGraph } from "~/.claude/plugins/cache/understand-anything/understand-anything/2.9.7/packages/core/dist/schema.js";
 const p = process.argv[2];
 const g = JSON.parse(readFileSync(p, "utf8"));
 const r = validateGraph(g);
@@ -1040,7 +1040,7 @@ Output: 984 nodes, 1985 edges
 Imports edge recovery:
   Recovered 0 `imports` edges from importMap (368 entries scanned)
 
-Written to /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (979 KB)
+Written to ~/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (979 KB)
 
 $ git diff 98bdf43f HEAD -- .ua/fingerprints.json | grep "^[-+]" (only generatedAt and the three .ua self-entries)
 -  "generatedAt": "2026-10-02T13:34:06.405Z",

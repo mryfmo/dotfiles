@@ -116,14 +116,14 @@ $ HOME=<scratch> bash <scratch>/.agents/skills/agmsg/scripts/doctor.sh --project
 **(a) Ancestor-path identity matching** (scratch `$HOME`, real v1.5.0 install):
 
 ```
-$ join.sh restest claude-main claude-code /home/moriya/Workspace/dotfiles
-$ join.sh restest claude-wt claude-code /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-b
+$ join.sh restest claude-main claude-code ~/Workspace/dotfiles
+$ join.sh restest claude-wt claude-code ~/Workspace/dotfiles/.claude/worktrees/worker-b
 $ join.sh restest claude-unrelated claude-code /tmp/totally-unrelated-path
-$ join.sh restest claude-sibling claude-code /home/moriya/Workspace/dotfiles-sibling-not-nested
-$ identities.sh /home/moriya/Workspace/dotfiles claude-code
+$ join.sh restest claude-sibling claude-code ~/Workspace/dotfiles-sibling-not-nested
+$ identities.sh ~/Workspace/dotfiles claude-code
 restest	claude-main
 restest	claude-wt
-$ identities.sh /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-b claude-code
+$ identities.sh ~/Workspace/dotfiles/.claude/worktrees/worker-b claude-code
 testteam	claude-code
 testteam	claude-code-a002
 ```
@@ -466,7 +466,7 @@ Invalid UTF-8 byte sequences, where `head -c 300` in the 6(a) script cut a multi
 $ git rev-parse --short origin/main; git rev-parse HEAD
 5ea0d9d
 55faae062d34b7b8f9dc06203069982547540d50
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
  .../runs/dot-agmsg-upstream-sync-T19-a01.md        |   9 +
  .../learning/dot-agmsg-upstream-sync-T19-a01.md    |  69 +++
  .../reports/dot-agmsg-upstream-sync-T19-a01.md     | 271 ++++++++++
@@ -898,7 +898,7 @@ $ bash -c cd '$S/t19-mig-home/.agents/skills/agmsg' && sha256sum teams/dotfiles/
 3b607b49bcec86ae6cfad6716f66bb5444ef30388922d49889e02227a266e726  run/watch.dotfiles.pid
 [exit 0]
 
-$ env -i HOME=$S/t19-mig-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTFILES_SOURCE_DIR=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c bash -c source '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/update-agent-assets.sh'; update_agmsg
+$ env -i HOME=$S/t19-mig-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTFILES_SOURCE_DIR=~/Workspace/dotfiles/.claude/worktrees/worker-c bash -c source '~/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/update-agent-assets.sh'; update_agmsg
 
 ==> agmsg
 agmsg: live state copied to $S/t19-mig-home/.agents/backups/agmsg-state-20260929T012739Z before install.sh --cmd agmsg --agent-type claude-code
@@ -925,13 +925,13 @@ ls: '<HOME>/.agents/skills/agmsg/.trash/*/lib/identifier.sh' にアクセスで�
 
 ## agmsg-dispatch (origin/main) against the upgraded skill
 
-$ env -i HOME=$S/t19-mig-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTFILES_SOURCE_DIR=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c bash $S/t19-mig-home/agmsg-dispatch.origin-main dotfiles orch worker w1:p1 hello
+$ env -i HOME=$S/t19-mig-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTFILES_SOURCE_DIR=~/Workspace/dotfiles/.claude/worktrees/worker-c bash $S/t19-mig-home/agmsg-dispatch.origin-main dotfiles orch worker w1:p1 hello
 $S/t19-mig-home/agmsg-dispatch.origin-main: line 25: $S/t19-mig-home/.agents/skills/agmsg/scripts/lib/identifier.sh: No such file or directory
 [exit 1]
 
 ## second update_agmsg run (VERSION == pin, marker present) is a no-op
 
-$ env -i HOME=$S/t19-mig-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTFILES_SOURCE_DIR=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c bash -c source '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/update-agent-assets.sh'; update_agmsg
+$ env -i HOME=$S/t19-mig-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTFILES_SOURCE_DIR=~/Workspace/dotfiles/.claude/worktrees/worker-c bash -c source '~/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/update-agent-assets.sh'; update_agmsg
 
 ==> agmsg
 [exit 0]
@@ -942,7 +942,7 @@ $ env -i HOME=$S/t19-mig-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOT
 
 ## case: fresh (skill dir present: no; db/messages.db: no)
 
-$ env -i HOME=$S/t19-fresh-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTFILES_SOURCE_DIR=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c bash -c source '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/update-agent-assets.sh'; update_agmsg
+$ env -i HOME=$S/t19-fresh-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTFILES_SOURCE_DIR=~/Workspace/dotfiles/.claude/worktrees/worker-c bash -c source '~/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/update-agent-assets.sh'; update_agmsg
 
 ==> agmsg
 [exit 0]
@@ -950,7 +950,7 @@ $ env -i HOME=$S/t19-fresh-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 D
 
 ## case: legacy-keep (skill dir present: yes; db/messages.db: no)
 
-$ env -i HOME=$S/t19-legacy-keep-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTFILES_SOURCE_DIR=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c bash -c source '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/update-agent-assets.sh'; update_agmsg
+$ env -i HOME=$S/t19-legacy-keep-home PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 DOTFILES_SOURCE_DIR=~/Workspace/dotfiles/.claude/worktrees/worker-c bash -c source '~/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/update-agent-assets.sh'; update_agmsg
 
 ==> agmsg
 agmsg: live state copied to $S/t19-legacy-keep-home/.agents/backups/agmsg-state-20260929T012717Z before install.sh --cmd agmsg --agent-type claude-code
@@ -988,7 +988,7 @@ $ python3 -m unittest tests.unit.test_runtime_health -k agmsg
 ERROR: test_agmsg_migration_reports_an_installer_that_mutates_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_migration_reports_an_installer_that_mutates_live_state)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 923, in test_agmsg_migration_reports_an_installer_that_mutates_live_state
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 923, in test_agmsg_migration_reports_an_installer_that_mutates_live_state
     backup = next((home / ".agents/backups").glob("agmsg-state-*"))
 StopIteration
 
@@ -996,7 +996,7 @@ StopIteration
 FAIL: test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 865, in test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 865, in test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state
     self.assertEqual(1, len(backups))
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0
@@ -1005,7 +1005,7 @@ AssertionError: 1 != 0
 FAIL: test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 957, in test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 957, in test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty
     self.assertIn("hashed fewer live-state files than exist", output)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'hashed fewer live-state files than exist' not found in '\n==> agmsg\nagmsg checksum mismatch for https://github.com/fujibee/agmsg/archive/c487be269c1973aeb01ca831806eb3f65ff3366d.tar.gz.\nagmsg installer failed; see stderr above for details.\n'
@@ -1014,7 +1014,7 @@ AssertionError: 'hashed fewer live-state files than exist' not found in '\n==> a
 FAIL: test_agmsg_refuses_to_install_without_tar (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_without_tar)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 986, in test_agmsg_refuses_to_install_without_tar
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 986, in test_agmsg_refuses_to_install_without_tar
     self.assertIn("agmsg: tar not found; nothing was installed", output)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'agmsg: tar not found; nothing was installed' not found in '\n==> agmsg\nscripts/update-agent-assets.sh: 行 940: tar: コマンドが見つかりません\nagmsg extraction failed for https://github.com/fujibee/agmsg/archive/c487be269c1973aeb01ca831806eb3f65ff3366d.tar.gz\nagmsg installer failed; see stderr above for details.\n'
@@ -1023,7 +1023,7 @@ AssertionError: 'agmsg: tar not found; nothing was installed' not found in '\n==
 FAIL: test_agmsg_update_aborts_when_install_corrupts_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_update_aborts_when_install_corrupts_live_state)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 893, in test_agmsg_update_aborts_when_install_corrupts_live_state
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 893, in test_agmsg_update_aborts_when_install_corrupts_live_state
     self.assertIn("changed during install.sh --update", result.stdout + result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'changed during install.sh --update' not found in '\n==> agmsg\nagmsg update touched live runtime state under teams/db/run; aborting\nagmsg installer failed; see stderr above for details.\n'
@@ -1043,7 +1043,7 @@ $ python3 -m unittest tests.unit.test_validate_agent_assets -k agmsg
 ERROR: test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 418, in test_agmsg_ownership_accepts_the_installer_layout
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 418, in test_agmsg_ownership_accepts_the_installer_layout
     self.module.validate_agmsg_is_installer_owned()
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_is_installer_owned'
@@ -1052,10 +1052,10 @@ AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_
 ERROR: test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) (name='symlink_agmsg.md.tmpl')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 434, in test_agmsg_ownership_rejects_a_managed_claude_command
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 434, in test_agmsg_ownership_rejects_a_managed_claude_command
     self.assert_agmsg_ownership_rejected(f"{path} must not exist")
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
     self.module.validate_agmsg_is_installer_owned()
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_is_installer_owned'
@@ -1064,10 +1064,10 @@ AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_
 ERROR: test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) (name='agmsg.md')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 434, in test_agmsg_ownership_rejects_a_managed_claude_command
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 434, in test_agmsg_ownership_rejects_a_managed_claude_command
     self.assert_agmsg_ownership_rejected(f"{path} must not exist")
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
     self.module.validate_agmsg_is_installer_owned()
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_is_installer_owned'
@@ -1076,10 +1076,10 @@ AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_
 ERROR: test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) (vendored='home/dot_agents/skills/agmsg')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 425, in test_agmsg_ownership_rejects_a_vendored_skill_copy
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 425, in test_agmsg_ownership_rejects_a_vendored_skill_copy
     self.assert_agmsg_ownership_rejected(f"{vendored} must not exist")
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
     self.module.validate_agmsg_is_installer_owned()
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_is_installer_owned'
@@ -1088,10 +1088,10 @@ AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_
 ERROR: test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) (vendored='home/dot_claude/skills/agmsg')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 425, in test_agmsg_ownership_rejects_a_vendored_skill_copy
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 425, in test_agmsg_ownership_rejects_a_vendored_skill_copy
     self.assert_agmsg_ownership_rejected(f"{vendored} must not exist")
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
     self.module.validate_agmsg_is_installer_owned()
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_is_installer_owned'
@@ -1100,10 +1100,10 @@ AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_
 ERROR: test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) (pattern='.agents/skills/agmsg')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 448, in test_agmsg_ownership_rejects_removing_installer_owned_paths
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 448, in test_agmsg_ownership_rejects_removing_installer_owned_paths
     self.assert_agmsg_ownership_rejected(f"entry {pattern!r} would remove")
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
     self.module.validate_agmsg_is_installer_owned()
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_is_installer_owned'
@@ -1112,10 +1112,10 @@ AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_
 ERROR: test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) (pattern='.agents/skills/agmsg/**')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 448, in test_agmsg_ownership_rejects_removing_installer_owned_paths
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 448, in test_agmsg_ownership_rejects_removing_installer_owned_paths
     self.assert_agmsg_ownership_rejected(f"entry {pattern!r} would remove")
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
     self.module.validate_agmsg_is_installer_owned()
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_is_installer_owned'
@@ -1124,10 +1124,10 @@ AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_
 ERROR: test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) (pattern='.claude/commands/agmsg.md')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 448, in test_agmsg_ownership_rejects_removing_installer_owned_paths
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 448, in test_agmsg_ownership_rejects_removing_installer_owned_paths
     self.assert_agmsg_ownership_rejected(f"entry {pattern!r} would remove")
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
     self.module.validate_agmsg_is_installer_owned()
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_is_installer_owned'
@@ -1136,10 +1136,10 @@ AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_
 ERROR: test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 440, in test_agmsg_ownership_requires_retiring_the_symlink_farm
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 440, in test_agmsg_ownership_requires_retiring_the_symlink_farm
     self.assert_agmsg_ownership_rejected("must retire .claude/skills/agmsg/**")
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 411, in assert_agmsg_ownership_rejected
     self.module.validate_agmsg_is_installer_owned()
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_is_installer_owned'
@@ -1148,7 +1148,7 @@ AttributeError: module 'validate_agent_assets' has no attribute 'validate_agmsg_
 FAIL: test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) (changes={'ref_commit': None})
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 393, in test_agmsg_installer_requires_the_full_tag_commit
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 393, in test_agmsg_installer_requires_the_full_tag_commit
     self.assertIn("ref_commit", self.assert_agmsg_asset_rejected(**changes))
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'ref_commit' not found in "ERROR: assets.agmsg has an unknown source: 'agmsg-installer'\n"
@@ -1157,7 +1157,7 @@ AssertionError: 'ref_commit' not found in "ERROR: assets.agmsg has an unknown so
 FAIL: test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) (changes={'ref_commit': 'c487be2'})
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 393, in test_agmsg_installer_requires_the_full_tag_commit
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 393, in test_agmsg_installer_requires_the_full_tag_commit
     self.assertIn("ref_commit", self.assert_agmsg_asset_rejected(**changes))
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'ref_commit' not found in "ERROR: assets.agmsg has an unknown source: 'agmsg-installer'\n"
@@ -1166,7 +1166,7 @@ AssertionError: 'ref_commit' not found in "ERROR: assets.agmsg has an unknown so
 FAIL: test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) (changes={'bootstrap_integrity': None})
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 401, in test_agmsg_installer_requires_the_npm_bootstrap_integrity
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 401, in test_agmsg_installer_requires_the_npm_bootstrap_integrity
     self.assertIn(
     ~~~~~~~~~~~~~^
         "bootstrap_integrity", self.assert_agmsg_asset_rejected(**changes)
@@ -1179,7 +1179,7 @@ AssertionError: 'bootstrap_integrity' not found in "ERROR: assets.agmsg has an u
 FAIL: test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) (changes={'bootstrap_integrity': 'sha256-not-an-npm-integrity-string'})
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 401, in test_agmsg_installer_requires_the_npm_bootstrap_integrity
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_validate_agent_assets.py", line 401, in test_agmsg_installer_requires_the_npm_bootstrap_integrity
     self.assertIn(
     ~~~~~~~~~~~~~^
         "bootstrap_integrity", self.assert_agmsg_asset_rejected(**changes)
@@ -1216,36 +1216,36 @@ FF.F.FFFFFFF
 FAIL: test_default_store_uses_shared_helper (tests.unit.test_agmsg_dispatch.AgmsgDispatchTest.test_default_store_uses_shared_helper)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 147, in test_default_store_uses_shared_helper
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 147, in test_default_store_uses_shared_helper
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmp9cfq53b9/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません
+AssertionError: 1 != 0 : ~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmp9cfq53b9/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません
 
 
 ======================================================================
 FAIL: test_idle_wakes_once_and_reads (tests.unit.test_agmsg_dispatch.AgmsgDispatchTest.test_idle_wakes_once_and_reads)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 110, in test_idle_wakes_once_and_reads
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 110, in test_idle_wakes_once_and_reads
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmprbz2t4_p/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません
+AssertionError: 1 != 0 : ~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmprbz2t4_p/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません
 
 
 ======================================================================
 FAIL: test_missing_pane_inserts_nothing (tests.unit.test_agmsg_dispatch.AgmsgDispatchTest.test_missing_pane_inserts_nothing)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 181, in test_missing_pane_inserts_nothing
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 181, in test_missing_pane_inserts_nothing
     self.assertIn("pane", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 'pane' not found in '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmpzwnsykec/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません\n'
+AssertionError: 'pane' not found in '~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmpzwnsykec/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません\n'
 
 ======================================================================
 FAIL: test_retry_does_not_wake_newly_working_pane (tests.unit.test_agmsg_dispatch.AgmsgDispatchTest.test_retry_does_not_wake_newly_working_pane)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 167, in test_retry_does_not_wake_newly_working_pane
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 167, in test_retry_does_not_wake_newly_working_pane
     self.assertEqual(len(self.calls.read_text().splitlines()), 1)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1
@@ -1254,57 +1254,57 @@ AssertionError: 0 != 1
 FAIL: test_timeout_is_one_shared_budget (tests.unit.test_agmsg_dispatch.AgmsgDispatchTest.test_timeout_is_one_shared_budget)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 175, in test_timeout_is_one_shared_budget
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 175, in test_timeout_is_one_shared_budget
     self.assertIn("sent message 1;", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 'sent message 1;' not found in '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmphbhdqs53/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません\n'
+AssertionError: 'sent message 1;' not found in '~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmphbhdqs53/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません\n'
 
 ======================================================================
 FAIL: test_unread_retries_once_then_fails (tests.unit.test_agmsg_dispatch.AgmsgDispatchTest.test_unread_retries_once_then_fails)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 129, in test_unread_retries_once_then_fails
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 129, in test_unread_retries_once_then_fails
     self.assertIn("unread", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 'unread' not found in '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmpcbt23afk/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません\n'
+AssertionError: 'unread' not found in '~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmpcbt23afk/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません\n'
 
 ======================================================================
 FAIL: test_wake_failure_identifies_sent_message (tests.unit.test_agmsg_dispatch.AgmsgDispatchTest.test_wake_failure_identifies_sent_message)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 189, in test_wake_failure_identifies_sent_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 189, in test_wake_failure_identifies_sent_message
     self.assertIn("sent message 1;", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 'sent message 1;' not found in '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmpy0d36k08/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません\n'
+AssertionError: 'sent message 1;' not found in '~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmpy0d36k08/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません\n'
 
 ======================================================================
 FAIL: test_worker_becoming_idle_after_send_is_woken (tests.unit.test_agmsg_dispatch.AgmsgDispatchTest.test_worker_becoming_idle_after_send_is_woken)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 160, in test_worker_becoming_idle_after_send_is_woken
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 160, in test_worker_becoming_idle_after_send_is_woken
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmp5sig6y4e/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません
+AssertionError: 1 != 0 : ~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmp5sig6y4e/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません
 
 
 ======================================================================
 FAIL: test_working_does_not_wake (tests.unit.test_agmsg_dispatch.AgmsgDispatchTest.test_working_does_not_wake)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 122, in test_working_does_not_wake
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 122, in test_working_does_not_wake
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmpt85mnhoh/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません
+AssertionError: 1 != 0 : ~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmpt85mnhoh/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません
 
 
 ======================================================================
 FAIL: test_working_unread_never_wakes (tests.unit.test_agmsg_dispatch.AgmsgDispatchTest.test_working_unread_never_wakes)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 137, in test_working_unread_never_wakes
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_agmsg_dispatch.py", line 137, in test_working_unread_never_wakes
     self.assertIn("unread", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 'unread' not found in '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmp9q655hjz/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません\n'
+AssertionError: 'unread' not found in '~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_agmsg-dispatch: 行 25: /tmp/tmp9q655hjz/.agents/skills/agmsg/scripts/lib/identifier.sh: そのようなファイルやディレクトリはありません\n'
 
 ----------------------------------------------------------------------
 Ran 12 tests in 0.165s
@@ -1321,7 +1321,7 @@ F..FFF..FF.
 FAIL: test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 969, in test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 969, in test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes
     self.assertNotIn("installer failed", output)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'installer failed' unexpectedly found in '\n==> agmsg\nagmsg: live state copied to /tmp/runtime-health-test-o608xqzr/agmsg-home/.agents/backups/agmsg-state-20260929T012655Z before install.sh --cmd agmsg --agent-type claude-code\nagmsg: live state under teams/, run/ or db/messages.db changed during install.sh --cmd agmsg --agent-type claude-code; pre-install state copy: /tmp/runtime-health-test-o608xqzr/agmsg-home/.agents/backups/agmsg-state-20260929T012655Z\nagmsg installer failed (installed: none); see the reason above.\n'
@@ -1330,7 +1330,7 @@ AssertionError: 'installer failed' unexpectedly found in '\n==> agmsg\nagmsg: li
 FAIL: test_agmsg_fresh_install_populates_skill_and_records_manifest (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_fresh_install_populates_skill_and_records_manifest)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 766, in test_agmsg_fresh_install_populates_skill_and_records_manifest
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 766, in test_agmsg_fresh_install_populates_skill_and_records_manifest
     self.assertNotIn("installer failed", result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'installer failed' unexpectedly found in '\n==> agmsg\nagmsg: live state under teams/, run/ or db/messages.db changed during install.sh --cmd agmsg --agent-type claude-code; pre-install state copy: none\nagmsg installer failed (installed: none); see the reason above.\n'
@@ -1339,7 +1339,7 @@ AssertionError: 'installer failed' unexpectedly found in '\n==> agmsg\nagmsg: li
 FAIL: test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 866, in test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 866, in test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state
     self.assertNotIn("installer failed", result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'installer failed' unexpectedly found in '\n==> agmsg\nagmsg: live state copied to /tmp/runtime-health-test-rlaectqw/agmsg-home/.agents/backups/agmsg-state-20260929T012655Z before install.sh --cmd agmsg --agent-type claude-code\nagmsg: live state under teams/, run/ or db/messages.db changed during install.sh --cmd agmsg --agent-type claude-code; pre-install state copy: /tmp/runtime-health-test-rlaectqw/agmsg-home/.agents/backups/agmsg-state-20260929T012655Z\nagmsg installer failed (installed: none); see the reason above.\n'
@@ -1348,7 +1348,7 @@ AssertionError: 'installer failed' unexpectedly found in '\n==> agmsg\nagmsg: li
 FAIL: test_agmsg_migration_reports_an_installer_that_mutates_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_migration_reports_an_installer_that_mutates_live_state)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 935, in test_agmsg_migration_reports_an_installer_that_mutates_live_state
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 935, in test_agmsg_migration_reports_an_installer_that_mutates_live_state
     self.assertIn(
     ~~~~~~~~~~~~~^
         "install.sh --cmd agmsg --agent-type claude-code changed or removed "
@@ -1365,7 +1365,7 @@ AssertionError: 'install.sh --cmd agmsg --agent-type claude-code changed or remo
 FAIL: test_agmsg_reports_an_installer_that_leaves_the_wrong_version (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_reports_an_installer_that_leaves_the_wrong_version)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 990, in test_agmsg_reports_an_installer_that_leaves_the_wrong_version
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 990, in test_agmsg_reports_an_installer_that_leaves_the_wrong_version
     self.assertIn(
     ~~~~~~~~~~~~~^
         "agmsg: install.sh --cmd agmsg --agent-type claude-code left VERSION 9.9.9 (want 1.5.0)",
@@ -1380,7 +1380,7 @@ AssertionError: 'agmsg: install.sh --cmd agmsg --agent-type claude-code left VER
 FAIL: test_agmsg_update_aborts_when_install_corrupts_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_update_aborts_when_install_corrupts_live_state)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 903, in test_agmsg_update_aborts_when_install_corrupts_live_state
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 903, in test_agmsg_update_aborts_when_install_corrupts_live_state
     self.assertIn("install.sh --update --cmd agmsg --agent-type claude-code changed or removed existing live state", output)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'install.sh --update --cmd agmsg --agent-type claude-code changed or removed existing live state' not found in '\n==> agmsg\nagmsg: live state copied to /tmp/runtime-health-test-r95aswd9/agmsg-home/.agents/backups/agmsg-state-20260929T012656Z before install.sh --update --cmd agmsg --agent-type claude-code\nagmsg: live state under teams/, run/ or db/messages.db changed during install.sh --update --cmd agmsg --agent-type claude-code; pre-install state copy: /tmp/runtime-health-test-r95aswd9/agmsg-home/.agents/backups/agmsg-state-20260929T012656Z\nagmsg installer failed (installed: 1.0.0); see the reason above.\n'
@@ -1400,7 +1400,7 @@ F
 FAIL: test_installer_owned_agmsg_skill_and_backups_are_not_orphans (tests.unit.test_check_agent_runtime.CheckAgentRuntimeTest.test_installer_owned_agmsg_skill_and_backups_are_not_orphans)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_check_agent_runtime.py", line 346, in test_installer_owned_agmsg_skill_and_backups_are_not_orphans
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_check_agent_runtime.py", line 346, in test_installer_owned_agmsg_skill_and_backups_are_not_orphans
     self.assertEqual(
     ~~~~~~~~~~~~~~~~^
         [f"WARN: orphaned agent asset: {agents / 'orphan-root'}; manual review required"],

@@ -56,15 +56,15 @@ Skipping Codex marketplace upgrade: openai-curated is not a configured Git marke
 Codex Superpowers plugin is already installed.
 
 ==> Codex Crit plugin
-  Installed: /Users/mryfmo/.agents/plugins/marketplace.json
+  Installed: ~/.agents/plugins/marketplace.json
   Installed: .agents/skills/crit/SKILL.md
   Installed: .agents/skills/crit-cli/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/.codex-plugin/plugin.json
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit-cli/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/hooks/hooks.json
-  Installed: /Users/mryfmo/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
-  Skipped:   /Users/mryfmo/.codex/config.toml (Codex plugin already enabled)
+  Installed: ~/.codex/plugins/crit/.codex-plugin/plugin.json
+  Installed: ~/.codex/plugins/crit/skills/crit/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-cli/SKILL.md
+  Installed: ~/.codex/plugins/crit/hooks/hooks.json
+  Installed: ~/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
+  Skipped:   ~/.codex/config.toml (Codex plugin already enabled)
   Use $crit in Codex to start a review loop
   The crit-cli skill is available to Codex agents when needed
   The Crit plugin is registered in the local Codex plugin marketplace
@@ -81,22 +81,22 @@ Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new
 Ponytail default mode is full. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.
 
 ==> herdr integrations
-installed claude integration hook to /Users/mryfmo/.claude/hooks/herdr-agent-state.sh
-ensured claude settings at /Users/mryfmo/.claude/settings.json
-installed codex integration hook to /Users/mryfmo/.codex/herdr-agent-state.sh
-ensured codex hooks at /Users/mryfmo/.codex/hooks.json
-ensured codex config at /Users/mryfmo/.codex/config.toml
+installed claude integration hook to ~/.claude/hooks/herdr-agent-state.sh
+ensured claude settings at ~/.claude/settings.json
+installed codex integration hook to ~/.codex/herdr-agent-state.sh
+ensured codex hooks at ~/.codex/hooks.json
+ensured codex config at ~/.codex/config.toml
 v0.9.5
 {"id":"cli:server:reload-config","result":{"diagnostics":[],"status":"applied","type":"config_reload"}}
 /Library/Developer/CommandLineTools/usr/bin/make agmsg-bootstrap
-Multiple agmsg Claude Code identities are registered for /Users/mryfmo/Workspace/dotfiles; worker identity is ambiguous.
+Multiple agmsg Claude Code identities are registered for ~/Workspace/dotfiles; worker identity is ambiguous.
 make_update_exit_code=0
 $ ./scripts/check-agent-runtime.py
 ERROR: shared skill directory has unexpected files: agmsg/db-flue-pi/messages.db, agmsg/db-flue-pi/messages.db-shm, agmsg/db-flue-pi/messages.db-wal
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/crit
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/crit-cli
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/find-skills
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/improve
+WARN: unmanaged skill dir: ~/.agents/skills/crit
+WARN: unmanaged skill dir: ~/.agents/skills/crit-cli
+WARN: unmanaged skill dir: ~/.agents/skills/find-skills
+WARN: unmanaged skill dir: ~/.agents/skills/improve
 doctor_exit_code=1
 
 === live cycle 2 ===
@@ -131,15 +131,15 @@ Skipping Codex marketplace upgrade: openai-curated is not a configured Git marke
 Codex Superpowers plugin is already installed.
 
 ==> Codex Crit plugin
-  Installed: /Users/mryfmo/.agents/plugins/marketplace.json
+  Installed: ~/.agents/plugins/marketplace.json
   Installed: .agents/skills/crit/SKILL.md
   Installed: .agents/skills/crit-cli/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/.codex-plugin/plugin.json
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit-cli/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/hooks/hooks.json
-  Installed: /Users/mryfmo/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
-  Skipped:   /Users/mryfmo/.codex/config.toml (Codex plugin already enabled)
+  Installed: ~/.codex/plugins/crit/.codex-plugin/plugin.json
+  Installed: ~/.codex/plugins/crit/skills/crit/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-cli/SKILL.md
+  Installed: ~/.codex/plugins/crit/hooks/hooks.json
+  Installed: ~/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
+  Skipped:   ~/.codex/config.toml (Codex plugin already enabled)
   Use $crit in Codex to start a review loop
   The crit-cli skill is available to Codex agents when needed
   The Crit plugin is registered in the local Codex plugin marketplace
@@ -156,22 +156,22 @@ Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new
 Ponytail default mode is full. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.
 
 ==> herdr integrations
-installed claude integration hook to /Users/mryfmo/.claude/hooks/herdr-agent-state.sh
-ensured claude settings at /Users/mryfmo/.claude/settings.json
-installed codex integration hook to /Users/mryfmo/.codex/herdr-agent-state.sh
-ensured codex hooks at /Users/mryfmo/.codex/hooks.json
-ensured codex config at /Users/mryfmo/.codex/config.toml
+installed claude integration hook to ~/.claude/hooks/herdr-agent-state.sh
+ensured claude settings at ~/.claude/settings.json
+installed codex integration hook to ~/.codex/herdr-agent-state.sh
+ensured codex hooks at ~/.codex/hooks.json
+ensured codex config at ~/.codex/config.toml
 v0.9.5
 {"id":"cli:server:reload-config","result":{"diagnostics":[],"status":"applied","type":"config_reload"}}
 /Library/Developer/CommandLineTools/usr/bin/make agmsg-bootstrap
-Multiple agmsg Claude Code identities are registered for /Users/mryfmo/Workspace/dotfiles; worker identity is ambiguous.
+Multiple agmsg Claude Code identities are registered for ~/Workspace/dotfiles; worker identity is ambiguous.
 make_update_exit_code=0
 $ ./scripts/check-agent-runtime.py
 ERROR: shared skill directory has unexpected files: agmsg/db-flue-pi/messages.db, agmsg/db-flue-pi/messages.db-shm, agmsg/db-flue-pi/messages.db-wal
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/crit
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/crit-cli
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/find-skills
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/improve
+WARN: unmanaged skill dir: ~/.agents/skills/crit
+WARN: unmanaged skill dir: ~/.agents/skills/crit-cli
+WARN: unmanaged skill dir: ~/.agents/skills/find-skills
+WARN: unmanaged skill dir: ~/.agents/skills/improve
 doctor_exit_code=1
 claude_settings_drift_present=no
 

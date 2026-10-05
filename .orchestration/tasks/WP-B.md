@@ -1,7 +1,7 @@
 # WP-B: Remove tmux config deployment
 
 task_id: WP-B
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wpb
 

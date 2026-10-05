@@ -1,7 +1,7 @@
 # AGMSG-TASK dot-env-converge-T10-a01 (revision 4: patch base = origin/main): commit the pending `make upgrade` pin output through the sanctioned PR path (plan part A1)
 
-Plan: `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/melodic-conjuring-sifakis.md` §A1.
-Repo (your worktree): `/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10`, branch `chore/upgrade-pins-20260925b` (clean, = origin/main 3303fbc). You are `claude-standard-dot-a003`.
+Plan: `~/Workspace/dotfiles/.agents/worklog/claude/melodic-conjuring-sifakis.md` §A1.
+Repo (your worktree): `~/Workspace/dotfiles/.claude/worktrees/env-converge-T10`, branch `chore/upgrade-pins-20260925b` (clean, = origin/main 3303fbc). You are `claude-standard-dot-a003`.
 
 ## Revision note (rev 3 = rev 2 with the worktree moved to `.claude/worktrees/env-converge-T10`, this repository's isolation convention)
 
@@ -31,7 +31,7 @@ hand edits of any file; `make upgrade`; `make update`; `chezmoi apply`; any writ
 
 none (no writes outside the nested worktree and the artefacts).
 
-## Artefacts (in the main checkout `/home/moriya/Workspace/dotfiles`)
+## Artefacts (in the main checkout `~/Workspace/dotfiles`)
 
 report `.orchestration/reports/dot-env-converge-T10-a01.md` (overwrite; keep a "Revision 1: blocked" section at the end with its reasoning, then the revision-2 result: table, PR URL, commit, `[memory:decision]`: "pending make upgrade output is committed through a clean branch and PR with blob-identity proof; make upgrade itself runs only in the canonical clone at a session boundary, never inside a worker task"), validation (overwrite, same rule), sandbox, learning, autoskill. Run `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "..."` from the main checkout; paste command and output.
 

@@ -309,7 +309,7 @@ Exit: 0
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/db2948e012d3/review.json",
+  "review_file": "~/.crit/reviews/db2948e012d3/review.json",
   "review_file_exists": false,
   "vcs": "git"
 }

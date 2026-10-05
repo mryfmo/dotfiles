@@ -1,7 +1,7 @@
 # WP-F: Shared tooling, CI, and docs cleanup (tmux + hermes)
 
 task_id: WP-F
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wpf
 

@@ -23,7 +23,7 @@ test_successful_agent_start_does_not_poll_agent_list (tests.unit.test_herdr_agen
 FAIL: test_agent_name_taken_gives_up_after_bounded_wait (tests.unit.test_herdr_agents.HerdrAgentsTest.test_agent_name_taken_gives_up_after_bounded_wait)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1267, in test_agent_name_taken_gives_up_after_bounded_wait
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1267, in test_agent_name_taken_gives_up_after_bounded_wait
     self.assertEqual(calls.count("agent list"), 3, calls)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 3 : ['workspace list', 'workspace create --cwd /tmp/herdr-agents-test-pi89ao9q/project --label project agents --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --focus', 'pane rename w-test:p1 claude-orchestrator', 'pane process-info --pane w-test:p1', 'pane wait-output w-test:p1 --regex [$#%❯➜>]+[[:space:]]*$ --source visible --lines 5 --timeout 10000', 'agent start claude-orchestrator-w-test --kind claude --pane w-test:p1 --timeout 30000 --']
@@ -32,7 +32,7 @@ AssertionError: 0 != 3 : ['workspace list', 'workspace create --cwd /tmp/herdr-a
 FAIL: test_restart_worker_waits_for_stale_registration_then_retries_once (tests.unit.test_herdr_agents.HerdrAgentsTest.test_restart_worker_waits_for_stale_registration_then_retries_once)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1786, in test_restart_worker_waits_for_stale_registration_then_retries_once
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1786, in test_restart_worker_waits_for_stale_registration_then_retries_once
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : Failed to start claude agent claude-worker-w-old: agent_name_taken: claude-worker-w-old
@@ -612,7 +612,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-clwbov4l/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-clwbov4l/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -638,7 +638,7 @@ exit=0
 ## Diff stat
 
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
  .../rule_candidates/herdr-worker-relaunch.md       |  3 +
  README.md                                          |  5 +-
  home/dot_local/bin/common/executable_herdr-agents  | 38 +++++++++

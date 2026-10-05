@@ -83,7 +83,7 @@ Deliver, in this order, as separate commits on one branch:
    `.agents/worklog/claude/`). The run must end in acceptance (exit 0) with NO
    bot review present on the head; paste it verbatim. Afterwards copy the
    pr-feedback JSON to the main checkout at
-   `/home/moriya/Workspace/dotfiles/.orchestration/validation/dot-pr-feedback-gate-T38-a01-pr-feedback.json`
+   `~/Workspace/dotfiles/.orchestration/validation/dot-pr-feedback-gate-T38-a01-pr-feedback.json`
    and do not commit the worktree copies. Do not post `@coderabbitai` or
    `@codex` comments.
 
@@ -97,7 +97,7 @@ Codex GitHub connector dependency. Supersedes the T16 r2 Codex-gate ruling
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`; `git switch -c feat/pr-feedback-gate-r2 origin/main`.
   Verify the dispatched task_rev sha256 against this file on your base, else
   stop and PONG. If the worktree has uncommitted files, stop and PONG.

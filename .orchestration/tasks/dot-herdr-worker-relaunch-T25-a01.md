@@ -21,7 +21,7 @@ checked by validator + unit tests (operator 2026-09-27).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`
   (currently detached at 47d76b8; no uncommitted files expected — if any
   exist, stop and report via AGMSG-PONG).
 - `git fetch origin`, then `git switch -c feat/herdr-worker-relaunch origin/main`.
@@ -120,7 +120,7 @@ check with a truthful message). Keep it minimal — no new config surface.
 make validate-agent-assets
 make unit-test
 shellcheck home/dot_local/bin/common/executable_herdr-agents
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

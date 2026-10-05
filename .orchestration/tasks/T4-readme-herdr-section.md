@@ -1,7 +1,7 @@
 # T4: README の「Herdr and Ghostty agent workspace」節を更新
 
 依頼元: orchestrator-fable5(agmsg team: dotfiles-conformance)
-repo: /Users/mryfmo/Workspace/dotfiles(branch 作成・commit 不要)
+repo: ~/Workspace/dotfiles(branch 作成・commit 不要)
 
 ## 背景
 

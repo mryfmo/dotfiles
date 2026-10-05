@@ -1,7 +1,7 @@
 # T65b: Repin Pi to 0.84.1 (7-day supply-chain cooldown) — anchors re-verified
 
 task_id: T65b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (decision log: cooldown ruling)

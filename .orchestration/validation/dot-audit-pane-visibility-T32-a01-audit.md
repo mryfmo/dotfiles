@@ -7,7 +7,7 @@ Session header:
 ```
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -25,10 +25,10 @@ The audit launcher mishandles reused panes with changed working directories and 
 
 Full review comments:
 
-- [P2] Reset the audit pane's working directory on every run — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:920-920
+- [P2] Reset the audit pane's working directory on every run — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:920-920
   When an existing audit pane has changed directories, this command runs Codex in that directory rather than the requested DIR. `--cwd` only applies when creating the tab; the caller's earlier `cd` cannot affect the persistent pane. Consequently, subsequent audits can fail to resolve the commit or run against another checkout while writing evidence under the requested repository. Explicitly set the review command's working directory on every invocation.
 
-- [P2] Quote the complete command instead of nesting escaped paths — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:920-920
+- [P2] Quote the complete command instead of nesting escaped paths — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:920-920
   If DIR contains an apostrophe, such as `/tmp/it's-a-project`, the default evidence path produces an invalid command. The earlier validation checks only `--out`, before prepending `workdir`, and `printf '%q'` emits `\'`, which cannot escape an apostrophe inside the surrounding single-quoted `bash -c` argument. This reproduces an unmatched-quote syntax error, preventing the audit and exit marker from running. Pass paths as positional arguments or shell-quote the complete Bash command.
 ```
 
@@ -45,7 +45,7 @@ Session header:
 ```
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never

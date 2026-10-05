@@ -58,7 +58,7 @@ Live in the sandbox, 19 of 19 untracked entries match the final predicate, and a
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T92 (orchestrator 2026-10-04): the agent stop gate ignores untracked paths that are mount points in its own namespace, because the Claude Code sandbox bind-mounts 0-byte placeholders for protected paths into the repository root and the Stop hook runs inside that namespace.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T92 (orchestrator 2026-10-04): the agent stop gate ignores untracked paths that are mount points in its own namespace, because the Claude Code sandbox bind-mounts 0-byte placeholders for protected paths into the repository root and the Stop hook runs inside that namespace.'
 ```
 
 Output: `74bc8922-86c4-48f7-bdf1-a9e72198761e`.

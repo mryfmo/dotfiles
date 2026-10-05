@@ -1,7 +1,7 @@
 # WP-G: Residual hermes references (integration-grep findings)
 
 task_id: WP-G
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wpg
 

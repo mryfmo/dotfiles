@@ -3,14 +3,14 @@
 Every output below is verbatim; exits captured directly (ANSI colour codes stripped). Head f700b14, PR #223.
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-ua-refresh-policy-T52-a01.md
-4ffe983717f2171fa760ed4e781da2363b884d343ea72a28442a7695af1233da  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-ua-refresh-policy-T52-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-ua-refresh-policy-T52-a01.md
+4ffe983717f2171fa760ed4e781da2363b884d343ea72a28442a7695af1233da  ~/Workspace/dotfiles/.orchestration/tasks/dot-ua-refresh-policy-T52-a01.md
 ```
 
 ### Hook-flag check (plugin 2.9.7 source + both gates, read-only)
 
 ```text
-$ jq -r '.hooks.SessionStart[0].hooks[0].command' $P/hooks/hooks.json   # P=/home/moriya/.claude/plugins/cache/understand-anything/understand-anything/2.9.7
+$ jq -r '.hooks.SessionStart[0].hooks[0].command' $P/hooks/hooks.json   # P=~/.claude/plugins/cache/understand-anything/understand-anything/2.9.7
 UA_DIR=.understand-anything; [ -d "$UA_DIR" ] || UA_DIR=.ua; [ -f $UA_DIR/config.json ] && grep -q '"autoUpdate".*true' $UA_DIR/config.json && [ -f $UA_DIR/meta.json ] && [ -f $UA_DIR/knowledge-graph.json ] && [ "$(node -p "JSON.parse(require('fs').readFileSync('$UA_DIR/meta.json','utf8')).gitCommitHash")" != "$(git rev-parse HEAD 2>/dev/null)" ] && echo "[understand-anything] Knowledge graph is stale. You MUST read the file at ${CLAUDE_PLUGIN_ROOT}/hooks/auto-update-prompt.md and execute its instructions to check for structural changes and update the graph. Do not ask the user for confirmation — just do it." || true
 exit=0
 $ jq -c '.hooks.PostToolUse' $P/hooks/hooks.json
@@ -446,97 +446,97 @@ test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_he
 test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
 test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
 test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
-test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9545210>
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9545210>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544b80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544b80>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544f40>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95467a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95467a0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95455d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95455d0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9546110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9546110>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95466b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95466b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9546980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9546980>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9545a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9545a80>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9545b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9545b70>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544e50>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9d07f10>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9d07f10>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95447c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95447c0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e97a5210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e97a5210>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544c70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544c70>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95449a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95449a0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95462f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95462f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9546020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9546020>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544310>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95457b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95457b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e9544040>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95471f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e95471f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d1300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d1300>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d17b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d17b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d1990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d1990>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d14e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d14e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d13f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d13f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d0040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d0040>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d0220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d0220>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d07c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d07c0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d06d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5d3e98d06d0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -935,7 +935,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-84ekiqwb/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-84ekiqwb/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -963,14 +963,14 @@ exit=0
 ```text
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-sec (herdr-agents --remove-worker)
 agent asset validation ok
 exit=0
@@ -1053,21 +1053,21 @@ exit=0
 
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-ua-refresh-policy-T52-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-ua-refresh-policy-T52-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-ua-refresh-policy-T52-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-ua-refresh-policy-T52-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-refresh-policy-T52-a01-audit-f700b14.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-refresh-policy-T52-a01-audit-f700b14.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-refresh-policy-T52-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-ua-refresh-policy-T52-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-ua-refresh-policy-T52-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-ua-refresh-policy-T52-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-ua-refresh-policy-T52-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-refresh-policy-T52-a01-audit-f700b14.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-refresh-policy-T52-a01-audit-f700b14.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-refresh-policy-T52-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-sec (herdr-agents --remove-worker)
 agent asset validation ok
 exit=0

@@ -1,6 +1,6 @@
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -11,10 +11,10 @@ session id: 01a0e767-6725-74a0-9145-68e2cf9e2e04
 --------
 user
 commit 1696638
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc "cat .agents/worklog/codex/learn/learn_index.md; printf '\\n---RULES---\\n'; cat AGENTS.md; printf '\\n---SKILLS---\\n'; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "cat .agents/worklog/codex/learn/learn_index.md; printf '\\n---RULES---\\n'; cat AGENTS.md; printf '\\n---SKILLS---\\n'; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 
@@ -409,7 +409,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/usr/bin/zsh -lc "git status --short; git rev-parse HEAD; git show --stat --oneline 1696638; git show --format=fuller --no-ext-diff 1696638; printf '\\n---SCOPED RULES---\\n'; find .. -name AGENTS.override.md -print; git ls-files '*AGENTS.md' '*AGENTS.override.md'; printf '\\n---GRAPH META---\\n'; cat .ua/meta.json 2>/dev/null" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "git status --short; git rev-parse HEAD; git show --stat --oneline 1696638; git show --format=fuller --no-ext-diff 1696638; printf '\\n---SCOPED RULES---\\n'; find .. -name AGENTS.override.md -print; git ls-files '*AGENTS.md' '*AGENTS.override.md'; printf '\\n---GRAPH META---\\n'; cat .ua/meta.json 2>/dev/null" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ?? .orchestration/acceptance/dot-audit-exec-channel-T33e-a01.md
 ?? .orchestration/autoskill/runs/dot-audit-exec-channel-T33e-a01.md
@@ -518,7 +518,7 @@ vendor/compactiondb/AGENTS.md
 }
 
 exec
-/usr/bin/zsh -lc 'cat /home/moriya/.agents/skills/shdoc-shell-docs/SKILL.md; cat /home/moriya/.agents/skills/understand-diff/SKILL.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat ~/.agents/skills/shdoc-shell-docs/SKILL.md; cat ~/.agents/skills/understand-diff/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: shdoc-shell-docs
@@ -656,7 +656,7 @@ if p.exists():
   if n.get('filePath') in ['home/dot_local/bin/common/executable_herdr-agents','tests/unit/test_herdr_agents.py']:
    print({k:n.get(k) for k in ['id','filePath','summary']})
 PY
- git diff --name-only 935e198406e5df993c84de67c695c7083f4b6b54 HEAD -- .; printf '\\n---COMMIT SCRIPT---\\n'; git show 1696638:home/dot_local/bin/common/executable_herdr-agents | sed -n '740,1030p'; printf '\\n---TESTS---\\n'; git show 1696638:tests/unit/test_herdr_agents.py | sed -n '2170,2440p'; printf '\\n---ANCESTOR INSTRUCTIONS---\\n'; for d in /home /home/moriya /home/moriya/Workspace . home home/dot_local home/dot_local/bin home/dot_local/bin/common tests tests/unit; do for n in AGENTS.override.md AGENTS.md; do [ "'! -f "$d/$n" ] || printf '"'%s\\n' \""'$d/$n"; done; done' in /home/moriya/Workspace/dotfiles
+ git diff --name-only 935e198406e5df993c84de67c695c7083f4b6b54 HEAD -- .; printf '\\n---COMMIT SCRIPT---\\n'; git show 1696638:home/dot_local/bin/common/executable_herdr-agents | sed -n '740,1030p'; printf '\\n---TESTS---\\n'; git show 1696638:tests/unit/test_herdr_agents.py | sed -n '2170,2440p'; printf '\\n---ANCESTOR INSTRUCTIONS---\\n'; for d in /home ~ ~/Workspace . home home/dot_local home/dot_local/bin home/dot_local/bin/common tests tests/unit; do for n in AGENTS.override.md AGENTS.md; do [ "'! -f "$d/$n" ] || printf '"'%s\\n' \""'$d/$n"; done; done' in ~/Workspace/dotfiles
  succeeded in 0ms:
 zsh:1: can't create temp file for here document: read-only file system
 .orchestration/acceptance/dot-ua-graph-refresh-T33c-a01.md
@@ -1246,7 +1246,7 @@ if [[ ${attach_mode} == true ]]; then
 
 **Finishing memory tests**
 exec
-/usr/bin/zsh -lc "python3 -c 'import json; from pathlib import Path; p=Path(\".ua/knowledge-graph.json\"); g=json.loads(p.read_text()); print(json.dumps([{k:n.get(k) for k in (\"id\",\"filePath\",\"summary\")} for n in g.get(\"nodes\",[]) if n.get(\"filePath\") in (\"home/dot_local/bin/common/executable_herdr-agents\",\"tests/unit/test_herdr_agents.py\")],indent=2))'; git diff 1696638 HEAD -- home/dot_local/bin/common/executable_herdr-agents tests/unit/test_herdr_agents.py AGENTS.md; git show 1696638:tests/unit/test_herdr_agents.py | sed -n '1,90p'; git show 1696638:tests/unit/test_herdr_agents.py | grep -A12 -B4 'def transcript'; git show 1696638:home/dot_local/bin/common/executable_herdr-agents | bash -n" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "python3 -c 'import json; from pathlib import Path; p=Path(\".ua/knowledge-graph.json\"); g=json.loads(p.read_text()); print(json.dumps([{k:n.get(k) for k in (\"id\",\"filePath\",\"summary\")} for n in g.get(\"nodes\",[]) if n.get(\"filePath\") in (\"home/dot_local/bin/common/executable_herdr-agents\",\"tests/unit/test_herdr_agents.py\")],indent=2))'; git diff 1696638 HEAD -- home/dot_local/bin/common/executable_herdr-agents tests/unit/test_herdr_agents.py AGENTS.md; git show 1696638:tests/unit/test_herdr_agents.py | sed -n '1,90p'; git show 1696638:tests/unit/test_herdr_agents.py | grep -A12 -B4 'def transcript'; git show 1696638:home/dot_local/bin/common/executable_herdr-agents | bash -n" in ~/Workspace/dotfiles
  succeeded in 0ms:
 [
   {
@@ -1768,7 +1768,7 @@ for method_name in (\"test_audit_verdict_gate_reads_only_the_final_codex_block\"
   checked+=1
 print(f\"PASS: {checked} transcript cases from commit 1696638 using the actual AWK parser\")
 print(\"PASS: changed Python test source parses\")
-'; git show 1696638:home/dot_local/bin/common/executable_herdr-agents | bash -n && printf 'PASS: commit shell syntax\\n'; git diff --quiet; printf 'Tracked worktree diff status: %s\\n' \""'$?"' in /home/moriya/Workspace/dotfiles
+'; git show 1696638:home/dot_local/bin/common/executable_herdr-agents | bash -n && printf 'PASS: commit shell syntax\\n'; git diff --quiet; printf 'Tracked worktree diff status: %s\\n' \""'$?"' in ~/Workspace/dotfiles
  succeeded in 28ms:
 PASS: commit shell syntax
 Tracked worktree diff status: 0

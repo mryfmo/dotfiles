@@ -33,4 +33,4 @@ None.
 - Fork and Dependabot secret handling is fail-closed here: unavailable secrets evaluate empty, secret-derived job env is the documented way to gate steps, and the public job does not reference secrets. [GitHub secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets), [Dependabot restrictions](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-on-actions)
 - `actions/checkout@v7`, default `pull_request` merge-commit checkout, `GITHUB_SHA`, and `${{ runner.temp }}` are current and valid. The eight changed files are all within the allowed implementation list.
 
-REVIEW-RESULT v1 task_id=plan-003 verdict=REVISE report=/Users/mryfmo/Workspace/dotfiles/.orchestration/acceptance/plan-003-review-round-1.md
+REVIEW-RESULT v1 task_id=plan-003 verdict=REVISE report=~/Workspace/dotfiles/.orchestration/acceptance/plan-003-review-round-1.md

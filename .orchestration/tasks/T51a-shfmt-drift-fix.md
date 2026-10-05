@@ -1,7 +1,7 @@
 # T51a: Fix pre-existing repo-wide shfmt drift (T51 all-green prerequisite)
 
 task_id: T51a
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-compactiondb-research-integration.md (Phase 6, all-green gate #1; ruling logged at T48)

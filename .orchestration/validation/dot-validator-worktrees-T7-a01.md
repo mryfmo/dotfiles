@@ -13,10 +13,10 @@ test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.Vali
 ERROR: test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) (marker_kind='file', scan='validate_no_removed_claude_skill')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/tests/unit/test_validate_agent_assets.py", line 68, in test_recursive_scans_skip_nested_git_trees_only
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/tests/unit/test_validate_agent_assets.py", line 68, in test_recursive_scans_skip_nested_git_trees_only
     scan()
     ~~~~^^
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 1047, in validate_no_removed_claude_skill
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 1047, in validate_no_removed_claude_skill
     fail(
     ~~~~^
         "removed Claude skill references remain: "
@@ -25,7 +25,7 @@ Traceback (most recent call last):
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 70, in fail
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 70, in fail
     raise SystemExit(1)
 SystemExit: 1
 
@@ -33,13 +33,13 @@ SystemExit: 1
 ERROR: test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) (marker_kind='file', scan='validate_no_obvious_secrets')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/tests/unit/test_validate_agent_assets.py", line 68, in test_recursive_scans_skip_nested_git_trees_only
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/tests/unit/test_validate_agent_assets.py", line 68, in test_recursive_scans_skip_nested_git_trees_only
     scan()
     ~~~~^^
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 1094, in validate_no_obvious_secrets
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 1094, in validate_no_obvious_secrets
     fail(f"possible committed secret in {path.relative_to(ROOT)}")
     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 70, in fail
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 70, in fail
     raise SystemExit(1)
 SystemExit: 1
 
@@ -47,10 +47,10 @@ SystemExit: 1
 ERROR: test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) (marker_kind='directory', scan='validate_no_removed_claude_skill')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/tests/unit/test_validate_agent_assets.py", line 68, in test_recursive_scans_skip_nested_git_trees_only
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/tests/unit/test_validate_agent_assets.py", line 68, in test_recursive_scans_skip_nested_git_trees_only
     scan()
     ~~~~^^
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 1047, in validate_no_removed_claude_skill
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 1047, in validate_no_removed_claude_skill
     fail(
     ~~~~^
         "removed Claude skill references remain: "
@@ -59,7 +59,7 @@ Traceback (most recent call last):
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 70, in fail
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 70, in fail
     raise SystemExit(1)
 SystemExit: 1
 
@@ -67,13 +67,13 @@ SystemExit: 1
 ERROR: test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) (marker_kind='directory', scan='validate_no_obvious_secrets')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/tests/unit/test_validate_agent_assets.py", line 68, in test_recursive_scans_skip_nested_git_trees_only
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/tests/unit/test_validate_agent_assets.py", line 68, in test_recursive_scans_skip_nested_git_trees_only
     scan()
     ~~~~^^
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 1094, in validate_no_obvious_secrets
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 1094, in validate_no_obvious_secrets
     fail(f"possible committed secret in {path.relative_to(ROOT)}")
     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 70, in fail
+  File "~/Workspace/dotfiles/.claude/worktrees/validator-worktrees/scripts/validate-agent-assets.py", line 70, in fail
     raise SystemExit(1)
 SystemExit: 1
 
@@ -131,7 +131,7 @@ Exit: 0
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/a2cf2cee0acc/review.json",
+  "review_file": "~/.crit/reviews/a2cf2cee0acc/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -629,7 +629,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-l4ar9ehc/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-l4ar9ehc/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok

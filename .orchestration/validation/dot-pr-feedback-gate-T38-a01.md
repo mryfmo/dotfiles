@@ -127,7 +127,7 @@ $ python3 scripts/pr-feedback.py 210 --json .orchestration/validation/dot-pr-fee
 pr-feedback: mryfmo/dotfiles#210 head 98991e6: 15 items (annotation:notice=11, annotation:warning=1, issue_comment:comment=2, status:success=1)
 exit=0
 
-$ jq -c '{pr, head_sha, items:(.items|length), review_items:([.items[]|select(.source=="review")]|length), undispositioned:([.items[]|select((.disposition//"")=="")]|length)}' /home/moriya/Workspace/dotfiles/.orchestration/validation/dot-pr-feedback-gate-T38-a01-pr-feedback.json
+$ jq -c '{pr, head_sha, items:(.items|length), review_items:([.items[]|select(.source=="review")]|length), undispositioned:([.items[]|select((.disposition//"")=="")]|length)}' ~/Workspace/dotfiles/.orchestration/validation/dot-pr-feedback-gate-T38-a01-pr-feedback.json
 {"pr":210,"head_sha":"98991e64d99b69b3cc9f869dc7523e8fbe13abb6","items":15,"review_items":0,"undispositioned":0}
 exit=0
 
@@ -225,61 +225,61 @@ test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_c
 test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
 test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
 test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
-test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a490d7f10>
+test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a490d7f10>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a490d7c40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a490d7c40>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c040>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a490d7e20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a490d7e20>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c220>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c130>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c400>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c400>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c310>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c5e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c5e0>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c6d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c6d0>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c7c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c7c0>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c8b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c8b0>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c4f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c4f0>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c9a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9c9a0>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9ca90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9ca90>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9cb80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9cb80>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9cc70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9cc70>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9ce50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a48f9ce50>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a49548c70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/re/_parser.py:449: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xee1a49548c70>
   return list(dict.fromkeys(items))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -831,7 +831,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-7lacmcxh/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-7lacmcxh/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok

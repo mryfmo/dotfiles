@@ -1,6 +1,6 @@
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -11,10 +11,10 @@ session id: 01a0e714-0cec-7fb0-b52e-0f69ed72042e
 --------
 user
 commit 6f46a11
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 # AGENTS.md
@@ -405,7 +405,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/usr/bin/zsh -lc 'git status --short; git show --stat --oneline 6f46a11; git show --format=fuller --no-ext-diff 6f46a11; find .. -name AGENTS.override.md -print; test ! -f .ua/meta.json || cat .ua/meta.json' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'git status --short; git show --stat --oneline 6f46a11; git show --format=fuller --no-ext-diff 6f46a11; find .. -name AGENTS.override.md -print; test ! -f .ua/meta.json || cat .ua/meta.json' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ?? .orchestration/acceptance/dot-ua-graph-refresh-T33c-a01.md
 ?? .orchestration/autoskill/runs/dot-ua-graph-refresh-T33c-a01.md
@@ -473,7 +473,7 @@ index 985cdd3..81b3519 100644
 
 **Focusing on two keys**
 exec
-/usr/bin/zsh -lc 'for d in /home /home/moriya /home/moriya/Workspace .ua; do for f in AGENTS.override.md AGENTS.md; do test ! -f "$d/$f" || { echo "--- $d/$f"; cat "$d/$f"; }; done; done; git rev-parse HEAD; git ls-tree -r --name-only 6f46a11 | grep -E '"'("'^|/)(AGENTS('"\\.override)?\\.md|.*schema.*|.*understand.*)"'$'"' | head -60; git show 6f46a11:.ua/meta.json; sed -n '1,160p' /home/moriya/.agents/skills/understand-diff/SKILL.md; ls -ld /home/moriya/.agents/skills/understand*; git show 6f46a11:.ua/knowledge-graph.json | python3 -c 'import json,sys; g=json.load(sys.stdin); print(\"keys\",list(g)); print(\"nodes\",len(g[\"nodes\"]),\"edges\",len(g[\"edges\"])); [print(json.dumps(n,indent=2)) for n in g[\"nodes\"] if n.get(\"id\") in (\"file:Makefile\",\"file:setup.sh\") or \"schema\" in n.get(\"filePath\",\"\") or \"understand\" in n.get(\"filePath\",\"\")]'" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'for d in /home ~ ~/Workspace .ua; do for f in AGENTS.override.md AGENTS.md; do test ! -f "$d/$f" || { echo "--- $d/$f"; cat "$d/$f"; }; done; done; git rev-parse HEAD; git ls-tree -r --name-only 6f46a11 | grep -E '"'("'^|/)(AGENTS('"\\.override)?\\.md|.*schema.*|.*understand.*)"'$'"' | head -60; git show 6f46a11:.ua/meta.json; sed -n '1,160p' ~/.agents/skills/understand-diff/SKILL.md; ls -ld ~/.agents/skills/understand*; git show 6f46a11:.ua/knowledge-graph.json | python3 -c 'import json,sys; g=json.load(sys.stdin); print(\"keys\",list(g)); print(\"nodes\",len(g[\"nodes\"]),\"edges\",len(g[\"edges\"])); [print(json.dumps(n,indent=2)) for n in g[\"nodes\"] if n.get(\"id\") in (\"file:Makefile\",\"file:setup.sh\") or \"schema\" in n.get(\"filePath\",\"\") or \"understand\" in n.get(\"filePath\",\"\")]'" in ~/Workspace/dotfiles
  succeeded in 0ms:
 935e198406e5df993c84de67c695c7083f4b6b54
 .orchestration/acceptance/T36-understand-anything-analysis.md
@@ -602,15 +602,15 @@ The knowledge graph JSON has this structure:
    }
    ```
    After writing, tell the user they can run `/understand-anything:understand-dashboard` to see the diff overlay visually.
-lrwxrwxrwx 1 moriya moriya 83 Sep 28 08:44 /home/moriya/.agents/skills/understand -> /home/moriya/.understand-anything/repo/understand-anything-plugin/skills/understand
-lrwxrwxrwx 1 moriya moriya 88 Sep 28 08:44 /home/moriya/.agents/skills/understand-chat -> /home/moriya/.understand-anything/repo/understand-anything-plugin/skills/understand-chat
-lrwxrwxrwx 1 moriya moriya 93 Sep 28 08:44 /home/moriya/.agents/skills/understand-dashboard -> /home/moriya/.understand-anything/repo/understand-anything-plugin/skills/understand-dashboard
-lrwxrwxrwx 1 moriya moriya 88 Sep 28 08:44 /home/moriya/.agents/skills/understand-diff -> /home/moriya/.understand-anything/repo/understand-anything-plugin/skills/understand-diff
-lrwxrwxrwx 1 moriya moriya 90 Sep 28 08:44 /home/moriya/.agents/skills/understand-domain -> /home/moriya/.understand-anything/repo/understand-anything-plugin/skills/understand-domain
-lrwxrwxrwx 1 moriya moriya 91 Sep 28 08:44 /home/moriya/.agents/skills/understand-explain -> /home/moriya/.understand-anything/repo/understand-anything-plugin/skills/understand-explain
-lrwxrwxrwx 1 moriya moriya 89 Sep 28 08:44 /home/moriya/.agents/skills/understand-figma -> /home/moriya/.understand-anything/repo/understand-anything-plugin/skills/understand-figma
-lrwxrwxrwx 1 moriya moriya 93 Sep 28 08:44 /home/moriya/.agents/skills/understand-knowledge -> /home/moriya/.understand-anything/repo/understand-anything-plugin/skills/understand-knowledge
-lrwxrwxrwx 1 moriya moriya 91 Sep 28 08:44 /home/moriya/.agents/skills/understand-onboard -> /home/moriya/.understand-anything/repo/understand-anything-plugin/skills/understand-onboard
+lrwxrwxrwx 1 moriya moriya 83 Sep 28 08:44 ~/.agents/skills/understand -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand
+lrwxrwxrwx 1 moriya moriya 88 Sep 28 08:44 ~/.agents/skills/understand-chat -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-chat
+lrwxrwxrwx 1 moriya moriya 93 Sep 28 08:44 ~/.agents/skills/understand-dashboard -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-dashboard
+lrwxrwxrwx 1 moriya moriya 88 Sep 28 08:44 ~/.agents/skills/understand-diff -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-diff
+lrwxrwxrwx 1 moriya moriya 90 Sep 28 08:44 ~/.agents/skills/understand-domain -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-domain
+lrwxrwxrwx 1 moriya moriya 91 Sep 28 08:44 ~/.agents/skills/understand-explain -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-explain
+lrwxrwxrwx 1 moriya moriya 89 Sep 28 08:44 ~/.agents/skills/understand-figma -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-figma
+lrwxrwxrwx 1 moriya moriya 93 Sep 28 08:44 ~/.agents/skills/understand-knowledge -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-knowledge
+lrwxrwxrwx 1 moriya moriya 91 Sep 28 08:44 ~/.agents/skills/understand-onboard -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-onboard
 keys ['version', 'project', 'nodes', 'edges', 'layers', 'tour']
 nodes 870 edges 1333
 {
@@ -678,15 +678,15 @@ nodes 870 edges 1333
 }
 
 exec
-/usr/bin/zsh -lc "git show 6f46a11:AGENTS.md | cmp - AGENTS.md; ls /home/moriya/.understand-anything/repo/packages/core; rg -n 'languageNotes|lineRange|function validateGraph|export.*validateGraph' /home/moriya/.understand-anything/repo/packages/core/src /home/moriya/.understand-anything/repo/packages/core/package.json; ls /home/moriya/.understand-anything/repo/packages/core/dist" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "git show 6f46a11:AGENTS.md | cmp - AGENTS.md; ls ~/.understand-anything/repo/packages/core; rg -n 'languageNotes|lineRange|function validateGraph|export.*validateGraph' ~/.understand-anything/repo/packages/core/src ~/.understand-anything/repo/packages/core/package.json; ls ~/.understand-anything/repo/packages/core/dist" in ~/Workspace/dotfiles
  exited 2 in 0ms:
-ls: cannot access '/home/moriya/.understand-anything/repo/packages/core': No such file or directory
-rg: /home/moriya/.understand-anything/repo/packages/core/src: No such file or directory (os error 2)
-rg: /home/moriya/.understand-anything/repo/packages/core/package.json: No such file or directory (os error 2)
-ls: cannot access '/home/moriya/.understand-anything/repo/packages/core/dist': No such file or directory
+ls: cannot access '~/.understand-anything/repo/packages/core': No such file or directory
+rg: ~/.understand-anything/repo/packages/core/src: No such file or directory (os error 2)
+rg: ~/.understand-anything/repo/packages/core/package.json: No such file or directory (os error 2)
+ls: cannot access '~/.understand-anything/repo/packages/core/dist': No such file or directory
 
 exec
-/usr/bin/zsh -lc "ls /home/moriya/.understand-anything/repo; find /home/moriya/.understand-anything/repo -path '*/core/package.json' -o -name schema.ts -o -name validation.ts | head -20" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "ls ~/.understand-anything/repo; find ~/.understand-anything/repo -path '*/core/package.json' -o -name schema.ts -o -name validation.ts | head -20" in ~/Workspace/dotfiles
  succeeded in 0ms:
 CLAUDE.md
 CODE_OF_CONDUCT.md
@@ -709,13 +709,13 @@ tests
 tsconfig.json
 understand-anything-plugin
 vitest.config.ts
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/schema.ts
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/package.json
-/home/moriya/.understand-anything/repo/understand-anything-plugin/node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/package.json
-/home/moriya/.understand-anything/repo/understand-anything-plugin/node_modules/.pnpm/@babel+core@7.29.0/node_modules/@babel/core/package.json
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/schema.ts
+~/.understand-anything/repo/understand-anything-plugin/packages/core/package.json
+~/.understand-anything/repo/understand-anything-plugin/node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/package.json
+~/.understand-anything/repo/understand-anything-plugin/node_modules/.pnpm/@babel+core@7.29.0/node_modules/@babel/core/package.json
 
 exec
-/usr/bin/zsh -lc "sed -n '1,160p' /home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/schema.ts; cat /home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/package.json; rg -n 'validateGraph' /home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src; ls /home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/dist" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "sed -n '1,160p' ~/.understand-anything/repo/understand-anything-plugin/packages/core/src/schema.ts; cat ~/.understand-anything/repo/understand-anything-plugin/packages/core/package.json; rg -n 'validateGraph' ~/.understand-anything/repo/understand-anything-plugin/packages/core/src; ls ~/.understand-anything/repo/understand-anything-plugin/packages/core/dist" in ~/Workspace/dotfiles
  succeeded in 0ms:
 import { z } from "zod";
 
@@ -941,71 +941,71 @@ export const DESIGN_EDGE_TYPE_ALIASES: Record<string, string> = {
     "zod": "^4.3.6"
   }
 }
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/normalize-graph.test.ts:7:import { validateGraph } from "../schema.js";
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/normalize-graph.test.ts:444:  it("produces output that passes validateGraph after wrapping", () => {
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/normalize-graph.test.ts:493:    const validation = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:2:import { validateGraph } from "../schema.js";
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:69:    const result = validateGraph(domainGraph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:77:    const result = validateGraph(domainGraph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:83:    const result = validateGraph(domainGraph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:106:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:115:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:126:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:133:    const result = validateGraph(domainGraph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:3:  validateGraph,
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:62:    const result = validateGraph(validGraph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:71:    const result = validateGraph(incomplete);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:80:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:92:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:104:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:115:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:126:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:135:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:144:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:153:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:162:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:193:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:204:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:213:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:222:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:231:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:240:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:252:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:512:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:525:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:537:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:546:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:552:    const result = validateGraph("not an object");
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:567:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:577:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:586:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:592:    const result = validateGraph(validGraph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:616:    const result = validateGraph(messy);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:630:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:642:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:659:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:671:      const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:682:      const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:701:      const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:716:      const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:726:    const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:753:    const res = validateGraph(designGraph());
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:760:    const res = validateGraph(designGraph());
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:768:    const res = validateGraph(g);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:776:    const res = validateGraph(g);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:809:    const res = validateGraph(knowledgeGraph("knowledge"));
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:816:    const res = validateGraph(knowledgeGraph());
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:825:    const res = validateGraph(g);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:833:    const res = validateGraph(g);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/persistence/index.ts:5:import { validateGraph } from "../schema.js";
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/persistence/index.ts:110:    const result = validateGraph(data);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/persistence/index.ts:187:    const result = validateGraph(data);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/schema.ts:563:export function validateGraph(data: unknown): ValidationResult {
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/index.ts:5:  validateGraph,
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/figma/merge.ts:2:import { validateGraph, type ValidationResult } from "../schema.js";
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/figma/merge.ts:77:  // 5. assemble + validate, then re-attach kind (validateGraph drops it)
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/figma/merge.ts:79:  const result = validateGraph(graph);
-/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/figma/__tests__/parse-document.test.ts:57:  it("emits validateGraph-ready nodes (summary/tags/complexity present)", () => {
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/normalize-graph.test.ts:7:import { validateGraph } from "../schema.js";
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/normalize-graph.test.ts:444:  it("produces output that passes validateGraph after wrapping", () => {
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/normalize-graph.test.ts:493:    const validation = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:2:import { validateGraph } from "../schema.js";
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:69:    const result = validateGraph(domainGraph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:77:    const result = validateGraph(domainGraph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:83:    const result = validateGraph(domainGraph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:106:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:115:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:126:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/domain-types.test.ts:133:    const result = validateGraph(domainGraph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:3:  validateGraph,
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:62:    const result = validateGraph(validGraph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:71:    const result = validateGraph(incomplete);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:80:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:92:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:104:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:115:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:126:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:135:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:144:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:153:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:162:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:193:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:204:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:213:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:222:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:231:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:240:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:252:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:512:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:525:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:537:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:546:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:552:    const result = validateGraph("not an object");
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:567:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:577:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:586:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:592:    const result = validateGraph(validGraph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:616:    const result = validateGraph(messy);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:630:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:642:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:659:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:671:      const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:682:      const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:701:      const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:716:      const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:726:    const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:753:    const res = validateGraph(designGraph());
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:760:    const res = validateGraph(designGraph());
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:768:    const res = validateGraph(g);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:776:    const res = validateGraph(g);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:809:    const res = validateGraph(knowledgeGraph("knowledge"));
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:816:    const res = validateGraph(knowledgeGraph());
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:825:    const res = validateGraph(g);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/__tests__/schema.test.ts:833:    const res = validateGraph(g);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/persistence/index.ts:5:import { validateGraph } from "../schema.js";
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/persistence/index.ts:110:    const result = validateGraph(data);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/persistence/index.ts:187:    const result = validateGraph(data);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/schema.ts:563:export function validateGraph(data: unknown): ValidationResult {
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/index.ts:5:  validateGraph,
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/figma/merge.ts:2:import { validateGraph, type ValidationResult } from "../schema.js";
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/figma/merge.ts:77:  // 5. assemble + validate, then re-attach kind (validateGraph drops it)
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/figma/merge.ts:79:  const result = validateGraph(graph);
+~/.understand-anything/repo/understand-anything-plugin/packages/core/src/figma/__tests__/parse-document.test.ts:57:  it("emits validateGraph-ready nodes (summary/tags/complexity present)", () => {
 __tests__
 analyzer
 change-classifier.d.ts
@@ -1060,21 +1060,21 @@ types.test.js.map
 exec
 /usr/bin/zsh -lc "node --input-type=module <<'JS'
 import {execFileSync} from 'node:child_process';
-import {validateGraph} from '/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/dist/schema.js';
+import {validateGraph} from '~/.understand-anything/repo/understand-anything-plugin/packages/core/dist/schema.js';
 for (const rev of ['6f46a11"'^'"','6f46a11']) {
  const graph=JSON.parse(execFileSync('git',['show',"'`${rev}:.ua/knowledge-graph.json`],{maxBuffer:10000000,encoding:'"'utf8'}));
  const result=validateGraph(graph);
  console.log(JSON.stringify({rev,success:result.success,nodes:result.graph?.nodes.length,edges:result.graph?.edges.length,issues:result.issues}));
 }
 JS
-rg -n 'lineRange:|languageNotes:' /home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/src/schema.ts; git diff --check 6f46a11"'^ 6f46a11' in /home/moriya/Workspace/dotfiles
+rg -n 'lineRange:|languageNotes:' ~/.understand-anything/repo/understand-anything-plugin/packages/core/src/schema.ts; git diff --check 6f46a11"'^ 6f46a11' in ~/Workspace/dotfiles
  succeeded in 0ms:
 zsh:1: can't create temp file for here document: read-only file system
 432:  lineRange: z.tuple([z.number(), z.number()]).optional(),
 436:  languageNotes: z.string().optional(),
 
 exec
-/usr/bin/zsh -lc "node --input-type=module -e 'import {execFileSync} from \"node:child_process\"; import {validateGraph} from \"/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/dist/schema.js\"; for(const rev of [\"6f46a11"'^","6f46a11"]) { const g=JSON.parse(execFileSync("git",["show",rev+":.ua/knowledge-graph.json"],{maxBuffer:10000000,encoding:"utf8"})); const r=validateGraph(g); console.log(JSON.stringify({rev,keys:Object.keys(r),success:r.success,nodes:r.graph?.nodes.length,edges:r.graph?.edges.length,issues:r.issues})); }'"'" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "node --input-type=module -e 'import {execFileSync} from \"node:child_process\"; import {validateGraph} from \"~/.understand-anything/repo/understand-anything-plugin/packages/core/dist/schema.js\"; for(const rev of [\"6f46a11"'^","6f46a11"]) { const g=JSON.parse(execFileSync("git",["show",rev+":.ua/knowledge-graph.json"],{maxBuffer:10000000,encoding:"utf8"})); const r=validateGraph(g); console.log(JSON.stringify({rev,keys:Object.keys(r),success:r.success,nodes:r.graph?.nodes.length,edges:r.graph?.edges.length,issues:r.issues})); }'"'" in ~/Workspace/dotfiles
  exited 1 in 0ms:
 node:internal/child_process:1144
     result.error = new ErrnoException(result.error, 'spawnSync ' + options.file);
@@ -1084,7 +1084,7 @@ node:internal/child_process:1144
     at Object.spawnSync (node:internal/child_process:1144:20)
     at spawnSync (node:child_process:928:24)
     at execFileSync (node:child_process:971:15)
-    at file:///home/moriya/Workspace/dotfiles/[eval1]:1:238
+    at file://~/Workspace/dotfiles/[eval1]:1:238
     at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
     at async node:internal/modules/esm/loader:226:26
     at async ModuleLoader.executeModuleJob (node:internal/modules/esm/loader:223:20)
@@ -1710,12 +1710,12 @@ node:internal/child_process:1144
 Node.js v26.9.0
 
 exec
-/usr/bin/zsh -lc "for rev in '6f46a11"'^'"' 6f46a11; do echo \""'$rev"; git show "$rev:.ua/knowledge-graph.json" | node --input-type=module -e '"'import {readFileSync} from \"node:fs\"; import {validateGraph} from \"/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/dist/schema.js\"; const r=validateGraph(JSON.parse(readFileSync(0,\"utf8\"))); console.log(JSON.stringify({keys:Object.keys(r),success:r.success,nodes:r.graph?.nodes.length,edges:r.graph?.edges.length,issues:r.issues?.length}));'; done" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "for rev in '6f46a11"'^'"' 6f46a11; do echo \""'$rev"; git show "$rev:.ua/knowledge-graph.json" | node --input-type=module -e '"'import {readFileSync} from \"node:fs\"; import {validateGraph} from \"~/.understand-anything/repo/understand-anything-plugin/packages/core/dist/schema.js\"; const r=validateGraph(JSON.parse(readFileSync(0,\"utf8\"))); console.log(JSON.stringify({keys:Object.keys(r),success:r.success,nodes:r.graph?.nodes.length,edges:r.graph?.edges.length,issues:r.issues?.length}));'; done" in ~/Workspace/dotfiles
  succeeded in 76ms:
 {"keys":["success","data","issues","errors"],"success":true,"issues":0}
 
 exec
-/usr/bin/zsh -lc "for rev in '6f46a11"'^'"' 6f46a11; do echo \""'$rev"; git show "$rev:.ua/knowledge-graph.json" | node --input-type=module -e '"'import {readFileSync} from \"node:fs\"; import {validateGraph} from \"/home/moriya/.understand-anything/repo/understand-anything-plugin/packages/core/dist/schema.js\"; const r=validateGraph(JSON.parse(readFileSync(0,\"utf8\"))); console.log(JSON.stringify({success:r.success,nodes:r.data?.nodes.length,edges:r.data?.edges.length,issues:r.issues.length,errors:r.errors}));'; done" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "for rev in '6f46a11"'^'"' 6f46a11; do echo \""'$rev"; git show "$rev:.ua/knowledge-graph.json" | node --input-type=module -e '"'import {readFileSync} from \"node:fs\"; import {validateGraph} from \"~/.understand-anything/repo/understand-anything-plugin/packages/core/dist/schema.js\"; const r=validateGraph(JSON.parse(readFileSync(0,\"utf8\"))); console.log(JSON.stringify({success:r.success,nodes:r.data?.nodes.length,edges:r.data?.edges.length,issues:r.issues.length,errors:r.errors}));'; done" in ~/Workspace/dotfiles
  succeeded in 84ms:
 {"success":true,"nodes":870,"edges":1333,"issues":0}
 

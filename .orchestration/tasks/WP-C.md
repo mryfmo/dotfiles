@@ -1,7 +1,7 @@
 # WP-C: Remove Hermes installation path
 
 task_id: WP-C
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wpc
 

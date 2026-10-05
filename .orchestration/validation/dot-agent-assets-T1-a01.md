@@ -17,7 +17,7 @@ test_codex_superpowers_skips_add_without_configured_marketplace (tests.unit.test
 FAIL: test_codex_superpowers_skips_add_without_configured_marketplace (tests.unit.test_runtime_health.RuntimeHealthTest.test_codex_superpowers_skips_add_without_configured_marketplace)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agent-assets-fix/tests/unit/test_runtime_health.py", line 260, in test_codex_superpowers_skips_add_without_configured_marketplace
+  File "~/Workspace/dotfiles/.claude/worktrees/agent-assets-fix/tests/unit/test_runtime_health.py", line 260, in test_codex_superpowers_skips_add_without_configured_marketplace
     self.assertIn(
     ~~~~~~~~~~~~~^
         "Skipping Codex Superpowers plugin: openai-curated is not a "

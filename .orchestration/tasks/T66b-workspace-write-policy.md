@@ -1,7 +1,7 @@
 # T66b: Workspace-write policy for the Pi gate (E2E-π1 live finding)
 
 task_id: T66b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (Phase 2/4 junction; live design gap)

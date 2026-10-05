@@ -1,7 +1,7 @@
 # T67d: Checker robustness for reasoning models (gap #3, live-diagnosed)
 
 task_id: T67d
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (Phase 3; live gap #3)

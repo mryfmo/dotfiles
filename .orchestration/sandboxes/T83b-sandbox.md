@@ -1,7 +1,7 @@
 # T83b Sandbox
 
 - Worker: `codex-deep-dot`
-- Repository: `/Users/mryfmo/Workspace/dotfiles`
+- Repository: `~/Workspace/dotfiles`
 - Durable writes are limited to `.ua/**`, the two allowed policy documents, and the five T83b artifacts.
 - Temporary edge/fingerprint audit data is under ignored `.ua/intermediate/**` and `.ua/tmp/**`.
 - The installed Understand-Anything plugin was read/executed but not modified.

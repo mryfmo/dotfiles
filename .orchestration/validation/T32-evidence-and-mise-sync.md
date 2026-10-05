@@ -1,6 +1,6 @@
 # T32 validation
 
-Worktree: `/Users/mryfmo/Workspace/dotfiles-t32`
+Worktree: `~/Workspace/dotfiles-t32`
 
 ```text
 $ git log --oneline origin/main..HEAD

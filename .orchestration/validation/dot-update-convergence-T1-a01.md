@@ -11,7 +11,7 @@ test_make_update_reports_unmerged_feature_branch_before_branch_notice (tests.uni
 FAIL: test_make_update_reports_unmerged_feature_branch_before_branch_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_feature_branch_before_branch_notice)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_runtime_health.py", line 665, in test_make_update_reports_unmerged_feature_branch_before_branch_notice
+  File "~/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_runtime_health.py", line 665, in test_make_update_reports_unmerged_feature_branch_before_branch_notice
     self.assertIn("index has unmerged files", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'index has unmerged files' not found in "Notice: local source not pulled (current branch is feature/x, not main); run 'git -C /private/var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/runtime-health-test-q8uebijp/update-clean pull' to fetch remote updates.\nchezmoi apply --verbose\nWarning: private chezmoi source/config not found. Skipping private dotfiles.\nmise install --locked node\nmise install --locked npm:ccstatusline npm:ccusage\n./scripts/update-agent-assets.sh\nHerdr server is not running; skipping config reload.\n/Library/Developer/CommandLineTools/usr/bin/make agmsg-bootstrap\nHerdr agents source helper not found; skipping agmsg bootstrap.\n"
@@ -22,7 +22,7 @@ Ran 1 test in 0.055s
 FAILED (failures=1)
 ```
 
-Command: uv run --with pyyaml python scripts/generate-agent-configs.py --check && uv run --with pyyaml python scripts/validate-agent-assets.py && uv run --with pyyaml python /Users/mryfmo/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
+Command: uv run --with pyyaml python scripts/generate-agent-configs.py --check && uv run --with pyyaml python scripts/validate-agent-assets.py && uv run --with pyyaml python ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
 Exit code: 0
 ```text
 generated agent configs are up to date
@@ -57,7 +57,7 @@ test_no_arguments_prints_ten_recent_updates (test_agent_session_staleness.AgentS
 test_runtime_state_and_sqlite_files_are_excluded (test_agent_session_staleness.AgentSessionStalenessTest.test_runtime_state_and_sqlite_files_are_excluded) ... ok
 test_identifier_grammar_has_one_source_of_truth (test_agmsg_send.AgmsgRegistrationGrammarTest.test_identifier_grammar_has_one_source_of_truth) ... ok
 test_join_rejects_invalid_team_and_agent_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_join_rejects_invalid_team_and_agent_without_mutation) ... ok
-test_rename_rejects_invalid_identifiers_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_rename_rejects_invalid_identifiers_without_mutation) ... /Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/pathlib/_local.py:128: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b72980>
+test_rename_rejects_invalid_identifiers_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_rename_rejects_invalid_identifiers_without_mutation) ... ~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/pathlib/_local.py:128: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b72980>
   path = os.fspath(arg)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -483,7 +483,7 @@ test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.Vali
 test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-gkt3wlal/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-gkt3wlal/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -517,7 +517,7 @@ validate	Validate agent assets	﻿2026-09-25T00:18:17.5870219Z ##[group]Run uv r
 validate	Validate agent assets	2026-09-25T00:18:17.5870837Z ^[[36;1muv run --with pyyaml scripts/validate-agent-assets.py^[[0m
 validate	Validate agent assets	2026-09-25T00:18:17.5945123Z shell: /usr/bin/bash -e {0}
 validate	Validate agent assets	2026-09-25T00:18:17.5945455Z env:
-validate	Validate agent assets	2026-09-25T00:18:17.5945810Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+validate	Validate agent assets	2026-09-25T00:18:17.5945810Z   UV_PYTHON_INSTALL_DIR: ~/work/_temp/uv-python-dir
 validate	Validate agent assets	2026-09-25T00:18:17.5946217Z ##[endgroup]
 validate	Validate agent assets	2026-09-25T00:18:17.7784969Z Installed 1 package in 2ms
 validate	Validate agent assets	2026-09-25T00:18:19.1828066Z ERROR: ERROR: generated agent configs are stale: home/.chezmoitemplates/claude-settings-managed.json
@@ -570,10 +570,10 @@ test_no_arguments_prints_ten_recent_updates (test_agent_session_staleness.AgentS
 test_runtime_state_and_sqlite_files_are_excluded (test_agent_session_staleness.AgentSessionStalenessTest.test_runtime_state_and_sqlite_files_are_excluded) ... ok
 test_identifier_grammar_has_one_source_of_truth (test_agmsg_send.AgmsgRegistrationGrammarTest.test_identifier_grammar_has_one_source_of_truth) ... ok
 test_join_rejects_invalid_team_and_agent_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_join_rejects_invalid_team_and_agent_without_mutation) ... ok
-test_rename_rejects_invalid_identifiers_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_rename_rejects_invalid_identifiers_without_mutation) ... /Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/pathlib/_local.py:508: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a2980>
+test_rename_rejects_invalid_identifiers_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_rename_rejects_invalid_identifiers_without_mutation) ... ~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/pathlib/_local.py:508: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a2980>
   return object.__new__(cls)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/pathlib/_local.py:508: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a27a0>
+~/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/pathlib/_local.py:508: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a27a0>
   return object.__new__(cls)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -996,7 +996,7 @@ test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.Vali
 test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-909x_y7s/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-909x_y7s/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1067,7 +1067,7 @@ Crit retrieved JSON:
 ```
 
 
-Working directory unless stated: /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence.
+Working directory unless stated: ~/Workspace/dotfiles/.claude/worktrees/update-convergence.
 No local bats or operator-home apply executed.
 
 ## red
@@ -1098,7 +1098,7 @@ Verbatim output:
 FAIL: test_real_template_preserves_herdr_matcher_and_converges (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_claude_settings_merge.py", line 431, in test_real_template_preserves_herdr_matcher_and_converges
+  File "~/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_claude_settings_merge.py", line 431, in test_real_template_preserves_herdr_matcher_and_converges
     self.assertEqual(state_entries[0]["matcher"], canonical_matcher)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '*' != '^(startup|resume|clear|compact|fork)$'
@@ -1110,7 +1110,7 @@ AssertionError: '*' != '^(startup|resume|clear|compact|fork)$'
 FAIL: test_bootstrap_accepts_same_identity_in_multiple_teams (tests.unit.test_herdr_agents.HerdrAgentsTest.test_bootstrap_accepts_same_identity_in_multiple_teams)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_herdr_agents.py", line 1012, in test_bootstrap_accepts_same_identity_in_multiple_teams
+  File "~/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_herdr_agents.py", line 1012, in test_bootstrap_accepts_same_identity_in_multiple_teams
     self.assertNotIn("Multiple agmsg", result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Multiple agmsg' unexpectedly found in 'Multiple agmsg Codex identities are registered for /private/var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/herdr-agents-test-igb1bthe/project; worker identity is ambiguous.\nMultiple agmsg Claude Code identities are registered for /private/var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/herdr-agents-test-igb1bthe/project; worker identity is ambiguous.\n'
@@ -1119,7 +1119,7 @@ AssertionError: 'Multiple agmsg' unexpectedly found in 'Multiple agmsg Codex ide
 FAIL: test_make_update_reports_unmerged_index_before_dirty_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_index_before_dirty_notice)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_runtime_health.py", line 653, in test_make_update_reports_unmerged_index_before_dirty_notice
+  File "~/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_runtime_health.py", line 653, in test_make_update_reports_unmerged_index_before_dirty_notice
     self.assertIn(
     ~~~~~~~~~~~~~^
         "index has unmerged files; resolve the conflict "
@@ -2433,8 +2433,8 @@ Exit code: 2
 
 Verbatim output:
 ```text
-error: Failed to initialize cache at `/Users/mryfmo/.cache/uv`
-  cause: failed to open file `/Users/mryfmo/.cache/uv/sdists-v9/.git`: Operation not permitted (os error 1)
+error: Failed to initialize cache at `~/.cache/uv`
+  cause: failed to open file `~/.cache/uv/sdists-v9/.git`: Operation not permitted (os error 1)
 ```
 
 ## proofretry
@@ -2750,7 +2750,7 @@ Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 
 ## Crit JSON evidence
 
-Command: `crit comments --all --json /Users/mryfmo/.crit/reviews/0f45e00730ad/review.json`
+Command: `crit comments --all --json ~/.crit/reviews/0f45e00730ad/review.json`
 ```json
 [
   {

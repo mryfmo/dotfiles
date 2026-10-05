@@ -1,6 +1,6 @@
 # dotfiles-T68-gate-audit-evidence-a01 — sandbox
 
-- Isolation: dedicated git worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d`, branch `feat/gate-audit-evidence` from `origin/main` 138e6a72. Worker identity: `claude-standard-dot-a006` (Claude Code, `standard`). The T88 branch `docs/parallel-execution-rule` and the T66 branch `chore/permgate-dead-lanes` were kept as instructed and not touched.
+- Isolation: dedicated git worktree `~/Workspace/dotfiles/.claude/worktrees/worker-d`, branch `feat/gate-audit-evidence` from `origin/main` 138e6a72. Worker identity: `claude-standard-dot-a006` (Claude Code, `standard`). The T88 branch `docs/parallel-execution-rule` and the T66 branch `chore/permgate-dead-lanes` were kept as instructed and not touched.
 - Edits, the guard tests (66, all in throwaway git repos under `$TMPDIR` with fake `gh` and collector), `make unit-test`, `make validate-agent-assets`, prettier, ruff format and the make env-passing probe ran in the Claude Code Bash sandbox.
 - These ran unsandboxed through the normal permission gate:
   - `git fetch`/`push`, `gh pr create`/`checks`/`api`;

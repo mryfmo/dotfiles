@@ -66,8 +66,8 @@ Ran 718 tests in 160.276s
 OK (skipped=2)
 (exit 0)
 $ make validate-agent-assets
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01.md
 agent asset validation ok
 (exit 0)
 ```
@@ -115,14 +115,14 @@ $ gh run view --job 111027711303 --log | grep -m3 -E "Image: |Version: |Image Re
 2026-10-02T21:00:22.9094092Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20260927.149
 $ gh run view --job 111027711303 --log | grep -E "##\[error\]|TimeoutExpired"
 Smoke-test statusline tools without network	2026-10-02T21:01:10.5459477Z     raise TimeoutExpired(
-Smoke-test statusline tools without network	2026-10-02T21:01:10.5461683Z subprocess.TimeoutExpired: Command '['/home/runner/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline', '--version']' timed out after 5 seconds
+Smoke-test statusline tools without network	2026-10-02T21:01:10.5461683Z subprocess.TimeoutExpired: Command '['~/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline', '--version']' timed out after 5 seconds
 Smoke-test statusline tools without network	2026-10-02T21:01:10.5623152Z ##[error]Process completed with exit code 1.
 ```
 
 ## CompactionDB (main checkout, unsandboxed)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T58 (operator 2026-10-02): CI runner labels are explicit (`ubuntu-24.04`, `macos-14`), never `*-latest`; a new OS image is adopted through a non-required canary cell first, then by changing the explicit label.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T58 (operator 2026-10-02): CI runner labels are explicit (`ubuntu-24.04`, `macos-14`), never `*-latest`; a new OS image is adopted through a non-required canary cell first, then by changing the explicit label.'
 e6bdb8d4-9297-4616-998d-b7a108578112
 (exit 0)
 ```

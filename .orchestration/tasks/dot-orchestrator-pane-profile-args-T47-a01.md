@@ -74,7 +74,7 @@ while settings said fable-5-1).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - Branch `fix/orchestrator-pane-profile-args` from `origin/main` (`git fetch`
   first). The worktree currently sits on `fix/plain-start-visibility` (T45 WIP,
   PR #216, head 89e95e4, clean of tracked changes): switch branches, do not

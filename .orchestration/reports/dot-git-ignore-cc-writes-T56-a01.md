@@ -22,7 +22,7 @@ The original task said to put the line "directly below line 7". I tested that pl
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T56 (operator 2026-10-02): the global git ignore source carries `**/.claude/.cc-writes/` so that `chezmoi apply` never prompts on the Claude Code write-cache marker; both machines converge from the same line.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T56 (operator 2026-10-02): the global git ignore source carries `**/.claude/.cc-writes/` so that `chezmoi apply` never prompts on the Claude Code write-cache marker; both machines converge from the same line.'
 dc1ff69e-fed2-4f33-8cc1-ae7d5921ed48
 ```
 

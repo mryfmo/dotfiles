@@ -3,7 +3,7 @@
 ## Assignment
 
 - Task ID: `T31-codex-profile-modify-pattern`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`
+- Repo: `~/Workspace/dotfiles`
 - The main worktree is dirty with UNRELATED changes (`home/dot_mise/*`,
   untracked T30 artifacts). Create a separate git worktree from `origin/main`
   (e.g. `git worktree add ../dotfiles-t31 -b fix/codex-profile-modify

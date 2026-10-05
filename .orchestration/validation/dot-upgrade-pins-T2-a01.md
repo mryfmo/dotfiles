@@ -1480,17 +1480,17 @@ Claude Code Understand-Anything plugin is already enabled.
 Codex Superpowers plugin installed.
 
 ==> Codex Crit plugin
-  Installed: /Users/mryfmo/.agents/plugins/marketplace.json
+  Installed: ~/.agents/plugins/marketplace.json
   Installed: .agents/skills/crit/SKILL.md
   Installed: .agents/skills/crit-cli/SKILL.md
   Installed: .agents/skills/crit-story/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/.codex-plugin/plugin.json
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit-cli/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/skills/crit-story/SKILL.md
-  Installed: /Users/mryfmo/.codex/plugins/crit/hooks/hooks.json
-  Installed: /Users/mryfmo/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
-  Skipped:   /Users/mryfmo/.codex/config.toml (Codex plugin already enabled)
+  Installed: ~/.codex/plugins/crit/.codex-plugin/plugin.json
+  Installed: ~/.codex/plugins/crit/skills/crit/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-cli/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-story/SKILL.md
+  Installed: ~/.codex/plugins/crit/hooks/hooks.json
+  Installed: ~/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
+  Skipped:   ~/.codex/config.toml (Codex plugin already enabled)
   Use $crit in Codex to start a review loop
   The crit-cli skill is available to Codex agents when needed
   Use $crit-story in Codex to author a story and continue the review loop
@@ -1509,20 +1509,20 @@ Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new
 Ponytail default mode is full. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.
 
 ==> Codex Understand-Anything skills
-→ Updating existing checkout at /Users/mryfmo/.understand-anything/repo
+→ Updating existing checkout at ~/.understand-anything/repo
 Already up to date.
-→ Linking skills for codex (per-skill → /Users/mryfmo/.agents/skills)
-  ✓ /Users/mryfmo/.agents/skills/understand-chat → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-chat
-  ✓ /Users/mryfmo/.agents/skills/understand-dashboard → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-dashboard
-  ✓ /Users/mryfmo/.agents/skills/understand-diff → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-diff
-  ✓ /Users/mryfmo/.agents/skills/understand-domain → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-domain
-  ✓ /Users/mryfmo/.agents/skills/understand-explain → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-explain
-  ✓ /Users/mryfmo/.agents/skills/understand-figma → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-figma
-  ✓ /Users/mryfmo/.agents/skills/understand-knowledge → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-knowledge
-  ✓ /Users/mryfmo/.agents/skills/understand-onboard → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand-onboard
-  ✓ /Users/mryfmo/.agents/skills/understand → /Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand
+→ Linking skills for codex (per-skill → ~/.agents/skills)
+  ✓ ~/.agents/skills/understand-chat → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-chat
+  ✓ ~/.agents/skills/understand-dashboard → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-dashboard
+  ✓ ~/.agents/skills/understand-diff → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-diff
+  ✓ ~/.agents/skills/understand-domain → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-domain
+  ✓ ~/.agents/skills/understand-explain → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-explain
+  ✓ ~/.agents/skills/understand-figma → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-figma
+  ✓ ~/.agents/skills/understand-knowledge → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-knowledge
+  ✓ ~/.agents/skills/understand-onboard → ~/.understand-anything/repo/understand-anything-plugin/skills/understand-onboard
+  ✓ ~/.agents/skills/understand → ~/.understand-anything/repo/understand-anything-plugin/skills/understand
 → Linking universal plugin root
-  • /Users/mryfmo/.understand-anything-plugin already exists, leaving as-is
+  • ~/.understand-anything-plugin already exists, leaving as-is
 
 ✓ Installed Understand-Anything for codex
   Restart your CLI or IDE to pick up the skills.
@@ -1537,11 +1537,11 @@ tode v0.3.4 is already installed.
 terminal-browser v0.11.1 is already installed.
 
 ==> herdr integrations
-installed claude integration hook to /Users/mryfmo/.claude/hooks/herdr-agent-state.sh
-ensured claude settings at /Users/mryfmo/.claude/settings.json
-installed codex integration hook to /Users/mryfmo/.codex/herdr-agent-state.sh
-ensured codex hooks at /Users/mryfmo/.codex/hooks.json
-ensured codex config at /Users/mryfmo/.codex/config.toml
+installed claude integration hook to ~/.claude/hooks/herdr-agent-state.sh
+ensured claude settings at ~/.claude/settings.json
+installed codex integration hook to ~/.codex/herdr-agent-state.sh
+ensured codex hooks at ~/.codex/hooks.json
+ensured codex config at ~/.codex/config.toml
 
 ==> uv tools
 Nothing to upgrade
@@ -1558,8 +1558,8 @@ Upgrade summary: required failures: 0; optional warnings: 0
 /Library/Developer/CommandLineTools/usr/bin/make agmsg-bootstrap
 Codex loads the new repo hook only after the project .codex layer is trusted; run /hooks or trust the repo in Codex.
 First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.
-No agmsg Codex identity for /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/upgrade-pins; run: /Users/mryfmo/.agents/skills/agmsg/scripts/join.sh <team> <agent-name> codex "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/upgrade-pins"
-No agmsg Claude Code identity for /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/upgrade-pins; run: /Users/mryfmo/.agents/skills/agmsg/scripts/join.sh <team> <agent-name> claude-code "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/upgrade-pins"
+No agmsg Codex identity for ~/Workspace/dotfiles/.claude/worktrees/upgrade-pins; run: ~/.agents/skills/agmsg/scripts/join.sh <team> <agent-name> codex "~/Workspace/dotfiles/.claude/worktrees/upgrade-pins"
+No agmsg Claude Code identity for ~/Workspace/dotfiles/.claude/worktrees/upgrade-pins; run: ~/.agents/skills/agmsg/scripts/join.sh <team> <agent-name> claude-code "~/Workspace/dotfiles/.claude/worktrees/upgrade-pins"
 ```
 
 ```sh
@@ -1637,7 +1637,7 @@ test_hook_composition_pins_sessionstart_order (test_validate_agent_assets.Valida
 FAIL: test_mise_config_and_lock_pin_exact_npm_versions (test_statusline_tools.StatuslineToolsTest.test_mise_config_and_lock_pin_exact_npm_versions)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/upgrade-pins/tests/unit/test_statusline_tools.py", line 37, in test_mise_config_and_lock_pin_exact_npm_versions
+  File "~/Workspace/dotfiles/.claude/worktrees/upgrade-pins/tests/unit/test_statusline_tools.py", line 37, in test_mise_config_and_lock_pin_exact_npm_versions
     self.assertEqual(config["tools"] | EXPECTED_TOOLS, config["tools"])
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: {'nod[602 chars]'2.2.29', 'npm:ccusage': '20.0.20', 'npm:pyrig[1423 chars]'}}}} != {'nod[602 chars]'2.2.30', 'npm:ccusage': '20.0.22', 'npm:pyrig[1423 chars]'}}}}
@@ -2093,7 +2093,7 @@ make: *** [require-crit-review] Error 1
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/32bc53cef1ee/review.json",
+  "review_file": "~/.crit/reviews/32bc53cef1ee/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -2101,7 +2101,7 @@ make: *** [require-crit-review] Error 1
 ```
 
 ```sh
-crit status --json && crit comments --all --json /Users/mryfmo/.crit/reviews/32bc53cef1ee/review.json
+crit status --json && crit comments --all --json ~/.crit/reviews/32bc53cef1ee/review.json
 ```
 Exit code: 0
 ```text
@@ -2114,7 +2114,7 @@ Exit code: 0
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/32bc53cef1ee/review.json",
+  "review_file": "~/.crit/reviews/32bc53cef1ee/review.json",
   "review_file_exists": true,
   "round": 1,
   "sessions": [],

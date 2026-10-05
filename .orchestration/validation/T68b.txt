@@ -116,7 +116,7 @@ The shared dirty worktree also contains accepted T66b-T70 bases. Those paths
 were read and preserved; the logical diff above is the complete T68b delta.
 
 REVIEW
-- Crit review: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Crit review: ~/.crit/reviews/dfcf30aea611/review.json
 - Record: r_8e49c6; resolved=true.
 - Evidence: .agents/worklog/codex/review/T68b-crit-comments.json
 - Receipt: .agents/worklog/codex/review/T68b-receipt.md

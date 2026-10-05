@@ -1,7 +1,7 @@
 # T61b: Root-cause fixes for PR #128 bot review findings
 
 task_id: T61b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-harness-composability-integration.md (Phase 7; PR #128 review)

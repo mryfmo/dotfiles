@@ -84,7 +84,7 @@ claude trust dialog), the auditor runs headless, and linkage is verified with
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`;
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`;
   branch `fix/plain-start-visibility` from `origin/main` (the worktree
   currently holds `fix/sandbox-unix-sockets` at c2c1f62, PR #215, unmerged —
   leave that branch intact; switch, do not reset). If the worktree has

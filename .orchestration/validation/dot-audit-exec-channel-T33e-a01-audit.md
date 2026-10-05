@@ -1,6 +1,6 @@
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -11,10 +11,10 @@ session id: 01a0e74f-ed3a-7dc1-932e-bd0498cf3541
 --------
 user
 commit bbd70c1
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; git status --short; git show --stat --oneline bbd70c1' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; git status --short; git show --stat --oneline bbd70c1' in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 # AGENTS.md
@@ -111,7 +111,7 @@ bbd70c1 fix(herdr-agents): run the audit through codex exec and gate on its last
  3 files changed, 165 insertions(+), 46 deletions(-)
 
 exec
-/usr/bin/zsh -lc "cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; sed -n '/Codex worker worklogs/,"'$p'"' /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; sed -n '/Codex worker worklogs/,"'$p'"' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail
@@ -281,7 +281,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/usr/bin/zsh -lc 'for d in . home home/dot_local home/dot_local/bin home/dot_local/bin/common tests tests/unit; do for f in AGENTS.override.md AGENTS.md; do if [ -f "$d/$f" ]; then printf '"'\\n=== %s\\n' \""'$d/$f"; if [ "$d/$f" != '"'./AGENTS.md' ]; then cat \""'$d/$f"; fi; fi; done; done; git rev-parse HEAD; if [ -f .ua/meta.json ]; then cat .ua/meta.json; fi; sed -n '"'1,200p' /home/moriya/.agents/skills/shdoc-shell-docs/SKILL.md; sed -n '800,985p' home/dot_local/bin/common/executable_herdr-agents; sed -n '2050,2350p' tests/unit/test_herdr_agents.py" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'for d in . home home/dot_local home/dot_local/bin home/dot_local/bin/common tests tests/unit; do for f in AGENTS.override.md AGENTS.md; do if [ -f "$d/$f" ]; then printf '"'\\n=== %s\\n' \""'$d/$f"; if [ "$d/$f" != '"'./AGENTS.md' ]; then cat \""'$d/$f"; fi; fi; done; done; git rev-parse HEAD; if [ -f .ua/meta.json ]; then cat .ua/meta.json; fi; sed -n '"'1,200p' ~/.agents/skills/shdoc-shell-docs/SKILL.md; sed -n '800,985p' home/dot_local/bin/common/executable_herdr-agents; sed -n '2050,2350p' tests/unit/test_herdr_agents.py" in ~/Workspace/dotfiles
  succeeded in 0ms:
 
 === ./AGENTS.md
@@ -828,7 +828,7 @@ for n in p.get('nodes',[]):
  if any(x in str(n).lower() for x in ['herdr-agents','model-profile','audit.config']):
   print(n.get('filePath'),n.get('summary'))
 PY
- git show bbd70c1:tests/unit/test_herdr_agents.py | sed -n '1,155p'; git show bbd70c1:home/dot_local/bin/common/executable_herdr-agents | sed -n '30,60p;130,225p'; nl -ba AGENTS.md | tail -48" in /home/moriya/Workspace/dotfiles
+ git show bbd70c1:tests/unit/test_herdr_agents.py | sed -n '1,155p'; git show bbd70c1:home/dot_local/bin/common/executable_herdr-agents | sed -n '30,60p;130,225p'; nl -ba AGENTS.md | tail -48" in ~/Workspace/dotfiles
  succeeded in 0ms:
    916	        printf 'herdr-agents: audit pane %s is busy (not at a shell prompt); refusing a second audit.\n' "${audit_pane}" >&2
    917	        exit 2
@@ -1299,7 +1299,7 @@ function wait_for_agent_name_release() {
 **Validating command and output handling**
 **Analyzing token stripping and verdict parsing**
 exec
-/usr/bin/zsh -lc "python3 -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str((n.get(\"filePath\"),n.get(\"summary\"))) for n in p.get(\"nodes\",[]) if any(x in str(n).lower() for x in [\"herdr-agents\",\"model-profile\",\"audit.config\"])))' ; git show bbd70c1:tests/unit/test_herdr_agents.py | sed -n '2020,2067p'; git show bbd70c1:home/dot_local/bin/common/executable_herdr-agents | bash -n; git show bbd70c1:AGENTS.md | nl -ba | tail -30; git diff bbd70c1"'^ bbd70c1 --check; command -v crit || true' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "python3 -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str((n.get(\"filePath\"),n.get(\"summary\"))) for n in p.get(\"nodes\",[]) if any(x in str(n).lower() for x in [\"herdr-agents\",\"model-profile\",\"audit.config\"])))' ; git show bbd70c1:tests/unit/test_herdr_agents.py | sed -n '2020,2067p'; git show bbd70c1:home/dot_local/bin/common/executable_herdr-agents | bash -n; git show bbd70c1:AGENTS.md | nl -ba | tail -30; git diff bbd70c1"'^ bbd70c1 --check; command -v crit || true' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ('home/dot_agents/agent-config.yaml', 'Single hand-edited manifest for all shared AI-agent settings: model profiles (express, standard, review, deep, security, audit, adh), interactive/worker profile selection, Codex and Claude Code settings (sandbox, permissions, hooks, status line), plugins, disabled-by-default MCP servers, and managed tool assets. The generator renders it into every agent-native config file.')
 ('home/dot_agents/model-profiles.env', 'Generated shell fragment sourced by agent launchers (herdr-agents, agent-fanout) that exports the interactive profile, herdr worker kind/profile, and per-profile Claude and Codex CLI argument strings rendered from agent-config.yaml.')
@@ -1419,7 +1419,7 @@ exec
     77	- Do not silently change shell startup behavior, PATH order, authentication helpers, agent hooks, or permission policy defaults without calling out the user-visible impact.
     78	- For security-sensitive files, check whether secrets, tokens, auth caches, local-only paths, or overly broad permissions could be exposed.
     79	- Leave formatting-only feedback to CI unless it affects behavior.
-/home/moriya/.local/bin/crit
+~/.local/bin/crit
 
 **Refining subprocess audit approach**
 exec
@@ -1434,7 +1434,7 @@ for rev in [\"bbd70c1"'^", "bbd70c1"]:
  code="audit_out=/dev/stdin; audit_last=/nonexistent-audit-last-message;'"\\n\"+s[start:end]
  r=subprocess.run([\"bash\",\"-c\",code],input=transcript,text=True,capture_output=True)
  print(rev,repr(r.stdout),repr(r.stderr),r.returncode)
-'" in /home/moriya/Workspace/dotfiles
+'" in ~/Workspace/dotfiles
  succeeded in 0ms:
 bbd70c1^ 'Audit verdict: incorrect\n' '' 0
 bbd70c1 'Audit verdict source: transcript\nAudit verdict: correct\n' '' 0
@@ -1446,11 +1446,11 @@ The transcript fallback can turn an explicit rejection into an accepted audit. S
 
 Review comment:
 
-- [P2] Restrict token-footer stripping to actual footer records — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:959-960
+- [P2] Restrict token-footer stripping to actual footer records — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:959-960
   When the last-message file is absent or empty, `/^tokens used/` removes matching assistant prose and unconditionally discards the following line. A message containing an earlier quoted `Verdict: correct`, followed by `tokens used must not hide the rejection below.` and a concluding `Verdict: incorrect`, therefore passes the gate. I reproduced this against both revisions: the parent reports `incorrect`, while this commit reports `correct`. Match the exact footer and validate its numeric count instead of blindly skipping a line, preserving the concluding-verdict contract in [AGENTS.md:69–70](AGENTS.md#L69-L70).
 The transcript fallback can turn an explicit rejection into an accepted audit. Shell syntax and diff whitespace checks passed; the full test suite was not run in the read-only environment.
 
 Review comment:
 
-- [P2] Restrict token-footer stripping to actual footer records — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:959-960
+- [P2] Restrict token-footer stripping to actual footer records — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:959-960
   When the last-message file is absent or empty, `/^tokens used/` removes matching assistant prose and unconditionally discards the following line. A message containing an earlier quoted `Verdict: correct`, followed by `tokens used must not hide the rejection below.` and a concluding `Verdict: incorrect`, therefore passes the gate. I reproduced this against both revisions: the parent reports `incorrect`, while this commit reports `correct`. Match the exact footer and validate its numeric count instead of blindly skipping a line, preserving the concluding-verdict contract in [AGENTS.md:69–70](AGENTS.md#L69-L70).

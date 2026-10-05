@@ -5,8 +5,8 @@ PR #260 (https://github.com/mryfmo/dotfiles/pull/260), branch `chore/harness-dea
 ## Task file verification
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T77-harness-dead-code-a01.md
-038f0fdaf2fbdbdcbc0b11a87b36c905e266b9f583e64519d587f7fce9e7e4d7  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T77-harness-dead-code-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T77-harness-dead-code-a01.md
+038f0fdaf2fbdbdcbc0b11a87b36c905e266b9f583e64519d587f7fce9e7e4d7  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T77-harness-dead-code-a01.md
 dispatched task_rev e4595b65… (initial) and 038f0fda… (PONG decision); the sha256 above matches the latest
 ```
 
@@ -139,6 +139,6 @@ Useful? React with 👍 / 👎.
 ## CompactionDB (main checkout, unsandboxed; enforce-uv clause dropped per the Dispatch routing note)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T77 (operator 2026-10-03): the `herdr()` zsh wrapper and `herdr-session`, `agent-fanout`, the CCR adoption-gate notice, the `HERDR_AGENTS_CODEX_PROFILE` alias and `archive/CompactionDB-2.0.0.zip` are deleted.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T77 (operator 2026-10-03): the `herdr()` zsh wrapper and `herdr-session`, `agent-fanout`, the CCR adoption-gate notice, the `HERDR_AGENTS_CODEX_PROFILE` alias and `archive/CompactionDB-2.0.0.zip` are deleted.'
 fd9cacff-99b2-4c8c-8e64-dd7bc8693229
 ```

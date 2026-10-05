@@ -19,7 +19,7 @@ $ git diff --name-only $(jq -r .gitCommitHash .ua/meta.json)..HEAD | head
 .ua/meta.json
 exit=0
 
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
  .ua/knowledge-graph.json | 22471 ++++++++++++++++++++++-----------------------
  .ua/meta.json            |     6 +-
  3 files changed, 11243 insertions(+), 12527 deletions(-)
@@ -56,8 +56,8 @@ exit=0
 ## 2. Graph checks (re-run against the committed graph)
 
 ```
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T36-a01.md; git show origin/main:.orchestration/tasks/dot-ua-graph-refresh-T36-a01.md | sha256sum
-c7bde73e21f49c294c4d0ae73258550ff9f3b4513ac8125ac66b69c9e0bde847  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T36-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T36-a01.md; git show origin/main:.orchestration/tasks/dot-ua-graph-refresh-T36-a01.md | sha256sum
+c7bde73e21f49c294c4d0ae73258550ff9f3b4513ac8125ac66b69c9e0bde847  ~/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T36-a01.md
 c7bde73e21f49c294c4d0ae73258550ff9f3b4513ac8125ac66b69c9e0bde847  -
 exit=0
 
@@ -127,7 +127,7 @@ exit=0
 $ node <skill>/compute-batches.mjs "$PWD"
 Loaded 360 files (213 code).
 Info: compute-batches: merged 244 small batches (253 files) into 11 misc batches — singletons and orphans consolidated
-Wrote 31 batches (sizes: max=25, min=1) to /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/batches.json
+Wrote 31 batches (sizes: max=25, min=1) to ~/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/batches.json
 exit=0
 
 $ python3 <skill>/merge-batch-graphs.py "$PWD"   (stderr)
@@ -183,7 +183,7 @@ Output: 853 nodes, 1219 edges
 Imports edge recovery:
   Recovered 0 `imports` edges from importMap (360 entries scanned)
 
-Written to /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (745 KB)
+Written to ~/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (745 KB)
 
 $ node .ua/tmp/ua-inline-validate.cjs .ua/intermediate/assembled-graph.json .ua/intermediate/review.json
 exit=0
@@ -205,6 +205,6 @@ $ git commit (.ua/knowledge-graph.json .ua/fingerprints.json .ua/meta.json)
 $ gh pr create ...
 https://github.com/mryfmo/dotfiles/pull/208
 
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T36: the .ua/ knowledge graph is refreshed incrementally by a worker task whenever the SessionStart hook reports it stale; the orchestrator never runs the graph update in its own session (operator 2026-09-28)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T36: the .ua/ knowledge graph is refreshed incrementally by a worker task whenever the SessionStart hook reports it stale; the orchestrator never runs the graph update in its own session (operator 2026-09-28)."
 c99ba88c-c4da-4e34-a776-f53f538d8be8
 ```

@@ -23,7 +23,7 @@ tmpdir=$(mktemp -d)
 mkdir -p "$tmpdir/bin"
 printf '#!/usr/bin/env sh\nif [ "$1" = activate ]; then printf "# mise stub\\n"; fi\n' > "$tmpdir/bin/mise"
 chmod +x "$tmpdir/bin/mise"
-PATH="$tmpdir/bin:/usr/bin:/bin" zsh -fc 'HOME=/Users/mryfmo; source home/dot_zprofile 2>/dev/null; print -l $path | grep -c "/Users/mryfmo/.local/bin/common"'
+PATH="$tmpdir/bin:/usr/bin:/bin" zsh -fc 'HOME=~; source home/dot_zprofile 2>/dev/null; print -l $path | grep -c "~/.local/bin/common"'
 ```
 
 Exit: 0

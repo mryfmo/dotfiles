@@ -90,7 +90,7 @@ Final head 3ba270d6: no new review or inline comment. The Codex Bot reacted `+1`
 CompactionDB, run in the main checkout outside the sandbox:
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T68 (operator 2026-10-03): \`make require-crit-review\` with BASE requires \`AUDIT_EVIDENCE=<.orchestration/validation/<id>-audit-<sha7>.md>\` whose sha matches HEAD and whose last \`Verdict:\` is \`correct\`, or \`incorrect\` with every finding dispositioned \`not-applicable\` in the acceptance record (\`AUDIT_DISPOSITIONS\`); \`.orchestration\`-only PRs are exempt."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T68 (operator 2026-10-03): \`make require-crit-review\` with BASE requires \`AUDIT_EVIDENCE=<.orchestration/validation/<id>-audit-<sha7>.md>\` whose sha matches HEAD and whose last \`Verdict:\` is \`correct\`, or \`incorrect\` with every finding dispositioned \`not-applicable\` in the acceptance record (\`AUDIT_DISPOSITIONS\`); \`.orchestration\`-only PRs are exempt."
 5a73b2dc-d0e5-42aa-b935-87078b55547a
 $ python3 .claude/hooks/contextdb_cli.py memory search dotfiles-T68
 5a73b2dc-d0e5-42aa-b935-87078b55547a [project/decision] dotfiles-T68 (operator 2026-10-03): `make require-crit-review` with BASE requires `AUDIT_EVIDENCE=<.orchestration/validation/<id>-audit-<sha7>.md>` whose sha matches HEAD and whose last `Verdict:` is `correct`, or `incorrect` with every finding dispositioned `not-applicable` in the acceptance record (`AUDIT_DISPOSITIONS`); `.orchestration`-only PRs are exempt.

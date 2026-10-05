@@ -1,7 +1,7 @@
 # T83b: UA 鮮度判定意味論の是正+置換ノードのエッジ復元 (PR #138 review)
 
 task_id: T83b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: housekeeping (PR #138 P2 x2, orchestrator-triaged REAL)

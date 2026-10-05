@@ -37,7 +37,7 @@ shim (operator 2026-09-27).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`, then `git switch -c feat/version-currency origin/main`.
   (Verify the dispatched task_rev sha256 against this file on your base, else
   stop and PONG.)
@@ -134,7 +134,7 @@ npx --yes renovate-config-validator renovate.json
 uv run --with pyyaml scripts/generate-agent-configs.py --check
 make validate-agent-assets
 make unit-test
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

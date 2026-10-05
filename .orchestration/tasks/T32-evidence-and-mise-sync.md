@@ -3,7 +3,7 @@
 ## Assignment
 
 - Task ID: `T32-evidence-and-mise-sync`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`
+- Repo: `~/Workspace/dotfiles`
 - Create a separate git worktree from `origin/main` (e.g. `git worktree add
 ../dotfiles-t32 -b chore/t30-t31-evidence-mise-sync origin/main`) and do
   ALL work there. The MAIN worktree stays untouched except the expected

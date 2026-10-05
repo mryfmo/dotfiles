@@ -1,7 +1,7 @@
 # T67c: Checker credential-lane precedence (gap #2 from the live Anthropic run)
 
 task_id: T67c
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (Phase 3; live gap #2)

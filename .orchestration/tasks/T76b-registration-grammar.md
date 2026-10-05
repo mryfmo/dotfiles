@@ -1,7 +1,7 @@
 # T76b: Enforce the identifier grammar at every registration boundary (PR #136 review)
 
 task_id: T76b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-pivot.md (Phase 3; PR #136 review finding)

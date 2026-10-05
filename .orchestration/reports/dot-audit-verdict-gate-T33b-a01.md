@@ -2,7 +2,7 @@
 
 - worker: `claude-standard-dot-a005` (Claude Code, acting as worker per the dispatch note)
 - orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `fix/audit-verdict-gate` from `origin/main` = `4e112fd` (includes 07a6110)
 - task_rev: sha256 `8c72489e61a29b2a2d8b1e6e353fc1e21c19a7d7f5ae13695ffb44d2d1e4bb70`,
   checked against the task file on `origin/main` 4e112fd (the hashes match)

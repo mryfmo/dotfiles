@@ -5,7 +5,7 @@
 - Task ID: `T17-herdr-attach-agmsg-bootstrap`
 - Executor model: `gpt-5.6-sol`
 - Reasoning effort: `high`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`, branch: continue on
+- Repo: `~/Workspace/dotfiles`, branch: continue on
   `feat/herdr-attach-order-repair` AFTER T16 is accepted (orchestrator will
   confirm in the AGMSG-TASK message; if told otherwise, branch from `main`).
 - Pre-existing dirty/untracked paths (`home/dot_mise/*`, `.orchestration/`,

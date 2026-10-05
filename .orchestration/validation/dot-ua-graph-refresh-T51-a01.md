@@ -3,7 +3,7 @@
 ### $ sha256sum task file
 
 ```text
-0d9b7bcb14ded5dc42737f87e8db9bc9262e13ba81b748177d850c3d437b537e  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T51-a01.md
+0d9b7bcb14ded5dc42737f87e8db9bc9262e13ba81b748177d850c3d437b537e  ~/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T51-a01.md
 ```
 
 ### $ python3 -c "...len(nodes), len(edges)"   # before
@@ -14,10 +14,10 @@ $ python3 -c "...len(nodes), len(edges)"   # before
 exit=0
 ```
 
-### $ node /home/moriya/.understand-anything-plugin/skills/understand/prepare-incremental.mjs /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c 72b890157078c583f45d71a61ee6eba0df86afb5
+### $ node ~/.understand-anything-plugin/skills/understand/prepare-incremental.mjs ~/Workspace/dotfiles/.claude/worktrees/worker-c 72b890157078c583f45d71a61ee6eba0df86afb5
 
 ```text
-$ node /home/moriya/.understand-anything-plugin/skills/understand/prepare-incremental.mjs /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c 72b890157078c583f45d71a61ee6eba0df86afb5
+$ node ~/.understand-anything-plugin/skills/understand/prepare-incremental.mjs ~/Workspace/dotfiles/.claude/worktrees/worker-c 72b890157078c583f45d71a61ee6eba0df86afb5
 scan-project: filesScanned=364 filteredByIgnore=1877 complexity=large
 [json-parser] Failed to parse JSON: Unexpected token '#', "#!/usr/bin"... is not valid JSON
 extract-import-map: filesScanned=364 filesWithImports=13 totalEdges=43
@@ -25,20 +25,20 @@ Incremental plan: ARCHITECTURE_UPDATE; analyze=28; delete=0; cosmetic=3; ignored
 exit=0
 ```
 
-### $ node /home/moriya/.understand-anything-plugin/skills/understand/compute-batches.mjs /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c --changed-files=/home/moriya/Workspace/dotfiles/.claude
+### $ node ~/.understand-anything-plugin/skills/understand/compute-batches.mjs ~/Workspace/dotfiles/.claude/worktrees/worker-c --changed-files=~/Workspace/dotfiles/.claude
 
 ```text
-$ node /home/moriya/.understand-anything-plugin/skills/understand/compute-batches.mjs /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c --changed-files=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/changed-files.json
+$ node ~/.understand-anything-plugin/skills/understand/compute-batches.mjs ~/Workspace/dotfiles/.claude/worktrees/worker-c --changed-files=~/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/changed-files.json
 Loaded 364 files (218 code).
 Info: compute-batches: merged 249 small batches (258 files) into 11 misc batches — singletons and orphans consolidated
-Wrote 12 batches (sizes: max=5, min=1) to /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/batches.json
+Wrote 12 batches (sizes: max=5, min=1) to ~/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/batches.json
 exit=0
 ```
 
-### $ python /home/moriya/.understand-anything-plugin/skills/understand/merge-batch-graphs.py /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c
+### $ python ~/.understand-anything-plugin/skills/understand/merge-batch-graphs.py ~/Workspace/dotfiles/.claude/worktrees/worker-c
 
 ```text
-$ python /home/moriya/.understand-anything-plugin/skills/understand/merge-batch-graphs.py /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c
+$ python ~/.understand-anything-plugin/skills/understand/merge-batch-graphs.py ~/Workspace/dotfiles/.claude/worktrees/worker-c
 Found 14 batch files (13 logical batches, 1 multi-part):
   batch-existing.json: 742 nodes, 1036 edges
   batch-6.json: 2 nodes, 31 edges
@@ -69,7 +69,7 @@ Output: 909 nodes, 1333 edges
 Imports edge recovery:
   Recovered 43 `imports` edges from importMap (364 entries scanned)
 
-Written to /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (821 KB)
+Written to ~/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (821 KB)
 Incremental symbol validation:
   "Makefile": nodes 1 -> 1; symbols 0 -> 0
   "README.md": nodes 1 -> 1; symbols 0 -> 0
@@ -168,33 +168,33 @@ exit=0
 
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-ua-graph-refresh-T51-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-ua-graph-refresh-T51-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-ua-graph-refresh-T51-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-ua-graph-refresh-T51-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-ua-graph-refresh-T51-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-e334af5.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-e334af5.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-crit-comments.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T51-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-ua-graph-refresh-T51-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-ua-graph-refresh-T51-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-ua-graph-refresh-T51-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-ua-graph-refresh-T51-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-ua-graph-refresh-T51-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-e334af5.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-e334af5.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-crit-comments.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T51-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-sec (herdr-agents --remove-worker)
 agent asset validation ok
 exit=0

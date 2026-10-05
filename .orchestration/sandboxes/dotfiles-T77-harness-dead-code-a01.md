@@ -1,7 +1,7 @@
 # dotfiles-T77-harness-dead-code-a01 — sandbox
 
 - Isolation:
-  - dedicated worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d`;
+  - dedicated worktree `~/Workspace/dotfiles/.claude/worktrees/worker-d`;
   - branch `chore/harness-dead-code`, created from `origin/main` f6320f37 (#259) with `git switch --no-track -c`;
   - identity `claude-standard-dot-a006` (Claude Code, `standard`).
 - Ran in the Claude Code Bash sandbox: the edits, `git rm`, the generator write, `make render-check`, `bash -n`/`zsh -n`, shellcheck, shfmt, ruff, prettier, the focused and full unit tests, and `make validate-agent-assets`.

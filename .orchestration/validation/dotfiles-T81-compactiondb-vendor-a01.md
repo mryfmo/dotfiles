@@ -56,9 +56,9 @@ FAILED (failures=3)
 
 ```
 $ make -C vendor/compactiondb manifest
-make: ディレクトリ '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/vendor/compactiondb'　に入ります
+make: ディレクトリ '~/Workspace/dotfiles/.claude/worktrees/worker-c/vendor/compactiondb'　に入ります
 git ls-files . ':!MANIFEST.sha256' | sed 's|^|./|' | LC_ALL=C sort | xargs sha256sum > MANIFEST.sha256
-make: ディレクトリ '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/vendor/compactiondb' から出ます
+make: ディレクトリ '~/Workspace/dotfiles/.claude/worktrees/worker-c/vendor/compactiondb' から出ます
 [exit 0]
 $ sha256sum -c vendor/compactiondb/MANIFEST.sha256 --quiet; echo "rc=$?"   (run from vendor/compactiondb, where the paths are relative)
 rc=0
@@ -83,13 +83,13 @@ rc=0
 
 ```
 $ python3 vendor/compactiondb/install.py --project . --skip-instructions
-project=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c
+project=~/Workspace/dotfiles/.claude/worktrees/worker-c
 python=python3
 hook_groups_added=15
 previous_contextdb_hook_groups_removed=15
 claude_md_updated=false
 gitignore_lines_added=0
-settings_backup=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.claude/settings.json.compactiondb-backup-20261004T201056.108898Z
+settings_backup=~/Workspace/dotfiles/.claude/worktrees/worker-c/.claude/settings.json.compactiondb-backup-20261004T201056.108898Z
 Run: python3 .claude/hooks/contextdb_cli.py health
 [exit 0]
 $ git status --porcelain
@@ -112,26 +112,26 @@ $ git status --porcelain --untracked-files=all -- .claude
  M .claude/contextdb/contextdb/normalize.py
  M .claude/contextdb/contextdb/storage.py
 $ python3 vendor/compactiondb/install.py --project . --skip-instructions   (second refresh, after the Codex P2 fix)
-project=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c
+project=~/Workspace/dotfiles/.claude/worktrees/worker-c
 python=python3
 hook_groups_added=15
 previous_contextdb_hook_groups_removed=15
 claude_md_updated=false
 gitignore_lines_added=0
-settings_backup=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.claude/settings.json.compactiondb-backup-20261004T202956.521575Z
+settings_backup=~/Workspace/dotfiles/.claude/worktrees/worker-c/.claude/settings.json.compactiondb-backup-20261004T202956.521575Z
 Run: python3 .claude/hooks/contextdb_cli.py health
 [exit 0]
 $ git checkout -- .claude/settings.json; rm -f .claude/settings.json.compactiondb-backup-*   (settings.json restored again; it is forbidden)
 $ git status --porcelain -- .claude
  M .claude/contextdb/contextdb/storage.py
 $ python3 vendor/compactiondb/install.py --project . --skip-instructions   (third refresh, after the second Codex review)
-project=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c
+project=~/Workspace/dotfiles/.claude/worktrees/worker-c
 python=python3
 hook_groups_added=15
 previous_contextdb_hook_groups_removed=15
 claude_md_updated=false
 gitignore_lines_added=0
-settings_backup=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.claude/settings.json.compactiondb-backup-20261004T204630.913068Z
+settings_backup=~/Workspace/dotfiles/.claude/worktrees/worker-c/.claude/settings.json.compactiondb-backup-20261004T204630.913068Z
 Run: python3 .claude/hooks/contextdb_cli.py health
 [exit 0]
 $ git checkout -- .claude/settings.json; rm -f .claude/settings.json.compactiondb-backup-*   (settings.json restored again; it is forbidden)
@@ -169,94 +169,94 @@ generated agent configs are up to date
 [exit 0]
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 agent asset validation ok
 [exit 0]
 $ uv run python -m unittest discover -s vendor/compactiondb/tests 2>&1 | tail -3   (the task command; it fails at import the same way on origin/main)
@@ -267,7 +267,7 @@ $ make -C vendor/compactiondb test 2>&1 | tail -4   (the vendor Makefile target,
 Ran 86 tests in 16.194s
 
 OK
-make: ディレクトリ '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/vendor/compactiondb' から出ます
+make: ディレクトリ '~/Workspace/dotfiles/.claude/worktrees/worker-c/vendor/compactiondb' から出ます
 $ make unit-test 2>&1 | tail -3
 Ran 791 tests in 197.006s
 
@@ -372,105 +372,105 @@ generated agent configs are up to date
 [exit 0]
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 agent asset validation ok
 [exit 0]
 $ uv run python -m unittest discover -s vendor/compactiondb/tests 2>&1 | tail -3   (the task command; the import failure is pre-existing and accepted)
@@ -481,7 +481,7 @@ $ make -C vendor/compactiondb test 2>&1 | tail -4
 Ran 89 tests in 17.114s
 
 OK
-make: ディレクトリ '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/vendor/compactiondb' から出ます
+make: ディレクトリ '~/Workspace/dotfiles/.claude/worktrees/worker-c/vendor/compactiondb' から出ます
 $ make unit-test 2>&1 | tail -3
 Ran 791 tests in 197.812s
 
@@ -605,13 +605,13 @@ print(f"n=1000 per-event tx, cap=3500000: removed={removed} remaining={1000 - re
 
 ```
 $ python3 vendor/compactiondb/install.py --project . --skip-instructions   (revise round 1 refresh)
-project=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c
+project=~/Workspace/dotfiles/.claude/worktrees/worker-c
 python=python3
 hook_groups_added=15
 previous_contextdb_hook_groups_removed=15
 claude_md_updated=false
 gitignore_lines_added=0
-settings_backup=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.claude/settings.json.compactiondb-backup-20261004T212733.694107Z
+settings_backup=~/Workspace/dotfiles/.claude/worktrees/worker-c/.claude/settings.json.compactiondb-backup-20261004T212733.694107Z
 Run: python3 .claude/hooks/contextdb_cli.py health
 [exit 0]
 $ git checkout -- .claude/settings.json; rm -f .claude/settings.json.compactiondb-backup-*   (restored; forbidden file)

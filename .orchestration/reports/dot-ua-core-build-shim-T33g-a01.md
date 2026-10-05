@@ -1,7 +1,7 @@
 # T33g report — dot-ua-core-build-shim-T33g-a01 (revision 2)
 
 - worker: `claude-standard-dot-a005`; orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `fix/ua-core-build-shim` from `origin/main` = `4bc28b7`, with no rebase; revision 2 was continued on the same branch
 - task_rev:
   - rev1 sha256 `0c9f8d5b6f60bac2d060d3ae6650262e5258eca474e7ee284e9786d86579e23d` at `4bc28b7`

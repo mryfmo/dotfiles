@@ -50,7 +50,7 @@ carried from the canonical clone with blob-identity proof (operator 2026-09-29).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`; `git switch -c chore/upgrade-pins-20260929 origin/main`.
   Verify the dispatched task_rev sha256 against this file on your base, else
   stop and PONG. If the worktree has uncommitted files, stop and PONG.
@@ -71,7 +71,7 @@ carried from the canonical clone with blob-identity proof (operator 2026-09-29).
 for f in home/dot_mise/config.toml home/dot_mise/mise.lock home/dot_agents/agent-config.yaml install/ubuntu/common/aws_cli.sh scripts/lib/installer-pins.sh; do printf '%s %s %s\n' "$f" "$(git hash-object "$f")" "$(git -C ~/.local/share/chezmoi hash-object "$f")"; done
 make validate-agent-assets
 make unit-test
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

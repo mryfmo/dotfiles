@@ -31,7 +31,7 @@
 - The fixed concurrent-publication thread was auto-resolved by CodeRabbit; the
   Monday thread became outdated.
 - The requested checkout path remains because T24 explicitly requires
-  `/usr/bin/make -C /Users/mryfmo/Workspace/dotfiles usage-snapshot
+  `/usr/bin/make -C ~/Workspace/dotfiles usage-snapshot
   usage-report`.
 - GitHub thread replies/resolution were not written because the review-comment
   skill requires explicit authorization for those PR mutations.

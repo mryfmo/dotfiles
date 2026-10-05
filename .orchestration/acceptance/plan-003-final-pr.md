@@ -51,7 +51,7 @@ Official references:
 
 ### Runner HOME, checkout-local SHA, roles, and config grep removal
 
-- Both matrices create `HOME` under `RUNNER_TEMP` on the runner and export it through `GITHUB_ENV` before checkout (`.github/workflows/remote.yaml:33-40`, `:95-102`). Exact-head logs show `/home/runner/work/_temp/dotfiles-home`.
+- Both matrices create `HOME` under `RUNNER_TEMP` on the runner and export it through `GITHUB_ENV` before checkout (`.github/workflows/remote.yaml:33-40`, `:95-102`). Exact-head logs show `~/work/_temp/dotfiles-home`.
 - Public bootstrap creates a branch at the checked-out event commit, gives chezmoi the local workspace and branch, then asserts the cloned source HEAD equals `GITHUB_SHA` (`.github/workflows/remote.yaml:42-74`). On this `pull_request` run, checkout and the assertion used merge ref `c2dc2b624c43bb7a92df2591e0996ec6bed55ad7`, which GitHub logged as merging exact head `22f9ec0...` into exact base `c3e69ad...`. This is the intended checkout-local SHA assertion.
 - The removed config grep is not needed for correctness. `home/.chezmoi.yaml.tmpl:8-19` accepts only `client` or `server`, including persisted input, and fails before YAML output for anything else. `tests/install/common/setup.bats:3-46` covers both valid roles, macOS defaulting, invalid persisted values, typo, empty, and whitespace input.
 - Public matrix jobs additionally require `.zshrc` for clients and `.bashrc` for servers (`.github/workflows/remote.yaml:69-73`). All Ubuntu client/server and macOS client jobs passed at exact head.

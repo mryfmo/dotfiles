@@ -251,7 +251,7 @@ exit=0
 Process exit: 0
 
 ```text
-/Users/mryfmo/.local/share/mise/shims/shellcheck
+~/.local/share/mise/shims/shellcheck
 ShellCheck - shell script analysis tool
 version: 0.11.0
 license: GNU General Public License, version 3

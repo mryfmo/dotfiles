@@ -5,7 +5,7 @@
 - Task ID: `T15-herdr-lazy-start-attach-layout`
 - Executor model: `gpt-5.6-sol`
 - Reasoning effort: `high`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`, branch from current `main`
+- Repo: `~/Workspace/dotfiles`, branch from current `main`
   (`1c2943e`): create `feat/herdr-lazy-start`
 - Pre-existing dirty/untracked paths (`home/dot_mise/*`, `plans/`,
   `docs/verification/`, `.orchestration/`, `.agents/`) are NOT yours.

@@ -15,7 +15,7 @@
 - Live mise config remains symlinked to the canonical source; an exact uncommitted shadow of the PR's pin removal keeps the pre-merge live state consistent.
 - `~/.local/bin/common/permgate`: executable.
 - Claude hook: `~/.local/bin/common/permgate claude`.
-- Codex hook: `/Users/mryfmo/.local/bin/common/permgate codex`.
+- Codex hook: `~/.local/bin/common/permgate codex`.
 - Six live fixtures appended six redacted decision records:
   - safe reads: deterministic allow for Claude and Codex;
   - dangerous root deletion: deterministic deny for Claude and Codex;

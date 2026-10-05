@@ -64,7 +64,7 @@ Commits 4–8 come after the format-only commit, because the Codex findings arri
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T61 (operator 2026-10-03): the repository is formatted once with ruff (line length 120) and prettier 3, both pinned in the mise config; the Claude formatter hook runs only `ruff format` and `prettier --write` from the pinned tools, and CI checks formatting, so an agent'"'"'s edit never produces unrelated diff lines. Vendored and record paths are excluded.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T61 (operator 2026-10-03): the repository is formatted once with ruff (line length 120) and prettier 3, both pinned in the mise config; the Claude formatter hook runs only `ruff format` and `prettier --write` from the pinned tools, and CI checks formatting, so an agent'"'"'s edit never produces unrelated diff lines. Vendored and record paths are excluded.'
 d7c79b1d-bad6-491b-b0f1-e77c4b54e164
 ```
 

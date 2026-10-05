@@ -89,7 +89,7 @@ Checks on `26a882ac`: `make render-check`, `make validate-agent-assets` and `mak
 ## CompactionDB
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T76 (operator 2026-10-03): the empty `enabledPlugins` map, the six never-enabled MCP server definitions (context7, filesystem_dotfiles, github, time, sequential_thinking, playwright) and the gwq `[claude]` queue are deleted; MCP servers are added back only when one is enabled for a target agent.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T76 (operator 2026-10-03): the empty `enabledPlugins` map, the six never-enabled MCP server definitions (context7, filesystem_dotfiles, github, time, sequential_thinking, playwright) and the gwq `[claude]` queue are deleted; MCP servers are added back only when one is enabled for a target agent.'
 ebdd360d-0bea-450e-a842-23f0313655aa
 [exit 0]
 ```

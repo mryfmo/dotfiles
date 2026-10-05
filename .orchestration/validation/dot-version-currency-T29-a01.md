@@ -250,7 +250,7 @@ test_unknown_worker_profile_fails (test_generate_agent_configs.GenerateAgentConf
 ok
 test_cli_workspace_resolves_macos_var_alias_identically (test_permgate.PermgateTest.test_cli_workspace_resolves_macos_var_alias_identically) ... skipped 'macOS /var alias only'
 test_upgrade_uses_current_mise_node_after_runtime_replacement (test_runtime_health.RuntimeHealthTest.test_upgrade_uses_current_mise_node_after_runtime_replacement)
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-1fh07txu/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-1fh07txu/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 
 ----------------------------------------------------------------------
@@ -261,7 +261,7 @@ exit=0
 ```
 (Per-test `... ok` lines are elided. The remaining `ERROR:` lines are expected stderr from passing negative tests.)
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
  .github/dependabot.yml                             |   6 -
  .../tasks/dot-codex-apparmor-userns-T30-a01.md     | 123 ---------------------
  AGENTS.md                                          |   6 +

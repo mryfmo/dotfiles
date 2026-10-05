@@ -1,7 +1,7 @@
 # WP-E: Remove hermes-agent-orchestration skills
 
 task_id: WP-E
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wpe
 

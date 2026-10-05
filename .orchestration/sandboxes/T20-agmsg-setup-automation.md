@@ -12,7 +12,7 @@
 - The first E2E attempt used the real HOME and was blocked before delivery by
   sandbox denial on the Herdr log redirection. No hook was created. Validation
   then moved to the isolated scratch HOME without requesting broader access.
-- The real `/Users/mryfmo/Workspace/dotfiles` repository was never passed to
+- The real `~/Workspace/dotfiles` repository was never passed to
   `delivery.sh set`.
 - No live Herdr workspace, chezmoi deployment, or local bats execution
   occurred.

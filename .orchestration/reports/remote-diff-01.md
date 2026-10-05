@@ -1,7 +1,7 @@
 # remote-diff-01: リモートから取り込んだ差分 `455455e..3303fbc` の解説
 
 - Worker: claude-standard-dot-a001 / Orchestrator: claude-remediation-dot
-- 対象: main チェックアウト `/home/moriya/Workspace/dotfiles` に `git pull --ff-only` で取り込まれた 27 commits / 323 files（+172,779 / −26,973）
+- 対象: main チェックアウト `~/Workspace/dotfiles` に `git pull --ff-only` で取り込まれた 27 commits / 323 files（+172,779 / −26,973）
 - 根拠出力はすべて `.orchestration/validation/remote-diff-01.md` に verbatim で貼付（以下「V§n」で節を参照）
 - 読み取りのみで実施。tracked ファイル編集・git 状態変更・W1/W2 への書き込みはしていない
 

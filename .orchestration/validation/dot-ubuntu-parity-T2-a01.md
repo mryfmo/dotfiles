@@ -1,6 +1,6 @@
 # dot-ubuntu-parity-T2-a01 validation
 
-Worktree: `/home/moriya/Workspace/worktrees/chezmoi-ubuntu-parity`
+Worktree: `~/Workspace/worktrees/chezmoi-ubuntu-parity`
 
 ## B1 — docker group
 
@@ -31,7 +31,7 @@ $ grep -c '"aqua:watchexec/watchexec"\."platforms\.' home/dot_mise/mise.lock
 4
 
 $ MISE_CONFIG_DIR="$PWD/home/dot_mise" mise which yq
-/home/moriya/.local/share/mise/installs/aqua-mikefarah-yq/4.53.6/yq
+~/.local/share/mise/installs/aqua-mikefarah-yq/4.53.6/yq
 $ MISE_CONFIG_DIR="$PWD/home/dot_mise" mise exec -- yq --version
 yq (https://github.com/mikefarah/yq/) version v4.53.6
 
@@ -66,12 +66,12 @@ generated agent configs updated
 $ git diff home/.chezmoitemplates/codex-config-managed.toml | grep -A2 -B2 projects
  trusted_hash = "sha256:28c43eada804ad00a4e651d6af6320c01e763b1df060af0ab74865a55bc1c9a9"
 
--[projects."/Users/mryfmo/Workspace/dotfiles"]
+-[projects."~/Workspace/dotfiles"]
 +[projects."{{ .chezmoi.workingTree }}"]
  trust_level = "trusted"
 
 $ printf '' | CHEZMOI_SOURCE_DIR="$PWD/home" python3 home/dot_codex/modify_private_config.toml | grep -A2 '\[projects\.'
-[projects."/home/moriya/Workspace/worktrees/chezmoi-ubuntu-parity"]
+[projects."~/Workspace/worktrees/chezmoi-ubuntu-parity"]
 trust_level = "trusted"
 
 $ make validate-agent-assets

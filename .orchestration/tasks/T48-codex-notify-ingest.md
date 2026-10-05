@@ -1,7 +1,7 @@
 # T48: Codex notify → contextdb ingest receiver (P5)
 
 task_id: T48
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-compactiondb-research-integration.md (Phase 3)

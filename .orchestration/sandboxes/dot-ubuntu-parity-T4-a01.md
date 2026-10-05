@@ -2,7 +2,7 @@
 
 OpenSandbox was not used for this task. All work was file edits, git
 commits, and local test/format/validation commands inside the existing
-registered worktree (`/home/moriya/Workspace/worktrees/chezmoi-ubuntu-parity`,
+registered worktree (`~/Workspace/worktrees/chezmoi-ubuntu-parity`,
 branch `feat/ubuntu-parity`). Network access was used only for read-only
 fetches: GitHub API/release-asset downloads for the Zed pin (B13a) and the
 Tailscale apt-repo content inspection (B13b, to confirm the key format) —

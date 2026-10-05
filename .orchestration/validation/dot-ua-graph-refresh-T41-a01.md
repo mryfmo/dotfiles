@@ -19,7 +19,7 @@ $ git diff --name-only $(jq -r .gitCommitHash .ua/meta.json)..HEAD | head
 .ua/meta.json
 exit=0
 
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
  .ua/knowledge-graph.json                           | 13863 +++++++++----------
  .ua/meta.json                                      |     6 +-
  4 files changed, 7338 insertions(+), 7243 deletions(-)
@@ -56,8 +56,8 @@ exit=0
 ## 2. Graph checks against the committed graph
 
 ```
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T41-a01.md; git show 72b8901:.orchestration/tasks/dot-ua-graph-refresh-T41-a01.md | sha256sum
-05dc8ca7250cd5aa2696f5d6ed2c9d60bdfd4b57be8420489c022b80db4aceb2  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T41-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T41-a01.md; git show 72b8901:.orchestration/tasks/dot-ua-graph-refresh-T41-a01.md | sha256sum
+05dc8ca7250cd5aa2696f5d6ed2c9d60bdfd4b57be8420489c022b80db4aceb2  ~/Workspace/dotfiles/.orchestration/tasks/dot-ua-graph-refresh-T41-a01.md
 05dc8ca7250cd5aa2696f5d6ed2c9d60bdfd4b57be8420489c022b80db4aceb2  -
 exit=0
 
@@ -181,7 +181,7 @@ Output: 841 nodes, 1192 edges
 Imports edge recovery:
   Recovered 0 `imports` edges from importMap (365 entries scanned)
 
-Written to /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (729 KB)
+Written to ~/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (729 KB)
 
 $ node .ua/tmp/ua-inline-validate.cjs assembled-graph.json review.json
 inline exit=0
@@ -226,7 +226,7 @@ $ git diff --name-only $(jq -r .gitCommitHash .ua/meta.json)..HEAD | head
 .ua/meta.json
 exit=0
 
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
  .ua/knowledge-graph.json                           | 19043 ++++++++++---------
  .ua/meta.json                                      |     6 +-
  4 files changed, 10715 insertions(+), 9046 deletions(-)

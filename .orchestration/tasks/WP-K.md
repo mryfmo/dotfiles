@@ -1,7 +1,7 @@
 # WP-K: Pin the herdr agents layout — Claude orchestrator top, Codex worker bottom
 
 task_id: WP-K
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wpk
 

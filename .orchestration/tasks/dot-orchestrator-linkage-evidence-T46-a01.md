@@ -97,7 +97,7 @@ only in auto-memory (operator 2026-09-30).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`;
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`;
   branch `fix/orchestrator-linkage-evidence` from `origin/main` after T45 is
   pushed (sequential; do not start before your T45 RESULT is sent). If the
   worktree has uncommitted files, stop and PONG.

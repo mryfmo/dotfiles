@@ -128,7 +128,7 @@ Verbatim final output:
 ==> Crit CLI
 crit v0.20.2 (2026-09-18, 10a7475)
 Inline code review for AI agent workflows
-/home/dotcrit01/.local/bin/crit
+~/.local/bin/crit
 scratch cleanup: OK
 ```
 

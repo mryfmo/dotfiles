@@ -78,7 +78,7 @@ The two routes agree. `herdr agent start` returns no pid, and `herdr agent list`
 Memory id **2b18cc6f-8995-4b14-bff0-db7e1e127512**. The command and output are in the validation file:
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the [memory:decision] text above>"
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the [memory:decision] text above>"
 ```
 
 ## Effects

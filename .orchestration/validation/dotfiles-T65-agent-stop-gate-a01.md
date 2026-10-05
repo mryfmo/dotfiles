@@ -30,7 +30,7 @@ OK (skipped=2)
 exit=0
 
 $ make validate-agent-assets  (tail)
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01.md
 agent asset validation ok
 exit=0
 
@@ -63,7 +63,7 @@ $ python3 -c 'import json;json.load(open(".claude/settings.json"))' && jq '.hook
   }
 ]
 
-$ echo '{"stop_hook_active":false,"cwd":"/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e"}' | scripts/agent-stop-gate.sh; echo "exit=$?"
+$ echo '{"stop_hook_active":false,"cwd":"~/Workspace/dotfiles/.claude/worktrees/worker-e"}' | scripts/agent-stop-gate.sh; echo "exit=$?"
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T65 in team dotfiles to claude-standard-dot-a007 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T65 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 exit=2
 ```
@@ -72,13 +72,13 @@ exit=2
 
 ```
 
-$ echo '{"stop_hook_active":true,"cwd":"/home/moriya/Workspace/dotfiles"}' | scripts/agent-stop-gate.sh   # orchestrator seat, message checks only
+$ echo '{"stop_hook_active":true,"cwd":"~/Workspace/dotfiles"}' | scripts/agent-stop-gate.sh   # orchestrator seat, message checks only
 agent-stop-gate: AGMSG-RESULT task_id=dot-claude-sandbox-T13-a01 in team dotfiles has no AGMSG-ACCEPTANCE from claude-remediation-dot; review it and send AGMSG-ACCEPTANCE v1 task_id=dot-claude-sandbox-T13-a01
 agent-stop-gate: AGMSG-RESULT task_id=dotfiles-T64 in team dotfiles has no AGMSG-ACCEPTANCE from claude-remediation-dot; review it and send AGMSG-ACCEPTANCE v1 task_id=dotfiles-T64
 agent-stop-gate: AGMSG-RESULT task_id=dot-mosh-and-asset-bumps-T31-a01 in team dotfiles has no AGMSG-ACCEPTANCE from claude-remediation-dot; review it and send AGMSG-ACCEPTANCE v1 task_id=dot-mosh-and-asset-bumps-T31-a01
 exit=2
 
-$ echo '{"stop_hook_active":false,"cwd":"/home/moriya/Workspace/dotfiles"}' | scripts/agent-stop-gate.sh 2>&1 | grep -c "uncommitted change"; ... | grep -v "uncommitted change"
+$ echo '{"stop_hook_active":false,"cwd":"~/Workspace/dotfiles"}' | scripts/agent-stop-gate.sh 2>&1 | grep -c "uncommitted change"; ... | grep -v "uncommitted change"
 exit=2
 34
 agent-stop-gate: uncommitted change outside .orchestration: references/00_README.md (delegate it to a worker task or revert it)
@@ -147,7 +147,7 @@ rerun-ok   (all three public-bootstrap jobs then passed)
 ## CompactionDB (main checkout)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T65 (operator 2026-10-03): a project-level Stop hook scripts/agent-stop-gate.sh blocks ...; exit 2 with reasons, no prompt.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T65 (operator 2026-10-03): a project-level Stop hook scripts/agent-stop-gate.sh blocks ...; exit 2 with reasons, no prompt.'
 1680aee8-ce0c-4f11-83c6-915814de3eb2
 ```
 
@@ -195,7 +195,7 @@ OK (skipped=2)
 exit=0
 
 $ make validate-agent-assets 2>&1 | tail -2
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01.md
 agent asset validation ok
 exit=0
 
@@ -213,7 +213,7 @@ $ python3 -c 'import json;json.load(open(".claude/settings.json"))' && jq '.hook
   ]
 }
 
-$ echo '{"stop_hook_active":false,"cwd":"/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e"}' | scripts/agent-stop-gate.sh; echo "exit=$?"
+$ echo '{"stop_hook_active":false,"cwd":"~/Workspace/dotfiles/.claude/worktrees/worker-e"}' | scripts/agent-stop-gate.sh; echo "exit=$?"
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T65 in team dotfiles to claude-standard-dot-a007 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T65 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 exit=2
 
@@ -325,17 +325,17 @@ $ python3 -c 'import json;json.load(open(".claude/settings.json"))' && jq -c '.h
 {"hooks":[{"type":"command","command":"bash","args":["${CLAUDE_PROJECT_DIR}/scripts/agent-stop-gate.sh"],"timeout":5}]}
 
 # Live seated-worktree runs (final-head script, message checks only):
-$ echo '{"stop_hook_active":true,"cwd":"/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c"}' | scripts/agent-stop-gate.sh
+$ echo '{"stop_hook_active":true,"cwd":"~/Workspace/dotfiles/.claude/worktrees/worker-c"}' | scripts/agent-stop-gate.sh
 agent-stop-gate: AGMSG-TASK task_id=dot-ua-incremental-T20-a01 in team dotfiles to claude-standard-dot-a005 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dot-ua-incremental-T20-a01 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T89 in team dotfiles to claude-standard-dot-a005 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T89 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 agent-stop-gate: AGMSG-TASK task_id=dot-orchestrator-guardrails-T21-a01 in team dotfiles to claude-standard-dot-a005 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dot-orchestrator-guardrails-T21-a01 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 exit=2
 
-$ echo '{"stop_hook_active":true,"cwd":"/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d"}' | scripts/agent-stop-gate.sh
+$ echo '{"stop_hook_active":true,"cwd":"~/Workspace/dotfiles/.claude/worktrees/worker-d"}' | scripts/agent-stop-gate.sh
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T66 in team dotfiles to claude-standard-dot-a006 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T66 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 exit=2
 
-$ echo '{"stop_hook_active":true,"cwd":"/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e"}' | scripts/agent-stop-gate.sh
+$ echo '{"stop_hook_active":true,"cwd":"~/Workspace/dotfiles/.claude/worktrees/worker-e"}' | scripts/agent-stop-gate.sh
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T65 in team dotfiles to claude-standard-dot-a007 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T65 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 exit=2
 
@@ -781,19 +781,19 @@ agent asset validation ok
 exit=0
 
 # Live runs (final-head script, message checks only; CLAUDE_PROJECT_DIR unset in this shell):
-$ echo '{"stop_hook_active":true,"cwd":"/home/moriya/Workspace/dotfiles"}' | scripts/agent-stop-gate.sh
+$ echo '{"stop_hook_active":true,"cwd":"~/Workspace/dotfiles"}' | scripts/agent-stop-gate.sh
 agent-stop-gate: AGMSG-RESULT task_id=dot-claude-sandbox-T13-a01 in team dotfiles has no AGMSG-ACCEPTANCE from claude-remediation-dot; review it and send AGMSG-ACCEPTANCE v1 task_id=dot-claude-sandbox-T13-a01
 agent-stop-gate: AGMSG-RESULT task_id=dotfiles-T74 in team dotfiles has no AGMSG-ACCEPTANCE from claude-remediation-dot; review it and send AGMSG-ACCEPTANCE v1 task_id=dotfiles-T74
 agent-stop-gate: AGMSG-RESULT task_id=dotfiles-T75 in team dotfiles has no AGMSG-ACCEPTANCE from claude-remediation-dot; review it and send AGMSG-ACCEPTANCE v1 task_id=dotfiles-T75
 exit=2
-$ echo '{"stop_hook_active":true,"cwd":"/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c"}' | scripts/agent-stop-gate.sh
+$ echo '{"stop_hook_active":true,"cwd":"~/Workspace/dotfiles/.claude/worktrees/worker-c"}' | scripts/agent-stop-gate.sh
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T91 in team dotfiles to claude-standard-dot-a005 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T91 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 exit=2
-$ echo '{"stop_hook_active":true,"cwd":"/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d"}' | scripts/agent-stop-gate.sh
+$ echo '{"stop_hook_active":true,"cwd":"~/Workspace/dotfiles/.claude/worktrees/worker-d"}' | scripts/agent-stop-gate.sh
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T68 in team dotfiles to claude-standard-dot-a006 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T68 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T88 in team dotfiles to claude-standard-dot-a006 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T88 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 exit=2
-$ echo '{"stop_hook_active":true,"cwd":"/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e"}' | scripts/agent-stop-gate.sh
+$ echo '{"stop_hook_active":true,"cwd":"~/Workspace/dotfiles/.claude/worktrees/worker-e"}' | scripts/agent-stop-gate.sh
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T65 in team dotfiles to claude-standard-dot-a007 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T65 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 exit=2
 
@@ -911,13 +911,13 @@ agent asset validation ok
 exit=0
 
 # Live runs (final-head script, message checks only):
-$ echo '{"stop_hook_active":true,"cwd":"/home/moriya/Workspace/dotfiles"}' | scripts/agent-stop-gate.sh
+$ echo '{"stop_hook_active":true,"cwd":"~/Workspace/dotfiles"}' | scripts/agent-stop-gate.sh
 agent-stop-gate: AGMSG-RESULT task_id=dotfiles-T74 in team dotfiles has no AGMSG-ACCEPTANCE from claude-remediation-dot; review it and send AGMSG-ACCEPTANCE v1 task_id=dotfiles-T74
 agent-stop-gate: AGMSG-RESULT task_id=dotfiles-T75 in team dotfiles has no AGMSG-ACCEPTANCE from claude-remediation-dot; review it and send AGMSG-ACCEPTANCE v1 task_id=dotfiles-T75
 agent-stop-gate: AGMSG-RESULT task_id=dotfiles-T68 in team dotfiles has no AGMSG-ACCEPTANCE from claude-remediation-dot; review it and send AGMSG-ACCEPTANCE v1 task_id=dotfiles-T68
 agent-stop-gate: AGMSG-RESULT task_id=dotfiles-T88 in team dotfiles has no AGMSG-ACCEPTANCE from claude-remediation-dot; review it and send AGMSG-ACCEPTANCE v1 task_id=dotfiles-T88
 exit=2
-$ echo '{"stop_hook_active":true,"cwd":"/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e"}' | scripts/agent-stop-gate.sh
+$ echo '{"stop_hook_active":true,"cwd":"~/Workspace/dotfiles/.claude/worktrees/worker-e"}' | scripts/agent-stop-gate.sh
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T65 in team dotfiles to claude-standard-dot-a007 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T65 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 exit=2
 

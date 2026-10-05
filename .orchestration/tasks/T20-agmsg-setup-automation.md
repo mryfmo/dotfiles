@@ -78,7 +78,7 @@ Failing tests first:
 
 - Do not modify `delivery.sh` or anything under `home/dot_agents/skills/agmsg/`
   (watcher kill-scoping is a tracked upstream issue).
-- Do not run `delivery.sh set` against `/Users/mryfmo/Workspace/dotfiles`
+- Do not run `delivery.sh set` against `~/Workspace/dotfiles`
   (already configured; the live orchestrator watcher must not be killed).
 - No dependency/CI/permission changes, no local bats, no merge,
   no `make require-crit-review`.

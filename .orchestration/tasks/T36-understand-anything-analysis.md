@@ -3,7 +3,7 @@
 ## Objective
 
 Finish the Understand-Anything full-codebase analysis of
-`/Users/mryfmo/Workspace/dotfiles` that was started earlier and interrupted.
+`~/Workspace/dotfiles` that was started earlier and interrupted.
 Produce the final knowledge graph at `.ua/knowledge-graph.json`.
 
 ## Context

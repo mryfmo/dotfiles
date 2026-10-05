@@ -1,7 +1,7 @@
 # T59: doctor REPAIR=1 — least-disruptive reconciliation (H5)
 
 task_id: T59
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-harness-composability-integration.md (Phase 5)

@@ -1,7 +1,7 @@
 # WP-I: Stop chezmoi apply from clobbering agent runtime state; pin fable-5 high
 
 task_id: WP-I
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wpi
 

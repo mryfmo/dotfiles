@@ -52,7 +52,7 @@
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T57 (operator 2026-10-02): recurring CI/bot findings are fixed at the root once, never dispositioned `not-applicable` repeatedly; image-provided Homebrew taps are handled in `install/macos/common/brew.sh` under `CI=true` only, derived from Homebrew'"'"'s own tap listing.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T57 (operator 2026-10-02): recurring CI/bot findings are fixed at the root once, never dispositioned `not-applicable` repeatedly; image-provided Homebrew taps are handled in `install/macos/common/brew.sh` under `CI=true` only, derived from Homebrew'"'"'s own tap listing.'
 4dd72a5f-3b9e-490f-8f00-fe17c8871d98
 ```
 

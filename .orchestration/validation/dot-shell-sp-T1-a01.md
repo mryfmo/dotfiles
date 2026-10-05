@@ -29,8 +29,8 @@ mise npm:@openai/codex@0.150.1 added 2 packages in 5s
 mise npm:@openai/codex@0.150.1 Reshimming mise 26.7.0...
 mise ✓ npm:@openai/codex@0.150.1  5.1s
 mise ████████████████ 1/1 · installed 1 tool in 5.1s
-PWD=/home/dotspcheck
-HOME=/home/dotspcheck
+PWD=~
+HOME=~
 CONFIG_CODEX="npm:@openai/codex" = "0.150.1"
 MISE=2026.9.12 linux-arm64 (2026-09-20)
 CODEX=codex-cli 0.150.1
@@ -131,15 +131,15 @@ Verbatim output:
 ```text
 /usr/bin/zsh
 === before ===
-dotspcheck:x:1000:1001::/home/dotspcheck:/bin/bash
+dotspcheck:x:1000:1001::~:/bin/bash
 === first run ===
 Login shell changed to /usr/bin/zsh; sign in again or run `exec zsh`.
 === after first ===
-dotspcheck:x:1000:1001::/home/dotspcheck:/usr/bin/zsh
+dotspcheck:x:1000:1001::~:/usr/bin/zsh
 === second run ===
 Login shell is already /usr/bin/zsh.
 === after second ===
-dotspcheck:x:1000:1001::/home/dotspcheck:/usr/bin/zsh
+dotspcheck:x:1000:1001::~:/usr/bin/zsh
 === cleanup ===
 userdel: dotspcheck mail spool (/var/mail/dotspcheck) not found
 scratch user removed

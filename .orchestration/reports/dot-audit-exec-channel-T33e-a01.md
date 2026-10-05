@@ -1,7 +1,7 @@
 # T33e report — dot-audit-exec-channel-T33e-a01 (revision 2)
 
 - worker: `claude-standard-dot-a005`; orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `fix/audit-exec-channel`, cut from `origin/main` = `04746ca`, rebased onto `f6b76b8` per the orchestrator ruling
 - task_rev: sha256 `ccd4d3748384fb2c47d5f6b6e553640cbad5e48f7dfb11f55bbbd656b1cdb7f9`, checked
 - PR: https://github.com/mryfmo/dotfiles/pull/199, head `16966386b8eb5e0f57a2e14a73774335177a062f` (rev2; rev1 head `bbd70c1`, pre-rebase `7822411`)

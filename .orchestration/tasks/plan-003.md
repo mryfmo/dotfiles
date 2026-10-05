@@ -8,7 +8,7 @@
 - Worktree: `/private/tmp/dotfiles-plan-003`
 - Branch: `orchestrator/plan-003`
 - Base: `c3e69ade4d3700b4d624416ce2e5d59b31dce191`
-- Plan: `/Users/mryfmo/Workspace/dotfiles/plans/003-make-bootstrap-safe-and-publicly-testable.md`
+- Plan: `~/Workspace/dotfiles/plans/003-make-bootstrap-safe-and-publicly-testable.md`
 
 High reasoning is required because this is a cross-platform bootstrap and CI
 change with package-state, data-loss, shell parsing, template trust-boundary,
@@ -80,11 +80,11 @@ install dependencies without authorization.
 
 ## Expected artifacts
 
-- Report: `/Users/mryfmo/Workspace/dotfiles/.orchestration/reports/plan-003.md`
-- Validation: `/Users/mryfmo/Workspace/dotfiles/.orchestration/validation/plan-003.md`
-- Sandbox: `/Users/mryfmo/Workspace/dotfiles/.orchestration/sandboxes/plan-003.md`
-- Learning: `/Users/mryfmo/Workspace/dotfiles/.orchestration/learning/plan-003.md`
-- AutoSkill: `/Users/mryfmo/Workspace/dotfiles/.orchestration/autoskill/runs/plan-003.md`
+- Report: `~/Workspace/dotfiles/.orchestration/reports/plan-003.md`
+- Validation: `~/Workspace/dotfiles/.orchestration/validation/plan-003.md`
+- Sandbox: `~/Workspace/dotfiles/.orchestration/sandboxes/plan-003.md`
+- Learning: `~/Workspace/dotfiles/.orchestration/learning/plan-003.md`
+- AutoSkill: `~/Workspace/dotfiles/.orchestration/autoskill/runs/plan-003.md`
 
 The report must include commit SHA, file list, phase/task completion, deviations,
 STOP-condition audit, known limitations, and a concise negative-risk assessment.

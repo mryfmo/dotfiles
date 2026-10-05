@@ -6,6 +6,7 @@ from __future__ import annotations
 import configparser
 import fnmatch
 import json
+import os
 import posixpath
 import re
 import subprocess
@@ -1206,6 +1207,26 @@ def validate_generated_agent_configs() -> None:
 
 
 @cache
+def gitignored_paths(root: Path) -> frozenset[Path]:
+    """The paths git ignores under root (ignored directories collapsed); none outside a work tree."""
+    result = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory"],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return frozenset()
+    # Filesystem decoding, as Path uses: git emits a non-UTF-8 file name as raw bytes.
+    return frozenset(root / os.fsdecode(name).rstrip("/") for name in result.stdout.split(b"\0") if name)
+
+
+def is_gitignored(path: Path) -> bool:
+    """Local state such as the CompactionDB ledger is never committed, so the repository-wide scans skip it."""
+    ignored = gitignored_paths(ROOT)
+    return any(candidate in ignored for candidate in (path, *path.parents))
+
+
+@cache
 def is_nested_git_tree(directory: Path) -> bool:
     """Check directory ancestors for a Git boundary, excluding ROOT itself."""
     if directory == ROOT:
@@ -1221,7 +1242,7 @@ def validate_no_removed_claude_skill() -> None:
             continue
         if any(part in {".git", "site", "__pycache__"} for part in path.parts):
             continue
-        if is_nested_git_tree(path.parent):
+        if is_nested_git_tree(path.parent) or is_gitignored(path):
             continue
         if removed_skill in path.read_text(errors="ignore"):
             matches.append(path)
@@ -1259,6 +1280,56 @@ ALLOWED_SECRET_PLACEHOLDERS = frozenset(
     }
 )
 SECRET_MASK = "<redacted:secret-pattern>"
+HOME_MASK = "~"
+
+
+@cache
+def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
+    repo_home = root / "home"
+    entries = sorted(entry.name for entry in repo_home.iterdir()) if repo_home.is_dir() else []
+    not_repo_path = "".join(f"(?!{re.escape(name)}(?![\\w.-]))" for name in entries)
+    # Not glued to a word (`dotfiles/home/x`), except right after a namespace root (`/proc/self/root/home/x`).
+    boundary = r"(?:(?<![\w.~-])|(?<=/root))"
+    forms = [
+        # Any Unicode account name (`/home/éclair`), also under `/var/home` (Fedora Atomic) and `/export/home`.
+        rf"{boundary}(?:(?:/var|/export)?/home|/Users)/{not_repo_path}[\w][\w.-]*",
+        # macOS root's home, any child (`/var/root/Library/...`), also through its physical `/private/var`.
+        rf"{boundary}(?:/private)?/var/root",
+        # ponytail: plain `/root` only bare or as `/root/.<dir>` (where credentials live); a Codex
+        # sub-agent path such as `/root/t97_evidence_review` stays. Widen when evidence quotes other
+        # `/root/<dir>` paths.
+        rf"{boundary}/root(?=/\.|(?!/))",
+    ]
+    # Root's `/root` is covered by its restricted form above; adding it here would bypass that restriction.
+    if home and home != "/root":
+        # A one-segment home is also a path component (`/proc/self/root`), so it keeps the boundary.
+        forms.insert(0, re.escape(home) if home.count("/") > 1 else boundary + re.escape(home))
+    return re.compile(rf"(?:{'|'.join(forms)})(?![\w.-])")
+
+
+def home_path_pattern() -> re.Pattern[str]:
+    """A home directory, as the `.orchestration` scan flags it and the masker rewrites it.
+
+    The machine-independent forms are `/home/<user>`, `/Users/<user>`, root's
+    `/root`, and macOS `/var/root` and `/private/var/root`. A segment that names a
+    top-level entry of the repository's `home/` tree (`dot_config`,
+    `.chezmoiscripts`, ...) is a repository path, not a user, and a path glued to
+    a word character (`dotfiles/home/x`, a temporary `.../home/worker`) never
+    matches, except beneath a namespace root (`/proc/self/root/home/<user>`). CI
+    flags these forms the same way on every machine.
+
+    The running user's `$HOME` is added as a machine-dependent backstop: a
+    multi-segment home (`/srv/operator`) matches anywhere, and a one-segment home
+    (`/root`) keeps the boundary, so `/proc/self/root` stays intact. That part
+    flags only on the workstation whose home it is, which is where the evidence is
+    written and masked.
+    """
+    return compiled_home_path_pattern(ROOT, os.path.expanduser("~").rstrip("/"))
+
+
+def mask_home_paths(text: str) -> tuple[str, int]:
+    """Normalise every home_path_pattern() match to `~`, so masked evidence always passes the scan."""
+    return home_path_pattern().subn(HOME_MASK, text)
 
 
 def strip_allowed_secret_placeholders(text: str) -> str:
@@ -1268,13 +1339,14 @@ def strip_allowed_secret_placeholders(text: str) -> str:
 
 
 def mask_secret_matches(text: str) -> tuple[str, int]:
-    """Replace the SECRET_PATTERN matches the committed-secret scan would flag.
+    """Replace the SECRET_PATTERN matches the committed-secret scan would flag, and normalise home paths.
 
     Mirrors validate_no_obvious_secrets(): allowed placeholders are stripped
     before matching, so a line is masked only when its stripped form still
     matches and every other line is kept byte for byte. A final whole-text
     pass covers a match that spans lines, so masked text always passes the
-    scan.
+    scan. Home directory prefixes then become `~` (mask_home_paths), which
+    the scan requires of `.orchestration` evidence.
     """
     count = 0
     lines = []
@@ -1290,7 +1362,8 @@ def mask_secret_matches(text: str) -> tuple[str, int]:
     if SECRET_PATTERN.search(strip_allowed_secret_placeholders(masked)):
         masked, matches = SECRET_PATTERN.subn(SECRET_MASK, strip_allowed_secret_placeholders(masked))
         count += matches
-    return masked, count
+    masked, homes = mask_home_paths(masked)
+    return masked, count + homes
 
 
 def mask_json_strings(value: Any) -> tuple[Any, int]:
@@ -1348,11 +1421,12 @@ def json_strings(text: str) -> list[str] | None:
 
 
 def mask_secrets(paths: list[str]) -> int:
-    """Mask SECRET_PATTERN matches in place (audit evidence); 2 if any file is missing, 1 on a key collision.
+    """Mask SECRET_PATTERN matches and home paths in place (evidence); 2 if any file is missing, 1 on a key collision.
 
-    A `.json` file that parses is masked per key and string value and rewritten
-    in the pr-feedback.py layout, so a saved body equals mask_secret_matches()
-    of the collected one; any other file is masked as text. Every member is
+    A file whose whole text parses as JSON, whatever its suffix (the test
+    json_strings() applies for the scan), is masked per key and string value
+    and rewritten in the pr-feedback.py layout, so a saved body equals
+    mask_secret_matches() of the collected one; any other file is masked as text. Every member is
     masked as it is parsed, and an earlier duplicate member is then dropped, as
     json.loads (and so the gate) reads the file.
     """
@@ -1364,7 +1438,9 @@ def mask_secrets(paths: list[str]) -> int:
     status = 0
     for name in paths:
         path = Path(name)
-        text = path.read_text()
+        # Bytes in and out: universal newlines would turn a carriage return in
+        # pasted terminal output into a newline and change evidence beyond the masks.
+        text = path.read_bytes().decode()
         member_count = 0
 
         def mask_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -1374,8 +1450,8 @@ def mask_secrets(paths: list[str]) -> int:
             return masked
 
         try:
-            document = json.loads(text, object_pairs_hook=mask_object) if path.suffix == ".json" else None
-        except json.JSONDecodeError:
+            document = json.loads(text, object_pairs_hook=mask_object)
+        except (ValueError, RecursionError):
             document = None
         except MaskedKeyCollision as error:
             print(f"--mask-secrets: {path}: {error}; rename one key, the file is unchanged", file=sys.stderr)
@@ -1389,7 +1465,7 @@ def mask_secrets(paths: list[str]) -> int:
             count += member_count
             masked = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
         if count:
-            path.write_text(masked)
+            path.write_bytes(masked.encode())
         print(f"masked {count} match(es) in {path}")
     return status
 
@@ -1407,7 +1483,7 @@ def validate_no_obvious_secrets() -> None:
             continue
         if any(part in {".git", "site", "__pycache__"} for part in path.parts):
             continue
-        if is_nested_git_tree(path.parent):
+        if is_nested_git_tree(path.parent) or is_gitignored(path):
             continue
         if path.relative_to(ROOT) in compactiondb_dummy_secret_fixtures:
             continue
@@ -1419,6 +1495,14 @@ def validate_no_obvious_secrets() -> None:
         strings = json_strings(text) or [text]
         if any(SECRET_PATTERN.search(strip_allowed_secret_placeholders(s)) for s in strings):
             fail(f"possible committed secret in {path.relative_to(ROOT)}")
+        # Decoded JSON strings too: a JSON writer may escape the slashes (`\/home\/...`).
+        if path.relative_to(ROOT).parts[:1] == (".orchestration",) and any(
+            home_path_pattern().search(s) for s in (text, *strings)
+        ):
+            fail(
+                f"{path.relative_to(ROOT)} names a home directory; normalise it with "
+                "`uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`"
+            )
 
 
 def validate_compactiondb_project_copy() -> None:

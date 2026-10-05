@@ -6,7 +6,7 @@ cost: n/a
 Authoritative hook preparation stopped before producing an action:
 Previous graph commit does not match the requested base and no symbol baseline exists; cannot safely retry.
 
-Dedicated worktree: /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-refresh
+Dedicated worktree: ~/Workspace/dotfiles/.claude/worktrees/ua-refresh
 Branch: chore/ua-refresh
 HEAD: c11035fc25b64375dfe9b9977d55c8b29a8109f2 (latest TASK note explicitly says not to wait for PR173).
 

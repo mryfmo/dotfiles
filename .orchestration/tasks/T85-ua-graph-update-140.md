@@ -1,7 +1,7 @@
 # T85: UA 知識グラフ増分更新(#140 反映)
 
 task_id: T85
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: housekeeping (repo rule: graph rebuilds are worker tasks)

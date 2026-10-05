@@ -7,10 +7,10 @@ The first sandboxed run could not initialize the uv user cache, so the command w
 Exit: 0
 
 ```text
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/crit
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/crit-cli
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/find-skills
-WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/improve
+WARN: unmanaged skill dir: ~/.agents/skills/crit
+WARN: unmanaged skill dir: ~/.agents/skills/crit-cli
+WARN: unmanaged skill dir: ~/.agents/skills/find-skills
+WARN: unmanaged skill dir: ~/.agents/skills/improve
 active agent runtime files match this chezmoi source tree
 exit=0
 ```
@@ -43,7 +43,7 @@ test_unmanaged_top_level_skill_dir_warns ... ok
 Exit: 0
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 ## git status --porcelain

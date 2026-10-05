@@ -6,7 +6,7 @@ Understand-Anything knowledge graph as the semantic index for a whole-repository
 review. Policy (T52, `.ua/config.json` `autoUpdate: false`): the graph is
 refreshed only by operator-requested full rebuilds; incremental updates cannot
 publish here (T51). Worker: `claude-standard-dot-a005` in
-`/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+`~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 
 ## Objective
 
@@ -28,7 +28,7 @@ and content; the orchestrator never runs the graph build in its own session.
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`; `git switch -c chore/ua-graph-refresh-T55 origin/main`.
   Verify the dispatched task_rev sha256 against this file on your base, else
   stop and PONG blocked. If the worktree has uncommitted files, stop and PONG.

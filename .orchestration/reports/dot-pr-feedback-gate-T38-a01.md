@@ -33,7 +33,7 @@
 ## Step 3: guard exercised on PR #210 (no bot review on the head)
 
 - The collector does not exist on the base (`git show origin/main:scripts/pr-feedback.py` → exit 128), so `collected_feedback_errors` uses HEAD's own collector by design ("Prefer the base branch's collector; only a PR that introduces it has none", require-crit-review.py:408).
-- The sweep ran after every check reached a terminal state: 15 items, **0 `review` items**. All 15 are dispositioned in `/home/moriya/Workspace/dotfiles/.orchestration/validation/dot-pr-feedback-gate-T38-a01-pr-feedback.json`.
+- The sweep ran after every check reached a terminal state: 15 items, **0 `review` items**. All 15 are dispositioned in `~/Workspace/dotfiles/.orchestration/validation/dot-pr-feedback-gate-T38-a01-pr-feedback.json`.
 - `PR_FEEDBACK_EVIDENCE=… AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/claude/t38-receipt.md python3 scripts/require-crit-review.py --base origin/main` ended with "PR feedback evidence accepted", "Review requirement satisfied", and `guard exit 0`.
 - The review evidence (crit-shape JSON `.agents/worklog/claude/t38-review.json` and receipt `t38-receipt.md`, gitignored in worker-c) records the independent subagent review: 4 findings plus 1 approval, all `resolved: true`, with `review_outcome: addressed`.
 - The worktree copy of the pr-feedback JSON was removed after copying it to the main checkout. Nothing from step 3 is committed.
@@ -86,7 +86,7 @@ Codex GitHub connector dependency. Supersedes the T16 r2 Codex-gate ruling
 ## CompactionDB (main checkout)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T38: PR #182 is carried onto main as the PR feedback sweep (scripts/pr-feedback.py) plus the evidence-checked merge gate (require-crit-review.py --base, PR_FEEDBACK_EVIDENCE); CodeRabbit review is optional (swept when present, never required), the auto-trigger workflow is dropped, .coderabbit.yaml keeps auto review off, and the gate carries no Codex GitHub connector dependency. Supersedes the T16 r2 Codex-gate ruling (operator 2026-09-29)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T38: PR #182 is carried onto main as the PR feedback sweep (scripts/pr-feedback.py) plus the evidence-checked merge gate (require-crit-review.py --base, PR_FEEDBACK_EVIDENCE); CodeRabbit review is optional (swept when present, never required), the auto-trigger workflow is dropped, .coderabbit.yaml keeps auto review off, and the gate carries no Codex GitHub connector dependency. Supersedes the T16 r2 Codex-gate ruling (operator 2026-09-29)."
 dca7d66a-2821-42e5-a48f-8bb89b444757
 ```
 

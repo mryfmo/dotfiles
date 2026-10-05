@@ -42,8 +42,8 @@ push / PR 作成は禁止(T4 完了後にオーケストレータが承認)。
   user systemd 不在(CI コンテナ)では graceful skip)。
 - `home/.chezmoitemplates/chezmoiignore.d/macos` に `.config/systemd` を追加。
 - `home/Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist` → `.plist.tmpl` 化し、
-  `/Users/mryfmo/Workspace/dotfiles` → `{{ .chezmoi.workingTree }}`、
-  `/Users/mryfmo` → `{{ .chezmoi.homeDir }}`(計 4 箇所)。
+  `~/Workspace/dotfiles` → `{{ .chezmoi.workingTree }}`、
+  `~` → `{{ .chezmoi.homeDir }}`(計 4 箇所)。
 - `tests/files/ubuntu.bats` に unit 存在、`tests/files/macos.bats` 側は不存在アサーション
   (スイートの流儀に従う)。
 

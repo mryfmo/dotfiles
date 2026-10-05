@@ -110,7 +110,7 @@ all command output in the validation file:
 - learning: `.orchestration/learning/T18-herdr-thirds-layout.md`
 - autoskill: `.orchestration/autoskill/runs/T18-herdr-thirds-layout.md`
 
-(Write artifacts under the MAIN worktree `/Users/mryfmo/Workspace/dotfiles/.orchestration/`,
+(Write artifacts under the MAIN worktree `~/Workspace/dotfiles/.orchestration/`,
 not the task worktree; they stay uncommitted.)
 
 ## Done signal

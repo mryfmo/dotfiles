@@ -61,7 +61,7 @@ carried from the canonical clone with blob-identity proof (operator 2026-09-29).
 ## CompactionDB (main checkout)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T37: the 2026-09-29 make upgrade pins (node 26.10.0, dotenvx 2.29.0, claude-code 2.1.284, codex 0.158.0, ccusage 20.0.24, pnpm 12.5.1, aws-cli 2.36.50, crit v0.21.0) land together with the ccusage expected-version sync in check-statusline-tools.py, its test, and test.yaml, carried from the canonical clone with blob-identity proof (operator 2026-09-29)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T37: the 2026-09-29 make upgrade pins (node 26.10.0, dotenvx 2.29.0, claude-code 2.1.284, codex 0.158.0, ccusage 20.0.24, pnpm 12.5.1, aws-cli 2.36.50, crit v0.21.0) land together with the ccusage expected-version sync in check-statusline-tools.py, its test, and test.yaml, carried from the canonical clone with blob-identity proof (operator 2026-09-29)."
 3d9f7288-ffae-4a4f-8bbf-9506b1c6f2a5
 ```
 

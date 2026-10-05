@@ -84,11 +84,11 @@ result: expected exit 2; native agent review required for the shared broad diff
 command:
   crit status --json
 result:
-  review_file=/Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+  review_file=~/.crit/reviews/dfcf30aea611/review.json
   unresolved=0 before T61a approval creation
 
 command:
-  crit comments --all --json /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+  crit comments --all --json ~/.crit/reviews/dfcf30aea611/review.json
 result:
   T61a approval r_bbf9a8 present with resolved=true and reply rp_5afe2c
 

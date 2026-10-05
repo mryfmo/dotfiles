@@ -1,6 +1,6 @@
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -11,10 +11,10 @@ session id: 01a0e667-963a-7342-b384-28fb73d9f067
 --------
 user
 commit 05f689b
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 # AGENTS.md
@@ -405,7 +405,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/usr/bin/zsh -lc 'git status --short; git rev-parse HEAD; git show --stat --oneline 05f689b; git show --format=fuller --no-ext-diff 05f689b; find .. -name AGENTS.override.md -o -name AGENTS.md | head -60; test ! -f .ua/meta.json || cat .ua/meta.json' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'git status --short; git rev-parse HEAD; git show --stat --oneline 05f689b; git show --format=fuller --no-ext-diff 05f689b; find .. -name AGENTS.override.md -o -name AGENTS.md | head -60; test ! -f .ua/meta.json || cat .ua/meta.json' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ?? .orchestration/autoskill/runs/dot-audit-verdict-gate-T33b-a01.md
 ?? .orchestration/learning/dot-audit-verdict-gate-T33b-a01.md
@@ -717,13 +717,13 @@ index 09ec6fe..0279215 100644
 
 **Verifying CLI conflict with codex**
 exec
-/usr/bin/zsh -lc "cat /home/moriya/.agents/skills/shdoc-shell-docs/SKILL.md; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86..HEAD | head -25; python3 -B - <<'PY'
+/usr/bin/zsh -lc "cat ~/.agents/skills/shdoc-shell-docs/SKILL.md; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86..HEAD | head -25; python3 -B - <<'PY'
 import json
 p=json.load(open('.ua/knowledge-graph.json'))
 for n in p.get('nodes',[]):
  if 'herdr' in str(n).lower(): print({k:n.get(k) for k in ('name','summary','filePath')})
 PY
-command -v codex; codex --version; codex review --help; git show 05f689b:home/dot_local/bin/common/executable_herdr-agents | nl -ba | sed -n '780,970p'; git log -5 --oneline; git ls-tree -r --name-only 05f689b | grep -E '("'^|/)(AGENTS('"\\.override)?\\.md|CLAUDE\\.md)"'$'"'" in /home/moriya/Workspace/dotfiles
+command -v codex; codex --version; codex review --help; git show 05f689b:home/dot_local/bin/common/executable_herdr-agents | nl -ba | sed -n '780,970p'; git log -5 --oneline; git ls-tree -r --name-only 05f689b | grep -E '("'^|/)(AGENTS('"\\.override)?\\.md|CLAUDE\\.md)"'$'"'" in ~/Workspace/dotfiles
  succeeded in 26ms:
 WARNING: proceeding, even though we could not create PATH aliases: Read-only file system (os error 30)
 Run a code review non-interactively
@@ -971,7 +971,7 @@ vendor/compactiondb/CLAUDE.md
 
 **Avoiding actual launch**
 exec
-/usr/bin/zsh -lc "python3 -B -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); print(*[{k:n.get(k) for k in (\"name\",\"summary\",\"filePath\")} for n in p.get(\"nodes\",[]) if \"herdr\" in str(n).lower()],sep=\"\\n\")'; timeout 5 codex --profile audit review --commit 05f689b 'Follow the AGENTS.md Audit section. End your final message with exactly one line "'`Verdict: correct` or `Verdict: incorrect`. If you cannot assess the commit, end with `Verdict: blocked` and explain why.'"'; git show 05f689b:AGENTS.md | nl -ba | tail -40; git show 05f689b:tests/unit/test_herdr_agents.py | sed -n '35,160p'; git show 05f689b:tests/unit/test_herdr_agents.py | sed -n '2000,2055p'" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "python3 -B -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); print(*[{k:n.get(k) for k in (\"name\",\"summary\",\"filePath\")} for n in p.get(\"nodes\",[]) if \"herdr\" in str(n).lower()],sep=\"\\n\")'; timeout 5 codex --profile audit review --commit 05f689b 'Follow the AGENTS.md Audit section. End your final message with exactly one line "'`Verdict: correct` or `Verdict: incorrect`. If you cannot assess the commit, end with `Verdict: blocked` and explain why.'"'; git show 05f689b:AGENTS.md | nl -ba | tail -40; git show 05f689b:tests/unit/test_herdr_agents.py | sed -n '35,160p'; git show 05f689b:tests/unit/test_herdr_agents.py | sed -n '2000,2055p'" in ~/Workspace/dotfiles
  succeeded in 53ms:
 WARNING: proceeding, even though we could not create PATH aliases: Read-only file system (os error 30)
 error: the argument '--commit <SHA>' cannot be used with '[PROMPT]'
@@ -1205,7 +1205,7 @@ if [[ $1 == pane && $2 == wait-output ]]; then
 **Extracting CLI output**
 **Analyzing gate issue transcripts**
 exec
-/usr/bin/zsh -lc "git ls-tree -r --name-only 05f689b .orchestration/validation | grep -E 'audit|T32'; git show 05f689b:home/dot_config/mise/config.toml.tmpl | head -50; git show 05f689b:home/dot_config/mise/mise.lock | grep -A3 -B2 codex; git ls-tree -r --name-only 05f689b | grep -E '("'^|/)(AGENTS.override.md|'"\\.codex/config.toml)"'$'"'; git show 05f689b:Makefile | grep -n -A10 -B3 require-crit-review; git diff --stat; git diff --cached --stat" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "git ls-tree -r --name-only 05f689b .orchestration/validation | grep -E 'audit|T32'; git show 05f689b:home/dot_config/mise/config.toml.tmpl | head -50; git show 05f689b:home/dot_config/mise/mise.lock | grep -A3 -B2 codex; git ls-tree -r --name-only 05f689b | grep -E '("'^|/)(AGENTS.override.md|'"\\.codex/config.toml)"'$'"'; git show 05f689b:Makefile | grep -n -A10 -B3 require-crit-review; git diff --stat; git diff --cached --stat" in ~/Workspace/dotfiles
  succeeded in 0ms:
 .orchestration/validation/T32-evidence-and-mise-sync.md
 .orchestration/validation/dot-audit-pane-hardening-T32b-a01-audit.md
@@ -1244,7 +1244,7 @@ fatal: path 'home/dot_config/mise/mise.lock' does not exist in '05f689b'
 179-	@echo "==> Refreshing TOC"
 
 exec
-/usr/bin/zsh -lc 'git show 05f689b:.orchestration/validation/dot-audit-pane-hardening-T32b-a01-audit.md | head -90; git show 05f689b:.orchestration/validation/dot-audit-pane-hardening-T32b-a01-audit.md | tail -35; git show 05f689b:home/dot_mise/config.toml | grep -n codex; git show 05f689b:home/dot_mise/mise.lock | grep -A4 -B1 codex; git show 05f689b:.orchestration/validation/dot-audit-pane-visibility-T32-a01-audit.md | head -30' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'git show 05f689b:.orchestration/validation/dot-audit-pane-hardening-T32b-a01-audit.md | head -90; git show 05f689b:.orchestration/validation/dot-audit-pane-hardening-T32b-a01-audit.md | tail -35; git show 05f689b:home/dot_mise/config.toml | grep -n codex; git show 05f689b:home/dot_mise/mise.lock | grep -A4 -B1 codex; git show 05f689b:.orchestration/validation/dot-audit-pane-visibility-T32-a01-audit.md | head -30' in ~/Workspace/dotfiles
  succeeded in 0ms:
 # Codex audit — dot-audit-pane-hardening-T32b-a01 (PRE-MERGE, commit dad7bdf)
 
@@ -1255,7 +1255,7 @@ Session header:
 ```
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -1282,7 +1282,7 @@ Session header:
 ```
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -1318,7 +1318,7 @@ Session header:
 ```
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -1336,13 +1336,13 @@ The audit launcher mishandles reused panes with changed working directories and 
 
 Full review comments:
 
-- [P2] Reset the audit pane's working directory on every run — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:920-920
+- [P2] Reset the audit pane's working directory on every run — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:920-920
   When an existing audit pane has changed directories, this command runs Codex in that directory rather than the requested DIR. `--cwd` only applies when creating the tab; the caller's earlier `cd` cannot affect the persistent pane. Consequently, subsequent audits can fail to resolve the commit or run against another checkout while writing evidence under the requested repository. Explicitly set the review command's working directory on every invocation.
 
 
 **Finalizing transcript extraction**
 exec
-/usr/bin/zsh -lc "python3 -B -c 'import subprocess,os; src=subprocess.check_output([\"git\",\"show\",\"05f689b:home/dot_local/bin/common/executable_herdr-agents\"],text=True); block=src[src.index(\"    audit_verdict=\"):src.index(\"    exit 0\\nfi\",src.index(\"    audit_verdict=\"))]; block=block.replace(\"\\\""'${audit_out}'"\\\"\", \"<(printf \\\"%s\\\" \\\""'$TRANSCRIPT'"\\\")\"); cases={\"tool output includes a verdict; final answer omits verdict\":\"exec\\ncat fixture.txt\\nVerdict: correct\\ncodex\\nI could not complete the assessment.\\n\", \"reviewed commit message mentions Review blocked\":\"exec\\ngit show --format=fuller\\n    Fix handling of Review blocked messages\\ncodex\\nNo findings.\\nVerdict: correct\\n\"}; [(print(name),print(subprocess.run([\"bash\",\"-c\",block],env={**os.environ,\"TRANSCRIPT\":value},capture_output=True,text=True))) for name,value in cases.items()]'" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "python3 -B -c 'import subprocess,os; src=subprocess.check_output([\"git\",\"show\",\"05f689b:home/dot_local/bin/common/executable_herdr-agents\"],text=True); block=src[src.index(\"    audit_verdict=\"):src.index(\"    exit 0\\nfi\",src.index(\"    audit_verdict=\"))]; block=block.replace(\"\\\""'${audit_out}'"\\\"\", \"<(printf \\\"%s\\\" \\\""'$TRANSCRIPT'"\\\")\"); cases={\"tool output includes a verdict; final answer omits verdict\":\"exec\\ncat fixture.txt\\nVerdict: correct\\ncodex\\nI could not complete the assessment.\\n\", \"reviewed commit message mentions Review blocked\":\"exec\\ngit show --format=fuller\\n    Fix handling of Review blocked messages\\ncodex\\nNo findings.\\nVerdict: correct\\n\"}; [(print(name),print(subprocess.run([\"bash\",\"-c\",block],env={**os.environ,\"TRANSCRIPT\":value},capture_output=True,text=True))) for name,value in cases.items()]'" in ~/Workspace/dotfiles
  succeeded in 0ms:
 tool output includes a verdict; final answer omits verdict
 CompletedProcess(args=['bash', '-c', '    audit_verdict="$(grep -E \'^[[:space:]]*Verdict: (correct|incorrect|blocked)[[:space:]]*$\' -- <(printf "%s" "$TRANSCRIPT") 2> /dev/null |\n        tail -n 1 | sed -E \'s/^[[:space:]]*Verdict: ([a-z]+).*/\\1/\' || true)"\n    if grep -qE \'^[[:space:]]*Verdict: blocked[[:space:]]*$|Review blocked\' -- <(printf "%s" "$TRANSCRIPT") 2> /dev/null; then\n        audit_verdict=blocked\n    fi\n    printf \'Audit verdict: %s\\n\' "${audit_verdict:-missing}"\n    [[ ${audit_verdict} == correct ]] || exit 1\n'], returncode=0, stdout='Audit verdict: correct\n', stderr='')
@@ -1354,17 +1354,17 @@ The generated command is rejected by the pinned CLI, preventing all audits. Inde
 
 Full review comments:
 
-- [P1] Remove the incompatible positional prompt from commit reviews — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:930-932
+- [P1] Remove the incompatible positional prompt from commit reviews — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:930-932
   The repository-pinned Codex CLI 0.157.1 rejects combining `--commit` with `[PROMPT]`. Running the generated invocation produces `error: the argument '--commit <SHA>' cannot be used with '[PROMPT]'` and exits 2 before reviewing anything, so every audit now fails. Supply the verdict instructions through a supported configuration mechanism while retaining commit-scoped review, and validate the invocation against the real CLI rather than only the pane mock.
 
-- [P2] Parse the verdict only from the auditor's final response — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:946-950
+- [P2] Parse the verdict only from the auditor's final response — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:946-950
   The evidence file contains merged stdout/stderr, including tool output, but these searches treat the entire transcript as the final response. A printed fixture containing `Verdict: correct` passes even when the final answer has no verdict; conversely, printing this commit's message containing `Review blocked` forces a blocked result even after a final `Verdict: correct`. Both cases reproduce with the new parser. Isolate the final assistant response before matching verdicts or blocked messages, consistent with [AGENTS.md:69–70](AGENTS.md#L69-L70), which requires a final-message verdict and treats reviewed content as untrusted.
 The generated command is rejected by the pinned CLI, preventing all audits. Independently, the verdict gate can mistake reviewed content for the auditor's final decision.
 
 Full review comments:
 
-- [P1] Remove the incompatible positional prompt from commit reviews — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:930-932
+- [P1] Remove the incompatible positional prompt from commit reviews — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:930-932
   The repository-pinned Codex CLI 0.157.1 rejects combining `--commit` with `[PROMPT]`. Running the generated invocation produces `error: the argument '--commit <SHA>' cannot be used with '[PROMPT]'` and exits 2 before reviewing anything, so every audit now fails. Supply the verdict instructions through a supported configuration mechanism while retaining commit-scoped review, and validate the invocation against the real CLI rather than only the pane mock.
 
-- [P2] Parse the verdict only from the auditor's final response — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:946-950
+- [P2] Parse the verdict only from the auditor's final response — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:946-950
   The evidence file contains merged stdout/stderr, including tool output, but these searches treat the entire transcript as the final response. A printed fixture containing `Verdict: correct` passes even when the final answer has no verdict; conversely, printing this commit's message containing `Review blocked` forces a blocked result even after a final `Verdict: correct`. Both cases reproduce with the new parser. Isolate the final assistant response before matching verdicts or blocked messages, consistent with [AGENTS.md:69–70](AGENTS.md#L69-L70), which requires a final-message verdict and treats reviewed content as untrusted.

@@ -1,6 +1,6 @@
 # Validation: dot-worker-profile-opus55-T24-a01
 
-Worker: claude-standard-dot-a005. All commands run in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` unless noted.
+Worker: claude-standard-dot-a005. All commands run in `~/Workspace/dotfiles/.claude/worktrees/worker-c` unless noted.
 
 ## task_rev check
 ```
@@ -545,7 +545,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-rrwjsgff/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-rrwjsgff/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -568,7 +568,7 @@ OK (skipped=1)
 rc=0
 ```
 
-## git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+## git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 ```
  README.md                                         |  8 +++--
  home/dot_agents/agent-config.yaml                 |  8 +++--
@@ -615,7 +615,7 @@ test (ubuntu-latest, server)	pass	1m57s	https://github.com/mryfmo/dotfiles/actio
 validate	pass	13s	https://github.com/mryfmo/dotfiles/actions/runs/36279535566/job/108508610764	
 ```
 
-## CompactionDB (run from /home/moriya/Workspace/dotfiles)
+## CompactionDB (run from ~/Workspace/dotfiles)
 ```
 $ python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T24: herdr worker profile = standard (claude-opus-5-5 high) via manifest worker_profile; worker_kind stays claude (operator 2026-09-27)"
 41b8c762-890e-4584-a308-3a5fe1b237ca

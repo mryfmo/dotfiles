@@ -20,7 +20,7 @@
 
    It has no side effects. The worktree-seated worker's own SessionStart stays quiet.
 
-   Verified live from the main checkout (validation file): `herdr-agents: not in a Herdr pane, so the agent pair is not started; start the worker on demand with "herdr-agents --add-worker .claude/worktrees/worker-c [DIR]" and run the auditor headless with "codex --profile audit review --commit <sha>"; worker claude-standard-dot-a005 is seated at /home/moriya/.config/herdr/herdr.sock:wN:p2.`, exit 0.
+   Verified live from the main checkout (validation file): `herdr-agents: not in a Herdr pane, so the agent pair is not started; start the worker on demand with "herdr-agents --add-worker .claude/worktrees/worker-c [DIR]" and run the auditor headless with "codex --profile audit review --commit <sha>"; worker claude-standard-dot-a005 is seated at ~/.config/herdr/herdr.sock:wN:p2.`, exit 0.
 2. **`--add-worker` from a pane-less caller.**
    - When `HERDR_SOCKET_PATH` is unset, it is derived (`${XDG_CONFIG_HOME:-$HOME/.config}/herdr/herdr.sock`, which must be a socket) **before** any workspace is created, and exported for spawn.sh. If no socket is found, the command refuses with a clear message and changes nothing.
    - For a claude worker, `accept_spawned_claude_trust_dialog` accepts the workspace-trust dialog while spawn's readiness wait runs.
@@ -46,7 +46,7 @@
 
 ## Why CI was red on 89e95e4, and the fix
 
-Both socket tests failed on every runner: `herdr-agents: HERDR_SOCKET_PATH is unset and no Herdr server socket is at /home/runner/.config/herdr/herdr.sock`. The derivation honours `XDG_CONFIG_HOME`, which the GitHub runners export, so the test's fake `HOME` was bypassed. `run_helper` now drops `XDG_CONFIG_HOME` (0a35010). With `XDG_CONFIG_HOME=/nonexistent/runner-config` exported locally to mimic CI, both tests pass outside the sandbox; the socket-bind test skips inside it (validation file).
+Both socket tests failed on every runner: `herdr-agents: HERDR_SOCKET_PATH is unset and no Herdr server socket is at ~/.config/herdr/herdr.sock`. The derivation honours `XDG_CONFIG_HOME`, which the GitHub runners export, so the test's fake `HOME` was bypassed. `run_helper` now drops `XDG_CONFIG_HOME` (0a35010). With `XDG_CONFIG_HOME=/nonexistent/runner-config` exported locally to mimic CI, both tests pass outside the sandbox; the socket-bind test skips inside it (validation file).
 
 ## Merge: both behaviours kept
 
@@ -79,7 +79,7 @@ T47's `start_claude_in_pane` profile args are unaffected. The full suite (658 te
 Memory id **72bca526-c7c5-466a-a028-69c614963944**. The command and output are in the validation file:
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the [memory:decision] text above>"
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the [memory:decision] text above>"
 ```
 
 ## Effects

@@ -6,7 +6,7 @@ created_at: 2026-09-26T01:55:00Z
 ---
 # AGMSG-TASK dot-agmsg-upstream-sync-T19-a01 (revision 2): adopt upstream agmsg 1.5.0 through the documented installer, retire the vendored snapshot and agmsg-dispatch (plan v2 Stage 2a)
 
-Revision 2 replaces revision 1 entirely. Revision 1 assumed an npm tarball with scripts and sha512 integrity; upstream primary sources show otherwise (see Facts). Repo: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-b`, branch `feat/agmsg-upstream-sync` from origin/main. You are `claude-standard-dot-a004`. Read-only inventory from revision 1 stays valid; discard any installer design based on tarball/rsync.
+Revision 2 replaces revision 1 entirely. Revision 1 assumed an npm tarball with scripts and sha512 integrity; upstream primary sources show otherwise (see Facts). Repo: `~/Workspace/dotfiles/.claude/worktrees/worker-b`, branch `feat/agmsg-upstream-sync` from origin/main. You are `claude-standard-dot-a004`. Read-only inventory from revision 1 stays valid; discard any installer design based on tarball/rsync.
 
 ## Facts (upstream v1.4.2/v1.5.0, verified from tag sources; local copies in the orchestrator scratchpad are NOT for you — fetch upstream yourself)
 - Latest: npm `agmsg` dist-tags.latest = **1.5.0** (2026-09-25); `VERSION` on main = 1.5.0.

@@ -49,7 +49,7 @@ I did not reply to or resolve any thread.
 ## CompactionDB
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T80 (operator 2026-10-03): the Codex renderer emits generic `[[hooks.<Event>]]` command hooks from `codex.hooks.command_hooks` in the manifest, validated against the official Codex hook event list, so lifecycle hooks (PreCompact/PostCompact/SessionEnd for CompactionDB) are declared in the manifest, never hand-written into the rendered TOML.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T80 (operator 2026-10-03): the Codex renderer emits generic `[[hooks.<Event>]]` command hooks from `codex.hooks.command_hooks` in the manifest, validated against the official Codex hook event list, so lifecycle hooks (PreCompact/PostCompact/SessionEnd for CompactionDB) are declared in the manifest, never hand-written into the rendered TOML.'
 9db1c3e0-3d2e-4b62-8633-05ddd6f8d5d2
 [exit 0]
 ```

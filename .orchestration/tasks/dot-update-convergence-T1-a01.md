@@ -20,7 +20,7 @@ Fix: change the managed template matcher for that entry to `^(startup|resume|cle
 ### Defect 2 — `make update` notice is misleading when the index has unmerged files
 
 ```
-Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C /Users/mryfmo/Workspace/dotfiles pull' to fetch remote updates.
+Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ~/Workspace/dotfiles pull' to fetch remote updates.
 ❯❯❯ git pull
 error: Pulling is not possible because you have unmerged files.
 ```
@@ -30,14 +30,14 @@ Fix: in the `update` target of `Makefile`, before the dirty check, add one `elif
 ### Defect 3 — false "Multiple agmsg Claude Code identities" warning
 
 ```
-Multiple agmsg Claude Code identities are registered for /Users/mryfmo/Workspace/dotfiles; worker identity is ambiguous.
+Multiple agmsg Claude Code identities are registered for ~/Workspace/dotfiles; worker identity is ambiguous.
 ```
 
 Cause: `home/dot_local/bin/common/executable_herdr-agents` (~line 480-490) treats a multi-line `identities.sh` output as ambiguous, but `identities.sh` prints one `team<TAB>name` row per team. The SAME name `claude-deep-dot` registered in two teams (adh-v4, dotfiles-conformance — both live regimes) is not ambiguous. Fix: de-duplicate on the name column (second field) before the multi-line test; warn only when distinct names > 1. Add/adjust a case in `tests/unit/test_herdr_agents.py`. Do NOT change the "No agmsg Codex identity" message.
 
 ## Scope / allowed_files (all paths under the new worktree)
 
-- Create worktree: `git -C /Users/mryfmo/Workspace/dotfiles worktree add .claude/worktrees/update-convergence -b fix/update-convergence origin/main`
+- Create worktree: `git -C ~/Workspace/dotfiles worktree add .claude/worktrees/update-convergence -b fix/update-convergence origin/main`
 - Edit only:
   - `home/.chezmoitemplates/claude-settings-managed.json`
   - `Makefile` (update target only)

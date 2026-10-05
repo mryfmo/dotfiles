@@ -23,7 +23,7 @@ git worktree list
 Exit: 0
 
 ```text
-/Users/mryfmo/Workspace/dotfiles d906b00 [main]
+~/Workspace/dotfiles d906b00 [main]
 ```
 
 ## Main command 3
@@ -184,7 +184,7 @@ Exit: 0
 ## Main command 9
 
 ```sh
-test -f /Users/mryfmo/.understand-anything-plugin/packages/core/dist/index.js
+test -f ~/.understand-anything-plugin/packages/core/dist/index.js
 ```
 
 Exit: 0
@@ -195,16 +195,16 @@ Exit: 0
 ## Main command 10
 
 ```sh
-UNDERSTAND_NO_WORKTREE_REDIRECT=1 node /Users/mryfmo/.understand-anything-plugin/skills/understand/compute-batches.mjs /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full
+UNDERSTAND_NO_WORKTREE_REDIRECT=1 node ~/.understand-anything-plugin/skills/understand/compute-batches.mjs ~/Workspace/dotfiles/.claude/worktrees/ua-full
 ```
 
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 Loaded 419 files (243 code).
 Info: compute-batches: merged 276 small batches (284 files) into 12 misc batches — singletons and orphans consolidated
-Wrote 36 batches (sizes: max=25, min=1) to /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/intermediate/batches.json
+Wrote 36 batches (sizes: max=25, min=1) to ~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/intermediate/batches.json
 ```
 
 ## Main command 11
@@ -216,7 +216,7 @@ node -e 'const g=require("./.ua/knowledge-graph.json"),f=require("./.ua/fingerpr
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {"before":{"nodes":1201,"edges":934,"head":"d91b835021981a2fb604c61e2ef324f972cc8795"},"fingerprintKeys":["version","gitCommitHash","generatedAt","files"]}
 ```
 
@@ -229,7 +229,7 @@ node --check .ua/tmp/ua-full-save.cjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 ```
 
 ## Main command 13
@@ -241,7 +241,7 @@ node --check .ua/tmp/ua-inline-validate.cjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 ```
 
 ## Main command 14
@@ -286,13 +286,13 @@ index 1263513..eb89a37 100644
 ## Main command 16
 
 ```sh
-python3 /Users/mryfmo/.understand-anything-plugin/skills/understand/merge-batch-graphs.py /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full
+python3 ~/.understand-anything-plugin/skills/understand/merge-batch-graphs.py ~/Workspace/dotfiles/.claude/worktrees/ua-full
 ```
 
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 Found 51 batch files (36 logical batches, 9 multi-part):
   batch-1-part-1.json: 21 nodes, 84 edges
   batch-1-part-2.json: 36 nodes, 81 edges
@@ -361,7 +361,7 @@ Output: 1399 nodes, 2367 edges
 Imports edge recovery:
   Recovered 0 `imports` edges from importMap (419 entries scanned)
 
-Written to /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/intermediate/assembled-graph.json (1250 KB)
+Written to ~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/intermediate/assembled-graph.json (1250 KB)
 ```
 
 ## Main command 17
@@ -373,7 +373,7 @@ node .ua/tmp/prepare-arch-context.cjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {"fileNodes":450,"imports":43,"allFileEdges":396,"languages":["css","dockerfile","json","markdown","python","ruby","shell","yaml"]}
 ```
 
@@ -386,20 +386,20 @@ node .ua/tmp/prepare-tour-context.cjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {"fileLevelNodes":450,"allEdges":2398,"layers":9,"entryPoint":"setup.sh"}
 ```
 
 ## Main command 19
 
 ```sh
-node .ua/tmp/ua-full-save.cjs /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full assemble
+node .ua/tmp/ua-full-save.cjs ~/Workspace/dotfiles/.claude/worktrees/ua-full assemble
 ```
 
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {"phase":"assemble","nodes":1399,"edges":2398,"coveredFiles":419,"layers":9,"tour":12,"head":"d906b00bff8729625b895d6f7765e3186ab5bb86"}
 ```
 
@@ -412,7 +412,7 @@ node .ua/tmp/ua-inline-validate.cjs .ua/intermediate/assembled-graph.json .ua/in
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 ```
 
 ## Main command 21
@@ -528,26 +528,26 @@ Exit: 0
 ## Main command 22
 
 ```sh
-node .ua/tmp/ua-full-save.cjs /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full save-graph
+node .ua/tmp/ua-full-save.cjs ~/Workspace/dotfiles/.claude/worktrees/ua-full save-graph
 ```
 
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 Graph saved; fingerprint input prepared for 419 files. Metadata NOT advanced.
 ```
 
 ## Main command 23
 
 ```sh
-node /Users/mryfmo/.understand-anything-plugin/skills/understand/build-fingerprints.mjs /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/intermediate/fingerprint-input.json
+node ~/.understand-anything-plugin/skills/understand/build-fingerprints.mjs ~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/intermediate/fingerprint-input.json
 ```
 
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 [json-parser] Failed to parse JSON: Unexpected token '#', "#!/usr/bin"... is not valid JSON
 Fingerprints baseline: 419 files
 ```
@@ -555,13 +555,13 @@ Fingerprints baseline: 419 files
 ## Main command 24
 
 ```sh
-node .ua/tmp/ua-full-save.cjs /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full save-meta
+node .ua/tmp/ua-full-save.cjs ~/Workspace/dotfiles/.claude/worktrees/ua-full save-meta
 ```
 
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {"phase":"save-meta","head":"d906b00bff8729625b895d6f7765e3186ab5bb86","nodes":1399,"edges":2398,"files":419}
 ```
 
@@ -574,7 +574,7 @@ node -e 'const fs=require("fs"),a=require("assert/strict"),cp=require("child_pro
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {
   "head": "d906b00bff8729625b895d6f7765e3186ab5bb86",
   "meta": {
@@ -724,7 +724,7 @@ Exit: 0
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/ff4423f6af30/review.json",
+  "review_file": "~/.crit/reviews/ff4423f6af30/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -746,7 +746,7 @@ Added review comment
 ## Main command 31
 
 ```sh
-crit comments --all --json /Users/mryfmo/.crit/reviews/ff4423f6af30/review.json
+crit comments --all --json ~/.crit/reviews/ff4423f6af30/review.json
 ```
 
 Exit: 0
@@ -781,7 +781,7 @@ Replied to r_9569c6 and marked resolved
 ## Main command 33
 
 ```sh
-crit comments --all --json /Users/mryfmo/.crit/reviews/ff4423f6af30/review.json
+crit comments --all --json ~/.crit/reviews/ff4423f6af30/review.json
 ```
 
 Exit: 0
@@ -981,7 +981,7 @@ Exit: 0
 
 # Scanner evidence
 
-Working directory: `/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full`.
+Working directory: `~/Workspace/dotfiles/.claude/worktrees/ua-full`.
 
 Legacy data directory check: `test -d .understand-anything` returned exit 1 with empty output; selected `.ua`.
 
@@ -1092,13 +1092,13 @@ Exit code: 0
 ## Command
 
 ```sh
-UNDERSTAND_NO_WORKTREE_REDIRECT=1 node /Users/mryfmo/.understand-anything-plugin/skills/understand/scan-project.mjs /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/ua-scan-files.json
+UNDERSTAND_NO_WORKTREE_REDIRECT=1 node ~/.understand-anything-plugin/skills/understand/scan-project.mjs ~/Workspace/dotfiles/.claude/worktrees/ua-full ~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/ua-scan-files.json
 ```
 
 Exit code: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 scan-project: filesScanned=419 filteredByIgnore=1256 complexity=large
 ```
 
@@ -1111,7 +1111,7 @@ UNDERSTAND_NO_WORKTREE_REDIRECT=1 node .ua/tmp/scanner-assemble.mjs input
 Exit code: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {
   "totalFiles": 419,
   "stats": {
@@ -1160,13 +1160,13 @@ mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.c
 ## Command
 
 ```sh
-UNDERSTAND_NO_WORKTREE_REDIRECT=1 node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-import-map.mjs /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/ua-import-map-input.json /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/ua-import-map-output.json
+UNDERSTAND_NO_WORKTREE_REDIRECT=1 node ~/.understand-anything-plugin/skills/understand/extract-import-map.mjs ~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/ua-import-map-input.json ~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/ua-import-map-output.json
 ```
 
 Exit code: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 extract-import-map: filesScanned=419 filesWithImports=13 totalEdges=43
 ```
 
@@ -1179,7 +1179,7 @@ UNDERSTAND_NO_WORKTREE_REDIRECT=1 node .ua/tmp/scanner-assemble.mjs assemble
 Exit code: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {
   "validation": "passed",
   "totalFiles": 419,
@@ -1231,7 +1231,7 @@ No per-file scanner/import warnings. The mise shim emitted a non-fatal tracked-c
 
 ## Batch 1
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-1.json .ua/tmp/ua-file-extract-results-1.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-1.json .ua/tmp/ua-file-extract-results-1.json`
 
 Exit: 0
 
@@ -1247,7 +1247,7 @@ stderr:
 
 ## Batch 4
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-4.json .ua/tmp/ua-file-extract-results-4.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-4.json .ua/tmp/ua-file-extract-results-4.json`
 
 Exit: 0
 
@@ -1263,7 +1263,7 @@ stderr:
 
 ## Batch 7
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-7.json .ua/tmp/ua-file-extract-results-7.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-7.json .ua/tmp/ua-file-extract-results-7.json`
 
 Exit: 0
 
@@ -1279,7 +1279,7 @@ stderr:
 
 ## Batch 10
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-10.json .ua/tmp/ua-file-extract-results-10.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-10.json .ua/tmp/ua-file-extract-results-10.json`
 
 Exit: 0
 
@@ -1295,7 +1295,7 @@ stderr:
 
 ## Batch 13
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-13.json .ua/tmp/ua-file-extract-results-13.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-13.json .ua/tmp/ua-file-extract-results-13.json`
 
 Exit: 0
 
@@ -1311,7 +1311,7 @@ stderr:
 
 ## Batch 16
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-16.json .ua/tmp/ua-file-extract-results-16.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-16.json .ua/tmp/ua-file-extract-results-16.json`
 
 Exit: 0
 
@@ -1327,7 +1327,7 @@ stderr:
 
 ## Batch 19
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-19.json .ua/tmp/ua-file-extract-results-19.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-19.json .ua/tmp/ua-file-extract-results-19.json`
 
 Exit: 0
 
@@ -1343,7 +1343,7 @@ stderr:
 
 ## Batch 22
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-22.json .ua/tmp/ua-file-extract-results-22.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-22.json .ua/tmp/ua-file-extract-results-22.json`
 
 Exit: 0
 
@@ -1359,7 +1359,7 @@ stderr:
 
 ## Batch 25
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-25.json .ua/tmp/ua-file-extract-results-25.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-25.json .ua/tmp/ua-file-extract-results-25.json`
 
 Exit: 0
 
@@ -1375,7 +1375,7 @@ stderr:
 
 ## Batch 28
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-28.json .ua/tmp/ua-file-extract-results-28.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-28.json .ua/tmp/ua-file-extract-results-28.json`
 
 Exit: 0
 
@@ -1392,7 +1392,7 @@ stderr:
 
 ## Batch 31
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-31.json .ua/tmp/ua-file-extract-results-31.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-31.json .ua/tmp/ua-file-extract-results-31.json`
 
 Exit: 0
 
@@ -1408,7 +1408,7 @@ stderr:
 
 ## Batch 34
 
-Command: `/Users/mryfmo/.local/share/mise/installs/node/26.9.0/bin/node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-34.json .ua/tmp/ua-file-extract-results-34.json`
+Command: `~/.local/share/mise/installs/node/26.9.0/bin/node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-34.json .ua/tmp/ua-file-extract-results-34.json`
 
 Exit: 0
 
@@ -2325,24 +2325,24 @@ Multi-part partitioning preserves inbound tested_by edges with the target's part
 ## Command
 
 ```sh
-for i in 2 5 8 11 14 17 20 23 26 29 32 35; do UNDERSTAND_NO_WORKTREE_REDIRECT=1 node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-$i.json .ua/tmp/ua-file-extract-results-$i.json; test -s .ua/tmp/ua-file-extract-results-$i.json || exit 1; done
+for i in 2 5 8 11 14 17 20 23 26 29 32 35; do UNDERSTAND_NO_WORKTREE_REDIRECT=1 node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-$i.json .ua/tmp/ua-file-extract-results-$i.json; test -s .ua/tmp/ua-file-extract-results-$i.json || exit 1; done
 ```
 
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 ```
 
 ## Command
@@ -2354,7 +2354,7 @@ node .ua/tmp/analyzer-b-validate.cjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 batch 2: PASS files=5 nodes=27 edges=107 parts=1 parser_skipped=0 unreadable=0
 batch 5: PASS files=6 nodes=15 edges=28 parts=1 parser_skipped=0 unreadable=0
 batch 8: PASS files=8 nodes=40 edges=68 parts=1 parser_skipped=0 unreadable=0
@@ -2379,7 +2379,7 @@ node .ua/tmp/analyzer-b-validate.cjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 batch 2: PASS files=5 nodes=30 edges=113 parts=1 parser_skipped=0 unreadable=0
 batch 5: PASS files=6 nodes=15 edges=28 parts=1 parser_skipped=0 unreadable=0
 batch 8: PASS files=8 nodes=40 edges=68 parts=1 parser_skipped=0 unreadable=0
@@ -2404,7 +2404,7 @@ node .ua/tmp/analyzer-b-validate.cjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 batch 2: PASS files=5 nodes=30 edges=113 parts=1 parser_skipped=0 unreadable=0
 batch 5: PASS files=6 nodes=15 edges=28 parts=1 parser_skipped=0 unreadable=0
 batch 8: PASS files=8 nodes=40 edges=68 parts=1 parser_skipped=0 unreadable=0
@@ -2439,24 +2439,24 @@ The only execution warning was mise tracked-config symlink creation denied by th
 ## Command
 
 ```sh
-for n in 3 6 9 12 15 18 21 24 27 30 33 36; do UNDERSTAND_NO_WORKTREE_REDIRECT=1 node /Users/mryfmo/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-$n.json .ua/tmp/ua-file-extract-results-$n.json; test -s .ua/tmp/ua-file-extract-results-$n.json || exit 1; done
+for n in 3 6 9 12 15 18 21 24 27 30 33 36; do UNDERSTAND_NO_WORKTREE_REDIRECT=1 node ~/.understand-anything-plugin/skills/understand/extract-structure.mjs .ua/tmp/ua-file-analyzer-input-$n.json .ua/tmp/ua-file-extract-results-$n.json; test -s .ua/tmp/ua-file-extract-results-$n.json || exit 1; done
 ```
 
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 
 ```
 
@@ -2469,13 +2469,13 @@ node .ua/tmp/analyzer-c-build.cjs (initial generation; semantic coverage guards)
 Exit: 1
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:141
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:141
    if(!summary)throw Error('Missing function summary '+f.path+':'+fn.name);
                ^
 
 Error: Missing function summary home/dot_zshrc:claude-update
-    at Object.<anonymous> (/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:141:22)
+    at Object.<anonymous> (~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:141:22)
     at Module._compile (node:internal/modules/cjs/loader:1956:14)
     at Object..js (node:internal/modules/cjs/loader:2096:10)
     at Module.load (node:internal/modules/cjs/loader:1678:32)
@@ -2497,13 +2497,13 @@ node .ua/tmp/analyzer-c-build.cjs (second generation; semantic coverage guards)
 Exit: 1
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:142
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:142
    if(!summary)throw Error('Missing function summary '+f.path+':'+fn.name);
                ^
 
 Error: Missing function summary tests/unit/test_permgate.py:permission_behavior
-    at Object.<anonymous> (/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:142:22)
+    at Object.<anonymous> (~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:142:22)
     at Module._compile (node:internal/modules/cjs/loader:1956:14)
     at Object..js (node:internal/modules/cjs/loader:2096:10)
     at Module.load (node:internal/modules/cjs/loader:1678:32)
@@ -2525,13 +2525,13 @@ node .ua/tmp/analyzer-c-build.cjs (third generation; semantic target validation)
 Exit: 1
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
-/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:192
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:192
   const link=links[f.path];if(link){const [kind,...targets]=link;for(const target of targets){if(!allFiles.has(target))throw Error('Unknown semantic target '+target);addEdge(root,idOf(target),kind,kind==='documents'||kind==='tested_by'?.5:.6);}}
                                                                                                                        ^
 
 Error: Unknown semantic target scripts/require-crit-review.sh
-    at Object.<anonymous> (/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:192:126)
+    at Object.<anonymous> (~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/tmp/analyzer-c-build.cjs:192:126)
     at Module._compile (node:internal/modules/cjs/loader:1956:14)
     at Object..js (node:internal/modules/cjs/loader:2096:10)
     at Module.load (node:internal/modules/cjs/loader:1678:32)
@@ -2554,7 +2554,7 @@ node .ua/tmp/analyzer-c-validate.cjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 [
   {
     "batchIndex": 3,
@@ -2695,7 +2695,7 @@ mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.c
     "unsupported": 0
   }
 ]
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 batch 3: PASS files=4 nodes=42 edges=139 imports=6 parts=2
 batch 6: PASS files=3 nodes=3 edges=0 imports=0 parts=1
 batch 9: PASS files=4 nodes=4 edges=6 imports=0 parts=1
@@ -2721,7 +2721,7 @@ node .ua/tmp/analyzer-c-validate.cjs (including significant-method coverage)
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 batch 3: PASS files=4 nodes=42 edges=139 imports=6 parts=2
 batch 6: PASS files=3 nodes=3 edges=0 imports=0 parts=1
 batch 9: PASS files=4 nodes=4 edges=6 imports=0 parts=1
@@ -2754,7 +2754,7 @@ Command: `cat .ua/tmp/merge-report.txt`
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 Found 51 batch files (36 logical batches, 9 multi-part):
   batch-1-part-1.json: 21 nodes, 84 edges
   batch-1-part-2.json: 36 nodes, 81 edges
@@ -2823,7 +2823,7 @@ Output: 1399 nodes, 2367 edges
 Imports edge recovery:
   Recovered 0 `imports` edges from importMap (419 entries scanned)
 
-Written to /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/intermediate/assembled-graph.json (1250 KB)
+Written to ~/Workspace/dotfiles/.claude/worktrees/ua-full/.ua/intermediate/assembled-graph.json (1250 KB)
 
 ```
 
@@ -2834,7 +2834,7 @@ Command: `UNDERSTAND_NO_WORKTREE_REDIRECT=1 node .ua/tmp/assemble-review-check.m
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {
   "nodes": 1399,
   "edges": 2367,
@@ -3492,7 +3492,7 @@ Command: `UNDERSTAND_NO_WORKTREE_REDIRECT=1 node .ua/tmp/assemble-review-fix.mjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {
   "result": "PASS",
   "nodes": 1399,
@@ -3551,7 +3551,7 @@ node .ua/tmp/architecture-analyze.cjs .ua/tmp/ua-arch-input.json .ua/tmp/archite
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 PASS structural analysis: 450 nodes, 419 paths, 43 imports, 396 file-level edges.
 ```
 
@@ -3564,7 +3564,7 @@ node .ua/tmp/architecture-assign.cjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 PASS layers=9 assigned=450 unique=450 expected=450
 Bootstrap and Installation: 74
 Managed Configuration: 49
@@ -3587,7 +3587,7 @@ node -e 'const fs=require("fs"),a=require("assert/strict"),x=JSON.parse(fs.readF
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 PASS independent persisted layer coverage: all 450 exact input IDs once, 9 nonempty layers; 419 distinct file paths.
 ```
 
@@ -3613,7 +3613,7 @@ node .ua/tmp/ua-tour-analyze.cjs .ua/tmp/ua-tour-input.json .ua/tmp/ua-tour-resu
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 {"scriptCompleted":true,"nodes":450,"edges":2398,"knownEndpointEdges":396,"bfsStart":"file:flake.nix","bfsNodes":1,"clusters":0,"layers":9}
 
 ```
@@ -3627,7 +3627,7 @@ node .ua/tmp/ua-tour-validate.cjs
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-full/mise.toml ~/.local/state/mise/tracked-configs/c77f67faa8d3dff9: Operation not permitted (os error 1)
 1. Project Overview [1 valid nodes]
 2. Safe Bootstrap Entry [1 valid nodes]
 3. Source and Privacy Boundaries [3 valid nodes]

@@ -27,7 +27,7 @@ PASS disposable Herdr lifecycle
   Claude pane: left, label claude-orchestrator
   Codex pane: right, label codex-worker
   Codex argv included:
-    /Users/mryfmo/.local/share/mise/installs/npm-openai-codex/0.145.0/bin/codex
+    ~/.local/share/mise/installs/npm-openai-codex/0.145.0/bin/codex
     --sandbox workspace-write --profile standard
   Client detach and reattach preserved running agents and the layout.
   Server stop and attach restored the same two-pane layout.

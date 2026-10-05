@@ -1,8 +1,8 @@
 # AGMSG-TASK refkit-P2-A: kit_lint — implement `gherkin_source`, remove the destructive `extract`, fix crash paths, document prerequisites
 
-Covers plan tasks P2-01, P2-07, P2-10 (第 2 部 §4). Findings: E-01, E-08, E-14, E-17, F-03 (第 1 部). Plan file: `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/ai-references-vivid-sparrow.md`. Primary sources you may cite: `/home/moriya/Workspace/dotfiles/.orchestration/reports/P0-04-sources.md` (Gherkin Reference, Python `tomllib`, PEP 723). If a needed fact is not there, fetch the official page yourself with WebFetch and add a dated quote to your report; never rely on memory.
+Covers plan tasks P2-01, P2-07, P2-10 (第 2 部 §4). Findings: E-01, E-08, E-14, E-17, F-03 (第 1 部). Plan file: `~/Workspace/dotfiles/.agents/worklog/claude/ai-references-vivid-sparrow.md`. Primary sources you may cite: `~/Workspace/dotfiles/.orchestration/reports/P0-04-sources.md` (Gherkin Reference, Python `tomllib`, PEP 723). If a needed fact is not there, fetch the official page yourself with WebFetch and add a dated quote to your report; never rely on memory.
 
-Work in `/home/moriya/Workspace/dotfiles-w1` on branch `feat/references-kit-v4`, from the `references/` directory. Run the linter with `uv run --python 3.12 --with gherkin-official --with PyYAML python tools/kit_lint.py …`.
+Work in `~/Workspace/dotfiles-w1` on branch `feat/references-kit-v4`, from the `references/` directory. Run the linter with `uv run --python 3.12 --with gherkin-official --with PyYAML python tools/kit_lint.py …`.
 
 ## Scope (allowed_files)
 `references/tools/kit_lint.py`, `references/tools/README.md` (new), `references/00_README.md` (§使い方 only), `references/03_CONVENTIONS.md` (§2, §8 only), `references/bdd/BDD_GUIDE.md` (§5 「正本の移管」 row only), `references/bdd/BDD_TEMPLATE.md` (front-matter comment for `gherkin_source` only), `references/05_AI_AGENT_INSTRUCTIONS.md` (the `render_mermaid.py` line only), `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/refkit-P2-A.md`.

@@ -1,7 +1,7 @@
 # T66c: Align the Pi gate's read semantics with the workspace-write baseline
 
 task_id: T66c
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (Phase 2/4; second live E2E-π1 finding)
@@ -11,7 +11,7 @@ depends: T66b (accepted)
 
 ## Live evidence (orchestrator, session 01-27-38 pi-e2e)
 
-Blocked calls: read /Users/mryfmo/.agents/skills/agmsg-orchestration/
+Blocked calls: read ~/.agents/skills/agmsg-orchestration/
 SKILL.md; read .../agmsg/SKILL.md; bash compound (pwd && ls && cat ...);
 bash echo test. All four correctly matched T66b rules — the rules
 themselves are misaligned with worker reality: workers must read

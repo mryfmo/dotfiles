@@ -1,8 +1,8 @@
 # T97 validation — raw observed evidence
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
-f46650e0be2b652a18fa0f00ab6888ea8ad131e529a383df5fa1a49bd18d1fb6  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+f46650e0be2b652a18fa0f00ab6888ea8ad131e529a383df5fa1a49bd18d1fb6  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
 $ git status --short
 $ git branch --show-current
 chore/claude-auto-deny
@@ -14,7 +14,7 @@ Fetch exit 0; no output.
 $ gh pr view 253 --json url,state,mergedAt,headRefOid
 {"headRefOid":"4656f19f2183467052aa010e741e4df73bc663d8","mergedAt":null,"state":"OPEN","url":"https://github.com/mryfmo/dotfiles/pull/253"}
 $ git switch -c fix/claude-sandbox-github-calls origin/main
-error: could not lock config file /home/moriya/Workspace/dotfiles/.git/config: File exists
+error: could not lock config file ~/Workspace/dotfiles/.git/config: File exists
 error: unable to write upstream branch configuration
 hint: 
 hint: After fixing the error cause you may try to fix up
@@ -31,8 +31,8 @@ $ git show-ref --verify refs/heads/fix/claude-sandbox-github-calls
 $ git rev-parse HEAD origin/main
 de8b8b2e80fe52e9e74322e6f9ac531609c026d1
 680b29b1e652267530cd90f0a20c5d12191486ed
-$ ls -l /home/moriya/Workspace/dotfiles/.git/config.lock
--r--r--r-- 1 moriya moriya 0 Oct  4 22:04 /home/moriya/Workspace/dotfiles/.git/config.lock
+$ ls -l ~/Workspace/dotfiles/.git/config.lock
+-r--r--r-- 1 moriya moriya 0 Oct  4 22:04 ~/Workspace/dotfiles/.git/config.lock
 $ git diff origin/main --stat
 $ git diff --cached origin/main --stat
 $ git diff --stat
@@ -58,8 +58,8 @@ Make exit 2. The three diff commands produced no output. No render/unit/asset va
 ## Revision 1: authorized recovery
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
-ac076fab47928f50a080a9a256dbd62f0eee8ed6a93eac4ada363d784baa3a38  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+ac076fab47928f50a080a9a256dbd62f0eee8ed6a93eac4ada363d784baa3a38  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
 $ git switch fix/claude-sandbox-github-calls
 Switched to branch 'fix/claude-sandbox-github-calls'
 $ claude --version
@@ -100,8 +100,8 @@ Tool call: Bash
 ```
 Tool result (is_error=false):
 ```text
-warning: unable to access '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.gitmodules': Permission denied
-warning: unable to access '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.gitmodules': Permission denied
+warning: unable to access '~/Workspace/dotfiles/.claude/worktrees/worker-e/.gitmodules': Permission denied
+warning: unable to access '~/Workspace/dotfiles/.claude/worktrees/worker-e/.gitmodules': Permission denied
 ```
 Tool call: Bash
 ```json
@@ -147,7 +147,7 @@ github.com
 ```
 Tool result (is_error=false):
 ```text
-/home/moriya/.local/share/mise/shims/gh
+~/.local/share/mise/shims/gh
 ```
 Tool result (is_error=false):
 ```text
@@ -594,7 +594,7 @@ $ crit status --json
   "daemon": {
     "running": false
   },
-  "review_file": "/home/moriya/.crit/reviews/106a9c018146/review.json",
+  "review_file": "~/.crit/reviews/106a9c018146/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -620,8 +620,8 @@ Gate exit 2: the five evidence artifacts alone exceed its broad-diff threshold. 
 ## Go-ahead and dependency resolution
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
-d91836c1b7b78fede3796ffe927024f44766db459c6825bd05b8b73a1645f461  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+d91836c1b7b78fede3796ffe927024f44766db459c6825bd05b8b73a1645f461  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
 $ gh pr view 253 --json state,mergedAt,mergeCommit,url
 {"mergeCommit":{"oid":"04bce61b47b15d6f748abdce05bfdc5a8943bd98"},"mergedAt":"2026-10-04T14:30:23Z","state":"MERGED","url":"https://github.com/mryfmo/dotfiles/pull/253"}
 $ git fetch origin
@@ -655,35 +655,35 @@ Cache for uv commands: UV_CACHE_DIR=/tmp/t97-uv-cache (within writable temporary
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 Installed 1 package in 2ms
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T69-protocol-docs-unification-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T97-claude-sandbox-github-calls-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T97-claude-sandbox-github-calls-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T97-claude-sandbox-github-calls-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T97-claude-sandbox-github-calls-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T69-protocol-docs-unification-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -719,7 +719,7 @@ $ crit status --json
   "daemon": {
     "running": false
   },
-  "review_file": "/home/moriya/.crit/reviews/2e99b3cd23cf/review.json",
+  "review_file": "~/.crit/reviews/2e99b3cd23cf/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -1216,103 +1216,103 @@ test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_he
 test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
 test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
 test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
-test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2890>
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2890>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9d50>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da200>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9f30>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d87c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d87c0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8130>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8e50>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8d60>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9210>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8f40>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d97b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d97b0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc066c74c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc066c74c0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d94e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d94e0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc066c7e20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc066c7e20>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d95d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d95d0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d98a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d98a0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9b70>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d96c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d96c0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da4d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da4d0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da5c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da5c0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da6b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da6b0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da7a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da7a0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da890>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da980>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064daa70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064daa70>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dab60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dab60>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dac50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dac50>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dad40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dad40>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dae30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dae30>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064daf20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064daf20>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064db010>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064db010>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064db100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064db100>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064db1f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064db1f0>
   with memoryview(b) as view, view.cast("B") as byte_view:
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -1641,34 +1641,34 @@ test_missing_file_exits_2_without_touching_others (test_validate_agent_assets.Ma
 test_a_key_after_json_escaped_whitespace_is_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
 test_a_key_prefix_inside_a_hyphenated_word_is_clean (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
 test_a_long_hyphenated_run_scans_in_linear_time (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
-test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2890>
+test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2890>
   def __enter__(self):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2020>
   def __enter__(self):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1210>
   def __enter__(self):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea15d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea15d0>
   def __enter__(self):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2b60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2b60>
   def __enter__(self):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea0d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea0d60>
   def __enter__(self):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2a70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2a70>
   def __enter__(self):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1d50>
   def __enter__(self):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea07c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea07c0>
   def __enter__(self):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1030>
   def __enter__(self):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -1730,7 +1730,7 @@ test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_
 test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-a7pb515a/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-a7pb515a/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -2172,8 +2172,8 @@ Tool call: Bash
 ```
 Tool result (is_error=false):
 ```text
-/home/moriya/Workspace/dotfiles/.git
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e
+~/Workspace/dotfiles/.git
+~/Workspace/dotfiles/.git/worktrees/worker-e
 ```
 Tool call: Bash
 ```json
@@ -2181,128 +2181,128 @@ Tool call: Bash
 ```
 Tool result (is_error=false):
 ```text
-/home/moriya/Workspace/dotfiles/.git/objects ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/objects/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/objects/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/objects/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/objects/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/refs ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/refs/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/refs/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/refs/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/refs/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/logs ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/logs/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/logs/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/logs/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/logs/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e rw,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/settings.json ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/settings.local.json ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/skills ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/hooks ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/.cc-writes ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/launch.json ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/workflows ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/routines ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/output-styles ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/scheduled_tasks.json ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/loop.md ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.mcp.json ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/commands ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.gitconfig ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.gitmodules ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.bashrc ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.bash_profile ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.zshrc ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.zprofile ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.profile ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.ripgreprc ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.vscode ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.idea ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/orchestrator-review ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-d ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-b ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/env-converge-T10 ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-c ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-sec ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/objects rw,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/objects/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/objects/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/objects/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/objects/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/refs rw,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/refs/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/refs/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/refs/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/refs/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/logs rw,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/logs/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/logs/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/logs/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/logs/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e rw,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/config.worktree ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/commondir ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/hooks ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/config ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/config.lock ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/config.worktree ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/orchestrator-review/config.worktree ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/orchestrator-review/commondir ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-d/config.worktree ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-d/commondir ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-b/config.worktree ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-b/commondir ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/env-converge-T10/config.worktree ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/env-converge-T10/commondir ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-c/config.worktree ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-c/commondir ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-sec/config.worktree ro,nosuid,nodev,relatime
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-sec/commondir ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/objects ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/objects/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/objects/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/objects/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/objects/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/refs ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/refs/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/refs/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/refs/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/refs/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/logs ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/logs/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/logs/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/logs/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/logs/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e rw,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/settings.json ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/settings.local.json ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/skills ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/hooks ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/.cc-writes ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/launch.json ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/workflows ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/routines ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/output-styles ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/scheduled_tasks.json ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/loop.md ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.mcp.json ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/commands ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.gitconfig ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.gitmodules ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.bashrc ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.bash_profile ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.zshrc ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.zprofile ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.profile ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.ripgreprc ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.vscode ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.idea ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/orchestrator-review ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-d ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-b ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/env-converge-T10 ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-c ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-sec ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/objects rw,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/objects/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/objects/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/objects/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/objects/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/refs rw,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/refs/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/refs/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/refs/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/refs/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/logs rw,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/logs/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/logs/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/logs/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/logs/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e rw,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/config.worktree ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-e/commondir ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/hooks ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/config ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/config.lock ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/config.worktree ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/orchestrator-review/config.worktree ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/orchestrator-review/commondir ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-d/config.worktree ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-d/commondir ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-b/config.worktree ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-b/commondir ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/env-converge-T10/config.worktree ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/env-converge-T10/commondir ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-c/config.worktree ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-c/commondir ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-sec/config.worktree ro,nosuid,nodev,relatime
+~/Workspace/dotfiles/.git/worktrees/worker-sec/commondir ro,nosuid,nodev,relatime
 ```
 Tool call: Bash
 ```json
-{"command":"for path in /home/moriya/Workspace/dotfiles/.git/objects /home/moriya/Workspace/dotfiles/.git/refs /home/moriya/Workspace/dotfiles/.git/worktrees/worker-e; do if test -w \"$path\"; then printf '%s writable\\n' \"$path\"; else printf '%s not-writable\\n' \"$path\"; fi; done","description":"Check write access to git and worktree paths"}
+{"command":"for path in ~/Workspace/dotfiles/.git/objects ~/Workspace/dotfiles/.git/refs ~/Workspace/dotfiles/.git/worktrees/worker-e; do if test -w \"$path\"; then printf '%s writable\\n' \"$path\"; else printf '%s not-writable\\n' \"$path\"; fi; done","description":"Check write access to git and worktree paths"}
 ```
 Tool result (is_error=false):
 ```text
-/home/moriya/Workspace/dotfiles/.git/objects writable
-/home/moriya/Workspace/dotfiles/.git/refs writable
-/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e writable
+~/Workspace/dotfiles/.git/objects writable
+~/Workspace/dotfiles/.git/refs writable
+~/Workspace/dotfiles/.git/worktrees/worker-e writable
 ```
 
 Independent reviewer t97_evidence_review re-assessed the P2 against this runtime evidence. Final rw mounts and writable-access checks contradict the finding's static-config inference in the tested Claude 2.1.288 environment. No new-object fetch was performed: this evidence establishes effective write grants, not all possible future git operations.
@@ -2317,42 +2317,42 @@ UV_CACHE_DIR=/tmp/t97-uv-cache
 ```text
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T69-protocol-docs-unification-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-audit-f805ee3.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T97-claude-sandbox-github-calls-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T97-claude-sandbox-github-calls-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T97-claude-sandbox-github-calls-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T97-claude-sandbox-github-calls-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T69-protocol-docs-unification-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-audit-f805ee3.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -2384,8 +2384,8 @@ All exit 0. Product tree clean; seven explicitly permitted task artifacts are le
 ## Acceptance revise round 1
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
-db5c98cf7004ab5bcba5e8fdb2bce81d608e420307f6a27ee9b393cbbe4dc1c0  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+db5c98cf7004ab5bcba5e8fdb2bce81d608e420307f6a27ee9b393cbbe4dc1c0  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
 ```
 Exit 0. Requested exact two-file correction: exception includes gh-backed git push; duplicate blocked-PONG clause removed from SKILL only. Historical first-head outputs above remain preserved. Public fetch stays inside sandbox. No runtime code/config changed.
 
@@ -2424,7 +2424,7 @@ $ crit status --json
   "daemon": {
     "running": false
   },
-  "review_file": "/home/moriya/.crit/reviews/2e99b3cd23cf/review.json",
+  "review_file": "~/.crit/reviews/2e99b3cd23cf/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -3249,10 +3249,10 @@ Main advanced again to f6320f37d3835b37204584e00eb67d0bb41bf577. gh pr update-br
 
 ## Round 1 addendum verified
 
-Command: `sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md`
+Command: `sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md`
 
 ```text
-dc1983079856e574371933204d87913ffbe9db23db70b1a50c4f71fbdd335c18  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+dc1983079856e574371933204d87913ffbe9db23db70b1a50c4f71fbdd335c18  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
 ```
 
 The addendum explicitly says to send RESULT once 5b6b0d9f CI is green, with `bot=none-on-68e19ef7`; no repeated wait is required on update-branch-only heads. Main integration is held by the orchestrator for PR258. No Bot review is claimed on 5b6b0d9f.
@@ -3705,12 +3705,12 @@ test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2172278Z   FILES_T
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2172595Z   DOTFILES_MISE_VERSION: 2026.9.14
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2172852Z   MISE_LOG_LEVEL: info
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2175421Z   MISE_GITHUB_TOKEN: ***
-test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2175741Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2175741Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2176264Z   MISE_YES: 1
-test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2176546Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
-test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2177016Z   FILES_TEST_HOME: /home/runner/work/_temp/dotfiles-files-ubuntu-24.04-client
-test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2177759Z   FILES_TEST_SOURCE: /home/runner/work/_temp/dotfiles-public-source-ubuntu-24.04-client
-test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2178462Z   FILES_TEST_CONFIG: /home/runner/work/_temp/dotfiles-files-ubuntu-24.04-client/.config/chezmoi/chezmoi.yaml
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2176546Z   UV_PYTHON_INSTALL_DIR: ~/work/_temp/uv-python-dir
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2177016Z   FILES_TEST_HOME: ~/work/_temp/dotfiles-files-ubuntu-24.04-client
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2177759Z   FILES_TEST_SOURCE: ~/work/_temp/dotfiles-public-source-ubuntu-24.04-client
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2178462Z   FILES_TEST_CONFIG: ~/work/_temp/dotfiles-files-ubuntu-24.04-client/.config/chezmoi/chezmoi.yaml
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2178967Z ##[endgroup]
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:24.5495296Z 1..3
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:24.7103503Z ok 1 [ubuntu-client] representative manifest
@@ -3951,9 +3951,9 @@ test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.7263455Z ok 21 [ub
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.7899356Z ok 22 [ubuntu-client] main is a no-op when the pinned version is already installed
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9666847Z Stopped processing SimpleCov as a previous error not related to SimpleCov has been detected
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9673694Z Run completed using bashcov 3.3.0 with Bash 5.2, Ruby 3.2.3, and SimpleCov 0.22.0
-test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9674956Z Coverage report generated for unit-test-ubuntu-24.04-client to /home/runner/work/dotfiles/dotfiles/coverage.
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9674956Z Coverage report generated for unit-test-ubuntu-24.04-client to ~/work/dotfiles/dotfiles/coverage.
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9675637Z Line Coverage: 54.79% (309 / 564)
-test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9676323Z Coverage report generated for unit-test-ubuntu-24.04-client to /home/runner/work/dotfiles/dotfiles/coverage/coverage.xml.
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9676323Z Coverage report generated for unit-test-ubuntu-24.04-client to ~/work/dotfiles/dotfiles/coverage/coverage.xml.
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9677044Z Line Coverage: 54.79% (309 / 564)
 test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9733147Z ##[error]Process completed with exit code 1.
 ```
@@ -4040,20 +4040,20 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:36.3259864Z ##[endgroup]
 2026-10-04T16:11:36.3922679Z Syncing repository: mryfmo/dotfiles
 2026-10-04T16:11:36.3923830Z ##[group]Getting Git version info
-2026-10-04T16:11:36.3924083Z Working directory is '/home/runner/work/dotfiles/dotfiles'
+2026-10-04T16:11:36.3924083Z Working directory is '~/work/dotfiles/dotfiles'
 2026-10-04T16:11:36.3924427Z [command]/usr/bin/git version
 2026-10-04T16:11:36.3948199Z git version 2.55.0
 2026-10-04T16:11:36.3967089Z ##[endgroup]
-2026-10-04T16:11:36.3972835Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/71811ba7-5082-4851-97cd-502d9e8d9138/.gitconfig'
-2026-10-04T16:11:36.4013230Z Temporarily overriding HOME='/home/runner/work/_temp/71811ba7-5082-4851-97cd-502d9e8d9138' before making global git config changes
+2026-10-04T16:11:36.3972835Z Copying '~/.gitconfig' to '~/work/_temp/71811ba7-5082-4851-97cd-502d9e8d9138/.gitconfig'
+2026-10-04T16:11:36.4013230Z Temporarily overriding HOME='~/work/_temp/71811ba7-5082-4851-97cd-502d9e8d9138' before making global git config changes
 2026-10-04T16:11:36.4029330Z Adding repository directory to the temporary git global config as a safe directory
-2026-10-04T16:11:36.4030262Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/dotfiles/dotfiles
-2026-10-04T16:11:36.4114608Z Deleting the contents of '/home/runner/work/dotfiles/dotfiles'
+2026-10-04T16:11:36.4030262Z [command]/usr/bin/git config --global --add safe.directory ~/work/dotfiles/dotfiles
+2026-10-04T16:11:36.4114608Z Deleting the contents of '~/work/dotfiles/dotfiles'
 2026-10-04T16:11:36.4117273Z ##[group]Determining repository object format
 2026-10-04T16:11:36.4118766Z ##[endgroup]
 2026-10-04T16:11:36.4119194Z ##[group]Initializing the repository
-2026-10-04T16:11:36.4123121Z [command]/usr/bin/git init /home/runner/work/dotfiles/dotfiles
-2026-10-04T16:11:36.4242508Z Initialized empty Git repository in /home/runner/work/dotfiles/dotfiles/.git/
+2026-10-04T16:11:36.4123121Z [command]/usr/bin/git init ~/work/dotfiles/dotfiles
+2026-10-04T16:11:36.4242508Z Initialized empty Git repository in ~/work/dotfiles/dotfiles/.git/
 2026-10-04T16:11:36.4258034Z [command]/usr/bin/git remote add origin https://github.com/mryfmo/dotfiles
 2026-10-04T16:11:36.4521356Z ##[endgroup]
 2026-10-04T16:11:36.4521824Z ##[group]Disabling automatic garbage collection
@@ -4069,9 +4069,9 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:36.5248674Z Removing includeIf entries pointing to credentials config files
 2026-10-04T16:11:36.5251875Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
 2026-10-04T16:11:36.5277495Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
-2026-10-04T16:11:36.5488523Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
-2026-10-04T16:11:36.5815625Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/dotfiles/dotfiles/.git.path /home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
-2026-10-04T16:11:36.6340513Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/dotfiles/dotfiles/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:36.5488523Z [command]/usr/bin/git config --file ~/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-04T16:11:36.5815625Z [command]/usr/bin/git config --local includeIf.gitdir:~/work/dotfiles/dotfiles/.git.path ~/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:36.6340513Z [command]/usr/bin/git config --local includeIf.gitdir:~/work/dotfiles/dotfiles/.git/worktrees/*.path ~/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
 2026-10-04T16:11:36.7126446Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
 2026-10-04T16:11:36.7617594Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
 2026-10-04T16:11:36.8568629Z ##[endgroup]
@@ -4116,16 +4116,16 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:38.5118755Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
 2026-10-04T16:11:38.5354302Z Removing includeIf entries pointing to credentials config files
 2026-10-04T16:11:38.5356937Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
-2026-10-04T16:11:38.5379429Z includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git.path
-2026-10-04T16:11:38.5379932Z includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git/worktrees/*.path
+2026-10-04T16:11:38.5379429Z includeif.gitdir:~/work/dotfiles/dotfiles/.git.path
+2026-10-04T16:11:38.5379932Z includeif.gitdir:~/work/dotfiles/dotfiles/.git/worktrees/*.path
 2026-10-04T16:11:38.5380315Z includeif.gitdir:/github/workspace/.git.path
 2026-10-04T16:11:38.5380597Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
-2026-10-04T16:11:38.5386512Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git.path
-2026-10-04T16:11:38.5407039Z /home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
-2026-10-04T16:11:38.5414207Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-cedc442e\-76bb\-472c\-8d85\-112d7bc854d2\.config
-2026-10-04T16:11:38.5734030Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git/worktrees/*.path
-2026-10-04T16:11:38.5759367Z /home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
-2026-10-04T16:11:38.5766375Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-cedc442e\-76bb\-472c\-8d85\-112d7bc854d2\.config
+2026-10-04T16:11:38.5386512Z [command]/usr/bin/git config --local --get-all includeif.gitdir:~/work/dotfiles/dotfiles/.git.path
+2026-10-04T16:11:38.5407039Z ~/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:38.5414207Z [command]/usr/bin/git config --local --unset includeif.gitdir:~/work/dotfiles/dotfiles/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-cedc442e\-76bb\-472c\-8d85\-112d7bc854d2\.config
+2026-10-04T16:11:38.5734030Z [command]/usr/bin/git config --local --get-all includeif.gitdir:~/work/dotfiles/dotfiles/.git/worktrees/*.path
+2026-10-04T16:11:38.5759367Z ~/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:38.5766375Z [command]/usr/bin/git config --local --unset includeif.gitdir:~/work/dotfiles/dotfiles/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-cedc442e\-76bb\-472c\-8d85\-112d7bc854d2\.config
 2026-10-04T16:11:38.5923446Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
 2026-10-04T16:11:38.5944099Z /github/runner_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
 2026-10-04T16:11:38.5949548Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-cedc442e\-76bb\-472c\-8d85\-112d7bc854d2\.config
@@ -4133,7 +4133,7 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:38.6040061Z /github/runner_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
 2026-10-04T16:11:38.6087148Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-cedc442e\-76bb\-472c\-8d85\-112d7bc854d2\.config
 2026-10-04T16:11:38.6215908Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
-2026-10-04T16:11:38.6448662Z Removing credentials config '/home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config'
+2026-10-04T16:11:38.6448662Z Removing credentials config '~/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config'
 2026-10-04T16:11:38.6449491Z ##[endgroup]
 2026-10-04T16:11:38.6565763Z ##[group]Run if [ "${OS}" == "macos-14" ]; then
 2026-10-04T16:11:38.6566101Z if [ "${OS}" == "macos-14" ]; then
@@ -4396,24 +4396,24 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:49.0108387Z [command]/usr/bin/curl -fsSL https://github.com/jdx/mise/releases/download/v2026.9.14/mise-v2026.9.14-linux-x64.tar.zst --output /tmp/mise-action-lTYAVg/mise-v2026.9.14-linux-x64.tar.zst
 2026-10-04T16:11:50.2929833Z Verified mise-v2026.9.14-linux-x64.tar.zst against signed checksums
 2026-10-04T16:11:50.2937490Z [command]/usr/bin/tar --zstd -xf /tmp/mise-action-lTYAVg/mise-v2026.9.14-linux-x64.tar.zst -C /tmp/mise-action-lTYAVg
-2026-10-04T16:11:50.4472787Z [command]/usr/bin/mv /tmp/mise-action-lTYAVg/mise/bin/mise /home/runner/.local/share/mise/bin/mise
+2026-10-04T16:11:50.4472787Z [command]/usr/bin/mv /tmp/mise-action-lTYAVg/mise/bin/mise ~/.local/share/mise/bin/mise
 2026-10-04T16:11:50.5095117Z ##[group]Setting env vars
 2026-10-04T16:11:50.5095750Z Setting MISE_LOG_LEVEL=info
 2026-10-04T16:11:50.5098927Z Setting MISE_GITHUB_TOKEN=***
-2026-10-04T16:11:50.5099244Z Setting MISE_TRUSTED_CONFIG_PATHS=/home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:50.5099244Z Setting MISE_TRUSTED_CONFIG_PATHS=~/work/dotfiles/dotfiles
 2026-10-04T16:11:50.5099562Z Setting MISE_YES=1
-2026-10-04T16:11:50.5099793Z Adding /home/runner/.local/share/mise/shims to PATH
+2026-10-04T16:11:50.5099793Z Adding ~/.local/share/mise/shims to PATH
 2026-10-04T16:11:50.5100262Z ##[group]Running mise --version
-2026-10-04T16:11:50.5109167Z [command]/home/runner/.local/share/mise/bin/mise --version
+2026-10-04T16:11:50.5109167Z [command]~/.local/share/mise/bin/mise --version
 2026-10-04T16:11:50.5199219Z 2026.9.14 linux-x64 (2026-09-25)
 2026-10-04T16:11:50.5235394Z ##[endgroup]
 2026-10-04T16:11:50.5235769Z ##[group]Running mise ls
-2026-10-04T16:11:50.5243732Z [command]/home/runner/.local/share/mise/bin/mise ls
+2026-10-04T16:11:50.5243732Z [command]~/.local/share/mise/bin/mise ls
 2026-10-04T16:11:50.5354558Z ##[endgroup]
 2026-10-04T16:11:50.5356279Z ##[group]Exporting mise environment variables
-2026-10-04T16:11:50.5492237Z [command]/home/runner/.local/share/mise/bin/mise env --json
+2026-10-04T16:11:50.5492237Z [command]~/.local/share/mise/bin/mise env --json
 2026-10-04T16:11:50.5596484Z {
-2026-10-04T16:11:50.5597292Z   "PATH": "/home/runner/.local/share/mise/shims:/home/runner/.local/share/mise/bin:/home/runner/.local/share/gem/ruby/3.3.0/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
+2026-10-04T16:11:50.5597292Z   "PATH": "~/.local/share/mise/shims:~/.local/share/mise/bin:~/.local/share/gem/ruby/3.3.0/bin:/snap/bin:~/.local/bin:/opt/pipx_bin:~/.cargo/bin:~/.config/composer/vendor/bin:/usr/local/.ghcup/bin:~/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
 2026-10-04T16:11:50.5598055Z }
 2026-10-04T16:11:50.5608586Z ##[endgroup]
 2026-10-04T16:11:50.5751370Z ##[group]Run mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"
@@ -4433,7 +4433,7 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:50.5804297Z   DOTFILES_MISE_VERSION: 2026.9.14
 2026-10-04T16:11:50.5804448Z   MISE_LOG_LEVEL: info
 2026-10-04T16:11:50.5806365Z   MISE_GITHUB_TOKEN: ***
-2026-10-04T16:11:50.5806545Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:50.5806545Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 2026-10-04T16:11:50.5806748Z   MISE_YES: 1
 2026-10-04T16:11:50.5806870Z ##[endgroup]
 2026-10-04T16:11:50.5927215Z mise trusted ~/work/_temp/statusline-mise
@@ -4529,7 +4529,7 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:53.9386021Z   DOTFILES_MISE_VERSION: 2026.9.14
 2026-10-04T16:11:53.9386163Z   MISE_LOG_LEVEL: info
 2026-10-04T16:11:53.9387559Z   MISE_GITHUB_TOKEN: ***
-2026-10-04T16:11:53.9387740Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:53.9387740Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 2026-10-04T16:11:53.9387931Z   MISE_YES: 1
 2026-10-04T16:11:53.9388048Z ##[endgroup]
 2026-10-04T16:11:54.5749695Z ##[group]Run # shfmt is version-pinned via mise: brew/apt ship divergent versions
@@ -4547,7 +4547,7 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:54.5800379Z   DOTFILES_MISE_VERSION: 2026.9.14
 2026-10-04T16:11:54.5800555Z   MISE_LOG_LEVEL: info
 2026-10-04T16:11:54.5801908Z   MISE_GITHUB_TOKEN: ***
-2026-10-04T16:11:54.5802080Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:54.5802080Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 2026-10-04T16:11:54.5802267Z   MISE_YES: 1
 2026-10-04T16:11:54.5802524Z ##[endgroup]
 2026-10-04T16:11:55.3867998Z mise by @jdx – installing 1 tool
@@ -4574,7 +4574,7 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:56.0012135Z   DOTFILES_MISE_VERSION: 2026.9.14
 2026-10-04T16:11:56.0012403Z   MISE_LOG_LEVEL: info
 2026-10-04T16:11:56.0013812Z   MISE_GITHUB_TOKEN: ***
-2026-10-04T16:11:56.0013986Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:56.0013986Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 2026-10-04T16:11:56.0014319Z   MISE_YES: 1
 2026-10-04T16:11:56.0014434Z ##[endgroup]
 2026-10-04T16:11:56.0418420Z 41 files already formatted
@@ -4593,7 +4593,7 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:57.2982525Z   DOTFILES_MISE_VERSION: 2026.9.14
 2026-10-04T16:11:57.2982779Z   MISE_LOG_LEVEL: info
 2026-10-04T16:11:57.2985523Z   MISE_GITHUB_TOKEN: ***
-2026-10-04T16:11:57.2985828Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:57.2985828Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 2026-10-04T16:11:57.2986184Z   MISE_YES: 1
 2026-10-04T16:11:57.2986375Z ##[endgroup]
 2026-10-04T16:11:59.8515018Z ##[group]Run astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
@@ -4601,7 +4601,7 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:59.8515377Z   enable-cache: false
 2026-10-04T16:11:59.8515512Z   activate-environment: false
 2026-10-04T16:11:59.8515652Z   no-project: false
-2026-10-04T16:11:59.8515811Z   working-directory: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:59.8515811Z   working-directory: ~/work/dotfiles/dotfiles
 2026-10-04T16:11:59.8517436Z   github-token: ***
 2026-10-04T16:11:59.8517739Z   cache-dependency-glob: **/*requirements*.txt
 **/*requirements*.in
@@ -4631,21 +4631,21 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:11:59.8521961Z   DOTFILES_MISE_VERSION: 2026.9.14
 2026-10-04T16:11:59.8522108Z   MISE_LOG_LEVEL: info
 2026-10-04T16:11:59.8523710Z   MISE_GITHUB_TOKEN: ***
-2026-10-04T16:11:59.8523889Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:59.8523889Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 2026-10-04T16:11:59.8524079Z   MISE_YES: 1
 2026-10-04T16:11:59.8524195Z ##[endgroup]
-2026-10-04T16:11:59.9736207Z Trying to find version for uv in: /home/runner/work/dotfiles/dotfiles/uv.toml
-2026-10-04T16:11:59.9737034Z Could not find file: /home/runner/work/dotfiles/dotfiles/uv.toml
-2026-10-04T16:11:59.9737680Z Trying to find version for uv in: /home/runner/work/dotfiles/dotfiles/pyproject.toml
-2026-10-04T16:11:59.9738162Z Could not find file: /home/runner/work/dotfiles/dotfiles/pyproject.toml
+2026-10-04T16:11:59.9736207Z Trying to find version for uv in: ~/work/dotfiles/dotfiles/uv.toml
+2026-10-04T16:11:59.9737034Z Could not find file: ~/work/dotfiles/dotfiles/uv.toml
+2026-10-04T16:11:59.9737680Z Trying to find version for uv in: ~/work/dotfiles/dotfiles/pyproject.toml
+2026-10-04T16:11:59.9738162Z Could not find file: ~/work/dotfiles/dotfiles/pyproject.toml
 2026-10-04T16:11:59.9738640Z Could not determine uv version from uv.toml or pyproject.toml. Falling back to latest.
 2026-10-04T16:11:59.9739588Z Fetching manifest data from https://raw.githubusercontent.com/astral-sh/versions/main/v1/uv.ndjson ...
 2026-10-04T16:12:00.0316173Z Downloading uv from "https://releases.astral.sh/github/uv/releases/download/0.12.23/uv-x86_64-unknown-linux-gnu.tar.gz" ...
-2026-10-04T16:12:00.2243836Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/69fefad3-5699-4253-b442-a46384c805a4 -f /home/runner/work/_temp/abd984c7-9960-4a2b-b113-95d7c918fc73
-2026-10-04T16:12:00.5928969Z Added /home/runner/.local/bin to the path
+2026-10-04T16:12:00.2243836Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C ~/work/_temp/69fefad3-5699-4253-b442-a46384c805a4 -f ~/work/_temp/abd984c7-9960-4a2b-b113-95d7c918fc73
+2026-10-04T16:12:00.5928969Z Added ~/.local/bin to the path
 2026-10-04T16:12:00.5930576Z Added /opt/hostedtoolcache/uv/0.12.23/x86_64 to the path
-2026-10-04T16:12:00.5931329Z Set UV_PYTHON_INSTALL_DIR to /home/runner/work/_temp/uv-python-dir
-2026-10-04T16:12:00.5931572Z Added /home/runner/work/_temp/uv-python-dir to the path
+2026-10-04T16:12:00.5931329Z Set UV_PYTHON_INSTALL_DIR to ~/work/_temp/uv-python-dir
+2026-10-04T16:12:00.5931572Z Added ~/work/_temp/uv-python-dir to the path
 2026-10-04T16:12:00.5950331Z Successfully installed uv version 0.12.23
 2026-10-04T16:12:00.7509042Z ##[group]Run if [[ "${OS}" == ubuntu-* ]]; then
 2026-10-04T16:12:00.7509270Z if [[ "${OS}" == ubuntu-* ]]; then
@@ -4667,9 +4667,9 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:12:00.7560483Z   DOTFILES_MISE_VERSION: 2026.9.14
 2026-10-04T16:12:00.7560628Z   MISE_LOG_LEVEL: info
 2026-10-04T16:12:00.7562013Z   MISE_GITHUB_TOKEN: ***
-2026-10-04T16:12:00.7562186Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:12:00.7562186Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 2026-10-04T16:12:00.7562559Z   MISE_YES: 1
-2026-10-04T16:12:00.7562794Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+2026-10-04T16:12:00.7562794Z   UV_PYTHON_INSTALL_DIR: ~/work/_temp/uv-python-dir
 2026-10-04T16:12:00.7563079Z ##[endgroup]
 2026-10-04T16:12:00.8072128Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
 2026-10-04T16:12:00.8424854Z Hit:6 https://packages.microsoft.com/ubuntu/26.04/prod resolute InRelease
@@ -5656,7 +5656,7 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:15:16.5565450Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
 2026-10-04T16:15:16.5566039Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf75030>
 2026-10-04T16:15:16.5566640Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
-2026-10-04T16:15:16.5597575Z ERROR: /tmp/validate-agent-assets-test-ublea34z/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+2026-10-04T16:15:16.5597575Z ERROR: /tmp/validate-agent-assets-test-ublea34z/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 2026-10-04T16:15:16.5598611Z ok
 2026-10-04T16:15:16.5609463Z test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 2026-10-04T16:15:16.5618937Z test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -5727,9 +5727,9 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:15:16.6053232Z   DOTFILES_MISE_VERSION: 2026.9.14
 2026-10-04T16:15:16.6053381Z   MISE_LOG_LEVEL: info
 2026-10-04T16:15:16.6054925Z   MISE_GITHUB_TOKEN: ***
-2026-10-04T16:15:16.6055124Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:15:16.6055124Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 2026-10-04T16:15:16.6055317Z   MISE_YES: 1
-2026-10-04T16:15:16.6055480Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+2026-10-04T16:15:16.6055480Z   UV_PYTHON_INSTALL_DIR: ~/work/_temp/uv-python-dir
 2026-10-04T16:15:16.6055673Z ##[endgroup]
 2026-10-04T16:15:16.9671495Z ##[group]Run if [ "${OS}" == "macos-14" ]; then
 2026-10-04T16:15:16.9671846Z if [ "${OS}" == "macos-14" ]; then
@@ -5762,12 +5762,12 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:15:16.9736496Z   DOTFILES_MISE_VERSION: 2026.9.14
 2026-10-04T16:15:16.9736648Z   MISE_LOG_LEVEL: info
 2026-10-04T16:15:16.9738230Z   MISE_GITHUB_TOKEN: ***
-2026-10-04T16:15:16.9738406Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:15:16.9738406Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 2026-10-04T16:15:16.9738607Z   MISE_YES: 1
-2026-10-04T16:15:16.9738771Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
-2026-10-04T16:15:16.9739043Z   FILES_TEST_HOME: /home/runner/work/_temp/dotfiles-files-ubuntu-26.04-client
-2026-10-04T16:15:16.9739350Z   FILES_TEST_SOURCE: /home/runner/work/_temp/dotfiles-public-source-ubuntu-26.04-client
-2026-10-04T16:15:16.9739719Z   FILES_TEST_CONFIG: /home/runner/work/_temp/dotfiles-files-ubuntu-26.04-client/.config/chezmoi/chezmoi.yaml
+2026-10-04T16:15:16.9738771Z   UV_PYTHON_INSTALL_DIR: ~/work/_temp/uv-python-dir
+2026-10-04T16:15:16.9739043Z   FILES_TEST_HOME: ~/work/_temp/dotfiles-files-ubuntu-26.04-client
+2026-10-04T16:15:16.9739350Z   FILES_TEST_SOURCE: ~/work/_temp/dotfiles-public-source-ubuntu-26.04-client
+2026-10-04T16:15:16.9739719Z   FILES_TEST_CONFIG: ~/work/_temp/dotfiles-files-ubuntu-26.04-client/.config/chezmoi/chezmoi.yaml
 2026-10-04T16:15:16.9739997Z ##[endgroup]
 2026-10-04T16:15:17.8450117Z 1..3
 2026-10-04T16:15:17.9865863Z ok 1 [ubuntu-client] representative manifest
@@ -6031,10 +6031,10 @@ Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111
 2026-10-04T16:19:04.3989510Z Post job cleanup.
 2026-10-04T16:19:04.4610889Z [command]/usr/bin/git version
 2026-10-04T16:19:04.4645148Z git version 2.55.0
-2026-10-04T16:19:04.4673885Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/98c6ab17-1fe5-4a7c-bf4c-df8e77ad753f/.gitconfig'
-2026-10-04T16:19:04.4680985Z Temporarily overriding HOME='/home/runner/work/_temp/98c6ab17-1fe5-4a7c-bf4c-df8e77ad753f' before making global git config changes
+2026-10-04T16:19:04.4673885Z Copying '~/.gitconfig' to '~/work/_temp/98c6ab17-1fe5-4a7c-bf4c-df8e77ad753f/.gitconfig'
+2026-10-04T16:19:04.4680985Z Temporarily overriding HOME='~/work/_temp/98c6ab17-1fe5-4a7c-bf4c-df8e77ad753f' before making global git config changes
 2026-10-04T16:19:04.4681976Z Adding repository directory to the temporary git global config as a safe directory
-2026-10-04T16:19:04.4686202Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:19:04.4686202Z [command]/usr/bin/git config --global --add safe.directory ~/work/dotfiles/dotfiles
 2026-10-04T16:19:04.4721529Z Removing SSH command configuration
 2026-10-04T16:19:04.4726318Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
 2026-10-04T16:19:04.4767491Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"

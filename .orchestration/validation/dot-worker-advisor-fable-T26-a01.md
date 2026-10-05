@@ -1,6 +1,6 @@
 # Validation: dot-worker-advisor-fable-T26-a01
 
-Worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`, branch `feat/worker-advisor-fable`, head `a63666bb3cbc21f8d5c1cb80e26fe0b450daba56`, PR #188.
+Worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c`, branch `feat/worker-advisor-fable`, head `a63666bb3cbc21f8d5c1cb80e26fe0b450daba56`, PR #188.
 
 ## task_rev check
 
@@ -19,7 +19,7 @@ F...F.F
 FAIL: test_restart_worker_confirms_the_exit_dialog_once (tests.unit.test_herdr_agents.HerdrAgentsTest.test_restart_worker_confirms_the_exit_dialog_once)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1741, in test_restart_worker_confirms_the_exit_dialog_once
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1741, in test_restart_worker_confirms_the_exit_dialog_once
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : Herdr pane w-old:p2 did not reach an interactive shell prompt; refusing agent start.
@@ -29,7 +29,7 @@ AssertionError: 1 != 0 : Herdr pane w-old:p2 did not reach an interactive shell 
 FAIL: test_restart_worker_refuses_when_the_pane_never_reaches_a_shell (tests.unit.test_herdr_agents.HerdrAgentsTest.test_restart_worker_refuses_when_the_pane_never_reaches_a_shell)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1767, in test_restart_worker_refuses_when_the_pane_never_reaches_a_shell
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1767, in test_restart_worker_refuses_when_the_pane_never_reaches_a_shell
     self.assertEqual(calls.count("agent send-keys w-old:p2 Enter"), 1)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1
@@ -38,7 +38,7 @@ AssertionError: 0 != 1
 FAIL: test_restart_worker_repairs_a_legacy_orchestrator_label_on_the_worker_pane (tests.unit.test_herdr_agents.HerdrAgentsTest.test_restart_worker_repairs_a_legacy_orchestrator_label_on_the_worker_pane)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1783, in test_restart_worker_repairs_a_legacy_orchestrator_label_on_the_worker_pane
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1783, in test_restart_worker_repairs_a_legacy_orchestrator_label_on_the_worker_pane
     self.assertLess(
     ~~~~~~~~~~~~~~~^
         calls.index("pane rename w-old:p2 claude-worker"),
@@ -600,7 +600,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-xnn4d9qj/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-xnn4d9qj/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -625,7 +625,7 @@ OK (skipped=1)
 ## Diff stat and head
 
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
  README.md                                          | 10 ++-
  .../.chezmoitemplates/claude-settings-managed.json |  1 +
  home/dot_agents/agent-config.yaml                  |  4 +-
@@ -638,9 +638,9 @@ $ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/
  tests/unit/test_herdr_agents.py                    | 97 +++++++++++++++++++++-
  tests/unit/test_validate_agent_assets.py           | 19 +++++
  11 files changed, 192 insertions(+), 15 deletions(-)
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c log --oneline -1
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c log --oneline -1
 a63666b feat(agents): pin --advisor fable on worker launches via manifest claude.advisor
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c rev-parse HEAD
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c rev-parse HEAD
 a63666bb3cbc21f8d5c1cb80e26fe0b450daba56
 ```
 

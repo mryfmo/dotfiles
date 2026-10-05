@@ -3,8 +3,8 @@
 No acceptance test suite was run. The following are verbatim setup and verification outputs.
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-pr-gate-trust-boundary-T40-a01.md
-1e9c75bba00a75d513dbef370230e35e53d045110702f20866ef06877e3ae59b  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-pr-gate-trust-boundary-T40-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-pr-gate-trust-boundary-T40-a01.md
+1e9c75bba00a75d513dbef370230e35e53d045110702f20866ef06877e3ae59b  ~/Workspace/dotfiles/.orchestration/tasks/dot-pr-gate-trust-boundary-T40-a01.md
 
 $ git show origin/main:.orchestration/tasks/dot-pr-gate-trust-boundary-T40-a01.md | sha256sum
 1e9c75bba00a75d513dbef370230e35e53d045110702f20866ef06877e3ae59b  -
@@ -16,13 +16,13 @@ $ git rev-parse HEAD origin/main
 f45cf73551c449c689a69fa931adb858d4dd08fd
 
 $ git switch -c fix/pr-gate-trust-boundary origin/main
-fatal: Unable to create '/home/moriya/Workspace/dotfiles/.git/worktrees/worker-sec/index.lock': Read-only file system
+fatal: Unable to create '~/Workspace/dotfiles/.git/worktrees/worker-sec/index.lock': Read-only file system
 [exit 128]
 
 $ git switch -c fix/pr-gate-trust-boundary origin/main
 [escalated retry]
 Previous HEAD position was 9184fe4 feat(agents): render the Claude Code sandbox from the shared manifest (supersedes #179) (#211)
-error: could not lock config file /home/moriya/Workspace/dotfiles/.git/config: File exists
+error: could not lock config file ~/Workspace/dotfiles/.git/config: File exists
 error: unable to write upstream branch configuration
 hint:
 hint: After fixing the error cause you may try to fix up
@@ -48,8 +48,8 @@ $ git rev-parse HEAD
 f45cf73551c449c689a69fa931adb858d4dd08fd
 $ git branch --show-current
 pr-gate-trust-boundary
-$ ls -l /home/moriya/Workspace/dotfiles/.git/config.lock
--r--r--r-- 1 moriya moriya 0 Sep 30 05:57 /home/moriya/Workspace/dotfiles/.git/config.lock
+$ ls -l ~/Workspace/dotfiles/.git/config.lock
+-r--r--r-- 1 moriya moriya 0 Sep 30 05:57 ~/Workspace/dotfiles/.git/config.lock
 
 $ type -a git
 git is /usr/bin/git
@@ -61,7 +61,7 @@ $ git reflog -4 --format='%h %gs'
 f45cf73 checkout: moving from 9184fe4aef59256909a6a684b61074c3cfc69e3f to pr-gate-trust-boundary
 9184fe4
 
-$ bash /home/moriya/.agents/skills/agmsg/scripts/send.sh dotfiles codex-security-dot-a006 claude-remediation-dot --body-file /tmp/t40-status.txt
+$ bash ~/.agents/skills/agmsg/scripts/send.sh dotfiles codex-security-dot-a006 claude-remediation-dot --body-file /tmp/t40-status.txt
 Sent to claude-remediation-dot in team dotfiles
 ```
 
@@ -107,7 +107,7 @@ test_rule_symlink_points_at_the_rule (test_pr_feedback.PrIntegrationRuleParityTe
 ERROR: test_collects_the_github_base_with_the_head (test_pr_feedback.PrFeedbackTest.test_collects_the_github_base_with_the_head)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_pr_feedback.py", line 259, in test_collects_the_github_base_with_the_head
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_pr_feedback.py", line 259, in test_collects_the_github_base_with_the_head
     self.assertEqual(self.document["base_ref"], "main")
                      ~~~~~~~~~~~~~^^^^^^^^^^^^
 KeyError: 'base_ref'
@@ -116,7 +116,7 @@ KeyError: 'base_ref'
 FAIL: test_graphql_strings_are_raw_and_only_integers_are_typed (test_pr_feedback.PrFeedbackTest.test_graphql_strings_are_raw_and_only_integers_are_typed)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_pr_feedback.py", line 268, in test_graphql_strings_are_raw_and_only_integers_are_typed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_pr_feedback.py", line 268, in test_graphql_strings_are_raw_and_only_integers_are_typed
     self.assertEqual(gh.call_args.args[0], [
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
         "api", "graphql", "-f", "query=query {}",
@@ -241,7 +241,7 @@ test_small_docs_only_change_does_not_require_review (test_require_crit_review.Re
 FAIL: test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) (metadata='not JSON')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 703, in test_base_fails_closed_when_github_metadata_is_unavailable
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 703, in test_base_fails_closed_when_github_metadata_is_unavailable
     self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -252,7 +252,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) (metadata='{}')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 703, in test_base_fails_closed_when_github_metadata_is_unavailable
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 703, in test_base_fails_closed_when_github_metadata_is_unavailable
     self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -263,7 +263,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) (metadata='{"baseRefOid": "-HEAD"}')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 703, in test_base_fails_closed_when_github_metadata_is_unavailable
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 703, in test_base_fails_closed_when_github_metadata_is_unavailable
     self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -274,7 +274,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) (field='base_sha', value='dc8367b1b5ebb891c05a9c85d5f9bc1dfee3188b')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 645, in test_base_rejects_forged_evidence_metadata
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 645, in test_base_rejects_forged_evidence_metadata
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -285,7 +285,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) (field='base_ref', value='feature')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 645, in test_base_rejects_forged_evidence_metadata
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 645, in test_base_rejects_forged_evidence_metadata
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -296,7 +296,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) (field='base_sha', value=None)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 645, in test_base_rejects_forged_evidence_metadata
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 645, in test_base_rejects_forged_evidence_metadata
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -307,7 +307,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_base_rejects_pr_commits_before_executing_their_collector (test_require_crit_review.ReviewGuardTest.test_base_rejects_pr_commits_before_executing_their_collector) (base='HEAD')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 631, in test_base_rejects_pr_commits_before_executing_their_collector
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 631, in test_base_rejects_pr_commits_before_executing_their_collector
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -318,7 +318,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_base_rejects_pr_commits_before_executing_their_collector (test_require_crit_review.ReviewGuardTest.test_base_rejects_pr_commits_before_executing_their_collector) (base='dc8367b1b5ebb891c05a9c85d5f9bc1dfee3188b')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 632, in test_base_rejects_pr_commits_before_executing_their_collector
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 632, in test_base_rejects_pr_commits_before_executing_their_collector
     self.assertIn("is not bound to PR #1 base", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'is not bound to PR #1 base' not found in "PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json\nNative agent review required before completion.\n- agent lifecycle path changed: scripts/pr-feedback.py\nUse the active agent's review path, not a browser by default:\n- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.\n- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.\n- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.\nRecord a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.\nFor agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.\nEvidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.\nThis local evidence is process evidence, not reviewer authentication.\nThen use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.\nAfter addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.\n"
@@ -327,7 +327,7 @@ AssertionError: 'is not bound to PR #1 base' not found in "PR feedback evidence 
 FAIL: test_base_rejects_pr_commits_before_executing_their_collector (test_require_crit_review.ReviewGuardTest.test_base_rejects_pr_commits_before_executing_their_collector) (base='feature')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 631, in test_base_rejects_pr_commits_before_executing_their_collector
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 631, in test_base_rejects_pr_commits_before_executing_their_collector
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -338,7 +338,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_base_rejects_side_branch_and_advanced_base_containing_pr_commits (test_require_crit_review.ReviewGuardTest.test_base_rejects_side_branch_and_advanced_base_containing_pr_commits) (base='absorbed')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 675, in test_base_rejects_side_branch_and_advanced_base_containing_pr_commits
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 675, in test_base_rejects_side_branch_and_advanced_base_containing_pr_commits
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -349,7 +349,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_base_rejects_side_branch_and_advanced_base_containing_pr_commits (test_require_crit_review.ReviewGuardTest.test_base_rejects_side_branch_and_advanced_base_containing_pr_commits) (base='unrelated')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 675, in test_base_rejects_side_branch_and_advanced_base_containing_pr_commits
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 675, in test_base_rejects_side_branch_and_advanced_base_containing_pr_commits
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -360,7 +360,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_feedback_cannot_hide_an_arbitrary_path_without_base (test_require_crit_review.ReviewGuardTest.test_feedback_cannot_hide_an_arbitrary_path_without_base) (path='scripts/policy.json')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 608, in test_feedback_cannot_hide_an_arbitrary_path_without_base
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 608, in test_feedback_cannot_hide_an_arbitrary_path_without_base
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence format checked only: scripts/policy.json (set BASE=<ref> to bind it to HEAD, re-collect it, and check fixed: commits)
@@ -371,7 +371,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_feedback_cannot_hide_an_arbitrary_path_without_base (test_require_crit_review.ReviewGuardTest.test_feedback_cannot_hide_an_arbitrary_path_without_base) (path='docs/test-pr-feedback.json')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 609, in test_feedback_cannot_hide_an_arbitrary_path_without_base
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 609, in test_feedback_cannot_hide_an_arbitrary_path_without_base
     self.assertIn("evidence must live under .orchestration/validation/ and end with -pr-feedback.json", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'evidence must live under .orchestration/validation/ and end with -pr-feedback.json' not found in "PR feedback evidence format checked only: docs/test-pr-feedback.json (set BASE=<ref> to bind it to HEAD, re-collect it, and check fixed: commits)\nNative agent review required before completion.\n- agent lifecycle path changed: scripts/policy.json\nUse the active agent's review path, not a browser by default:\n- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.\n- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.\n- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.\nRecord a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.\nFor agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.\nEvidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.\nThis local evidence is process evidence, not reviewer authentication.\nThen use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.\nAfter addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.\n"
@@ -380,7 +380,7 @@ AssertionError: 'evidence must live under .orchestration/validation/ and end wit
 FAIL: test_feedback_cannot_hide_an_arbitrary_path_without_base (test_require_crit_review.ReviewGuardTest.test_feedback_cannot_hide_an_arbitrary_path_without_base) (path='.orchestration/validation/feedback.json')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 609, in test_feedback_cannot_hide_an_arbitrary_path_without_base
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 609, in test_feedback_cannot_hide_an_arbitrary_path_without_base
     self.assertIn("evidence must live under .orchestration/validation/ and end with -pr-feedback.json", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'evidence must live under .orchestration/validation/ and end with -pr-feedback.json' not found in "PR feedback evidence format checked only: .orchestration/validation/feedback.json (set BASE=<ref> to bind it to HEAD, re-collect it, and check fixed: commits)\nNative agent review required before completion.\n- agent lifecycle path changed: scripts/policy.json\nUse the active agent's review path, not a browser by default:\n- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.\n- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.\n- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.\nRecord a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.\nFor agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.\nEvidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.\nThis local evidence is process evidence, not reviewer authentication.\nThen use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.\nAfter addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.\n"
@@ -389,7 +389,7 @@ AssertionError: 'evidence must live under .orchestration/validation/ and end wit
 FAIL: test_feedback_cannot_hide_an_arbitrary_path_without_base (test_require_crit_review.ReviewGuardTest.test_feedback_cannot_hide_an_arbitrary_path_without_base) (path='.orchestration/validation/../test-pr-feedback.json')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 609, in test_feedback_cannot_hide_an_arbitrary_path_without_base
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 609, in test_feedback_cannot_hide_an_arbitrary_path_without_base
     self.assertIn("evidence must live under .orchestration/validation/ and end with -pr-feedback.json", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'evidence must live under .orchestration/validation/ and end with -pr-feedback.json' not found in "PR feedback evidence format checked only: .orchestration/validation/../test-pr-feedback.json (set BASE=<ref> to bind it to HEAD, re-collect it, and check fixed: commits)\nNative agent review required before completion.\n- agent lifecycle path changed: scripts/policy.json\nUse the active agent's review path, not a browser by default:\n- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.\n- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.\n- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.\nRecord a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.\nFor agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.\nEvidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.\nThis local evidence is process evidence, not reviewer authentication.\nThen use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.\nAfter addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.\n"
@@ -398,7 +398,7 @@ AssertionError: 'evidence must live under .orchestration/validation/ and end wit
 FAIL: test_feedback_symlink_cannot_hide_a_file_outside_validation (test_require_crit_review.ReviewGuardTest.test_feedback_symlink_cannot_hide_a_file_outside_validation)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 617, in test_feedback_symlink_cannot_hide_a_file_outside_validation
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 617, in test_feedback_symlink_cannot_hide_a_file_outside_validation
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence format checked only: /tmp/crit-guard-test-8b5fk_dd/.orchestration/validation/test-pr-feedback.json (set BASE=<ref> to bind it to HEAD, re-collect it, and check fixed: commits)
@@ -409,7 +409,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_missing_base_collector_falls_back_only_after_binding (test_require_crit_review.ReviewGuardTest.test_missing_base_collector_falls_back_only_after_binding)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 692, in test_missing_base_collector_falls_back_only_after_binding
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 692, in test_missing_base_collector_falls_back_only_after_binding
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -516,7 +516,7 @@ $ crit status --json
   "daemon": {
     "running": false
   },
-  "review_file": "/home/moriya/.crit/reviews/16050b901a9b/review.json",
+  "review_file": "~/.crit/reviews/16050b901a9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -1220,7 +1220,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-b2r4_fhh/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-b2r4_fhh/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1318,7 +1318,7 @@ test_small_docs_only_change_does_not_require_review (test_require_crit_review.Re
 FAIL: test_advanced_base_cannot_delete_collector_to_trigger_head_fallback (test_require_crit_review.ReviewGuardTest.test_advanced_base_cannot_delete_collector_to_trigger_head_fallback)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 669, in test_advanced_base_cannot_delete_collector_to_trigger_head_fallback
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 669, in test_advanced_base_cannot_delete_collector_to_trigger_head_fallback
     self.assertFalse((self.temp_dir / "executed").exists())
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false
@@ -1327,7 +1327,7 @@ AssertionError: True is not false
 FAIL: test_advanced_base_cannot_supply_an_untrusted_collector (test_require_crit_review.ReviewGuardTest.test_advanced_base_cannot_supply_an_untrusted_collector)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 652, in test_advanced_base_cannot_supply_an_untrusted_collector
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 652, in test_advanced_base_cannot_supply_an_untrusted_collector
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -1338,7 +1338,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_feedback_does_not_exclude_symlink_aliases_outside_validation (test_require_crit_review.ReviewGuardTest.test_feedback_does_not_exclude_symlink_aliases_outside_validation)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 624, in test_feedback_does_not_exclude_symlink_aliases_outside_validation
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 624, in test_feedback_does_not_exclude_symlink_aliases_outside_validation
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence format checked only: .orchestration/validation/test-pr-feedback.json (set BASE=<ref> to bind it to HEAD, re-collect it, and check fixed: commits)
@@ -1349,7 +1349,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_feedback_path_itself_must_be_under_validation (test_require_crit_review.ReviewGuardTest.test_feedback_path_itself_must_be_under_validation)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 632, in test_feedback_path_itself_must_be_under_validation
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 632, in test_feedback_path_itself_must_be_under_validation
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence format checked only: /tmp/crit-guard-test-73nnshq6/scripts/policy.json (set BASE=<ref> to bind it to HEAD, re-collect it, and check fixed: commits)
@@ -2145,7 +2145,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-uga9sakz/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-uga9sakz/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -2174,11 +2174,11 @@ OK (skipped=1)
 Task digest verified against the dispatched file. The earlier blocked setup report is superseded by revision 3 and the successful restoration of the required branch. All test output above is preserved verbatim.
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-pr-gate-trust-boundary-T40-a01.md
-dc06f4776657a2f229be66992fd2fb21ebe1e29061f7e5dfc61e21c138ca3424  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-pr-gate-trust-boundary-T40-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-pr-gate-trust-boundary-T40-a01.md
+dc06f4776657a2f229be66992fd2fb21ebe1e29061f7e5dfc61e21c138ca3424  ~/Workspace/dotfiles/.orchestration/tasks/dot-pr-gate-trust-boundary-T40-a01.md
 
 $ git add scripts/require-crit-review.py scripts/pr-feedback.py tests/unit/test_require_crit_review.py tests/unit/test_pr_feedback.py home/dot_config/claude/rules/pr-integration.md
-fatal: Unable to create '/home/moriya/Workspace/dotfiles/.git/worktrees/worker-sec/index.lock': Read-only file system
+fatal: Unable to create '~/Workspace/dotfiles/.git/worktrees/worker-sec/index.lock': Read-only file system
 [exit 128; before revision 3 was received/read]
 [Same command retried with revision-2-authorized escalation: no output, exit 0. No further Git mutation after revision 3 was read.]
 
@@ -2190,9 +2190,9 @@ a5f33eede3feb15c59031c5af904bf1c3838649b
 $ git log -1 --oneline origin/main
 a5f33ee chore(orchestration): T45 accepted and merged (#216 → 119fdc3, plain-start visibility and on-demand worker seating); T46 dispatched; six T45 audits
 
-$ python3 /home/moriya/Workspace/dotfiles/.claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] T40: the PR integration gate binds --base to the PR recorded GitHub base, excludes from diff sizing only a .orchestration/validation/*-pr-feedback.json evidence file, and passes GraphQL string variables raw (-f), closing the three findings deferred from T38 (operator 2026-09-29).'
-[cwd /home/moriya/Workspace/dotfiles]
-contextdb: [Errno 30] Read-only file system: '/home/moriya/Workspace/dotfiles/.claude/contextdb/state/.writer.lock'
+$ python3 ~/Workspace/dotfiles/.claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] T40: the PR integration gate binds --base to the PR recorded GitHub base, excludes from diff sizing only a .orchestration/validation/*-pr-feedback.json evidence file, and passes GraphQL string variables raw (-f), closing the three findings deferred from T38 (operator 2026-09-29).'
+[cwd ~/Workspace/dotfiles]
+contextdb: [Errno 30] Read-only file system: '~/Workspace/dotfiles/.claude/contextdb/state/.writer.lock'
 [exit 2]
 [Same command and cwd, escalated retry]
 fdccdfbf-e3b3-4452-850d-c66b0a6df852
@@ -2300,7 +2300,7 @@ remote:      https://github.com/mryfmo/dotfiles/pull/new/fix/pr-gate-trust-bound
 remote: 
 To github.com:mryfmo/dotfiles.git
  * [new branch]      fix/pr-gate-trust-boundary -> fix/pr-gate-trust-boundary
-error: could not lock config file /home/moriya/Workspace/dotfiles/.git/config: File exists
+error: could not lock config file ~/Workspace/dotfiles/.git/config: File exists
 error: unable to write upstream branch configuration
 hint: 
 hint: After fixing the error cause you may try to fix up
@@ -3061,7 +3061,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-xq70s79i/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-xq70s79i/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -3081,7 +3081,7 @@ test_workflows_have_no_job_level_permission_overrides (test_workflow_security.Wo
 ERROR: test_add_worker_derives_the_default_herdr_socket_for_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_derives_the_default_herdr_socket_for_spawn)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_herdr_agents.py", line 2741, in test_add_worker_derives_the_default_herdr_socket_for_spawn
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_herdr_agents.py", line 2741, in test_add_worker_derives_the_default_herdr_socket_for_spawn
     server.bind(str(socket_path))
     ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
 PermissionError: [Errno 1] Operation not permitted
@@ -3846,7 +3846,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-ehw28tu6/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-ehw28tu6/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -3898,9 +3898,9 @@ test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:52.5640180Z   GIT
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:52.5640390Z   FILES_TEST_CHEZMOI: /opt/homebrew/bin/chezmoi
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:52.5640610Z   MISE_LOG_LEVEL: info
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:52.5642760Z   MISE_GITHUB_TOKEN: ***
-test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:52.5642990Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/dotfiles/dotfiles
+test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:52.5642990Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:52.5643290Z   MISE_YES: 1
-test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:52.5643530Z   UV_PYTHON_INSTALL_DIR: /Users/runner/work/_temp/uv-python-dir
+test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:52.5643530Z   UV_PYTHON_INSTALL_DIR: ~/work/_temp/uv-python-dir
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:52.5643830Z ##[endgroup]
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:53.1364500Z uv run python -m unittest discover -s tests/unit -v
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:00:54.4425210Z test_bounded_scan_finishes_under_wall_limit (test_agent_session_staleness.AgentSessionStalenessTest.test_bounded_scan_finishes_under_wall_limit) ... ok
@@ -4618,7 +4618,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.7329870Z test_
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.7419870Z test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.7551930Z test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.7641340Z test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.7728550Z test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/s6/5hzmn6lx4dz5nxs7k_0slzph0000gn/T/validate-agent-assets-test-1a5ari2x/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.7728550Z test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/s6/5hzmn6lx4dz5nxs7k_0slzph0000gn/T/validate-agent-assets-test-1a5ari2x/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.7730870Z ok
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.7819390Z test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.7909370Z test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -4638,7 +4638,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8223530Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8224120Z FAIL: test_feedback_path_itself_must_be_under_validation (test_require_crit_review.ReviewGuardTest.test_feedback_path_itself_must_be_under_validation)
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8224730Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8225030Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8233600Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_require_crit_review.py", line 633, in test_feedback_path_itself_must_be_under_validation
+test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8233600Z   File "~/work/dotfiles/dotfiles/tests/unit/test_require_crit_review.py", line 633, in test_feedback_path_itself_must_be_under_validation
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8238140Z     self.assertIn("evidence must live under", result.stdout)
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8238500Z     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8239280Z AssertionError: 'evidence must live under' not found in 'PR feedback evidence is incomplete; run scripts/pr-feedback.py and disposition every item.\n- PR_FEEDBACK_EVIDENCE must point to a repo-local JSON file\n'
@@ -4647,7 +4647,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8240020Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8240660Z FAIL: test_feedback_symlink_cannot_hide_a_file_outside_validation (test_require_crit_review.ReviewGuardTest.test_feedback_symlink_cannot_hide_a_file_outside_validation)
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8241290Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8241570Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8242260Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_require_crit_review.py", line 618, in test_feedback_symlink_cannot_hide_a_file_outside_validation
+test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8242260Z   File "~/work/dotfiles/dotfiles/tests/unit/test_require_crit_review.py", line 618, in test_feedback_symlink_cannot_hide_a_file_outside_validation
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8242940Z     self.assertIn("evidence must live under", result.stdout)
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8243240Z     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-01T21:04:05.8243910Z AssertionError: 'evidence must live under' not found in 'PR feedback evidence is incomplete; run scripts/pr-feedback.py and disposition every item.\n- PR_FEEDBACK_EVIDENCE must point to a repo-local JSON file\n'
@@ -4723,7 +4723,7 @@ test_small_docs_only_change_does_not_require_review (test_require_crit_review.Re
 FAIL: test_feedback_accepts_absolute_path_through_a_repository_parent_alias (test_require_crit_review.ReviewGuardTest.test_feedback_accepts_absolute_path_through_a_repository_parent_alias)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 646, in test_feedback_accepts_absolute_path_through_a_repository_parent_alias
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 646, in test_feedback_accepts_absolute_path_through_a_repository_parent_alias
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : PR feedback evidence is incomplete; run scripts/pr-feedback.py and disposition every item.
@@ -5361,18 +5361,18 @@ test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:51.9014359Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:51.9014595Z   MISE_LOG_LEVEL: info
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:51.9016883Z   MISE_GITHUB_TOKEN: ***
-test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:51.9017152Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:51.9017152Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:51.9017613Z   MISE_YES: 1
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:51.9017890Z ##[endgroup]
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4915984Z Traceback (most recent call last):
-test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4916503Z   File "/home/runner/work/dotfiles/dotfiles/scripts/check-statusline-tools.py", line 66, in <module>
+test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4916503Z   File "~/work/dotfiles/dotfiles/scripts/check-statusline-tools.py", line 66, in <module>
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4916892Z     main()
-test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4917214Z   File "/home/runner/work/dotfiles/dotfiles/scripts/check-statusline-tools.py", line 58, in main
+test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4917214Z   File "~/work/dotfiles/dotfiles/scripts/check-statusline-tools.py", line 58, in main
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4936061Z     require_version(binary, EXPECTED_VERSIONS[name])
-test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4936766Z   File "/home/runner/work/dotfiles/dotfiles/scripts/check-statusline-tools.py", line 43, in require_version
+test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4936766Z   File "~/work/dotfiles/dotfiles/scripts/check-statusline-tools.py", line 43, in require_version
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4937268Z     output = run([str(binary), "--version"]).stdout.strip()
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4937539Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4937918Z   File "/home/runner/work/dotfiles/dotfiles/scripts/check-statusline-tools.py", line 25, in run
+test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4937918Z   File "~/work/dotfiles/dotfiles/scripts/check-statusline-tools.py", line 25, in run
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4938290Z     result = subprocess.run(
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4938521Z              ^^^^^^^^^^^^^^^
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4938753Z   File "/usr/lib/python3.12/subprocess.py", line 550, in run
@@ -5385,7 +5385,7 @@ test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4940889Z     self._check_timeout(endtime, orig_timeout, stdout, stderr)
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4941222Z   File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4941507Z     raise TimeoutExpired(
-test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4942043Z subprocess.TimeoutExpired: Command '['/home/runner/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline', '--version']' timed out after 5 seconds
+test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.4942043Z subprocess.TimeoutExpired: Command '['~/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline', '--version']' timed out after 5 seconds
 test (ubuntu-latest, server)	Smoke-test statusline tools without network	2026-10-01T21:13:57.5066995Z ##[error]Process completed with exit code 1.
 
 [exit 0]
@@ -6142,7 +6142,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-l8qjns8m/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-l8qjns8m/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -6538,7 +6538,7 @@ test_small_docs_only_change_does_not_require_review (test_require_crit_review.Re
 FAIL: test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent (test_require_crit_review.ReviewGuardTest.test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 810, in test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 810, in test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -6549,7 +6549,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_github_lookup_ignores_environment_repository_override (test_require_crit_review.ReviewGuardTest.test_github_lookup_ignores_environment_repository_override)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 819, in test_github_lookup_ignores_environment_repository_override
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 819, in test_github_lookup_ignores_environment_repository_override
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : PR feedback evidence is incomplete; run scripts/pr-feedback.py and disposition every item.
@@ -6560,7 +6560,7 @@ AssertionError: 1 != 0 : PR feedback evidence is incomplete; run scripts/pr-feed
 FAIL: test_github_lookup_rejects_evidence_from_another_repository (test_require_crit_review.ReviewGuardTest.test_github_lookup_rejects_evidence_from_another_repository)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 830, in test_github_lookup_rejects_evidence_from_another_repository
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-sec/tests/unit/test_require_crit_review.py", line 830, in test_github_lookup_rejects_evidence_from_another_repository
     self.assertEqual(result.returncode, 1, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -7441,7 +7441,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-gp8b0042/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-gp8b0042/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok

@@ -2,7 +2,7 @@
 
 - worker: `claude-standard-dot-a005` (Claude Code, acting as worker per dispatch note)
 - orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c`
 - branch: `feat/mosh-and-asset-bumps`, rebased onto `origin/main` = `6846ab5`
 - task_rev: rev2 sha256 `b58d82ea8c8a5d329edc9cc29ba54d3e066817f469af012795e9f8da0cea6b33`,
   verified at `12bbe77`. The rev1 `f7438715…` was verified at `0c8d507` when work started.

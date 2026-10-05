@@ -1,6 +1,6 @@
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -11,10 +11,10 @@ session id: 01a0e6c6-80b3-7900-8f45-17b01f54bd38
 --------
 user
 commit 1d0883f
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md; git status --short; git show --stat --oneline 1d0883f; cat AGENTS.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat ~/.agents/skills/agmsg-orchestration/SKILL.md; git status --short; git show --stat --oneline 1d0883f; cat AGENTS.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 ---
@@ -424,7 +424,7 @@ Standing review rules for the auditor (`codex --profile audit review --commit <s
 - Leave formatting-only feedback to CI unless it affects behavior.
 
 exec
-/usr/bin/zsh -lc 'git rev-parse HEAD; git show --format=fuller 1d0883f; for d in . home home/dot_local home/dot_local/bin home/dot_local/bin/common tests tests/unit; do for f in AGENTS.override.md AGENTS.md; do if test -f "$d/$f"; then printf '"'\\n--- %s ---\\n' \""'$d/$f"; nl -ba "$d/$f"; fi; done; done; test ! -f .ua/meta.json || cat .ua/meta.json' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'git rev-parse HEAD; git show --format=fuller 1d0883f; for d in . home home/dot_local home/dot_local/bin home/dot_local/bin/common tests tests/unit; do for f in AGENTS.override.md AGENTS.md; do if test -f "$d/$f"; then printf '"'\\n--- %s ---\\n' \""'$d/$f"; nl -ba "$d/$f"; fi; done; done; test ! -f .ua/meta.json || cat .ua/meta.json' in ~/Workspace/dotfiles
  succeeded in 0ms:
 1d0883ff915ae48fa146729a62a77fb345a3c714
 commit 1d0883ff915ae48fa146729a62a77fb345a3c714
@@ -832,7 +832,7 @@ index 09ec6fe..a69dff5 100644
 
 **Investigating JSON output bug**
 exec
-/usr/bin/zsh -lc "cat /home/moriya/.agents/skills/shdoc-shell-docs/SKILL.md; sed -n '800,965p' home/dot_local/bin/common/executable_herdr-agents; sed -n '1980,2075p' tests/unit/test_herdr_agents.py; tail -n 100 .orchestration/validation/dot-audit-verdict-gate-T33b-a01-audit-rev3.md; cat .orchestration/validation/dot-audit-verdict-gate-T33b-a01-live-e2e.md" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "cat ~/.agents/skills/shdoc-shell-docs/SKILL.md; sed -n '800,965p' home/dot_local/bin/common/executable_herdr-agents; sed -n '1980,2075p' tests/unit/test_herdr_agents.py; tail -n 100 .orchestration/validation/dot-audit-verdict-gate-T33b-a01-audit-rev3.md; cat .orchestration/validation/dot-audit-verdict-gate-T33b-a01-live-e2e.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: shdoc-shell-docs
@@ -1217,7 +1217,7 @@ for name,evidence,returncode,verdict in cases:
  assert r.returncode==returncode and \"Audit verdict: \"+verdict+\"\\n\" in r.stdout,(name,r.returncode,r.stdout,r.stderr)
  print(name+\": PASS (\"+verdict+\")\")
 print(\"bash syntax and all \"+str(len(cases))+\" committed verdict fixtures passed\")
-'" in /home/moriya/Workspace/dotfiles
+'" in ~/Workspace/dotfiles
  succeeded in 42ms:
 a: PASS (correct)
 h: PASS (blocked)
@@ -1237,7 +1237,7 @@ No actionable defects introduced by a5caef8 were found. The parser matches the d
 No actionable defects introduced by a5caef8 were found. The parser matches the documented last-verdict behavior; Bash syntax validation and all 11 committed verdict fixtures passed in isolation. The full integration suite was not run.
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -1248,10 +1248,10 @@ session id: 01a0e6c6-80b3-7900-8f45-17b01f54bd38
 --------
 user
 commit 1d0883f
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md; git status --short; git show --stat --oneline 1d0883f; cat AGENTS.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat ~/.agents/skills/agmsg-orchestration/SKILL.md; git status --short; git show --stat --oneline 1d0883f; cat AGENTS.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 ---
@@ -1661,7 +1661,7 @@ Standing review rules for the auditor (`codex --profile audit review --commit <s
 - Leave formatting-only feedback to CI unless it affects behavior.
 
 exec
-/usr/bin/zsh -lc 'git rev-parse HEAD; git show --format=fuller 1d0883f; for d in . home home/dot_local home/dot_local/bin home/dot_local/bin/common tests tests/unit; do for f in AGENTS.override.md AGENTS.md; do if test -f "$d/$f"; then printf '"'\\n--- %s ---\\n' \""'$d/$f"; nl -ba "$d/$f"; fi; done; done; test ! -f .ua/meta.json || cat .ua/meta.json' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'git rev-parse HEAD; git show --format=fuller 1d0883f; for d in . home home/dot_local home/dot_local/bin home/dot_local/bin/common tests tests/unit; do for f in AGENTS.override.md AGENTS.md; do if test -f "$d/$f"; then printf '"'\\n--- %s ---\\n' \""'$d/$f"; nl -ba "$d/$f"; fi; done; done; test ! -f .ua/meta.json || cat .ua/meta.json' in ~/Workspace/dotfiles
  succeeded in 0ms:
 1d0883ff915ae48fa146729a62a77fb345a3c714
 commit 1d0883ff915ae48fa146729a62a77fb345a3c714
@@ -2072,7 +2072,7 @@ index 09ec6fe..a69dff5 100644
 **Assessing final verdict handling**
 **Reviewing shell heredoc usage**
 exec
-/usr/bin/zsh -lc "head -n 65 home/dot_local/bin/common/executable_herdr-agents; tail -n 30 .orchestration/validation/dot-audit-verdict-gate-T33b-a01-audit-rev3.md; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86..HEAD | head -n 30; git diff --quiet; printf 'tracked_worktree_diff_exit=%s\\n' \""'$?"; bash -n home/dot_local/bin/common/executable_herdr-agents' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "head -n 65 home/dot_local/bin/common/executable_herdr-agents; tail -n 30 .orchestration/validation/dot-audit-verdict-gate-T33b-a01-audit-rev3.md; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86..HEAD | head -n 30; git diff --quiet; printf 'tracked_worktree_diff_exit=%s\\n' \""'$?"; bash -n home/dot_local/bin/common/executable_herdr-agents' in ~/Workspace/dotfiles
  succeeded in 0ms:
 #!/usr/bin/env bash
 
@@ -2151,7 +2151,7 @@ for name,evidence,returncode,verdict in cases:
  assert r.returncode==returncode and \"Audit verdict: \"+verdict+\"\\n\" in r.stdout,(name,r.returncode,r.stdout,r.stderr)
  print(name+\": PASS (\"+verdict+\")\")
 print(\"bash syntax and all \"+str(len(cases))+\" committed verdict fixtures passed\")
-'" in /home/moriya/Workspace/dotfiles
+'" in ~/Workspace/dotfiles
  succeeded in 42ms:
 a: PASS (correct)
 h: PASS (blocked)
@@ -2221,7 +2221,7 @@ print(\"Existing parser fixtures:\",len(cases),\"passed\")
 for name,final in [(\"quoted success with missing conclusion\",\"The faulty fixture contains:\\n"'```'"\\nVerdict: correct\\n"'```'"\\n[P1] This lets an unassessed change pass.\"),(\"quoted success followed by blocked review\",\"The expected marker would be:\\n"'```'"\\nVerdict: correct\\n"'```'"\\nReview blocked: the commit could not be resolved.\")]:
  r=subprocess.run([\"bash\",\"-c\",script],input=fixture.transcript(final),capture_output=True,text=True)
  print(name,\"exit=\",r.returncode,r.stdout.strip())
-'" in /home/moriya/Workspace/dotfiles
+'" in ~/Workspace/dotfiles
  succeeded in 57ms:
 Existing parser fixtures: 11 passed
 quoted success with missing conclusion exit= 0 Audit verdict: correct
@@ -2233,11 +2233,11 @@ The 11 committed parser fixtures pass in isolation, but additional cases demonst
 
 Review comment:
 
-- [P2] Require the verdict to conclude the final review message — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:950-953
+- [P2] Require the verdict to conclude the final review message — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:950-953
   If the auditor quotes `Verdict: correct` in a fenced example but omits its own concluding verdict, this search accepts the quoted line and exits successfully—even when the message subsequently says `Review blocked: ...`. Both cases reproduce with the added transcript fixture. This violates the final-line contract in [AGENTS.md:69](AGENTS.md#L69) and bypasses the intended missing/blocked gate. Validate the concluding verdict outside quoted content rather than accepting the last matching line anywhere in the message.
 The 11 committed parser fixtures pass in isolation, but additional cases demonstrate that quoted success verdicts can incorrectly approve missing or blocked reviews.
 
 Review comment:
 
-- [P2] Require the verdict to conclude the final review message — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:950-953
+- [P2] Require the verdict to conclude the final review message — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:950-953
   If the auditor quotes `Verdict: correct` in a fenced example but omits its own concluding verdict, this search accepts the quoted line and exits successfully—even when the message subsequently says `Review blocked: ...`. Both cases reproduce with the added transcript fixture. This violates the final-line contract in [AGENTS.md:69](AGENTS.md#L69) and bypasses the intended missing/blocked gate. Validate the concluding verdict outside quoted content rather than accepting the last matching line anywhere in the message.

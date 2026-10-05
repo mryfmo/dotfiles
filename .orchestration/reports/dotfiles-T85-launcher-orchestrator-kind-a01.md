@@ -65,7 +65,7 @@ The timestamped wait for the final head ends at "review found" (verbatim in the 
 ## CompactionDB
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T85 (operator 2026-10-03): `herdr-agents` reads `HERDR_AGENTS_ORCHESTRATOR_KIND` (manifest `orchestrator_kind`); under `codex` the Claude-pair modes refuse with exit 2 and point at `codex-orchestrate`; `--directive` prints the regime directive line without Herdr so a Codex orchestrator'"'"'s first turn can carry it.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T85 (operator 2026-10-03): `herdr-agents` reads `HERDR_AGENTS_ORCHESTRATOR_KIND` (manifest `orchestrator_kind`); under `codex` the Claude-pair modes refuse with exit 2 and point at `codex-orchestrate`; `--directive` prints the regime directive line without Herdr so a Codex orchestrator'"'"'s first turn can carry it.'
 d8bbd1c0-537b-49c9-a9a3-d7278a5be1f8
 [exit 0]
 ```

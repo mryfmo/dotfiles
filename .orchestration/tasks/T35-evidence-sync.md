@@ -1,7 +1,7 @@
 # Orchestration task: T35 sync T33/T34 evidence
 
 - Task ID: `T35-evidence-sync`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`（main worktree。`git checkout main && git pull --ff-only origin main` の後、ブランチ `chore/t35-evidence-sync` を作成）
+- Repo: `~/Workspace/dotfiles`（main worktree。`git checkout main && git pull --ff-only origin main` の後、ブランチ `chore/t35-evidence-sync` を作成）
 - 発行: claude-deep-dot（orchestrator）2026-08-07
 - 担当: codex-standard-dot（herdr pane w1C:pF, `codex --profile standard`）
 - 受入: claude-deep-dot

@@ -1,6 +1,6 @@
 # Sandbox: dot-orchestrator-linkage-evidence-T46-a01
 
-- worker: claude-standard-dot-a005, worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`, branch
+- worker: claude-standard-dot-a005, worktree `~/Workspace/dotfiles/.claude/worktrees/worker-c`, branch
   `fix/orchestrator-linkage-evidence` from origin/main 119fdc3 (`git switch --no-track -c`, sandboxed).
 - Unsandboxed, each for a stated limit:
   - the make targets (uv cache; AF_UNIX test);

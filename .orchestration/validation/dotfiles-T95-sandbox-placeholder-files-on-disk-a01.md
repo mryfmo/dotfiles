@@ -487,103 +487,103 @@ test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_he
 test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
 test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
 test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
-test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c77e1030>
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c77e1030>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde5c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde5c0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdc040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdc040>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdcf40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdcf40>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde110>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde020>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdc310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdc310>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bddf30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bddf30>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd6c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd6c0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd3f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd3f0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdc9a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdc9a0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7f33790>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7f33790>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdda80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdda80>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c77a0130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c77a0130>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd120>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde6b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde6b0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde890>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd990>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde980>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde7a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bde7a0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bddb70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bddb70>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdea70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdea70>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdec50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdec50>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd8a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd8a0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdd300>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bded40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bded40>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdf100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdf100>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdeb60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdeb60>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdf2e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdf2e0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdee30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdee30>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdf010>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdf010>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdf1f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdf1f0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdef20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf6b0c7bdef20>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -985,7 +985,7 @@ test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_
 test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-xaimk9yn/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-xaimk9yn/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1008,320 +1008,320 @@ OK (skipped=1)
 [exit 0]
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T63-codex-execpolicy-forbidden-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T64-codex-worker-never-network-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T65-agent-stop-gate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T66-permgate-dead-lanes-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T67-audit-task-level-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T68-gate-audit-evidence-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T70-make-update-unattended-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T71-generator-multi-target-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T73-tool-versions-from-config-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T74-bootstrap-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T75-shell-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T88-parallel-execution-rule-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T89-add-worker-same-workspace-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T91-secret-scan-sk-boundary-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T94-upgrade-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T63-codex-execpolicy-forbidden-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T64-codex-worker-never-network-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T65-agent-stop-gate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T66-permgate-dead-lanes-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T67-audit-task-level-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T68-gate-audit-evidence-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T70-make-update-unattended-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T71-generator-multi-target-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T73-tool-versions-from-config-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T74-bootstrap-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T75-shell-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T88-parallel-execution-rule-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T89-add-worker-same-workspace-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T91-secret-scan-sk-boundary-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T93-gate-masked-feedback-bodies-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T94-upgrade-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T63-codex-execpolicy-forbidden-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T64-codex-worker-never-network-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T65-agent-stop-gate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T66-permgate-dead-lanes-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T67-audit-task-level-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T68-gate-audit-evidence-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T70-make-update-unattended-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T71-generator-multi-target-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T73-tool-versions-from-config-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T74-bootstrap-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T75-shell-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T88-parallel-execution-rule-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T89-add-worker-same-workspace-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T91-secret-scan-sk-boundary-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T93-gate-masked-feedback-bodies-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T94-upgrade-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T62-claude-auto-deny-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T63-codex-execpolicy-forbidden-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T64-codex-worker-never-network-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T65-agent-stop-gate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T66-permgate-dead-lanes-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T67-audit-task-level-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T68-gate-audit-evidence-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T70-make-update-unattended-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T71-generator-multi-target-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T73-tool-versions-from-config-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T74-bootstrap-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T75-shell-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T88-parallel-execution-rule-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T89-add-worker-same-workspace-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T91-secret-scan-sk-boundary-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T93-gate-masked-feedback-bodies-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T94-upgrade-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T63-codex-execpolicy-forbidden-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T64-codex-worker-never-network-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T65-agent-stop-gate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T66-permgate-dead-lanes-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T67-audit-task-level-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T68-gate-audit-evidence-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T70-make-update-unattended-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T71-generator-multi-target-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T73-tool-versions-from-config-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T74-bootstrap-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T75-shell-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T88-parallel-execution-rule-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T89-add-worker-same-workspace-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T91-secret-scan-sk-boundary-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T93-gate-masked-feedback-bodies-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T94-upgrade-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T62-claude-auto-deny-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T63-codex-execpolicy-forbidden-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T64-codex-worker-never-network-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T65-agent-stop-gate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T66-permgate-dead-lanes-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T67-audit-task-level-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T70-make-update-unattended-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T71-generator-multi-target-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T72-bootstrap-ci-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T73-tool-versions-from-config-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T74-bootstrap-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T75-shell-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T76-ineffective-settings-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77-harness-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T78-dead-docs-adh-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T89-add-worker-same-workspace-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T91-secret-scan-sk-boundary-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T93-gate-masked-feedback-bodies-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T94-pending-pins.patch
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T94-upgrade-pins-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T95-sandbox-placeholder-files-on-disk-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-04d6e1f3.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-04d6e1f3.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-1f4f409a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-1f4f409a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-34e7423f.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-34e7423f.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-7a7c21cd.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-7a7c21cd.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-7e83ed9c.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-7e83ed9c.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-8770ed66.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-8770ed66.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-a0b05905.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-a0b05905.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-c58e4835.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-c58e4835.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-ddb7bf16.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-ddb7bf16.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-e16012eb.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-e16012eb.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-eb67299c.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-eb67299c.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-audit-b9c1aefa.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-audit-b9c1aefa.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-audit-d950ac69.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-audit-d950ac69.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-13340185.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-13340185.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-1845139e.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-1845139e.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-3568b7e2.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-3568b7e2.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-4dfceb6e.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-4dfceb6e.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-5a9f35f5.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-5a9f35f5.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-775a527a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-775a527a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-8262be37.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-8262be37.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-8433a01b.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-8433a01b.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-92cad32.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-92cad32.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-a62fce9d.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-a62fce9d.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-a9a85ecf.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-a9a85ecf.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-bc636cb7.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-bc636cb7.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-cb3ded43.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-cb3ded43.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-e11659ac.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-e11659ac.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-ea112e2e.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-ea112e2e.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-fd8aa36.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-fd8aa36.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-8ae3fdc9.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-8ae3fdc9.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-a31dcf86.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-a31dcf86.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-a93fcb94.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-a93fcb94.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-audit-28373e27.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-audit-28373e27.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-audit-9476141f.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-audit-9476141f.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-3ba270d.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-3ba270d.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-4fe3427.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-4fe3427.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-5168613.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-5168613.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-5168613.md.last.md.round1
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-5168613.md.round1
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-audit-229a2ec1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-audit-229a2ec1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-audit-95acd5b6.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-audit-95acd5b6.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-3ecb487.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-3ecb487.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-c7b5fb3.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-c7b5fb3.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-ef4324d.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-ef4324d.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-audit-60688d49.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-audit-60688d49.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-audit-2487b05a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-audit-2487b05a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-audit-c0ea3e7f.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-audit-c0ea3e7f.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-audit-339c1496.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-audit-339c1496.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-audit-ef5742f9.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-audit-ef5742f9.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-0189cfb.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-0189cfb.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-04fd942.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-04fd942.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-19becfc.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-19becfc.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-5bef558.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-5bef558.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-62845ab.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-62845ab.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-e50150df.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-e50150df.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-e68eb6a7.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-e68eb6a7.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-fb4c9a9.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-fb4c9a9.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-37cf5e47.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-37cf5e47.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-55d7e77c.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-55d7e77c.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-958468ba.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-958468ba.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-1af78d7.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-1af78d7.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-35d102b7.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-35d102b7.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-ffddc8a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-ffddc8a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-153a647.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-153a647.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-3371cc8.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-3371cc8.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-bbd3d3f.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-bbd3d3f.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-audit-dd155f2.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-audit-dd155f2.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01-audit-6f5c776.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01-audit-6f5c776.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T64-codex-worker-never-network-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T65-agent-stop-gate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T66-permgate-dead-lanes-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T67-audit-task-level-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T68-gate-audit-evidence-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T70-make-update-unattended-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T71-generator-multi-target-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T73-tool-versions-from-config-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T74-bootstrap-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T75-shell-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T88-parallel-execution-rule-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T89-add-worker-same-workspace-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T91-secret-scan-sk-boundary-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T94-upgrade-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T64-codex-worker-never-network-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T65-agent-stop-gate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T66-permgate-dead-lanes-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T67-audit-task-level-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T68-gate-audit-evidence-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T70-make-update-unattended-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T71-generator-multi-target-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T73-tool-versions-from-config-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T74-bootstrap-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T75-shell-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T88-parallel-execution-rule-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T89-add-worker-same-workspace-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T91-secret-scan-sk-boundary-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T93-gate-masked-feedback-bodies-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T94-upgrade-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T64-codex-worker-never-network-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T65-agent-stop-gate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T66-permgate-dead-lanes-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T67-audit-task-level-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T68-gate-audit-evidence-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T70-make-update-unattended-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T71-generator-multi-target-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T73-tool-versions-from-config-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T74-bootstrap-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T75-shell-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T88-parallel-execution-rule-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T89-add-worker-same-workspace-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T91-secret-scan-sk-boundary-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T93-gate-masked-feedback-bodies-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T94-upgrade-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T62-claude-auto-deny-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T64-codex-worker-never-network-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T65-agent-stop-gate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T66-permgate-dead-lanes-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T67-audit-task-level-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T68-gate-audit-evidence-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T70-make-update-unattended-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T71-generator-multi-target-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T73-tool-versions-from-config-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T74-bootstrap-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T75-shell-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T88-parallel-execution-rule-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T89-add-worker-same-workspace-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T91-secret-scan-sk-boundary-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T93-gate-masked-feedback-bodies-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T94-upgrade-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T64-codex-worker-never-network-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T65-agent-stop-gate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T66-permgate-dead-lanes-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T67-audit-task-level-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T68-gate-audit-evidence-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T70-make-update-unattended-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T71-generator-multi-target-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T73-tool-versions-from-config-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T74-bootstrap-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T75-shell-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T88-parallel-execution-rule-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T89-add-worker-same-workspace-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T91-secret-scan-sk-boundary-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T93-gate-masked-feedback-bodies-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T94-upgrade-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T62-claude-auto-deny-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T64-codex-worker-never-network-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T65-agent-stop-gate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T66-permgate-dead-lanes-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T67-audit-task-level-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T70-make-update-unattended-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T71-generator-multi-target-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T73-tool-versions-from-config-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T74-bootstrap-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T75-shell-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77-harness-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T78-dead-docs-adh-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T89-add-worker-same-workspace-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T91-secret-scan-sk-boundary-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T93-gate-masked-feedback-bodies-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T94-pending-pins.patch
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T94-upgrade-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T95-sandbox-placeholder-files-on-disk-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-04d6e1f3.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-04d6e1f3.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-1f4f409a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-1f4f409a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-34e7423f.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-34e7423f.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-7a7c21cd.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-7a7c21cd.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-7e83ed9c.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-7e83ed9c.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-8770ed66.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-8770ed66.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-a0b05905.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-a0b05905.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-c58e4835.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-c58e4835.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-ddb7bf16.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-ddb7bf16.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-e16012eb.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-e16012eb.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-eb67299c.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-audit-eb67299c.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-audit-b9c1aefa.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-audit-b9c1aefa.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-audit-d950ac69.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-audit-d950ac69.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T64-codex-worker-never-network-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-13340185.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-13340185.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-1845139e.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-1845139e.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-3568b7e2.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-3568b7e2.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-4dfceb6e.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-4dfceb6e.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-5a9f35f5.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-5a9f35f5.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-775a527a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-775a527a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-8262be37.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-8262be37.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-8433a01b.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-8433a01b.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-92cad32.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-92cad32.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-a62fce9d.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-a62fce9d.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-a9a85ecf.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-a9a85ecf.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-bc636cb7.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-bc636cb7.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-cb3ded43.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-cb3ded43.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-e11659ac.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-e11659ac.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-ea112e2e.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-ea112e2e.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-fd8aa36.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-audit-fd8aa36.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T65-agent-stop-gate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-8ae3fdc9.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-8ae3fdc9.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-a31dcf86.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-a31dcf86.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-a93fcb94.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-audit-a93fcb94.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-audit-28373e27.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-audit-28373e27.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-audit-9476141f.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-audit-9476141f.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T67-audit-task-level-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-3ba270d.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-3ba270d.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-4fe3427.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-4fe3427.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-5168613.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-5168613.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-5168613.md.last.md.round1
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-audit-5168613.md.round1
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T68-gate-audit-evidence-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-audit-229a2ec1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-audit-229a2ec1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-audit-95acd5b6.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-audit-95acd5b6.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T70-make-update-unattended-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-3ecb487.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-3ecb487.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-c7b5fb3.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-c7b5fb3.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-ef4324d.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-audit-ef4324d.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T71-generator-multi-target-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-audit-60688d49.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-audit-60688d49.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T73-tool-versions-from-config-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-audit-2487b05a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-audit-2487b05a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-audit-c0ea3e7f.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-audit-c0ea3e7f.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-audit-339c1496.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-audit-339c1496.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-audit-ef5742f9.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-audit-ef5742f9.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T75-shell-dead-code-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-0189cfb.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-0189cfb.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-04fd942.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-04fd942.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-19becfc.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-19becfc.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-5bef558.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-5bef558.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-62845ab.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-62845ab.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-e50150df.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-e50150df.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-e68eb6a7.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-e68eb6a7.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-fb4c9a9.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-audit-fb4c9a9.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T88-parallel-execution-rule-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-37cf5e47.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-37cf5e47.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-55d7e77c.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-55d7e77c.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-958468ba.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-audit-958468ba.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-1af78d7.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-1af78d7.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-35d102b7.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-35d102b7.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-ffddc8a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-audit-ffddc8a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-153a647.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-153a647.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-3371cc8.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-3371cc8.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-bbd3d3f.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-audit-bbd3d3f.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-audit-dd155f2.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-audit-dd155f2.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01-audit-6f5c776.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01-audit-6f5c776.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T94-upgrade-pins-a01.md
 agent asset validation ok
 [exit 0]
 ```
@@ -1390,7 +1390,7 @@ $ date -u +%T; command ls -la .zshrc; stat -c "%F %s %a" .zshrc; findmnt -T .zsh
 09:47:50
 crw-rw-rw- 1 nobody nogroup 1, 3 10月  2 16:51 .zshrc
 キャラクタスペシャルファイル 0 666
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.zshrc ro,nosuid,nodev,relatime,size=63749544k,nr_inodes=15937386,mode=755,inode64
+~/Workspace/dotfiles/.claude/worktrees/worker-c/.zshrc ro,nosuid,nodev,relatime,size=63749544k,nr_inodes=15937386,mode=755,inode64
 [exit 0]
 $ date -u +%T; command ls -la .zshrc   (host, unsandboxed, after the sandboxed command)
 09:47:54
@@ -1398,25 +1398,25 @@ ls: '.zshrc' にアクセスできません: そのようなファイルやデ�
 [exit 2]
 $ git status --porcelain   (host)
 $ (host) existing placeholder files among the 19 paths in worker-c, the main checkout and worker-e
-/home/moriya/Workspace/dotfiles/.bash_profile 通常の空ファイル 0 444 2026-10-04 18:47:35.039702712 +0900
-/home/moriya/Workspace/dotfiles/.bashrc 通常の空ファイル 0 444 2026-10-04 18:47:35.039567993 +0900
-/home/moriya/Workspace/dotfiles/.claude/agents 通常の空ファイル 0 444 2026-10-04 18:47:35.036953432 +0900
-/home/moriya/Workspace/dotfiles/.claude/commands 通常の空ファイル 0 444 2026-10-04 18:47:35.036709674 +0900
-/home/moriya/Workspace/dotfiles/.claude/launch.json 通常の空ファイル 0 444 2026-10-04 18:47:35.035162067 +0900
-/home/moriya/Workspace/dotfiles/.claude/loop.md 通常の空ファイル 0 444 2026-10-04 18:47:35.036592858 +0900
-/home/moriya/Workspace/dotfiles/.claude/output-styles 通常の空ファイル 0 444 2026-10-04 18:47:35.036353804 +0900
-/home/moriya/Workspace/dotfiles/.claude/routines 通常の空ファイル 0 444 2026-10-04 18:47:35.036239132 +0900
-/home/moriya/Workspace/dotfiles/.claude/skills 通常の空ファイル 0 444 2026-10-04 18:47:35.034162073 +0900
-/home/moriya/Workspace/dotfiles/.claude/workflows 通常の空ファイル 0 444 2026-10-04 18:47:35.035162067 +0900
-/home/moriya/Workspace/dotfiles/.gitconfig 通常の空ファイル 0 444 2026-10-04 18:47:35.038162049 +0900
-/home/moriya/Workspace/dotfiles/.gitmodules 通常の空ファイル 0 444 2026-10-04 18:47:35.038162049 +0900
-/home/moriya/Workspace/dotfiles/.idea 通常の空ファイル 0 444 2026-10-04 18:47:35.040521075 +0900
-/home/moriya/Workspace/dotfiles/.mcp.json 通常の空ファイル 0 444 2026-10-04 18:47:35.036709674 +0900
-/home/moriya/Workspace/dotfiles/.profile 通常の空ファイル 0 444 2026-10-04 18:47:35.040109157 +0900
-/home/moriya/Workspace/dotfiles/.ripgreprc 通常の空ファイル 0 444 2026-10-04 18:47:35.040246612 +0900
-/home/moriya/Workspace/dotfiles/.vscode 通常の空ファイル 0 444 2026-10-04 18:47:35.040382260 +0900
-/home/moriya/Workspace/dotfiles/.zprofile 通常の空ファイル 0 444 2026-10-04 18:47:35.039974646 +0900
-/home/moriya/Workspace/dotfiles/.zshrc 通常の空ファイル 0 444 2026-10-04 18:47:35.039840935 +0900
+~/Workspace/dotfiles/.bash_profile 通常の空ファイル 0 444 2026-10-04 18:47:35.039702712 +0900
+~/Workspace/dotfiles/.bashrc 通常の空ファイル 0 444 2026-10-04 18:47:35.039567993 +0900
+~/Workspace/dotfiles/.claude/agents 通常の空ファイル 0 444 2026-10-04 18:47:35.036953432 +0900
+~/Workspace/dotfiles/.claude/commands 通常の空ファイル 0 444 2026-10-04 18:47:35.036709674 +0900
+~/Workspace/dotfiles/.claude/launch.json 通常の空ファイル 0 444 2026-10-04 18:47:35.035162067 +0900
+~/Workspace/dotfiles/.claude/loop.md 通常の空ファイル 0 444 2026-10-04 18:47:35.036592858 +0900
+~/Workspace/dotfiles/.claude/output-styles 通常の空ファイル 0 444 2026-10-04 18:47:35.036353804 +0900
+~/Workspace/dotfiles/.claude/routines 通常の空ファイル 0 444 2026-10-04 18:47:35.036239132 +0900
+~/Workspace/dotfiles/.claude/skills 通常の空ファイル 0 444 2026-10-04 18:47:35.034162073 +0900
+~/Workspace/dotfiles/.claude/workflows 通常の空ファイル 0 444 2026-10-04 18:47:35.035162067 +0900
+~/Workspace/dotfiles/.gitconfig 通常の空ファイル 0 444 2026-10-04 18:47:35.038162049 +0900
+~/Workspace/dotfiles/.gitmodules 通常の空ファイル 0 444 2026-10-04 18:47:35.038162049 +0900
+~/Workspace/dotfiles/.idea 通常の空ファイル 0 444 2026-10-04 18:47:35.040521075 +0900
+~/Workspace/dotfiles/.mcp.json 通常の空ファイル 0 444 2026-10-04 18:47:35.036709674 +0900
+~/Workspace/dotfiles/.profile 通常の空ファイル 0 444 2026-10-04 18:47:35.040109157 +0900
+~/Workspace/dotfiles/.ripgreprc 通常の空ファイル 0 444 2026-10-04 18:47:35.040246612 +0900
+~/Workspace/dotfiles/.vscode 通常の空ファイル 0 444 2026-10-04 18:47:35.040382260 +0900
+~/Workspace/dotfiles/.zprofile 通常の空ファイル 0 444 2026-10-04 18:47:35.039974646 +0900
+~/Workspace/dotfiles/.zshrc 通常の空ファイル 0 444 2026-10-04 18:47:35.039840935 +0900
 [end]
 $ (host) stat, git ls-files and check-ignore of the main checkout's .ripgreprc, then rm
 通常の空ファイル 0 444 2026-10-04 18:47:35.040246612 +0900
@@ -1431,7 +1431,7 @@ $ date -u +%T; true   (sandboxed, cwd worker-c)
 $ date -u +%T; stat main-checkout .ripgreprc   (host, after the sandboxed no-op from worker-c)
 09:48:37
 stat: '.ripgreprc' を statx できません: そのようなファイルやディレクトリはありません
-$ cd /home/moriya/Workspace/dotfiles && date -u +%T; true   (sandboxed)
+$ cd ~/Workspace/dotfiles && date -u +%T; true   (sandboxed)
 09:48:43
 [exit 0]
 $ date -u +%T; stat main-checkout .ripgreprc   (host, after the sandboxed cd-into-main-checkout no-op)
@@ -1439,25 +1439,25 @@ $ date -u +%T; stat main-checkout .ripgreprc   (host, after the sandboxed cd-int
 stat: '.ripgreprc' を statx できません: そのようなファイルやディレクトリはありません
 $ date -u +%T; (host) existing placeholder files among the 19 paths in the main checkout and worker-c
 09:57:01
-/home/moriya/Workspace/dotfiles/.bash_profile 通常の空ファイル 0 444 2026-10-04 18:53:21.558392044 +0900
-/home/moriya/Workspace/dotfiles/.bashrc 通常の空ファイル 0 444 2026-10-04 18:53:21.558258445 +0900
-/home/moriya/Workspace/dotfiles/.claude/agents 通常の空ファイル 0 444 2026-10-04 18:53:21.555687644 +0900
-/home/moriya/Workspace/dotfiles/.claude/commands 通常の空ファイル 0 444 2026-10-04 18:53:21.555448782 +0900
-/home/moriya/Workspace/dotfiles/.claude/launch.json 通常の空ファイル 0 444 2026-10-04 18:53:21.554102710 +0900
-/home/moriya/Workspace/dotfiles/.claude/loop.md 通常の空ファイル 0 444 2026-10-04 18:53:21.555330574 +0900
-/home/moriya/Workspace/dotfiles/.claude/output-styles 通常の空ファイル 0 444 2026-10-04 18:53:21.555103808 +0900
-/home/moriya/Workspace/dotfiles/.claude/routines 通常の空ファイル 0 444 2026-10-04 18:53:21.554986672 +0900
-/home/moriya/Workspace/dotfiles/.claude/skills 通常の空ファイル 0 444 2026-10-04 18:53:21.553102715 +0900
-/home/moriya/Workspace/dotfiles/.claude/workflows 通常の空ファイル 0 444 2026-10-04 18:53:21.554102710 +0900
-/home/moriya/Workspace/dotfiles/.gitconfig 通常の空ファイル 0 444 2026-10-04 18:53:21.557102692 +0900
-/home/moriya/Workspace/dotfiles/.gitmodules 通常の空ファイル 0 444 2026-10-04 18:53:21.557102692 +0900
-/home/moriya/Workspace/dotfiles/.idea 通常の空ファイル 0 444 2026-10-04 18:53:21.559254151 +0900
-/home/moriya/Workspace/dotfiles/.mcp.json 通常の空ファイル 0 444 2026-10-04 18:53:21.555448782 +0900
-/home/moriya/Workspace/dotfiles/.profile 通常の空ファイル 0 444 2026-10-04 18:53:21.558826425 +0900
-/home/moriya/Workspace/dotfiles/.ripgreprc 通常の空ファイル 0 444 2026-10-04 18:53:21.558964457 +0900
-/home/moriya/Workspace/dotfiles/.vscode 通常の空ファイル 0 444 2026-10-04 18:53:21.559102104 +0900
-/home/moriya/Workspace/dotfiles/.zprofile 通常の空ファイル 0 444 2026-10-04 18:53:21.558678666 +0900
-/home/moriya/Workspace/dotfiles/.zshrc 通常の空ファイル 0 444 2026-10-04 18:53:21.558529099 +0900
+~/Workspace/dotfiles/.bash_profile 通常の空ファイル 0 444 2026-10-04 18:53:21.558392044 +0900
+~/Workspace/dotfiles/.bashrc 通常の空ファイル 0 444 2026-10-04 18:53:21.558258445 +0900
+~/Workspace/dotfiles/.claude/agents 通常の空ファイル 0 444 2026-10-04 18:53:21.555687644 +0900
+~/Workspace/dotfiles/.claude/commands 通常の空ファイル 0 444 2026-10-04 18:53:21.555448782 +0900
+~/Workspace/dotfiles/.claude/launch.json 通常の空ファイル 0 444 2026-10-04 18:53:21.554102710 +0900
+~/Workspace/dotfiles/.claude/loop.md 通常の空ファイル 0 444 2026-10-04 18:53:21.555330574 +0900
+~/Workspace/dotfiles/.claude/output-styles 通常の空ファイル 0 444 2026-10-04 18:53:21.555103808 +0900
+~/Workspace/dotfiles/.claude/routines 通常の空ファイル 0 444 2026-10-04 18:53:21.554986672 +0900
+~/Workspace/dotfiles/.claude/skills 通常の空ファイル 0 444 2026-10-04 18:53:21.553102715 +0900
+~/Workspace/dotfiles/.claude/workflows 通常の空ファイル 0 444 2026-10-04 18:53:21.554102710 +0900
+~/Workspace/dotfiles/.gitconfig 通常の空ファイル 0 444 2026-10-04 18:53:21.557102692 +0900
+~/Workspace/dotfiles/.gitmodules 通常の空ファイル 0 444 2026-10-04 18:53:21.557102692 +0900
+~/Workspace/dotfiles/.idea 通常の空ファイル 0 444 2026-10-04 18:53:21.559254151 +0900
+~/Workspace/dotfiles/.mcp.json 通常の空ファイル 0 444 2026-10-04 18:53:21.555448782 +0900
+~/Workspace/dotfiles/.profile 通常の空ファイル 0 444 2026-10-04 18:53:21.558826425 +0900
+~/Workspace/dotfiles/.ripgreprc 通常の空ファイル 0 444 2026-10-04 18:53:21.558964457 +0900
+~/Workspace/dotfiles/.vscode 通常の空ファイル 0 444 2026-10-04 18:53:21.559102104 +0900
+~/Workspace/dotfiles/.zprofile 通常の空ファイル 0 444 2026-10-04 18:53:21.558678666 +0900
+~/Workspace/dotfiles/.zshrc 通常の空ファイル 0 444 2026-10-04 18:53:21.558529099 +0900
 [end]
 ```
 

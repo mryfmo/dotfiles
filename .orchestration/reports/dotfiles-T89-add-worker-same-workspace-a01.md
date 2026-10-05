@@ -85,7 +85,7 @@ I did not reply to or resolve any thread.
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T89 (operator 2026-10-04): parallel workers are seated as panes inside the pair'"'"'s Herdr workspace; `herdr-agents --add-worker` creates a labelled pane there and `--remove-worker` closes it; one workspace per repository.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T89 (operator 2026-10-04): parallel workers are seated as panes inside the pair'"'"'s Herdr workspace; `herdr-agents --add-worker` creates a labelled pane there and `--remove-worker` closes it; one workspace per repository.'
 9c11dc0f-9fff-4d47-9018-f870a5398948
 ```
 

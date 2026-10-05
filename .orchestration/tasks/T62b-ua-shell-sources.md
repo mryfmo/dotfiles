@@ -1,7 +1,7 @@
 # T62b: Incorporate omitted shell sources into the UA graph (PR #129 bot finding)
 
 task_id: T62b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 

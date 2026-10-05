@@ -57,7 +57,7 @@ FFFEE
 ERROR: test_orchestrator_seat_lock_warns_on_a_bare_session_id (tests.unit.test_check_agent_runtime.CheckAgentRuntimeTest.test_orchestrator_seat_lock_warns_on_a_bare_session_id)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_check_agent_runtime.py", line 1002, in test_orchestrator_seat_lock_warns_on_a_bare_session_id
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_check_agent_runtime.py", line 1002, in test_orchestrator_seat_lock_warns_on_a_bare_session_id
     warnings = self.module.orchestrator_seat_lock_warnings(project, skill_dir, proc)
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'check_agent_runtime' has no attribute 'orchestrator_seat_lock_warnings'
@@ -66,7 +66,7 @@ AttributeError: module 'check_agent_runtime' has no attribute 'orchestrator_seat
 ERROR: test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session (tests.unit.test_check_agent_runtime.CheckAgentRuntimeTest.test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_check_agent_runtime.py", line 1011, in test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_check_agent_runtime.py", line 1011, in test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session
     self.assertEqual([], self.module.orchestrator_seat_lock_warnings(project, skill_dir, proc))
                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'check_agent_runtime' has no attribute 'orchestrator_seat_lock_warnings'
@@ -75,7 +75,7 @@ AttributeError: module 'check_agent_runtime' has no attribute 'orchestrator_seat
 FAIL: test_orchestrator_pane_start_claims_the_seat_with_the_composite_id (tests.unit.test_herdr_agents.HerdrAgentsTest.test_orchestrator_pane_start_claims_the_seat_with_the_composite_id)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1581, in test_orchestrator_pane_start_claims_the_seat_with_the_composite_id
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1581, in test_orchestrator_pane_start_claims_the_seat_with_the_composite_id
     self.assertIn("seat_claim=ok owner=sid-test.4343", result.stdout.splitlines())
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'seat_claim=ok owner=sid-test.4343' not found in ['orchestrator_profile=none args=none', 'Herdr agents workspace: w-test']
@@ -84,7 +84,7 @@ AssertionError: 'seat_claim=ok owner=sid-test.4343' not found in ['orchestrator_
 FAIL: test_orchestrator_pane_start_without_a_session_claims_nothing (tests.unit.test_herdr_agents.HerdrAgentsTest.test_orchestrator_pane_start_without_a_session_claims_nothing)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1594, in test_orchestrator_pane_start_without_a_session_claims_nothing
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1594, in test_orchestrator_pane_start_without_a_session_claims_nothing
     self.assertIn("seat_claim=unresolved", result.stdout.splitlines())
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'seat_claim=unresolved' not found in ['orchestrator_profile=none args=none', 'Herdr agents workspace: w-test']
@@ -93,7 +93,7 @@ AssertionError: 'seat_claim=unresolved' not found in ['orchestrator_profile=none
 FAIL: test_session_start_attach_claims_the_seat_in_a_managed_pane (tests.unit.test_herdr_agents.HerdrAgentsTest.test_session_start_attach_claims_the_seat_in_a_managed_pane)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1609, in test_session_start_attach_claims_the_seat_in_a_managed_pane
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1609, in test_session_start_attach_claims_the_seat_in_a_managed_pane
     self.assertIn("seat_claim=ok owner=sid-self.777", result.stdout.splitlines())
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'seat_claim=ok owner=sid-self.777' not found in []
@@ -139,7 +139,7 @@ exit=0
 ## CompactionDB (main checkout)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T49:\ the\ orchestrator\ seat\ lock\ must\ hold\ the\ composite\ \`\<sid\>.\<pid\>\`\;\ a\ claim\ from\ sandboxed\ Bash\ writes\ a\ bare\ sid\ and\ the\ Stop-hook\ delivery\ then\ skips\ silently\ \(\`other:\`\),\ and\ a\ \`watch.sh\`\ Monitor\ cannot\ run\ under\ the\ pid-namespaced\ sandbox\ —\ herdr-agents\ claims\ the\ seat\ outside\ the\ sandbox\ at\ pane\ start\ and\ a\ herdr-paned\ orchestrator\ is\ woken\ by\ worker\ \`agmsg-dispatch\`\ \(operator\ correction\ 2026-10-01\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T49:\ the\ orchestrator\ seat\ lock\ must\ hold\ the\ composite\ \`\<sid\>.\<pid\>\`\;\ a\ claim\ from\ sandboxed\ Bash\ writes\ a\ bare\ sid\ and\ the\ Stop-hook\ delivery\ then\ skips\ silently\ \(\`other:\`\),\ and\ a\ \`watch.sh\`\ Monitor\ cannot\ run\ under\ the\ pid-namespaced\ sandbox\ —\ herdr-agents\ claims\ the\ seat\ outside\ the\ sandbox\ at\ pane\ start\ and\ a\ herdr-paned\ orchestrator\ is\ woken\ by\ worker\ \`agmsg-dispatch\`\ \(operator\ correction\ 2026-10-01\).
 2b18cc6f-8995-4b14-bff0-db7e1e127512
 exit=0
 ```
@@ -828,7 +828,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-r0igcxyz/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-r0igcxyz/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -854,7 +854,7 @@ make unit-test exit=0
 ## make validate-agent-assets in the main checkout with these artifacts present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0
@@ -923,7 +923,7 @@ FFFF
 FAIL: test_session_start_attach_reads_the_hook_payload_and_herdr_pid (tests.unit.test_herdr_agents.HerdrAgentsTest.test_session_start_attach_reads_the_hook_payload_and_herdr_pid)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1654, in test_session_start_attach_reads_the_hook_payload_and_herdr_pid
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1654, in test_session_start_attach_reads_the_hook_payload_and_herdr_pid
     self.assertIn("seat_claim=ok owner=sid-stdin.4343", result.stdout.splitlines())
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'seat_claim=ok owner=sid-stdin.4343' not found in ['seat_claim=unresolved']
@@ -932,7 +932,7 @@ AssertionError: 'seat_claim=ok owner=sid-stdin.4343' not found in ['seat_claim=u
 FAIL: test_seat_claim_replaces_a_same_session_bare_lock (tests.unit.test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_a_same_session_bare_lock)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1670, in test_seat_claim_replaces_a_same_session_bare_lock
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1670, in test_seat_claim_replaces_a_same_session_bare_lock
     self.assertIn(
     ~~~~~~~~~~~~~^
         "seat_claim=ok owner=sid-stdin.4343 replaced_bare_lock=yes",
@@ -947,7 +947,7 @@ AssertionError: 'seat_claim=ok owner=sid-stdin.4343 replaced_bare_lock=yes' not 
 FAIL: test_seat_claim_held_by_another_session_fails_without_release (tests.unit.test_herdr_agents.HerdrAgentsTest.test_seat_claim_held_by_another_session_fails_without_release)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1693, in test_seat_claim_held_by_another_session_fails_without_release
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1693, in test_seat_claim_held_by_another_session_fails_without_release
     self.assertIn(
     ~~~~~~~~~~~~~^
         "seat_claim=failed status=held team=dotfiles owner=other-sid.999",
@@ -962,7 +962,7 @@ AssertionError: 'seat_claim=failed status=held team=dotfiles owner=other-sid.999
 FAIL: test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_generate_agent_configs.py", line 787, in test_managed_claude_sandbox_excludes_agmsg_dispatch
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_generate_agent_configs.py", line 787, in test_managed_claude_sandbox_excludes_agmsg_dispatch
     self.assertIn("agmsg-dispatch", claude["sandbox"]["excludedCommands"])
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'agmsg-dispatch' not found in []
@@ -979,7 +979,7 @@ exit=0
 ```
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T49\ r2:\ the\ SessionStart\ seat\ claim\ takes\ the\ session\ id\ from\ the\ hook\ payload\ on\ stdin\ and\ the\ pid\ from\ the\ nearest\ claude\ ancestor\ \(env\ and\ herdr\ lookups\ as\ fallbacks\),\ replaces\ a\ lock\ held\ by\ its\ own\ bare\ session\ id\ via\ the\ owner-exact\ actas_lock_release,\ and\ agmsg-dispatch\ is\ in\ claude.sandbox.excludedCommands\ so\ Claude\ workers\ wake\ a\ herdr-paned\ orchestrator\ without\ a\ sandbox\ failure\ or\ retry\ \(Claude\ Code\ still\ applies\ permission\ rules:\ an\ allow\ rule\ is\ needed\ for\ no\ prompt\)\ \(2026-10-01\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T49\ r2:\ the\ SessionStart\ seat\ claim\ takes\ the\ session\ id\ from\ the\ hook\ payload\ on\ stdin\ and\ the\ pid\ from\ the\ nearest\ claude\ ancestor\ \(env\ and\ herdr\ lookups\ as\ fallbacks\),\ replaces\ a\ lock\ held\ by\ its\ own\ bare\ session\ id\ via\ the\ owner-exact\ actas_lock_release,\ and\ agmsg-dispatch\ is\ in\ claude.sandbox.excludedCommands\ so\ Claude\ workers\ wake\ a\ herdr-paned\ orchestrator\ without\ a\ sandbox\ failure\ or\ retry\ \(Claude\ Code\ still\ applies\ permission\ rules:\ an\ allow\ rule\ is\ needed\ for\ no\ prompt\)\ \(2026-10-01\).
 ea6729a4-36ed-4206-8638-05ea265a01e0
 exit=0
 ```
@@ -1038,7 +1038,7 @@ exit=0
 ```
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T49\ r2-b:\ the\ managed\ Claude\ settings\ carry\ exactly\ one\ permissions.allow\ rule,\ Bash\(agmsg-dispatch:\*\),\ because\ sandbox.excludedCommands\ alone\ still\ prompts\;\ every\ Claude\ session\ using\ the\ managed\ settings\ can\ run\ agmsg-dispatch\ without\ confirmation\ \(operator\ decision\ 2026-10-01\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T49\ r2-b:\ the\ managed\ Claude\ settings\ carry\ exactly\ one\ permissions.allow\ rule,\ Bash\(agmsg-dispatch:\*\),\ because\ sandbox.excludedCommands\ alone\ still\ prompts\;\ every\ Claude\ session\ using\ the\ managed\ settings\ can\ run\ agmsg-dispatch\ without\ confirmation\ \(operator\ decision\ 2026-10-01\).
 5e42e6d7-dca0-41d6-aed3-753992e76359
 exit=0
 ```
@@ -1091,7 +1091,7 @@ F.
 FAIL: test_seat_claim_replaces_same_session_bare_locks_in_every_team (tests.unit.test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_same_session_bare_locks_in_every_team)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1706, in test_seat_claim_replaces_same_session_bare_locks_in_every_team
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1706, in test_seat_claim_replaces_same_session_bare_locks_in_every_team
     self.assertIn(
     ~~~~~~~~~~~~~^
         "seat_claim=ok owner=sid-stdin.4343 replaced_bare_lock=yes",
@@ -1192,61 +1192,61 @@ test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_
 test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
 test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
 test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
-test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a253f0>
+test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a253f0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a254e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a254e0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25300>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25120>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a256c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a256c0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a255d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a255d0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a258a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a258a0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a257b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a257b0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25a80>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25b70>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25c60>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25d50>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25990>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25e40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25e40>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a25f30>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a26020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a26020>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a26110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a26110>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a262f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9a262f0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9fb8c70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2cda9fb8c70>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -1846,7 +1846,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-3zkhb4cj/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-3zkhb4cj/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1872,7 +1872,7 @@ make unit-test exit=0
 ### `make validate-agent-assets` in the main checkout with the r2 evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0
@@ -1969,7 +1969,7 @@ F
 FAIL: test_seat_claim_replaces_a_same_session_composite_lock_of_another_pid (tests.unit.test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_a_same_session_composite_lock_of_another_pid)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1791, in test_seat_claim_replaces_a_same_session_composite_lock_of_another_pid
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1791, in test_seat_claim_replaces_a_same_session_composite_lock_of_another_pid
     self.assertIn(
     ~~~~~~~~~~~~~^
         "seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes",
@@ -2037,7 +2037,7 @@ $ UV_CACHE_DIR=$TMPDIR/uvcache uv run python -m unittest <the two r2-f tests>
 FAIL: test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_pid (tests.unit.test_herdr_agents.HerdrAgentsTest.test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_pid)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1816, in test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_pid
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1816, in test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_pid
     self.assertIn(
     ~~~~~~~~~~~~~^
         f"seat_claim=failed status=held team=dotfiles owner={live_owner}",
@@ -2144,61 +2144,61 @@ test_verified_archive_runs_installer_with_user_local_update_arguments (test_aws_
 test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_wrong_staged_version_preserves_existing_aws_and_skips_installer) ... ok
 test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
 test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
-test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd4e0>
+test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd4e0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd5d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd5d0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd3f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd3f0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd210>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd7b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd7b0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd6c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd6c0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd990>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd8a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dd8a0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746ddb70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746ddb70>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746ddc60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746ddc60>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746ddd50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746ddd50>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dde40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dde40>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dda80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746dda80>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746ddf30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746ddf30>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746de020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746de020>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746de110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746de110>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746de200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746de200>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746de3e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c746de3e0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c74c48c70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe97c74c48c70>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -2795,7 +2795,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-56rz00nt/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-56rz00nt/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -2821,7 +2821,7 @@ make unit-test exit=0
 ### `make validate-agent-assets` in the main checkout with the r2-d/e/f evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0
@@ -2881,7 +2881,7 @@ F.
 FAIL: test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator (tests.unit.test_herdr_agents.HerdrAgentsTest.test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1732, in test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1732, in test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator
     self.assertIn("seat_claim=skipped reason=not-orchestrator-pane", result.stdout.splitlines())
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'seat_claim=skipped reason=not-orchestrator-pane' not found in ['seat_claim=ok owner=sid-stdin.4343']
@@ -2958,7 +2958,7 @@ F
 FAIL: test_session_start_attach_bounds_a_trickling_hook_payload (tests.unit.test_herdr_agents.HerdrAgentsTest.test_session_start_attach_bounds_a_trickling_hook_payload)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1748, in test_session_start_attach_bounds_a_trickling_hook_payload
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1748, in test_session_start_attach_bounds_a_trickling_hook_payload
     self.assertLess(elapsed, 4.5, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 6.03858167398721 not less than 4.5 : seat_claim=ok owner=sid-herdr.777
@@ -3060,61 +3060,61 @@ test_verified_archive_runs_installer_with_user_local_update_arguments (test_aws_
 test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_wrong_staged_version_preserves_existing_aws_and_skips_installer) ... ok
 test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
 test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
-test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb14e0>
+test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb14e0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb15d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb15d0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb13f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb13f0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1210>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb17b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb17b0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb16c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb16c0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1990>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb18a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb18a0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1b70>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1c60>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1d50>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1e40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1e40>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1a80>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb1f30>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb2020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb2020>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb2110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb2110>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb2200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb2200>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb23e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87907fb23e0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87908548c70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf87908548c70>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -3713,7 +3713,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-bve_6grj/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-bve_6grj/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -3739,7 +3739,7 @@ make unit-test exit=0
 ### `make validate-agent-assets` in the main checkout with the r3 evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0
@@ -3760,7 +3760,7 @@ F.
 FAIL: test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid (tests.unit.test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1883, in test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 1883, in test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid
     self.assertIn(
     ~~~~~~~~~~~~~^
         "seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes",
@@ -3939,61 +3939,61 @@ test_verified_archive_runs_installer_with_user_local_update_arguments (test_aws_
 test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_wrong_staged_version_preserves_existing_aws_and_skips_installer) ... ok
 test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
 test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
-test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a14e0>
+test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a14e0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a15d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a15d0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a13f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a13f0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1210>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a17b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a17b0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a16c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a16c0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1990>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a18a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a18a0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1b70>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1c60>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1d50>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1e40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1e40>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1a80>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a1f30>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a2020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a2020>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a2110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a2110>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a2200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a2200>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a23e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a44a23e0>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a4a1cc70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/collections/__init__.py:432: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe97a4a1cc70>
   repr_fmt = '(' + ', '.join(f'{name}=%r' for name in field_names) + ')'
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -4593,7 +4593,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-ngp2fycj/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-ngp2fycj/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -4619,7 +4619,7 @@ make unit-test exit=0
 ### `make validate-agent-assets` in the main checkout with the r3-c evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0

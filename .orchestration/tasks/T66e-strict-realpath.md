@@ -1,7 +1,7 @@
 # T66e: Platform-identical strict path resolution in the workspace layer (CI macOS finding)
 
 task_id: T66e
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (Phase 2; PR #134 CI finding)

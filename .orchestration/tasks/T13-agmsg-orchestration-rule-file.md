@@ -5,7 +5,7 @@
 - Task ID: `T13-agmsg-orchestration-rule-file`
 - Executor model: `gpt-5.6-sol`
 - Reasoning effort: `high`
-- Repo: `/Users/mryfmo/Workspace/dotfiles` (current working tree, branch `main`)
+- Repo: `~/Workspace/dotfiles` (current working tree, branch `main`)
 - Pre-existing dirty/untracked paths (`home/dot_mise/*`, `plans/`,
   `docs/verification/`, `.orchestration/`) are NOT yours — do not touch.
 

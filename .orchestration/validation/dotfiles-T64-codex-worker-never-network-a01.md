@@ -60,8 +60,8 @@ Note on the two failures above. That run was unsandboxed, and so were its `make 
 
 ```
 $ pgrep -af 'crit _[s]erve'   (unsandboxed)
-4129281 /home/moriya/.local/bin/crit _serve --plan-dir /home/moriya/.crit/plans/plan-agmsg-actas-claude-standard-dot-a006-2026-10-04 --name plan-agmsg-actas-cla
-4150161 /home/moriya/.local/bin/crit _serve --plan-dir /home/moriya/.crit/plans/plan-agmsg-actas-claude-standard-dot-a007-2026-10-04 --name plan-agmsg-actas-cla
+4129281 ~/.local/bin/crit _serve --plan-dir ~/.crit/plans/plan-agmsg-actas-claude-standard-dot-a006-2026-10-04 --name plan-agmsg-actas-cla
+4150161 ~/.local/bin/crit _serve --plan-dir ~/.crit/plans/plan-agmsg-actas-claude-standard-dot-a007-2026-10-04 --name plan-agmsg-actas-cla
 $ pgrep -fc 'crit _[s]erve'   (sandboxed, own pid namespace)
 0
 ```
@@ -149,7 +149,7 @@ $ codex --sandbox workspace-write --profile express debug prompt-input 'x'   (ba
 
 ```
 $ codex sandbox -c sandbox_mode="workspace-write" -c sandbox_workspace_write.network_access=true -c <roots> -- touch $HOME/t64-outside-probe
-touch: '/home/moriya/t64-outside-probe' に touch できません: 読み込み専用ファイルシステムです
+touch: '~/t64-outside-probe' に touch できません: 読み込み専用ファイルシステムです
 rc=1
 $ codex sandbox … -- touch ./t64-inside-probe
 rc=0
@@ -173,16 +173,16 @@ codex --sandbox workspace-write --profile express --ask-for-approval never -c sa
 ```
 ### run1: ~/.codex/sessions/2026/10/03/rollout-2026-10-03T22-00-23-01a101d9-f07f-7ca2-979c-be27e6d26fb9.jsonl
 turn_context: approval_policy=never sandbox=workspace-write network_access=True writable_roots=4 cwd=/tmp/claude-1000/t64-verify-azrv/repo
-CALL "sed -n '1,240p' .agents/worklog/codex/learn/learn_index.md && printf '\\\\n--- AGMSG SKILL ---\\\\n' && sed -n '1,260p' /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md"
+CALL "sed -n '1,240p' .agents/worklog/codex/learn/learn_index.md && printf '\\\\n--- AGMSG SKILL ---\\\\n' && sed -n '1,260p' ~/.agents/skills/agmsg-orchestration/SKILL.md"
   -> Script completed Wall time 0.1 seconds Output:  sed: can't read .agents/worklog/codex/learn/learn_index.md: No such file or directory
-CALL "sed -n '1,320p' /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md"
+CALL "sed -n '1,320p' ~/.agents/skills/agmsg-orchestration/SKILL.md"
   -> Script completed Wall time 0.1 seconds Output:  --- name: agmsg-orchestration description: Coordinate structured agmsg task orchestration between a Claude Code orchestrator and Codex workers. Use when Codex or Claude Code needs to run or supervise AGMSG-TASK / AGMSG-RESULT / AGMSG-ACCEPTANCE workflows, bootstrap workers in herdr panes, manage .orchestration 
 CALL 'git fetch --depth 1 origin main'
   -> Script completed Wall time 0.1 seconds Output:  {"exit_code":255,"output":"error: cannot open '.git/FETCH_HEAD': Read-only file system\n"}
 CALL 'gh pr view 235 --repo mryfmo/dotfiles --json number,state'
   -> Script completed Wall time 0.6 seconds Output:  {"exit_code":0,"output":"{\"number\":235,\"state\":\"MERGED\"}\n"}
-CALL 'touch /home/moriya/t64-outside-probe'
-  -> Script completed Wall time 0.1 seconds Output:  {"exit_code":1,"output":"touch: cannot touch '/home/moriya/t64-outside-probe': Read-only file system\n"}
+CALL 'touch ~/t64-outside-probe'
+  -> Script completed Wall time 0.1 seconds Output:  {"exit_code":1,"output":"touch: cannot touch '~/t64-outside-probe': Read-only file system\n"}
 CALL 'rm -rf t64-junk'
   -> Script failed Wall time 0.0 seconds Output:  Script error: exec_command failed: CreateProcess { message: "Rejected(\"`/usr/bin/zsh -lc 'rm -rf t64-junk'` rejected: Recursive force removal is never delegated; remove specific paths instead.\")" }
 CALL 'sudo true'
@@ -192,22 +192,22 @@ CALL 'sudo true'
 turn_context: approval_policy=never sandbox=workspace-write network_access=True writable_roots=8 cwd=/tmp/claude-1000/t64-verify-azrv/wt
 CALL 'git fetch origin main'
   -> Script completed Wall time 0.6 seconds Output:  {"exit_code":0,"output":"From https://github.com/mryfmo/dotfiles\n * branch            main       -> FETCH_HEAD\n"}
-CALL 'touch /home/moriya/t64-outside-probe'
-  -> Script completed Wall time 0.1 seconds Output:  {"exit_code":1,"output":"touch: cannot touch '/home/moriya/t64-outside-probe': Read-only file system\n"}
+CALL 'touch ~/t64-outside-probe'
+  -> Script completed Wall time 0.1 seconds Output:  {"exit_code":1,"output":"touch: cannot touch '~/t64-outside-probe': Read-only file system\n"}
 CALL 'git log -1 --format=%H FETCH_HEAD'
   -> Script completed Wall time 0.1 seconds Output:  {"exit_code":0,"output":"c6de5156f4583ac22d5a901364515cb0525e2dde\n"}
 
 ### run3: ~/.codex/sessions/2026/10/03/rollout-2026-10-03T22-03-49-01a101dd-1993-7d72-a55d-40f0ecb47302.jsonl
 turn_context: approval_policy=never sandbox=workspace-write network_access=True writable_roots=8 cwd=/tmp/claude-1000/t64-verify-azrv/wt
-CALL 'touch /home/moriya/t64-outside-probe'
-  -> Script completed Wall time 0.1 seconds Output:  {"exit_code":1,"output":"touch: cannot touch '/home/moriya/t64-outside-probe': Read-only file system\n"}
+CALL 'touch ~/t64-outside-probe'
+  -> Script completed Wall time 0.1 seconds Output:  {"exit_code":1,"output":"touch: cannot touch '~/t64-outside-probe': Read-only file system\n"}
 
 ### run4: ~/.codex/sessions/2026/10/04/rollout-2026-10-04T07-48-36-01a103f4-7a72-7141-a699-a2c955cb25cc.jsonl
 turn_context: approval_policy=never sandbox=workspace-write network_access=False writable_roots=4 cwd=/tmp/claude-1000/t64-verify-azrv/wt
 
 ### run5: ~/.codex/sessions/2026/10/04/rollout-2026-10-04T07-55-17-01a103fa-9912-7610-b04a-0b4af5605c7d.jsonl
 turn_context: approval_policy=never sandbox=workspace-write network_access=False writable_roots=4 cwd=/tmp/claude-1000/t64-verify-azrv/wt
-CALL 'touch /home/moriya/t64-outside-probe'
+CALL 'touch ~/t64-outside-probe'
   -> Script failed Wall time 0.0 seconds Output:  Script error: approval policy is Never; reject command — you cannot ask for escalated permissions if the approval policy is Never
 ```
 
@@ -253,7 +253,7 @@ ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { mess
 - No `*approval_request*` event appears in any of the five rollouts.
 - permgate's Codex entries in `~/.local/state/permgate/decisions.jsonl` were 34 before run1 and 34 after run5. The file had 470 lines in total; the last Codex entry is from 2026-10-01T21:54:51Z.
 
-**Caveat:** every run also printed `loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer`. `~/.codex/hooks.json` (SessionStart only, modified 2026-10-04 07:45) and the `[[hooks.PermissionRequest]]` entry in `config.toml` coexist. I could not demonstrate the hook firing in an on-request contrast run, because `codex exec` forces `never` and the TUI cannot run headless. The 34 earlier Codex entries show that it fired for interactive sessions up to 2026-10-01.
+**Caveat:** every run also printed `loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer`. `~/.codex/hooks.json` (SessionStart only, modified 2026-10-04 07:45) and the `[[hooks.PermissionRequest]]` entry in `config.toml` coexist. I could not demonstrate the hook firing in an on-request contrast run, because `codex exec` forces `never` and the TUI cannot run headless. The 34 earlier Codex entries show that it fired for interactive sessions up to 2026-10-01.
 
 ### Codex 0.160.0 sources for `never`
 

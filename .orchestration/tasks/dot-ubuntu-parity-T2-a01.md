@@ -32,14 +32,14 @@ push / PR 作成は禁止(T4 完了後にオーケストレータが承認)。
 
 ### B3. Codex project trust のテンプレート化(`fix(agents): key codex project trust to the chezmoi working tree`)
 
-- `home/dot_agents/agent-config.yaml` の projects キー `/Users/mryfmo/Workspace/dotfiles` を
+- `home/dot_agents/agent-config.yaml` の projects キー `~/Workspace/dotfiles` を
   `{{ .chezmoi.workingTree }}` に置換。
 - `home/dot_codex/modify_private_config.toml` の `render_managed_template()`(:29-32)に
   `{{ .chezmoi.workingTree }}` 置換を追加。値は env `CHEZMOI_WORKING_TREE` を優先、
   フォールバックは `source_dir().parent`(.chezmoiroot=home のため source dir の親が working tree)。
 - `python3 scripts/generate-agent-configs.py` で再生成(レンダリング産物の手編集禁止)。
-- `scripts/validate-agent-assets.py` の既存 `/Users/mryfmo/` shell_path ガード(:360 付近)の隣に、
-  `[projects]` キーに `/Users/mryfmo/` を含まないこと+managed projects キーが
+- `scripts/validate-agent-assets.py` の既存 `~/` shell_path ガード(:360 付近)の隣に、
+  `[projects]` キーに `~/` を含まないこと+managed projects キーが
   `{{ .chezmoi.workingTree }}` を使うことのガードを追加。
 - `scripts/check-agent-runtime.py` がテンプレートを chezmoi 経由でレンダリングするか確認し、
   ローカル文字列置換の場合は同じ置換をミラー。

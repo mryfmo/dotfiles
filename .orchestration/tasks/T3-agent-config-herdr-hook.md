@@ -1,7 +1,7 @@
 # T3: agent-config.yaml + generator に herdr SessionStart フックを追加し再生成
 
 依頼元: orchestrator-fable5(agmsg team: dotfiles-conformance)
-repo: /Users/mryfmo/Workspace/dotfiles(branch 作成・commit 不要)
+repo: ~/Workspace/dotfiles(branch 作成・commit 不要)
 
 ## 背景
 
@@ -20,7 +20,7 @@ repo: /Users/mryfmo/Workspace/dotfiles(branch 作成・commit 不要)
     "hooks": [
       {
         "type": "command",
-        "command": "bash '/Users/mryfmo/.claude/hooks/herdr-agent-state.sh' session",
+        "command": "bash '~/.claude/hooks/herdr-agent-state.sh' session",
         "timeout": 10
       }
     ]

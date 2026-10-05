@@ -1,6 +1,6 @@
 # AGMSG-TASK refkit-P2-C: Mermaid scope/type checks, run_examples measurement fixes, Chromium sandbox default
 
-Covers plan tasks P2-03, P2-08, P2-09 (第 2 部 §4). Findings: E-06, E-07, E-13, G-14, E-16. Plan: `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/ai-references-vivid-sparrow.md`. Sources: `/home/moriya/Workspace/dotfiles/.orchestration/reports/P0-04-sources.md` (§5 coverage.py JSON fields and formula, §7 pytest JUnit `time`, §14 Mermaid diagram keywords/securityLevel, §4 mutmut config keys). Work in `/home/moriya/Workspace/dotfiles-w1`, `references/`, branch `feat/references-kit-v4`, on top of refkit-P2-B.
+Covers plan tasks P2-03, P2-08, P2-09 (第 2 部 §4). Findings: E-06, E-07, E-13, G-14, E-16. Plan: `~/Workspace/dotfiles/.agents/worklog/claude/ai-references-vivid-sparrow.md`. Sources: `~/Workspace/dotfiles/.orchestration/reports/P0-04-sources.md` (§5 coverage.py JSON fields and formula, §7 pytest JUnit `time`, §14 Mermaid diagram keywords/securityLevel, §4 mutmut config keys). Work in `~/Workspace/dotfiles-w1`, `references/`, branch `feat/references-kit-v4`, on top of refkit-P2-B.
 
 ## Scope (allowed_files)
 `references/tools/kit_lint.py`, `references/tools/render_mermaid.py`, `references/tools/run_examples.py`, `references/kit.toml`, `references/03_CONVENTIONS.md` (§7 only), `references/examples/flowapprove_core/pyproject.toml` (`[tool.mutmut]`, pytest markers only), `references/tools/README.md`, `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/refkit-P2-C.md`.

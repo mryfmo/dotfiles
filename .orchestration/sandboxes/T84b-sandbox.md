@@ -1,7 +1,7 @@
 # T84b Sandbox
 
 - Worker: `codex-deep-dot`
-- Repository: `/Users/mryfmo/Workspace/dotfiles`
+- Repository: `~/Workspace/dotfiles`
 - Durable repository writes are limited to the one lifecycle wrapper, `scripts/update-agent-assets.sh`, two unit-test files, the five T84b artifacts, and mandated Crit evidence/receipt.
 - Temporary rendered scripts, fake HOME manifests, stub binaries, and foreign working directories were created only under test-owned temporary directories and removed by teardown.
 - The live installed manifest was read with `jq` only; deployed CompactionDB and lifecycle assets were not changed.

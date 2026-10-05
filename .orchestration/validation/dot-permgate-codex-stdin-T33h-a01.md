@@ -51,13 +51,13 @@ OK (skipped=1)
 ## The change
 
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c show --stat --format='%h %s' HEAD
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c show --stat --format='%h %s' HEAD
 6bc5918 fix(permgate): run the codex classifier with stdin=DEVNULL
 
  home/dot_local/bin/common/executable_permgate |  3 ++
  tests/unit/test_permgate.py                   | 49 +++++++++++++++++++++++++++
  2 files changed, 52 insertions(+)
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main -- home/dot_local/bin/common/executable_permgate
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main -- home/dot_local/bin/common/executable_permgate
 diff --git a/home/dot_local/bin/common/executable_permgate b/home/dot_local/bin/common/executable_permgate
 index 2ed9bb5..e2ab5f5 100755
 --- a/home/dot_local/bin/common/executable_permgate
@@ -152,118 +152,118 @@ test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_
 test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
 test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
 test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
-test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e21e40>
+test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e21e40>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e21f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e21f30>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e21d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e21d50>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e21b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e21b70>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22110>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22020>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e222f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e222f0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22200>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e223e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e223e0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e224d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e224d0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e225c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e225c0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e226b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e226b0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e227a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e227a0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22890>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e74b8310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e74b8310>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22a70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22a70>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22c50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22c50>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22d40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22d40>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22b60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22b60>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22e30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22e30>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22f20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22f20>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23010>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23010>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23100>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e231f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e231f0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e232e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e232e0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e233d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e233d0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e234c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e234c0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e235b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e235b0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e236a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e236a0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e22980>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23880>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23970>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23970>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23790>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23790>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23a60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23a60>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23c40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23c40>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23b50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23b50>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23d30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23d30>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23f10>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf022e6e23f10>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -718,7 +718,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-vin_vqyd/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-vin_vqyd/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -744,7 +744,7 @@ exit=0
 ## git diff origin/main --stat
 
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
  home/dot_local/bin/common/executable_permgate |  3 ++
  tests/unit/test_permgate.py                   | 49 +++++++++++++++++++++++++++
  2 files changed, 52 insertions(+)

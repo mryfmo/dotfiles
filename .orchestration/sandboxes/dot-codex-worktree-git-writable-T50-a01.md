@@ -1,6 +1,6 @@
 # Sandbox: dot-codex-worktree-git-writable-T50-a01
 
-- **Worker:** claude-standard-dot-a005 in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`, branch `fix/codex-worktree-git-writable` from origin/main bb3370a.
+- **Worker:** claude-standard-dot-a005 in `~/Workspace/dotfiles/.claude/worktrees/worker-c`, branch `fix/codex-worktree-git-writable` from origin/main bb3370a.
 - **Ran outside the Claude sandbox** (for the T39 limits: the shared `.git`, Unix sockets, the `codex` helpers, network):
   - git commands that write the shared `.git` (`fetch`, `switch`, `worktree add/remove`, `branch -D`, `commit`, `push`);
   - `make unit-test` and `make validate-agent-assets`;

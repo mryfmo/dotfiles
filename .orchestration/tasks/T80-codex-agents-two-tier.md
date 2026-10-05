@@ -1,7 +1,7 @@
 # T80: codex AGENTS.md の同型二層化(progressive disclosure)
 
 task_id: T80
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-pivot.md (Phase 6)

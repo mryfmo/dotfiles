@@ -1,6 +1,6 @@
 # AGMSG-TASK dot-git-ignore-cc-writes-T56-a01
 
-Drafted 2026-10-02 by the orchestrator seat (`claude-remediation-dot`); operator-approved dispatch. Worker: `claude-standard-dot-a005` in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+Drafted 2026-10-02 by the orchestrator seat (`claude-remediation-dot`); operator-approved dispatch. Worker: `claude-standard-dot-a005` in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 
 ## Objective
 
@@ -12,7 +12,7 @@ Change exactly one file: `home/dot_config/git/ignore`. Add the line `**/.claude/
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`; `git switch -c chore/git-ignore-cc-writes origin/main` (1f3bb5e1 or later). Verify the dispatched task_rev sha256 against this file; else stop and PONG blocked. If the worktree has uncommitted files, stop and PONG.
 
 ## Allowed files

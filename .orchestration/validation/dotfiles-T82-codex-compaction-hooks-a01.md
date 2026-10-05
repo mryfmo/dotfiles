@@ -8,8 +8,8 @@ PR #269 (https://github.com/mryfmo/dotfiles/pull/269), branch `feat/codex-compac
 ## Task file verification
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-cfd1f33597a6dac793883fe6592d1164318e7c477c86efdf28306a603fa13d10  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+cfd1f33597a6dac793883fe6592d1164318e7c477c86efdf28306a603fa13d10  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
 dispatched task_rev 81e629d8… (initial) and cfd1f335… (PONG decision); the sha256 above matches the latest
 ```
 
@@ -187,7 +187,7 @@ listing completed at 2026-10-04T22:58:13Z
 ## CompactionDB (main checkout, unsandboxed)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && uv run python .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T82 (operator 2026-10-03): Codex PreCompact, PostCompact and SessionEnd hooks are declared in the manifest's `codex.hooks.command_hooks` (SessionEnd within the 3-second Codex cap) and rendered into the managed Codex config; `contextdb-codex-notify` accepts the payload on stdin or argv and only ingests, so Codex compaction and session end land in CompactionDB with a real event type and session id.'
+$ cd ~/Workspace/dotfiles && uv run python .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T82 (operator 2026-10-03): Codex PreCompact, PostCompact and SessionEnd hooks are declared in the manifest's `codex.hooks.command_hooks` (SessionEnd within the 3-second Codex cap) and rendered into the managed Codex config; `contextdb-codex-notify` accepts the payload on stdin or argv and only ingests, so Codex compaction and session end land in CompactionDB with a real event type and session id.'
 92a9b538-3aaf-44fb-be7f-c913dd51d801
 ```
 
@@ -195,14 +195,14 @@ $ cd /home/moriya/Workspace/dotfiles && uv run python .claude/hooks/contextdb_cl
 
 ```text
 $ sha256sum .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-a3ae5c231d7d4dd93e1316e77de4a16ea934959bebac37e932fc0efd7a8ddd37  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+a3ae5c231d7d4dd93e1316e77de4a16ea934959bebac37e932fc0efd7a8ddd37  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
 ```
 
 ### Installer abort (project copy), before PONG decision a
 
 ```text
 $ uv run python vendor/compactiondb/install.py --project . --skip-instructions 2>&1 | tail -3
-OSError: [Errno 30] Read-only file system: '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d/.claude/hooks/contextdb_hook.py'
+OSError: [Errno 30] Read-only file system: '~/Workspace/dotfiles/.claude/worktrees/worker-d/.claude/hooks/contextdb_hook.py'
 (git status afterwards: no change under .claude/)
 $ for f in $(cd vendor/compactiondb/.claude && git ls-files contextdb/contextdb "hooks/contextdb_*.py"); do cmp -s vendor/compactiondb/.claude/$f .claude/$f || echo "differs: $f"; done   (before the copy)
 differs: contextdb/contextdb/cli.py
@@ -318,7 +318,7 @@ $ uv run python -m unittest tests.unit.test_contextdb_codex_notify.ContextdbCode
 FAIL: test_modules_in_the_session_cwd_cannot_shadow_the_stdlib (tests.unit.test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_modules_in_the_session_cwd_cannot_shadow_the_stdlib)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d/tests/unit/test_contextdb_codex_notify.py", line 155, in test_modules_in_the_session_cwd_cannot_shadow_the_stdlib
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-d/tests/unit/test_contextdb_codex_notify.py", line 155, in test_modules_in_the_session_cwd_cannot_shadow_the_stdlib
     self.assertEqual(result.stderr, "")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: 'contextdb-codex-notify: ingest failed\n' != ''
@@ -456,7 +456,7 @@ Useful? React with 👍 / 👎.
 
 ```text
 $ sha256sum .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-6fbe278d16d545b83329db2f8712fd2bcb3577cd42e9622c2fd8850c2ede55d7  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+6fbe278d16d545b83329db2f8712fd2bcb3577cd42e9622c2fd8850c2ede55d7  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
 $ git rev-parse HEAD; git log --format="%h %s" -1
 c466231a3228e0eded4c56917915d1d7c18b58a9
 c466231a fix(compactiondb): refuse symlinked CompactionDB storage directories
@@ -598,7 +598,7 @@ listing completed at 2026-10-05T00:10:33Z
 
 ```text
 $ sha256sum .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-b88e75c54b5ce521c97a9faf4649889189623f390372a06a144fd5af62f1cf5e  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+b88e75c54b5ce521c97a9faf4649889189623f390372a06a144fd5af62f1cf5e  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
 $ git rev-parse HEAD; git log --format="%h %s" -1; git diff c466231a --stat
 9ff2ad5260908bb0d5bcbc5bb20a7f7982764700
 9ff2ad52 fix(compactiondb): refuse a symlink anywhere under the CompactionDB opt-in

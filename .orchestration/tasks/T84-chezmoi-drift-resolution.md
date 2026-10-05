@@ -1,7 +1,7 @@
 # T84: chezmoi ドリフトの本質解消(ローカル改良の取り込み+権限属性+ドリフト検査)
 
 task_id: T84
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: operator directive 2026-08-17 「本質対処」(drift triage by orchestrator)

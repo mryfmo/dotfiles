@@ -55,7 +55,7 @@ The bot review state of the then-final head `04d6e1f3` is in the validation file
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T63 (operator 2026-10-03): the Codex execpolicy forbidden set (sudo, rm -rf, gh pr merge, gh release, npm/uv publish, terraform/kubectl apply, chezmoi apply) is declared once in `home/dot_codex/rules/default.rules` and overwrites the live rules on every chezmoi apply; no repository-managed allow rules exist.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T63 (operator 2026-10-03): the Codex execpolicy forbidden set (sudo, rm -rf, gh pr merge, gh release, npm/uv publish, terraform/kubectl apply, chezmoi apply) is declared once in `home/dot_codex/rules/default.rules` and overwrites the live rules on every chezmoi apply; no repository-managed allow rules exist.'
 9ccb9164-013d-4f77-b034-407ad252d0d0
 ```
 

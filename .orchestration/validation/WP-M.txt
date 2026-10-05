@@ -40,20 +40,20 @@ VERBATIM OUTPUT
 ```
 
 COMMAND
-python3 /Users/mryfmo/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
+python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
 EXIT CODE
 1
 VERBATIM OUTPUT
 ```text
-mise WARN  tracking config: failed to ln -sf /private/tmp/dotfiles-WP-M/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/3043f2870b288377: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf /private/tmp/dotfiles-WP-M/mise.toml ~/.local/state/mise/tracked-configs/3043f2870b288377: Operation not permitted (os error 1)
 Traceback (most recent call last):
-  File "/Users/mryfmo/.codex/skills/.system/skill-creator/scripts/quick_validate.py", line 10, in <module>
+  File "~/.codex/skills/.system/skill-creator/scripts/quick_validate.py", line 10, in <module>
     import yaml
 ModuleNotFoundError: No module named 'yaml'
 ```
 
 COMMAND
-uv run --with pyyaml python /Users/mryfmo/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
+uv run --with pyyaml python ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
 EXIT CODE
 0
 VERBATIM OUTPUT

@@ -23,10 +23,10 @@ The rebase base and GitHub-recorded PR base are `a5f33eede3feb15c59031c5af904bf1
 
 [memory:decision] T40: the PR integration gate binds --base to the PR recorded GitHub base, excludes from diff sizing only a .orchestration/validation/*-pr-feedback.json evidence file, and passes GraphQL string variables raw (-f), closing the three findings deferred from T38 (operator 2026-09-29).
 
-CompactionDB decision: `fdccdfbf-e3b3-4452-850d-c66b0a6df852`. Executed from /home/moriya/Workspace/dotfiles with the authorized main-checkout exception:
+CompactionDB decision: `fdccdfbf-e3b3-4452-850d-c66b0a6df852`. Executed from ~/Workspace/dotfiles with the authorized main-checkout exception:
 
 ```sh
-python3 /home/moriya/Workspace/dotfiles/.claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] T40: the PR integration gate binds --base to the PR recorded GitHub base, excludes from diff sizing only a .orchestration/validation/*-pr-feedback.json evidence file, and passes GraphQL string variables raw (-f), closing the three findings deferred from T38 (operator 2026-09-29).'
+python3 ~/Workspace/dotfiles/.claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] T40: the PR integration gate binds --base to the PR recorded GitHub base, excludes from diff sizing only a .orchestration/validation/*-pr-feedback.json evidence file, and passes GraphQL string variables raw (-f), closing the three findings deferred from T38 (operator 2026-09-29).'
 ```
 
 The first attempt could not write the DB lock; the approved retry returned the decision ID. Verbatim output is saved in validation. Worklog files are waived for T40; no skill/rule promotion or AutoSkill run occurred.

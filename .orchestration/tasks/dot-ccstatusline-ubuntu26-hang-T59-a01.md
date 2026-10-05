@@ -1,10 +1,10 @@
 # AGMSG-TASK dot-ccstatusline-ubuntu26-hang-T59-a01
 
-Drafted 2026-10-03 by the orchestrator seat; operator-approved ("A で進めろ、T59 を起票しろ"). Worker: `claude-standard-dot-a005` in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+Drafted 2026-10-03 by the orchestrator seat; operator-approved ("A で進めろ、T59 を起票しろ"). Worker: `claude-standard-dot-a005` in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 
 ## Objective
 
-T58 (#229) added the non-required canary cell `test (ubuntu-26.04, client)`. It is red on every run: in the step "Smoke-test statusline tools without network", `scripts/check-statusline-tools.py` (5 s timeout per command) raises `subprocess.TimeoutExpired` on `/home/runner/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline --version` under `sudo unshare --net` with `HTTP_PROXY=http://127.0.0.1:1` (run 37064146970, job 111027711303, image ubuntu-26.04 / ubuntu26/20260927.149, Python 3.14). The same command passes on ubuntu-24.04 and macos-14. Until the canary is green, every PR's feedback sweep carries a `failure` item that would have to be dispositioned repeatedly, which the operator has forbidden.
+T58 (#229) added the non-required canary cell `test (ubuntu-26.04, client)`. It is red on every run: in the step "Smoke-test statusline tools without network", `scripts/check-statusline-tools.py` (5 s timeout per command) raises `subprocess.TimeoutExpired` on `~/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline --version` under `sudo unshare --net` with `HTTP_PROXY=http://127.0.0.1:1` (run 37064146970, job 111027711303, image ubuntu-26.04 / ubuntu26/20260927.149, Python 3.14). The same command passes on ubuntu-24.04 and macos-14. Until the canary is green, every PR's feedback sweep carries a `failure` item that would have to be dispositioned repeatedly, which the operator has forbidden.
 
 Find the root cause and fix it at the root, so that the canary passes without weakening the check:
 

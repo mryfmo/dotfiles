@@ -19,7 +19,7 @@ Verbatim pre-implementation output (exit 1):
     FAIL: test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing (tests.unit.test_runtime_health.RuntimeHealthTest.test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing)
     ----------------------------------------------------------------------
     Traceback (most recent call last):
-      File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-converge/tests/unit/test_runtime_health.py", line 273, in test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing
+      File "~/Workspace/dotfiles/.claude/worktrees/update-converge/tests/unit/test_runtime_health.py", line 273, in test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing
         self.assertNotIn("Error:", result.stdout + result.stderr)
         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     AssertionError: 'Error:' unexpectedly found in '\n==> Codex plugins\nCodex Superpowers was not installed: the OpenAI-curated catalog is unavailable.\nRun `codex login`, then `codex plugin add superpowers@openai-curated`.\nError: plugin superpowers@openai-curated was not found\n'

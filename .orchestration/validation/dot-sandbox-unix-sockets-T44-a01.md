@@ -121,13 +121,13 @@ Ran 3 tests in 0.021s
 OK
 exit=0
 
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-sandbox-unix-sockets-T44-a01.md; git show f45cf73:.orchestration/tasks/dot-sandbox-unix-sockets-T44-a01.md | sha256sum
-49f69bc1ec6878221d9dfac666610279be04cf2eaa00db310cfd1facdab783dc  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-sandbox-unix-sockets-T44-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-sandbox-unix-sockets-T44-a01.md; git show f45cf73:.orchestration/tasks/dot-sandbox-unix-sockets-T44-a01.md | sha256sum
+49f69bc1ec6878221d9dfac666610279be04cf2eaa00db310cfd1facdab783dc  ~/Workspace/dotfiles/.orchestration/tasks/dot-sandbox-unix-sockets-T44-a01.md
 49f69bc1ec6878221d9dfac666610279be04cf2eaa00db310cfd1facdab783dc  -
 exit=0
 
-$ command ls -la /home/moriya/Workspace/dotfiles/.git/config.lock
--r--r--r-- 1 moriya moriya 0  9月 30 06:27 /home/moriya/Workspace/dotfiles/.git/config.lock
+$ command ls -la ~/Workspace/dotfiles/.git/config.lock
+-r--r--r-- 1 moriya moriya 0  9月 30 06:27 ~/Workspace/dotfiles/.git/config.lock
 exit=0
 
 ```
@@ -790,7 +790,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-wjl426pc/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-wjl426pc/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -921,7 +921,7 @@ exit=0
 ```
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T44\ r2:\ the\ Claude\ Code\ sandbox\ does\ not\ set\ network.allowAllUnixSockets\ \(with\ a\ docker-group\ user\ or\ a\ reachable\ systemd\ --user\ bus\ it\ makes\ the\ auto-approved\ sandbox\ an\ escape\)\;\ on\ Linux\ herdr,\ agmsg-dispatch,\ herdr-agents\ and\ gh\ use\ the\ unsandboxed\ retry\ prompt\;\ filesystem.extra_allow_write\ \[~/.cache/uv\]\ stays\ \(operator\ decision\ 2026-10-01\).\ Supersedes\ the\ T44\ r1\ decision.
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T44\ r2:\ the\ Claude\ Code\ sandbox\ does\ not\ set\ network.allowAllUnixSockets\ \(with\ a\ docker-group\ user\ or\ a\ reachable\ systemd\ --user\ bus\ it\ makes\ the\ auto-approved\ sandbox\ an\ escape\)\;\ on\ Linux\ herdr,\ agmsg-dispatch,\ herdr-agents\ and\ gh\ use\ the\ unsandboxed\ retry\ prompt\;\ filesystem.extra_allow_write\ \[~/.cache/uv\]\ stays\ \(operator\ decision\ 2026-10-01\).\ Supersedes\ the\ T44\ r1\ decision.
 911e61c8-e962-4648-84d9-0598702cfa49
 exit=0
 ```
@@ -1605,7 +1605,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-4prnesvt/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-4prnesvt/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1631,7 +1631,7 @@ make unit-test exit=0
 ### `make validate-agent-assets` in the main checkout with the r2 evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0

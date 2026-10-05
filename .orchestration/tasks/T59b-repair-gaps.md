@@ -1,7 +1,7 @@
 # T59b: REPAIR gaps found in T61 live verification
 
 task_id: T59b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-harness-composability-integration.md (Phase 5; defects found in T61 E2E-3')

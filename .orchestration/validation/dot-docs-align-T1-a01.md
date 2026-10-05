@@ -100,7 +100,7 @@ Second red result after account reuse:
 ```text
 Step 12/13 : RUN mkdir -p ~/.local/share/fonts
  ---> Running in ca773c25ed17
-mkdir: cannot create directory '/home/mryfmo/.local/share/fonts': Permission denied
+mkdir: cannot create directory '~/.local/share/fonts': Permission denied
 The command '/bin/sh -c mkdir -p ~/.local/share/fonts' returned a non-zero code: 1
 ```
 

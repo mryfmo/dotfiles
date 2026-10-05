@@ -157,7 +157,7 @@ home/dot_config/claude/rules/agmsg-orchestration.md:15:- Route by seat capabilit
 ### `wc -w home/dot_config/claude/rules/agmsg-orchestration.md` (origin/main before T88: 1269)
 
 ```text
-1454 /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_config/claude/rules/agmsg-orchestration.md
+1454 ~/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_config/claude/rules/agmsg-orchestration.md
 ```
 
 ### prettier on 240bb772
@@ -187,7 +187,7 @@ validate-agent-assets rc=0
 ### CompactionDB (main checkout, run unsandboxed)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T88 (operator 2026-10-04): tasks that edit Claude's permission-policy source go to a Codex worker or the operator (the auto-mode classifier refuses a Claude seat as self-modification; the worker reports a blocked PONG, never evades); independent tasks run in parallel on up to three herdr-agents worker worktrees with pairwise-disjoint allowed_files; same-file tasks run sequentially; freed workers are re-tasked at once; acceptance follows RESULT order and audits queue on the single audit tab. Written into the agmsg-orchestration rule and SKILL."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T88 (operator 2026-10-04): tasks that edit Claude's permission-policy source go to a Codex worker or the operator (the auto-mode classifier refuses a Claude seat as self-modification; the worker reports a blocked PONG, never evades); independent tasks run in parallel on up to three herdr-agents worker worktrees with pairwise-disjoint allowed_files; same-file tasks run sequentially; freed workers are re-tasked at once; acceptance follows RESULT order and audits queue on the single audit tab. Written into the agmsg-orchestration rule and SKILL."
 33356f9a-a70b-4d61-b725-dde6d67594d0
 $ python3 .claude/hooks/contextdb_cli.py memory search dotfiles-T88   (the CLI truncates long entries with …)
 33356f9a-a70b-4d61-b725-dde6d67594d0 [project/decision] dotfiles-T88 (operator 2026-10-04): tasks that edit Claude's permission-policy source go to a Codex worker or the operator (the auto-mode classifier refuses a Claude seat as self-modification; the worker reports a blocked PONG, never evades); independent tasks run in parallel on up to three herdr-agents worker worktrees with pairwise-disjoint allowed_files; same-file tasks run sequentially; freed workers are re-tasked at once; acceptance follows RESULT order and audits queue…
@@ -353,7 +353,7 @@ $ pgrep -fl _serve; pgrep -af '[c]rit _serve'                       (unsandboxed
 30901 mozc_server
 3730777 crit
 3731124 zsh
-3730777 /home/moriya/.local/bin/crit _serve --no-open --quiet --share-url https://crit.md --plan-dir /home/moriya/.crit/plans/t88-scratch-a006 --name t88-scratch-a006 /home/moriya/.crit/plans/t88-scratch-a006/current.md
+3730777 ~/.local/bin/crit _serve --no-open --quiet --share-url https://crit.md --plan-dir ~/.crit/plans/t88-scratch-a006 --name t88-scratch-a006 ~/.crit/plans/t88-scratch-a006/current.md
 
 $ git switch -q feat/gate-audit-evidence; crit stop                 (sandboxed)
 feat/gate-audit-evidence
@@ -363,16 +363,16 @@ $ crit stop                                                         (unsandboxed
 Error: no running daemon found for current directory and branch.
 unsandboxed bare crit stop exit=1
 3730777 crit
-$ crit stop /home/moriya/.crit/plans/t88-scratch-a006/current.md    (sandboxed, other branch)
-no session found: open /home/moriya/.crit/sessions/fc9a7539ae86.json: no such file or directory
+$ crit stop ~/.crit/plans/t88-scratch-a006/current.md    (sandboxed, other branch)
+no session found: open ~/.crit/sessions/fc9a7539ae86.json: no such file or directory
 sandboxed crit stop <plan-file> exit=1
 3730777 crit
 $ cat ~/.crit/sessions/65c04120b1d7.json                           (the scratch server's session record)
-{"pid": 3730777, "port": 46305, "host": "127.0.0.1", "cwd": "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d", "args": ["/home/moriya/.crit/plans/t88-scratch-a006/current.md"], "branch": "docs/parallel-execution-rule", "review_path": "/home/moriya/.crit/plans/t88-scratch-a006/.crit", "started_at": "2026-10-04T03:29:23.051007619Z"}
+{"pid": 3730777, "port": 46305, "host": "127.0.0.1", "cwd": "~/Workspace/dotfiles/.claude/worktrees/worker-d", "args": ["~/.crit/plans/t88-scratch-a006/current.md"], "branch": "docs/parallel-execution-rule", "review_path": "~/.crit/plans/t88-scratch-a006/.crit", "started_at": "2026-10-04T03:29:23.051007619Z"}
 
 $ git switch -q docs/parallel-execution-rule; crit stop <plan-file> (sandboxed, start branch)
 docs/parallel-execution-rule
-no session found: open /home/moriya/.crit/sessions/fc9a7539ae86.json: no such file or directory
+no session found: open ~/.crit/sessions/fc9a7539ae86.json: no such file or directory
 sandboxed crit stop <plan-file> on the start branch exit=1
 3730777 crit
 $ crit stop                                                         (sandboxed, start branch)
@@ -383,7 +383,7 @@ $ crit stop; crit stop <plan-file>                                  (unsandboxed
 docs/parallel-execution-rule
 Daemon stopped.
 unsandboxed bare crit stop on the start branch exit=0
-no session found: open /home/moriya/.crit/sessions/fc9a7539ae86.json: no such file or directory
+no session found: open ~/.crit/sessions/fc9a7539ae86.json: no such file or directory
 unsandboxed crit stop <plan-file> on the start branch exit=1
 pgrep(crit) rc=1
 ```
@@ -496,7 +496,7 @@ chatgpt-codex-connector[bot]	+1	2026-10-04T04:02:29Z
 
 ```text
 $ sha256sum .orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
-cb40c955e6065859a6a87c6954f15a8a93e78f0c072b814460e7675003191aeb  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
+cb40c955e6065859a6a87c6954f15a8a93e78f0c072b814460e7675003191aeb  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
 ```
 
 ### Commits since 04fd9425
@@ -564,8 +564,8 @@ d0f034182529fe9874037e0f21b7a624229ece0f docs(orchestration): route every source
  home/dot_config/claude/rules/agmsg-orchestration.md | 2 +-
  2 files changed, 2 insertions(+), 2 deletions(-)
 $ grep -c 'every source that renders into Claude' <rule> <SKILL>
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_config/claude/rules/agmsg-orchestration.md:1
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_agents/skills/agmsg-orchestration/SKILL.md:1
+~/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_config/claude/rules/agmsg-orchestration.md:1
+~/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_agents/skills/agmsg-orchestration/SKILL.md:1
 $ make unit-test (tail)
 Ran 753 tests in 174.658s
 
@@ -702,24 +702,24 @@ chatgpt-codex-connector[bot]	+1	2026-10-04T07:20:35Z
 ### Stale-record check and removal (round 2, 2026-10-04 ~05:12Z), verbatim from the session log
 
 ```text
-$ cat ~/.crit/sessions/b8359df9be5d.json; echo; p=$(python3 -c 'import json;print(json.load(open("/home/moriya/.crit/sessions/b8359df9be5d.json"))["pid"])'); echo "pid=$p"; ps -o args= -p "$p"; echo "ps rc=$?"
+$ cat ~/.crit/sessions/b8359df9be5d.json; echo; p=$(python3 -c 'import json;print(json.load(open("~/.crit/sessions/b8359df9be5d.json"))["pid"])'); echo "pid=$p"; ps -o args= -p "$p"; echo "ps rc=$?"
 {
   "pid": 3736107,
   "port": 44763,
   "host": "127.0.0.1",
-  "cwd": "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d",
+  "cwd": "~/Workspace/dotfiles/.claude/worktrees/worker-d",
   "args": [
     "version"
   ],
   "branch": "docs/parallel-execution-rule",
-  "review_path": "/home/moriya/.crit/reviews/b8359df9be5d",
+  "review_path": "~/.crit/reviews/b8359df9be5d",
   "started_at": "2026-10-04T03:30:33.694622929Z"
 }
 pid=3736107
 ps rc=1
-$ rm /home/moriya/.crit/sessions/b8359df9be5d.json && echo "removed stale record"; ls -d /home/moriya/.crit/reviews/b8359df9be5d
+$ rm ~/.crit/sessions/b8359df9be5d.json && echo "removed stale record"; ls -d ~/.crit/reviews/b8359df9be5d
 removed stale record
-ls: '/home/moriya/.crit/reviews/b8359df9be5d' にアクセスできません: そのようなファイルやディレクトリはありません
+ls: '~/.crit/reviews/b8359df9be5d' にアクセスできません: そのようなファイルやディレクトリはありません
 ```
 
 `ps -o args= -p 3736107` printed nothing and exited 1, so the pid was gone. No `readlink` was run at the time because the process no longer existed. Re-run now for this round (round 3), the pid is still absent:
@@ -770,15 +770,15 @@ chatgpt-codex-connector[bot]	COMMENTED	5bef5588	2026-10-04T08:08:34Z
 ## Revise round 4 (task_rev 60458ed3…)
 
 ```text
-56480ce265c91d1046bb9cdfca4b1c8000299c713cf716c8345f42ff8d8cb8d7  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
+56480ce265c91d1046bb9cdfca4b1c8000299c713cf716c8345f42ff8d8cb8d7  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
 0189cfb3b8480187940bd7176f5748b2ce0e15bc docs(orchestration): route permgate in the rule too and spell out sequential worktree reuse
  home/dot_agents/skills/agmsg-orchestration/SKILL.md | 2 +-
  home/dot_config/claude/rules/agmsg-orchestration.md | 2 +-
  tests/unit/test_agmsg_orchestration_docs.py         | 1 +
  3 files changed, 3 insertions(+), 2 deletions(-)
 $ grep -c permgate-policy.yaml <rule> <SKILL>
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_agents/skills/agmsg-orchestration/SKILL.md:1
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_config/claude/rules/agmsg-orchestration.md:1
+~/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_agents/skills/agmsg-orchestration/SKILL.md:1
+~/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_config/claude/rules/agmsg-orchestration.md:1
 $ make unit-test (tail)
 Ran 760 tests in 174.921s
 
@@ -823,7 +823,7 @@ blocked
 ```text
 $ rm .agents/worklog/claude/t88-scratch-plan.md; git status --short .agents | head -3
 (no output)
-$ command ls -la /home/moriya/.crit/plans/t88-scratch-a006 | head; rm -r /home/moriya/.crit/plans/t88-scratch-a006 && echo removed
+$ command ls -la ~/.crit/plans/t88-scratch-a006 | head; rm -r ~/.crit/plans/t88-scratch-a006 && echo removed
 合計 20
 drwxr-xr-x  3 moriya moriya 4096 10月  4 12:29 .
 drwxr-xr-x 42 moriya moriya 4096 10月  4 12:29 ..
@@ -892,7 +892,7 @@ chatgpt-codex-connector[bot]	+1	2026-10-04T08:43:33Z
 ## Revise round 5 (task_rev dccfdd91…): fix commit fb4c9a9a
 
 ```text
-dccfdd91ab8d03845f851b1a60ca1aeedae4a43df3d5f855fdd6769fd7d8c2e6  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
+dccfdd91ab8d03845f851b1a60ca1aeedae4a43df3d5f855fdd6769fd7d8c2e6  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
 fb4c9a9a77f627a1c2f9a028feac8ef545fe61ef docs(orchestration): route a change by the boundary it touches and checkpoint before every branch switch
  home/dot_agents/skills/agmsg-orchestration/SKILL.md | 4 ++--
  home/dot_config/claude/rules/agmsg-orchestration.md | 2 +-
@@ -951,7 +951,7 @@ Codex Bot on fb4c9a9a: no review, inline comment or reaction between the ~09:18Z
 ## Revise round 6 (task_rev 2e3ebc6a…): fix commit 62845ab9 (final head)
 
 ```text
-2e3ebc6a955c1660d43d4e35e16a08a3cff924bc63bed8d163dc3c8b444e5eb5  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
+2e3ebc6a955c1660d43d4e35e16a08a3cff924bc63bed8d163dc3c8b444e5eb5  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T88-parallel-execution-rule-a01.md
 62845ab9be1ae25469e06067410db636ee8ba80d docs(orchestration): route permgate edits to the operator with a security-worker review
  home/dot_agents/skills/agmsg-orchestration/SKILL.md | 2 +-
  home/dot_config/claude/rules/agmsg-orchestration.md | 2 +-
@@ -959,8 +959,8 @@ Codex Bot on fb4c9a9a: no review, inline comment or reaction between the ~09:18Z
  3 files changed, 3 insertions(+), 2 deletions(-)
    fb4c9a9a..62845ab9  HEAD -> docs/parallel-execution-rule
 $ grep -c "PermissionRequest hook of both seats, goes to the operator" <rule> <SKILL>
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_agents/skills/agmsg-orchestration/SKILL.md:1
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_config/claude/rules/agmsg-orchestration.md:1
+~/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_agents/skills/agmsg-orchestration/SKILL.md:1
+~/Workspace/dotfiles/.claude/worktrees/worker-d/home/dot_config/claude/rules/agmsg-orchestration.md:1
 $ make unit-test (tail)
 Ran 771 tests in 176.499s
 

@@ -39,15 +39,15 @@ exit=1
 Codex binary resolution (mise noise lines about unrelated projects elided):
 ```
 $ command -v codex; mise which codex
-/home/moriya/.local/share/mise/installs/npm-openai-codex/0.157.1/bin/codex
-/home/moriya/.local/share/mise/installs/npm-openai-codex/0.157.1/bin/codex
+~/.local/share/mise/installs/npm-openai-codex/0.157.1/bin/codex
+~/.local/share/mise/installs/npm-openai-codex/0.157.1/bin/codex
 $ readlink -f "$(mise which codex)"
-/home/moriya/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/bin/codex.js
+~/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/bin/codex.js
 $ find <codex npm pkg> -type f \( -name '*bwrap*' -o -name 'codex*' -o -name '*sandbox*' \) -perm -u+x
-/home/moriya/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/bin/codex.js
-/home/moriya/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/bwrap
-/home/moriya/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex-code-mode-host
-/home/moriya/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex
+~/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/bin/codex.js
+~/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/bwrap
+~/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex-code-mode-host
+~/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex
 ```
 Which bwrap codex executes: a PATH-first logging shim was never invoked:
 ```
@@ -61,10 +61,10 @@ $ command -v strace
 strace execve trace of `codex sandbox true` (non-ENOENT execs; env and args truncated):
 ```
 $ strace -f -qq -e trace=execve -e signal=none -o strace.txt codex sandbox true
-1475623 execve("/home/moriya/.local/share/mise/installs/npm-openai-codex/0.157.1/bin/codex", ["codex", "sandbox", "true"], 0xffffc97c78a0 /* 71 vars */) = 0
-1475623 execve("/home/moriya/.local/share/mise/installs/node/26.9.0/bin/node", ["node", "/home/moriya/.local/share/mise/i"..., "sandbox", "true"], 0xffffc4168fe8 /* 71 vars */) = 0
-1475630 execve("/home/moriya/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex", ["/home/moriya/.local/share/mise/i"..., "sandbox", "true"], 0x4
-1475675 execve("/home/moriya/.codex/tmp/arg0/codex-arg0Dsp6Cy/codex-linux-sandbox", ["codex-linux-sandbox", "--sandbox-policy-cwd", "/home/moriya/Workspace/dotfiles/"..., "--command-cwd", "/home/moriya/Workspace/dotfiles/"..., "--permission-profile", "{\"type\
+1475623 execve("~/.local/share/mise/installs/npm-openai-codex/0.157.1/bin/codex", ["codex", "sandbox", "true"], 0xffffc97c78a0 /* 71 vars */) = 0
+1475623 execve("~/.local/share/mise/installs/node/26.9.0/bin/node", ["node", "~/.local/share/mise/i"..., "sandbox", "true"], 0xffffc4168fe8 /* 71 vars */) = 0
+1475630 execve("~/.local/share/mise/installs/npm-openai-codex/0.157.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex", ["~/.local/share/mise/i"..., "sandbox", "true"], 0x4
+1475675 execve("~/.codex/tmp/arg0/codex-arg0Dsp6Cy/codex-linux-sandbox", ["codex-linux-sandbox", "--sandbox-policy-cwd", "~/Workspace/dotfiles/"..., "--command-cwd", "~/Workspace/dotfiles/"..., "--permission-profile", "{\"type\
 1475677 execve("/usr/bin/bwrap", ["/usr/bin/bwrap", "--help"], 0xffffd93a6a18 /* 7 vars */) = 0
 1475676 execve("/usr/bin/bwrap", ["bwrap", "--as-pid-1", "--new-session", "--die-with-parent", "--tmpfs", "/", "--dev", "/dev", "--ro-bind", "/bin", "/bin", "--ro-bind", "/etc", "/etc", "--ro-bind", "/lib", "/lib", "--ro-bind", "/sbin", "/sbin", "--ro-bind", "
 1475679 execve("/usr/bin/bwrap", ["/usr/bin/bwrap", "--help"], 0xffffd93a6a18 /* 7 vars */) = 0
@@ -131,10 +131,10 @@ Traceback (most recent call last):
   File [35m"/tmp/claude-1000/-home-moriya-Workspace-dotfiles/3e54f9a0-f011-4421-9a8a-a9eb113df7ad/scratchpad/t30/base.pMhV/tests/unit/test_apparmor_userns.py"[0m, line [35m166[0m, in [35mtest_doctor_fails_when_the_bwrap_probe_fails[0m
     self.profile_target.write_text([31mPROFILE.read_text[0m[1;31m()[0m)
                                    [31m~~~~~~~~~~~~~~~~~[0m[1;31m^^[0m
-  File [35m"/home/moriya/.local/share/mise/installs/python/3.14.7/lib/python3.14/pathlib/__init__.py"[0m, line [35m787[0m, in [35mread_text[0m
+  File [35m"~/.local/share/mise/installs/python/3.14.7/lib/python3.14/pathlib/__init__.py"[0m, line [35m787[0m, in [35mread_text[0m
     with [31mself.open[0m[1;31m(mode='r', encoding=encoding, errors=errors, newline=newline)[0m as f:
          [31m~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
-  File [35m"/home/moriya/.local/share/mise/installs/python/3.14.7/lib/python3.14/pathlib/__init__.py"[0m, line [35m771[0m, in [35mopen[0m
+  File [35m"~/.local/share/mise/installs/python/3.14.7/lib/python3.14/pathlib/__init__.py"[0m, line [35m771[0m, in [35mopen[0m
     return [31mio.open[0m[1;31m(self, mode, buffering, encoding, errors, newline)[0m
            [31m~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
 [1;35mFileNotFoundError[0m: [35m[Errno 2] No such file or directory: '/tmp/claude-1000/-home-moriya-Workspace-dotfiles/3e54f9a0-f011-4421-9a8a-a9eb113df7ad/scratchpad/t30/base.pMhV/install/ubuntu/common/apparmor/bwrap-userns'[0m
@@ -385,7 +385,7 @@ test_unknown_worker_profile_fails (test_generate_agent_configs.GenerateAgentConf
 ok
 test_cli_workspace_resolves_macos_var_alias_identically (test_permgate.PermgateTest.test_cli_workspace_resolves_macos_var_alias_identically) ... skipped 'macOS /var alias only'
 test_upgrade_uses_current_mise_node_after_runtime_replacement (test_runtime_health.RuntimeHealthTest.test_upgrade_uses_current_mise_node_after_runtime_replacement)
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-naoc_r8u/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-naoc_r8u/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 
 ----------------------------------------------------------------------
@@ -396,7 +396,7 @@ exit=0
 ```
 (Per-test `... ok` lines are elided. The remaining `ERROR:` lines are expected stderr from passing negative tests.)
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
  .../tasks/dot-mosh-and-asset-bumps-T31-a01.md      | 157 -------------------
  AGENTS.md                                          |   8 +
  README.md                                          |  10 ++

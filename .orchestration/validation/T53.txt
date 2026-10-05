@@ -23,16 +23,16 @@ CLAUDE.md:
 2. INSTALLER OUTPUT (FULL)
 --------------------------
 Command:
-  ~/.local/bin/common/compactiondb-install /Users/mryfmo/Workspace/dotfiles
+  ~/.local/bin/common/compactiondb-install ~/Workspace/dotfiles
 
 Output:
-  project=/Users/mryfmo/Workspace/dotfiles
-  python=/Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+  project=~/Workspace/dotfiles
+  python=~/.local/share/mise/installs/python/3.14.7/bin/python3.14
   hook_groups_added=15
   previous_contextdb_hook_groups_removed=0
   claude_md_updated=true
   gitignore_lines_added=8
-  Run: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14 .claude/hooks/contextdb_cli.py health
+  Run: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14 .claude/hooks/contextdb_cli.py health
 
 3. VERSION AND CONFIG
 ---------------------
@@ -77,7 +77,7 @@ Before install, `.claude/settings.json` was absent. There were no existing setti
 
 Generated hook schema:
   type=command
-  command=/Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+  command=~/.local/share/mise/installs/python/3.14.7/bin/python3.14
   args include `${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_*.py` or query_log.py
   hook count=15
   PASS

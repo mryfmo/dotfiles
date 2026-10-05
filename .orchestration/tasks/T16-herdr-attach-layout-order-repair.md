@@ -5,7 +5,7 @@
 - Task ID: `T16-herdr-attach-layout-order-repair`
 - Executor model: `gpt-5.6-sol`
 - Reasoning effort: `high`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`, branch from current `main`
+- Repo: `~/Workspace/dotfiles`, branch from current `main`
   (`cab6de1`): create `feat/herdr-attach-order-repair`
 - Pre-existing dirty/untracked paths (`home/dot_mise/*`, `.orchestration/`,
   `.agents/`, `plans/`, `docs/verification/`) are NOT yours.

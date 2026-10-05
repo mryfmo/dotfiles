@@ -1,6 +1,6 @@
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -11,10 +11,10 @@ session id: 01a0e634-2128-7c50-aeb4-120c664fec0a
 --------
 user
 commit 8798076
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat /home/moriya/.agents/skills/understand-diff/SKILL.md; cat /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat ~/.agents/skills/understand-diff/SKILL.md; cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 # AGENTS.md
@@ -486,7 +486,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/usr/bin/zsh -lc 'git status --short; git rev-parse HEAD; git show --stat --oneline 8798076; git show --format=fuller --no-ext-diff 8798076; ls .ua/meta.json .ua/knowledge-graph.json 2>/dev/null; find .. -name AGENTS.override.md -print' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'git status --short; git rev-parse HEAD; git show --stat --oneline 8798076; git show --format=fuller --no-ext-diff 8798076; ls .ua/meta.json .ua/knowledge-graph.json 2>/dev/null; find .. -name AGENTS.override.md -print' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ?? .orchestration/autoskill/runs/dot-orchestration-rules-T33a-a01.md
 ?? .orchestration/learning/dot-orchestration-rules-T33a-a01.md
@@ -562,13 +562,13 @@ index 8dbc8f8..8eea38c 100644
 
 **Checking fallback mechanisms**
 exec
-/usr/bin/zsh -lc 'for d in /home /home/moriya /home/moriya/Workspace . home home/dot_config home/dot_config/codex; do for n in AGENTS.override.md AGENTS.md; do test ! -f "$d/$n" || printf '"'%s\\n' \""'$d/$n"; done; done; cat .ua/meta.json; python3 - <<'"'PY'
+/usr/bin/zsh -lc 'for d in /home ~ ~/Workspace . home home/dot_config home/dot_config/codex; do for n in AGENTS.override.md AGENTS.md; do test ! -f "$d/$n" || printf '"'%s\\n' \""'$d/$n"; done; done; cat .ua/meta.json; python3 - <<'"'PY'
 import json
 p=json.load(open('.ua/knowledge-graph.json'))
 for n in p['nodes']:
  if any(s in (n.get('filePath','')+' '+n.get('summary','')).lower() for s in ['crit','codex/agents']): print(n.get('filePath'),n.get('summary'))
 PY
- git show 8798076:home/dot_config/codex/AGENTS.md | nl -ba | head -75; git ls-tree -r --name-only 8798076 | grep -E '(AGENTS|require.crit|review.*evidence)'" in /home/moriya/Workspace/dotfiles
+ git show 8798076:home/dot_config/codex/AGENTS.md | nl -ba | head -75; git ls-tree -r --name-only 8798076 | grep -E '(AGENTS|require.crit|review.*evidence)'" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ./AGENTS.md
 home/dot_config/codex/AGENTS.md
@@ -655,7 +655,7 @@ tests/unit/test_require_crit_review.py
 vendor/compactiondb/AGENTS.md
 
 exec
-/usr/bin/zsh -lc "python3 -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str((n.get(\"filePath\"),n.get(\"summary\"))) for n in p[\"nodes\"] if \"crit\" in (n.get(\"filePath\",\"\")+\" \"+n.get(\"summary\",\"\")).lower()))'; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86 HEAD | head -35; git show 8798076:scripts/require-crit-review.py; git show 8798076:tests/unit/test_require_crit_review.py" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "python3 -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str((n.get(\"filePath\"),n.get(\"summary\"))) for n in p[\"nodes\"] if \"crit\" in (n.get(\"filePath\",\"\")+\" \"+n.get(\"summary\",\"\")).lower()))'; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86 HEAD | head -35; git show 8798076:scripts/require-crit-review.py; git show 8798076:tests/unit/test_require_crit_review.py" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ('home/dot_config/claude/rules/crit-review.md', 'Defines agent-side Crit review evidence, receipts, resolved records, and restrictions on human/browser review requests.')
 ('plans/README.md', 'Indexes the ordered production-hardening plans, their dependencies, audit coverage, and overall acceptance criteria.')
@@ -1432,7 +1432,7 @@ if __name__ == "__main__":
 exec
 /usr/bin/zsh -lc "git show 8798076:AGENTS.md | nl -ba | sed -n '40,100p'; git show 8798076:home/dot_config/claude/rules/crit-review.md; git diff 8798076 HEAD -- home/dot_config/codex/AGENTS.md scripts/require-crit-review.py; python3 -B -c 'import subprocess; from pathlib import Path; from unittest.mock import patch; ns={\"__name__\":\"review_probe\"}; exec(compile(subprocess.check_output([\"git\",\"show\",\"8798076:scripts/require-crit-review.py\"],text=True),\"require-crit-review.py\",\"exec\"),ns); receipt=\"review_surface: codex-/review\\nreviewer: codex\\nreview_source: .agents/worklog/review/subagent.json\\nreview_outcome: approved\\n\"; fields={k:ns[\"evidence_field\"](receipt,k) for k in ns[\"REQUIRED_EVIDENCE_FIELDS\"]}; data=\"{\\\"findings\\\": [], \\\"overall_correctness\\\": \\\"patch is correct\\\"}\"; 
 with patch.object(Path,\"is_file\",return_value=True), patch.object(Path,\"read_text\",return_value=data):
- print(ns[\"agent_review_errors\"](Path.cwd(),receipt,fields,\"AGENT_REVIEWED=1\"))'" in /home/moriya/Workspace/dotfiles
+ print(ns[\"agent_review_errors\"](Path.cwd(),receipt,fields,\"AGENT_REVIEWED=1\"))'" in ~/Workspace/dotfiles
  succeeded in 0ms:
     40	## Test Policy
     41	
@@ -1524,11 +1524,11 @@ The new fallback workflow is incompatible with the unchanged review validator. A
 
 Review comment:
 
-- [P2] Make the subagent fallback compatible with the review gate — /home/moriya/Workspace/dotfiles/home/dot_config/codex/AGENTS.md:31-31
+- [P2] Make the subagent fallback compatible with the review gate — ~/Workspace/dotfiles/home/dot_config/codex/AGENTS.md:31-31
   When Crit data is unavailable and a change requires review, the newly prescribed saved subagent review cannot satisfy `make require-crit-review`: `agent_review_errors()` requires `review_surface: crit-data`, and `crit_data_errors()` rejects ordinary review reports rather than accepting them as substitute evidence. This also conflicts with the Crit-export requirement in [AGENTS.md:47–48](AGENTS.md#L47-L48). Consequently, the fallback leaves completion blocked. Define and implement an accepted fallback evidence format, or document a supported non-browser path that produces the required evidence.
 The new fallback workflow is incompatible with the unchanged review validator. A read-only probe confirmed that saved native review output is rejected.
 
 Review comment:
 
-- [P2] Make the subagent fallback compatible with the review gate — /home/moriya/Workspace/dotfiles/home/dot_config/codex/AGENTS.md:31-31
+- [P2] Make the subagent fallback compatible with the review gate — ~/Workspace/dotfiles/home/dot_config/codex/AGENTS.md:31-31
   When Crit data is unavailable and a change requires review, the newly prescribed saved subagent review cannot satisfy `make require-crit-review`: `agent_review_errors()` requires `review_surface: crit-data`, and `crit_data_errors()` rejects ordinary review reports rather than accepting them as substitute evidence. This also conflicts with the Crit-export requirement in [AGENTS.md:47–48](AGENTS.md#L47-L48). Consequently, the fallback leaves completion blocked. Define and implement an accepted fallback evidence format, or document a supported non-browser path that produces the required evidence.

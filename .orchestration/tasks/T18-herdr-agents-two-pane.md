@@ -5,7 +5,7 @@
 - Task ID: `T18-herdr-agents-two-pane`
 - Executor model: `gpt-5.6-sol`
 - Reasoning effort: `high`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`
+- Repo: `~/Workspace/dotfiles`
 - The main worktree is dirty with UNRELATED changes. Create a separate git
   worktree from `main` (e.g. `git worktree add ../dotfiles-t18 -b
 feat/herdr-file-viewer-popup main`) and do ALL work there. Report the

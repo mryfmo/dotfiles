@@ -370,97 +370,97 @@ test_add_worker_reports_linkage_unreached_after_a_failed_spawn (test_herdr_agent
 test_add_worker_reports_shallow_metadata_as_not_granted (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_shallow_metadata_as_not_granted) ... ok
 test_add_worker_reuses_a_seat_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seat_tab_in_the_pair_workspace) ... ok
 test_add_worker_reuses_a_seated_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seated_workspace) ... ok
-test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a606890>
+test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a606890>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a2595d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a2595d0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a2586d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a2586d0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259b70>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a258f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a258f40>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a258e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a258e50>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a258310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a258310>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a258130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a258130>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259d50>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259a80>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259990>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a607790>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a607790>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25a3e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25a3e0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe799e28130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe799e28130>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259f30>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b010>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b010>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b1f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b1f0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25a110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25a110>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b2e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b2e0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b100>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25af20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25af20>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b3d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b3d0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b5b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b5b0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25a2f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25a2f0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a259c60>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b6a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b6a0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25ba60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25ba60>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b4c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b4c0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25bc40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25bc40>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b790>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b790>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b970>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/shutil.py:683: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a25b970>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -574,10 +574,10 @@ test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_he
 test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
 test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
 test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
-test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe799e28130>
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe799e28130>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a606890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfbe79a606890>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -985,7 +985,7 @@ test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_
 test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-xi5iaro9/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-xi5iaro9/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1033,7 +1033,7 @@ $ gh run view --job 111433032940 --log | awk -F"	" '$2 ~ /Setup mise for statusl
 2026-10-04T12:10:41.7632008Z mise ERROR Version: 2026.9.14 linux-x64 (2026-09-25)
 2026-10-04T12:10:41.7632233Z mise ERROR Run with --verbose or MISE_VERBOSE=1 for more information
 2026-10-04T12:10:41.7639184Z ##[endgroup]
-2026-10-04T12:10:41.7655019Z ##[error]The process '/home/runner/.local/share/mise/bin/mise' failed with exit code 1
+2026-10-04T12:10:41.7655019Z ##[error]The process '~/.local/share/mise/bin/mise' failed with exit code 1
 $ gh run view --job 111433032940 --log | awk -F"	" '$2 ~ /Install tools/ {print $3}' | grep -E "chezmoi_2|chezmoi version"   (same run: the pinned chezmoi install succeeded)
 2026-10-04T12:10:32.8241913Z chezmoi_2.70.4_linux_amd64.tar.gz: OK
 2026-10-04T12:10:33.0752236Z chezmoi version v2.70.4, commit 64583685c5eb36e10670bad076d5406a08baf751, built at 2026-05-19T22:47:23Z, built by goreleaser

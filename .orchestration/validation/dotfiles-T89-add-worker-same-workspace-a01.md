@@ -97,8 +97,8 @@ wZ	dotfiles worker worker-e
 The environment of today's spawn-seated workers (`/proc/<pid>/environ`, read-only). `workspace create --env` never reached their `--window` tab, so a pair-workspace tab behaves the same:
 
 ```
-4127157 /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d claude | HERDR_PANE_ID=wY:p2 HERDR_WORKSPACE_ID=wY
-4144333 /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e claude | HERDR_PANE_ID=wZ:p2 HERDR_WORKSPACE_ID=wZ
+4127157 ~/Workspace/dotfiles/.claude/worktrees/worker-d claude | HERDR_PANE_ID=wY:p2 HERDR_WORKSPACE_ID=wY
+4144333 ~/Workspace/dotfiles/.claude/worktrees/worker-e claude | HERDR_PANE_ID=wZ:p2 HERDR_WORKSPACE_ID=wZ
 (no AGMSG_RESOLVE_PROJECT, AGMSG_CC_MONITOR_KEEP_ALIVE or HERDR_AGENTS_LAYOUT in either)
 ```
 
@@ -120,7 +120,7 @@ regime-boundary: additional worker workspace still open: dotfiles worker worker-
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T89 (operator 2026-10-04): parallel workers are seated as panes inside the pair'"'"'s Herdr workspace; `herdr-agents --add-worker` creates a labelled pane there and `--remove-worker` closes it; one workspace per repository.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T89 (operator 2026-10-04): parallel workers are seated as panes inside the pair'"'"'s Herdr workspace; `herdr-agents --add-worker` creates a labelled pane there and `--remove-worker` closes it; one workspace per repository.'
 9c11dc0f-9fff-4d47-9018-f870a5398948
 ```
 

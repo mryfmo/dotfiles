@@ -27,7 +27,7 @@
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T94 (operator 2026-10-04): pins advance to mise v2026.9.14, aws-cli 2.37.4, crit v0.21.1, claude-code 2.1.288 and pnpm 12.7.0 through one class-pure PR carrying the whole `make upgrade` diff; the canonical clone no longer holds an uncommitted pin diff.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T94 (operator 2026-10-04): pins advance to mise v2026.9.14, aws-cli 2.37.4, crit v0.21.1, claude-code 2.1.288 and pnpm 12.7.0 through one class-pure PR carrying the whole `make upgrade` diff; the canonical clone no longer holds an uncommitted pin diff.'
 ae1d260b-0507-4e32-ab4a-260d5a92ded1
 ```
 

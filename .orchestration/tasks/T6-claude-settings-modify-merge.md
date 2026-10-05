@@ -1,7 +1,7 @@
 # T6: Manage ~/.claude/settings.json via chezmoi modify\_ merge (RR-9 class fix)
 
 task_id: T6
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-gpt55-high
 

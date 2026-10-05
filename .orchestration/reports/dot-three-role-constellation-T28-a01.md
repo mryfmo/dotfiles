@@ -2,7 +2,7 @@
 
 - worker: `claude-standard-dot-a005` (Claude Code, acting as worker per dispatch note)
 - orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c`
 - branch: `feat/three-role-constellation` (base `origin/main` = `eb3cd4b`)
 - task_rev: sha256 `df1c6d1a4d7a283e7e2e4fcb350a8b08aee2ade997761421198b0e0c3757e7c2`
   verified against the task file at `eb3cd4b` (see validation file)

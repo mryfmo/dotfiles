@@ -5,7 +5,7 @@ reviewed_by: claude-deep-dot (adversarial re-derivation)
 evidence:
   - branch commits 720a3fd f9223d9 fce3fc3 aaef350 352833b 70c5967 (+ dac183f artifacts) — all reviewed by full diff
   - independent re-run: make validate-agent-assets ok; make unit-test Ran 376 OK (skipped=1) — matches worker claim
-  - rendered codex-config-managed.toml:126 keys trust with {{ .chezmoi.workingTree }}; zero /Users/mryfmo hits
+  - rendered codex-config-managed.toml:126 keys trust with {{ .chezmoi.workingTree }}; zero ~ hits
   - branch touched only allowed_files; main worktree untouched (status clean); MISE_CONFIG_DIR scoping verified
   - validation file contains verbatim outputs incl. CompactionDB memory id 6c8f2285-58bb-444e-a028-dd0c09a9141f
 judgment_calls_endorsed:

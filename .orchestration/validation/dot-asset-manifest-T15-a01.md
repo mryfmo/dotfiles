@@ -4,7 +4,7 @@ Verbatim stdout+stderr (ANSI stripped), captured by claude-standard-dot-a003. Ba
 
 ## Branch (live)
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 branch --show-current; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline 7879aea..HEAD; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l; git -C /home/moriya/Workspace/dotfiles branch --show-current; git -C /home/moriya/Workspace/dotfiles worktree list`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 branch --show-current; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline 7879aea..HEAD; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l; git -C ~/Workspace/dotfiles branch --show-current; git -C ~/Workspace/dotfiles worktree list`
 
 ```text
 feat/asset-manifest
@@ -13,13 +13,13 @@ feat/asset-manifest
 e26d9e0 feat(agents): declare every third-party asset in one manifest
 0
 main
-/home/moriya/Workspace/dotfiles                                     d512de3 [main]
-/home/moriya/Workspace/dotfiles-w1                                  126e465 [feat/references-kit-v4]
-/home/moriya/Workspace/dotfiles-w2                                  3af64f0 [feat/references-kit-v4-p3]
-/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10  1a2dc78 [feat/asset-manifest]
+~/Workspace/dotfiles                                     d512de3 [main]
+~/Workspace/dotfiles-w1                                  126e465 [feat/references-kit-v4]
+~/Workspace/dotfiles-w2                                  3af64f0 [feat/references-kit-v4-p3]
+~/Workspace/dotfiles/.claude/worktrees/env-converge-T10  1a2dc78 [feat/asset-manifest]
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff --stat 7879aea..HEAD`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff --stat 7879aea..HEAD`
 
 ```text
  README.md                                 |  16 +++
@@ -40,21 +40,21 @@ main
 
 ## Required validation
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --check; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --check; echo exit=$?`
 
 ```text
 generated agent configs are up to date
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
 
 ```text
 agent asset validation ok
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_supply_chain_policy tests.unit.test_runtime_health -q 2>&1 | tail -3; echo exit=${PIPESTATUS[0]}`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_supply_chain_policy tests.unit.test_runtime_health -q 2>&1 | tail -3; echo exit=${PIPESTATUS[0]}`
 
 ```text
 Ran 120 tests in 6.381s
@@ -63,7 +63,7 @@ OK
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets -v -k asset -k check_reports 2>&1 | grep -E ' \.\.\. |^Ran'`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets -v -k asset -k check_reports 2>&1 | grep -E ' \.\.\. |^Ran'`
 
 ```text
 test_asset_constant_must_be_assigned_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
@@ -106,7 +106,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_
 test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-h53r_5la/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-h53r_5la/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
 test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
@@ -117,7 +117,7 @@ Ran 46 tests in 0.246s
 
 ## Byte-identity proof
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && diff <(git show 7879aea:scripts/lib/installer-pins.sh) scripts/lib/installer-pins.sh; echo diff-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && diff <(git show 7879aea:scripts/lib/installer-pins.sh) scripts/lib/installer-pins.sh; echo diff-exit=$?`
 
 ```text
 12a13,14
@@ -126,13 +126,13 @@ Ran 46 tests in 0.246s
 diff-exit=1
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git diff --quiet 7879aea -- home/.chezmoitemplates/codex-config-managed.toml home/.chezmoitemplates/claude-settings-managed.json; echo generated-templates-unchanged-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git diff --quiet 7879aea -- home/.chezmoitemplates/codex-config-managed.toml home/.chezmoitemplates/claude-settings-managed.json; echo generated-templates-unchanged-exit=$?`
 
 ```text
 generated-templates-unchanged-exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && for f in install/common/mise.sh install/common/sheldon.sh install/ubuntu/server/starship.sh install/ubuntu/common/aws_cli.sh install/macos/common/brew.sh scripts/update-agent-assets.sh; do echo "== $f"; git diff -U0 7879aea -- $f | grep -E '^[-+][^-+]'; done`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && for f in install/common/mise.sh install/common/sheldon.sh install/ubuntu/server/starship.sh install/ubuntu/common/aws_cli.sh install/macos/common/brew.sh scripts/update-agent-assets.sh; do echo "== $f"; git diff -U0 7879aea -- $f | grep -E '^[-+][^-+]'; done`
 
 ```text
 == install/common/mise.sh
@@ -153,7 +153,7 @@ generated-templates-unchanged-exit=0
 +# after reviewing the upstream installer diff.
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && for f in install/common/mise.sh install/common/sheldon.sh install/ubuntu/server/starship.sh install/ubuntu/common/aws_cli.sh install/macos/common/brew.sh scripts/update-agent-assets.sh scripts/lib/installer-pins.sh; do bash -n $f && echo "bash-n ok $f"; done; shellcheck -x install/common/mise.sh install/common/sheldon.sh install/ubuntu/server/starship.sh install/ubuntu/common/aws_cli.sh install/macos/common/brew.sh scripts/update-agent-assets.sh scripts/lib/installer-pins.sh; echo shellcheck-exit=$?; shfmt --indent 4 --space-redirects --diff install/common/mise.sh install/common/sheldon.sh install/ubuntu/server/starship.sh install/ubuntu/common/aws_cli.sh install/macos/common/brew.sh scripts/update-agent-assets.sh scripts/lib/installer-pins.sh; echo shfmt-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && for f in install/common/mise.sh install/common/sheldon.sh install/ubuntu/server/starship.sh install/ubuntu/common/aws_cli.sh install/macos/common/brew.sh scripts/update-agent-assets.sh scripts/lib/installer-pins.sh; do bash -n $f && echo "bash-n ok $f"; done; shellcheck -x install/common/mise.sh install/common/sheldon.sh install/ubuntu/server/starship.sh install/ubuntu/common/aws_cli.sh install/macos/common/brew.sh scripts/update-agent-assets.sh scripts/lib/installer-pins.sh; echo shellcheck-exit=$?; shfmt --indent 4 --space-redirects --diff install/common/mise.sh install/common/sheldon.sh install/ubuntu/server/starship.sh install/ubuntu/common/aws_cli.sh install/macos/common/brew.sh scripts/update-agent-assets.sh scripts/lib/installer-pins.sh; echo shfmt-exit=$?`
 
 ```text
 bash-n ok install/common/mise.sh
@@ -167,7 +167,7 @@ shellcheck-exit=0
 shfmt-exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml python -c 'import yaml;a=yaml.safe_load(open("home/dot_agents/agent-config.yaml"))["assets"];print(len(a));[print(k,v["source"],v["pin"],v["verify"],v.get("enforced","")) for k,v in a.items()]'`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml python -c 'import yaml;a=yaml.safe_load(open("home/dot_agents/agent-config.yaml"))["assets"];print(len(a));[print(k,v["source"],v["pin"],v["verify"],v.get("enforced","")) for k,v in a.items()]'`
 
 ```text
 16
@@ -191,7 +191,7 @@ gh-extensions gh-extension v0.18.4 none False
 
 ## Mutation check: a manifest pin change is caught by --check (tree restored)
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && cp home/dot_agents/agent-config.yaml /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/acfg.bak && sed -i 's/^    pin: 0.8.5$/    pin: 0.8.6/' home/dot_agents/agent-config.yaml && uv run --with pyyaml scripts/generate-agent-configs.py --check; echo check-exit=$?; cp /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/acfg.bak home/dot_agents/agent-config.yaml; git status --porcelain | wc -l; uv run --with pyyaml scripts/generate-agent-configs.py --check`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && cp home/dot_agents/agent-config.yaml /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/acfg.bak && sed -i 's/^    pin: 0.8.5$/    pin: 0.8.6/' home/dot_agents/agent-config.yaml && uv run --with pyyaml scripts/generate-agent-configs.py --check; echo check-exit=$?; cp /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/acfg.bak home/dot_agents/agent-config.yaml; git status --porcelain | wc -l; uv run --with pyyaml scripts/generate-agent-configs.py --check`
 
 ```text
 ERROR: generated agent configs are stale: install/common/sheldon.sh
@@ -285,7 +285,7 @@ a0724e54-d330-47b1-8b44-dc981e538fac
 
 # Revision round 1
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline 7879aea..HEAD; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline 7879aea..HEAD; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l`
 
 ```text
 367023e fix(upgrade): write bumped terminal tool pins into the asset manifest
@@ -296,7 +296,7 @@ e26d9e0 feat(agents): declare every third-party asset in one manifest
 0
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show --stat --format='%h %s' 836a740 367023e`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show --stat --format='%h %s' 836a740 367023e`
 
 ```text
 836a740 fix(validate): tighten the asset manifest checks and record real provenance
@@ -315,28 +315,28 @@ e26d9e0 feat(agents): declare every third-party asset in one manifest
  5 files changed, 237 insertions(+), 54 deletions(-)
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --check; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --check; echo exit=$?`
 
 ```text
 generated agent configs are up to date
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
 
 ```text
 agent asset validation ok
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_supply_chain_policy tests.unit.test_runtime_health -q 2>&1 | tail -2`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_supply_chain_policy tests.unit.test_runtime_health -q 2>&1 | tail -2`
 
 ```text
 
 OK
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_runtime_health -v -k set_asset -k assets_ -k bumps_terminal 2>&1 | grep -E ' \.\.\. |^Ran'`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_runtime_health -v -k set_asset -k assets_ -k bumps_terminal 2>&1 | grep -E ' \.\.\. |^Ran'`
 
 ```text
 test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
@@ -350,7 +350,7 @@ test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts (tests.unit.tes
 Ran 8 tests in 0.240s
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && shellcheck -x scripts/upgrade-tools.sh; echo shellcheck-exit=$?; shfmt --indent 4 --space-redirects --diff scripts/upgrade-tools.sh; echo shfmt-exit=$?; grep -c 'cat > "${pins}"' scripts/upgrade-tools.sh`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && shellcheck -x scripts/upgrade-tools.sh; echo shellcheck-exit=$?; shfmt --indent 4 --space-redirects --diff scripts/upgrade-tools.sh; echo shfmt-exit=$?; grep -c 'cat > "${pins}"' scripts/upgrade-tools.sh`
 
 ```text
 shellcheck-exit=0
@@ -360,7 +360,7 @@ shfmt-exit=0
 
 ## Live --set-asset trial on the real manifest (restored with git checkout)
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --set-asset crit.pin=v0.20.9 --set-asset crit.sha256.linux-amd64=aaaa1111 && git diff -U0 home/dot_agents/agent-config.yaml scripts/lib/installer-pins.sh | grep -E '^[-+][^-+]'; uv run --with pyyaml scripts/generate-agent-configs.py --check; uv run --with pyyaml scripts/generate-agent-configs.py --set-asset 'crit.pin=v1$(id)'; echo inject-exit=$?; git checkout -- home/dot_agents/agent-config.yaml scripts/lib/installer-pins.sh; git status --porcelain | wc -l`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --set-asset crit.pin=v0.20.9 --set-asset crit.sha256.linux-amd64=aaaa1111 && git diff -U0 home/dot_agents/agent-config.yaml scripts/lib/installer-pins.sh | grep -E '^[-+][^-+]'; uv run --with pyyaml scripts/generate-agent-configs.py --check; uv run --with pyyaml scripts/generate-agent-configs.py --set-asset 'crit.pin=v1$(id)'; echo inject-exit=$?; git checkout -- home/dot_agents/agent-config.yaml scripts/lib/installer-pins.sh; git status --porcelain | wc -l`
 
 ```text
 asset pins updated: crit.pin, crit.sha256.linux-amd64
@@ -380,7 +380,7 @@ inject-exit=1
 
 ## Byte identity still holds against the base
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git diff --quiet 7879aea -- home/.chezmoitemplates/codex-config-managed.toml home/.chezmoitemplates/claude-settings-managed.json; echo templates-unchanged-exit=$?; diff <(git show 7879aea:scripts/lib/installer-pins.sh) scripts/lib/installer-pins.sh; echo installer-pins-diff-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git diff --quiet 7879aea -- home/.chezmoitemplates/codex-config-managed.toml home/.chezmoitemplates/claude-settings-managed.json; echo templates-unchanged-exit=$?; diff <(git show 7879aea:scripts/lib/installer-pins.sh) scripts/lib/installer-pins.sh; echo installer-pins-diff-exit=$?`
 
 ```text
 templates-unchanged-exit=0
@@ -390,7 +390,7 @@ templates-unchanged-exit=0
 installer-pins-diff-exit=1
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml python -c 'import yaml;a=yaml.safe_load(open("home/dot_agents/agent-config.yaml"))["assets"];[print(k,v["source"],v["upstream"],v["pin"],v.get("install_path","-"),v.get("installer","-")) for k,v in a.items()]; print("enforced" in open("home/dot_agents/agent-config.yaml").read())'`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml python -c 'import yaml;a=yaml.safe_load(open("home/dot_agents/agent-config.yaml"))["assets"];[print(k,v["source"],v["upstream"],v["pin"],v.get("install_path","-"),v.get("installer","-")) for k,v in a.items()]; print("enforced" in open("home/dot_agents/agent-config.yaml").read())'`
 
 ```text
 mise-tools mise https://mise.jdx.dev home/dot_mise/mise.lock - -
@@ -505,7 +505,7 @@ watch-exit=0
 
 # Revision round 2 (delta review of 836a740 + 367023e)
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline 7879aea..HEAD; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline 7879aea..HEAD; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l`
 
 ```text
 f4db46b fix(agents): harden the --set-asset manifest write path
@@ -517,7 +517,7 @@ e26d9e0 feat(agents): declare every third-party asset in one manifest
 0
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show --stat --format='%h %s' f4db46b`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show --stat --format='%h %s' f4db46b`
 
 ```text
 f4db46b fix(agents): harden the --set-asset manifest write path
@@ -527,7 +527,7 @@ f4db46b fix(agents): harden the --set-asset manifest write path
  2 files changed, 61 insertions(+), 3 deletions(-)
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show -U2 --format= f4db46b -- scripts/generate-agent-configs.py`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show -U2 --format= f4db46b -- scripts/generate-agent-configs.py`
 
 ```text
 diff --git a/scripts/generate-agent-configs.py b/scripts/generate-agent-configs.py
@@ -567,7 +567,7 @@ index d70cc2e..a241767 100755
          manifest_path.write_text(text)
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --set-asset crit.upstream=x; echo field-exit=$?; uv run --with pyyaml scripts/generate-agent-configs.py --set-asset crit.sha256.linux-amd64=1234; echo int-exit=$?; git status --porcelain | wc -l`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --set-asset crit.upstream=x; echo field-exit=$?; uv run --with pyyaml scripts/generate-agent-configs.py --set-asset crit.sha256.linux-amd64=1234; echo int-exit=$?; git status --porcelain | wc -l`
 
 ```text
 ERROR: --set-asset may change only pin, sha256, or sha256.<arch>: crit.upstream
@@ -577,7 +577,7 @@ int-exit=1
 0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_generate_agent_configs -v -k set_asset 2>&1 | grep -E ' \.\.\. |^Ran'`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_generate_agent_configs -v -k set_asset 2>&1 | grep -E ' \.\.\. |^Ran'`
 
 ```text
 test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
@@ -590,7 +590,7 @@ test_set_asset_updates_the_manifest_and_renders_its_pins (tests.unit.test_genera
 Ran 7 tests in 0.039s
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --check; echo exit=$?; uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --check; echo exit=$?; uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
 
 ```text
 generated agent configs are up to date
@@ -679,7 +679,7 @@ watch-exit=0
 
 # Revision round 3 (CodeRabbit review 5317380626 on f4db46b)
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline 7879aea..feat/asset-manifest`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline 7879aea..feat/asset-manifest`
 
 ```text
 cf7019c fix(validate): reject unquoted and single-quoted literal installer versions
@@ -691,7 +691,7 @@ f4db46b fix(agents): harden the --set-asset manifest write path
 e26d9e0 feat(agents): declare every third-party asset in one manifest
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show --stat --format='%h %s' cf7019c; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show -U1 --format= cf7019c -- scripts/validate-agent-assets.py`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show --stat --format='%h %s' cf7019c; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show -U1 --format= cf7019c -- scripts/validate-agent-assets.py`
 
 ```text
 cf7019c fix(validate): reject unquoted and single-quoted literal installer versions
@@ -714,7 +714,7 @@ index 02f2ebc..61fb7a3 100644
      re.M,
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?; uv run --with pyyaml scripts/generate-agent-configs.py --check; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?; uv run --with pyyaml scripts/generate-agent-configs.py --check; echo exit=$?`
 
 ```text
 agent asset validation ok
@@ -723,7 +723,7 @@ generated agent configs are up to date
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_validate_agent_assets -v -k literal_versions 2>&1 | grep -E ' \.\.\. |^Ran'; grep -E '^Ran|^OK|FAILED' /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/T15r3-units.txt | sed 's/\x1b\[[0-9;]*m//g'`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_validate_agent_assets -v -k literal_versions 2>&1 | grep -E ' \.\.\. |^Ran'; grep -E '^Ran|^OK|FAILED' /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/T15r3-units.txt | sed 's/\x1b\[[0-9;]*m//g'`
 
 ```text
 test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
@@ -731,7 +731,7 @@ Ran 1 test in 0.013s
 Ran 75 tests in 0.534s
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 - <<'EOF'
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 - <<'EOF'
 import re
 old = re.compile(r'^\s*(?:readonly |export |local )?([A-Z0-9_]*_VERSION|[a-z0-9_]*version)="[^"$]*"', re.M)
 import importlib.util

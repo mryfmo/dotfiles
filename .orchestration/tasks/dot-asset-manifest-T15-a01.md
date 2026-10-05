@@ -1,7 +1,7 @@
 # AGMSG-TASK dot-asset-manifest-T15-a01: single asset manifest and rendered version pins (plan Phase L.1)
 
-Plan: `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/remediation-plan-20260925.md` §Phase L, task L.1, principles B-6..B-9, inventory §2.1. Read them first.
-Repo: `/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10`, branch `feat/asset-manifest` from origin/main (after T14 is pushed and the tree is clean). You are `claude-standard-dot-a003`.
+Plan: `~/Workspace/dotfiles/.agents/worklog/claude/remediation-plan-20260925.md` §Phase L, task L.1, principles B-6..B-9, inventory §2.1. Read them first.
+Repo: `~/Workspace/dotfiles/.claude/worktrees/env-converge-T10`, branch `feat/asset-manifest` from origin/main (after T14 is pushed and the tree is clean). You are `claude-standard-dot-a003`.
 
 ## Objective
 

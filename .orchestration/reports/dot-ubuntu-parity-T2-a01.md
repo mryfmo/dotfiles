@@ -1,7 +1,7 @@
 # dot-ubuntu-parity-T2-a01 report
 
 status: ready_for_review
-worktree: `/home/moriya/Workspace/worktrees/chezmoi-ubuntu-parity`
+worktree: `~/Workspace/worktrees/chezmoi-ubuntu-parity`
 branch: `feat/ubuntu-parity`
 
 ## Items
@@ -36,7 +36,7 @@ branch: `feat/ubuntu-parity`
 - B3 `fce3fc3` fix(agents): key codex project trust to the chezmoi working tree
 
   - `home/dot_agents/agent-config.yaml`: `codex.projects` key
-    `/Users/mryfmo/Workspace/dotfiles` → `{{ .chezmoi.workingTree }}`.
+    `~/Workspace/dotfiles` → `{{ .chezmoi.workingTree }}`.
   - `home/dot_codex/modify_private_config.toml`: added `working_tree_dir()`
     (prefers env `CHEZMOI_WORKING_TREE`, falls back to `source_dir().parent`
     since `.chezmoiroot=home`) and wired it into `render_managed_template()`.
@@ -51,7 +51,7 @@ branch: `feat/ubuntu-parity`
     `same_modified()` does and confirming it resolves to this worktree's root.
   - Added a guard to `scripts/validate-agent-assets.py::validate_codex_config`
     next to the existing `shell_path` macOS-home guard: the rendered
-    `[projects]` table must not contain `/Users/mryfmo/` and must key trust
+    `[projects]` table must not contain `~/` and must key trust
     with `{{ .chezmoi.workingTree }}`.
   - New tests: `test_codex_config_merge.py` (env-override and fallback
     resolution of the placeholder), `test_generate_agent_configs.py`

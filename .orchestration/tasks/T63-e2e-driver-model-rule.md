@@ -1,7 +1,7 @@
 # T63: Regulate E2E test-subject session models via the express profile (docs only)
 
 task_id: T63
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 

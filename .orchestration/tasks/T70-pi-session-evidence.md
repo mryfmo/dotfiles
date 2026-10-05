@@ -1,7 +1,7 @@
 # T70: pi-session-evidence — acceptance-record extraction from session JSONL (π5)
 
 task_id: T70
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-pi-worker-integration.md (Phase 6)

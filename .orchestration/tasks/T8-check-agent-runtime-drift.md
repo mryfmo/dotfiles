@@ -1,7 +1,7 @@
 # T8: Fix check-agent-runtime.py false positives (executable\_ prefix, runtime state)
 
 task_id: T8
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-gpt55-high
 

@@ -7,6 +7,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,7 @@ import time
 import tomllib
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.dont_write_bytecode = True
 
@@ -89,6 +91,112 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
+
+    def test_home_paths_normalise_to_tilde_and_repository_paths_stay(self) -> None:
+        with mock.patch.dict(os.environ, {"HOME": "/srv/operator"}):
+            for text, expected in (
+                ("cd /srv/operator/Workspace/dotfiles", "cd ~/Workspace/dotfiles"),
+                ("`/home/alice/.agents/skills/x`", "`~/.agents/skills/x`"),
+                ('"/Users/bob/Library/x"', '"~/Library/x"'),
+                ("file:/home/carol", "file:~"),
+                ("worker-c/home/dot_codex/x and (repo)/home/dot_codex/y", None),
+                ("/home/.chezmoitemplates/x", None),
+                ("/home/... and /home/<user> and ~/.codex", None),
+                ("/srv/operatorX/x", None),
+                ("file:///home/alice/x and file:///Users/bob/y", "file://~/x and file://~/y"),
+                ("/proc/self/root/srv/operator/.git and ..F/srv/operator/a", "/proc/self/root~/.git and ..F~/a"),
+                ("/tmp/test-x/home/worker/.config", None),
+                (
+                    "/proc/self/root/home/alice/.ssh/id and /proc/42/root/Users/bob/x",
+                    "/proc/self/root~/.ssh/id and /proc/42/root~/x",
+                ),
+                ("cat /root/.ssh/id_ed25519", "cat ~/.ssh/id_ed25519"),
+                ("HOME=/root;", "HOME=~;"),
+                ("cat /var/root/.ssh/id_ed25519", "cat ~/.ssh/id_ed25519"),
+                ("cat /private/var/root/.ssh/id and /home/_build/.ssh/id", "cat ~/.ssh/id and ~/.ssh/id"),
+                (
+                    "/proc/1/root/root/.ssh/id and /proc/1/root/var/root/.ssh/id",
+                    "/proc/1/root~/.ssh/id and /proc/1/root~/.ssh/id",
+                ),
+                ("/var/root/Library/Keychains/login.keychain-db", "~/Library/Keychains/login.keychain-db"),
+                (
+                    "/private/var/root/Library/x and /proc/1/root/var/root/Library/x",
+                    "~/Library/x and /proc/1/root~/Library/x",
+                ),
+                ("/home/éclair/.ssh/id and /Users/ユーザー/x", "~/.ssh/id and ~/x"),
+                ("/var/home/alice/x and /export/home/bob/y", "~/x and ~/y"),
+                ("agent /root/t97_evidence_review and /proc/self/root/etc", None),
+            ):
+                with self.subTest(text=text):
+                    masked, count = self.module.mask_home_paths(text)
+                    self.assertEqual(masked, expected or text)
+                    self.assertEqual(count, 0 if expected is None else expected.count("~") - text.count("~"))
+                    self.assertIsNone(self.module.home_path_pattern().search(masked))
+
+    def test_a_root_home_keeps_sub_agent_identifiers(self) -> None:
+        with mock.patch.dict(os.environ, {"HOME": "/root"}):
+            masked, count = self.module.mask_home_paths("agent /root/t97_evidence_review read /root/.ssh/id")
+        self.assertEqual(masked, "agent /root/t97_evidence_review read ~/.ssh/id")
+        self.assertEqual(count, 1)
+
+    def test_secret_scan_flags_the_running_users_home_as_a_backstop(self) -> None:
+        self.write_text_file(".orchestration/validation/T1.md", "$ cat /srv/operator/.ssh/id_ed25519\n")
+        self.module.validate_no_obvious_secrets()
+        with mock.patch.dict(os.environ, {"HOME": "/srv/operator"}):
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                self.module.validate_no_obvious_secrets()
+        self.assertIn(".orchestration/validation/T1.md names a home directory", stderr.getvalue())
+
+    def test_a_one_segment_home_keeps_namespace_roots_intact(self) -> None:
+        with mock.patch.dict(os.environ, {"HOME": "/root"}):
+            masked, count = self.module.mask_home_paths(
+                "cd /root/.cache; ls /proc/self/root/home/alice/.ssh /proc/self/root/etc"
+            )
+        self.assertEqual(masked, "cd ~/.cache; ls /proc/self/root~/.ssh /proc/self/root/etc")
+        self.assertEqual(count, 2)
+        self.assertIsNone(self.module.home_path_pattern().search(masked))
+        self.assertIsNotNone(self.module.home_path_pattern().search("/proc/self/root/home/alice/.ssh"))
+
+    def test_secret_scan_rejects_home_paths_in_orchestration_evidence_only(self) -> None:
+        self.write_text_file("docs/notes.md", "see /home/alice/x\n")
+        self.module.validate_no_obvious_secrets()
+        evidence = self.write_text_file(".orchestration/validation/T1.md", "$ ls /home/alice/x\n")
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn(".orchestration/validation/T1.md names a home directory", stderr.getvalue())
+        evidence.write_text(self.module.mask_secret_matches(evidence.read_text())[0])
+        self.assertEqual(evidence.read_text(), "$ ls ~/x\n")
+        self.module.validate_no_obvious_secrets()
+        escaped = self.write_text_file(
+            ".orchestration/validation/T1-crit.json", '{"path": "\\/home\\/alice\\/.ssh\\/id"}\n'
+        )
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn("T1-crit.json names a home directory", stderr.getvalue())
+        escaped.unlink()
+
+    def test_recursive_scans_skip_gitignored_local_state(self) -> None:
+        git = ["git", "-C", str(self.temp_dir), "-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+        subprocess.run([*git, "init", "-q"], check=True)
+        self.write_text_file(".gitignore", ".claude/contextdb/state/*\n")
+        ledger_text = "high-impact" + "-journal-publishing " + "ghp_" + "x" * 25 + " /home/alice/x\n"
+        self.write_text_file(".claude/contextdb/state/context.db", ledger_text)
+        # A non-UTF-8 ignored file name must not abort the scans; APFS refuses such a name outright.
+        with contextlib.suppress(OSError):
+            (self.temp_dir / os.fsdecode(b".claude/contextdb/state/raw-\xff")).write_text(ledger_text)
+        for scan_name in ("validate_no_removed_claude_skill", "validate_no_obvious_secrets"):
+            with self.subTest(scan=scan_name):
+                getattr(self.module, scan_name)()
+        self.write_text_file("tracked.txt", ledger_text)
+        for scan_name in ("validate_no_removed_claude_skill", "validate_no_obvious_secrets"):
+            with self.subTest(scan=scan_name, ignored=False):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    getattr(self.module, scan_name)()
+                self.assertIn("tracked.txt", stderr.getvalue())
 
     def test_recursive_scans_skip_nested_git_trees_only(self) -> None:
         (self.temp_dir / ".git").mkdir()
@@ -1393,6 +1501,47 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(last.read_text(), "No findings.\nVerdict: correct\n")
         module = load_validator()
         self.assertIsNone(module.SECRET_PATTERN.search(text))
+
+    def test_normalises_home_paths_in_text_and_json_evidence(self) -> None:
+        home = str(Path.home())
+        evidence = self.temp_dir / "T1-audit-abcdef1.md"
+        evidence.write_text(f"$ cat {home}/.agents/skills/a/SKILL.md\n/home/runner/work/x\nVerdict: correct\n")
+        feedback = self.temp_dir / "T1-pr-feedback.json"
+        feedback.write_text(json.dumps({"items": [{"body": f"see {home}/x", "path": "home/dot_config/a"}]}) + "\n")
+
+        result = self.run_mask(evidence, feedback)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(evidence.read_text(), "$ cat ~/.agents/skills/a/SKILL.md\n~/work/x\nVerdict: correct\n")
+        self.assertEqual(json.loads(feedback.read_text())["items"], [{"body": "see ~/x", "path": "home/dot_config/a"}])
+        self.assertIn(f"masked 2 match(es) in {evidence}", result.stdout)
+
+    def test_masks_json_content_whatever_the_suffix(self) -> None:
+        evidence = self.temp_dir / "T1-crit.md"
+        evidence.write_text('{"path":"\\/home\\/alice\\/.ssh\\/id"}\n')
+        prose = self.temp_dir / "T1.md"
+        prose.write_text("see /home/alice/x\n")
+
+        result = self.run_mask(evidence, prose)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(evidence.read_text()), {"path": "~/.ssh/id"})
+        self.assertEqual(prose.read_text(), "see ~/x\n")
+        module = load_validator()
+        for path in (evidence, prose):
+            text = path.read_text()
+            with self.subTest(path=path.name):
+                strings = module.json_strings(text) or [text]
+                self.assertFalse(any(module.home_path_pattern().search(s) for s in (text, *strings)))
+
+    def test_keeps_carriage_returns_and_every_unmasked_byte(self) -> None:
+        evidence = self.temp_dir / "T1.md"
+        evidence.write_bytes(b"progress 10%\rprogress 100%\r\nline\r\n/home/alice/x\n")
+
+        result = self.run_mask(evidence)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(evidence.read_bytes(), b"progress 10%\rprogress 100%\r\nline\r\n~/x\n")
 
     def test_leaves_allowed_placeholders_the_scan_accepts(self) -> None:
         evidence = self.temp_dir / "audit.md"

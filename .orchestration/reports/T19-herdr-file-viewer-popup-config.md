@@ -1,7 +1,7 @@
 # T19 Herdr file-viewer popup config report
 
 - Status: ready for review
-- Worktree: `/Users/mryfmo/Workspace/dotfiles-t18`
+- Worktree: `~/Workspace/dotfiles-t18`
 - Branch: `feat/herdr-file-viewer-popup`
 - Commit: `968637c feat: add herdr file viewer popup`
 - Parent T18 task: accepted

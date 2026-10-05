@@ -1,6 +1,6 @@
 # T16 validation evidence
 
-All commands ran from `/Users/mryfmo/Workspace/dotfiles` on
+All commands ran from `~/Workspace/dotfiles` on
 `feat/herdr-attach-order-repair`.
 
 ## `uv run python -m unittest tests.unit.test_herdr_agents -v`

@@ -4,7 +4,7 @@ Verbatim stdout+stderr of each command, executed by claude-standard-dot-a003 (AN
 
 ## Steps 1-6
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 reset --hard origin/main; echo reset-exit=$?; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log -1 --format='%h %s'`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 reset --hard origin/main; echo reset-exit=$?; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log -1 --format='%h %s'`
 
 ```text
 UU home/dot_mise/config.toml
@@ -14,14 +14,14 @@ reset-exit=0
 3303fbc chore(orchestration): sync T9 ua-full-rebuild records
 ```
 
-### `git -C /home/moriya/.local/share/chezmoi rev-parse origin/main; git -C /home/moriya/.local/share/chezmoi cat-file -t 3303fbc`
+### `git -C ~/.local/share/chezmoi rev-parse origin/main; git -C ~/.local/share/chezmoi cat-file -t 3303fbc`
 
 ```text
 3303fbca15ef355a66c5f57fff47b59bd1e25130
 commit
 ```
 
-### `git -C /home/moriya/.local/share/chezmoi diff 3303fbc -- home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh > /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins-vs-main.patch; echo write-exit=$?; wc -l /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins-vs-main.patch; sha256sum /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins-vs-main.patch; git -C /home/moriya/.local/share/chezmoi diff --stat 3303fbc -- home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh`
+### `git -C ~/.local/share/chezmoi diff 3303fbc -- home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh > /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins-vs-main.patch; echo write-exit=$?; wc -l /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins-vs-main.patch; sha256sum /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins-vs-main.patch; git -C ~/.local/share/chezmoi diff --stat 3303fbc -- home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh`
 
 ```text
 write-exit=0
@@ -32,7 +32,7 @@ write-exit=0
  2 files changed, 16 insertions(+), 16 deletions(-)
 ```
 
-### `for f in home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh; do echo "$(git -C /home/moriya/.local/share/chezmoi hash-object $f) $f"; done`
+### `for f in home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh; do echo "$(git -C ~/.local/share/chezmoi hash-object $f) $f"; done`
 
 ```text
 dda396b0fbe308aeb07e588c2a97f279c2a1ca10 home/dot_mise/config.toml
@@ -125,7 +125,7 @@ index e744071..22a92f9 100644
  [[tools.yazi]]
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git apply --index /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins-vs-main.patch; echo apply-exit=$?; git status --porcelain; grep -n -E '^(<<<<<<<|>>>>>>>|=======)' home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh; echo markers-grep-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git apply --index /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins-vs-main.patch; echo apply-exit=$?; git status --porcelain; grep -n -E '^(<<<<<<<|>>>>>>>|=======)' home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh; echo markers-grep-exit=$?`
 
 ```text
 apply-exit=0
@@ -134,7 +134,7 @@ M  home/dot_mise/mise.lock
 markers-grep-exit=1
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && for f in home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh; do w=$(git hash-object $f); c=$(git -C /home/moriya/.local/share/chezmoi hash-object $f); [ "$w" = "$c" ] && r=MATCH || r=MISMATCH; echo "$r worktree=$w canonical=$c $f"; done`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && for f in home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh; do w=$(git hash-object $f); c=$(git -C ~/.local/share/chezmoi hash-object $f); [ "$w" = "$c" ] && r=MATCH || r=MISMATCH; echo "$r worktree=$w canonical=$c $f"; done`
 
 ```text
 MATCH worktree=dda396b0fbe308aeb07e588c2a97f279c2a1ca10 canonical=dda396b0fbe308aeb07e588c2a97f279c2a1ca10 home/dot_mise/config.toml
@@ -142,14 +142,14 @@ MATCH worktree=22a92f9127989c6b7e49fa920b2728e8e17b6d11 canonical=22a92f9127989c
 MATCH worktree=0ce811009cfd996c7893c33203b51d7b76c074d6 canonical=0ce811009cfd996c7893c33203b51d7b76c074d6 scripts/lib/installer-pins.sh
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 scripts/validate-agent-assets.py; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 scripts/validate-agent-assets.py; echo exit=$?`
 
 ```text
 ERROR: PyYAML is required
 exit=1
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_supply_chain_policy tests.unit.test_statusline_tools -q; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_supply_chain_policy tests.unit.test_statusline_tools -q; echo exit=$?`
 
 ```text
 ----------------------------------------------------------------------
@@ -159,7 +159,7 @@ Ran 23 tests in 0.197s
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && grep -n -E '^"?[A-Za-z@:/._-]+"? *= *"[0-9]' home/dot_mise/config.toml`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && grep -n -E '^"?[A-Za-z@:/._-]+"? *= *"[0-9]' home/dot_mise/config.toml`
 
 ```text
 3:node = "26.9.0"
@@ -196,7 +196,7 @@ exit=0
 48:version = "575.0.1"
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git show origin/main:home/dot_mise/config.toml | grep -n -E '^"?[A-Za-z@:/._-]+"? *= *"[0-9]'`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git show origin/main:home/dot_mise/config.toml | grep -n -E '^"?[A-Za-z@:/._-]+"? *= *"[0-9]'`
 
 ```text
 3:node = "26.9.0"
@@ -233,7 +233,7 @@ exit=0
 48:version = "575.0.1"
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && diff <(git show origin/main:home/dot_mise/config.toml | grep -n -E '^"?[A-Za-z@:/._-]+"? *= *"[0-9]') <(grep -n -E '^"?[A-Za-z@:/._-]+"? *= *"[0-9]' home/dot_mise/config.toml)`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && diff <(git show origin/main:home/dot_mise/config.toml | grep -n -E '^"?[A-Za-z@:/._-]+"? *= *"[0-9]') <(grep -n -E '^"?[A-Za-z@:/._-]+"? *= *"[0-9]' home/dot_mise/config.toml)`
 
 ```text
 13c13
@@ -246,27 +246,27 @@ exit=0
 > 25:"npm:@openai/codex" = "0.157.0"
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git grep -n -F -e '0.156.1' -e '0.12.15' -- . ':!home/dot_mise/mise.lock' ':!.orchestration' ':!.ua' ':!reviews'; echo git-grep-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git grep -n -F -e '0.156.1' -e '0.12.15' -- . ':!home/dot_mise/mise.lock' ':!.orchestration' ':!.ua' ':!reviews'; echo git-grep-exit=$?`
 
 ```text
 git-grep-exit=1
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && grep -n 'validate-agent-assets.py' Makefile .github/workflows/agent-assets.yml`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && grep -n 'validate-agent-assets.py' Makefile .github/workflows/agent-assets.yml`
 
 ```text
 Makefile:165:	uv run --with pyyaml scripts/validate-agent-assets.py
 .github/workflows/agent-assets.yml:35:        run: uv run --with pyyaml scripts/validate-agent-assets.py
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
 
 ```text
 agent asset validation ok
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git status --porcelain && git commit -q -F /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/T10-commit-msg.txt; echo commit-exit=$?; git log -1 --format='%H%n%B'; git show --stat --format='%h %s' HEAD`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git status --porcelain && git commit -q -F /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/T10-commit-msg.txt; echo commit-exit=$?; git log -1 --format='%H%n%B'; git show --stat --format='%h %s' HEAD`
 
 ```text
 M  home/dot_mise/config.toml
@@ -295,7 +295,7 @@ a7c009a chore(mise): commit the pending make upgrade pin bumps
  2 files changed, 16 insertions(+), 16 deletions(-)
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git push -u origin chore/upgrade-pins-20260925b; echo push-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git push -u origin chore/upgrade-pins-20260925b; echo push-exit=$?`
 
 ```text
 remote: 
@@ -308,7 +308,7 @@ branch 'chore/upgrade-pins-20260925b' set up to track 'origin/chore/upgrade-pins
 push-exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && gh pr create --base main --head chore/upgrade-pins-20260925b --title 'chore(mise): commit the pending make upgrade pin bumps' --body-file /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/T10-pr-body.md; echo pr-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && gh pr create --base main --head chore/upgrade-pins-20260925b --title 'chore(mise): commit the pending make upgrade pin bumps' --body-file /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/T10-pr-body.md; echo pr-exit=$?`
 
 ```text
 https://github.com/mryfmo/dotfiles/pull/178
@@ -450,7 +450,7 @@ Verbatim stdout+stderr. Blocks under "live" were re-run while writing this file;
 
 ## Pre-state (live)
 
-### `git -C /home/moriya/.local/share/chezmoi status --porcelain; git -C /home/moriya/.local/share/chezmoi log -1 --format='%h %s'; git -C /home/moriya/.local/share/chezmoi rev-parse --abbrev-ref HEAD`
+### `git -C ~/.local/share/chezmoi status --porcelain; git -C ~/.local/share/chezmoi log -1 --format='%h %s'; git -C ~/.local/share/chezmoi rev-parse --abbrev-ref HEAD`
 
 ```text
  M home/dot_mise/config.toml
@@ -460,7 +460,7 @@ Verbatim stdout+stderr. Blocks under "live" were re-run while writing this file;
 main
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 branch --show-current; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log -1 --format='%h %s'; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse --short origin/main`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 branch --show-current; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log -1 --format='%h %s'; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse --short origin/main`
 
 ```text
 chore/upgrade-pins-20260925b
@@ -470,7 +470,7 @@ chore/upgrade-pins-20260925b
 
 ## Step 1: capture (live, read-only against the canonical clone)
 
-### `git -C /home/moriya/.local/share/chezmoi diff -- home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh > /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins.patch; echo write-exit=$?; wc -l /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins.patch; sha256sum /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins.patch`
+### `git -C ~/.local/share/chezmoi diff -- home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh > /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins.patch; echo write-exit=$?; wc -l /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins.patch; sha256sum /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins.patch`
 
 ```text
 write-exit=0
@@ -478,7 +478,7 @@ write-exit=0
 e9e694b50b8359d4fdcbfb1fba9dcecf88b7f0eacfb65f5fdb70aa85f6fe509b  /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins.patch
 ```
 
-### `for f in home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh; do echo "$(git -C /home/moriya/.local/share/chezmoi hash-object $f) $f"; done`
+### `for f in home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh; do echo "$(git -C ~/.local/share/chezmoi hash-object $f) $f"; done`
 
 ```text
 dda396b0fbe308aeb07e588c2a97f279c2a1ca10 home/dot_mise/config.toml
@@ -486,7 +486,7 @@ dda396b0fbe308aeb07e588c2a97f279c2a1ca10 home/dot_mise/config.toml
 0ce811009cfd996c7893c33203b51d7b76c074d6 scripts/lib/installer-pins.sh
 ```
 
-### `git -C /home/moriya/.local/share/chezmoi diff --stat -- home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh`
+### `git -C ~/.local/share/chezmoi diff --stat -- home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh`
 
 ```text
  home/dot_mise/config.toml     | 16 ++++----
@@ -495,7 +495,7 @@ dda396b0fbe308aeb07e588c2a97f279c2a1ca10 home/dot_mise/config.toml
  3 files changed, 58 insertions(+), 58 deletions(-)
 ```
 
-### `for f in home/dot_mise/config.toml scripts/lib/installer-pins.sh; do echo "== $f (origin/main vs canonical working)"; diff <(git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show origin/main:$f) /home/moriya/.local/share/chezmoi/$f; echo diff-exit=$?; done`
+### `for f in home/dot_mise/config.toml scripts/lib/installer-pins.sh; do echo "== $f (origin/main vs canonical working)"; diff <(git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show origin/main:$f) ~/.local/share/chezmoi/$f; echo diff-exit=$?; done`
 
 ```text
 == home/dot_mise/config.toml (origin/main vs canonical working)
@@ -515,7 +515,7 @@ diff-exit=0
 ## Step 2: `git apply --3way` (single execution, verbatim)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git apply --3way /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins.patch; echo "apply-exit=$?"; git status --porcelain; grep -rn -E '^(<<<<<<<|>>>>>>>|=======)' home/dot_mise scripts/lib/installer-pins.sh; echo "markers-grep-exit=$?"; for f in ...; do echo "$(git hash-object $f) $f"; done
+$ cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && git apply --3way /tmp/claude-1000/-home-moriya-Workspace-dotfiles/5277c0a1-6279-4940-bf08-6a23b59b5b84/scratchpad/canonical-pending-pins.patch; echo "apply-exit=$?"; git status --porcelain; grep -rn -E '^(<<<<<<<|>>>>>>>|=======)' home/dot_mise scripts/lib/installer-pins.sh; echo "markers-grep-exit=$?"; for f in ...; do echo "$(git hash-object $f) $f"; done
 Applied patch to 'home/dot_mise/config.toml' with conflicts.
 Applied patch to 'home/dot_mise/mise.lock' cleanly.
 Applied patch to 'scripts/lib/installer-pins.sh' cleanly.
@@ -534,7 +534,7 @@ markers-grep-exit=0
 
 ## Post-state of the nested worktree (live; left as-is for inspection)
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 ls-files -u`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 ls-files -u`
 
 ```text
 UU home/dot_mise/config.toml
@@ -544,7 +544,7 @@ M  home/dot_mise/mise.lock
 100644 dda396b0fbe308aeb07e588c2a97f279c2a1ca10 3	home/dot_mise/config.toml
 ```
 
-### `sed -n '20,34p' /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_mise/config.toml`
+### `sed -n '20,34p' ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_mise/config.toml`
 
 ```text
 shellcheck = "0.11.0"
@@ -564,7 +564,7 @@ shfmt = "3.14.1"
 "npm:fast-cli" = "5.2.0"
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff`
 
 ```text
 diff --cc home/dot_mise/config.toml
@@ -585,7 +585,7 @@ index d503b01,dda396b..0000000
   "npm:ccusage" = "20.0.22"
 ```
 
-### `for f in home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh; do echo "worktree=$(git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 hash-object /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/$f) canonical=$(git -C /home/moriya/.local/share/chezmoi hash-object $f) $f"; done`
+### `for f in home/dot_mise/config.toml home/dot_mise/mise.lock scripts/lib/installer-pins.sh; do echo "worktree=$(git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 hash-object ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/$f) canonical=$(git -C ~/.local/share/chezmoi hash-object $f) $f"; done`
 
 ```text
 worktree=0452529bbb47a8b94f52f2bf997bc7b275a6028f canonical=dda396b0fbe308aeb07e588c2a97f279c2a1ca10 home/dot_mise/config.toml
@@ -593,7 +593,7 @@ worktree=22a92f9127989c6b7e49fa920b2728e8e17b6d11 canonical=22a92f9127989c6b7e49
 worktree=0ce811009cfd996c7893c33203b51d7b76c074d6 canonical=0ce811009cfd996c7893c33203b51d7b76c074d6 scripts/lib/installer-pins.sh
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse :3:home/dot_mise/config.toml`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse :3:home/dot_mise/config.toml`
 
 ```text
 dda396b0fbe308aeb07e588c2a97f279c2a1ca10
@@ -616,7 +616,7 @@ Verbatim stdout+stderr of each command. `make upgrade` was NOT run; steps 1-7 we
 
 ## Worktree state (read-only)
 
-### `git -C /home/moriya/Workspace/dotfiles-w3 status --porcelain; echo porcelain-exit=$?; git -C /home/moriya/Workspace/dotfiles-w3 branch --show-current; git -C /home/moriya/Workspace/dotfiles-w3 log -1 --format='%h %s'; git -C /home/moriya/Workspace/dotfiles-w3 rev-parse --short origin/main`
+### `git -C ~/Workspace/dotfiles-w3 status --porcelain; echo porcelain-exit=$?; git -C ~/Workspace/dotfiles-w3 branch --show-current; git -C ~/Workspace/dotfiles-w3 log -1 --format='%h %s'; git -C ~/Workspace/dotfiles-w3 rev-parse --short origin/main`
 
 ```text
 porcelain-exit=0
@@ -627,14 +627,14 @@ chore/upgrade-pins-20260925b
 
 ## Evidence: make upgrade phases
 
-### `grep -n -E '^upgrade:|upgrade-tools' /home/moriya/Workspace/dotfiles-w3/Makefile`
+### `grep -n -E '^upgrade:|upgrade-tools' ~/Workspace/dotfiles-w3/Makefile`
 
 ```text
 123:upgrade:
 124:	./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)
 ```
 
-### `grep -n -E 'run_(required|optional)_phase "' /home/moriya/Workspace/dotfiles-w3/scripts/upgrade-tools.sh`
+### `grep -n -E 'run_(required|optional)_phase "' ~/Workspace/dotfiles-w3/scripts/upgrade-tools.sh`
 
 ```text
 600:    run_required_phase "Homebrew" upgrade_homebrew
@@ -650,7 +650,7 @@ chore/upgrade-pins-20260925b
 611:        run_required_phase "apply upgraded mise config" apply_upgraded_mise_config
 ```
 
-### `sed -n '/^function upgrade_mise_self/,/^}/p;/^function upgrade_agent_assets/,/^}/p;/^function upgrade_uv_tools/,/^}/p;/^function upgrade_gh_extensions/,/^}/p' /home/moriya/Workspace/dotfiles-w3/scripts/upgrade-tools.sh`
+### `sed -n '/^function upgrade_mise_self/,/^}/p;/^function upgrade_agent_assets/,/^}/p;/^function upgrade_uv_tools/,/^}/p;/^function upgrade_gh_extensions/,/^}/p' ~/Workspace/dotfiles-w3/scripts/upgrade-tools.sh`
 
 ```text
 function upgrade_mise_self() {
@@ -692,7 +692,7 @@ function upgrade_gh_extensions() {
 }
 ```
 
-### `grep -n -E 'manifest_record "' /home/moriya/Workspace/dotfiles-w3/scripts/update-agent-assets.sh | cut -c1-220`
+### `grep -n -E 'manifest_record "' ~/Workspace/dotfiles-w3/scripts/update-agent-assets.sh | cut -c1-220`
 
 ```text
 125:    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANA

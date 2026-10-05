@@ -14,7 +14,7 @@ Exit: 0
 Exit: 0
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 No diff was printed.
@@ -24,7 +24,7 @@ No diff was printed.
 Exit: 0
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 No shellcheck findings were printed.

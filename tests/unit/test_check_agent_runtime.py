@@ -987,8 +987,10 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             findings,
             [
                 f"found: GitHub owner credential store {home}/.config/gh (hosts.yml 0600, one user: owner-login)",
-                f"WARN: GitHub work credential store {home}/.config/gh-work: "
-                "hosts.yml must be a user-owned regular file with mode 0600",
+                (
+                    f"WARN: GitHub work credential store {home}/.config/gh-work: "
+                    "hosts.yml must be a user-owned regular file with mode 0600"
+                ),
                 "WARN: GitHub worker credential store /abs/never has no hosts.yml; run make gh-auth",
             ],
         )
@@ -1009,10 +1011,14 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual(
             findings[:2],
             [
-                f"WARN: GitHub owner credential store {home}/.config/gh holds 2 working of 2 logins; "
-                "keep exactly one account per store (run make gh-auth)",
-                f"WARN: GitHub work credential store {home}/.config/gh-work holds 0 working of 1 logins; "
-                "keep exactly one account per store (run make gh-auth)",
+                (
+                    f"WARN: GitHub owner credential store {home}/.config/gh holds 2 working of 2 logins; "
+                    "keep exactly one account per store (run make gh-auth)"
+                ),
+                (
+                    f"WARN: GitHub work credential store {home}/.config/gh-work holds 0 working of 1 logins; "
+                    "keep exactly one account per store (run make gh-auth)"
+                ),
             ],
         )
         missing_gh = self.module.gh_credential_store_findings(

@@ -1,0 +1,231 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 264,
+  "head_sha": "8a4cf1285cfca453bdfcf3a4602301140cc9d9da",
+  "base_ref": "main",
+  "base_sha": "b13132d0f0784164a02037a7337409394548f005",
+  "generated_at": "2026-10-04T19:25:07+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405386/job/111509840577"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405386/job/111509840563"
+    },
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405386/job/111509840550"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405386/job/111509840536"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405398/job/111509811129"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405398/job/111509811043"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405398/job/111509811003"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405398/job/111509810982"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405398/job/111509810962"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405398/job/111509810866"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405386/job/111509810805"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405404/job/111509810765"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `124ed0cb-21cb-4b15-b895-e30de0727cc2`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=264)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/264#issuecomment-5983042815",
+      "disposition": "not-applicable:CodeRabbit summary comment (automatic reviews disabled); no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `b07ec48548`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/264#pullrequestreview-5407555520",
+      "commit": "b07ec485484d48c1660b79a87106e6346c4a716e",
+      "disposition": "not-applicable:Codex review container; its inline finding is dispositioned on the review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `9c2f82e52a`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/264#pullrequestreview-5407612265",
+      "commit": "9c2f82e52a15bf7ef46fc42a58c73fa1f1886365",
+      "disposition": "not-applicable:Codex review container; its inline finding is dispositioned on the review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/264#pullrequestreview-5407787421",
+      "commit": "8a4cf1285cfca453bdfcf3a4602301140cc9d9da",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition reply; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/264#pullrequestreview-5407787493",
+      "commit": "8a4cf1285cfca453bdfcf3a4602301140cc9d9da",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition reply; no finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/validate-agent-assets.py",
+      "line": 411,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject falsey non-list command_hooks values**\n\nWhen a maintainer writes `command_hooks: {}` (or `false`, `\"\"`, or `0`), `or []` converts that invalid manifest value into an empty list before the type check. The generator uses the same expression, so both rendering and validation succeed while silently dropping the intended hooks instead of reporting the malformed declaration. Read the raw value with only a missing-key default before checking that it is a list.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/264#discussion_r4178802802",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:9c2f82e5"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/validate-agent-assets.py",
+      "line": 431,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Cap SessionEnd and Interrupt hook timeouts at 3 seconds**\n\nWhen a manifest declares a `SessionEnd` or `Interrupt` command hook with a timeout above 3 seconds (the new fixture declares `SessionEnd` with `10`), this validation accepts it and the renderer emits it. Codex supports those two event types only up to three seconds, so these hooks cannot receive their declared execution budget; reject those event-specific values here. [Codex hooks documentation](https://developers.openai.com/codex/hooks/)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/264#discussion_r4178832150",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:b24ce965"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/validate-agent-assets.py",
+      "line": 411,
+      "body": "fixed:9c2f82e5 — a missing `command_hooks` key still defaults to no hooks, but `{}`, `false`, `\"\"` or `0` now fail validation (\"must be a list\") instead of being coerced to an empty list.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/264#discussion_r4178982070",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/validate-agent-assets.py",
+      "line": 431,
+      "body": "fixed:b24ce965 — `SessionEnd` and `Interrupt` command hooks are capped at a 3-second timeout (per the Codex hooks reference); the fixture and a reject case cover it.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/264#discussion_r4178982140",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405386/job/111509840563",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405398/job/111509811129",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37227405398/job/111509810962",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit status context reports review skipped; the gate does not require a bot review"
+    }
+  ]
+}

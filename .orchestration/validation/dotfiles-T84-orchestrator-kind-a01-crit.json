@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T84-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #272 (dotfiles-T84, orchestrator_kind; final head 26e748e2 after one revise round, on main ddf14036): the manifest gains orchestrator_kind: claude with a comment mirroring worker_kind (codex hands the pair to codex-orchestrate; an explicit environment value still overrides); the generator's orchestrator_kind accessor defaults to claude and validates against the same kind set, and render_model_profiles_env emits HERDR_AGENTS_ORCHESTRATOR_KIND next to the worker kind (model-profiles.env regenerated); the validator rejects an invalid or missing key like worker_kind and requires the README '(currently `claude`;' statements anchored on their key names for both orchestrator_kind and worker_kind (the task-level audit of 55f4d43f showed the unanchored worker-kind check was satisfied by the new orchestrator sentence; fixed in 26e748e2 with a regression test); README sentence added next to the worker_kind one. Six tests (default, env line, invalid value, manifest rejection, README statement); 854 unit tests; render-check and validate-agent-assets ok; ruff clean; CI green on both heads; no Bot finding or thread; no launcher change (T85 already consumes the variable, T86 requires codex).",
+    "resolved": true
+  }
+]

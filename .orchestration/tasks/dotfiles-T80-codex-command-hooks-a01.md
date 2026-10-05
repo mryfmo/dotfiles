@@ -59,3 +59,7 @@ gh api repos/mryfmo/dotfiles/pulls/<pr-number> --jq '.mergeable_state'
 3. Artifacts at the exact expected paths; validation with verbatim outputs, PR number, head SHA, the VERIFY source.
 4. CompactionDB `memory add --kind decision --scope project` with the `[memory:decision]` text; paste command and output.
 5. `AGMSG-RESULT v1 task_id=dotfiles-T80` via `agmsg-dispatch dotfiles <your identity> claude-remediation-dot wT:p1 "<single line>"`. `cost:` line. max_turns=30.
+
+## Dispatch
+
+- 2026-10-05 03:35Z to `claude-standard-dot-a005` (worker-c, wT:p2) after T90 merged as 4c38dea0 (generator free). Branch from `origin/main` 4c38dea0 or later with `--no-track`. T79 and T81 queue behind this PR on the shared generator/validator files.

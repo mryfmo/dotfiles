@@ -114,6 +114,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 ("HOME=/root;", "HOME=~;"),
                 ("cat /var/root/.ssh/id_ed25519", "cat ~/.ssh/id_ed25519"),
                 ("cat /private/var/root/.ssh/id and /home/_build/.ssh/id", "cat ~/.ssh/id and ~/.ssh/id"),
+                (
+                    "/proc/1/root/root/.ssh/id and /proc/1/root/var/root/.ssh/id",
+                    "/proc/1/root~/.ssh/id and /proc/1/root~/.ssh/id",
+                ),
                 ("agent /root/t97_evidence_review and /proc/self/root/etc", None),
             ):
                 with self.subTest(text=text):

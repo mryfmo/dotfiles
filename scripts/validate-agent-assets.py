@@ -1295,7 +1295,7 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
         # ponytail: root's home (`/root`, macOS `/var/root`) only bare or as `<home>/.<dir>` (where credentials live);
         # a Codex sub-agent path such as `/root/t97_evidence_review` stays. Widen when evidence quotes
         # other `/root/<dir>` paths.
-        r"(?<![\w.~-])(?:(?:/private)?/var)?/root(?=/\.|(?!/))",
+        rf"{boundary}(?:(?:/private)?/var)?/root(?=/\.|(?!/))",
     ]
     if home:
         # A one-segment home such as `/root` is also a path component (`/proc/self/root`), so it keeps the boundary.

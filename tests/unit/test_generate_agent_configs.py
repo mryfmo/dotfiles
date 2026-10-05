@@ -908,6 +908,24 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertIn(f'{key}\ntrusted_hash = "{expected}"', result.stdout)
                 self.assertNotIn("cannot compute hook trust for demo@market", result.stderr)
 
+    def test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver(self) -> None:
+        namespace = self.hook_trust_namespace(sample_manifest())
+        active_plugin_version = namespace["active_plugin_version"]
+        root = self.temp_dir / "cache/market/demo"
+        (root / "4.12.0").mkdir(parents=True)
+        # Codex skips a symlinked version entry, so the real 4.12.0 stays active.
+        (root / "local").symlink_to(root / "4.12.0")
+        self.assertEqual(active_plugin_version(root), "4.12.0")
+        # `1.10.0-01` is not semver (leading zero in a numeric pre-release identifier), so Codex
+        # compares it lexically and 1.9.0 wins; a build identifier may keep its leading zero.
+        compare = namespace["compare_plugin_versions"]
+        self.assertGreater(compare("1.9.0", "1.10.0-01"), 0)
+        self.assertGreater(compare("1.10.0+01", "1.9.0"), 0)
+        other = self.temp_dir / "cache/market/other"
+        for version in ("1.9.0", "1.10.0-01"):
+            (other / version).mkdir(parents=True)
+        self.assertEqual(active_plugin_version(other), "1.9.0")
+
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"

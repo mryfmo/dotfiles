@@ -193,9 +193,22 @@ def compare_identifiers(left: str, right: str) -> int:
     return (len(left.split(".")) > len(right.split("."))) - (len(left.split(".")) < len(right.split(".")))
 
 
+def parse_semver(version: str):
+    """A semver match as the `semver` crate accepts it, else None.
+
+    Numeric pre-release identifiers may not have leading zeros (build identifiers may).
+    """
+    match = SEMVER.match(version)
+    if match and match.group(4):
+        for identifier in match.group(4).split("."):
+            if identifier.isdigit() and len(identifier) > 1 and identifier.startswith("0"):
+                return None
+    return match
+
+
 def compare_plugin_versions(left: str, right: str) -> int:
     """Codex's version order (core-plugin-common installed.rs compare_plugin_versions, rust-v0.160.0)."""
-    a, b = SEMVER.match(left), SEMVER.match(right)
+    a, b = parse_semver(left), parse_semver(right)
     if not (a and b):
         return (left > right) - (left < right)
     for x, y in zip(a.groups()[:3], b.groups()[:3]):
@@ -215,7 +228,11 @@ def active_plugin_version(root: Path):
         versions = [
             entry.name
             for entry in root.iterdir()
-            if entry.is_dir() and entry.name not in (".", "..") and PLUGIN_VERSION_SEGMENT.match(entry.name)
+            # Codex reads the entry's own type, so a symlinked version directory is not a version.
+            if not entry.is_symlink()
+            and entry.is_dir()
+            and entry.name not in (".", "..")
+            and PLUGIN_VERSION_SEGMENT.match(entry.name)
         ]
     except OSError:
         return None

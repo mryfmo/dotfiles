@@ -1287,25 +1287,31 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
     repo_home = root / "home"
     entries = sorted(entry.name for entry in repo_home.iterdir()) if repo_home.is_dir() else []
     not_repo_path = "".join(f"(?!{re.escape(name)}(?![A-Za-z0-9._-]))" for name in entries)
-    forms = [rf"/(?:home|Users)/{not_repo_path}[A-Za-z0-9][A-Za-z0-9._-]*"]
+    forms = [rf"(?<![\w.~-])/(?:home|Users)/{not_repo_path}[A-Za-z0-9][A-Za-z0-9._-]*"]
     if home:
         forms.insert(0, re.escape(home))
-    return re.compile(rf"(?<![\w.~/-])(?:{'|'.join(forms)})(?![A-Za-z0-9._-])")
+    return re.compile(rf"(?:{'|'.join(forms)})(?![A-Za-z0-9._-])")
 
 
 def home_path_pattern() -> re.Pattern[str]:
-    """A user's home directory: the running user's `$HOME`, or any `/home/<user>` or `/Users/<user>`.
+    """A user's home directory, `/home/<user>` or `/Users/<user>`, as the `.orchestration` scan flags it.
 
     A segment that names a top-level entry of the repository's `home/` tree
     (`dot_config`, `.chezmoiscripts`, ...) is a repository path, not a user, and a
-    path that continues another segment (`dotfiles/home/dot_config`) never matches.
+    path glued to a word character (`dotfiles/home/x`, a temporary `.../home/worker`)
+    never matches. The pattern does not depend on the machine, so CI and a
+    workstation flag the same text.
     """
-    return compiled_home_path_pattern(ROOT, os.path.expanduser("~").rstrip("/"))
+    return compiled_home_path_pattern(ROOT, "")
 
 
 def mask_home_paths(text: str) -> tuple[str, int]:
-    """Normalise home directory prefixes to `~`, so committed evidence names no workstation."""
-    return home_path_pattern().subn(HOME_MASK, text)
+    """Normalise home directories to `~`: every home_path_pattern() match, and the running user's `$HOME` anywhere.
+
+    Masking covers at least what the scan flags, so masked evidence always passes it.
+    """
+    home = os.path.expanduser("~").rstrip("/")
+    return compiled_home_path_pattern(ROOT, home).subn(HOME_MASK, text)
 
 
 def strip_allowed_secret_placeholders(text: str) -> str:

@@ -103,11 +103,15 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 ("/home/.chezmoitemplates/x", None),
                 ("/home/... and /home/<user> and ~/.codex", None),
                 ("/srv/operatorX/x", None),
+                ("file:///home/alice/x and file:///Users/bob/y", "file://~/x and file://~/y"),
+                ("/proc/self/root/srv/operator/.git and ..F/srv/operator/a", "/proc/self/root~/.git and ..F~/a"),
+                ("/tmp/test-x/home/worker/.config", None),
             ):
                 with self.subTest(text=text):
                     masked, count = self.module.mask_home_paths(text)
                     self.assertEqual(masked, expected or text)
-                    self.assertEqual(count, 0 if expected is None else 1)
+                    self.assertEqual(count, 0 if expected is None else expected.count("~") - text.count("~"))
+                    self.assertIsNone(self.module.home_path_pattern().search(masked))
 
     def test_secret_scan_rejects_home_paths_in_orchestration_evidence_only(self) -> None:
         self.write_text_file("docs/notes.md", "see /home/alice/x\n")

@@ -155,15 +155,30 @@ codex:
         command: '{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify'
         timeout: 3
         status_message: Recording to CompactionDB
+    # The hooks this repository ships or installs, trusted by `make update`: the modify scripts hash each
+    # one at apply time (a config hook from its manifest definition embedded in the modify script, a plugin
+    # hook from the installed plugin file). trusted_hash is only the fallback when a plugin file is absent.
     state:
+      '{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0':
+        enabled: true
+      '{{ .chezmoi.homeDir }}/.codex/config.toml:pre_compact:0:0':
+        enabled: true
+      '{{ .chezmoi.homeDir }}/.codex/config.toml:post_compact:0:0':
+        enabled: true
+      '{{ .chezmoi.homeDir }}/.codex/config.toml:session_end:0:0':
+        enabled: true
       crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0:
         trusted_hash: sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8
+        enabled: true
       ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0:
-        trusted_hash: sha256:35ad4fd900da217d98e6eb60198465bd10d55e21eacd72758621dc385145cc05
+        trusted_hash: sha256:7ee5d5ae1f4a9e55f1f429f2960c2f9f32293f198c0e8e2e42b2fb3b4eeda142
+        enabled: true
       ponytail@ponytail:hooks/claude-codex-hooks.json:user_prompt_submit:0:0:
-        trusted_hash: sha256:22db2f951755c593f9deba5e69cd1be1c87e0c9b2f5538a13b5dd9911141793f
+        trusted_hash: sha256:8c9efc5a5e649c8cdca3f0b7bf4cba81d9717d1bc930c7dbc18b6efd66c7c58c
+        enabled: true
       ponytail@ponytail:hooks/claude-codex-hooks.json:subagent_start:0:0:
-        trusted_hash: sha256:28c43eada804ad00a4e651d6af6320c01e763b1df060af0ab74865a55bc1c9a9
+        trusted_hash: sha256:7954d675ef3bafd5e5a6073ae51d7de57a08f21340f241c332f99078e955675d
+        enabled: true
   projects:
     "{{ .chezmoi.workingTree }}":
       trust_level: trusted

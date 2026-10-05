@@ -332,8 +332,8 @@ make update
 
 # Ponytail is installed from the upstream marketplace.
 # Claude Code and Codex use DietrichGebert/ponytail as the marketplace source.
-# In Codex, open /hooks after install or update, then review and trust the
-# Ponytail lifecycle hooks before starting a new thread.
+# make update also trusts the Ponytail lifecycle hooks it installs (see the
+# hook trust paragraph below), so no /hooks step is needed for them.
 
 # A fresh Codex install needs authentication before its OpenAI-curated catalog
 # is available. If Superpowers is skipped, complete these commands:
@@ -359,15 +359,28 @@ CRIT_REVIEW=off make require-crit-review
 make upgrade
 ```
 
-Codex runs a hook from `~/.codex/config.toml` only after you review and trust
-its exact definition. Once per machine, after `make update`, open Codex, run
-`/hooks`, and trust the four config hooks: the three CompactionDB hooks
-(`PreCompact`, `PostCompact` and `SessionEnd`, which run
-`contextdb-codex-notify`) and the permgate `PermissionRequest` hook. Then
-confirm that `[hooks.state]` in `~/.codex/config.toml` has an entry for each of
-them. Later applies keep these runtime entries, because the managed config
-merge preserves `hooks.state`; trust again in `/hooks` whenever a hook
-definition changes.
+Codex runs a hook from `~/.codex/config.toml` or a plugin only when
+`[hooks.state]` holds the trust hash of its current definition. `make update`
+deploys that trust. `codex.hooks.state` in `home/dot_agents/agent-config.yaml`
+declares the hooks this repository ships or installs: the four config hooks
+(the three CompactionDB hooks `PreCompact`, `PostCompact` and `SessionEnd`,
+which run `contextdb-codex-notify`, and the permgate `PermissionRequest` hook)
+plus the Crit and Ponytail plugin hooks. The Codex modify scripts hash each
+declared hook at apply time with Codex's own algorithm: a config hook from its
+manifest definition embedded in the modify script, a plugin hook from the
+installed plugin file under `~/.codex/plugins/cache/`. The result replaces any
+existing entry for that key, and keys the manifest does not declare are kept.
+Config-hook trust follows the manifest definition, so a hook hand-edited in
+`~/.codex/config.toml` deliberately stops matching and stays untrusted. As its
+last step, after every plugin update, `scripts/update-agent-assets.sh`
+re-applies only the Codex config files (`make codex-hook-trust` runs the same
+step on its own), so a plugin whose hooks changed in the same `make update` is
+trusted at once.
+A hook anyone else writes into `config.toml` or a plugin stays untrusted until
+you review and trust it in `/hooks`. For a plugin, trusting the installed
+content means a plugin upgrade by `make update` is trusted by the same
+`make update`. When a plugin's hook file is missing, the manifest's pinned
+`trusted_hash` is used and the apply prints a warning.
 
 ### Claude Code sandbox
 

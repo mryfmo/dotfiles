@@ -22,6 +22,21 @@ sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[2]
 GENERATOR = ROOT / "scripts/generate-agent-configs.py"
+# The same fixture as test_codex_config_merge: a profile table whose multiline strings hold header-like lines, with and without a trailing comment.
+MULTILINE_PROFILE = (
+    "[agents.reviewer]\n"
+    'developer_instructions = """\n'
+    "Examples:\n"
+    '[hooks.state."custom-hook"] # example\n'
+    '[projects."/x"]\n'
+    'An escaped \\""" stays inside.\n'
+    '"""\n'
+    "notes = '''\n"
+    "[[mcp_servers.example]] # literal\n"
+    "[tui]\n"
+    "'''\n"
+    'one_line = """[a] # b"""\n'
+)
 
 
 def load_generator():
@@ -756,6 +771,347 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertFalse([path for path in outputs if path.name == "ccgate.jsonnet"])
 
+    def hook_trust_namespace(self, manifest: dict) -> dict:
+        namespace = {"sys": sys, "Path": Path, "HOOK_TRUST": self.module.codex_hook_trust(manifest)}
+        exec(self.module.HOOK_TRUST_CODE, namespace)
+        return namespace
+
+    def test_hook_trust_hash_reproduces_codex_current_hashes(self) -> None:
+        # Values Codex 0.160.0 reported as current_hash (app-server hooks/list) on the operator's host.
+        codex_hook_hash = self.hook_trust_namespace(sample_manifest())["codex_hook_hash"]
+        notify = "/home/moriya/.local/bin/common/contextdb-codex-notify"
+        for event, matcher, handler, expected in (
+            (
+                "permission_request",
+                "*",
+                {
+                    "type": "command",
+                    "command": "/home/moriya/.local/bin/common/permgate codex",
+                    "timeout": 10,
+                    "statusMessage": "Evaluating permission request",
+                },
+                "sha256:64d9851fb629f7cd5608706436fb5b8588dc60abf355893ebe3eaca401a9ff65",
+            ),
+            (
+                "pre_compact",
+                "*",
+                {"type": "command", "command": notify, "timeout": 10, "statusMessage": "Recording to CompactionDB"},
+                "sha256:daa1e215632e85e1b578f07ff0647c8f650d6d73f454c1089a74a6d354736edc",
+            ),
+            (
+                "session_end",
+                "*",
+                {"type": "command", "command": notify, "timeout": 3, "statusMessage": "Recording to CompactionDB"},
+                "sha256:14a8144bdb3ac2bfa907e5415009fe1e359bc5ce9f6a46300e9a249b31fffc05",
+            ),
+            # Codex drops a Stop hook's matcher before hashing.
+            (
+                "stop",
+                "ignored",
+                {
+                    "type": "command",
+                    "command": "crit plan-hook --mode codex",
+                    "timeout": 345600,
+                    "statusMessage": "Reviewing proposed plan with Crit",
+                },
+                "sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8",
+            ),
+        ):
+            with self.subTest(event=event):
+                self.assertEqual(codex_hook_hash(event, matcher, handler), expected)
+
+    def hook_trust_manifest(self) -> dict:
+        manifest = sample_manifest()
+        manifest["codex"]["hooks"]["state"] = {
+            "{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0": {"enabled": True},
+            "demo@market:hooks/hooks.json:stop:0:0": {"trusted_hash": "sha256:pinned", "enabled": True},
+        }
+        return manifest
+
+    def run_profile(self, manifest: dict, home: Path, current: str) -> subprocess.CompletedProcess:
+        self.module.write_outputs(self.module.expected_outputs(manifest))
+        return subprocess.run(
+            [str(self.temp_dir / "home/dot_codex/modify_private_standard.config.toml")],
+            input=current,
+            text=True,
+            capture_output=True,
+            env={**os.environ, "HOME": str(home)},
+            check=False,
+        )
+
+    def test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        expected = self.hook_trust_namespace(manifest)["codex_hook_hash"](
+            "permission_request",
+            "*",
+            {
+                "type": "command",
+                "command": "permgate codex",
+                "timeout": 10,
+                "statusMessage": "Evaluating permission request",
+            },
+        )
+        current = (
+            f'[hooks.state]\n\n[hooks.state."{key}"]\ntrusted_hash = "sha256:stale"\n\n'
+            '[hooks.state."/elsewhere/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:operator"\n'
+        )
+
+        result = self.run_profile(manifest, home, current)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f'[hooks.state."{key}"]\ntrusted_hash = "{expected}"\nenabled = true', result.stdout)
+        self.assertNotIn("sha256:stale", result.stdout)
+        self.assertIn('trusted_hash = "sha256:operator"', result.stdout)
+        self.assertIn(f"replacing sha256:stale with {expected}", result.stderr)
+        # A second apply is quiet and byte-identical.
+        again = self.run_profile(manifest, home, result.stdout)
+        self.assertEqual(again.stdout, result.stdout)
+        self.assertNotIn("divergence", again.stderr)
+
+    def test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+
+        missing = self.run_profile(manifest, home, "")
+
+        self.assertEqual(missing.returncode, 0, missing.stderr)
+        self.assertIn(
+            '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:pinned"', missing.stdout
+        )
+        self.assertIn(
+            "warning: cannot compute hook trust for demo@market:hooks/hooks.json:stop:0:0 (no installed copy",
+            missing.stderr,
+        )
+        handler = {"type": "command", "command": "demo stop", "timeout": 5}
+        plugin = home / ".codex/plugins/cache/market/demo/1.0/hooks/hooks.json"
+        plugin.parent.mkdir(parents=True)
+        plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [handler]}]}}))
+        expected = self.hook_trust_namespace(manifest)["codex_hook_hash"]("stop", None, handler)
+
+        installed = self.run_profile(manifest, home, "")
+
+        self.assertEqual(installed.returncode, 0, installed.stderr)
+        self.assertIn(
+            f'[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "{expected}"', installed.stdout
+        )
+        self.assertNotIn("cannot compute hook trust for demo@market", installed.stderr)
+
+    def test_profile_modify_scripts_hash_the_plugin_version_codex_loads(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        codex_hook_hash = self.hook_trust_namespace(manifest)["codex_hook_hash"]
+        root = home / ".codex/plugins/cache/market/demo"
+        for version in ("1.9.0", "1.12.0", "1.12.0-rc.1"):
+            plugin = root / version / "hooks/hooks.json"
+            plugin.parent.mkdir(parents=True)
+            plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": version}]}]}}))
+        key = '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]'
+        for active in ("1.12.0", "local"):
+            if active == "local":
+                # Codex prefers a `local` copy over any released version.
+                plugin = root / "local/hooks/hooks.json"
+                plugin.parent.mkdir(parents=True)
+                plugin.write_text(
+                    json.dumps({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "local"}]}]}})
+                )
+            with self.subTest(active=active):
+                result = self.run_profile(manifest, home, "")
+                expected = codex_hook_hash("stop", None, {"type": "command", "command": active})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(f'{key}\ntrusted_hash = "{expected}"', result.stdout)
+                self.assertNotIn("cannot compute hook trust for demo@market", result.stderr)
+
+    def test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver(self) -> None:
+        namespace = self.hook_trust_namespace(sample_manifest())
+        active_plugin_version = namespace["active_plugin_version"]
+        root = self.temp_dir / "cache/market/demo"
+        (root / "4.12.0").mkdir(parents=True)
+        # Codex skips a symlinked version entry, so the real 4.12.0 stays active.
+        (root / "local").symlink_to(root / "4.12.0")
+        self.assertEqual(active_plugin_version(root), "4.12.0")
+        # `1.10.0-01` is not semver (leading zero in a numeric pre-release identifier), so Codex
+        # compares it lexically and 1.9.0 wins; a build identifier may keep its leading zero.
+        compare = namespace["compare_plugin_versions"]
+        self.assertGreater(compare("1.9.0", "1.10.0-01"), 0)
+        self.assertGreater(compare("1.10.0+01", "1.9.0"), 0)
+        other = self.temp_dir / "cache/market/other"
+        for version in ("1.9.0", "1.10.0-01"):
+            (other / version).mkdir(parents=True)
+        self.assertEqual(active_plugin_version(other), "1.9.0")
+
+    def test_plugin_versions_order_build_metadata_like_the_semver_crate(self) -> None:
+        namespace = self.hook_trust_namespace(sample_manifest())
+        compare = namespace["compare_plugin_versions"]
+        # semver 1.0.27 BuildMetadata: empty < non-empty; numeric by stripped length, value, then length.
+        self.assertGreater(compare("1.0.0+123", "1.0.0"), 0)
+        self.assertGreater(compare("1.0.0+01", "1.0.0+1"), 0)
+        self.assertLess(compare("1.0.0+0", "1.0.0+00"), 0)
+        self.assertGreater(compare("1.0.0+a", "1.0.0+1"), 0)
+        self.assertEqual(compare("1.0.0+1", "1.0.0+1"), 0)
+        root = self.temp_dir / "cache/market/build"
+        for version in ("1.0.0", "1.0.0+123"):
+            (root / version).mkdir(parents=True)
+        self.assertEqual(namespace["active_plugin_version"](root), "1.0.0+123")
+
+    def test_profile_modify_scripts_replace_a_single_quoted_declared_entry(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        current = f"[hooks.state]\n\n[hooks.state.'{key}']\ntrusted_hash = \"sha256:stale\"\n"
+
+        result = self.run_profile(manifest, home, current)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        state = tomllib.loads(result.stdout)["hooks"]["state"]
+        self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+        self.assertEqual(result.stdout.count(key), 1)
+        self.assertIn("replacing sha256:stale with", result.stderr)
+
+    def test_profile_modify_scripts_handle_table_headers_with_trailing_comments(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        others = (
+            '[hooks.state."custom-hook"] # mine\ntrusted_hash = "sha256:custom"\n\n'
+            '[projects."/work"]  # trusted\ntrust_level = "trusted"\n'
+        )
+        # A commented declared header, then an uncommented one followed by commented unrelated tables.
+        for declared in (f'[hooks.state."{key}"] # declared', f'[hooks.state."{key}"]'):
+            with self.subTest(declared=declared):
+                current = f'[hooks.state]\n\n{declared}\ntrusted_hash = "sha256:stale"\n\n' + others
+
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(state["custom-hook"], {"trusted_hash": "sha256:custom"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertIn("replacing sha256:stale with", result.stderr)
+
+    def test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        current = '[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n\n' + MULTILINE_PROFILE
+
+        result = self.run_profile(manifest, home, current)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(MULTILINE_PROFILE, result.stdout)
+        merged = tomllib.loads(result.stdout)
+        self.assertEqual(merged["agents"], tomllib.loads(MULTILINE_PROFILE)["agents"])
+        self.assertEqual(merged["hooks"]["state"]["custom-hook"], {"enabled": True})
+
+    def test_profile_modify_scripts_replace_inline_table_and_dotted_forms(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        for entry in (
+            f'"{key}" = {{ trusted_hash = "sha256:stale", enabled = false }}\n',
+            f'"{key}".trusted_hash = "sha256:stale"\n"{key}" . enabled = false\n',
+        ):
+            with self.subTest(entry=entry):
+                current = (
+                    f'[hooks.state]\n{entry}"other" = {{ trusted_hash = "sha256:other" }}\n\n'
+                    '[projects."/work"]\ntrust_level = "trusted"\n'
+                )
+
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(state["other"], {"trusted_hash": "sha256:other"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
+    def test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        others = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        currents = [
+            f'{parent}\n"{key}" = {{ trusted_hash = "sha256:stale", enabled = false }}\n'
+            f'"other" = {{ trusted_hash = "sha256:other" }}\n' + others
+            for parent in ("[hooks . state]", '["hooks"."state"]')
+        ]
+        currents.append(
+            f'[hooks.state]\n"other" = {{ trusted_hash = "sha256:other" }}\n\n'
+            f'[ hooks . state . "{key}" ]\ntrusted_hash = "sha256:stale"\n' + others
+        )
+        for current in currents:
+            with self.subTest(current=current.splitlines()[0]):
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(state["other"], {"trusted_hash": "sha256:other"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
+    def test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        others = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        for current in (
+            f'[hooks]\nstate."{key}".trusted_hash = "sha256:stale"\nstate . "{key}" . enabled = false\n' + others,
+            f'hooks.state."{key}".trusted_hash = "sha256:stale"\n"hooks".state."{key}".enabled = false\n' + others,
+        ):
+            with self.subTest(current=current.splitlines()[0]):
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
+    def test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        self.module.write_outputs(self.module.expected_outputs(manifest))
+        profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
+        # A splitter that emits every chunk twice stands in for any representation the merge mishandles.
+        source = profile.read_text()
+        broken = source.replace(
+            "\nsys.stdout.write(merge_config(sys.stdin.read()))",
+            "\n_split_chunks = split_chunks\nsplit_chunks = lambda text: _split_chunks(text) * 2\n"
+            "sys.stdout.write(merge_config(sys.stdin.read()))",
+        )
+        self.assertNotEqual(broken, source)
+        profile.write_text(broken)
+        current = '[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n\n[projects."/work"]\ntrust_level = "trusted"\n'
+
+        result = subprocess.run(
+            [str(profile)],
+            input=current,
+            text=True,
+            capture_output=True,
+            env={**os.environ, "HOME": str(home)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, current)
+        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
@@ -808,7 +1164,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(
-            'warning: hook trust divergence for hooks.state."hook": profile=sha256:profile base=sha256:base',
+            "warning: hook trust divergence for hooks.state.hook: profile=sha256:profile base=sha256:base",
             result.stderr,
         )
         self.assertIn('trusted_hash = "sha256:profile"', result.stdout)

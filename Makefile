@@ -166,6 +166,12 @@ validate-agent-assets:
 check-regime-boundary:
 	./scripts/check-regime-boundary.sh
 
+.PHONY: codex-hook-trust
+# Re-apply only the managed Codex config files so their modify scripts re-hash the trusted hooks;
+# `make update` already does this as the last step of scripts/update-agent-assets.sh.
+codex-hook-trust:
+	bash -c 'source ./scripts/update-agent-assets.sh && refresh_codex_hook_trust'
+
 .PHONY: render-check
 render-check:
 	uv run --with pyyaml scripts/generate-agent-configs.py --check

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import runpy
 import subprocess
 import tempfile
 import textwrap
@@ -14,6 +15,21 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = ROOT / "home/dot_codex/modify_private_config.toml"
+# A profile table whose multiline strings hold header-like lines, with and without a trailing comment.
+MULTILINE_PROFILE = (
+    "[agents.reviewer]\n"
+    'developer_instructions = """\n'
+    "Examples:\n"
+    '[hooks.state."custom-hook"] # example\n'
+    '[projects."/x"]\n'
+    'An escaped \\""" stays inside.\n'
+    '"""\n'
+    "notes = '''\n"
+    "[[mcp_servers.example]] # literal\n"
+    "[tui]\n"
+    "'''\n"
+    'one_line = """[a] # b"""\n'
+)
 
 
 class CodexConfigMergeTest(unittest.TestCase):
@@ -254,6 +270,17 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertEqual(data["mcp_servers"]["context7"]["env"], {"NOTE": "kept with its parent"})
         self.assertNotIn("GITHUB_TOOLSETS", output)
 
+    def test_retired_mcp_servers_are_matched_by_decoded_key_path(self) -> None:
+        current = 'model = "gpt-5.6-sol"\n'
+        current += '\n[ mcp_servers . "github" ]\ncommand = "docker"\nenabled = false\n'
+        current += '\n["mcp_servers".github.env]\nGITHUB_TOOLSETS = "repos"\n'
+        current += '\n[mcp_servers."private_server"]\nurl = "https://example.com/mcp"\nenabled = false\n'
+
+        output = self.merge('model = "gpt-5.6-sol"\n', current)
+
+        self.assertEqual(sorted(tomllib.loads(output)["mcp_servers"]), ["private_server"])
+        self.assertNotIn("GITHUB_TOOLSETS", output)
+
     def test_managed_permgate_replaces_stale_private_ccgate_hook(self) -> None:
         output = self.merge(
             """
@@ -287,6 +314,383 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertIn("permgate codex", output)
         self.assertNotIn("ccgate", output)
         self.assertIn("[mcp_servers.private_server]", output)
+
+    def test_declared_hook_trust_replaces_stale_entries_and_keeps_undeclared(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        block = MERGE_SCRIPT.read_text().split("# >>> codex hook trust", 1)[1].split("# <<< codex hook trust", 1)[0]
+        namespace = {"sys": __import__("sys"), "Path": Path}
+        exec(block.split("\n", 1)[1], namespace)
+        handler = namespace["HOOK_TRUST"]["config_hooks"]["permission_request"][0]["hooks"][0]
+        expected = namespace["codex_hook_hash"]("permission_request", "*", namespace["with_home"](handler, str(home)))
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        # Like the rendered template: the declared keys appear under [hooks.state] with their managed fields.
+        self.baseline_path.write_text(
+            "[hooks.state]\n\n"
+            '[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\nenabled = true\n\n'
+            '[hooks.state."ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"]\nenabled = true\n'
+        )
+        result = subprocess.run(
+            [str(MERGE_SCRIPT)],
+            input=(
+                f'[hooks.state]\n\n[hooks.state."{key}"]\ntrusted_hash = "sha256:stale"\n\n'
+                '[hooks.state."/elsewhere/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:operator"\n'
+            ),
+            text=True,
+            capture_output=True,
+            env=env,
+            check=True,
+        )
+
+        state = tomllib.loads(result.stdout)["hooks"]["state"]
+        self.assertEqual(state[key], {"trusted_hash": expected, "enabled": True})
+        self.assertEqual(state["/elsewhere/hooks.json:stop:0:0"], {"trusted_hash": "sha256:operator"})
+        self.assertIn(f"replacing sha256:stale with {expected}", result.stderr)
+        # No plugin cache in the fixture home: the plugin pins fall back to the manifest literal, with a warning.
+        ponytail = "ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"
+        self.assertTrue(state[ponytail]["trusted_hash"].startswith("sha256:"))
+        self.assertIn(f"warning: cannot compute hook trust for {ponytail} (no installed copy", result.stderr)
+        # A declared key the template does not carry (crit) is left alone, not injected.
+        self.assertNotIn("crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0", state)
+
+    def test_declared_hook_trust_replaces_a_single_quoted_existing_entry(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        result = subprocess.run(
+            [str(MERGE_SCRIPT)],
+            input=f"[hooks.state]\n\n[hooks.state.'{key}']\ntrusted_hash = \"sha256:stale\"\n",
+            text=True,
+            capture_output=True,
+            env=env,
+            check=True,
+        )
+
+        # A literal-quoted existing entry is the same TOML key: it is replaced, not duplicated.
+        state = tomllib.loads(result.stdout)["hooks"]["state"]
+        self.assertTrue(state[key]["trusted_hash"].startswith("sha256:"))
+        self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+        self.assertEqual(result.stdout.count(key), 1)
+        self.assertIn("replacing sha256:stale with", result.stderr)
+
+    def test_declared_hook_trust_handles_table_headers_with_trailing_comments(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        others = (
+            '[hooks.state."custom-hook"] # mine\ntrusted_hash = "sha256:custom"\n\n'
+            '[projects."/work"]  # trusted\ntrust_level = "trusted"\n'
+        )
+        # A commented declared header, then an uncommented one followed by commented unrelated tables.
+        for declared in (f'[hooks.state."{key}"] # declared', f'[hooks.state."{key}"]'):
+            with self.subTest(declared=declared):
+                current = f'[hooks.state]\n\n{declared}\ntrusted_hash = "sha256:stale"\n\n' + others
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True
+                )
+
+                # A commented header is still a header: the declared one is replaced once and the others survive.
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(state["custom-hook"], {"trusted_hash": "sha256:custom"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertIn("replacing sha256:stale with", result.stderr)
+
+    def test_table_name_reads_headers_with_trailing_comments(self) -> None:
+        table_name = runpy.run_path(str(MERGE_SCRIPT), run_name="codex_config_merge")["table_name"]
+        for header, name in (
+            ("[a]", "a"),
+            ("[[a.b]]", "a.b"),
+            ("  [ a . b ]  ", "a.b"),
+            ('[hooks.state."x"] # c', "hooks.state.x"),
+            ('[hooks.state."a]#b"]#c', 'hooks.state."a]#b"'),
+            ("[hooks.state.'a]b'] # c", 'hooks.state."a]b"'),
+            ('[hooks.state."q\\"]"]', 'hooks.state."q\\"]"'),
+            ("[[a]] # c", "a"),
+            ("[a] = 1", None),
+            ("[a] x", None),
+            ("[[a] ]", None),
+            ('[a."b]', None),
+            ("a = [1]", None),
+        ):
+            with self.subTest(header=header):
+                self.assertEqual(table_name(header), name)
+
+    def test_canonical_table_names_decode_each_key_segment(self) -> None:
+        canonical = runpy.run_path(str(MERGE_SCRIPT), run_name="codex_config_merge")["canonical_table_name"]
+        cases = (
+            ("hooks . state", "hooks.state"),
+            ('"hooks"."state"', "hooks.state"),
+            ("'hooks' . \"state\"", "hooks.state"),
+            (' hooks . state . "k/x:0" ', 'hooks.state."k/x:0"'),
+            ("hooks.state.'k/x:0'", 'hooks.state."k/x:0"'),
+            ('"hooks.state"', '"hooks.state"'),
+            ('projects."/work"', 'projects."/work"'),
+            ('a."b\\"c"', 'a."b\\"c"'),
+            ('a."é"', 'a."é"'),
+        )
+        globals_ = canonical.__globals__
+        toml = globals_["hook_trust_toml"]
+        try:
+            # The tomllib path and the key grammar used without tomllib agree.
+            for module in (toml, None):
+                globals_["hook_trust_toml"] = module
+                for raw, name in cases:
+                    with self.subTest(raw=raw, tomllib=module is not None):
+                        self.assertEqual(canonical(raw), name)
+        finally:
+            globals_["hook_trust_toml"] = toml
+
+    def test_equivalent_hook_state_spellings_are_one_table(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        others = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        currents = [
+            f'{parent}\n"{key}" = {{ trusted_hash = "sha256:stale", enabled = false }}\n'
+            f'"other" = {{ trusted_hash = "sha256:other" }}\n' + others
+            for parent in ("[hooks . state]", '["hooks"."state"]')
+        ]
+        currents.append(
+            f'[hooks.state]\n"other" = {{ trusted_hash = "sha256:other" }}\n\n'
+            f'[ hooks . state . "{key}" ]\ntrusted_hash = "sha256:stale"\n' + others
+        )
+        for current in currents:
+            with self.subTest(current=current.splitlines()[0]):
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True
+                )
+
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(state["other"], {"trusted_hash": "sha256:other"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
+    def test_header_like_lines_inside_multiline_strings_stay_string_content(self) -> None:
+        home = self.source_dir / "target-home"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text('[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n')
+        current = '[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n\n' + MULTILINE_PROFILE
+        result = subprocess.run([str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True)
+
+        self.assertIn(MULTILINE_PROFILE, result.stdout)
+        merged = tomllib.loads(result.stdout)
+        self.assertEqual(merged["agents"], tomllib.loads(MULTILINE_PROFILE)["agents"])
+        self.assertEqual(merged["hooks"]["state"], {"custom-hook": {"enabled": True}})
+
+    def test_multiline_string_after_tracks_basic_and_literal_strings(self) -> None:
+        after = runpy.run_path(str(MERGE_SCRIPT), run_name="codex_config_merge")["multiline_string_after"]
+        basic, literal = '"""', "'''"
+        for line, before, expected in (
+            ('a = """', None, basic),
+            ("a = '''", None, literal),
+            ('a = """x"""', None, None),
+            ('a = """x""""', None, None),
+            ('a = "\\"""" # """', None, None),
+            ("a = 'x\"\"\"' # '''", None, None),
+            ('# """', None, None),
+            ('[a] # """', None, None),
+            ('x \\""" y', basic, basic),
+            ('x \\\\"""', basic, None),
+            ('x """', literal, literal),
+            ("x ''' b = '''", literal, literal),
+            ('[hooks.state."x"] # c', basic, basic),
+        ):
+            with self.subTest(line=line, before=before):
+                self.assertEqual(after(line + "\n", before), expected)
+
+    def test_declared_hook_trust_replaces_inline_table_and_dotted_forms(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        for entry in (
+            f'"{key}" = {{ trusted_hash = "sha256:stale", enabled = false }}\n',
+            f'"{key}".trusted_hash = "sha256:stale"\n"{key}" . enabled = false\n',
+        ):
+            with self.subTest(entry=entry):
+                current = (
+                    f'[hooks.state]\n{entry}"other" = {{ trusted_hash = "sha256:other" }}\n\n'
+                    '[projects."/work"]\ntrust_level = "trusted"\n'
+                )
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True
+                )
+
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertTrue(state[key]["trusted_hash"].startswith("sha256:"))
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(state["other"], {"trusted_hash": "sha256:other"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
+    def test_declared_dotted_keys_under_hooks_and_at_the_root_are_replaced(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        others = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        for current in (
+            f'[hooks]\nstate."{key}".trusted_hash = "sha256:stale"\nstate . "{key}" . enabled = false\n' + others,
+            f'hooks.state."{key}".trusted_hash = "sha256:stale"\n"hooks".state."{key}".enabled = false\n' + others,
+        ):
+            with self.subTest(current=current.splitlines()[0]):
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True
+                )
+
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
+    def test_declared_keys_inside_an_inline_table_container_leave_the_file_to_the_guard(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        # Rewriting an inline table's interior is out of scope by design; the parse guard keeps the file.
+        current = f'[hooks]\nstate = {{ "{key}" = {{ trusted_hash = "sha256:stale" }} }}\n'
+
+        result = subprocess.run(
+            [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=False
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, current)
+        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+
+    def test_invalid_merge_output_keeps_the_current_content(self) -> None:
+        home = self.source_dir / "target-home"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text('[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n')
+        # A splitter that emits every chunk twice stands in for any representation the merge mishandles.
+        source = MERGE_SCRIPT.read_text()
+        broken = source.replace(
+            '\nif __name__ == "__main__":',
+            '\n_split_chunks = split_chunks\nsplit_chunks = lambda text: _split_chunks(text) * 2\n\nif __name__ == "__main__":',
+        )
+        self.assertNotEqual(broken, source)
+        script = self.source_dir / "broken-merge"
+        script.write_text(broken)
+        script.chmod(0o755)
+        current = '[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n\n[projects."/work"]\ntrust_level = "trusted"\n'
+
+        result = subprocess.run([str(script)], input=current, text=True, capture_output=True, env=env, check=False)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, current)
+        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+
+    def test_make_update_refreshes_codex_hook_trust_after_the_plugin_update(self) -> None:
+        script = (ROOT / "scripts/update-agent-assets.sh").read_text()
+        main = script.split("\nfunction main() {\n", 1)[1].split("\n}\n", 1)[0]
+        steps = [line.strip() for line in main.splitlines()]
+        # The refresh is the last step of the asset update, after every Codex plugin update.
+        self.assertEqual(steps[-1], "refresh_codex_hook_trust")
+        for plugin_step in ("update_codex_superpowers", "update_codex_crit", "update_codex_ponytail"):
+            with self.subTest(step=plugin_step):
+                self.assertLess(steps.index(plugin_step), steps.index("refresh_codex_hook_trust"))
+        refresh = script.split("\nfunction refresh_codex_hook_trust() {\n", 1)[1].split("\n}\n", 1)[0]
+        # Unattended: --force never prompts, and only the managed Codex config files are re-applied.
+        self.assertIn('chezmoi apply --force "${targets[@]}"', refresh)
+        self.assertIn("pattern='/\\.codex/([a-z0-9_]+\\.)?config\\.toml$'", refresh)
+        makefile = (ROOT / "Makefile").read_text()
+        update = makefile.split("\nupdate:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("./scripts/update-agent-assets.sh", update)
+        self.assertIn("refresh_codex_hook_trust", makefile.split("\ncodex-hook-trust:\n", 1)[1].split("\n\n", 1)[0])
+
+    def run_hook_trust_refresh(self, managed: str, apply_status: int = 0) -> tuple[subprocess.CompletedProcess, str]:
+        bin_dir = self.source_dir / "bin"
+        bin_dir.mkdir(exist_ok=True)
+        calls = self.source_dir / "chezmoi-calls"
+        fake = bin_dir / "chezmoi"
+        listing = self.source_dir / "managed-listing"
+        listing.write_text(managed)
+        fake.write_text(
+            "#!/bin/sh\n"
+            f'printf "%s\\n" "$*" >> {str(calls)!r}\n'
+            f'if [ "$1" = managed ]; then cat {str(listing)!r}; exit 0; fi\n'
+            f"exit {apply_status}\n"
+        )
+        fake.chmod(0o755)
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                'source "$1" && refresh_codex_hook_trust',
+                "bash",
+                str(ROOT / "scripts/update-agent-assets.sh"),
+            ],
+            text=True,
+            capture_output=True,
+            env={**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"},
+            check=False,
+        )
+        return result, calls.read_text() if calls.exists() else ""
+
+    def test_hook_trust_refresh_reapplies_only_the_codex_config_files(self) -> None:
+        managed = "/h/.codex/config.toml\n/h/.codex/standard.config.toml\n/h/.codex/AGENTS.md\n/h/.zshrc\n"
+        result, calls = self.run_hook_trust_refresh(managed)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            calls.splitlines(),
+            [
+                "managed --path-style=absolute --include=files",
+                "apply --force /h/.codex/config.toml /h/.codex/standard.config.toml",
+            ],
+        )
+        result, calls = self.run_hook_trust_refresh("/h/.zshrc\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls.splitlines()[-1], "managed --path-style=absolute --include=files")
+        # A failed refresh warns and lets the rest of `make update` continue.
+        result, _ = self.run_hook_trust_refresh(managed, apply_status=1)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("WARN: Codex hook trust not refreshed: chezmoi apply failed", result.stderr)
 
     def test_unknown_current_tables_are_preserved(self) -> None:
         output = self.merge(

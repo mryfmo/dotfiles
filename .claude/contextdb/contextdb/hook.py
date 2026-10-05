@@ -50,8 +50,11 @@ def prune_health_artifacts(paths: ProjectPaths, *, days: int) -> None:
             log.truncate()
     cutoff = time.time() - days * 86400
     for path in paths.quarantine_dir.glob("*"):
-        if path.name != ".gitkeep" and path.is_file() and path.stat().st_mtime < cutoff:
-            path.unlink()
+        try:
+            if path.name != ".gitkeep" and path.is_file() and path.stat().st_mtime < cutoff:
+                path.unlink()
+        except FileNotFoundError:
+            continue
 
 
 def process_payload(

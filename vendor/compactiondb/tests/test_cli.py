@@ -292,3 +292,56 @@ class CliTests(unittest.TestCase):
         self.assertEqual(2, code)
         self.assertEqual("", out)
         self.assertIn("invalid ingestion source", err)
+
+
+class QuarantineRetentionTests(unittest.TestCase):
+    def test_concurrent_removal_continues_but_other_errors_propagate(self) -> None:
+        from contextlib import closing
+        from pathlib import Path
+        from unittest.mock import patch
+
+        for phase in ("stat", "unlink", "permission"):
+            with self.subTest(phase=phase), closing(TempProject()) as project:
+                project.event({"hook_event_name": "UserPromptSubmit", "session_id": "old", "prompt": "expire me"})
+                victim, expired, recent = [project.paths.quarantine_dir / name for name in ("victim", "expired", "recent")]
+                for entry in (victim, expired, recent):
+                    entry.write_text("{}")
+                old = time.time() - 40 * 86400
+                for entry in (victim, expired):
+                    os.utime(entry, (old, old))
+                original_glob, original_is_file, original_unlink = Path.glob, Path.is_file, Path.unlink
+
+                def ordered_glob(path, pattern):
+                    if path == project.paths.quarantine_dir:
+                        return iter((victim, expired, recent))
+                    return original_glob(path, pattern)
+
+                def is_file_then_remove(path):
+                    result = original_is_file(path)
+                    if path == victim and phase == "stat":
+                        original_unlink(path)
+                    return result
+
+                def competing_unlink(path, *args, **kwargs):
+                    if path == victim:
+                        if phase == "permission":
+                            raise PermissionError("quarantine permission denied")
+                        if phase == "unlink":
+                            original_unlink(path)
+                    return original_unlink(path, *args, **kwargs)
+
+                out, err = io.StringIO(), io.StringIO()
+                with patch.object(Path, "glob", ordered_glob), patch.object(Path, "is_file", is_file_then_remove), \
+                        patch.object(Path, "unlink", competing_unlink), redirect_stdout(out), redirect_stderr(err):
+                    code = main(["--project-root", str(project.root), "prune", "--days", "0"])
+                if phase == "permission":
+                    self.assertEqual(2, code)
+                    self.assertIn("quarantine permission denied", err.getvalue())
+                    self.assertEqual(1, project.count("events"))
+                    self.assertTrue(expired.exists())
+                else:
+                    self.assertEqual(0, code, err.getvalue())
+                    self.assertEqual(0, project.count("events"))
+                    self.assertFalse(victim.exists())
+                    self.assertFalse(expired.exists())
+                self.assertTrue(recent.exists())

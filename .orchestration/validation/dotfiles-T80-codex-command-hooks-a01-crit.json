@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T80-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #264 head 8a4cf128 (dotfiles-T80, generic Codex command hooks): the generator renders codex.hooks.command_hooks entries as [[hooks.<Event>]] matcher groups through one emitter shared with PermissionRequest (manifest order, after PermissionRequest, before [hooks.state]); the validator checks each entry (event in the HooksToml event set of the official Codex config schema, non-empty command, positive integer timeout, SessionEnd/Interrupt capped at 3 seconds per the hooks reference, string status_message), rejects a falsey non-list command_hooks, and compares the parsed template's hook tables with exactly the declared tables (subsuming the count check). Event-list deviations recorded: Notification dropped (not in the reference), Interrupt and SubagentStart added (in the reference). Tests: exact TOML for PreCompact/PostCompact/SessionEnd, empty/missing renders nothing, eight reject cases; 787 unit tests pass; render-check byte-identical (the manifest declares no command_hooks yet). Two Codex P2 threads fixed in 9c2f82e5 and b24ce965 and resolved by the orchestrator after verifying ancestry; no Bot review on the diff head b24ce965 within the window; CI 13/13 green on 8a4cf128 (update-branch onto main b13132d0).",
+    "resolved": true
+  }
+]

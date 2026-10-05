@@ -1,0 +1,13 @@
+Audited clean head `8c8cf691`. Manifest hashes and project/vendor parity pass; the feedback JSON confirms successful CI and four resolved Bot threads.
+
+- [P1] high implementation `vendor/compactiondb/.claude/contextdb/contextdb/storage.py:1086` FTS optimization happens after all deletion decisions, causing unnecessary data loss: with 1,000 events and a 3,500,000-byte cap, this implementation deletes all 1,000; optimizing between batches preserves 300 while meeting the cap. This also disproves the report’s claimed 99-event overshoot ceiling.
+- [P2] high implementation `vendor/compactiondb/.claude/contextdb/contextdb/cli.py:351` Forcing VACUUM only when capped events were deleted leaves oversized files after retention or candidate cleanup. Reproduction: a 720,896-byte cap leaves 2,367,488 bytes, with `capped=0` and `vacuumed=False`.
+- [P2] high implementation `vendor/compactiondb/.claude/contextdb/contextdb/storage.py:1101` Retention can remove every event before cap enforcement, making `removed=0` skip FTS optimization permanently. Reproduction: zero events and memories still occupy 2,744,320 bytes against a 1,000,000-byte cap; optimization and VACUUM reduce this to 204,800 bytes.
+- [P1] high specification-conformance `.orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md:5` The worker reports running the installer unsandboxed after writes were denied. Worker Playbook step 4 requires stopping at that boundary; installer execution is not a documented exception.
+- [P2] high specification-conformance `tests/unit/test_asset_manifest.py:135` This file is outside `allowed_files`; both version assertions were changed without an evidenced task amendment. Validation also records repeated installer writes to explicitly forbidden `.claude/settings.json`, subsequently restored.
+- [P2] high specification-conformance `.orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md:262` The explicitly required vendor-test command still reports 14 errors. The alternative target passes and the failure is disclosed as pre-existing, but the task’s required passing command remains unsatisfied.
+- [P2] high evidence-reality `.orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md:72` The claimed 15-minute final-head Bot wait lacks timestamped polling output. The pasted endpoint snapshots support absence of a final-head review, but do not establish the required wait duration.
+
+📝 まとめ: Audited implementation, scope, and evidence; reproduced pruning defects and identified boundary and validation gaps requiring correction.
+
+Verdict: incorrect

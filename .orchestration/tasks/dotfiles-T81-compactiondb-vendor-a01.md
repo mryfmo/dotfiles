@@ -49,3 +49,19 @@ gh api repos/mryfmo/dotfiles/pulls/<pr-number> --jq '.mergeable_state'
 3. Artifacts at the exact expected paths; validation with verbatim outputs, PR number, head SHA, the VERIFY sources.
 4. CompactionDB `memory add --kind decision --scope project` with the `[memory:decision]` text; paste command and output.
 5. `AGMSG-RESULT v1 task_id=dotfiles-T81` via `agmsg-dispatch dotfiles <your identity> claude-remediation-dot wT:p1 "<single line>"`. `cost:` line. max_turns=40.
+
+## Dispatch
+
+- 2026-10-05 05:10Z to `claude-standard-dot-a005` (worker-c, wT:p2) after T79 merged as 62d0771f (manifest and validator free; T77, T80 on main). Branch from `origin/main` 62d0771f or later with `--no-track`. T82 and T84 queue behind this PR on the shared manifest and validator. Reminder from T80: SessionEnd hooks are capped at 3 seconds, so the SessionEnd handler must never run prune; this task keeps pruning on the explicit CLI path only.
+
+## Revise round 1 (orchestrator, 2026-10-05 06:25Z) — task-level audit of 8c8cf691 is `incorrect` (7; three reproduced defects)
+
+Code, one commit (vendor tree first, then refresh the project copy with the installer and regenerate the manifest; `make manifest`, `sha256sum -c` rc 0):
+
+1. **P1, optimize before deciding (over-deletion).** `enforce_size_cap` measures in-use pages that still include dead FTS segment pages, so it deletes far more events than the cap requires (auditor: 1,000 events, 3,500,000-byte cap → all 1,000 deleted; optimizing between batches keeps 300). Run the FTS `optimize` (when the tokenizer is not `none`) **before** the first size check and again after each deleted batch, before re-measuring; stop as soon as in-use pages fit. Correct the `ponytail:` ceiling comment (the 99-event overshoot claim was wrong under FTS).
+2. **P2, VACUUM decision independent of the cap counter.** In `cli.py` `prune`, decide the VACUUM from the file state after retention and cap: `vacuum_if_fragmented` with `force=True` whenever the file size (`page_count * page_size`) still exceeds `max_db_bytes` **or** any events were deleted by either path, else the 64 MiB free-page threshold (auditor: 720,896-byte cap left 2,367,488 bytes with `capped=0`, `vacuumed=False`).
+3. **P2, optimize when retention emptied the table.** The FTS optimize must also run when `prune_expired` (or candidate cleanup) removed rows and the cap then found nothing to delete (`removed == 0`); auditor: zero events still occupied 2,744,320 bytes against a 1,000,000-byte cap, optimize + VACUUM → 204,800. Simplest: in `prune`, optimize once after retention and once after the cap when either removed rows, then VACUUM per item 2.
+4. **Tests (vendor `test_storage`/`test_cli`):** reproduce the three auditor scenarios with small fixtures and assert the new outcomes (partial retention under FTS; VACUUM after retention-only shrink; optimize+VACUUM after retention empties the table). Keep the existing cases green.
+5. **Evidence:** paste the timestamped Bot-wait loop output (start, each poll, end) for the final head; paste the task's vendor-test command output once more and the `make -C vendor/compactiondb test` output (both; the import failure is pre-existing and accepted).
+
+Accepted without change (dispositioned at acceptance): `tests/unit/test_asset_manifest.py` literal edit; the installer's reorder of `.claude/settings.json` (restored; vendor follow-up); the unsandboxed installer run (record it in the sandbox file as a deviation with the denied write). Then `gh pr update-branch 268` if `main` moved, CI, Bot wait on the new diff head (15 min, timestamped), RESULT.

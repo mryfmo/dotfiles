@@ -602,7 +602,7 @@ HOOK_TRUST_END = "# <<< codex hook trust <<<\n"
 # Apply-time Codex hook trust, shared by the base and profile modify scripts. Codex runs a config or
 # plugin hook only when [hooks.state."<key>"] holds the trust hash of its current definition, and that
 # hash covers the absolute command path, so it is computed on each host from the hook it names.
-HOOK_TRUST_CODE = """import glob
+HOOK_TRUST_CODE = """import functools
 import hashlib
 import json
 import re
@@ -656,6 +656,59 @@ def codex_hook_hash(event: str, matcher, handler: dict):
     return "sha256:" + hashlib.sha256(text.encode()).hexdigest()
 
 
+SEMVER = re.compile(
+    r"^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)"
+    r"(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$"
+)
+PLUGIN_VERSION_SEGMENT = re.compile(r"^[A-Za-z0-9._+-]+$")
+
+
+def compare_identifiers(left: str, right: str) -> int:
+    \"\"\"Order dot-separated semver identifiers: numeric before alphanumeric, numerically or lexically.\"\"\"
+    for a, b in zip(left.split("."), right.split(".")):
+        if a.isdigit() and b.isdigit():
+            if int(a) != int(b):
+                return -1 if int(a) < int(b) else 1
+        elif a.isdigit() != b.isdigit():
+            return -1 if a.isdigit() else 1
+        elif a != b:
+            return -1 if a < b else 1
+    return (len(left.split(".")) > len(right.split("."))) - (len(left.split(".")) < len(right.split(".")))
+
+
+def compare_plugin_versions(left: str, right: str) -> int:
+    \"\"\"Codex's version order (core-plugin-common installed.rs compare_plugin_versions, rust-v0.160.0).\"\"\"
+    a, b = SEMVER.match(left), SEMVER.match(right)
+    if not (a and b):
+        return (left > right) - (left < right)
+    for x, y in zip(a.groups()[:3], b.groups()[:3]):
+        if int(x) != int(y):
+            return -1 if int(x) < int(y) else 1
+    pre_a, pre_b = a.group(4), b.group(4)
+    if pre_a != pre_b:
+        if pre_a is None or pre_b is None:
+            return 1 if pre_a is None else -1
+        return compare_identifiers(pre_a, pre_b)
+    return compare_identifiers(a.group(5) or "", b.group(5) or "") if (a.group(5) or b.group(5)) else 0
+
+
+def active_plugin_version(root: Path):
+    \"\"\"The cached version Codex loads (installed.rs active_plugin_version): `local`, else the highest.\"\"\"
+    try:
+        versions = [
+            entry.name
+            for entry in root.iterdir()
+            if entry.is_dir() and entry.name not in (".", "..") and PLUGIN_VERSION_SEGMENT.match(entry.name)
+        ]
+    except OSError:
+        return None
+    if not versions:
+        return None
+    if "local" in versions:
+        return "local"
+    return max(versions, key=functools.cmp_to_key(compare_plugin_versions))
+
+
 def declared_hook(home: str, key: str):
     \"\"\"The (event, matcher, handler) a declared key names on this host, or why it cannot be read.\"\"\"
     try:
@@ -671,14 +724,15 @@ def declared_hook(home: str, key: str):
         if not (plugin and marketplace and relative):
             return "unknown hook source " + source
         root = Path(home) / ".codex/plugins/cache" / marketplace / plugin
-        files = sorted(root.glob("*/" + glob.escape(relative)))
-        if len(files) != 1:
-            return f"{len(files)} installed copies of {relative} under {root}"
+        version = active_plugin_version(root)
+        if version is None:
+            return f"no installed copy under {root}"
+        hook_file = root / version / relative
         try:
-            hooks = json.loads(files[0].read_text()).get("hooks", {})
+            hooks = json.loads(hook_file.read_text()).get("hooks", {})
             groups = next((value for name, value in hooks.items() if hook_event_label(name) == event), [])
         except (OSError, ValueError, AttributeError) as error:
-            return f"unreadable {files[0]}: {error}"
+            return f"unreadable {hook_file}: {error}"
     try:
         group = groups[group_index]
         return event, group.get("matcher"), group["hooks"][handler_index]

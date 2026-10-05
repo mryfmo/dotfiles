@@ -866,7 +866,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:pinned"', missing.stdout
         )
         self.assertIn(
-            "warning: cannot compute hook trust for demo@market:hooks/hooks.json:stop:0:0 (0 installed copies",
+            "warning: cannot compute hook trust for demo@market:hooks/hooks.json:stop:0:0 (no installed copy",
             missing.stderr,
         )
         handler = {"type": "command", "command": "demo stop", "timeout": 5}
@@ -882,6 +882,31 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             f'[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "{expected}"', installed.stdout
         )
         self.assertNotIn("cannot compute hook trust for demo@market", installed.stderr)
+
+    def test_profile_modify_scripts_hash_the_plugin_version_codex_loads(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        codex_hook_hash = self.hook_trust_namespace(manifest)["codex_hook_hash"]
+        root = home / ".codex/plugins/cache/market/demo"
+        for version in ("1.9.0", "1.12.0", "1.12.0-rc.1"):
+            plugin = root / version / "hooks/hooks.json"
+            plugin.parent.mkdir(parents=True)
+            plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": version}]}]}}))
+        key = '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]'
+        for active in ("1.12.0", "local"):
+            if active == "local":
+                # Codex prefers a `local` copy over any released version.
+                plugin = root / "local/hooks/hooks.json"
+                plugin.parent.mkdir(parents=True)
+                plugin.write_text(
+                    json.dumps({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "local"}]}]}})
+                )
+            with self.subTest(active=active):
+                result = self.run_profile(manifest, home, "")
+                expected = codex_hook_hash("stop", None, {"type": "command", "command": active})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(f'{key}\ntrusted_hash = "{expected}"', result.stdout)
+                self.assertNotIn("cannot compute hook trust for demo@market", result.stderr)
 
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())

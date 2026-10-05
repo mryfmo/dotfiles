@@ -323,9 +323,21 @@ class CodexConfigMergeTest(unittest.TestCase):
         # No plugin cache in the fixture home: the plugin pins fall back to the manifest literal, with a warning.
         ponytail = "ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"
         self.assertTrue(state[ponytail]["trusted_hash"].startswith("sha256:"))
-        self.assertIn(f"warning: cannot compute hook trust for {ponytail} (0 installed copies", result.stderr)
+        self.assertIn(f"warning: cannot compute hook trust for {ponytail} (no installed copy", result.stderr)
         # A declared key the template does not carry (crit) is left alone, not injected.
         self.assertNotIn("crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0", state)
+
+    def test_make_update_refreshes_codex_hook_trust_after_the_plugin_update(self) -> None:
+        makefile = (ROOT / "Makefile").read_text()
+        update = makefile.split("\nupdate:\n", 1)[1].split("\n\n", 1)[0].splitlines()
+        steps = [line.strip() for line in update]
+        self.assertIn("./scripts/update-agent-assets.sh", steps)
+        self.assertIn("$(MAKE) codex-hook-trust", steps)
+        self.assertLess(steps.index("./scripts/update-agent-assets.sh"), steps.index("$(MAKE) codex-hook-trust"))
+        refresh = makefile.split("\ncodex-hook-trust:\n", 1)[1].split("\n\n", 1)[0]
+        # Unattended: --force never prompts, and only the managed Codex config files are re-applied.
+        self.assertIn("chezmoi apply --force", refresh)
+        self.assertIn("/\\.codex/([a-z0-9_]+\\.)?config\\.toml$$", refresh)
 
     def test_unknown_current_tables_are_preserved(self) -> None:
         output = self.merge(

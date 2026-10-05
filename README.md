@@ -370,6 +370,11 @@ declared hook at apply time with Codex's own algorithm, from its definition on
 that host: a config hook from the merged config, a plugin hook from the
 installed plugin file under `~/.codex/plugins/cache/`. The result replaces any
 existing entry for that key, and keys the manifest does not declare are kept.
+Config-hook trust follows the manifest definition, so a hook hand-edited in
+`~/.codex/config.toml` deliberately stops matching and stays untrusted. After
+it updates the plugins, `make update` runs `make codex-hook-trust`, which
+re-applies only the Codex config files, so a plugin whose hooks changed in the
+same run is trusted at once.
 A hook anyone else writes into `config.toml` or a plugin stays untrusted until
 you review and trust it in `/hooks`. For a plugin, trusting the installed
 content means a plugin upgrade by `make update` is trusted by the same

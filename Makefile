@@ -71,6 +71,7 @@ update:
 	mise install --locked node
 	mise install --locked npm:ccstatusline npm:ccusage npm:pnpm ruff npm:prettier
 	./scripts/update-agent-assets.sh
+	$(MAKE) codex-hook-trust
 	@if ! command -v herdr > /dev/null 2>&1; then \
 		echo "Herdr command not found; skipping config reload."; \
 		exit 0; \
@@ -165,6 +166,19 @@ validate-agent-assets:
 .PHONY: check-regime-boundary
 check-regime-boundary:
 	./scripts/check-regime-boundary.sh
+
+.PHONY: codex-hook-trust
+# Re-apply only the managed Codex config files, so their modify scripts hash the plugin hooks that
+# update-agent-assets.sh has just installed; runs inside `make update` with no prompt and no network.
+codex-hook-trust:
+	@targets="$$(chezmoi managed --path-style=absolute --include=files | grep -E '/\.codex/([a-z0-9_]+\.)?config\.toml$$' || true)"; \
+	if [ -z "$$targets" ]; then \
+		echo "No managed Codex config; skipping the Codex hook trust refresh."; \
+		exit 0; \
+	fi; \
+	printf '%s\n' "$$targets" | while IFS= read -r target; do \
+		chezmoi apply --force "$$target" || exit 1; \
+	done
 
 .PHONY: render-check
 render-check:

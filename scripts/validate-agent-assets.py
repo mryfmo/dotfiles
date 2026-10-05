@@ -1292,10 +1292,12 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
     boundary = r"(?:(?<![\w.~-])|(?<=/root))"
     forms = [
         rf"{boundary}/(?:home|Users)/{not_repo_path}[A-Za-z0-9_][A-Za-z0-9._-]*",
-        # ponytail: root's home (`/root`, macOS `/var/root`) only bare or as `<home>/.<dir>` (where credentials live);
-        # a Codex sub-agent path such as `/root/t97_evidence_review` stays. Widen when evidence quotes
-        # other `/root/<dir>` paths.
-        rf"{boundary}(?:(?:/private)?/var)?/root(?=/\.|(?!/))",
+        # macOS root's home, any child (`/var/root/Library/...`), also through its physical `/private/var`.
+        rf"{boundary}(?:/private)?/var/root",
+        # ponytail: plain `/root` only bare or as `/root/.<dir>` (where credentials live); a Codex
+        # sub-agent path such as `/root/t97_evidence_review` stays. Widen when evidence quotes other
+        # `/root/<dir>` paths.
+        rf"{boundary}/root(?=/\.|(?!/))",
     ]
     if home:
         # A one-segment home such as `/root` is also a path component (`/proc/self/root`), so it keeps the boundary.
@@ -1304,26 +1306,28 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
 
 
 def home_path_pattern() -> re.Pattern[str]:
-    """A home directory (`/home/<user>`, `/Users/<user>`, root's `/root` or `/var/root`) as the `.orchestration` scan flags it.
+    """A home directory, as the `.orchestration` scan flags it and the masker rewrites it.
 
-    A segment that names a top-level entry of the repository's `home/` tree
-    (`dot_config`, `.chezmoiscripts`, ...) is a repository path, not a user, and a
-    path glued to a word character (`dotfiles/home/x`, a temporary `.../home/worker`)
-    never matches, except beneath a namespace root (`/proc/self/root/home/<user>`). The pattern does not depend on the machine, so CI and a
-    workstation flag the same text.
+    The machine-independent forms are `/home/<user>`, `/Users/<user>`, root's
+    `/root`, and macOS `/var/root` and `/private/var/root`. A segment that names a
+    top-level entry of the repository's `home/` tree (`dot_config`,
+    `.chezmoiscripts`, ...) is a repository path, not a user, and a path glued to
+    a word character (`dotfiles/home/x`, a temporary `.../home/worker`) never
+    matches, except beneath a namespace root (`/proc/self/root/home/<user>`). CI
+    flags these forms the same way on every machine.
+
+    The running user's `$HOME` is added as a machine-dependent backstop: a
+    multi-segment home (`/srv/operator`) matches anywhere, and a one-segment home
+    (`/root`) keeps the boundary, so `/proc/self/root` stays intact. That part
+    flags only on the workstation whose home it is, which is where the evidence is
+    written and masked.
     """
-    return compiled_home_path_pattern(ROOT, "")
+    return compiled_home_path_pattern(ROOT, os.path.expanduser("~").rstrip("/"))
 
 
 def mask_home_paths(text: str) -> tuple[str, int]:
-    """Normalise home directories to `~`: every home_path_pattern() match, and the running user's `$HOME` anywhere.
-
-    A one-segment `$HOME` (`/root`) keeps the scan's boundary, so `/proc/self/root` stays intact.
-
-    Masking covers at least what the scan flags, so masked evidence always passes it.
-    """
-    home = os.path.expanduser("~").rstrip("/")
-    return compiled_home_path_pattern(ROOT, home).subn(HOME_MASK, text)
+    """Normalise every home_path_pattern() match to `~`, so masked evidence always passes the scan."""
+    return home_path_pattern().subn(HOME_MASK, text)
 
 
 def strip_allowed_secret_placeholders(text: str) -> str:

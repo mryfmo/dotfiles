@@ -118,6 +118,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "/proc/1/root/root/.ssh/id and /proc/1/root/var/root/.ssh/id",
                     "/proc/1/root~/.ssh/id and /proc/1/root~/.ssh/id",
                 ),
+                ("/var/root/Library/Keychains/login.keychain-db", "~/Library/Keychains/login.keychain-db"),
+                (
+                    "/private/var/root/Library/x and /proc/1/root/var/root/Library/x",
+                    "~/Library/x and /proc/1/root~/Library/x",
+                ),
                 ("agent /root/t97_evidence_review and /proc/self/root/etc", None),
             ):
                 with self.subTest(text=text):
@@ -125,6 +130,15 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.assertEqual(masked, expected or text)
                     self.assertEqual(count, 0 if expected is None else expected.count("~") - text.count("~"))
                     self.assertIsNone(self.module.home_path_pattern().search(masked))
+
+    def test_secret_scan_flags_the_running_users_home_as_a_backstop(self) -> None:
+        self.write_text_file(".orchestration/validation/T1.md", "$ cat /srv/operator/.ssh/id_ed25519\n")
+        self.module.validate_no_obvious_secrets()
+        with mock.patch.dict(os.environ, {"HOME": "/srv/operator"}):
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                self.module.validate_no_obvious_secrets()
+        self.assertIn(".orchestration/validation/T1.md names a home directory", stderr.getvalue())
 
     def test_a_one_segment_home_keeps_namespace_roots_intact(self) -> None:
         with mock.patch.dict(os.environ, {"HOME": "/root"}):

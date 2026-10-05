@@ -398,14 +398,15 @@ class PrFeedbackTest(unittest.TestCase):
 
 
 class PrIntegrationRuleParityTest(unittest.TestCase):
-    """Keep the PR integration rule, its mirrors, and the skills in step."""
+    """Keep the PR integration rule, its mirrors, and the skills in step; the gate command lives in one place."""
 
     TOKENS = (
         "scripts/pr-feedback.py",
         "fixed:<commit>",
         "not-applicable:",
-        "BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review",
     )
+    GATE = "BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review"
+    POINTER = "Orchestrator Playbook step 10"
 
     def test_rule_symlink_points_at_the_rule(self) -> None:
         self.assertEqual(
@@ -413,19 +414,32 @@ class PrIntegrationRuleParityTest(unittest.TestCase):
             "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/pr-integration.md\n",
         )
 
-    def test_rule_mirrors_and_skills_carry_the_same_requirements(self) -> None:
+    def pointer_sources(self) -> dict[str, str]:
         codex = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
-        codex_section = codex.split("## PR 統合", 1)[1].split("\n## ", 1)[0]
-        sources = {
+        return {
             "claude rule": (ROOT / "home/dot_config/claude/rules/pr-integration.md").read_text(),
-            "codex mirror": codex_section,
+            "codex mirror": codex.split("## PR 統合", 1)[1].split("\n## ", 1)[0],
             "gh-first-workflow": (ROOT / "home/dot_agents/skills/gh-first-workflow/SKILL.md").read_text(),
-            "agmsg-orchestration": (ROOT / "home/dot_agents/skills/agmsg-orchestration/SKILL.md").read_text(),
         }
-        for name, text in sources.items():
+
+    def test_rule_mirrors_and_skills_carry_the_same_requirements(self) -> None:
+        skill = (ROOT / "home/dot_agents/skills/agmsg-orchestration/SKILL.md").read_text()
+        for name, text in {**self.pointer_sources(), "agmsg-orchestration": skill}.items():
             for token in self.TOKENS:
                 with self.subTest(source=name, token=token):
                     self.assertIn(token, text)
+
+    def test_gate_command_appears_once_in_skill_step_10(self) -> None:
+        skill = (ROOT / "home/dot_agents/skills/agmsg-orchestration/SKILL.md").read_text()
+        step_10 = skill.split("\n10. ", 1)[1].split("\n11. ", 1)[0]
+        self.assertEqual(skill.count(self.GATE), 1)
+        self.assertIn(self.GATE, step_10)
+        readme = (ROOT / "README.md").read_text()
+        for name, text in {**self.pointer_sources(), "README": readme}.items():
+            with self.subTest(source=name):
+                self.assertIn(self.POINTER, text)
+                self.assertNotIn("PR_FEEDBACK_EVIDENCE=<json> make require-crit-review", text)
+                self.assertNotIn("PR_FEEDBACK_EVIDENCE=.orchestration/", text)
 
 
 if __name__ == "__main__":

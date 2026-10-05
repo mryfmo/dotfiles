@@ -6,7 +6,7 @@
 > Add a regression test before each non-trivial behavior change. Do not run Bats
 > locally. Regenerate managed agent assets only through the repository generator.
 >
-> **Drift check**: `git diff --stat e7c2808..HEAD -- .gitignore Makefile scripts/check-tools.sh scripts/upgrade-tools.sh home/dot_local/bin/common/executable_agent-fanout home/dot_local/bin/common/executable_herdr-agents home/dot_ccstatusline/settings.json home/dot_agents tests .github/workflows/test.yaml`
+> **Drift check**: `git diff --stat e7c2808..HEAD -- .gitignore Makefile scripts/check-tools.sh scripts/upgrade-tools.sh home/dot_local/bin/common/executable_herdr-agents home/dot_ccstatusline/settings.json home/dot_agents tests .github/workflows/test.yaml`
 
 ## Status
 
@@ -45,11 +45,6 @@ and required CI checks contain real assertions.
 
 ## Current state
 
-- `.gitignore:9` ignores `.agents/worklog/` but not `.agents/runs/`.
-- `home/dot_local/bin/common/executable_agent-fanout:94-101` creates
-  `.agents/runs/<timestamp>` and writes the prompt verbatim.
-- The same helper writes agent stdout/stderr under that directory without an
-  explicit restrictive umask.
 - `scripts/check-tools.sh:29` reports missing tools without accumulating a
   failing exit status; `Makefile:62-64` exposes it as `make doctor` only.
 - `scripts/check-agent-runtime.py` exists but doctor does not invoke it.
@@ -104,7 +99,6 @@ and required CI checks contain real assertions.
 **In scope**:
 
 - `.gitignore`
-- `home/dot_local/bin/common/executable_agent-fanout`
 - `scripts/check-tools.sh`, `scripts/check-agent-runtime.py`, `scripts/upgrade-tools.sh`, `Makefile`
 - Their focused tests under `tests/unit/` and `tests/install/common/`
 - `home/dot_local/bin/common/executable_herdr-agents` and `tests/unit/test_herdr_agents.py`
@@ -128,33 +122,8 @@ and required CI checks contain real assertions.
 
 ## Phase 1 — Protect agent run artifacts
 
-### A001 — Add privacy and ignore regression tests
-
-- [x] Add a Python or shell unit test following existing extensionless-helper
-      tests that runs agent-fanout in a temporary git worktree/HOME with fake agents.
-- [x] Assert the run directory mode is `0700` and prompt/stdout/stderr files are
-      not group/other readable.
-- [x] Assert `git status --short --ignored` classifies `.agents/runs/**` ignored.
-
-**Verify adversarial**: with the current helper and gitignore, at least the ignore
-assertion must fail before production changes.
-
-### A002 — Ignore runtime runs
-
-- [x] Add `.agents/runs/` to `.gitignore` without broadening to all `.agents/`.
-- [x] Preserve worklog and orchestration visibility rules already in the repo.
-
-### A003 — Set restrictive creation modes
-
-- [x] Set `umask 077` before creating the run directory/files.
-- [x] Ensure the parent `.agents/runs` and per-run directory are private.
-- [x] Do not log prompt content to terminal beyond current explicitly requested output.
-
-### A004 — Verify no secret-like artifact is tracked
-
-- [x] Run the new mode/ignore test.
-- [x] Run `git ls-files '.agents/runs/**'` and require no output.
-- [x] Run `make validate-agent-assets`.
+> **Note (2026-10-05):** retired. The run-artifact helper this phase hardened
+> was deleted in #260, and its ignore rule went with it (T83).
 
 ## Phase 2 — Make doctor and upgrade exit codes truthful
 
@@ -393,7 +362,6 @@ assertion must fail before production changes.
 
 ## Done criteria
 
-- [x] `.agents/runs/**` is ignored and created with private permissions.
 - [x] `make doctor` is nonzero for any required tool/runtime failure.
 - [x] `make upgrade` is nonzero after any required partial failure.
 - [x] A labeled stale files pane restarts Yazi in place.

@@ -1516,6 +1516,24 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(json.loads(feedback.read_text())["items"], [{"body": "see ~/x", "path": "home/dot_config/a"}])
         self.assertIn(f"masked 2 match(es) in {evidence}", result.stdout)
 
+    def test_masks_json_content_whatever_the_suffix(self) -> None:
+        evidence = self.temp_dir / "T1-crit.md"
+        evidence.write_text('{"path":"\\/home\\/alice\\/.ssh\\/id"}\n')
+        prose = self.temp_dir / "T1.md"
+        prose.write_text("see /home/alice/x\n")
+
+        result = self.run_mask(evidence, prose)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(evidence.read_text()), {"path": "~/.ssh/id"})
+        self.assertEqual(prose.read_text(), "see ~/x\n")
+        module = load_validator()
+        for path in (evidence, prose):
+            text = path.read_text()
+            with self.subTest(path=path.name):
+                strings = module.json_strings(text) or [text]
+                self.assertFalse(any(module.home_path_pattern().search(s) for s in (text, *strings)))
+
     def test_keeps_carriage_returns_and_every_unmasked_byte(self) -> None:
         evidence = self.temp_dir / "T1.md"
         evidence.write_bytes(b"progress 10%\rprogress 100%\r\nline\r\n/home/alice/x\n")

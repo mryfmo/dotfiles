@@ -1423,9 +1423,10 @@ def json_strings(text: str) -> list[str] | None:
 def mask_secrets(paths: list[str]) -> int:
     """Mask SECRET_PATTERN matches and home paths in place (evidence); 2 if any file is missing, 1 on a key collision.
 
-    A `.json` file that parses is masked per key and string value and rewritten
-    in the pr-feedback.py layout, so a saved body equals mask_secret_matches()
-    of the collected one; any other file is masked as text. Every member is
+    A file whose whole text parses as JSON, whatever its suffix (the test
+    json_strings() applies for the scan), is masked per key and string value
+    and rewritten in the pr-feedback.py layout, so a saved body equals
+    mask_secret_matches() of the collected one; any other file is masked as text. Every member is
     masked as it is parsed, and an earlier duplicate member is then dropped, as
     json.loads (and so the gate) reads the file.
     """
@@ -1449,8 +1450,8 @@ def mask_secrets(paths: list[str]) -> int:
             return masked
 
         try:
-            document = json.loads(text, object_pairs_hook=mask_object) if path.suffix == ".json" else None
-        except json.JSONDecodeError:
+            document = json.loads(text, object_pairs_hook=mask_object)
+        except (ValueError, RecursionError):
             document = None
         except MaskedKeyCollision as error:
             print(f"--mask-secrets: {path}: {error}; rename one key, the file is unchanged", file=sys.stderr)

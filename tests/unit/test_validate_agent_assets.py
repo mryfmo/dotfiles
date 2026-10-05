@@ -110,6 +110,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "/proc/self/root/home/alice/.ssh/id and /proc/42/root/Users/bob/x",
                     "/proc/self/root~/.ssh/id and /proc/42/root~/x",
                 ),
+                ("cat /root/.ssh/id_ed25519", "cat ~/.ssh/id_ed25519"),
+                ("HOME=/root;", "HOME=~;"),
+                ("agent /root/t97_evidence_review and /proc/self/root/etc", None),
             ):
                 with self.subTest(text=text):
                     masked, count = self.module.mask_home_paths(text)

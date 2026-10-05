@@ -1289,7 +1289,13 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
     not_repo_path = "".join(f"(?!{re.escape(name)}(?![A-Za-z0-9._-]))" for name in entries)
     # Not glued to a word (`dotfiles/home/x`), except right after a namespace root (`/proc/self/root/home/x`).
     boundary = r"(?:(?<![\w.~-])|(?<=/root))"
-    forms = [rf"{boundary}/(?:home|Users)/{not_repo_path}[A-Za-z0-9][A-Za-z0-9._-]*"]
+    forms = [
+        rf"{boundary}/(?:home|Users)/{not_repo_path}[A-Za-z0-9][A-Za-z0-9._-]*",
+        # ponytail: root's home only as a bare `/root` or a `/root/.<dir>` (where credentials live);
+        # a Codex sub-agent path such as `/root/t97_evidence_review` stays. Widen when evidence quotes
+        # other `/root/<dir>` paths.
+        r"(?<![\w.~-])/root(?=/\.|(?!/))",
+    ]
     if home:
         # A one-segment home such as `/root` is also a path component (`/proc/self/root`), so it keeps the boundary.
         forms.insert(0, re.escape(home) if home.count("/") > 1 else boundary + re.escape(home))
@@ -1297,7 +1303,7 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
 
 
 def home_path_pattern() -> re.Pattern[str]:
-    """A user's home directory, `/home/<user>` or `/Users/<user>`, as the `.orchestration` scan flags it.
+    """A user's home directory, `/home/<user>`, `/Users/<user>` or root's `/root`, as the `.orchestration` scan flags it.
 
     A segment that names a top-level entry of the repository's `home/` tree
     (`dot_config`, `.chezmoiscripts`, ...) is a repository path, not a user, and a

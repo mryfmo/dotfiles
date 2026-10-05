@@ -561,21 +561,27 @@ bash ~/.agents/skills/agmsg/scripts/send.sh <team> <worker> <codex-orchestrator-
 The launcher checks the quiet inbox immediately, then every 15 seconds, and
 resumes on delivered text. It exits successfully only when the final non-blank
 line of the last message is exactly `ORCHESTRATION-DONE`; reaching the turn limit exits 2, and an idle inbox timeout
-exits 124. The timeout bounds inbox waiting, not a running Codex turn. Prompts,
-final messages, and previous seat names are recorded in
-`.orchestration/validation/codex-orchestrate-<date>-<n>.md`, with the latest final
-message in the adjacent `.last.md`. Before starting, it requires `uv` and the
-repository's `scripts/validate-agent-assets.py`. Each turn stages its raw files in
-the private agmsg run directory, masks known secret patterns with
-`uv run --with pyyaml scripts/validate-agent-assets.py --mask-secrets`, then
-copies the masked files into the repository. The transcript footer records the
-masker's output; handled exits remove the raw staging files, including on masker
-failure. Each run increments `<n>`; a directory lock
+exits 124. The timeout bounds inbox waiting, not a running Codex turn. Both the
+initial prompt and resume bodies go through stdin, so large deliveries do not
+hit the command-line argument size limit.
+
+Raw prompts, final messages, and Codex stdout/stderr stay in a new mode-0700
+`${XDG_STATE_HOME:-$HOME/.local/state}/codex-orchestrate/<date>-<n>/` directory
+(files use mode 0600). These private files remain after exit. The launcher
+canonicalizes the state path and refuses locations beneath the repository,
+`~/.agents/skills/agmsg`, or `${TMPDIR:-/tmp}`. This relies on the managed Codex
+writable roots: an operator who adds `~/.local/state` (or their custom state
+location) to Codex's writable roots re-exposes the transcripts. The launcher
+does not resolve custom Codex permission overrides.
+
+The repository file `.orchestration/validation/codex-orchestrate-<date>-<n>.md`
+contains only turn numbers, timestamps, exit codes, prompt/final byte counts,
+completion-marker status and private file paths. No prompt, final message or
+`.last.md` file is published there. Each run increments `<n>`; a directory lock
 prevents concurrent launcher runs. Before any reset, the launcher saves every exchanged team/name row in a private
 `~/.agents/skills/agmsg/run/codex-orchestrate.<random>/registrations.tsv`
 (`team`, `name`, `type`, `project` columns). Its `context.txt` records the repository,
-Codex seat, pre-existing Codex registration, and restoration outcome; the transcript
-links to this snapshot. These files remain after exit for recovery. A failed
+Codex seat, pre-existing Codex registration, and restoration outcome. These files remain after exit for recovery. A failed
 restoration also retains the lock. After an uncatchable termination or restoration
 failure, confirm the launcher has stopped, inspect the snapshot, reset only its new
 Codex registration with `AGMSG_RESOLVE_PROJECT=0 bash ~/.agents/skills/agmsg/scripts/reset.sh <repo> codex <name>`
@@ -587,10 +593,9 @@ Remove the stale repository lock only after restoring registrations and delivery
 
 `CODEX_ORCHESTRATE_DELIVERY=poll` is the default. T87 still needs to verify whether
 the trusted project Stop hook consumes messages under `codex exec`: the worker
-probe could not initialize Codex with its runtime home read-only. If that live
-probe confirms hook delivery, use `CODEX_ORCHESTRATE_DELIVERY=hook`; this skips
-inbox polling and resumes with an empty prompt after each unfinished turn,
-bounded by `--max-turns`. It does not change or bypass hook trust settings.
+probe could not initialize Codex with its runtime home read-only. Selecting
+`CODEX_ORCHESTRATE_DELIVERY=hook` currently exits 2 with `not validated; T87`.
+The switch is reserved for enabling hook delivery after that live verification.
 
 ### Herdr and Ghostty agent workspace
 

@@ -11,7 +11,6 @@
 set -euo pipefail
 umask 077
 max_turns=40 timeout_seconds=1800 team="" delivery="${CODEX_ORCHESTRATE_DELIVERY:-poll}"
-# @description Report a configuration error before changing a seat.
 die() {
     printf 'codex-orchestrate: %s\n' "$*" >&2
     exit 2
@@ -39,10 +38,10 @@ while [[ $# -gt 0 ]]; do
 done
 [[ $# == 1 && -n $1 ]] || die 'usage: codex-orchestrate [--max-turns N] [--timeout SECONDS] [--team T] "task"'
 [[ $max_turns =~ ^[1-9][0-9]{0,8}$ && $timeout_seconds =~ ^[1-9][0-9]{0,8}$ ]] || die 'limits must be positive integers of at most 9 digits'
-[[ $delivery == poll || $delivery == hook ]] || die 'CODEX_ORCHESTRATE_DELIVERY must be poll or hook'
+[[ $delivery != hook ]] || die 'hook delivery not validated; T87'
+[[ $delivery == poll ]] || die 'CODEX_ORCHESTRATE_DELIVERY must be poll or hook'
 repo="$(git rev-parse --show-toplevel)"
 [[ $(pwd -P) == "$repo" && $(git worktree list --porcelain | head -n 1) == "worktree $repo" ]] || die 'run from the main checkout root'
-if [[ ! -f scripts/validate-agent-assets.py || ! -r scripts/validate-agent-assets.py ]] || ! command -v uv > /dev/null; then die 'require uv and scripts/validate-agent-assets.py for transcript masking'; fi
 HERDR_AGENTS_ORCHESTRATOR_KIND="" MODEL_PROFILE_INTERACTIVE=""
 [[ -r $HOME/.agents/model-profiles.env ]] || die 'deploy model-profiles.env for herdr-agents first'
 # shellcheck source=/dev/null
@@ -74,22 +73,30 @@ for config in pathlib.Path(sys.argv[1]).glob("*/config.json"):
         if row.get("project") not in (None, sys.argv[3]): print(row["project"])
 ' "$scripts/../teams" "$name" "$repo")"
 [[ -z $conflicts ]] || die "Codex name $name is registered at another project: $conflicts"
+private="$(python3 -c 'import os, pathlib, sys
+state = pathlib.Path(os.environ.get("XDG_STATE_HOME") or pathlib.Path.home() / ".local/state")
+path = (state / "codex-orchestrate").resolve()
+roots = [pathlib.Path(p).resolve() for p in sys.argv[1:]]
+if not state.is_absolute() or any(path == p or p in path.parents for p in roots):
+    sys.exit("codex-orchestrate: unsafe private state directory")
+path.mkdir(mode=0o700, parents=True, exist_ok=True)
+print(path)
+' "$repo" "$scripts/.." "${TMPDIR:-/tmp}")" || exit 2
 mkdir -p .orchestration/validation "$scripts/../run"
 lock=.orchestration/validation/codex-orchestrate.lock
 mkdir "$lock" 2> /dev/null || die 'another launcher is active; inspect codex-orchestrate.lock'
-restores="$previous" joined=false snapshot="" out=""
+restores="" joined=false snapshot=""
 # @description Restore only registrations exchanged by this invocation, on any exit.
 restore() {
     local result=$? restore_rc=0 restore_team restore_name
     trap - EXIT
-    [[ -z ${out:-} ]] || rm -f "$out.md" "$out.last.md"
     if $joined; then bash "$scripts/reset.sh" "$repo" codex "$name" || restore_rc=1; fi
     while IFS=$'\t' read -r restore_team restore_name; do
         [[ -n $restore_team ]] || continue
         bash "$scripts/join.sh" "$restore_team" "$restore_name" claude-code "$repo" || restore_rc=1
     done <<< "$restores"
     if [[ -n $restores ]]; then bash "$scripts/delivery.sh" set both claude-code "$repo" || restore_rc=1; fi
-    [[ -z $snapshot ]] || printf 'restore_exit=%s\n' "$restore_rc" >> "$snapshot/context.txt"
+    [[ -z $snapshot ]] || printf 'restore_exit=%s\n' "$restore_rc" >&4
     if ((restore_rc)); then exit 1; fi
     rmdir "$lock"
     exit "$result"
@@ -98,45 +105,38 @@ trap restore EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 snapshot="$(mktemp -d "$scripts/../run/codex-orchestrate.XXXXXX")"
-printf 'repo=%s\ncodex_team=%s\ncodex_name=%s\nexisting_codex=%s\n' "$repo" "$team" "$name" "$existing" > "$snapshot/context.txt"
-while IFS=$'\t' read -r old_team old_name; do
-    [[ -n $old_team ]] || continue
-    printf '%s\t%s\tclaude-code\t%s\n' "$old_team" "$old_name" "$repo"
-done <<< "$previous" > "$snapshot/registrations.tsv"
-prefix=".orchestration/validation/codex-orchestrate-$(date +%F)" run=1
-while [[ -e $prefix-$run.md || -e $prefix-$run.last.md ]]; do run=$((run + 1)); done
-out="$snapshot/transcript" published="$prefix-$run"
-printf '# Codex orchestration\n\nPrevious seats:\n%s\n\nActive: %s / %s\nSnapshot: %s\n' "$previous" "$team" "$name" "$snapshot" > "$out.md"
+exec 4> "$snapshot/context.txt"
+printf 'repo=%s\ncodex_team=%s\ncodex_name=%s\nexisting_codex=%s\n' "$repo" "$team" "$name" "$existing" >&4
+awk -F '\t' -v repo="$repo" 'NF==2 {printf "%s\t%s\tclaude-code\t%s\n", $1, $2, repo}' <<< "$previous" > "$snapshot/registrations.tsv"
+date_tag="$(date +%F)" run=1
+prefix=".orchestration/validation/codex-orchestrate-$date_tag"
+while [[ -e $prefix-$run.md || -L $prefix-$run.md || -e $private/$date_tag-$run || -L $private/$date_tag-$run ]]; do run=$((run + 1)); done
+private="$private/$date_tag-$run"
+mkdir -m 700 "$private"
+exec 3> "$prefix-$run.md"
+restores="$previous"
 while IFS=$'\t' read -r old_team old_name; do
     [[ -n $old_team ]] || continue
     bash "$scripts/reset.sh" "$repo" claude-code "$old_name"
 done <<< "$previous"
-if [[ -z $existing ]]; then
-    joined=true
-    bash "$scripts/join.sh" "$team" "$name" codex "$repo"
-fi
+if [[ -z $existing ]]; then joined=true; fi
+if $joined; then bash "$scripts/join.sh" "$team" "$name" codex "$repo"; fi
 bash "$scripts/delivery.sh" set turn codex "$repo"
 prompt="$(herdr-agents --directive)"$'\n'"$1"
 prompt+=$'\n'"When the orchestration is complete, end your final message with the line \`ORCHESTRATION-DONE\`; otherwise end the turn and wait for the next agmsg delivery."
 command_args=(exec -C "$repo")
 for ((turn = 1; turn <= max_turns; turn++)); do
-    printf '\n## Turn %s prompt\n\n%s\n' "$turn" "$prompt" >> "$out.md"
-    : > "$out.last.md"
-    turn_rc=0
-    codex "${model_args[@]}" "${command_args[@]}" -o "$out.last.md" -- "$prompt" < /dev/null || turn_rc=$?
-    printf '\n## Turn %s final\n\n' "$turn" >> "$out.md"
-    cat "$out.last.md" >> "$out.md"
-    mask_result="$(uv run --with pyyaml scripts/validate-agent-assets.py --mask-secrets "$out.md" "$out.last.md")"
-    printf '\n%s\n' "$mask_result" >> "$out.md"
-    cp "$out.md" "$published.md"
-    cp "$out.last.md" "$published.last.md"
+    out="$private/$turn" started="$(date -u +%FT%TZ)" turn_rc=0 done=false
+    printf '%s' "$prompt" > "$out.prompt.txt"
+    : > "$out.final.md"
+    codex "${model_args[@]}" "${command_args[@]}" -o "$out.final.md" -- - < "$out.prompt.txt" > "$out.console.txt" 2>&1 3>&- 4>&- || turn_rc=$?
+    if [[ $(awk 'NF {last=$0} END {print last}' "$out.final.md") == ORCHESTRATION-DONE ]]; then done=true; fi
+    printf 'turn=%s started=%s ended=%s exit=%s prompt_bytes=%s final_bytes=%s done=%s\nprompt=%s\nfinal=%s\nconsole=%s\n' "$turn" "$started" "$(date -u +%FT%TZ)" "$turn_rc" "$(($(wc -c < "$out.prompt.txt")))" "$(($(wc -c < "$out.final.md")))" "$done" "$out.prompt.txt" "$out.final.md" "$out.console.txt" >&3
     ((turn_rc == 0)) || exit "$turn_rc"
-    if [[ $(awk 'NF {last=$0} END {print last}' "$out.last.md") == ORCHESTRATION-DONE ]]; then exit 0; fi
+    if $done; then exit 0; fi
     ((turn < max_turns)) || die 'max-turns reached without ORCHESTRATION-DONE'
     command_args=(exec resume --last)
-    prompt=""
-    if [[ $delivery == hook ]]; then continue; fi
-    deadline=$((SECONDS + timeout_seconds))
+    prompt="" deadline=$((SECONDS + timeout_seconds))
     while [[ -z $prompt ]]; do
         remaining=$((deadline - SECONDS))
         if ((remaining <= 0)); then

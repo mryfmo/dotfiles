@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_codex-orchestrate"
 FAKE = r"""#!/usr/bin/env bash
+if [[ ${0##*/} == codex ]]; then cat > "$FAKE_STATE.prompt"; fi
 python3 - "$0" "$@" <<'PYFAKE'
 import json, os, sys, time
 from pathlib import Path
@@ -44,17 +45,14 @@ elif name == "herdr-agents":
 elif name == "inbox.sh":
     if s["messages"]:
         print(s["messages"].pop(0), end="")
-elif name == "uv":
-    assert args[:5] == ["run", "--with", "pyyaml", "scripts/validate-agent-assets.py", "--mask-secrets"]
-    rc = s.get("mask_failure", 0)
-    if not rc:
-        for filename in args[5:]:
-            path = Path(filename)
-            text = path.read_text()
-            count = text.count("fixture-confidential")
-            path.write_text(text.replace("fixture-confidential", "[MASKED]"))
-            print(f"masked {count} match(es) in {path}")
 elif name == "codex":
+    s.setdefault("prompts", []).append(Path(str(p) + ".prompt").read_text())
+    print(s.get("raw_stream", ""))
+    print(s.get("raw_stream", ""), file=sys.stderr)
+    if s.get("replace_public_paths"):
+        for target in list(Path(".orchestration/validation").glob("codex-orchestrate-*.md")) + list((Path(os.environ["HOME"]) / ".agents/skills/agmsg/run").glob("codex-orchestrate.*/context.txt")):
+            target.unlink()
+            target.symlink_to(s["replace_public_paths"])
     s.setdefault("published_during_exec", []).append([p.read_text() for p in Path(".orchestration/validation").glob("codex-orchestrate-*.md")])
     s.setdefault("members_during_exec", []).append(s["members"][:])
     s.setdefault("delivery_during_exec", []).append(s.get("delivery_modes", {}).copy())
@@ -84,11 +82,8 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.bin.mkdir()
         for name in ("identities.sh", "inbox.sh", "join.sh", "reset.sh", "leave.sh", "team.sh", "delivery.sh"):
             self.fake(self.scripts / name)
-        for name in ("codex", "herdr-agents", "sleep", "uv"):
+        for name in ("codex", "herdr-agents", "sleep"):
             self.fake(self.bin / name)
-        self.masker = self.repo / "scripts/validate-agent-assets.py"
-        self.masker.parent.mkdir()
-        self.masker.write_text("# Fake uv records and performs fixture masking.\n")
         self.profile = self.home / ".agents/model-profiles.env"
         self.profile.write_text(
             'HERDR_AGENTS_ORCHESTRATOR_KIND="codex"\n'
@@ -103,6 +98,10 @@ class CodexOrchestrateTest(unittest.TestCase):
             os.environ, HOME=str(self.home), PATH=f"{self.bin}:{os.environ['PATH']}", FAKE_STATE=str(self.state)
         )
         self.env.pop("CODEX_ORCHESTRATE_DELIVERY", None)
+        self.env.pop("XDG_STATE_HOME", None)
+        self.env["TMPDIR"] = str(self.base / "tmp")
+        Path(self.env["TMPDIR"]).mkdir()
+        self.private = self.home / ".local/state/codex-orchestrate"
 
     def fake(self, path):
         path.write_text(FAKE)
@@ -150,12 +149,14 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.assertEqual(first[:5], ["--profile", "from-env", "exec", "-C", str(self.repo)])
         self.assertEqual(second[:5], ["--profile", "from-env", "exec", "resume", "--last"])
         self.assertEqual(
-            first[-1],
+            json.loads(self.state.read_text())["prompts"][0],
             "agmsg-orchestration: fake directive\noperator task `literal` $value\n"
             "When the orchestration is complete, end your final message with the line `ORCHESTRATION-DONE`; "
             "otherwise end the turn and wait for the next agmsg delivery.",
         )
-        self.assertEqual(second[-1], "worker result")
+        self.assertEqual(first[-2:], ["--", "-"])
+        self.assertEqual(second[-2:], ["--", "-"])
+        self.assertEqual(json.loads(self.state.read_text())["prompts"][1], "worker result")
         self.assertEqual(self.calls("herdr-agents"), [["--directive"]])
         self.assertEqual(
             self.calls("delivery.sh"),
@@ -175,8 +176,9 @@ class CodexOrchestrateTest(unittest.TestCase):
             for p in (self.repo / ".orchestration/validation").glob("codex-orchestrate-*.md")
             if not p.name.endswith(".last.md")
         )
-        self.assertIn("operator task `literal` $value", transcript.read_text())
-        self.assertIn("ORCHESTRATION-DONE", transcript.read_text())
+        self.assertNotIn("operator task `literal` $value", transcript.read_text())
+        self.assertIn("done=true", transcript.read_text())
+        self.assertIn("turn=2", transcript.read_text())
         for call in json.loads(self.state.read_text())["calls"]:
             if call[0] in {"join.sh", "reset.sh", "identities.sh"}:
                 self.assertEqual(call[2], "0")
@@ -190,53 +192,95 @@ class CodexOrchestrateTest(unittest.TestCase):
                 self.assertEqual(len(self.calls("codex")), 2)
                 self.assertEqual(len(self.calls("inbox.sh")), 1)
 
-    def test_masks_each_turn_before_publishing_transcripts(self):
-        self.save(answers=["response fixture-confidential", "ORCHESTRATION-DONE"])
-        result = self.run_script(task="operator fixture-confidential")
+    def test_raw_content_stays_private_with_status_only_publication(self):
+        secret = (
+            "AWS_SECRET_ACCESS_KEY="
+            + "A" * 40
+            + "\n-----BEGIN "
+            + "PRIVATE KEY-----\nQUJD\n-----END "
+            + "PRIVATE KEY-----"
+        )
+        self.save(answers=[secret, "ORCHESTRATION-DONE"], raw_stream=secret)
+        result = self.run_script(task=secret)
         self.assertEqual(result.returncode, 0, result.stderr)
-        masks = self.calls("uv")
-        self.assertEqual(len(masks), 2)
-        for mask, codex in zip(masks, self.calls("codex"), strict=True):
-            self.assertEqual(
-                mask[:5], ["run", "--with", "pyyaml", "scripts/validate-agent-assets.py", "--mask-secrets"]
-            )
-            self.assertEqual(mask[6], codex[codex.index("-o") + 1])
+        self.assertNotIn(secret, result.stdout + result.stderr)
         outputs = list((self.repo / ".orchestration/validation").glob("codex-orchestrate-*.md"))
-        self.assertEqual(len(outputs), 2)
-        self.assertTrue(any("masked " in p.read_text() for p in outputs))
-        self.assertTrue(any("[MASKED]" in p.read_text() for p in outputs))
-        self.assertTrue(all("fixture-confidential" not in p.read_text() for p in outputs))
+        self.assertEqual(len(outputs), 1)
+        status = outputs[0].read_text()
+        self.assertNotIn(secret, status)
+        self.assertIn("exit=0", status)
+        self.assertIn("done=false", status)
+        self.assertIn("done=true", status)
+        run = next(self.private.iterdir())
+        self.assertEqual(run.stat().st_mode & 0o777, 0o700)
+        for filename in ("1.prompt.txt", "1.final.md", "1.console.txt"):
+            path = run / filename
+            self.assertIn(secret, path.read_text())
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertIn(str(path), status)
+        self.assertIn(f"prompt_bytes={(run / '1.prompt.txt').stat().st_size}", status)
+        self.assertIn(f"final_bytes={(run / '1.final.md').stat().st_size}", status)
+        self.assertRegex(status, r"started=\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ")
+        self.assertRegex(status, r"ended=\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ")
         snapshots = json.loads(self.state.read_text())["published_during_exec"]
-        self.assertEqual(snapshots[0], [])
-        self.assertTrue(all("fixture-confidential" not in text for files in snapshots for text in files))
+        self.assertTrue(all(secret not in text for files in snapshots for text in files))
+        self.assertEqual(list((self.scripts.parent / "run").glob("codex-orchestrate.*/*.md")), [])
 
-    def test_missing_masker_refuses_before_exchange(self):
-        self.masker.unlink()
+    def test_large_inbox_body_uses_stdin(self):
+        message = "X" * (140 * 1024)
+        self.save(messages=[message])
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(self.state.read_text())["prompts"][1], message)
+        self.assertEqual(self.calls("codex")[1][-2:], ["--", "-"])
+
+    def test_private_path_rejects_repo_agmsg_and_temp_including_symlinks(self):
+        for index, root in enumerate((self.repo, self.scripts.parent, Path(self.env["TMPDIR"]))):
+            with self.subTest(root=root):
+                alias = self.base / f"alias-{index}"
+                alias.symlink_to(root, target_is_directory=True)
+                self.env["XDG_STATE_HOME"] = str(alias / "state")
+                result = self.run_script()
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn("private state", result.stderr)
+                self.assertEqual(self.calls("reset.sh"), [])
+                self.assertEqual(self.calls("join.sh"), [])
+                self.assertFalse((root / "state").exists())
+
+    def test_relative_xdg_state_is_rejected(self):
+        self.env["XDG_STATE_HOME"] = "relative-state"
         result = self.run_script()
         self.assertEqual(result.returncode, 2, result.stderr)
-        self.assertIn("scripts/validate-agent-assets.py", result.stderr)
-        self.assertEqual(self.calls("join.sh"), [])
         self.assertEqual(self.calls("reset.sh"), [])
-        self.assertEqual(self.calls("codex"), [])
 
-    def test_snapshot_failure_does_not_clean_an_inherited_output_path(self):
-        unrelated = self.base / "unrelated.md"
-        unrelated.write_text("preserve")
-        self.env["out"] = str(unrelated.with_suffix(""))
-        failing_mktemp = self.bin / "mktemp"
-        failing_mktemp.write_text("#!/usr/bin/env bash\nexit 9\n")
-        failing_mktemp.chmod(0o755)
+    def test_existing_private_run_is_not_reused(self):
+        self.save(answers=["ORCHESTRATION-DONE"])
+        self.assertEqual(self.run_script().returncode, 0)
+        first = next(self.private.iterdir())
+        sentinel = first / "sentinel"
+        sentinel.write_text("preserve")
+        for status in (self.repo / ".orchestration/validation").glob("codex-orchestrate-*.md"):
+            status.unlink()
+        self.save(answers=["ORCHESTRATION-DONE"])
+        self.assertEqual(self.run_script().returncode, 0)
+        self.assertEqual(len(list(self.private.iterdir())), 2)
+        self.assertEqual(sentinel.read_text(), "preserve")
+
+    def test_private_allocation_failure_precedes_exchange(self):
+        self.private.parent.mkdir(parents=True)
+        self.private.write_text("occupied")
         result = self.run_script()
-        self.assertEqual(result.returncode, 9, result.stderr)
-        self.assertEqual(unrelated.read_text(), "preserve")
-
-    def test_failed_masker_cleans_raw_files_and_restores_seats(self):
-        self.save(mask_failure=9, answers=["response fixture-confidential\nORCHESTRATION-DONE"])
-        result = self.run_script(task="operator fixture-confidential")
         self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(json.loads(self.state.read_text())["members"], [self.member])
-        self.assertEqual(list((self.repo / ".orchestration/validation").glob("codex-orchestrate-*.md")), [])
-        self.assertEqual(list((self.scripts.parent / "run").glob("codex-orchestrate.*/*.md")), [])
+        self.assertEqual(self.calls("reset.sh"), [])
+        self.assertEqual(self.calls("join.sh"), [])
+
+    def test_child_cannot_redirect_parent_status_or_restore_writes(self):
+        victim = self.base / "unrelated.txt"
+        victim.write_text("preserve")
+        self.save(answers=["ORCHESTRATION-DONE"], replace_public_paths=str(victim))
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(victim.read_text(), "preserve")
 
     def test_codex_delivery_failure_restores_claude_without_starting_a_turn(self):
         self.save(delivery_failure="turn")
@@ -307,12 +351,13 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.assertTrue(all(0 < int(c[0]) <= 15 for c in self.calls("sleep")))
         self.assertEqual(json.loads(self.state.read_text())["members"], [self.member])
 
-    def test_hook_mode_resumes_empty_without_poll(self):
+    def test_unvalidated_hook_mode_refuses_before_exchange(self):
         self.env["CODEX_ORCHESTRATE_DELIVERY"] = "hook"
         result = self.run_script("--max-turns", "2")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.calls("inbox.sh"), [])
-        self.assertEqual(self.calls("codex")[1][-1], "")
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("not validated; T87", result.stderr)
+        for name in ("inbox.sh", "codex", "reset.sh", "join.sh"):
+            self.assertEqual(self.calls(name), [])
 
     def test_exec_failure_restores_seat(self):
         self.save(codex_failure=9)
@@ -330,7 +375,8 @@ class CodexOrchestrateTest(unittest.TestCase):
         result = self.run_script()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.calls("sleep"), [["15"]])
-        self.assertEqual(self.calls("codex")[1][-2:], ["--", "--config dangerous=literal"])
+        self.assertEqual(self.calls("codex")[1][-2:], ["--", "-"])
+        self.assertEqual(json.loads(self.state.read_text())["prompts"][1], "--config dangerous=literal")
 
     def test_team_selection_restores_all_exchanged_registrations(self):
         other = ["other-team", "claude-other-dot", "claude-code", str(self.repo)]

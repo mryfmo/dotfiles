@@ -687,7 +687,7 @@ index 3be34be4..00000000
 -# This file currently keeps optional aliases commented out until they are needed.
 -
 -# Alias for gcloud CLI in docker container
--# alias gcloud='docker run --rm -it -v "${HOME%/}"/.config/gcloud:/root/.config/gcloud gcr.io/google.com/cloudsdktool/cloud-sdk gcloud'
+-# alias gcloud='docker run --rm -it -v "${HOME%/}"/.config/gcloud:~/.config/gcloud gcr.io/google.com/cloudsdktool/cloud-sdk gcloud'
 -
 -# Alias for bash-language-server in docker container
 -# aalias bash-language-server="docker run --platform linux/amd64 --rm -i ghcr.io/mryfmo/bash-language-server:latest"
@@ -1031,7 +1031,7 @@ index 3be34be4..00000000
 -# This file currently keeps optional aliases commented out until they are needed.
 -
 -# Alias for gcloud CLI in docker container
--# alias gcloud='docker run --rm -it -v "${HOME%/}"/.config/gcloud:/root/.config/gcloud gcr.io/google.com/cloudsdktool/cloud-sdk gcloud'
+-# alias gcloud='docker run --rm -it -v "${HOME%/}"/.config/gcloud:~/.config/gcloud gcr.io/google.com/cloudsdktool/cloud-sdk gcloud'
 -
 -# Alias for bash-language-server in docker container
 -# aalias bash-language-server="docker run --platform linux/amd64 --rm -i ghcr.io/mryfmo/bash-language-server:latest"

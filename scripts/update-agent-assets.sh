@@ -432,6 +432,39 @@ function ensure_herdr_integrations() {
 }
 
 #
+# @description Re-apply only the managed Codex config files, so their modify scripts hash the
+#   plugin hooks this run has just installed (Codex runs a hook only when its trust hash is current).
+#   Runs last and unattended: `chezmoi apply --force`, no prompt, no network.
+# @exitcode 0 Always; a failed refresh only warns, and the next apply retries it.
+#
+function refresh_codex_hook_trust() {
+    local managed target
+    local pattern='/\.codex/([a-z0-9_]+\.)?config\.toml$'
+    local -a targets=()
+
+    if ! has_command chezmoi; then
+        return 0
+    fi
+    if ! managed="$(chezmoi managed --path-style=absolute --include=files 2> /dev/null)"; then
+        printf 'WARN: Codex hook trust not refreshed: chezmoi managed failed; the next apply retries it.\n' >&2
+        return 0
+    fi
+    while IFS= read -r target; do
+        if [[ ${target} =~ ${pattern} ]]; then
+            targets+=("${target}")
+        fi
+    done <<< "${managed}"
+    if ((${#targets[@]} == 0)); then
+        return 0
+    fi
+
+    section "codex hook trust"
+    if ! chezmoi apply --force "${targets[@]}"; then
+        printf 'WARN: Codex hook trust not refreshed: chezmoi apply failed; the next apply retries it.\n' >&2
+    fi
+}
+
+#
 # @description Install or update the Claude Code Superpowers plugin.
 #
 function update_claude_superpowers() {
@@ -1095,6 +1128,8 @@ function main() {
     update_compactiondb
     update_agmsg
     ensure_herdr_integrations
+    # After every plugin update above, so the trust hashes follow the plugin content of this run.
+    refresh_codex_hook_trust
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

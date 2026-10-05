@@ -328,16 +328,70 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertNotIn("crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0", state)
 
     def test_make_update_refreshes_codex_hook_trust_after_the_plugin_update(self) -> None:
-        makefile = (ROOT / "Makefile").read_text()
-        update = makefile.split("\nupdate:\n", 1)[1].split("\n\n", 1)[0].splitlines()
-        steps = [line.strip() for line in update]
-        self.assertIn("./scripts/update-agent-assets.sh", steps)
-        self.assertIn("$(MAKE) codex-hook-trust", steps)
-        self.assertLess(steps.index("./scripts/update-agent-assets.sh"), steps.index("$(MAKE) codex-hook-trust"))
-        refresh = makefile.split("\ncodex-hook-trust:\n", 1)[1].split("\n\n", 1)[0]
+        script = (ROOT / "scripts/update-agent-assets.sh").read_text()
+        main = script.split("\nfunction main() {\n", 1)[1].split("\n}\n", 1)[0]
+        steps = [line.strip() for line in main.splitlines()]
+        # The refresh is the last step of the asset update, after every Codex plugin update.
+        self.assertEqual(steps[-1], "refresh_codex_hook_trust")
+        for plugin_step in ("update_codex_superpowers", "update_codex_crit", "update_codex_ponytail"):
+            with self.subTest(step=plugin_step):
+                self.assertLess(steps.index(plugin_step), steps.index("refresh_codex_hook_trust"))
+        refresh = script.split("\nfunction refresh_codex_hook_trust() {\n", 1)[1].split("\n}\n", 1)[0]
         # Unattended: --force never prompts, and only the managed Codex config files are re-applied.
-        self.assertIn("chezmoi apply --force", refresh)
-        self.assertIn("/\\.codex/([a-z0-9_]+\\.)?config\\.toml$$", refresh)
+        self.assertIn('chezmoi apply --force "${targets[@]}"', refresh)
+        self.assertIn("pattern='/\\.codex/([a-z0-9_]+\\.)?config\\.toml$'", refresh)
+        makefile = (ROOT / "Makefile").read_text()
+        update = makefile.split("\nupdate:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("./scripts/update-agent-assets.sh", update)
+        self.assertIn("refresh_codex_hook_trust", makefile.split("\ncodex-hook-trust:\n", 1)[1].split("\n\n", 1)[0])
+
+    def run_hook_trust_refresh(self, managed: str, apply_status: int = 0) -> tuple[subprocess.CompletedProcess, str]:
+        bin_dir = self.source_dir / "bin"
+        bin_dir.mkdir(exist_ok=True)
+        calls = self.source_dir / "chezmoi-calls"
+        fake = bin_dir / "chezmoi"
+        listing = self.source_dir / "managed-listing"
+        listing.write_text(managed)
+        fake.write_text(
+            "#!/bin/sh\n"
+            f'printf "%s\\n" "$*" >> {str(calls)!r}\n'
+            f'if [ "$1" = managed ]; then cat {str(listing)!r}; exit 0; fi\n'
+            f"exit {apply_status}\n"
+        )
+        fake.chmod(0o755)
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                'source "$1" && refresh_codex_hook_trust',
+                "bash",
+                str(ROOT / "scripts/update-agent-assets.sh"),
+            ],
+            text=True,
+            capture_output=True,
+            env={**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"},
+            check=False,
+        )
+        return result, calls.read_text() if calls.exists() else ""
+
+    def test_hook_trust_refresh_reapplies_only_the_codex_config_files(self) -> None:
+        managed = "/h/.codex/config.toml\n/h/.codex/standard.config.toml\n/h/.codex/AGENTS.md\n/h/.zshrc\n"
+        result, calls = self.run_hook_trust_refresh(managed)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            calls.splitlines(),
+            [
+                "managed --path-style=absolute --include=files",
+                "apply --force /h/.codex/config.toml /h/.codex/standard.config.toml",
+            ],
+        )
+        result, calls = self.run_hook_trust_refresh("/h/.zshrc\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls.splitlines()[-1], "managed --path-style=absolute --include=files")
+        # A failed refresh warns and lets the rest of `make update` continue.
+        result, _ = self.run_hook_trust_refresh(managed, apply_status=1)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("WARN: Codex hook trust not refreshed: chezmoi apply failed", result.stderr)
 
     def test_unknown_current_tables_are_preserved(self) -> None:
         output = self.merge(

@@ -246,7 +246,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.load_yaml = lambda _path: manifest
         self.write_text_file(
             "README.md",
-            "worker kind (currently `claude`; codex)\nherdr-agents --restart-worker\n"
+            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`; codex)\nherdr-agents --restart-worker\n"
             "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
         )
         return manifest
@@ -328,6 +328,23 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_agent_manifest()
         self.assertIn("(currently `codex`;", stderr.getvalue())
 
+    def test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence(self) -> None:
+        self.write_valid_agent_manifest()
+        self.write_text_file(
+            "README.md",
+            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `codex`; codex)\n"
+            "herdr-agents --restart-worker\n"
+            "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
+        )
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+        self.assertIn(
+            "must state the manifest worker_kind as `worker_kind` in "
+            "`home/dot_agents/agent-config.yaml` (currently `claude`;",
+            stderr.getvalue(),
+        )
+
     def test_agent_manifest_requires_readme_to_state_the_orchestrator_kind(self) -> None:
         manifest = self.write_valid_agent_manifest()
         manifest["orchestrator_kind"] = "codex"
@@ -344,7 +361,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.write_valid_agent_manifest()
         self.write_text_file(
             "README.md",
-            "worker kind (currently `claude`; codex)\n"
+            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`; codex)\n"
             "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
         )
         stderr = io.StringIO()

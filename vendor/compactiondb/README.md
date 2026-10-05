@@ -315,6 +315,12 @@ raw eventは既定30日で期限切れになります。`prune`は期限切れ�
 
 As of `2.0.0+dotfiles.9`, the runtime supports Linux/macOS only; native Windows is unsupported, and `.claude/settings.windows.example.json` is a legacy template, not a supported installation path.
 
+The project's `.claude` directory must be a real directory. A symlinked `.claude`
+or any symlinked storage directory is refused during storage construction, so
+the SessionEnd and compaction hooks record nothing there, including no health
+log. Replace the symlink with a real directory, or opt in from the real project
+path where `.claude` and its storage directories are real directories.
+
 Storage construction requires POSIX directory descriptors and `O_NOFOLLOW`
 (Linux/macOS). Each directory is opened without following symlinks, and creation
 and permission changes use its parent descriptor. The Codex receiver's symlink

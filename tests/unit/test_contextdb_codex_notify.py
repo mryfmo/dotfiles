@@ -112,7 +112,7 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
                 result = self.run_receiver({"cwd": str(nested), "hook_event_name": "SessionEnd"}, stdin=stdin)
                 self.assertEqual("", result.stderr)
                 capture = json.loads(self.capture.read_text())
-                self.assertEqual(str(self.project), capture["argv"][1])
+                self.assertEqual(str(self.project.resolve()), capture["argv"][1])
                 self.assertEqual(str(nested), json.loads(capture["input"])["cwd"])
         self.capture.unlink()
         # A gitfile is also a boundary (submodule or linked worktree).

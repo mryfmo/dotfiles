@@ -559,12 +559,18 @@ bash ~/.agents/skills/agmsg/scripts/send.sh <team> <worker> <codex-orchestrator-
 ```
 
 The launcher checks the quiet inbox immediately, then every 15 seconds, and
-resumes on delivered text. It exits successfully when the last message contains
-`ORCHESTRATION-DONE`; reaching the turn limit exits 2, and an idle inbox timeout
+resumes on delivered text. It exits successfully only when the final non-blank
+line of the last message is exactly `ORCHESTRATION-DONE`; reaching the turn limit exits 2, and an idle inbox timeout
 exits 124. The timeout bounds inbox waiting, not a running Codex turn. Prompts,
 final messages, and previous seat names are recorded in
 `.orchestration/validation/codex-orchestrate-<date>-<n>.md`, with the latest final
-message in the adjacent `.last.md`. Each run increments `<n>`; a directory lock
+message in the adjacent `.last.md`. Before starting, it requires `uv` and the
+repository's `scripts/validate-agent-assets.py`. Each turn stages its raw files in
+the private agmsg run directory, masks known secret patterns with
+`uv run --with pyyaml scripts/validate-agent-assets.py --mask-secrets`, then
+copies the masked files into the repository. The transcript footer records the
+masker's output; handled exits remove the raw staging files, including on masker
+failure. Each run increments `<n>`; a directory lock
 prevents concurrent launcher runs. Before any reset, the launcher saves every exchanged team/name row in a private
 `~/.agents/skills/agmsg/run/codex-orchestrate.<random>/registrations.tsv`
 (`team`, `name`, `type`, `project` columns). Its `context.txt` records the repository,

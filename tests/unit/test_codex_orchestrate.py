@@ -44,7 +44,18 @@ elif name == "herdr-agents":
 elif name == "inbox.sh":
     if s["messages"]:
         print(s["messages"].pop(0), end="")
+elif name == "uv":
+    assert args[:5] == ["run", "--with", "pyyaml", "scripts/validate-agent-assets.py", "--mask-secrets"]
+    rc = s.get("mask_failure", 0)
+    if not rc:
+        for filename in args[5:]:
+            path = Path(filename)
+            text = path.read_text()
+            count = text.count("fixture-confidential")
+            path.write_text(text.replace("fixture-confidential", "[MASKED]"))
+            print(f"masked {count} match(es) in {path}")
 elif name == "codex":
+    s.setdefault("published_during_exec", []).append([p.read_text() for p in Path(".orchestration/validation").glob("codex-orchestrate-*.md")])
     s.setdefault("members_during_exec", []).append(s["members"][:])
     s.setdefault("delivery_during_exec", []).append(s.get("delivery_modes", {}).copy())
     answer = s["answers"].pop(0) if s["answers"] else "waiting"
@@ -73,8 +84,11 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.bin.mkdir()
         for name in ("identities.sh", "inbox.sh", "join.sh", "reset.sh", "leave.sh", "team.sh", "delivery.sh"):
             self.fake(self.scripts / name)
-        for name in ("codex", "herdr-agents", "sleep"):
+        for name in ("codex", "herdr-agents", "sleep", "uv"):
             self.fake(self.bin / name)
+        self.masker = self.repo / "scripts/validate-agent-assets.py"
+        self.masker.parent.mkdir()
+        self.masker.write_text("# Fake uv records and performs fixture masking.\n")
         self.profile = self.home / ".agents/model-profiles.env"
         self.profile.write_text(
             'HERDR_AGENTS_ORCHESTRATOR_KIND="codex"\n'
@@ -111,9 +125,9 @@ class CodexOrchestrateTest(unittest.TestCase):
                 config.parent.mkdir(parents=True, exist_ok=True)
                 config.write_text(json.dumps({"name": team, "agents": agents}))
 
-    def run_script(self, *args, cwd=None):
+    def run_script(self, *args, cwd=None, task="operator task `literal` $value"):
         return subprocess.run(
-            ["bash", str(SCRIPT), *args, "operator task `literal` $value"],
+            ["bash", str(SCRIPT), *args, task],
             cwd=cwd or self.repo,
             env=self.env,
             capture_output=True,
@@ -166,6 +180,63 @@ class CodexOrchestrateTest(unittest.TestCase):
         for call in json.loads(self.state.read_text())["calls"]:
             if call[0] in {"join.sh", "reset.sh", "identities.sh"}:
                 self.assertEqual(call[2], "0")
+
+    def test_only_the_final_nonblank_line_completes_orchestration(self):
+        for waiting in ("The worker said `ORCHESTRATION-DONE`, but I am waiting.", "ORCHESTRATION-DONE\nStill waiting"):
+            with self.subTest(waiting=waiting):
+                self.save(calls=[], messages=["worker result"], answers=[waiting, "ORCHESTRATION-DONE\n\n \t\n"])
+                result = self.run_script()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(len(self.calls("codex")), 2)
+                self.assertEqual(len(self.calls("inbox.sh")), 1)
+
+    def test_masks_each_turn_before_publishing_transcripts(self):
+        self.save(answers=["response fixture-confidential", "ORCHESTRATION-DONE"])
+        result = self.run_script(task="operator fixture-confidential")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        masks = self.calls("uv")
+        self.assertEqual(len(masks), 2)
+        for mask, codex in zip(masks, self.calls("codex"), strict=True):
+            self.assertEqual(
+                mask[:5], ["run", "--with", "pyyaml", "scripts/validate-agent-assets.py", "--mask-secrets"]
+            )
+            self.assertEqual(mask[6], codex[codex.index("-o") + 1])
+        outputs = list((self.repo / ".orchestration/validation").glob("codex-orchestrate-*.md"))
+        self.assertEqual(len(outputs), 2)
+        self.assertTrue(any("masked " in p.read_text() for p in outputs))
+        self.assertTrue(any("[MASKED]" in p.read_text() for p in outputs))
+        self.assertTrue(all("fixture-confidential" not in p.read_text() for p in outputs))
+        snapshots = json.loads(self.state.read_text())["published_during_exec"]
+        self.assertEqual(snapshots[0], [])
+        self.assertTrue(all("fixture-confidential" not in text for files in snapshots for text in files))
+
+    def test_missing_masker_refuses_before_exchange(self):
+        self.masker.unlink()
+        result = self.run_script()
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("scripts/validate-agent-assets.py", result.stderr)
+        self.assertEqual(self.calls("join.sh"), [])
+        self.assertEqual(self.calls("reset.sh"), [])
+        self.assertEqual(self.calls("codex"), [])
+
+    def test_snapshot_failure_does_not_clean_an_inherited_output_path(self):
+        unrelated = self.base / "unrelated.md"
+        unrelated.write_text("preserve")
+        self.env["out"] = str(unrelated.with_suffix(""))
+        failing_mktemp = self.bin / "mktemp"
+        failing_mktemp.write_text("#!/usr/bin/env bash\nexit 9\n")
+        failing_mktemp.chmod(0o755)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 9, result.stderr)
+        self.assertEqual(unrelated.read_text(), "preserve")
+
+    def test_failed_masker_cleans_raw_files_and_restores_seats(self):
+        self.save(mask_failure=9, answers=["response fixture-confidential\nORCHESTRATION-DONE"])
+        result = self.run_script(task="operator fixture-confidential")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(json.loads(self.state.read_text())["members"], [self.member])
+        self.assertEqual(list((self.repo / ".orchestration/validation").glob("codex-orchestrate-*.md")), [])
+        self.assertEqual(list((self.scripts.parent / "run").glob("codex-orchestrate.*/*.md")), [])
 
     def test_codex_delivery_failure_restores_claude_without_starting_a_turn(self):
         self.save(delivery_failure="turn")

@@ -9,7 +9,7 @@
 > immutable artifact nor an independently published checksum/signature, STOP for
 > that dependency and report it; do not add `curl | sh` exceptions.
 >
-> **Drift check**: `git diff --stat e7c2808..HEAD -- setup.sh install home/dot_mise home/dot_config/sheldon home/.chezmoitemplates/chezmoiexternal.d .github/workflows flake.nix flake.lock docs/plans/nix-first-architecture.md tests`
+> **Drift check**: `git diff --stat e7c2808..HEAD -- setup.sh install home/dot_mise home/dot_config/sheldon home/.chezmoitemplates/chezmoiexternal.d .github/workflows flake.nix flake.lock docs/history/nix-first-architecture.md tests`
 
 ## Status
 

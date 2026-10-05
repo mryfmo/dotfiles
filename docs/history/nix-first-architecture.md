@@ -1,3 +1,5 @@
+Historical document (moved 2026-10-05, dotfiles-T99); the AWS CLI ownership statements remain current and are pinned by `tests/unit/test_aws_cli_acquisition.py`.
+
 # Nix-first architecture plan
 
 > **Note (2026-10-04):** the Nix flake was removed in #247; the commands and

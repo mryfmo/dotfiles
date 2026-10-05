@@ -34,10 +34,11 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"#!{sys.executable}\n{body}", encoding="utf-8")
 
-    def run_receiver(self) -> subprocess.CompletedProcess[str]:
-        payload = json.dumps({"cwd": str(self.project), "type": "agent-turn-complete"})
+    def run_receiver(self, event: dict | None = None, *, stdin: bool = False) -> subprocess.CompletedProcess[str]:
+        payload = json.dumps({"cwd": str(self.project), **(event or {"type": "agent-turn-complete"})})
         return subprocess.run(
-            ["bash", str(RECEIVER), payload],
+            ["bash", str(RECEIVER)] if stdin else ["bash", str(RECEIVER), payload],
+            input=payload if stdin else "",
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -76,10 +77,151 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
                 "ingest",
                 "--ingested-from",
                 "codex",
+                "--no-maintenance",
             ],
         )
         self.assertEqual(Path(capture["cwd"]), self.project.resolve())
         self.assertEqual(json.loads(capture["input"])["cwd"], str(self.project))
+
+    def write_capturing_cli(self) -> None:
+        self.write_cli(
+            self.trusted_cli,
+            "import json, sys\n"
+            f"open({str(self.capture)!r}, 'w').write(json.dumps({{'argv': sys.argv[1:], 'input': sys.stdin.read()}}))\n",
+        )
+
+    def test_hook_payload_on_stdin_is_ingested(self) -> None:
+        self.write_capturing_cli()
+        event = {"hook_event_name": "PreCompact", "session_id": "t82", "trigger": "manual"}
+
+        result = self.run_receiver(event, stdin=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        capture = json.loads(self.capture.read_text(encoding="utf-8"))
+        self.assertEqual(capture["argv"][-4:], ["ingest", "--ingested-from", "codex", "--no-maintenance"])
+        self.assertEqual(json.loads(capture["input"]), {"cwd": str(self.project), **event})
+
+    def test_argv_payload_wins_over_stdin(self) -> None:
+        self.write_capturing_cli()
+        argv_payload = json.dumps({"cwd": str(self.project), "hook_event_name": "SessionEnd", "session_id": "argv"})
+
+        result = subprocess.run(
+            ["bash", str(RECEIVER), argv_payload],
+            input=json.dumps({"cwd": str(self.project), "session_id": "stdin"}),
+            text=True,
+            capture_output=True,
+            env={**os.environ, "HOME": str(self.home)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        capture = json.loads(self.capture.read_text(encoding="utf-8"))
+        self.assertEqual(json.loads(capture["input"])["session_id"], "argv")
+
+    def test_invalid_stdin_payload_reports_and_exits_zero(self) -> None:
+        self.write_capturing_cli()
+
+        result = subprocess.run(
+            ["bash", str(RECEIVER)],
+            input="not json",
+            text=True,
+            capture_output=True,
+            env={**os.environ, "HOME": str(self.home)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "contextdb-codex-notify: ingest failed\n")
+        self.assertFalse(self.capture.exists())
+
+    def test_modules_in_the_session_cwd_cannot_shadow_the_stdlib(self) -> None:
+        self.write_capturing_cli()
+        hijack = self.root / "hijacked"
+        (self.project / "json.py").write_text(f"open({str(hijack)!r}, 'w').write('ran')\n", encoding="utf-8")
+        payload = json.dumps({"cwd": str(self.project), "hook_event_name": "SessionEnd", "session_id": "cwd"})
+
+        result = subprocess.run(
+            ["bash", str(RECEIVER)],
+            input=payload,
+            text=True,
+            capture_output=True,
+            cwd=self.project,
+            env={**os.environ, "HOME": str(self.home)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertFalse(hijack.exists())
+        self.assertEqual(json.loads(json.loads(self.capture.read_text(encoding="utf-8"))["input"])["session_id"], "cwd")
+
+    def test_symlinked_opt_in_outside_the_project_is_ignored(self) -> None:
+        self.write_capturing_cli()
+        outside = self.root / "outside"
+        outside.mkdir()
+        (self.project / ".claude/contextdb").rmdir()
+        (self.project / ".claude/contextdb").symlink_to(outside, target_is_directory=True)
+
+        result = self.run_receiver({"hook_event_name": "PreCompact", "session_id": "link"}, stdin=True)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        self.assertFalse(self.capture.exists())
+
+    def test_symlinked_storage_directory_is_refused(self) -> None:
+        self.write_capturing_cli()
+        outside = self.root / "shared"
+        outside.mkdir()
+        (self.project / ".claude/contextdb/state").symlink_to(outside, target_is_directory=True)
+
+        result = self.run_receiver({"hook_event_name": "PreCompact", "session_id": "state-link"}, stdin=True)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "contextdb-codex-notify: ingest failed\n")
+        self.assertFalse(self.capture.exists())
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_real_storage_directories_are_accepted(self) -> None:
+        self.write_capturing_cli()
+        for child in ("state", "spool", "health"):
+            (self.project / ".claude/contextdb" / child).mkdir()
+
+        result = self.run_receiver({"hook_event_name": "PreCompact", "session_id": "state-real"}, stdin=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(
+            json.loads(json.loads(self.capture.read_text(encoding="utf-8"))["input"])["session_id"], "state-real"
+        )
+
+    def test_symlinked_storage_grandchild_is_refused(self) -> None:
+        self.write_capturing_cli()
+        outside = self.root / "shared"
+        outside.mkdir()
+        (self.project / ".claude/contextdb/spool").mkdir()
+        (self.project / ".claude/contextdb/spool/incoming").symlink_to(outside, target_is_directory=True)
+
+        result = self.run_receiver({"hook_event_name": "PreCompact", "session_id": "incoming-link"}, stdin=True)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "contextdb-codex-notify: ingest failed\n")
+        self.assertFalse(self.capture.exists())
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_real_nested_storage_tree_is_accepted(self) -> None:
+        self.write_capturing_cli()
+        base = self.project / ".claude/contextdb"
+        for child in ("state", "spool/incoming", "spool/quarantine", "health"):
+            (base / child).mkdir(parents=True)
+        (base / "state/context.db").write_bytes(b"")
+        (base / "spool/incoming/event.json").write_text("{}", encoding="utf-8")
+
+        result = self.run_receiver({"hook_event_name": "PreCompact", "session_id": "nested-real"}, stdin=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertTrue(self.capture.exists())
 
     def test_missing_trusted_runtime_is_silent(self) -> None:
         result = self.run_receiver()

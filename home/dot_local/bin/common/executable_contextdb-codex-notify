@@ -1,15 +1,29 @@
 #!/usr/bin/env bash
 
 # @file home/dot_local/bin/common/executable_contextdb-codex-notify
-# @brief Ingest a Codex turn-complete notification into an opted-in project's CompactionDB.
+# @brief Ingest a Codex notification or hook event into an opted-in project's CompactionDB.
+# @description
+#   Codex `notify` passes the JSON payload as the first argument; Codex command
+#   hooks (PreCompact, PostCompact, SessionEnd) deliver it on stdin. Either way
+#   the payload is ingested with `--no-maintenance`, which skips the SessionEnd
+#   retention pass, and the CLI gets 2 seconds, so the SessionEnd hook returns
+#   within Codex's 3-second limit; retention stays on the explicit `prune`
+#   command and on Claude Code's own SessionEnd hook. Failures print one stderr
+#   line and exit 0 so Codex is never blocked. Python runs isolated (`-I`), so a
+#   module committed in the session's working directory (for example a
+#   `json.py` in an untrusted repository) cannot shadow the standard library.
+# @arg $1 string Optional JSON payload; read from stdin when absent.
 
 if ! command -v python3 > /dev/null 2>&1; then
     printf '%s\n' 'contextdb-codex-notify: ingest failed' >&2
     exit 0
 fi
 
-if ! python3 - "${1-}" 2> /dev/null << 'PY'
+payload="${1:-$(cat)}"
+
+if ! python3 -I - "${payload}" 2> /dev/null << 'PY'
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -25,8 +39,22 @@ try:
     project_dir = (Path(cwd) if cwd else Path.cwd()).resolve()
     opt_in = project_dir / ".claude" / "contextdb"
     cli = Path.home() / ".agents" / "compactiondb" / ".claude" / "hooks" / "contextdb_cli.py"
-    if not opt_in.is_dir() or not cli.is_file():
+    # Only a real directory inside the project opts in: a repository could point
+    # .claude or .claude/contextdb elsewhere with a symlink, and the CLI would
+    # then create its state there.
+    if not opt_in.is_dir() or opt_in.resolve() != opt_in or not cli.is_file():
         raise SystemExit(0)
+    # The CLI creates, chmods and writes under this tree, so a symlink at any
+    # depth would send its writes outside the project: refuse every symlink,
+    # and require each storage directory to be a real directory or absent.
+    for root, dirs, files in os.walk(opt_in, followlinks=False):
+        for name in dirs + files:
+            if os.path.islink(os.path.join(root, name)):
+                raise ValueError(f"{os.path.join(root, name)} must not be a symlink")
+    for child in ("state", "spool", "spool/incoming", "spool/quarantine", "health"):
+        storage = opt_in / child
+        if storage.exists() and not storage.is_dir():
+            raise ValueError(f"{storage} must be a directory")
     subprocess.run(
         [
             sys.executable,
@@ -36,12 +64,13 @@ try:
             "ingest",
             "--ingested-from",
             "codex",
+            "--no-maintenance",
         ],
         input=payload,
         text=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        timeout=5,
+        timeout=2,
         check=True,
         cwd=project_dir,
     )

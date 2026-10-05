@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T77b-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #266 (dotfiles-T77b, enforce-uv PreToolUse contract; Codex security seat; diff head 908ba61a, final head is the orchestrator's update-branch onto main 36ffe6ca): the official hooks reference marks the top-level decision/reason PreToolUse form deprecated, so every block emission in home/dot_claude/hooks/executable_enforce-uv.sh now goes through deny_command, which encodes the unchanged multiline Japanese guidance with the existing jq -Rsc into hookSpecificOutput {hookEventName PreToolUse, permissionDecision deny, permissionDecisionReason}; allowed input exits 0 silently; detection logic unchanged; the authorized lint-only cleanups (SC2155 split declarations, SC2034 unused reads, SC2221/2222 redundant python3* arm, SC2001 sed to parameter expansion) are behaviour-preserving. New tests/unit/test_enforce_uv.py covers all blocking branches (27 cases, exact reason parity 17) and the silent allow path; 785 unit tests pass; shellcheck/shfmt clean; validate-agent-assets ok; CI 13/13 on 908ba61a; no Bot review within 15 minutes; no threads. Seven worker artifacts transferred from worker-e.",
+    "resolved": true
+  }
+]

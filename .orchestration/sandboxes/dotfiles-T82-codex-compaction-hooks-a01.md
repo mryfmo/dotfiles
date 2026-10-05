@@ -1,0 +1,26 @@
+# dotfiles-T82-codex-compaction-hooks-a01 — sandbox
+
+- Isolation:
+  - dedicated worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d`;
+  - branch `feat/codex-compaction-hooks`, created from `origin/main` 2527be54 with `git switch --no-track -c`, run sandboxed (only `git fetch` ran outside, per the T79 audit lesson);
+  - identity `claude-standard-dot-a006` (Claude Code, `standard`).
+- Ran in the Claude Code Bash sandbox:
+  - the edits (through `uv run python`: the `enforce-uv.sh` PreToolUse hook from #266 now denies bare `python3 -`);
+  - the generator write, `make render-check`, shellcheck, shfmt, ruff;
+  - the focused and full unit tests, and `make validate-agent-assets`;
+  - the item-5 live check against this worktree's own `.claude/contextdb` (two `t82` rows, one per run; the worker-worktree DB is disposable).
+- Ran unsandboxed through the permission gate:
+  - `git fetch`/`push`;
+  - `gh pr create`/`checks`/`api`;
+  - WebFetch of the official Codex hooks page (learn.chatgpt.com/docs/hooks, via the developers.openai.com redirect);
+  - the main-checkout `contextdb_cli.py memory add`;
+  - `agmsg-dispatch`.
+- Not touched:
+  - profile `notify` entries and the project `.codex/hooks.json`;
+  - `vendor/**`, any Claude hook, permgate, `.claude/settings.json`;
+  - `codex.hooks.state`.
+- Not run: a real Codex `/compact` (operator T87), `make update`/`make apply`, local bats, merge.
+- Round 1 (PONG decision): `uv run python vendor/compactiondb/install.py --project . --skip-instructions` aborted at its first `.claude/hooks` write: `OSError: [Errno 30] Read-only file system: <worker-d>/.claude/hooks/contextdb_hook.py`, under this seat's read-only `.claude/hooks` and `.claude/settings.json`. It changed nothing (`git status` clean for `.claude/`). Per PONG decision (a), the two changed package files were copied from the vendor tree into `.claude/contextdb/contextdb/`; no hooks or settings write was needed. The installer's inability to run from a Claude seat joins T81b's installer item.
+- Round 1 live check: the dotfiles.8 CLI was copied into a `mktemp -d` HOME, which is left under `/tmp/claude-1000`; the worker-d DB gained `t82r1`/`t82r1b` rows.
+- Round 1 negative controls edited the wrapper in place (`sed`) and restored it from a backup copy within the same command; `git diff` confirmed only the intended changes remained.
+- No Plan Mode was used, so `plan-mode-used` does not apply.

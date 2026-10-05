@@ -1,0 +1,8 @@
+[
+  {
+    "id": "t77b-current-contract",
+    "scope": "review",
+    "body": "Independent security reviewer /root/t97_evidence_review reviewed the enforce-uv hook and new behavioral tests against the official PreToolUse reference. No actionable findings: all deny emissions use current hookSpecificOutput, jq safely encodes multiline/quoted/backslash text, nonblocking input exits0 silently, and authorized lint cleanup preserves prefix detection. Parity check confirms exact old raw reason text/stderr/exit0 for all17 denial cases; focused test includes10 nonblocking cases. Verdict: correct.",
+    "resolved": true
+  }
+]

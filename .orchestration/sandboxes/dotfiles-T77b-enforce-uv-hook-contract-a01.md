@@ -1,0 +1,3 @@
+# T77b sandbox
+
+Codex security worker-e, workspace-write/approval never. Dedicated fix/enforce-uv-hook-contract branch from b13132d0. Only allowed enforce-uv hook and new naming unit test plus seven task artifacts. Prior T90/T90b artifacts untouched. .agents read-only: report-local uncommitted plan/TODO fallback. No other hooks, settings, manifest, permgate, dependency additions, deployment or local bats. Behavior tests invoke the hook on synthetic JSON without executing described pip/python commands. Baseline parity copy lives in /tmp. No CompactionDB write; orchestrator owns acceptance memory record.

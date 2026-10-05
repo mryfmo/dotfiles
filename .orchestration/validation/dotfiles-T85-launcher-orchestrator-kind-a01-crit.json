@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T85-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #270 head 20361c5d (dotfiles-T85, launcher orchestrator_kind and --directive): resolve_orchestrator_kind mirrors resolve_worker_kind (env, then ~/.agents/model-profiles.env, then claude; invalid value exits 2); under codex, full mode, --attach and --restart-worker exit 2 with 'orchestrator_kind=codex: use codex-orchestrate' before any Herdr call, except the manifest worker seat's own --attach which keeps its quiet exit (is_manifest_worker_seat, shared helper; other linked worktrees are refused); --add-worker/--remove-worker/--audit/--bootstrap-agmsg keep working and name, link and despawn workers under the kind's orchestrator identity type; --directive prints the regime line for the git top level without Herdr, looking up the identity as the kind's agmsg type. Nine new fake-CLI tests (229 herdr-agents tests, 800 total), shfmt/shellcheck clean, README two paragraphs. Eight Codex threads over four heads: five fixed (f50e6af7, 4d210709, 20361c5d) and three out of scope by design (manifest rendering = T84, codex-orchestrate entrypoint = T86, Codex orchestrator delivery in bootstrap = T86 seat exchange), all resolved by the orchestrator after confirming ancestry; CI 13/13 green; branch on main 2527be54.",
+    "resolved": true
+  }
+]

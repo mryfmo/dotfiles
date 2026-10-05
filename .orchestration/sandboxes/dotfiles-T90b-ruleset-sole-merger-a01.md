@@ -1,0 +1,3 @@
+# T90b sandbox
+
+Codex security-profile worker-e, branch feat/ruleset-sole-merger from4c38dea0, workspace-write with approval never. Five allowed source/test/docs paths and seven task artifacts only. Earlier T90 artifacts untouched. .agents is read-only, so uncommitted report holds the single active worklog/TODO. No accounts/tokens, ruleset PUT/POST, merge, launcher changes, local bats or make update/apply. Git uses allowed metadata roots and no -u/shared config mutation. GitHub source/ruleset/issue inspection is read-only; agmsg messaging uses installed scripts. CompactionDB output belongs to orchestrator acceptance.

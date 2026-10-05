@@ -1,0 +1,80 @@
+[
+  {
+    "id": "t86-shared-member-loss",
+    "scope": "file",
+    "path": "home/dot_local/bin/common/executable_codex-orchestrate",
+    "body": "Independent reviewer P1 fixed: replaced whole-member leave.sh with authorized project/type-scoped reset.sh, preserving other projects and runtimes for both prior Claude and target Codex identities. Complete team/name snapshot precedes any reset; regression tests cover both loss reproductions and partial multi-team reset.",
+    "resolved": true
+  },
+  {
+    "id": "t86-pane-read",
+    "scope": "file",
+    "path": "home/dot_local/bin/common/executable_codex-orchestrate",
+    "body": "Independent reviewer P2 fixed: removed team.sh and its terminal observations entirely. identities.sh supplies metadata only; scoped reset.sh avoids needing full member metadata. Fake tests make team.sh/leave.sh calls fail. No real seats or panes touched.",
+    "resolved": true
+  },
+  {
+    "id": "t86-final-approval",
+    "scope": "review",
+    "body": "Independent reviewer /root/t97_evidence_review rechecked the139-line scoped-reset launcher,21 fake tests and README. No remaining actionable findings. Other-project/runtime registrations preserved; snapshots and failure recovery correct; pane-reading removed. Independently ran21tests successfully. Live Stop-hook VERIFY explicitly deferred to T87. Verdict: correct.",
+    "resolved": true
+  },
+  {
+    "id": "t86-macos-fixture",
+    "scope": "file",
+    "path": "tests/unit/test_codex_orchestrate.py",
+    "body": "Independent reviewer approved one-line Path.resolve on temporary root: aligns fake identity registrations with Git physical path (macOS /var vs /private/var), preserving assertions and launcher behavior. Identical17 failures reproduced with symlink TMPDIR before fix;21 tests pass afterward. Verdict correct.",
+    "resolved": true
+  },
+  {
+    "id": "t86-delivery-scope",
+    "scope": "review",
+    "body": "Independent reviewer /root/t97_evidence_review approved the authorized delivery scope addition: set turn before Codex invocation, restore Claude both after seats, preserve recovery lock/snapshot on delivery restoration failure. README correctly states persistent Codex turn setting. Independently ran23 fixture tests successfully; no live delivery calls. Verdict: correct. Subsequent import ordering and explicit check=False are lint-only and preserve subprocess behavior.",
+    "resolved": true
+  },
+  {
+    "id": "t86-audit-revise-round1",
+    "scope": "review",
+    "body": "Independent reviewer /root/t97_evidence_review confirmed all three task audit findings addressed: target-name global project collision refusal before mutation; exact completion instruction after first-turn task; distinct-name reuse preserving multiple team memberships with selected-team validation. Python stdlib parser covers all registration rows and legacy shape, fails closed on invalid JSON. Independently ran28fixture tests successfully; launcher150lines. No live registry/delivery operations. Verdict: correct.",
+    "resolved": true
+  },
+  {
+    "id": "t86-bot-marker-mask",
+    "scope": "review",
+    "body": "Independent reviewer /root/t97_evidence_review approved exact final-nonblank-line completion and mask-before-publication flow. Private staging is removed on handled exits and masking failure, initialized out prevents inherited-path deletion on early failure, seats restore correctly.33fixture tests independently passed. Known-pattern masking limits documented. Verdict correct.",
+    "resolved": true
+  },
+  {
+    "id": "t86-private-stdin-status",
+    "scope": "review",
+    "body": "Independent reviewer /root/t97_evidence_review approved decision5 bounded contract: canonical state-path exclusions for repository/agmsg/TMPDIR; exclusive private run allocation, stdin for both invocations, private stdout/stderr/finals, metadata-only repository status, held parent descriptors closed in Codex. Initial153-line finding corrected to150 without dropping restoration;36focused tests independently passed. README discloses custom writable-root assumption. Follow-up confirmed BSD wc arithmetic normalization. Verdict: correct. This supersedes the previous known-pattern-mask design approval.",
+    "resolved": true
+  },
+  {
+    "id": "t86-private-lock-pending",
+    "scope": "file",
+    "path": "home/dot_local/bin/common/executable_codex-orchestrate",
+    "body": "P2 Bot4179976124 independently confirmed: repository lock is child-deletable. Move to private state, keyed by canonical repository and acquired before identity discovery. Pending task revision. Addressed in decision6: private repository lock before identity reads; recovery TSV/context in private run; all exchanged teams joined while explicit selected-inbox contract retained. Independent final review confirmed correct.",
+    "resolved": true
+  },
+  {
+    "id": "t86-recovery-location-pending",
+    "scope": "file",
+    "path": "home/dot_local/bin/common/executable_codex-orchestrate",
+    "body": "P2 Bot4179976127 independently confirmed: agmsg/run recovery snapshots are child-deletable. Moving them to private state conflicts with explicit task decision2; orchestrator revision requested. Addressed in decision6: private repository lock before identity reads; recovery TSV/context in private run; all exchanged teams joined while explicit selected-inbox contract retained. Independent final review confirmed correct.",
+    "resolved": true
+  },
+  {
+    "id": "t86-team-coverage-pending",
+    "scope": "file",
+    "path": "home/dot_local/bin/common/executable_codex-orchestrate",
+    "body": "P2 Bot4179976130 independently confirmed: all Claude teams are reset but only selected team receives Codex. Joining all alone leaves other inboxes unread; explicit participating-team contract requested. Addressed in decision6: private repository lock before identity reads; recovery TSV/context in private run; all exchanged teams joined while explicit selected-inbox contract retained. Independent final review confirmed correct.",
+    "resolved": true
+  },
+  {
+    "id": "t86-decision6-final",
+    "scope": "review",
+    "body": "Independent reviewer /root/t97_evidence_review approved private per-repository lock before identity discovery, private recovery snapshot containing original Claude/Codex registrations, all-team replacement with selected-inbox-only polling, and cleanup preserving existing Codex memberships after partial additions. Reviewer-found obsolete selected-team restriction reproduced RED, removed and replaced with successful mixed-membership coverage.38focused tests independently pass;158lines covered by task decision2 restoration overrun reporting exception. Verdict: correct.",
+    "resolved": true
+  }
+]

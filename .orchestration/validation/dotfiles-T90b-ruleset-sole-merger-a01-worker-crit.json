@@ -1,0 +1,27 @@
+[
+  {
+    "id": "t90b-split-integrity",
+    "scope": "review",
+    "body": "Independent security reviewer /root/t97_evidence_review confirmed PR-only bypass can skip protections within its ruleset; authorized split keeps seven strict checks, threads, deletion/non-fast-forward in no-bypass integrity layer and update/approval in sole User PR-bypass layer. Final design reviewed correct.",
+    "resolved": true
+  },
+  {
+    "id": "t90b-sync-merge",
+    "scope": "review",
+    "body": "Verified gh2.101.0 source and upstream cli/cli13388 github/docs45265: preflight/auto merge cannot be relied on to engage bypass. Orchestrator PONGdecision2 authorized synchronous REST merge with reviewed head SHA and title. Independent review found no issue in revised procedure; live activation remains operator work.",
+    "resolved": true
+  },
+  {
+    "id": "t90b-rule-reference",
+    "scope": "file",
+    "path": "home/dot_config/claude/rules/agmsg-orchestration.md",
+    "body": "Independent final review found P2 stale unconditional gh pr merge command in integration-order line9. PONGdecision4 authorized replacing it with SKILL10.5 procedure reference. Narrow re-review confirmed resolved, no remaining findings, Verdict: correct.",
+    "resolved": true
+  },
+  {
+    "id": "t90b-final-approval",
+    "scope": "review",
+    "body": "Independent security review of all five final source/test/docs files: no remaining actionable findings, Verdict: correct. Gate binds sole PR-bypass User ID, activates update or positive approval, and exempts only complete nonempty orchestration-only author diff; combined/malformed ruleset, rename and empty-diff regressions passed. Full783 and focused76 unit tests passed. Live ruleset behavior is documented as operator verification, not claimed executed.",
+    "resolved": true
+  }
+]

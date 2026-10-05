@@ -1,0 +1,520 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 269,
+  "head_sha": "9ff2ad5260908bb0d5bcbc5bb20a7f7982764700",
+  "base_ref": "main",
+  "base_sha": "f2d4d7096a41ced56562e9d95c111e9d5d8c8995",
+  "generated_at": "2026-10-05T00:37:48+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146234/job/111567175513"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146234/job/111567175452"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146234/job/111567175446"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146234/job/111567175429"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146234/job/111567147304"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146188/job/111567147286"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146188/job/111567147269"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146188/job/111567147261"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146188/job/111567147249"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146188/job/111567147248"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146204/job/111567147163"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146188/job/111567147049"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `7a35cdb1-a71d-4a87-bd21-91eea0199d71`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=269)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#issuecomment-5984977716",
+      "disposition": "not-applicable:CodeRabbit summary comment (automatic reviews disabled); no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `4c388114f1`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408500959",
+      "commit": "4c388114f1d78ed69b72d1647af64388e62a88c1",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 🛡️ Codex Security Review · _Automatically triggered_\n\nHere are some automated security review suggestions for this pull request.\n\n**Reviewed commit:** `4c388114f1`\n    \n\n<details> <summary>ℹ️ About Codex security reviews in GitHub</summary>\n<br/>\n\nThis is an experimental Codex feature. Security reviews are triggered when:\n- You comment \"@codex security review\"\n- A regular code review gets triggered (for example, \"@codex review\" or when a PR is opened), and you’re opted in so security review runs alongside code review\n\nOnce complete, Codex will leave suggestions, or a comment if no findings are found.\n\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408531708",
+      "commit": "4c388114f1d78ed69b72d1647af64388e62a88c1",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408652907",
+      "commit": "7ee910878b1e94eff35da30307c46debeb9c97e6",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408653037",
+      "commit": "7ee910878b1e94eff35da30307c46debeb9c97e6",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408653188",
+      "commit": "7ee910878b1e94eff35da30307c46debeb9c97e6",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `da04f94378`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408705478",
+      "commit": "da04f94378bae29ffbd743cf151f93303327bab0",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `94761d1a3b`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408760363",
+      "commit": "94761d1a3b7785da4848dc1f47790242fbdd0d93",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408825645",
+      "commit": "94761d1a3b7785da4848dc1f47790242fbdd0d93",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408825843",
+      "commit": "94761d1a3b7785da4848dc1f47790242fbdd0d93",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408825943",
+      "commit": "94761d1a3b7785da4848dc1f47790242fbdd0d93",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408922456",
+      "commit": "c466231a3228e0eded4c56917915d1d7c18b58a9",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `9ff2ad5260`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5408965904",
+      "commit": "9ff2ad5260908bb0d5bcbc5bb20a7f7982764700",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5409006223",
+      "commit": "9ff2ad5260908bb0d5bcbc5bb20a7f7982764700",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#pullrequestreview-5409006301",
+      "commit": "9ff2ad5260908bb0d5bcbc5bb20a7f7982764700",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_agents/agent-config.yaml",
+      "line": 145,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Capture the compaction summary before storing PostCompact**\n\nWhen Codex compacts a session, its [PostCompact hook payload](https://learn.chatgpt.com/docs/hooks) adds only `turn_id` and `trigger` to the common fields; it does not include `compact_summary`. This hook forwards that payload unchanged, while `vendor/compactiondb/.claude/contextdb/contextdb/normalize.py` reads `compact_summary` to create the durable compact-summary memory and recovery reference. Consequently every Codex PostCompact record has an empty summary, so recovery cannot retain the actual compaction result. Extract and provide the summary before ingesting this event, or avoid representing this metadata-only event as a recoverable PostCompact summary.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179558226",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the Codex PostCompact payload has no compact_summary, so the event is a timeline marker only; the vendor skips empty summaries"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_agents/agent-config.yaml",
+      "line": 145,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Trust the newly added Codex hook definitions**\n\nCodex treats these user-config command hooks as non-managed: new or changed definitions are skipped until the user reviews and trusts them in `/hooks` ([official hook documentation](https://learn.chatgpt.com/docs/hooks)). These three hooks are newly added, while the update workflow only directs users to trust Ponytail hooks and does not establish trust for this configuration change. Thus, after a normal chezmoi update, none of the new CompactionDB handlers runs until a manual, undocumented trust step occurs. Add an explicit trust rollout or distribute the handlers as managed hooks.\n\nAGENTS.md reference: [AGENTS.md:L71-L71](https://github.com/mryfmo/dotfiles/blob/4c388114f1d78ed69b72d1647af64388e62a88c1/AGENTS.md#L71-L71)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179558230",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:user-config hooks are non-managed by design; the one-time operator trust step in Codex /hooks is documented in README (c8127bd8); recording trusted hooks.state keys as pins is a follow-up task"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/.chezmoitemplates/codex-config-managed.toml",
+      "line": 85,
+      "body": "<!-- codex-security-review-finding:v1 -->\n\n### 🛡️ Codex Security Review · _Automatically triggered_\n\n**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub> Security: Isolate Python before enabling lifecycle hooks**\n\nOnce the operator trusts this user-level hook, ending a Codex session in an attacker-controlled repository—including the previously unhooked `express` and `review` profiles—runs the receiver [from the session cwd](https://learn.chatgpt.com/docs/hooks). The receiver starts `python3 -` and imports `json` before any validation, so a committed `json.py` executes as the victim user. The [pinned runner directly spawns the hook](https://github.com/openai/codex/blob/rust-v0.160.0/codex-rs/hooks/src/engine/command_runner.rs). Use `python3 -I -` or a trusted script outside the repository.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179583256",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:7ee91087"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_agents/agent-config.yaml",
+      "line": 145,
+      "body": "not-applicable: these are user-config (non-managed) hooks by design, so the one-time trust step is the operator's and is now documented in README's operator phase (c8127bd8): after `make update`, run `/hooks` in Codex and trust the three CompactionDB hooks and the existing permgate `PermissionRequest` hook; the managed-config merge preserves the resulting `[hooks.state]` entries. Recording those trusted keys as manifest pins (and refreshing the drifted ponytail hashes) is a separate follow-up task.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179698551",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_agents/agent-config.yaml",
+      "line": 145,
+      "body": "not-applicable: the Codex PostCompact payload carries no `compact_summary`, so the event is stored as a timeline marker only; the vendor normaliser skips empty summaries and recovery skips an empty compact body, so no empty memory is created. Extracting a summary from `transcript_path` is out of this task's scope.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179698595",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/.chezmoitemplates/codex-config-managed.toml",
+      "line": 85,
+      "body": "fixed:7ee91087 — the receiver runs `python3 -I`, so a module in the session's working directory (for example a `json.py` in an untrusted repository) cannot shadow the standard library; a regression test fails without `-I`. The same hardening covers the pre-existing `notify` path.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179698649",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/.chezmoitemplates/codex-config-managed.toml",
+      "line": 67,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject symlinked CompactionDB opt-ins**\n\nAfter these new user-level hooks are trusted, a repository can make `.claude/contextdb` a symlink outside the project; the receiver accepts it via `is_dir()`, and the trusted runtime then creates its database and state there and chmods the target directories to `0700`. For example, a symlink to another user-owned shared directory causes a normal Codex compaction to write outside the repository and change that directory's permissions. Fresh evidence beyond the resolved import-shadowing issue is that the opt-in path itself is still followed without checking that its resolved location remains beneath `cwd`; require a real in-project directory before invoking the CLI.\n\nAGENTS.md reference: [AGENTS.md:L72-L72](https://github.com/mryfmo/dotfiles/blob/da04f94378bae29ffbd743cf151f93303327bab0/AGENTS.md#L72-L72)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179749575",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:74a559c7"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_contextdb-codex-notify",
+      "line": 45,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject symlinked CompactionDB subdirectories**\n\nWhen a repository keeps `.claude/contextdb` as a real directory but makes `state` (or `spool` or `health`) a symlink, this check passes and the trusted CLI's `project_paths.ensure()` follows it, creates ledger files, and calls `chmod(0700)` on the external directory. For example, `state -> ~/shared` makes a PreCompact hook change that shared directory's permissions and write its database there. Fresh evidence beyond the earlier base-directory report: only `opt_in` is resolved here; none of the child directories used by the CLI are checked. Reject any resolved ContextDB child path that escapes `project_dir`.\n\nAGENTS.md reference: [AGENTS.md:L72-L72](https://github.com/mryfmo/dotfiles/blob/94761d1a3b7785da4848dc1f47790242fbdd0d93/AGENTS.md#L72-L72)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179789825",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:9ff2ad52"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/.chezmoitemplates/codex-config-managed.toml",
+      "line": 67,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Resolve the opted-in project before dispatching hooks**\n\nWhen Codex is launched from `repo/subdir`, the hook payload's `cwd` is that session directory; Codex documents that command hooks run in the session cwd and may be started from a subdirectory ([Hooks docs](https://learn.chatgpt.com/docs/hooks)). The receiver only tests `<cwd>/.claude/contextdb`, so an ordinary opt-in at `repo/.claude/contextdb` is missed and the three newly configured lifecycle hooks silently no-op. Locate the enclosing opted-in project before dispatching the hook.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179789828",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:pre-existing notify-receiver behaviour (opt-in looked up at the session cwd); the enclosing-project lookup is item 6 of the drafted T81b vendor task, not introduced by this PR"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/.chezmoitemplates/codex-config-managed.toml",
+      "line": 67,
+      "body": "fixed:74a559c7 — the receiver resolves the opt-in directory with `lstat` semantics and refuses a symlinked `.claude/contextdb`, so an untrusted repository cannot redirect the ingest; the test fails without the check.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179822145",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_contextdb-codex-notify",
+      "line": 45,
+      "body": "not-applicable: the state, spool and health children are created and validated by the vendor's `project_paths.ensure()`, which this task does not change; rejecting symlinked children there is item 1 of the drafted follow-up dotfiles-T81b (vendor 2.0.0+dotfiles.9), recorded in the acceptance.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179822190",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/.chezmoitemplates/codex-config-managed.toml",
+      "line": 67,
+      "body": "not-applicable: a session whose cwd is a subdirectory of the opted-in repository misses the opt-in in the pre-existing `notify` receiver as well; the enclosing-project lookup is a design change for the vendor receiver, recorded as a follow-up in the acceptance and not introduced by this PR.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179822228",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_contextdb-codex-notify",
+      "line": 45,
+      "body": "fixed:c466231a — the receiver now refuses a symlinked or non-directory `state`, `spool` or `health` under the opt-in directory before invoking the CLI (a missing entry is fine); the earlier T81b deferral was withdrawn after the task-level audit. The vendor-side `project_paths.ensure()` hardening (grandchildren included) stays in T81b as defense in depth.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179886838",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": ".claude/contextdb/contextdb/cli.py",
+      "line": 185,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve health-artifact retention for Codex-only projects**\n\n`--no-maintenance` makes every new Codex `SessionEnd` invocation skip the only cleanup path for `errors.jsonl` and `spool/quarantine`. In a project that uses Codex without Claude, running `contextdb prune` does not compensate—it only prunes database events and enforces the DB size cap—so failure records and quarantined spool files persist past `operations.error_log_retention_days` (30 days by default). Move that cleanup into `prune` or schedule a Codex-safe cleanup path.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179926397",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:every opted-in project here runs both runtimes and the Claude SessionEnd hook performs the errors.jsonl/quarantine retention; --no-maintenance only keeps that pass out of the 3-second Codex hook; moving it into the explicit vendor prune is T81b item 7"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_contextdb-codex-notify",
+      "line": 53,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Make the symlink validation atomic with the CLI handoff**\n\nWhen a trusted hook runs in an attacker-controlled repository that already has a process mutating its tree, that process can replace `.claude/contextdb` or a checked child with a symlink after this walk completes but before `subprocess.run` starts the CLI. `project_paths.ensure()` then follows the replacement while creating and chmodding storage, restoring the external-write/permission-change issue that the static checks aim to prevent. This is distinct from the resolved static-symlink cases: the scan and use have no no-follow descriptor or other atomic binding.\n\nAGENTS.md reference: [AGENTS.md:L72-L72](https://github.com/mryfmo/dotfiles/blob/9ff2ad5260908bb0d5bcbc5bb20a7f7982764700/AGENTS.md#L72-L72)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179926400",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:requires a same-user process mutating the tree between the walk and the CLI start, outside the hook threat model; atomic no-follow binding belongs in the vendor project_paths.ensure() hardening (T81b item 5)"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": ".claude/contextdb/contextdb/cli.py",
+      "line": 185,
+      "body": "not-applicable: in this harness every opted-in project runs both runtimes, and Claude Code's own SessionEnd hook performs the `errors.jsonl`/quarantine retention; `--no-maintenance` only keeps that pass out of Codex's 3-second hook. A Codex-only project is not a configured case here. Moving the health-artifact retention into the explicit vendor `prune` (so it never depends on which runtime ends a session) is item 7 of the drafted dotfiles-T81b vendor task.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179961453",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_contextdb-codex-notify",
+      "line": 53,
+      "body": "not-applicable: the window requires a process already running as the same user and mutating the repository between the walk and the CLI start, which is outside this hook's threat model (such a process can already write anywhere the user can). Binding the storage paths atomically with no-follow semantics belongs in the vendor `project_paths.ensure()` hardening (dotfiles-T81b item 5), where the directories are created.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/269#discussion_r4179961551",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146234/job/111567175452",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146188/job/111567147286",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37247146188/job/111567147249",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit status context reports review skipped; the gate does not require a bot review"
+    }
+  ]
+}

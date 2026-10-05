@@ -3678,6 +3678,7 @@
 <li><code>load_seat_labels</code></li>
 <li><code>managed_pane_list</code></li>
 <li><code>normalize_seat_labels</code></li>
+<li><code>notice_missing_worker_github_credential</code></li>
 <li><code>pane_has_agent</code></li>
 <li><code>pane_shows_shell_prompt</code></li>
 <li><code>panes_on_pane_tab</code></li>
@@ -4135,6 +4136,16 @@
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/model-profiles.env<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/model-profiles.env"</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">WORKER_GH_CONFIG_DIR</span><span class="p">/#</span><span class="se">\~\/</span><span class="p">/</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">)</span>
+
+<span class="c1"># @description Notify the operator of missing worker credentials without blocking seating.</span>
+<span class="c1"># @stderr One provisioning notice when the worker hosts.yml file is absent.</span>
+<span class="k">function</span><span class="w"> </span>notice_missing_worker_github_credential<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>hosts
+<span class="w">    </span><span class="nv">hosts</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>worker_github_config_dir<span class="k">)</span><span class="s2">/hosts.yml"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">hosts</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: worker GitHub credential missing: %s; the worker seat cannot run gh or push until the operator provisions it (README, operator provisioning)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hosts</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
 
 <span class="c1"># @description Print shell commands that select worker credentials after shell</span>
 <span class="c1">#   startup. Environment tokens take precedence over gh file storage.</span>
@@ -5861,6 +5872,7 @@
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: %s is not a git main checkout; run --add-worker from the repository root.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>notice_missing_worker_github_credential
 <span class="w">    </span>write_spawn_options<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">seat_worktree</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>ensure_worker_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">seat_worktree</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--no-join<span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 <span class="w">    </span><span class="nv">seat_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>ensure_worker_worktree<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_worktree</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
@@ -6243,6 +6255,7 @@ worker_seat_applies<span class="w"> </span><span class="s2">"</span><span class=
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 
+notice_missing_worker_github_credential
 <span class="nv">workspace_label</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2"> agents"</span>
 <span class="nv">existing_workspace_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>single_managed_workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 

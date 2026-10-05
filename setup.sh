@@ -366,11 +366,26 @@ function initialize_dotfiles() {
     run_chezmoi
 }
 
+# @description Log in each GitHub credential store that holds no token (interactive runs only).
+#   CI and non-terminal runs skip it; `make gh-auth` in the checkout repeats it later.
+function authenticate_github() {
+    local script="${HOME}/.local/share/chezmoi/scripts/gh-auth-stores.sh"
+
+    if is_ci_or_not_tty || ! command -v gh > /dev/null 2>&1 || [ ! -x "${script}" ]; then
+        echo "Skipping the GitHub logins; run \`make gh-auth\` in the dotfiles checkout once gh is installed."
+        return 0
+    fi
+    if ! "${script}"; then
+        echo "Some GitHub logins did not complete; run \`make gh-auth\` to retry." >&2
+    fi
+}
+
 function main() {
     echo "${DOTFILES_LOGO}"
 
     initialize_os_env
     initialize_dotfiles
+    authenticate_github
 }
 
 if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]}" == "${0}" ]]; then

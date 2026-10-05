@@ -1242,23 +1242,43 @@ which otherwise take precedence over stored credentials. Codex workers also
 receive a worker-only `shell_environment_policy.set.GH_CONFIG_DIR` override so
 their shell tools retain the selection with `inherit=core`.
 
-Operator phase (once per machine, outside the sandbox): authenticate the
-orchestrator with the merging account in its default gh config, then log into
-the worker config as a different account with repository write access. Do not
-give the worker a ruleset bypass. When the worker config's `hosts.yml` file is absent, `herdr-agents` prints a one-line provisioning notice to stderr in full, `--restart-worker` and `--add-worker` modes and continues seating the worker. Use the manifest path if customized:
+Operator phase (once per machine, outside the sandbox): each GitHub account
+has its own credential store, a `GH_CONFIG_DIR` that holds exactly one login.
+The stores are declared in `home/dot_agents/agent-config.yaml` (directories
+only, never logins or tokens) and rendered into `~/.agents/model-profiles.env`:
+
+| Account                                                                        | Store (`GH_CONFIG_DIR`)       | Rendered variable      | Used by                                                                                        |
+| ------------------------------------------------------------------------------ | ----------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------- |
+| owner, the merging account                                                     | `~/.config/gh` (gh's default) | `OWNER_GH_CONFIG_DIR`  | the orchestrator seat and personal repositories                                                |
+| work                                                                           | `~/.config/gh-work`           | `WORK_GH_CONFIG_DIR`   | work repositories, which set `GH_CONFIG_DIR` per repository (for example in a direnv `.envrc`) |
+| worker, a different account with repository write access and no ruleset bypass | `~/.config/gh-worker`         | `WORKER_GH_CONFIG_DIR` | worker seats, selected by `herdr-agents`                                                       |
+
+`./setup.sh` ends with the login step on a terminal, and `make gh-auth` runs it
+again at any time. For each store, `gh auth status` decides:
+
+- **The store already holds a token:** it is skipped.
+- **It doesn't:** it gets gh's own device-code login with file storage (`--insecure-storage`), then `chmod 600` on its `hosts.yml` and `gh auth setup-git`.
+
+When chezmoi-private provides an `encrypted_private_hosts.yml` per store,
+the files are already in place and the step prompts for nothing. `make update`
+never prompts and never logs in. No store holds two accounts, so `gh auth
+switch` is not used. With `XDG_CONFIG_HOME` set, gh's own default directory is
+`$XDG_CONFIG_HOME/gh`; set `owner_gh_config_dir` to match. When the worker
+store's `hosts.yml` is absent, `herdr-agents` prints a one-line provisioning
+notice to stderr in full, `--restart-worker` and `--add-worker` modes and
+continues seating the worker.
 
 ```bash
 unset GH_CONFIG_DIR GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN
-gh auth login --hostname github.com
+make gh-auth
 gh api user --jq .login
-umask 077
-mkdir -p "$HOME/.config/gh-worker"
-GH_CONFIG_DIR="$HOME/.config/gh-worker" gh auth login --hostname github.com --git-protocol https --insecure-storage
-chmod 600 "$HOME/.config/gh-worker/hosts.yml"
-GH_CONFIG_DIR="$HOME/.config/gh-worker" gh auth setup-git --hostname github.com
-GH_CONFIG_DIR="$HOME/.config/gh-worker" gh auth status --active --hostname github.com
+GH_CONFIG_DIR="$HOME/.config/gh-worker" gh api user --jq .login
 make doctor
 ```
+
+`make doctor` reports each store: found (its `hosts.yml` is mode 0600 and it
+holds one user, whose login is printed), or a warning with the `make gh-auth`
+hint.
 
 `--insecure-storage` deliberately uses gh's token file: the Claude Linux
 sandbox cannot reach the host keyring. Keep `hosts.yml` user-owned, mode 0600,

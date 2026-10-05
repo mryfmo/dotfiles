@@ -81,7 +81,13 @@ worker_profile: standard
 # HERDR_AGENTS_WORKER_WORKTREE; herdr-agents creates it from origin/main when
 # missing, registers the worker identity there, and sets delivery on it.
 worker_worktree: .claude/worktrees/worker-c
-# Per-worker GitHub CLI file storage, provisioned by the operator.
+# One GitHub CLI credential store (GH_CONFIG_DIR) per account, each holding exactly one
+# login: the owner account (gh's default directory), the work account, and the worker
+# machine account. Directories only, never logins or tokens. `make gh-auth` (and
+# ./setup.sh on a terminal) logs in any store that has no token; `make update` never
+# prompts.
+owner_gh_config_dir: ~/.config/gh
+work_gh_config_dir: ~/.config/gh-work
 worker_gh_config_dir: ~/.config/gh-worker
 
 codex:

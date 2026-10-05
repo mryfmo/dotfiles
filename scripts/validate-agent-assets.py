@@ -1287,9 +1287,12 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
     repo_home = root / "home"
     entries = sorted(entry.name for entry in repo_home.iterdir()) if repo_home.is_dir() else []
     not_repo_path = "".join(f"(?!{re.escape(name)}(?![A-Za-z0-9._-]))" for name in entries)
-    forms = [rf"(?<![\w.~-])/(?:home|Users)/{not_repo_path}[A-Za-z0-9][A-Za-z0-9._-]*"]
+    # Not glued to a word (`dotfiles/home/x`), except right after a namespace root (`/proc/self/root/home/x`).
+    boundary = r"(?:(?<![\w.~-])|(?<=/root))"
+    forms = [rf"{boundary}/(?:home|Users)/{not_repo_path}[A-Za-z0-9][A-Za-z0-9._-]*"]
     if home:
-        forms.insert(0, re.escape(home))
+        # A one-segment home such as `/root` is also a path component (`/proc/self/root`), so it keeps the boundary.
+        forms.insert(0, re.escape(home) if home.count("/") > 1 else boundary + re.escape(home))
     return re.compile(rf"(?:{'|'.join(forms)})(?![A-Za-z0-9._-])")
 
 
@@ -1299,7 +1302,7 @@ def home_path_pattern() -> re.Pattern[str]:
     A segment that names a top-level entry of the repository's `home/` tree
     (`dot_config`, `.chezmoiscripts`, ...) is a repository path, not a user, and a
     path glued to a word character (`dotfiles/home/x`, a temporary `.../home/worker`)
-    never matches. The pattern does not depend on the machine, so CI and a
+    never matches, except beneath a namespace root (`/proc/self/root/home/<user>`). The pattern does not depend on the machine, so CI and a
     workstation flag the same text.
     """
     return compiled_home_path_pattern(ROOT, "")
@@ -1307,6 +1310,8 @@ def home_path_pattern() -> re.Pattern[str]:
 
 def mask_home_paths(text: str) -> tuple[str, int]:
     """Normalise home directories to `~`: every home_path_pattern() match, and the running user's `$HOME` anywhere.
+
+    A one-segment `$HOME` (`/root`) keeps the scan's boundary, so `/proc/self/root` stays intact.
 
     Masking covers at least what the scan flags, so masked evidence always passes it.
     """

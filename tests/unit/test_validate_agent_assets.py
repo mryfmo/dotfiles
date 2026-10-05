@@ -106,12 +106,26 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 ("file:///home/alice/x and file:///Users/bob/y", "file://~/x and file://~/y"),
                 ("/proc/self/root/srv/operator/.git and ..F/srv/operator/a", "/proc/self/root~/.git and ..F~/a"),
                 ("/tmp/test-x/home/worker/.config", None),
+                (
+                    "/proc/self/root/home/alice/.ssh/id and /proc/42/root/Users/bob/x",
+                    "/proc/self/root~/.ssh/id and /proc/42/root~/x",
+                ),
             ):
                 with self.subTest(text=text):
                     masked, count = self.module.mask_home_paths(text)
                     self.assertEqual(masked, expected or text)
                     self.assertEqual(count, 0 if expected is None else expected.count("~") - text.count("~"))
                     self.assertIsNone(self.module.home_path_pattern().search(masked))
+
+    def test_a_one_segment_home_keeps_namespace_roots_intact(self) -> None:
+        with mock.patch.dict(os.environ, {"HOME": "/root"}):
+            masked, count = self.module.mask_home_paths(
+                "cd /root/x; ls /proc/self/root/home/alice/.ssh /proc/self/root/etc"
+            )
+        self.assertEqual(masked, "cd ~/x; ls /proc/self/root~/.ssh /proc/self/root/etc")
+        self.assertEqual(count, 2)
+        self.assertIsNone(self.module.home_path_pattern().search(masked))
+        self.assertIsNotNone(self.module.home_path_pattern().search("/proc/self/root/home/alice/.ssh"))
 
     def test_secret_scan_rejects_home_paths_in_orchestration_evidence_only(self) -> None:
         self.write_text_file("docs/notes.md", "see /home/alice/x\n")

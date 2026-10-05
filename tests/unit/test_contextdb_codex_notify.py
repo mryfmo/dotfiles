@@ -195,6 +195,34 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
             json.loads(json.loads(self.capture.read_text(encoding="utf-8"))["input"])["session_id"], "state-real"
         )
 
+    def test_symlinked_storage_grandchild_is_refused(self) -> None:
+        self.write_capturing_cli()
+        outside = self.root / "shared"
+        outside.mkdir()
+        (self.project / ".claude/contextdb/spool").mkdir()
+        (self.project / ".claude/contextdb/spool/incoming").symlink_to(outside, target_is_directory=True)
+
+        result = self.run_receiver({"hook_event_name": "PreCompact", "session_id": "incoming-link"}, stdin=True)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "contextdb-codex-notify: ingest failed\n")
+        self.assertFalse(self.capture.exists())
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_real_nested_storage_tree_is_accepted(self) -> None:
+        self.write_capturing_cli()
+        base = self.project / ".claude/contextdb"
+        for child in ("state", "spool/incoming", "spool/quarantine", "health"):
+            (base / child).mkdir(parents=True)
+        (base / "state/context.db").write_bytes(b"")
+        (base / "spool/incoming/event.json").write_text("{}", encoding="utf-8")
+
+        result = self.run_receiver({"hook_event_name": "PreCompact", "session_id": "nested-real"}, stdin=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertTrue(self.capture.exists())
+
     def test_missing_trusted_runtime_is_silent(self) -> None:
         result = self.run_receiver()
 

@@ -1,0 +1,8 @@
+[
+  {
+    "id": "t99-independent-review",
+    "body": "Independent reviewer /root/t97_evidence_review approved staged diff against origin/main. Both historical document bodies are byte-for-byte preserved after the exact requested leading note. Ownership assertions remain unchanged; all 10 focused tests pass. Plan004 changes only the moved path. No live old-path references remain outside archived .orchestration/.ua; MkDocs and the docs workflow contain no navigation references to the moved files. No findings.",
+    "scope": "review",
+    "resolved": true
+  }
+]

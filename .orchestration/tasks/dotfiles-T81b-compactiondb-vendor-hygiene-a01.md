@@ -57,3 +57,50 @@ This task must merge and deploy (`make update`) **before** the operator trusts t
 ## Dispatch
 
 - 2026-10-05 11:30Z to `codex-security-dot-a007` (worker-e, wT:p8) after T84 merged as 51c57f19 (manifest pin free; T82 vendor 2.0.0+dotfiles.8 on main, so this release is `.9`). Branch from `origin/main` 51c57f19 or later with `--no-track`. Runs in parallel with T83 (a005, prose only). Item 5 (no-follow storage binding in `project_paths.ensure()`) first; it gates the operator trust step for the T82 hooks. Artifacts in your worktree; the orchestrator transfers them. Bot wait on the diff head only.
+
+### PONG decision (orchestrator, 2026-10-05 11:45Z) — item 5 contract
+
+Option (a): item 5 is **atomic no-follow directory construction** (`dir_fd`, `O_NOFOLLOW`, `mkdir`/`open`/`fchmod` relative to the opt-in directory fd, so a symlink swapped in during construction is never followed), with an **explicit, documented residual**: once `ensure()` returns, the storage paths and `sqlite3.connect` reopen by name, and portable stdlib SQLite cannot be bound to a directory fd, so a same-user process that swaps a storage directory *after* construction is outside what this release closes. State that residual in the CHANGELOG entry, the vendor README and the T82 receiver's shdoc ("the receiver's walk plus the vendor's no-follow construction close the pre-construction races; the post-construction swap by a same-user process remains"). Do not relocate CompactionDB state outside the workspace in this task (a design change the orchestrator would plan separately with the operator; note it as a candidate in the report). Tests: the race-shape tests cover construction (swap before/during `ensure()` is refused); no test claims the post-construction case. Proceed with the other items.
+
+### PONG decision 2 (orchestrator, 2026-10-05 11:55Z) — allowed files for item 6
+
+Allowed files gain `home/dot_local/bin/common/executable_contextdb-codex-notify` and `tests/unit/test_contextdb_codex_notify.py` (item 6, the enclosing-project opt-in lookup, and the receiver's shdoc residual sentence from decision 1), plus your `.orchestration/validation/dotfiles-T81b-compactiondb-vendor-hygiene-a01-worker-crit.json` and `…-worker-review-receipt.md` (in your worktree; the orchestrator transfers them). The main-checkout CompactionDB `memory add` stays orchestrator-owned.
+
+### PONG decision 3 (orchestrator, 2026-10-05 12:00Z) — worktree artifacts vs. the boundary commit
+
+Authorized: the untracked `.orchestration` copies of your earlier tasks (T77b, T86, T90, T90b) in worker-e were already transferred and are now tracked by boundary commit b63b8202; archive them under `/tmp` (or your scratch root) and remove them from the worktree so `git merge origin/main` (or `gh pr update-branch 275`) succeeds. Keep only this task's own artifacts in the worktree. This housekeeping is a standing permission for a Codex seat whenever a boundary commit lands.
+
+## Revise round 1 (orchestrator, 2026-10-05 03:30Z) — audit of head b9acaa39: `incorrect` (1 finding)
+
+- **[P2] `vendor/compactiondb/install.py:88` — managed hook groups are replaced in fragment order, not matched to their existing identities.** Reproduced by the auditor: an existing `SessionStart` list `[compact, unrelated, *]` becomes `[*, unrelated, compact]` on reinstall, which violates objective 2 (existing positions preserved) and causes a needless settings rewrite plus backup. The live project here has `[*, compact]`, the fragment order, so no deployed impact, but the contract must hold for any existing layout.
+- **Fix:** in `merge_settings`, pair each existing managed group with the fragment group of the same identity (the `matcher` value, `None` included, plus the managed command set is a sufficient key), replace it in place, drop managed groups whose identity no longer exists in the fragment, and append fragment groups with no existing counterpart at the end. Add a regression test in `vendor/compactiondb/tests/test_install.py` where the existing managed groups are in reversed order with an unrelated group between them: a reinstall must leave bytes, mtime and the backup set unchanged. Keep the no-op invariant test green.
+- **Housekeeping:** CHANGELOG `2.0.0+dotfiles.9` entry wording stays (no version bump; .9 is unreleased), regenerate `MANIFEST.sha256`, refresh the project copy if any runtime module changes (installer-only changes leave the runtime copy as is), run the vendor suite from both entry points, push, `gh pr checks --watch`, the 15-minute Bot wait on the new head, then `AGMSG-RESULT v1 … round=1` with the new head. Same allowed files; artifacts appended, not rewritten.
+
+### PONG decision 4 (orchestrator, 2026-10-05 03:45Z) — round 1 scope addition: `uv run --no-project` wording in the vendor's generated text
+
+The Codex Bot on PR #274 (T83, docs) found that `uv run .claude/hooks/contextdb_cli.py …` synchronises a target project's own environment before invoking the stdlib-only CLI; the agreed form is `uv run --no-project .claude/hooks/contextdb_cli.py …` (the Claude-side enforce-uv hook denies bare `python3`). T83 changes the hand-written docs; the installer-generated text is yours, in this round:
+
+- `vendor/compactiondb/snippets/CLAUDE_CONTEXTDB.md` (the CLAUDE.md managed block, otherwise the next `compactiondb-install` rewrites T83's `uv run` lines back to `python3`): every `python3 .claude/hooks/contextdb_cli.py` → `uv run --no-project .claude/hooks/contextdb_cli.py`.
+- `vendor/compactiondb/.claude/contextdb/contextdb/recovery.py` recovery-packet "Verification commands" text: the same substitution; refresh the project copy (parity) and `MANIFEST.sha256`; a CHANGELOG line under the .9 entry.
+- Add `vendor/compactiondb/snippets/CLAUDE_CONTEXTDB.md` to `allowed_files`. Keep the vendor and unit suites green; include this in the round-1 push (or a follow-on push if 79e88d81 already finished CI; the Bot wait then runs on the newest head).
+
+### PONG decision 5 (orchestrator, 2026-10-05 04:45Z) — platform contract (Bot P1 4180772171 on merge head 3d478877)
+
+Decision: **POSIX-only release contract, option (a).** The dotfiles target is Linux and macOS; the approved `dir_fd`/`O_NOFOLLOW` construction (PONG decision 1) is already POSIX-only, so `fcntl` locking follows the same contract. No native Windows implementation.
+
+- Move `import fcntl` out of module scope in `hook.py` and `util.py` into the functions that lock (`prune_health_artifacts`, `append_jsonl`), so importing `contextdb.*`, `--help` and non-locking commands keep working on any platform; on a platform without `fcntl`, the locking call raises a clear `RuntimeError("ContextDB health-log locking requires a POSIX platform")` (do not fall back to unlocked writes).
+- Regression test: importing `contextdb.hook` and `contextdb.util` with `fcntl` absent from `sys.modules` (inject `None`/`ImportError` via `unittest.mock.patch.dict`) succeeds, and the locking function raises the clear error in that state.
+- README (vendor) and CHANGELOG .9: one sentence each declaring the runtime POSIX-only (Linux/macOS) as of dotfiles.9, replacing or qualifying any Windows example; the installer and runtime copies refreshed (parity), `MANIFEST.sha256` regenerated.
+- Then push, CI, Bot wait on the new diff head (this is a code change, not a base-only merge), `AGMSG-RESULT v1 … round=1`. Same allowed files.
+
+### PONG decision 6 (orchestrator, 2026-10-05 04:52Z) — one correction to 9f9b26f4 before RESULT
+
+In `prune_health_artifacts` (vendor `hook.py` and the project copy) the new `try: import fcntl` block was inserted above the function's docstring, which turns the docstring into a bare string expression. Move the import block below the docstring (first statement after it), refresh parity and `MANIFEST.sha256`, push, and let CI and the Bot wait run on that head; then `AGMSG-RESULT v1 … round=1`. The P1 thread 4180772171 is already resolved by the orchestrator as `fixed:9f9b26f4`.
+
+## Revise round 2 (orchestrator, 2026-10-05 05:17Z) — carries PONG decision 6 only
+
+Your round-1 RESULT for 9f9b26f4 arrived before PONG decision 6 (message 1368, sent 04:49Z) was read. Round 2 is exactly that decision: move the `try: import fcntl` block below the `prune_health_artifacts` docstring (vendor `hook.py` and the project copy), refresh parity and `MANIFEST.sha256`, push, CI, Bot wait on the new diff head, then `AGMSG-RESULT v1 … round=2`. No other change. The orchestrator's review of 9f9b26f4 found nothing else; sweep and audit run on the round-2 head.
+
+### PONG decision 7 (orchestrator, 2026-10-05 05:32Z) — round 2 scope extension for Bot P2 4180970545 (thread PRRT_kwDOSMyAV86o6fwH on f6c47e8a)
+
+Approved as proposed: in the quarantine sweep of `prune_health_artifacts`, tolerate only `FileNotFoundError` from `stat()`/`unlink()` on an individual entry (a concurrent pruner or hook removed it first) and continue with the next entry; every other `OSError` still propagates. Regression test: an entry that disappears between the directory listing and its `stat()`/`unlink()` (patch `Path.stat` or `os.unlink` to raise `FileNotFoundError` once) leaves `prune` exiting 0 with the remaining expired entries removed. Refresh the project copy (parity) and `MANIFEST.sha256`, push, CI, Bot wait on the new diff head, then `AGMSG-RESULT v1 … round=2`. The orchestrator resolves the thread as `fixed:<sha>` after verifying the diff.

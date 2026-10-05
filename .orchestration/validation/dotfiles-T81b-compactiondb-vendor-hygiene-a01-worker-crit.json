@@ -1,0 +1,80 @@
+[
+  {
+    "id": "T81b-independent-review",
+    "body": "Independent security reviewer /root/t97_evidence_review reviewed items1-7. Installer ordering, root-suite bootstrap, Git boundary lookup, orphan reclamation and shared health retention approved. Independently ran97vendor+13receiver tests. Construction-only guarantee matches task decision1; same-user post-construction pathname/SQLite swap remains explicitly documented. Final Verdict: correct after parent-mode fix.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T81b-parent-mode",
+    "body": "P2 high-confidence finding: unconditional fchmod changed existing .claude permissions. Fixed by preserving parent mode while retaining fd traversal. Regression failed before and passes after; reviewer independently passed7path tests including fd cleanup. Runtime mirrors refreshed via installer and manifest regenerated.",
+    "scope": "file",
+    "path": "vendor/compactiondb/.claude/contextdb/contextdb/paths.py",
+    "resolved": true
+  },
+  {
+    "id": "T81b-macos-fixture",
+    "body": "macOS CI comparison used raw /var fixture against canonical /private/var CLI root. One-line expected-root resolve fix reproduced red/green under symlink TMPDIR; independent reviewer confirmed correct with raw payload-cwd assertion retained.",
+    "scope": "file",
+    "path": "tests/unit/test_contextdb_codex_notify.py",
+    "resolved": true
+  },
+  {
+    "id": "T81b-bot-health-record",
+    "body": "P2 Bot4180373615: retain valid JSON non-object health records as malformed. Fixed explicit mapping validation; CLI regression null/[] passes. Independently reviewed.",
+    "scope": "file",
+    "path": "vendor/compactiondb/.claude/contextdb/contextdb/hook.py",
+    "resolved": true
+  },
+  {
+    "id": "T81b-bot-retention-policy",
+    "body": "P2 Bot4180373621 plus independent follow-up: operations must be an object; retention must be a nonnegative integer with representable cutoff. Rejected null/list/string/bool/negative and1000000/10**100 before event mutation.13CLI tests pass and independent final Verdict correct.",
+    "scope": "file",
+    "path": "vendor/compactiondb/.claude/contextdb/contextdb/config.py",
+    "resolved": true
+  },
+  {
+    "id": "T81b-bot-health-symlink",
+    "body": "P2 Bot4180373623: no-follow nonblocking open, regular-file check, and read/write through same fd prevent rewriting symlink targets. Regression proves target unchanged. Independently approved.",
+    "scope": "file",
+    "path": "vendor/compactiondb/.claude/contextdb/contextdb/hook.py",
+    "resolved": true
+  },
+  {
+    "id": "T81b-r1-installer-identity",
+    "body": "P2 audit: positional matching reordered existing [compact,unrelated,*] groups. Fixed identity matching by matcher including None and managed script basename set, preserving slots across interpreter/path upgrades, dropping retired identities and appending new ones. Reversed realfragment regression preserves bytes/mtime/existing backup set; same-matcher command-set test covers upgrade/drop/append. RED2fail, GREEN8installer tests. Independent /root/t97_evidence_review ran8tests and returned Verdict correct.",
+    "scope": "file",
+    "path": "vendor/compactiondb/install.py",
+    "resolved": true
+  },
+  {
+    "id": "T81b-r1-uv-generated-text",
+    "body": "Decision4 generated command wording: all12snippet and4recovery commands now use uv run --no-project. Independent review confirms CLI args/session quoting unchanged and runtime mirror matches; Verdict correct. Offline smoke with unavailable target dependency fails without flag and succeeds with flag, verifying no project synchronization.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T81b-r1-health-preflight-lock-uv",
+    "body": "Bot P2 comments4180596831/4180596834/4180596837 addressed: health cleanup now precedes destructive event pruning; append and retention share exclusive flock with stable empty inode; generated uv examples explicitly require uv on PATH. Independent /root/t97_evidence_review found no actionable findings, ran14CLI+6hook tests and returned Verdict correct. Installer runtime refresh/parity,105vendor tests from both entrypoints and10release checks pass.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T81b-r1-platform-contract",
+    "body": "P1 Bot4180772171 addressed under explicit orchestrator decision5 Linux/macOS-only contract: hook/util fcntl imports deferred to locking calls; missing fcntl raises prescribed RuntimeError before filesystem mutation with no unlocked fallback; imports/help regression passes. README/CHANGELOG explicitly exclude native Windows and qualify legacy example. Independent /root/t97_evidence_review found no actionable findings under decision5, independently ran8hook tests, runtime parity and manifest checks; Verdict correct.107vendor tests from both entrypoints and10release checks pass.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T81b-r2-docstring",
+    "body": "Round2: moved existing prune_health_artifacts docstring before lazy fcntl import, refreshed installer runtime copy and manifest only. Independent /root/t97_evidence_review confirmed AST executable logic unchanged, docstring restored, copies match and manifest checksums pass; Verdict correct. Existing8hook tests and asset parity pass.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T81b-r2-quarantine-race",
+    "body": "P2 Bot4180970545/threadPRRT_kwDOSMyAV86o6fwH addressed under decision7: per-entry catchonlyFileNotFoundError covers stat/unlink disappearance and continues; PermissionError remains visible. Deterministic tests verify remainingexpired cleanup/recentpreservation/eventretention and permissionfailure preserves events. RED15tests2subtestfail, GREEN15pass. Independentreviewer ran15CLI tests, verified docstring first/runtimeparity/manifest; Verdict correct.108vendor tests bothentrypoints and10release checks pass after removing generated review bytecode.",
+    "scope": "review",
+    "resolved": true
+  }
+]

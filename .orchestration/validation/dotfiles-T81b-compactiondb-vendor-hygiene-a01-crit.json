@@ -1,0 +1,14 @@
+[
+  {
+    "id": "T81b-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #275 final head a536af5b0d9edbef2da16638129ea725cd2d27f4 (CompactionDB 2.0.0+dotfiles.9; round-0 head b9acaa39, round-1 head 9f9b26f4). Re-derived: fd-relative no-follow construction in ProjectPaths.ensure() with ExitStack descriptor cleanup and parent-mode preservation; orphan session reclaim before eviction and after each cap batch (NOT IN under-deletes on NULL session ids, safe direction); positional replacement of managed installer hook groups with write/backup only on change; vendor tests bootstrapped through tests/support.py from either root; enclosing opt-in lookup bounded by the nearest .git entry in both the vendor resolver and the Codex receiver, explicit roots and CLAUDE_PROJECT_DIR untouched; explicit prune applies validated health retention through a no-follow regular-file descriptor, non-object records retained. Project copy byte-identical to the vendor tree for cli/config/hook/paths/storage and the four hook scripts at the head; pin, manifest and test literals moved to .9; 13/13 checks pass; the three Codex Bot P2 threads fixed in b9acaa39 were replied to and resolved by the orchestrator; no Bot review on the final head after the 15-minute wait. Observation: a symlinked .claude directory itself now also fails construction (O_NOFOLLOW on the .claude entry) and the SessionEnd hook swallows that failure silently; not present in this environment, documented here for the next vendor note.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T81b-orchestrator-review-rounds-1-2",
+    "body": "Round 1: install.py pairs managed hook groups by identity (matcher + managed-script set), replaces in place, drops stale identities, appends new ones, reversed-order reinstall is a byte/mtime/backup no-op (79e88d81, closes the round-0 audit P2); generated snippet and recovery-packet commands use uv run --no-project with uv documented as a prerequisite (6f7dfdb2, 634cb327); health retention precedes any event mutation in prune and SessionEnd, health log and append_jsonl share an exclusive flock and the emptied log keeps its inode (634cb327); POSIX-only contract with fcntl imported inside the locking functions, clear RuntimeError elsewhere, import regression test, README/CHANGELOG statements (9f9b26f4). Round 2: docstring restored above the lazy import (f6c47e8a); quarantine sweep tolerates only FileNotFoundError per entry, other OSErrors propagate, regression covers stat race, unlink race and PermissionError (a536af5b). Orchestrator verified each fix in the diff before replying fixed:<sha> on its thread; project copy byte-identical to the vendor tree for all seven runtime modules at a536af5b; 13/13 checks; no Bot review on the final head after the worker's wait.",
+    "scope": "review",
+    "resolved": true
+  }
+]

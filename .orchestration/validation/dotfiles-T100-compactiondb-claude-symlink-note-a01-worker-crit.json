@@ -1,0 +1,8 @@
+[
+  {
+    "id": "t100-independent-review",
+    "body": "Independent reviewer /root/t97_evidence_review approved diff against origin/main. Documentation accurately describes existing no-follow refusal and gives a remedy requiring real storage directories. The regression adds symlinked .claude coverage, verifies refusal, and confirms the target remains empty with unchanged permissions. All 7 path tests and manifest checksums pass. Only the four authorized files changed; runtime code, project runtime copies, and version remain unchanged. No findings.",
+    "scope": "review",
+    "resolved": true
+  }
+]

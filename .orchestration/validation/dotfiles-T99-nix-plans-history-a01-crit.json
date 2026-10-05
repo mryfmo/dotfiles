@@ -1,0 +1,8 @@
+[
+  {
+    "id": "T99-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #277 head 43eeb9153f54de4a03614b7edb4c6b606f312509. Re-derived from the diff: two git renames docs/plans/{nix-first-architecture,nix-migration}.md -> docs/history/ with the one-line historical header; a two-sentence docs/history/README.md; the drift-check path in plans/004 repointed; tests/unit/test_aws_cli_acquisition.py reads the new paths with its pinned AWS CLI ownership statements unchanged; docs/plans/ no longer exists at the head; no other content edits; 5 files, +11/-3. Remaining old-path references are only in archived .orchestration/.ua content, as the task allows. CI 13/13; no Bot review after the worker's 15-minute wait; zero threads.",
+    "scope": "review",
+    "resolved": true
+  }
+]

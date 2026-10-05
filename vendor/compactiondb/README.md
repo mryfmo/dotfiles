@@ -313,6 +313,8 @@ raw eventは既定30日で期限切れになります。`prune`は期限切れ�
 
 ## Storage directory safety (dotfiles.9)
 
+As of `2.0.0+dotfiles.9`, the runtime supports Linux/macOS only; native Windows is unsupported, and `.claude/settings.windows.example.json` is a legacy template, not a supported installation path.
+
 Storage construction requires POSIX directory descriptors and `O_NOFOLLOW`
 (Linux/macOS). Each directory is opened without following symlinks, and creation
 and permission changes use its parent descriptor. The Codex receiver's symlink
@@ -353,7 +355,7 @@ make -C vendor/compactiondb test
 uv run python -m unittest discover -s vendor/compactiondb/tests
 ```
 
-本配布物では、39件のunit/integration testに加え、別projectへの二重install、既存hook保持、実wrapper経由のhook ingest、secret redaction、SQLite整合性検証、PostCompact recoveryまでをrelease validatorで確認しています。生成環境にはClaude Code executableがないため、Claude Code UI上の実auto-compaction E2EとWindows実機E2Eだけは未実施です。
+本配布物では、39件のunit/integration testに加え、別projectへの二重install、既存hook保持、実wrapper経由のhook ingest、secret redaction、SQLite整合性検証、PostCompact recoveryまでをrelease validatorで確認しています。生成環境にはClaude Code executableがないため、Claude Code UI上の実auto-compaction E2Eは未実施です。Native Windowsは本releaseのサポート対象外です。
 
 詳細は以下を参照してください。
 

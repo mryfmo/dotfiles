@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import fcntl
 import json
 import os
 import stat
@@ -17,6 +16,11 @@ from .spool import drain_spool, record_error, spool_event
 
 
 def prune_health_artifacts(paths: ProjectPaths, *, days: int) -> None:
+    try:
+        import fcntl
+    except ImportError as exc:
+        raise RuntimeError("ContextDB health-log locking requires a POSIX platform") from exc
+
     """Apply the health retention policy shared by hooks and explicit prune."""
     cutoff_utc = datetime.now(timezone.utc) - timedelta(days=days)
     try:

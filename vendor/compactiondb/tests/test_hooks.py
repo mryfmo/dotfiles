@@ -178,3 +178,35 @@ class HookTests(unittest.TestCase):
                 records = [json.loads(line) for line in self.p.paths.error_log_path.read_text().splitlines()]
                 self.assertEqual("keep this error", records[-1]["message"])
                 self.assertEqual(2 if kept_line else 1, len(records))
+
+
+class PlatformImportTests(unittest.TestCase):
+    def test_imports_and_help_without_fcntl(self) -> None:
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        runtime = Path(__file__).resolve().parents[1] / ".claude/contextdb"
+        result = subprocess.run(
+            [sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); sys.modules['fcntl'] = None; "
+             "import contextdb.hook, contextdb.util; from contextdb.cli import main; main(['--help'])", str(runtime)],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("usage:", result.stdout)
+
+    def test_health_locking_without_fcntl_fails_before_writes(self) -> None:
+        import sys
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from contextdb.hook import prune_health_artifacts
+        from contextdb.util import append_jsonl
+
+        with tempfile.TemporaryDirectory() as temp, patch.dict(sys.modules, {"fcntl": None}):
+            target = Path(temp) / "not-created" / "errors.jsonl"
+            with self.assertRaisesRegex(RuntimeError, "ContextDB health-log locking requires a POSIX platform"):
+                append_jsonl(target, {"message": "test"})
+            self.assertFalse(target.parent.exists())
+            with self.assertRaisesRegex(RuntimeError, "ContextDB health-log locking requires a POSIX platform"):
+                prune_health_artifacts(None, days=30)

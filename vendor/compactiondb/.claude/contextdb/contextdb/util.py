@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import json
 import os
@@ -139,6 +138,11 @@ def atomic_write_text(path: Path, text: str, mode: int = 0o600) -> None:
 
 
 def append_jsonl(path: Path, value: Any, mode: int = 0o600) -> None:
+    try:
+        import fcntl
+    except ImportError as exc:
+        raise RuntimeError("ContextDB health-log locking requires a POSIX platform") from exc
+
     ensure_dir(path.parent)
     data = (canonical_json(value) + "\n").encode("utf-8", errors="replace")
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, mode)

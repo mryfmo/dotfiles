@@ -3,8 +3,8 @@ from __future__ import annotations
 import sys
 import unittest
 
-from tests.support import TempProject
 
+from support import TempProject
 
 class SemanticTests(unittest.TestCase):
     def setUp(self) -> None:

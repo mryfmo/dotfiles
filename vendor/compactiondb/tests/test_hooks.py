@@ -5,7 +5,7 @@ import os
 import time
 import unittest
 
-from tests.support import TempProject
+from support import TempProject
 from contextdb.hook import process_payload
 from contextdb.recover_hook import recovery_output
 from contextdb.spool import drain_spool
@@ -140,4 +140,73 @@ class HookTests(unittest.TestCase):
         finally:
             conn.close()
         self.assertFalse(quarantined.exists())
-        self.assertFalse(self.p.paths.error_log_path.exists())
+        self.assertEqual("", self.p.paths.error_log_path.read_text())
+
+    def test_health_retention_serializes_concurrent_error_appends(self) -> None:
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError
+        from threading import Event
+        from unittest.mock import patch
+        from contextdb.hook import prune_health_artifacts
+        from contextdb.spool import record_error
+
+        for kept_line in ("", '{"ts_utc":"2999-01-01T00:00:00Z"}\n'):
+            with self.subTest(keep_recent=bool(kept_line)):
+                self.p.paths.error_log_path.write_text('{"ts_utc":"2000-01-01T00:00:00Z"}\n' + kept_line)
+                original_inode = self.p.paths.error_log_path.stat().st_ino
+                read_started, release = Event(), Event()
+                loads = json.loads
+
+                def paused_loads(line):
+                    read_started.set()
+                    if not release.wait(5):
+                        raise RuntimeError("test did not release retention")
+                    return loads(line)
+
+                with ThreadPoolExecutor(max_workers=2) as pool, patch("contextdb.hook.json.loads", side_effect=paused_loads):
+                    pruning = pool.submit(prune_health_artifacts, self.p.paths, days=30)
+                    self.assertTrue(read_started.wait(5))
+                    appending = pool.submit(record_error, self.p.paths, "concurrent", "keep this error")
+                    try:
+                        appending.result(timeout=0.2)
+                    except TimeoutError:
+                        pass
+                    finally:
+                        release.set()
+                    pruning.result(timeout=5)
+                    appending.result(timeout=5)
+                self.assertEqual(original_inode, self.p.paths.error_log_path.stat().st_ino)
+                records = [json.loads(line) for line in self.p.paths.error_log_path.read_text().splitlines()]
+                self.assertEqual("keep this error", records[-1]["message"])
+                self.assertEqual(2 if kept_line else 1, len(records))
+
+
+class PlatformImportTests(unittest.TestCase):
+    def test_imports_and_help_without_fcntl(self) -> None:
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        runtime = Path(__file__).resolve().parents[1] / ".claude/contextdb"
+        result = subprocess.run(
+            [sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); sys.modules['fcntl'] = None; "
+             "import contextdb.hook, contextdb.util; from contextdb.cli import main; main(['--help'])", str(runtime)],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("usage:", result.stdout)
+
+    def test_health_locking_without_fcntl_fails_before_writes(self) -> None:
+        import sys
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from contextdb.hook import prune_health_artifacts
+        from contextdb.util import append_jsonl
+
+        with tempfile.TemporaryDirectory() as temp, patch.dict(sys.modules, {"fcntl": None}):
+            target = Path(temp) / "not-created" / "errors.jsonl"
+            with self.assertRaisesRegex(RuntimeError, "ContextDB health-log locking requires a POSIX platform"):
+                append_jsonl(target, {"message": "test"})
+            self.assertFalse(target.parent.exists())
+            with self.assertRaisesRegex(RuntimeError, "ContextDB health-log locking requires a POSIX platform"):
+                prune_health_artifacts(None, days=30)

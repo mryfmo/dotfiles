@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -71,6 +72,16 @@ def _is_contextdb_group(group: dict[str, Any]) -> bool:
     return False
 
 
+def _contextdb_group_key(group: dict[str, Any]) -> tuple[Any, frozenset[str]]:
+    commands = frozenset(
+        name
+        for handler in group.get("hooks", [])
+        for value in [handler.get("command", ""), *(handler.get("args") or [])]
+        for name in re.findall(r"\b(?:contextdb_\w+|query_log|log_event|on_compact)\.py\b", str(value))
+    )
+    return group.get("matcher"), commands
+
+
 def merge_settings(existing: dict[str, Any], fragment: dict[str, Any]) -> tuple[dict[str, Any], int, int]:
     """Replace only prior ContextDB groups while preserving every unrelated hook."""
     result = json.loads(json.dumps(existing))
@@ -79,15 +90,23 @@ def merge_settings(existing: dict[str, Any], fragment: dict[str, Any]) -> tuple[
     removed = 0
     for event, groups in fragment.get("hooks", {}).items():
         current = hooks.setdefault(event, [])
-        retained = [group for group in current if not _is_contextdb_group(group)]
-        removed += len(current) - len(retained)
-        existing_keys = {canonical(group) for group in retained}
-        for group in groups:
-            key = canonical(group)
-            if key not in existing_keys:
+        replacements = list(groups)
+        retained = []
+        for group in current:
+            if not _is_contextdb_group(group):
                 retained.append(group)
-                existing_keys.add(key)
-                added += 1
+                continue
+            key = _contextdb_group_key(group)
+            index = next((i for i, candidate in enumerate(replacements) if _contextdb_group_key(candidate) == key), None)
+            replacement = replacements.pop(index) if index is not None else None
+            if replacement != group:
+                removed += 1
+                added += replacement is not None
+            if replacement is not None:
+                retained.append(replacement)
+        for group in replacements:
+            retained.append(group)
+            added += 1
         hooks[event] = retained
     return result, added, removed
 
@@ -193,7 +212,8 @@ def main() -> int:
     fragment = replace_python(fragment, python)
     merged, added, removed = merge_settings(current, fragment)
     settings_backup = backup(settings_path) if settings_path.exists() and canonical(current) != canonical(merged) else None
-    settings_path.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if not settings_path.exists() or canonical(current) != canonical(merged):
+        settings_path.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     instructions_changed = False
     if not args.skip_instructions:

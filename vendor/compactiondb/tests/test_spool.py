@@ -4,10 +4,10 @@ import json
 import os
 import unittest
 
+from support import TempProject
 from contextdb.normalize import normalize_hook_payload
 from contextdb.spool import WriterLock, drain_spool, spool_event
 
-from tests.support import TempProject
 
 
 class SpoolTests(unittest.TestCase):

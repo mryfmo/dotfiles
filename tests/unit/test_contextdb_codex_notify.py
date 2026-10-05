@@ -102,6 +102,24 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
         self.assertEqual(capture["argv"][-4:], ["ingest", "--ingested-from", "codex", "--no-maintenance"])
         self.assertEqual(json.loads(capture["input"]), {"cwd": str(self.project), **event})
 
+    def test_nested_cwd_finds_opt_in_without_crossing_git_boundary(self) -> None:
+        self.write_capturing_cli()
+        (self.project / ".git").mkdir()
+        nested = self.project / "src" / "module"
+        nested.mkdir(parents=True)
+        for stdin in (False, True):
+            with self.subTest(stdin=stdin):
+                result = self.run_receiver({"cwd": str(nested), "hook_event_name": "SessionEnd"}, stdin=stdin)
+                self.assertEqual("", result.stderr)
+                capture = json.loads(self.capture.read_text())
+                self.assertEqual(str(self.project.resolve()), capture["argv"][1])
+                self.assertEqual(str(nested), json.loads(capture["input"])["cwd"])
+        self.capture.unlink()
+        # A gitfile is also a boundary (submodule or linked worktree).
+        (self.project / "src" / ".git").write_text("gitdir: /irrelevant\n")
+        self.run_receiver({"cwd": str(nested)})
+        self.assertFalse(self.capture.exists())
+
     def test_argv_payload_wins_over_stdin(self) -> None:
         self.write_capturing_cli()
         argv_payload = json.dumps({"cwd": str(self.project), "hook_event_name": "SessionEnd", "session_id": "argv"})

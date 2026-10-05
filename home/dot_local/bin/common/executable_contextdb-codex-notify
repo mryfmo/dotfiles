@@ -12,6 +12,12 @@
 #   line and exit 0 so Codex is never blocked. Python runs isolated (`-I`), so a
 #   module committed in the session's working directory (for example a
 #   `json.py` in an untrusted repository) cannot shadow the standard library.
+#   Lookup walks from the session cwd to the nearest Git root (a .git directory
+#   or worktree gitfile), selecting the nearest opted-in project. Outside Git,
+#   only cwd is checked. The receiver's walk and vendor no-follow directory
+#   construction close pre-construction races; a same-user process swapping a
+#   storage path after construction remains outside this protection because
+#   later I/O, including SQLite, reopens paths by name.
 # @arg $1 string Optional JSON payload; read from stdin when absent.
 
 if ! command -v python3 > /dev/null 2>&1; then
@@ -37,6 +43,14 @@ try:
     if cwd is not None and not isinstance(cwd, str):
         raise ValueError("notify cwd must be a string")
     project_dir = (Path(cwd) if cwd else Path.cwd()).resolve()
+    ancestors = (project_dir, *project_dir.parents)
+    boundary = next((p for p in ancestors if os.path.lexists(p / ".git")), project_dir)
+    for candidate in ancestors:
+        if (candidate / ".claude" / "contextdb").is_dir():
+            project_dir = candidate
+            break
+        if candidate == boundary:
+            break
     opt_in = project_dir / ".claude" / "contextdb"
     cli = Path.home() / ".agents" / "compactiondb" / ".claude" / "hooks" / "contextdb_cli.py"
     # Only a real directory inside the project opts in: a repository could point

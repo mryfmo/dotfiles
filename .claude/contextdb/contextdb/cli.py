@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .config import load_config
-from .hook import process_payload
+from .hook import process_payload, prune_health_artifacts
 from .paths import project_paths
 from .probe import generate_probes
 from .recall import recall
@@ -170,6 +170,8 @@ def _print_json_or_lines(args: argparse.Namespace, value: Any, lines: Sequence[s
 def run(args: argparse.Namespace) -> int:
     paths = project_paths(explicit=args.project_root)
     config = load_config(paths)
+    if args.command == "prune":
+        prune_health_artifacts(paths, days=int(config["operations"]["error_log_retention_days"]))
     store = ContextStore(paths, config)
 
     if args.command == "ingest":

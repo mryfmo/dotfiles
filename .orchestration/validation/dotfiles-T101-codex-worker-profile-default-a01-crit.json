@@ -1,0 +1,8 @@
+[
+  {
+    "id": "T101-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #283 head 462bbb1d (branch pushed by codex-standard-dot-a006 over SSH; PR opened by the orchestrator because the seat's GH_CONFIG_DIR worker credential is not yet provisioned, T90 design). Re-derived from the diff: the Parallel workers --add-worker bullet states that Codex ordinary tasks are seated with --profile standard and security only for trust-boundary tasks (permgate, redaction or secret handling, sandbox or permission policy) with a codex-security-dot-aNNN identity; Orchestrator Playbook step 3 records the chosen worker profile in the task file; README carries one matching sentence; test_codex_worker_profile_defaults_to_standard pins the SKILL tokens inside the Parallel workers section and the step-3 phrase. 3 files, +17/-2; rule unedited.",
+    "scope": "review",
+    "resolved": true
+  }
+]

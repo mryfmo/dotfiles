@@ -29,3 +29,8 @@ Forbidden: product changes (this task is evidence only; defects found become new
 ### Sequencing note (orchestrator, 2026-10-05 09:50Z)
 
 Leg 2 (Codex CompactionDB) runs only after T81b (vendor 2.0.0+dotfiles.9) is merged and deployed on the host; the `/hooks` trust step is performed at that point, never before.
+
+## Orchestrator note (2026-10-05 10:15Z) — Linux legs
+
+- `e2e-claude-claude-linux.md` and `e2e-claude-codex-linux.md`: written from the live regime (a005 in worker-c, a007 in worker-e), with unattended `make update` (0 prompts), `Doctor summary: tools=passed; runtime=passed`, bus rows with `read_at`, and the session-end `make check-regime-boundary` line.
+- `e2e-codex-claude-linux.md` and `e2e-codex-codex-linux.md`: not runnable from a Claude-orchestrated session. `codex-orchestrate` reads `HERDR_AGENTS_ORCHESTRATOR_KIND` only from the rendered profile env (the task's environment override is ignored by design), and switching the manifest to `codex` makes `herdr-agents` refuse the Claude-pair modes, so the Claude orchestrator must be stopped first (README). Each file holds the operator procedure (manifest switch task, `make update`, stop the Claude seat, run `codex-orchestrate --max-turns 3`, paste evidence, revert). Leg 2 (`/compact` rows) still waits on the operator trusting the Codex hooks in `/hooks` (T81b deployed 2.0.0+dotfiles.9).

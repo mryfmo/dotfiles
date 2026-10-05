@@ -1,0 +1,8 @@
+[
+  {
+    "id": "T98b-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #280 head 70f060e7. Re-derived from the diff: a machine-independent form `/(?:home|Users)/runner` without a leading boundary (matches anywhere, like a multi-segment $HOME) placed before the account form; the compiled pattern's shared trailing lookahead (?![\\w.-]) keeps `~` and `~` on the ordinary boundary form, which the new test checks under HOME=~ together with the glued `..F~/.ssh/id` and `x~/y` rewrites; SKILL Orchestrator step 10.4 gains the review-body-finding sentence and Worker step 15 lists review-body findings alongside inline comments, both pinned in test_agmsg_orchestration_docs; the rule file is unedited and the boundary bullet already names the masker (T98). 4 files, +21/-1; no SECRET_PATTERN or credential-scan change. CI 13/13.",
+    "scope": "review",
+    "resolved": true
+  }
+]

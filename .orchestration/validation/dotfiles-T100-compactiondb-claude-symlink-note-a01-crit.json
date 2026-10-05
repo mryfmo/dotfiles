@@ -1,0 +1,8 @@
+[
+  {
+    "id": "T100-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #278 head bc001fc74e672b599daf7e8a7777cd7f4e2fab7f. Re-derived from the diff: one CHANGELOG line under the unreleased 2.0.0+dotfiles.9 entry (no version bump); a README paragraph in the Storage directory safety section stating that a symlinked .claude or storage directory is refused during construction, that the hooks then record nothing (no health log), and the remedy; test_storage_tree_refuses_existing_symlinks now covers .claude itself plus the five storage directories relative to the project root, asserting the link target stays untouched; MANIFEST.sha256 refreshed; no runtime module changed, so the project copy is unaffected. 4 files, +19/-6. Traced ProjectPaths.ensure(): mkdir(.claude, dir_fd=root) hits FileExistsError on the symlink and the O_NOFOLLOW open then raises ELOOP, which the test's assertRaises((OSError, ValueError)) covers.",
+    "scope": "review",
+    "resolved": true
+  }
+]

@@ -1,0 +1,21 @@
+# Sandbox: dotfiles-T83-docs-diet-a01
+
+- **Sandboxed:**
+  - edits (Python edit scripts through `uv run --no-project python` from the session scratchpad; a stray `types.py` in `$TMPDIR` shadows the stdlib there);
+  - the unit tests, `make unit-test`, `make validate-agent-assets` and `make render-check`;
+  - prettier (the task's literal `mise x node npm:prettier` command works from the repository root);
+  - the commit;
+  - two scratch worktrees under the session scratchpad.
+- **Unsandboxed:**
+  - the push, `gh pr create`, `gh pr checks --watch` and the bot-wait polling (`gh` gets 401 in the sandbox);
+  - `uv run .claude/hooks/contextdb_cli.py memory --help`/`add`/`search` (main checkout);
+  - the read-only `git worktree list` / `ls .git/worktrees` inspection after the prune incident;
+  - `agmsg-dispatch`.
+- **Incident:** `git worktree prune` ran sandboxed and attempted to delete two stale admin dirs belonging to other, already-removed worktrees (`worker-b`, `env-converge-T10`); both deletions failed with "resource busy". All live worktrees are intact (report section 4). From now on, scratch worktrees are removed with `git worktree remove` only, never `prune`.
+- **Local ledger:** this worktree's gitignored `.claude/contextdb/state/context.db` makes the local `make validate-agent-assets` fail (report section 4). It was left untouched.
+- **Not done:**
+  - no code outside the two test files;
+  - no `home/dot_local/bin/**`, `scripts/**`, manifest, hook or permission edits;
+  - no `make update`/`apply`/`upgrade`;
+  - no merge, force push or thread resolution;
+  - no local bats.

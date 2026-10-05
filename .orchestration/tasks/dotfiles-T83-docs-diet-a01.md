@@ -55,3 +55,14 @@ gh api repos/mryfmo/dotfiles/pulls/<pr-number> --jq '.mergeable_state'
 ## Dispatch
 
 - 2026-10-05 11:25Z to `claude-standard-dot-a005` (worker-c, wT:p2) after T84 merged as 51c57f19; T69, T77, T78, T81, T82, T84, T85, T86 are on `main`. Branch from `origin/main` 51c57f19 or later with `--no-track`. Runs in parallel with T81b (a007, vendor tree + manifest pin + validator; disjoint from your files). Use `uv run` for every Python invocation (the enforce-uv hook denies `python3`). Re-measure the current word counts first and keep the per-file budgets in the report.
+
+## Revise round 1 (orchestrator, 2026-10-05 03:48Z) — Codex Bot review of the update-branch head d61b7c94 (two P2 threads) and two lessons
+
+The Bot reviewed d61b7c94 at 03:35:10Z, after your diff-head wait; the orchestrator resolved the five earlier threads (`fixed:8694a97e` ×4, `fixed:4a2b1073`). Fix the following on top of d61b7c94, push, `gh pr checks --watch`, Bot wait on the new head, then `AGMSG-RESULT v1 … round=1`.
+
+1. **Thread 4180550064 (`compactiondb.md:5`, P2):** `uv run .claude/hooks/contextdb_cli.py …` creates or syncs a target project's own environment before invoking the stdlib-only CLI. Use `uv run --no-project .claude/hooks/contextdb_cli.py …` everywhere the hand-written docs name the CLI: `compactiondb.md`, the SKILL Stop checklist (both commands), `CLAUDE.md`'s CompactionDB block (12 lines), `home/dot_config/codex/AGENTS.md`. Update `test_contextdb_cli_is_invoked_with_uv_run` to require the `--no-project` form (and keep forbidding bare `python3 .claude/hooks/contextdb_cli.py`). The installer snippet that regenerates the CLAUDE.md block is changed in T81b (PONG decision 4) with the same wording, so the block survives the next `compactiondb-install`.
+2. **Thread 4180550068 (`agmsg-orchestration.md:6`, P2):** the Delegation bullet omits the operator's explicit opt-out that the Activation bullet and the SKILL allow. Add it to the direct-mutation exception in one clause (for example "… or after the operator's explicit opt-out for the current task"); pin it in `test_rule_states_the_invariants`; the ≤ 450 budget holds (405 now).
+3. **SKILL masking commands:** `python3 scripts/validate-agent-assets.py --mask-secrets` → `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets` (your own follow-up note; the enforce-uv hook denies the `python3` form in Claude Bash).
+4. **Lesson from your incident, into the SKILL Worker Playbook:** scratch worktrees are removed with `git worktree remove <path>` only; `git worktree prune` is never run from a sandboxed seat because other worktrees' paths look missing inside the sandbox and prune targets their admin directories. One sentence, pinned in `test_skill_carries_the_session_lessons`.
+
+Same `allowed_files`; the orchestrator resolves the two threads after verifying the fix commit. Append to the report and validation; do not rewrite them.

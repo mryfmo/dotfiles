@@ -1,0 +1,8 @@
+[
+  {
+    "id": "T83-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #274 head 914c765c (docs diet). Re-derived: the agmsg-orchestration rule holds nine invariant bullets at 429 words and the eight always-loaded rules total 1394 words (orchestrator wc -w at the head); the audit command appears once in the SKILL task-level audit bullet and the gate command once in step 10.4, with pointer files counted by the new tests; every hand-written CompactionDB CLI invocation uses uv run --no-project (bare uv run would sync a target project's environment, Bot P2 4180550064); the Delegation bullet carries the operator opt-out (4180550068) and the Permissions bullet defers to the gated exceptions of Worker Playbook step 4 (4180598121); SKILL masking commands are runnable (4180598128); the git worktree prune lesson is in Worker Playbook step 2; .agents/runs/ stays ignored (Bot P1) and the Nix plans stay in place (a test outside allowed_files pins them) — both deviations agreed. Round-0 content (216f6a31, 8694a97e, 4a2b1073, update-branch d61b7c94) had no defect of its own; round 1 came from the Bot review of the update-branch head after the worker's diff-head wait. CI 13/13 on 914c765c; all ten Bot threads replied to and resolved by the orchestrator (nine fixed, one not-applicable: the managed vendor snippet is updated with identical wording in PR #275 / T81b PONG decision 4).",
+    "scope": "review",
+    "resolved": true
+  }
+]

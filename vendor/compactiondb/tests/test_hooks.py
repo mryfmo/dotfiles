@@ -140,4 +140,41 @@ class HookTests(unittest.TestCase):
         finally:
             conn.close()
         self.assertFalse(quarantined.exists())
-        self.assertFalse(self.p.paths.error_log_path.exists())
+        self.assertEqual("", self.p.paths.error_log_path.read_text())
+
+    def test_health_retention_serializes_concurrent_error_appends(self) -> None:
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError
+        from threading import Event
+        from unittest.mock import patch
+        from contextdb.hook import prune_health_artifacts
+        from contextdb.spool import record_error
+
+        for kept_line in ("", '{"ts_utc":"2999-01-01T00:00:00Z"}\n'):
+            with self.subTest(keep_recent=bool(kept_line)):
+                self.p.paths.error_log_path.write_text('{"ts_utc":"2000-01-01T00:00:00Z"}\n' + kept_line)
+                original_inode = self.p.paths.error_log_path.stat().st_ino
+                read_started, release = Event(), Event()
+                loads = json.loads
+
+                def paused_loads(line):
+                    read_started.set()
+                    if not release.wait(5):
+                        raise RuntimeError("test did not release retention")
+                    return loads(line)
+
+                with ThreadPoolExecutor(max_workers=2) as pool, patch("contextdb.hook.json.loads", side_effect=paused_loads):
+                    pruning = pool.submit(prune_health_artifacts, self.p.paths, days=30)
+                    self.assertTrue(read_started.wait(5))
+                    appending = pool.submit(record_error, self.p.paths, "concurrent", "keep this error")
+                    try:
+                        appending.result(timeout=0.2)
+                    except TimeoutError:
+                        pass
+                    finally:
+                        release.set()
+                    pruning.result(timeout=5)
+                    appending.result(timeout=5)
+                self.assertEqual(original_inode, self.p.paths.error_log_path.stat().st_ino)
+                records = [json.loads(line) for line in self.p.paths.error_log_path.read_text().splitlines()]
+                self.assertEqual("keep this error", records[-1]["message"])
+                self.assertEqual(2 if kept_line else 1, len(records))

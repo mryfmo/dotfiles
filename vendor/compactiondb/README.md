@@ -326,11 +326,20 @@ Implicit session cwd lookup selects the nearest `.claude/contextdb` within the
 nearest `.git` directory/gitfile boundary. Outside Git, only cwd is checked.
 Explicit CLI project roots and `CLAUDE_PROJECT_DIR` retain their priority.
 Explicit `prune` applies `operations.error_log_retention_days` to `errors.jsonl`
-and quarantined spool files, independently of which runtime emitted SessionEnd.
+and quarantined spool files, independently of which runtime emitted SessionEnd. Health retention finishes before
+explicit prune mutates the event database. Error appends and retention share an
+exclusive file lock; an emptied log remains as an empty file to preserve the
+locked inode for concurrent appenders.
 
 ## 開発・検証
 
 runtimeはPython標準libraryのみで動作します。Python 3.10以上を対象にしています。
+
+Generated instruction and recovery command examples additionally require `uv` on
+PATH. The dotfiles installation provides it; standalone users following those
+examples must install uv first. `uv run --no-project` skips project-environment
+synchronization; it does not make the uv executable optional. The Python runtime
+and installer-selected hook interpreter do not themselves depend on uv.
 
 ```bash
 make test

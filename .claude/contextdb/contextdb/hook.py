@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import stat
@@ -26,6 +27,7 @@ def prune_health_artifacts(paths: ProjectPaths, *, days: int) -> None:
         with os.fdopen(fd, "r+", encoding="utf-8") as log:
             if not stat.S_ISREG(os.fstat(log.fileno()).st_mode):
                 raise ValueError("ContextDB health log must be a regular file")
+            fcntl.flock(log.fileno(), fcntl.LOCK_EX)
             retained = []
             for line in log.read().splitlines():
                 try:
@@ -38,12 +40,10 @@ def prune_health_artifacts(paths: ProjectPaths, *, days: int) -> None:
                     continue
                 if ts.tzinfo is None or ts >= cutoff_utc:
                     retained.append(line)
-            if retained:
-                log.seek(0)
-                log.write("\n".join(retained) + "\n")
-                log.truncate()
-            else:
-                paths.error_log_path.unlink()
+            # Keep the inode, even when empty: appenders may already be waiting on its lock.
+            log.seek(0)
+            log.write("\n".join(retained) + ("\n" if retained else ""))
+            log.truncate()
     cutoff = time.time() - days * 86400
     for path in paths.quarantine_dir.glob("*"):
         if path.name != ".gitkeep" and path.is_file() and path.stat().st_mtime < cutoff:
@@ -71,10 +71,10 @@ def process_payload(
             try:
                 from .storage import ContextStore
                 days = int(config.get("operations", {}).get("error_log_retention_days", 30))
+                prune_health_artifacts(paths, days=days)
                 store = ContextStore(paths, config)
                 with closing(store.connect()) as conn, conn:
                     store.prune_expired(conn, paths.project_id, days=days)
-                prune_health_artifacts(paths, days=days)
             except Exception:
                 pass
     except Exception as exc:

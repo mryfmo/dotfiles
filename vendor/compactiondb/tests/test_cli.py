@@ -96,7 +96,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual({"recent.json", ".gitkeep"}, {p.name for p in self.p.paths.quarantine_dir.iterdir()})
         self.p.paths.error_log_path.write_text(lines[0] + "\n")
         self.invoke(["prune"])
-        self.assertFalse(self.p.paths.error_log_path.exists())
+        self.assertEqual("", self.p.paths.error_log_path.read_text())
 
     def test_prune_rejects_invalid_health_policy_before_removing_events(self) -> None:
         for operations in (None, [], {"error_log_retention_days": -1}, {"error_log_retention_days": "3"}, {"error_log_retention_days": True}, {"error_log_retention_days": 1000000}, {"error_log_retention_days": 10 ** 100}):
@@ -112,10 +112,18 @@ class CliTests(unittest.TestCase):
         original = '{"ts_utc":"2000-01-01T00:00:00Z"}\n{"ts_utc":"2999-01-01T00:00:00Z"}\n'
         outside.write_text(original)
         self.p.paths.error_log_path.symlink_to(outside)
-        code, _, err = self.invoke(["prune"])
+        code, _, err = self.invoke(["prune", "--days", "0"])
         self.assertEqual(2, code, err)
+        self.assertEqual(2, self.p.count("events"))
         self.assertEqual(original, outside.read_text())
         self.assertTrue(self.p.paths.error_log_path.is_symlink())
+
+    def test_prune_rejects_invalid_utf8_health_log_before_removing_events(self) -> None:
+        self.p.paths.error_log_path.write_bytes(b"\xff")
+        code, _, err = self.invoke(["prune", "--days", "0"])
+        self.assertEqual(2, code, err)
+        self.assertEqual(2, self.p.count("events"))
+        self.assertEqual(b"\xff", self.p.paths.error_log_path.read_bytes())
 
     def test_ingest_no_maintenance_records_session_end_without_retention(self) -> None:
         conn = self.p.store.connect()

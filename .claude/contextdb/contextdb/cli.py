@@ -170,6 +170,8 @@ def _print_json_or_lines(args: argparse.Namespace, value: Any, lines: Sequence[s
 def run(args: argparse.Namespace) -> int:
     paths = project_paths(explicit=args.project_root)
     config = load_config(paths)
+    if args.command == "prune":
+        prune_health_artifacts(paths, days=int(config["operations"]["error_log_retention_days"]))
     store = ContextStore(paths, config)
 
     if args.command == "ingest":
@@ -363,7 +365,6 @@ def run(args: argparse.Namespace) -> int:
             # rows were deleted or the file itself is still over the cap.
             force = removed > 0 or capped > 0 or in_use + free > max_db_bytes
             vacuumed = store.vacuum_if_fragmented(conn, threshold_bytes=VACUUM_FREE_BYTES, force=force)
-            prune_health_artifacts(paths, days=int(config["operations"]["error_log_retention_days"]))
             result = {
                 "removed_events": removed,
                 "days_override": args.days,

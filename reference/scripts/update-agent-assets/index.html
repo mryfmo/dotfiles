@@ -3660,6 +3660,7 @@
 <li><code>has_command</code></li>
 <li><code>main</code></li>
 <li><code>provision_codex_understand_anything_runtime</code></li>
+<li><code>refresh_codex_hook_trust</code></li>
 <li><code>remove_node_global_agent_cli_shadows</code></li>
 <li><code>resolve_dotfiles_source_dir</code></li>
 <li><code>run_pinned_installer</code></li>
@@ -4110,6 +4111,39 @@
 <span class="w">    </span>herdr<span class="w"> </span>integration<span class="w"> </span>install<span class="w"> </span>claude
 <span class="w">    </span>herdr<span class="w"> </span>integration<span class="w"> </span>install<span class="w"> </span>codex
 <span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">"ensure_herdr_integrations"</span><span class="w"> </span>integration<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'NF { version = $NF } END { print version ? version : "unknown" }'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/hooks/herdr-agent-state.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.codex/herdr-agent-state.sh"</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"herdr integration install claude"</span><span class="w"> </span><span class="s2">"herdr integration install codex"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Re-apply only the managed Codex config files, so their modify scripts hash the</span>
+<span class="c1">#   plugin hooks this run has just installed (Codex runs a hook only when its trust hash is current).</span>
+<span class="c1">#   Runs last and unattended: `chezmoi apply --force`, no prompt, no network.</span>
+<span class="c1"># @exitcode 0 Always; a failed refresh only warns, and the next apply retries it.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>refresh_codex_hook_trust<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>managed<span class="w"> </span>target
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">pattern</span><span class="o">=</span><span class="s1">'/\.codex/([a-z0-9_]+\.)?config\.toml$'</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">targets</span><span class="o">=()</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>chezmoi<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">managed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>chezmoi<span class="w"> </span>managed<span class="w"> </span>--path-style<span class="o">=</span>absolute<span class="w"> </span>--include<span class="o">=</span>files<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: Codex hook trust not refreshed: chezmoi managed failed; the next apply retries it.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>target<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">pattern</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">targets</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">managed</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${#</span><span class="nv">targets</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">"codex hook trust"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>chezmoi<span class="w"> </span>apply<span class="w"> </span>--force<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">targets</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: Codex hook trust not refreshed: chezmoi apply failed; the next apply retries it.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4776,6 +4810,8 @@
 <span class="w">    </span>update_compactiondb
 <span class="w">    </span>update_agmsg
 <span class="w">    </span>ensure_herdr_integrations
+<span class="w">    </span><span class="c1"># After every plugin update above, so the trust hashes follow the plugin content of this run.</span>
+<span class="w">    </span>refresh_codex_hook_trust
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

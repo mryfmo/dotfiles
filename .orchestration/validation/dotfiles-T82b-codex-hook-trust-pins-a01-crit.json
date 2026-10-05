@@ -1,0 +1,56 @@
+[
+  {
+    "id": "T82b-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #284 (round-0 heads af569d15/c54fdc0c; round-1 head 315e7394; round-2 head d8702155; round-3 head 25522053; round-4 head 00a5b09a; round-5 head f6e99bad; round-6 head a6c997b7; round-7 final head ad05e8be). Re-derived from the diff: the manifest's codex.hooks.state declares eight hooks (four config hooks keyed {{ .chezmoi.homeDir }}/.codex/config.toml:<event>:0:0 with enabled only, crit and three ponytail plugin hooks with a literal fallback hash and enabled); the renderer emits a generated hook-trust block (HOOK_TRUST data + codex_hook_hash + declared_hook + declared_hook_state + drop_declared_hook_state) into every profile modify script and into a marked region of the hand-maintained base modify script, guarded by render-check; codex_hook_hash follows codex-rs rust-v0.160.0 discovery.rs (key-sorted compact JSON of event_name, matcher except for user_prompt_submit/stop/interrupt, and the normalised command handler with timeout defaults 600 or 1..3 for session_end/interrupt, async, statusMessage), returning None for unmodelled handlers so the caller falls back to the pin; a config hook's hash is computed from the manifest's own definition with the host home substituted (never from the live config, so a tampered live hook does not match and Codex marks it modified), a plugin hook's from the single installed copy under ~/.codex/plugins/cache/<marketplace>/<plugin>/*/<file> else the literal with a warning; declared keys replace existing entries with one divergence warning, undeclared keys are kept; state fields other than trusted_hash and enabled are rejected. Worker dry run on this host: all eight computed hashes equal Codex's currentHash (app-server hooks/list), three stale ponytail pins replaced, second pass byte-identical and quiet; 880 unit tests, render-check and validator clean. README replaces the interactive /hooks paragraph with the trust semantics (only hooks this repository ships or installs; a foreign hook stays untrusted; a plugin upgrade by make update is trusted by that make update). Version risk noted: the algorithm is pinned to Codex 0.160.0 and a change makes hooks 'modified' (skipped), never run untrusted. Live verification after make update is the orchestrator's (headless codex exec leaves a session_end row). CI 13/13 on c54fdc0c; no Bot review (quota notice).",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T82b-orchestrator-review-round-1",
+    "body": "Round 1 (944ed523, 315e7394): scripts/update-agent-assets.sh gains refresh_codex_hook_trust(), run as the last step after every plugin update: it lists the managed Codex config files with chezmoi managed, re-applies only those with chezmoi apply --force (unattended, no network; a failure only warns and the next apply retries), so the modify scripts re-hash the hooks of the plugin content this run installed; the Makefile gains the codex-hook-trust target that runs the same function; the generated block resolves the plugin version Codex loads (installed.rs active_plugin_version: 'local' else the highest by Codex's compare_plugin_versions, semver with pre-release and build ordering) instead of falling back when two versions are cached; tests cover the version order, the two-cached-versions case, the refresh ordering and the base merge; README states that config-hook trust follows the manifest definition (a hand-edited hook stays untrusted) and that the refresh runs last in make update. Report wordings corrected (mergeable_state clean; final head label). No Bot review (quota).",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T82b-orchestrator-review-round-2",
+    "body": "Round 2 (d8702155): active_plugin_version skips symlinked version entries as installed.rs does (a real 4.12.0 directory plus a symlinked local now selects 4.12.0); parse_semver rejects leading-zero numeric pre-release identifiers like the semver crate (build identifiers may keep them) and an invalid candidate takes the lexical path, so 1.10.0-01 vs 1.9.0 selects 1.9.0; regression tests paste the old-head and fixed outputs; live dry run unchanged (8 current hashes, 3 ponytail replaced, idempotent); 885 unit tests, render-check and validator clean; CI 13/13; no Bot review (quota).",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T82b-orchestrator-review-round-3",
+    "body": "Round 3 (25522053): compare_prerelease and compare_build mirror semver 1.0.27 Prerelease::cmp and BuildMetadata::cmp (a release sorts above any pre-release; empty build sorts below a non-empty one; numeric build identifiers order by stripped length, stripped value, then original length so 0 < 00 < 1 < 01 < 001 < 2; numeric before alphanumeric; prefix rule), parse_semver also requires major/minor/patch to fit a u64 and keeps the leading-zero pre-release rejection; the [hooks.state.<key>] table names are matched by the decoded TOML key (tomllib when available, a basic/literal-string grammar fallback for Python < 3.11), so an existing single-quoted entry for a declared key is replaced instead of duplicated and the output parses; tests cover the build-metadata cases from the finding, the single-quoted replacement with a tomllib parse, and the version order; CI 13/13 on 25522053.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T82b-orchestrator-review-round-4",
+    "body": "Round 4 (00a5b09a): table_name() now parses a [table] or [[array]] header quote-aware (basic strings with escapes, literal strings) and accepts a trailing # comment, shared by the base and every profile merge (runtime prefixes, retired servers, hook trust), so an unrelated commented table is preserved when a declared chunk is dropped and a commented declared header is replaced once; tests in test_codex_config_merge and test_generate_agent_configs parse the result with tomllib and show the previous head failing (TOMLDecodeError, KeyError custom-hook); the round-4 dry run ran inside the sandbox; 891 unit tests; CI 13/13; no Bot review (quota).",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T82b-orchestrator-review-round-5",
+    "body": "Round 5 (f6e99bad): split_chunks tracks multiline basic and literal string context line by line (multiline_string_after: same-line open and close, backslash escapes in basic strings, up to two extra trailing quotes before the closing delimiter, comments and single-line strings skipped), so a header-like line inside developer_instructions or notes is string content and never a chunk boundary; identical in the base and all profile scripts; tests show such configs surviving the base and profile merges verbatim and parsing with tomllib (13 tracker cases, round-4 tests still green, previous head fails); the dry run ran in the sandbox and is byte-identical to round 4; 894 unit tests; CI 13/13; no Bot review (quota).",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T82b-orchestrator-review-round-6",
+    "body": "Round 6 (a6c997b7): drop_declared_assignments removes, inside the [hooks.state] parent chunk, the inline-table and dotted assignments whose decoded leading key is declared (multiline-aware, other lines kept, one divergence warning per key); guarded_merge parses the merged result with tomllib and requires every declared key to be present, otherwise it writes the current content back unchanged with one WARN line and exit 0, so chezmoi apply can never deploy unreadable Codex TOML; both in the base and every profile script; tests cover both forms in base and profile merges and the guard with a patched splitter; the dry run ran in the sandbox and is byte-identical to round 5; 898 unit tests; CI 13/13 after one rerun of a transient snapcraft HTTP 408 in the ubuntu public-bootstrap job; no Bot review (quota).",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T82b-orchestrator-review-round-7",
+    "body": "Round 7 (ad05e8be): split_chunks names every table canonically through canonical_table_name (key_path decodes the dotted key path with tomllib when available, else a quote-aware segment grammar; bare segments where TOML allows them, basic strings otherwise), so `[hooks . state]`, `[\"hooks\".\"state\"]` and `[ hooks . state . \"<key>\" ]` share one identity with the canonical spelling wherever the merge compares, groups or prefixes names, while kept chunks are emitted with their original text; is_hook_state_parent compares the canonical name; regression tests cover both parent spellings and the spaced child, with the earlier rounds' cases green; CI 13/13.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T82b-orchestrator-review-round8",
+    "body": "Orchestrator adversarial review of PR #284 round-8 head 569bc44d (merge of main 0f18bce9 into the branch after #285; diff commit 0f6e7008). Re-derived from the diff ad05e8be..0f6e7008 in the renderer and all seven generated modify scripts: LEADING_HOOK_STATE_KEY is replaced by DOTTED_KEY_ASSIGNMENT (a whole dotted key before '='), HOOK_STATE_SCOPES maps the root chunk (None), 'hooks' and 'hooks.state' to their key paths, and drop_declared_assignments() decodes the assignment's dotted key with key_path(), prepends the chunk scope and takes element 2 when the path starts with hooks.state, so state.\"<key>\".trusted_hash under [hooks] and hooks.state.\"<key>\".enabled at the root are removed with the same divergence warning, while an inline container (state = {...} under [hooks], hooks = {...} at the root: path length 2) is left to the round-6 parse guard, exactly the orchestrator's round-8 boundary. README:369-370 and the manifest comment now say a config hook is hashed from its manifest definition embedded in the modify script. Tests: both new dotted scopes in base and profile merges (parsed, replaced once, no guard fallback) plus the container guard case; 905 unit tests OK in the pasted output; CI green on the diff head and on the merge head; mergeStateStatus CLEAN; no review threads; Bot coverage none (quota).",
+    "scope": "review",
+    "resolved": true
+  }
+]

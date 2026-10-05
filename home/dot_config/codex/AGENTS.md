@@ -11,7 +11,7 @@
 
 ## プロジェクトの構成について
 
-- リポジトリ作業では `agmsg-orchestration` skill の「Codex worker worklogs」を読み、plan と todo を常に更新してください。
+- リポジトリ作業では `agmsg-orchestration` skill の「Codex seat worklogs」を読み、plan と todo を常に更新してください。
 - plan/todo/learn はコミットせず、`active` な todo は `owner` ごとに 1 件までにしてください。
 
 ## コーディング全般について
@@ -37,9 +37,9 @@
 - PR を merge する前に、最終 head commit に対する GitHub のフィードバックを `scripts/pr-feedback.py <pr> --json <out>` で必ず全件取得してください。issue comment、review、thread の解決状態付き inline review comment、失敗・未完了の check run、全レベル(`notice`・`warning`・`failure`)の check-run annotation、commit status を含みます。
 - 最終 head に `@coderabbitai full review` を依頼してもかまいません(任意)。プランは 1 時間に 1 review で、review event ごとに 1 回消費します(docs.coderabbit.ai/management/rate-limits)。依頼は最終 head で多くとも 1 回にしてください。CodeRabbit の review が存在する場合は他の item と同様に取得して disposition を付けます。ゲートは bot review を要求しません。
 - 全 item に disposition を付けてください。`fixed:<commit>`(その commit で根本原因を修正)か `not-applicable:<理由>` のどちらかです。stopgap・抑制・「後で」は disposition として認めません。`failure` と `warning` の annotation を未処分のまま残さず、`failure` を `not-applicable` にする場合は 20 文字以上の具体的な理由が必要です。
-- 記入済み JSON を `.orchestration/validation/<task>-pr-feedback.json` に保存し、`BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review` で統合ガードに渡し、disposition の要約を acceptance 記録に書いてください。この JSON は `scripts/validate-agent-assets.py --mask-secrets` でマスクしてかまいません(キーと文字列値ごとにマスクします)。ゲートは source・url・level・path・line・本文で項目を識別し、本文とパスはそのままか、ちょうどそのマスク結果である場合に受け付けます。`BASE` 付きでレビューが必要な差分には、最終 head の task 監査 `AUDIT_EVIDENCE=.orchestration/validation/<task>-audit-<sha7>.md`(feedback JSON と同じ `<task>`。`herdr-agents --audit <head-sha> --task <task>` で作成します。`--task` なしでは `audit-<sha>.md` になり、ゲートは受け付けません)も渡してください。結論の `Verdict:` 行は codex の最終メッセージ `<file>.last.md` だけから読みます。このファイルは中身付きで存在する必要があり、`correct` が必要です。`incorrect` の場合は `AUDIT_DISPOSITIONS=<.orchestration/acceptance/ の記録>` に、`[P0-P3]` の指摘ごとに監査順の番号を付けた `audit-finding: <n> … not-applicable:<20 文字以上の理由>` 行を 1 行ずつ書いてください(`fixed:` は head が動くので再監査が必要です)。`.orchestration/` だけを変更する PR には監査は不要です。
+- 記入済み JSON を `.orchestration/validation/<task>-pr-feedback.json` に保存して統合ゲートに渡し(レビューが必要な差分には最終 head の task 監査も渡します)、disposition の要約を acceptance 記録に書いてください。ゲートのコマンド、証跡の規則、監査の実行方法、merge 手順は agmsg-orchestration SKILL の Orchestrator Playbook step 10 にだけ書かれています。
 - 新しい push の後は取得をやり直してください。disposition は記入した時点の head commit にだけ有効です。
-- boundary PR(`orchestration/boundary-<date>[-n]`、`.orchestration` のファイルだけを変更)は `make require-crit-review` を通さずに `gh pr merge --squash --auto` で merge するので、sweep JSON も監査も不要です(`BASE` 付きでゲートを実行すると `PR_FEEDBACK_EVIDENCE` を要求されます)。その PR の Bot thread には disposition を返信して resolve し、次の boundary commit のメッセージでその PR を名指ししてください。
+- boundary PR(`.orchestration` のファイルだけを変更)の扱いも同じ step 10 にあります。
 
 ## モデル選択
 
@@ -70,4 +70,4 @@
 ## CompactionDB
 
 - CompactionDB 導入済み project では、Codex standard/deep profile の turn 完了が同じ project DB へ自動記録されます。
-- 永続的な決定は従来どおり `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project` で明示記録します。
+- 永続的な決定は従来どおり `uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project` で明示記録します。

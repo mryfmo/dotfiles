@@ -159,6 +159,13 @@ make upgrade SYSTEM=1
 upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
 tooling mode.
 
+The **operator phase** is the interactive part, run once per machine:
+`./setup.sh` (chezmoi init prompts, the age passphrase, the sudo keepalive, the
+macOS Command Line Tools prompt, Ubuntu `chsh`, the SSH, `gh` and Codex logins,
+and the `run_once_*` scripts), plus `sudo -v` right before `make update` when
+the pulled diff touches `install/**` or `.chezmoiscripts/**`. Everything after
+it is unattended: `make update` never prompts.
+
 `make update` applies all committed public and private chezmoi state, including
 scripts. Chezmoi records each `run_once` content hash, so new or changed
 one-time installers run once while unchanged installers stay skipped. This
@@ -291,7 +298,8 @@ effort) to implement one task at a time. The auditor uses the `audit` profile
 for one independent task-level audit of each final head, run as the agmsg-orchestration SKILL's task-level audit bullet describes. The responsibility
 boundaries live in `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/agmsg-orchestration.md`, and the `## Audit`
-section of `AGENTS.md`.
+section of `AGENTS.md`. Neither Codex model needs API-key authentication: both
+answered under the ChatGPT login (probe 2026-10-05).
 
 On Ubuntu 24.04 and later, `kernel.apparmor_restrict_unprivileged_userns=1`
 stops `/usr/bin/bwrap` from creating the user namespaces that sandboxed Codex
@@ -344,8 +352,8 @@ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make requi
 CRIT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make require-crit-review
 # Only use this explicit escape hatch when the user disables review.
 CRIT_REVIEW=off make require-crit-review
-# PR integration adds BASE, PR_FEEDBACK_EVIDENCE and AUDIT_EVIDENCE in the order of the
-# agmsg-orchestration SKILL's Orchestrator Playbook step 10 (see below).
+# PR integration adds BASE, PR_FEEDBACK_EVIDENCE and AUDIT_EVIDENCE as the
+# agmsg-orchestration SKILL's Orchestrator Playbook step 10 gives them (see below).
 
 # Then upgrade installed tools using the applied mise and agent settings.
 make upgrade
@@ -628,7 +636,9 @@ it opens as one plain pane with no agent layout. Agent panes are added
 lazily — starting Claude Code inside a Herdr pane fires the Claude
 `SessionStart` hook, which runs `herdr-agents --attach` (its stdout reaches
 the session context; stderr is logged to `~/.config/herdr/herdr-agents.log`).
-Exiting Herdr returns to the shell.
+Exiting Herdr returns to the shell. A Codex orchestrator does not use this
+pair: with `orchestrator_kind: codex` the agmsg regime runs through
+`codex-orchestrate` (see "Codex orchestration without a pane").
 
 A Claude Code session started from a plain shell outside Herdr (for example
 over mosh or ssh, or `claude -p`) never seats a worker. Its SessionStart hook
@@ -862,9 +872,9 @@ a regime repository, and nothing elsewhere, without a Herdr server, so a Codex
 orchestrator's first turn can carry it.
 
 `herdr-agents --audit <sha> [--task ID] [--out PATH] [--timeout SECONDS] [DIR]` makes the
-orchestrator's Codex audit visible: it runs
-`codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> exec --sandbox read-only -C DIR -o PATH.last.md '<prompt>'`
-in the pair workspace's dedicated `audit` tab (created once, then reused and
+orchestrator's Codex audit visible: it runs the `audit` profile's read-only
+`codex exec` (the command is in the agmsg-orchestration SKILL's task-level audit
+bullet) in the pair workspace's dedicated `audit` tab (created once, then reused and
 left open). Without `--task`, the prompt tells the auditor to audit only
 `<sha>`, follow the AGENTS.md "Audit" section, and end with one concluding
 `Verdict:` line.
@@ -910,11 +920,8 @@ with `Audit verdict: unmasked` and exit 1. The busy check is based on the audit 
 shell alone means free), not on its visible snapshot, which can be stale for a
 background tab. The audit pane is labeled `audit`, so the pair modes never
 reuse it, and the auditor still has no agmsg identity. It exits 2 without a
-managed workspace; run the same audit headless there:
-
-```sh
-codex --profile audit exec --sandbox read-only -C <dir> -o <file> '<prompt>'
-```
+managed workspace; run the same audit headless there, in the form the
+agmsg-orchestration SKILL's task-level audit bullet gives.
 
 Per-task agent switching happens at the profile layer, never in the layout:
 the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE`, otherwise from the manifest
@@ -1048,12 +1055,8 @@ gh pr comment <pr> --body '@coderabbitai full review'
 python3 scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json
 # Fill every item's disposition with fixed:<commit> or not-applicable:<reason>,
 # run the task-level audit of the head, write the acceptance record, then run
-# the integration guard against the base branch (agmsg-orchestration SKILL step 10).
-# For a `Verdict: incorrect` audit, also pass the acceptance record that
-# dispositions each finding: AUDIT_DISPOSITIONS=.orchestration/acceptance/<task>.md
-BASE=origin/main PR_FEEDBACK_EVIDENCE=.orchestration/validation/<task>-pr-feedback.json \
-  AUDIT_EVIDENCE=.orchestration/validation/<task>-audit-<sha7>.md \
-  make require-crit-review
+# the integration gate exactly as the agmsg-orchestration SKILL's
+# Orchestrator Playbook step 10 gives it.
 ```
 
 With `BASE=<ref>` (`--base <ref>` on the script), the guard also reviews the

@@ -3585,7 +3585,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_contextdb-codex-notify">home/dot_local/bin/common/executable_contextdb-codex-notify<a class="headerlink" href="#homedot_localbincommonexecutable_contextdb-codex-notify" title="Permanent link">&para;</a></h1>
-<p>Codex <code>notify</code> passes the JSON payload as the first argument; Codex command hooks (PreCompact, PostCompact, SessionEnd) deliver it on stdin. Either way the payload is ingested with <code>--no-maintenance</code>, which skips the SessionEnd retention pass, and the CLI gets 2 seconds, so the SessionEnd hook returns within Codex's 3-second limit; retention stays on the explicit <code>prune</code> command and on Claude Code's own SessionEnd hook. Failures print one stderr line and exit 0 so Codex is never blocked. Python runs isolated (<code>-I</code>), so a module committed in the session's working directory (for example a <code>json.py</code> in an untrusted repository) cannot shadow the standard library.</p>
+<p>Codex <code>notify</code> passes the JSON payload as the first argument; Codex command hooks (PreCompact, PostCompact, SessionEnd) deliver it on stdin. Either way the payload is ingested with <code>--no-maintenance</code>, which skips the SessionEnd retention pass, and the CLI gets 2 seconds, so the SessionEnd hook returns within Codex's 3-second limit; retention stays on the explicit <code>prune</code> command and on Claude Code's own SessionEnd hook. Failures print one stderr line and exit 0 so Codex is never blocked. Python runs isolated (<code>-I</code>), so a module committed in the session's working directory (for example a <code>json.py</code> in an untrusted repository) cannot shadow the standard library. Lookup walks from the session cwd to the nearest Git root (a .git directory or worktree gitfile), selecting the nearest opted-in project. Outside Git, only cwd is checked. The receiver's walk and vendor no-follow directory construction close pre-construction races; a same-user process swapping a storage path after construction remains outside this protection because later I/O, including SQLite, reopens paths by name.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_contextdb-codex-notify</code></li>
@@ -3607,6 +3607,12 @@
 <span class="c1">#   line and exit 0 so Codex is never blocked. Python runs isolated (`-I`), so a</span>
 <span class="c1">#   module committed in the session's working directory (for example a</span>
 <span class="c1">#   `json.py` in an untrusted repository) cannot shadow the standard library.</span>
+<span class="c1">#   Lookup walks from the session cwd to the nearest Git root (a .git directory</span>
+<span class="c1">#   or worktree gitfile), selecting the nearest opted-in project. Outside Git,</span>
+<span class="c1">#   only cwd is checked. The receiver's walk and vendor no-follow directory</span>
+<span class="c1">#   construction close pre-construction races; a same-user process swapping a</span>
+<span class="c1">#   storage path after construction remains outside this protection because</span>
+<span class="c1">#   later I/O, including SQLite, reopens paths by name.</span>
 <span class="c1"># @arg $1 string Optional JSON payload; read from stdin when absent.</span>
 
 <span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>python3<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -3632,6 +3638,14 @@
 <span class="s">    if cwd is not None and not isinstance(cwd, str):</span>
 <span class="s">        raise ValueError("notify cwd must be a string")</span>
 <span class="s">    project_dir = (Path(cwd) if cwd else Path.cwd()).resolve()</span>
+<span class="s">    ancestors = (project_dir, *project_dir.parents)</span>
+<span class="s">    boundary = next((p for p in ancestors if os.path.lexists(p / ".git")), project_dir)</span>
+<span class="s">    for candidate in ancestors:</span>
+<span class="s">        if (candidate / ".claude" / "contextdb").is_dir():</span>
+<span class="s">            project_dir = candidate</span>
+<span class="s">            break</span>
+<span class="s">        if candidate == boundary:</span>
+<span class="s">            break</span>
 <span class="s">    opt_in = project_dir / ".claude" / "contextdb"</span>
 <span class="s">    cli = Path.home() / ".agents" / "compactiondb" / ".claude" / "hooks" / "contextdb_cli.py"</span>
 <span class="s">    # Only a real directory inside the project opts in: a repository could point</span>

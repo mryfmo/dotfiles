@@ -2,6 +2,7 @@
 
 ## 2.0.0+dotfiles.9
 
+- Document and test that the project's `.claude` must be a real directory: a symlinked `.claude` or storage directory is refused, and the hooks record nothing there, including no health log. Replace the symlink with a real directory, or opt in from the real project path with real storage directories.
 - Runtime support is Linux/macOS (POSIX) only; native Windows and the legacy Windows settings example are unsupported. Defer `fcntl` imports until health-log locking so module imports and CLI help remain available without it; locking fails explicitly before writes instead of proceeding unlocked.
 
 - Generated instruction snippets and recovery verification commands require `uv` on PATH and use `uv run --no-project` so the stdlib CLI does not synchronize the target project environment; standalone users must install uv to use these examples.

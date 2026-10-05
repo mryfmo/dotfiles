@@ -49,11 +49,17 @@ class ProjectIdentityTests(unittest.TestCase):
 
 class StorageDirectorySafetyTests(unittest.TestCase):
     def test_storage_tree_refuses_existing_symlinks(self) -> None:
-        for relative in ("state", "spool", "spool/incoming", "spool/quarantine", "health"):
+        for relative in (
+            ".claude",
+            ".claude/contextdb/state",
+            ".claude/contextdb/spool",
+            ".claude/contextdb/spool/incoming",
+            ".claude/contextdb/spool/quarantine",
+            ".claude/contextdb/health",
+        ):
             with self.subTest(relative=relative), tempfile.TemporaryDirectory(prefix="contextdb-link-") as temp:
                 root = Path(temp) / "project"
-                base = root / ".claude/contextdb"
-                target = base / relative
+                target = root / relative
                 target.parent.mkdir(parents=True)
                 outside = Path(temp) / "outside"
                 outside.mkdir(mode=0o755)

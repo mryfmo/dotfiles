@@ -949,6 +949,7 @@ seated in its own tab of this workspace. `herdr-agents --add-worker <worktree> [
 codex|claude] [--profile NAME] [DIR]` and `herdr-agents --remove-worker
 <worktree> [--force] [DIR]` are the only sanctioned way to add or remove one.
 `<worktree>` is a path under `DIR/.claude/worktrees/`.
+For Codex, seat ordinary tasks with `--profile standard` and reserve `--profile security` for trust-boundary tasks (permgate, redaction or secret handling, sandbox or permission policy), with an identity such as `codex-security-dot-aNNN`.
 
 Add-worker:
 

@@ -126,6 +126,20 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, text)
 
+    def test_codex_worker_profile_defaults_to_standard(self) -> None:
+        text = SKILL.read_text()
+        parallel = text.split("## Parallel workers", 1)[1].split("\n## ", 1)[0]
+        for token in (
+            "For Codex, seat ordinary tasks with `--profile standard`",
+            "use `--profile security` only for trust-boundary tasks",
+            "permgate, redaction or secret handling, sandbox or permission policy",
+            "`codex-security-dot-aNNN`",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, parallel)
+        routing = text.split("## Orchestrator Playbook", 1)[1].split("\n4. ", 1)[0]
+        self.assertIn("records it and the chosen worker profile in the task file", routing)
+
     def test_skill_carries_the_audit_gate_and_bot_wait_mechanics(self) -> None:
         text = SKILL.read_text()
         for token in (

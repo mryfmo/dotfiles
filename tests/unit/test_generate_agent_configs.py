@@ -756,6 +756,133 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertFalse([path for path in outputs if path.name == "ccgate.jsonnet"])
 
+    def hook_trust_namespace(self, manifest: dict) -> dict:
+        namespace = {"sys": sys, "Path": Path, "HOOK_TRUST": self.module.codex_hook_trust(manifest)}
+        exec(self.module.HOOK_TRUST_CODE, namespace)
+        return namespace
+
+    def test_hook_trust_hash_reproduces_codex_current_hashes(self) -> None:
+        # Values Codex 0.160.0 reported as current_hash (app-server hooks/list) on the operator's host.
+        codex_hook_hash = self.hook_trust_namespace(sample_manifest())["codex_hook_hash"]
+        notify = "/home/moriya/.local/bin/common/contextdb-codex-notify"
+        for event, matcher, handler, expected in (
+            (
+                "permission_request",
+                "*",
+                {
+                    "type": "command",
+                    "command": "/home/moriya/.local/bin/common/permgate codex",
+                    "timeout": 10,
+                    "statusMessage": "Evaluating permission request",
+                },
+                "sha256:64d9851fb629f7cd5608706436fb5b8588dc60abf355893ebe3eaca401a9ff65",
+            ),
+            (
+                "pre_compact",
+                "*",
+                {"type": "command", "command": notify, "timeout": 10, "statusMessage": "Recording to CompactionDB"},
+                "sha256:daa1e215632e85e1b578f07ff0647c8f650d6d73f454c1089a74a6d354736edc",
+            ),
+            (
+                "session_end",
+                "*",
+                {"type": "command", "command": notify, "timeout": 3, "statusMessage": "Recording to CompactionDB"},
+                "sha256:14a8144bdb3ac2bfa907e5415009fe1e359bc5ce9f6a46300e9a249b31fffc05",
+            ),
+            # Codex drops a Stop hook's matcher before hashing.
+            (
+                "stop",
+                "ignored",
+                {
+                    "type": "command",
+                    "command": "crit plan-hook --mode codex",
+                    "timeout": 345600,
+                    "statusMessage": "Reviewing proposed plan with Crit",
+                },
+                "sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8",
+            ),
+        ):
+            with self.subTest(event=event):
+                self.assertEqual(codex_hook_hash(event, matcher, handler), expected)
+
+    def hook_trust_manifest(self) -> dict:
+        manifest = sample_manifest()
+        manifest["codex"]["hooks"]["state"] = {
+            "{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0": {"enabled": True},
+            "demo@market:hooks/hooks.json:stop:0:0": {"trusted_hash": "sha256:pinned", "enabled": True},
+        }
+        return manifest
+
+    def run_profile(self, manifest: dict, home: Path, current: str) -> subprocess.CompletedProcess:
+        self.module.write_outputs(self.module.expected_outputs(manifest))
+        return subprocess.run(
+            [str(self.temp_dir / "home/dot_codex/modify_private_standard.config.toml")],
+            input=current,
+            text=True,
+            capture_output=True,
+            env={**os.environ, "HOME": str(home)},
+            check=False,
+        )
+
+    def test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        expected = self.hook_trust_namespace(manifest)["codex_hook_hash"](
+            "permission_request",
+            "*",
+            {
+                "type": "command",
+                "command": "permgate codex",
+                "timeout": 10,
+                "statusMessage": "Evaluating permission request",
+            },
+        )
+        current = (
+            f'[hooks.state]\n\n[hooks.state."{key}"]\ntrusted_hash = "sha256:stale"\n\n'
+            '[hooks.state."/elsewhere/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:operator"\n'
+        )
+
+        result = self.run_profile(manifest, home, current)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f'[hooks.state."{key}"]\ntrusted_hash = "{expected}"\nenabled = true', result.stdout)
+        self.assertNotIn("sha256:stale", result.stdout)
+        self.assertIn('trusted_hash = "sha256:operator"', result.stdout)
+        self.assertIn(f"replacing sha256:stale with {expected}", result.stderr)
+        # A second apply is quiet and byte-identical.
+        again = self.run_profile(manifest, home, result.stdout)
+        self.assertEqual(again.stdout, result.stdout)
+        self.assertNotIn("divergence", again.stderr)
+
+    def test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+
+        missing = self.run_profile(manifest, home, "")
+
+        self.assertEqual(missing.returncode, 0, missing.stderr)
+        self.assertIn(
+            '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:pinned"', missing.stdout
+        )
+        self.assertIn(
+            "warning: cannot compute hook trust for demo@market:hooks/hooks.json:stop:0:0 (0 installed copies",
+            missing.stderr,
+        )
+        handler = {"type": "command", "command": "demo stop", "timeout": 5}
+        plugin = home / ".codex/plugins/cache/market/demo/1.0/hooks/hooks.json"
+        plugin.parent.mkdir(parents=True)
+        plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [handler]}]}}))
+        expected = self.hook_trust_namespace(manifest)["codex_hook_hash"]("stop", None, handler)
+
+        installed = self.run_profile(manifest, home, "")
+
+        self.assertEqual(installed.returncode, 0, installed.stderr)
+        self.assertIn(
+            f'[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "{expected}"', installed.stdout
+        )
+        self.assertNotIn("cannot compute hook trust for demo@market", installed.stderr)
+
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"

@@ -288,6 +288,45 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertNotIn("ccgate", output)
         self.assertIn("[mcp_servers.private_server]", output)
 
+    def test_declared_hook_trust_replaces_stale_entries_and_keeps_undeclared(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        block = MERGE_SCRIPT.read_text().split("# >>> codex hook trust", 1)[1].split("# <<< codex hook trust", 1)[0]
+        namespace = {"sys": __import__("sys"), "Path": Path}
+        exec(block.split("\n", 1)[1], namespace)
+        handler = namespace["HOOK_TRUST"]["config_hooks"]["permission_request"][0]["hooks"][0]
+        expected = namespace["codex_hook_hash"]("permission_request", "*", namespace["with_home"](handler, str(home)))
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        # Like the rendered template: the declared keys appear under [hooks.state] with their managed fields.
+        self.baseline_path.write_text(
+            "[hooks.state]\n\n"
+            '[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\nenabled = true\n\n'
+            '[hooks.state."ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"]\nenabled = true\n'
+        )
+        result = subprocess.run(
+            [str(MERGE_SCRIPT)],
+            input=(
+                f'[hooks.state]\n\n[hooks.state."{key}"]\ntrusted_hash = "sha256:stale"\n\n'
+                '[hooks.state."/elsewhere/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:operator"\n'
+            ),
+            text=True,
+            capture_output=True,
+            env=env,
+            check=True,
+        )
+
+        state = tomllib.loads(result.stdout)["hooks"]["state"]
+        self.assertEqual(state[key], {"trusted_hash": expected, "enabled": True})
+        self.assertEqual(state["/elsewhere/hooks.json:stop:0:0"], {"trusted_hash": "sha256:operator"})
+        self.assertIn(f"replacing sha256:stale with {expected}", result.stderr)
+        # No plugin cache in the fixture home: the plugin pins fall back to the manifest literal, with a warning.
+        ponytail = "ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"
+        self.assertTrue(state[ponytail]["trusted_hash"].startswith("sha256:"))
+        self.assertIn(f"warning: cannot compute hook trust for {ponytail} (0 installed copies", result.stderr)
+        # A declared key the template does not carry (crit) is left alone, not injected.
+        self.assertNotIn("crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0", state)
+
     def test_unknown_current_tables_are_preserved(self) -> None:
         output = self.merge(
             """

@@ -371,6 +371,8 @@ function initialize_dotfiles() {
 function authenticate_github() {
     local script="${HOME}/.local/share/chezmoi/scripts/gh-auth-stores.sh"
 
+    # On a fresh machine gh exists only as a mise shim, which this shell's PATH does not hold yet.
+    export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     if is_ci_or_not_tty || ! command -v gh > /dev/null 2>&1 || [ ! -x "${script}" ]; then
         echo "Skipping the GitHub logins; run \`make gh-auth\` in the dotfiles checkout once gh is installed."
         return 0

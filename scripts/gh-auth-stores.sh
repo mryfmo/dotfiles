@@ -32,6 +32,9 @@ function expand_home() {
 # @arg $2 string The store's GH_CONFIG_DIR.
 function ensure_store() {
     local label="$1" dir="$2"
+    if [[ -f ${dir}/hosts.yml ]]; then
+        chmod 600 "${dir}/hosts.yml"
+    fi
     if GH_CONFIG_DIR="${dir}" gh auth status --hostname github.com > /dev/null 2>&1; then
         printf 'gh-auth: %s store %s already holds a token; skipped\n' "${label}" "${dir}"
         return 0
@@ -60,6 +63,8 @@ function main() {
     fi
     # shellcheck source=/dev/null
     source "${env_file}"
+    # gh may exist only as a mise shim (a fresh bootstrap, or a shell without mise activated).
+    export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     if ! command -v gh > /dev/null 2>&1; then
         printf 'gh-auth: gh is not installed; install it, then run "make gh-auth"\n' >&2
         return 1

@@ -16,6 +16,7 @@ import tomllib
 import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.dont_write_bytecode = True
 
@@ -1357,6 +1358,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         # Two accounts never share a store: that is the merged-hosts.yml ambiguity this layout removes.
         manifest["work_gh_config_dir"] = "~/.config/gh-worker/"
         with self.assertRaises(SystemExit):
+            self.module.render_model_profiles_env(manifest)
+        # `~` is expanded before the comparison, so the absolute spelling of a store is the same store.
+        manifest["work_gh_config_dir"] = "/home/fixture/.config/gh"
+        with mock.patch.dict(os.environ, {"HOME": "/home/fixture"}), self.assertRaises(SystemExit):
             self.module.render_model_profiles_env(manifest)
 
     def test_model_profiles_env_renders_worker_kind(self) -> None:

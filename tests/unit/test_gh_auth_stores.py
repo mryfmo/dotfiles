@@ -63,12 +63,18 @@ class GhAuthStoresTest(unittest.TestCase):
         return self.calls.read_text().splitlines()
 
     def test_without_a_terminal_it_never_prompts(self) -> None:
+        owner_hosts = self.home / ".config/gh/hosts.yml"
+        owner_hosts.touch(mode=0o644)
+        owner_hosts.chmod(0o644)
+
         result = self.run_script(subprocess.DEVNULL)
 
         self.assertEqual(result.returncode, 1)
         self.assertIn(f"owner store {self.home}/.config/gh already holds a token; skipped", result.stdout)
         self.assertIn(f"work store {self.home}/.config/gh-work has no token; run", result.stderr)
         self.assertFalse(any("auth login" in call for call in self.logged_calls()))
+        # A store that is skipped still gets its hosts.yml mode fixed, so the doctor's hint holds.
+        self.assertEqual(stat.S_IMODE(owner_hosts.stat().st_mode), 0o600)
 
     def test_setup_skips_the_logins_in_ci_without_calling_gh(self) -> None:
         # The public-bootstrap CI jobs run setup.sh with CI=true and no terminal: nothing may prompt.
@@ -88,6 +94,34 @@ class GhAuthStoresTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Skipping the GitHub logins; run `make gh-auth`", result.stdout)
         self.assertFalse(self.calls.exists())
+
+    def test_setup_finds_a_mise_installed_gh_on_a_fresh_path(self) -> None:
+        # A fresh bootstrap shell has no mise shims on PATH; gh exists only as a shim.
+        shims = self.home / ".local/share/mise/shims"
+        shims.mkdir(parents=True)
+        shutil.copy(self.temp / "bin/gh", shims / "gh")
+        script = self.home / ".local/share/chezmoi/scripts/gh-auth-stores.sh"
+        script.parent.mkdir(parents=True)
+        shutil.copy(SCRIPT, script)
+        primary, secondary = pty.openpty()
+        try:
+            result = subprocess.run(
+                ["bash", "-c", f'source "{ROOT}/setup.sh"; authenticate_github'],
+                stdin=secondary,
+                env={**self.env, "PATH": "/usr/bin:/bin"},
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=30,
+            )
+        finally:
+            os.close(primary)
+            os.close(secondary)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("Skipping the GitHub logins", result.stdout)
+        logins = [call for call in self.logged_calls() if "|auth login " in call]
+        self.assertEqual(len(logins), 2)
 
     def test_on_a_terminal_it_logs_in_only_the_empty_stores(self) -> None:
         primary, secondary = pty.openpty()

@@ -1270,7 +1270,7 @@ def gh_config_dirs(manifest: dict[str, Any]) -> list[tuple[str, str]]:
         if not isinstance(gh_dir, str) or not gh_dir.startswith(("~/", "/")) or any(ord(c) < 32 for c in gh_dir):
             fail(f"{key} must be an absolute or ~/ path without control characters")
         stores.append((var, gh_dir))
-    paths = [os.path.normpath(gh_dir) for _, gh_dir in stores]
+    paths = [os.path.normpath(os.path.expanduser(gh_dir)) for _, gh_dir in stores]
     if len(set(paths)) != len(paths):
         fail("owner_gh_config_dir, work_gh_config_dir and worker_gh_config_dir must name different directories")
     return stores

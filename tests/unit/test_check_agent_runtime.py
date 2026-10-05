@@ -989,7 +989,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 f"found: GitHub owner credential store {home}/.config/gh (hosts.yml 0600, one user: owner-login)",
                 (
                     f"WARN: GitHub work credential store {home}/.config/gh-work: "
-                    "hosts.yml must be a user-owned regular file with mode 0600"
+                    "hosts.yml must be a user-owned regular file with mode 0600; run make gh-auth"
                 ),
                 "WARN: GitHub worker credential store /abs/never has no hosts.yml; run make gh-auth",
             ],

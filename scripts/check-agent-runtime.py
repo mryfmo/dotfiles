@@ -631,7 +631,9 @@ def gh_credential_store_findings(home: Path | None = None, env_path: Path | None
             or stat.S_IMODE(metadata.st_mode) != 0o600
             or metadata.st_uid != os.getuid()
         ):
-            findings.append(f"WARN: {prefix}: hosts.yml must be a user-owned regular file with mode 0600")
+            findings.append(
+                f"WARN: {prefix}: hosts.yml must be a user-owned regular file with mode 0600; run make gh-auth"
+            )
             continue
         try:
             status = subprocess.run(

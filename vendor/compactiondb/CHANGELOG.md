@@ -6,7 +6,7 @@
 - Preserve installed hook positions and leave settings bytes, timestamps and backups untouched on a no-op reinstall.
 - Run vendor test discovery from the dotfiles repository root as well as the vendor directory.
 - Find enclosing opted-in projects from nested session working directories, stopping at the nearest Git directory or worktree gitfile. Explicit project roots keep their meaning.
-- Apply configured error-log and quarantine retention from explicit `prune` and existing SessionEnd maintenance.
+- Apply configured error-log and quarantine retention from explicit `prune` and existing SessionEnd maintenance. Validate retention configuration before pruning, preserve malformed log records, and refuse symlinked or non-regular health logs using a no-follow file descriptor.
 - Construct storage directories using descriptor-relative `mkdir`, `open(O_NOFOLLOW)` and `fchmod` on POSIX. This closes directory symlink races during construction. Residual: subsequent pathname-based I/O, including `sqlite3.connect`, can still follow a same-user swap after construction; portable stdlib SQLite cannot bind a directory fd. Storage remains in the workspace.
 
 ## 2.0.0+dotfiles.8

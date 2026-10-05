@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 import sys
 import time
 from contextlib import closing
@@ -16,20 +18,32 @@ from .spool import drain_spool, record_error, spool_event
 def prune_health_artifacts(paths: ProjectPaths, *, days: int) -> None:
     """Apply the health retention policy shared by hooks and explicit prune."""
     cutoff_utc = datetime.now(timezone.utc) - timedelta(days=days)
-    if paths.error_log_path.exists():
-        retained = []
-        for line in paths.error_log_path.read_text(encoding="utf-8").splitlines():
-            try:
-                ts = datetime.fromisoformat(str(json.loads(line).get("ts_utc", "")).replace("Z", "+00:00"))
-            except (ValueError, TypeError, json.JSONDecodeError):
-                retained.append(line)
-                continue
-            if ts.tzinfo is None or ts >= cutoff_utc:
-                retained.append(line)
-        if retained:
-            paths.error_log_path.write_text("\n".join(retained) + "\n", encoding="utf-8")
-        else:
-            paths.error_log_path.unlink()
+    try:
+        fd = os.open(paths.error_log_path, os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        fd = None
+    if fd is not None:
+        with os.fdopen(fd, "r+", encoding="utf-8") as log:
+            if not stat.S_ISREG(os.fstat(log.fileno()).st_mode):
+                raise ValueError("ContextDB health log must be a regular file")
+            retained = []
+            for line in log.read().splitlines():
+                try:
+                    record = json.loads(line)
+                    if not isinstance(record, dict):
+                        raise ValueError("health record must be an object")
+                    ts = datetime.fromisoformat(str(record.get("ts_utc", "")).replace("Z", "+00:00"))
+                except (ValueError, TypeError, json.JSONDecodeError):
+                    retained.append(line)
+                    continue
+                if ts.tzinfo is None or ts >= cutoff_utc:
+                    retained.append(line)
+            if retained:
+                log.seek(0)
+                log.write("\n".join(retained) + "\n")
+                log.truncate()
+            else:
+                paths.error_log_path.unlink()
     cutoff = time.time() - days * 86400
     for path in paths.quarantine_dir.glob("*"):
         if path.name != ".gitkeep" and path.is_file() and path.stat().st_mtime < cutoff:

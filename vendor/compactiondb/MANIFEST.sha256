@@ -1,8 +1,8 @@
 39937be133a793452eb755abd7ace2ff28bfcd2ad616a38098801c291fc787ef  ./.claude/contextdb/config.json
 298d9058c8a79aec100cc7dae777975fd398fa60113725a19b33ad386b5127d8  ./.claude/contextdb/contextdb/__init__.py
 fd66fcc66ae8f49f171d6df5da252fefaee15a8cdfa2eea7be185b36a599a8cc  ./.claude/contextdb/contextdb/cli.py
-9a22749b3b86c145d39f774d37628d26531d295afe5b1c67777c723aa5065d11  ./.claude/contextdb/contextdb/config.py
-a48e6e01a58df9f1002ce7ab447f26c7fea8dad73b6356d7d2cfea32b5490da0  ./.claude/contextdb/contextdb/hook.py
+72f3ebb79600eb87f7e42ee48f59aeb506e141927732fbb56354fca6325d7184  ./.claude/contextdb/contextdb/config.py
+656d7beeb36bd702cffc9bfa2533120648f48f2d40fa2aece5e8b7f6200c8f76  ./.claude/contextdb/contextdb/hook.py
 e845da0aa6f920d6ad6327bb88624785ffc7d3b69812a794dc96d784ccff0d74  ./.claude/contextdb/contextdb/memory.py
 f492e3596efb9e7ebe2e544928c9ddcd978953d59853042fac052d9155a79c1a  ./.claude/contextdb/contextdb/normalize.py
 c16f9769929a6e8a5c45509e5f86999c69689726ddb74f69c6ed63b72777919f  ./.claude/contextdb/contextdb/paths.py
@@ -28,7 +28,7 @@ effdd198b6763ddfe5c3e348f2cdd1ff2d8563bbf15627d120778f3c9f0d374a  ./.claude/sett
 0ecadb479ae250061801c0760d90f31b71e41c99781c57d4c3ed4e3216f062ad  ./.claude/settings.windows.example.json
 1cd332835a12a16327249cebdce090eadade9d825cb3cb15fa495f0a7382f748  ./.gitignore
 33ce5a14884b9e4e9ccd19a1562792fc56b75fc7c13e641252027fa17668b198  ./AGENTS.md
-34d7012eec7d324461ac97ee3a2e4f867b5a5738ca2443c37b02f8265f777752  ./CHANGELOG.md
+06b679229ed89b4b9db110d4d69a8582ec136b112e8fdab34f54f0ba6693adc7  ./CHANGELOG.md
 9a2af01f513559cd4177759d8d42153fb63e676ed0c4f1a4c482c918403f9a48  ./CLAUDE.md
 277464a1db8b58f33b71e5580ba3df0a89b6d8a59024bfcff81f211e7019e11a  ./LICENSE
 246a72385549f37124638f671c25dcffd5f1e773a7750559fa8f57c64f6403cd  ./Makefile
@@ -50,7 +50,7 @@ e3d613158214ef3a384bbdc3a4ccba6cc680283a93f6d052e70e236c68a14543  ./docs/validat
 9a2af01f513559cd4177759d8d42153fb63e676ed0c4f1a4c482c918403f9a48  ./snippets/CLAUDE_CONTEXTDB.md
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./tests/__init__.py
 9f03602a4975b1087d6c978fb79c29a9910d3596cb5a36e7e09846459a0fbdfc  ./tests/support.py
-9dbb07c864ec0925593c9b8809c6c7f69e93968b2d9be7c1fe2f0006c5466756  ./tests/test_cli.py
+2c48f21b3af5e21ffb11c717a32fba4680e9b92244ccafa60316193a4f6298a5  ./tests/test_cli.py
 50aa565618f6ece0934110c76a2b0242e3b7f7ef593998c36a5fe561c9b7e20d  ./tests/test_concurrency.py
 7d8566a9b1aecdc54ca7fb073abe47ff5790a9c1d87d410af2baf2418bf431c2  ./tests/test_config.py
 ba8253cc6d802dba8eba43a5ae08b575bbf41750d6ea0a52b2275b7fe4142ba7  ./tests/test_hooks.py

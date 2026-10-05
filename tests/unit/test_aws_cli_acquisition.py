@@ -379,8 +379,8 @@ install_aws_cli
         self.assertNotIn("aws-cli", config["tools"])
         self.assertNotIn("aws-cli", lock["tools"])
 
-        ownership = (ROOT / "docs/plans/nix-first-architecture.md").read_text()
-        migration = (ROOT / "docs/plans/nix-migration.md").read_text()
+        ownership = (ROOT / "docs/history/nix-first-architecture.md").read_text()
+        migration = (ROOT / "docs/history/nix-migration.md").read_text()
         for statement in (
             "Default macOS: Homebrew owns the AWS CLI version and installation integrity.",
             "Repository snapshot pinning for Homebrew is outside Plan004's scope.",

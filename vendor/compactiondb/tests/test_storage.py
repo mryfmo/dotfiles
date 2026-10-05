@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
+from support import TempProject
 from contextdb.normalize import normalize_hook_payload
-from tests.support import TempProject
 
 
 class StorageTests(unittest.TestCase):
@@ -336,6 +336,44 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(0, removed)
             self.assertEqual(10, int(conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]))
             self.assertEqual(0, int(conn.execute("SELECT COUNT(*) FROM memory_candidates").fetchone()[0]))
+        finally:
+            conn.close()
+
+    def test_size_cap_reclaims_orphan_sessions_before_newer_events(self) -> None:
+        for keep_events in (False, True):
+            with self.subTest(keep_events=keep_events):
+                conn = self.p.store.connect()
+                try:
+                    with conn:
+                        conn.execute("DELETE FROM sessions")
+                    if keep_events:
+                        self._bulk_events(conn, 10)
+                    with conn:
+                        conn.executemany(
+                            "INSERT INTO sessions(project_id, session_id, last_seen_at_utc, session_title) VALUES(?,?,?,?)",
+                            [(self.p.paths.project_id, f"orphan-{i}", "test", "x" * 2000) for i in range(300)],
+                        )
+                        conn.execute("INSERT INTO sessions(project_id,session_id,last_seen_at_utc) VALUES('other-project','keep','now')")
+                    used, _ = self.p.store._page_bytes(conn)
+                    with conn:
+                        removed = self.p.store.enforce_size_cap(conn, self.p.paths.project_id, used - 4096)
+                    self.assertEqual(0, removed)
+                    self.assertEqual(10 if keep_events else 0, conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+                    self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM sessions WHERE session_id LIKE 'orphan-%'").fetchone()[0])
+                    self.assertEqual(1, conn.execute("SELECT COUNT(*) FROM sessions WHERE project_id='other-project'").fetchone()[0])
+                    self.assertLess(self.p.store._page_bytes(conn)[0], used)
+                    with conn:
+                        conn.execute("DELETE FROM sessions WHERE project_id='other-project'")
+                finally:
+                    conn.close()
+
+    def test_size_cap_reclaims_sessions_after_each_event_batch(self) -> None:
+        conn = self.p.store.connect()
+        try:
+            self._bulk_events(conn, 110)
+            with conn:
+                self.p.store.enforce_size_cap(conn, self.p.paths.project_id, 1)
+            self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0])
         finally:
             conn.close()
 

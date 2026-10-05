@@ -7,11 +7,11 @@ import sys
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
+from support import TempProject
 from contextdb.cli import main
 from contextdb.config import load_config
 from contextdb.recall import normalize_scores, recall
 
-from tests.support import TempProject
 
 
 class RecallTests(unittest.TestCase):

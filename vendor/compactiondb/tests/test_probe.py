@@ -6,11 +6,11 @@ import json
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
+from support import TempProject
 from contextdb.cli import main
 from contextdb.probe import generate_probes
 from contextdb.recovery import build_recovery_context
 
-from tests.support import TempProject
 
 
 class ProbeTests(unittest.TestCase):

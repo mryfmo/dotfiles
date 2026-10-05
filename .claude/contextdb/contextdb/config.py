@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -110,6 +111,11 @@ def _require_number(
 def validate_config(config: dict[str, Any]) -> dict[str, Any]:
     if config.get("version") != 1:
         raise ValueError("ContextDB config version must be 1")
+    if not isinstance(config.get("operations"), dict):
+        raise ValueError("ContextDB config operations must be a JSON object")
+    _require_int(config, "operations", "error_log_retention_days", minimum=0)
+    if config["operations"]["error_log_retention_days"] >= datetime.now(timezone.utc).toordinal():
+        raise ValueError("ContextDB config operations.error_log_retention_days exceeds the representable date range")
     storage = config.get("storage", {})
     journal = str(storage.get("journal_mode", "WAL")).upper()
     synchronous = str(storage.get("synchronous", "FULL")).upper()

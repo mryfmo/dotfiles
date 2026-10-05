@@ -4,12 +4,12 @@ import json
 import unittest
 from unittest.mock import patch
 
+from support import TempProject
 from contextdb.recover_hook import recovery_output
 from contextdb.recovery import build_recovery_context
 from contextdb.spool import drain_spool
 from contextdb.util import one_line, sha256_text
 
-from tests.support import TempProject
 
 
 class RecoverHookTests(unittest.TestCase):

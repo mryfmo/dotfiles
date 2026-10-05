@@ -1077,10 +1077,15 @@ class ContextStore:
         """
         removed = 0
         unpromoted = "DELETE FROM memory_candidates WHERE project_id=? AND promoted_memory_uuid IS NULL"
+        orphan_sessions = (
+            "DELETE FROM sessions WHERE project_id=? AND session_id NOT IN "
+            "(SELECT DISTINCT session_id FROM events WHERE project_id=?)"
+        )
         # Earlier deletions (retention included) leave dead FTS segment pages that would
         # otherwise count as in use, so merge the index before every measurement.
         self.optimize_fts(conn)
         if self._page_bytes(conn)[0] > max_bytes:
+            conn.execute(orphan_sessions, (project_id, project_id))
             # Candidates whose source events retention already removed go before any newer event.
             conn.execute(
                 f"{unpromoted} AND source_event_uuid NOT IN (SELECT event_uuid FROM events WHERE project_id=?)",
@@ -1100,6 +1105,7 @@ class ContextStore:
             )
             self._delete_event_ids(conn, [int(row[0]) for row in rows])
             removed += len(rows)
+            conn.execute(orphan_sessions, (project_id, project_id))
             # ponytail: one FTS merge per batch of 100 rewrites the index each time; bounded by
             # how far the ledger is over the cap, and prune is an explicit command.
             self.optimize_fts(conn)

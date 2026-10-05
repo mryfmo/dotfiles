@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+import support  # noqa: F401 - bootstrap the vendored runtime import path
 from contextdb.memory import extract_candidates
 
 

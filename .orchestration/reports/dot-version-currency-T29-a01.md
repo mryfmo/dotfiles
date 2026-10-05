@@ -2,7 +2,7 @@
 
 - worker: `claude-standard-dot-a005` (Claude Code, acting as worker per dispatch note)
 - orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c`
 - branch: `feat/version-currency` (base `origin/main` = `5b15d1e`)
 - task_rev: sha256 `7e1a66e44eabdd6734fe2c2e80ab45b6024da400a653211bc3f14a19d839429b`, verified
   against the task file at `5b15d1e` (see validation file)

@@ -54,7 +54,7 @@ Understand-Anything auto-update hook is out of scope for task workers unless
 ## CompactionDB (main checkout)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T43: .ua/ graph acceptance requires scripts/ua-symbol-coverage.py (per-file function+class node comparison against the previous graph, zero unexplained regressions); the Understand-Anything auto-update hook is out of scope for task workers unless .ua/** is allowed; make render-check is the one render-check command (operator 2026-09-29)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T43: .ua/ graph acceptance requires scripts/ua-symbol-coverage.py (per-file function+class node comparison against the previous graph, zero unexplained regressions); the Understand-Anything auto-update hook is out of scope for task workers unless .ua/** is allowed; make render-check is the one render-check command (operator 2026-09-29)."
 992478eb-e330-408e-802c-d8506b7ec378
 ```
 

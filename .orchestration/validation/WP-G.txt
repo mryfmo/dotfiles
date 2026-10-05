@@ -11,7 +11,7 @@ grep -n -i "hermes" home/dot_agents/README.md scripts/require-crit-review.py || 
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: zero hits.
@@ -99,7 +99,7 @@ git status --porcelain
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
  M .github/workflows/agent-assets.yml
  M .github/workflows/macos.yaml
  M .github/workflows/ubuntu.yaml
@@ -162,7 +162,7 @@ Note: the shared worktree contains accepted WP-A..WP-F changes outside the WP-G 
 Scoped WP-G status:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
  M home/dot_agents/README.md
  M scripts/require-crit-review.py
 ```

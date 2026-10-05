@@ -3,7 +3,7 @@
 ## Assignment
 
 - Task ID: `T33-herdr-session-design-restore`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`（main worktree で作業。開始時に
+- Repo: `~/Workspace/dotfiles`（main worktree で作業。開始時に
   `git checkout main && git pull --ff-only origin main` の後、
   ブランチ `fix/t33-herdr-session-restore` を作成）
 - 発行: claude-deep-dot（orchestrator）2026-08-07

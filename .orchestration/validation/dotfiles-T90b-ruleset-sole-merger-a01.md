@@ -10,7 +10,7 @@ FFFFFFFFFFF
 FAIL: test_role_gate_update_activation_and_boundary_authorship (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_update_activation_and_boundary_authorship) (author='worker', approved=False, rule_type='update', path='.orchestration/reports/boundary.md')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 506, in test_role_gate_update_activation_and_boundary_authorship
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 506, in test_role_gate_update_activation_and_boundary_authorship
     self.assertEqual(0 if expected else 1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : notice: GitHub role gate inactive: main has no enforced required approval; apply README ruleset
@@ -22,7 +22,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_role_gate_update_activation_and_boundary_authorship (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_update_activation_and_boundary_authorship) (author='worker', approved=False, rule_type='update', path='docs/change.md')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 506, in test_role_gate_update_activation_and_boundary_authorship
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 506, in test_role_gate_update_activation_and_boundary_authorship
     self.assertEqual(0 if expected else 1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : notice: GitHub role gate inactive: main has no enforced required approval; apply README ruleset
@@ -34,7 +34,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_role_gate_update_activation_and_boundary_authorship (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_update_activation_and_boundary_authorship) (author='MERGER', approved=False, rule_type='update', path='docs/change.md')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 506, in test_role_gate_update_activation_and_boundary_authorship
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 506, in test_role_gate_update_activation_and_boundary_authorship
     self.assertEqual(0 if expected else 1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : notice: GitHub role gate inactive: main has no enforced required approval; apply README ruleset
@@ -46,7 +46,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_role_gate_update_activation_and_boundary_authorship (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_update_activation_and_boundary_authorship) (author='MERGER', approved=False, rule_type='pull_request', path='.orchestration/reports/boundary.md')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 506, in test_role_gate_update_activation_and_boundary_authorship
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 506, in test_role_gate_update_activation_and_boundary_authorship
     self.assertEqual(0 if expected else 1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : PR feedback evidence is incomplete; run scripts/pr-feedback.py and disposition every item.
@@ -57,7 +57,7 @@ AssertionError: 0 != 1 : PR feedback evidence is incomplete; run scripts/pr-feed
 FAIL: test_role_gate_requires_exact_sole_pr_bypass_actor (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_requires_exact_sole_pr_bypass_actor) (author='worker', actors=[])
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
     self.assertEqual(1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -68,7 +68,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_role_gate_requires_exact_sole_pr_bypass_actor (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_requires_exact_sole_pr_bypass_actor) (author='worker', actors=[{'actor_type': 'User', 'actor_id': 100, 'bypass_mode': 'pull_request'}, {'actor_type': 'User', 'actor_id': 200, 'bypass_mode': 'pull_request'}])
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
     self.assertEqual(1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -79,7 +79,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_role_gate_requires_exact_sole_pr_bypass_actor (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_requires_exact_sole_pr_bypass_actor) (author='worker', actors=[{'actor_type': 'User', 'actor_id': 200, 'bypass_mode': 'pull_request'}])
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
     self.assertEqual(1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -90,7 +90,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_role_gate_requires_exact_sole_pr_bypass_actor (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_requires_exact_sole_pr_bypass_actor) (author='worker', actors=[{'actor_type': 'Team', 'actor_id': 100, 'bypass_mode': 'pull_request'}])
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
     self.assertEqual(1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -101,7 +101,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_role_gate_requires_exact_sole_pr_bypass_actor (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_requires_exact_sole_pr_bypass_actor) (author='worker', actors=[{'actor_type': 'User', 'actor_id': 100, 'bypass_mode': 'always'}])
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
     self.assertEqual(1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -112,7 +112,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_role_gate_requires_exact_sole_pr_bypass_actor (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_requires_exact_sole_pr_bypass_actor) (author='worker', actors=[{'actor_type': 'User', 'actor_id': '100', 'bypass_mode': 'pull_request'}])
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
     self.assertEqual(1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -123,7 +123,7 @@ Review not required: no meaningful review trigger found.
 FAIL: test_role_gate_requires_exact_sole_pr_bypass_actor (tests.unit.test_require_crit_review.ReviewGuardTest.test_role_gate_requires_exact_sole_pr_bypass_actor) (author='worker', actors=None)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_require_crit_review.py", line 519, in test_role_gate_requires_exact_sole_pr_bypass_actor
     self.assertEqual(1, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : PR feedback evidence accepted: .orchestration/validation/test-pr-feedback.json
@@ -227,49 +227,49 @@ test_missing_pane_inserts_nothing (test_agmsg_dispatch.AgmsgDispatchTest.test_mi
 test_rejects_identifiers_outside_the_strict_grammar (test_agmsg_dispatch.AgmsgDispatchTest.test_rejects_identifiers_outside_the_strict_grammar) ... ok
 test_retry_does_not_wake_newly_working_pane (test_agmsg_dispatch.AgmsgDispatchTest.test_retry_does_not_wake_newly_working_pane) ... ok
 test_timeout_is_one_shared_budget (test_agmsg_dispatch.AgmsgDispatchTest.test_timeout_is_one_shared_budget) ... ok
-test_unread_retries_once_then_fails (test_agmsg_dispatch.AgmsgDispatchTest.test_unread_retries_once_then_fails) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df4efc40>
+test_unread_retries_once_then_fails (test_agmsg_dispatch.AgmsgDispatchTest.test_unread_retries_once_then_fails) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df4efc40>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df4efb50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df4efb50>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def58d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def58d60>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def58f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def58f40>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def59030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def59030>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def59120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def59120>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def59210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def59210>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def59300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def59300>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def593f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def593f0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def594e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def594e0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def595d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def595d0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def596c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def596c0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def597b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def597b0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def598a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def598a0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def59990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3def59990>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -317,16 +317,16 @@ test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_c
 test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
 test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
 test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
-test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df4efb50>
+test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df4efb50>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df4efc40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df4efc40>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df8476a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df8476a0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df46b880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeec3df46b880>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -1092,7 +1092,7 @@ test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_
 test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-o5js_2v8/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-o5js_2v8/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1146,7 +1146,7 @@ home/dot_config/claude/rules/agmsg-orchestration.md 11ms (unchanged)
   "daemon": {
     "running": false
   },
-  "review_file": "/home/moriya/.crit/reviews/38a07fafd366/review.json",
+  "review_file": "~/.crit/reviews/38a07fafd366/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -1311,49 +1311,49 @@ test_missing_pane_inserts_nothing (test_agmsg_dispatch.AgmsgDispatchTest.test_mi
 test_rejects_identifiers_outside_the_strict_grammar (test_agmsg_dispatch.AgmsgDispatchTest.test_rejects_identifiers_outside_the_strict_grammar) ... ok
 test_retry_does_not_wake_newly_working_pane (test_agmsg_dispatch.AgmsgDispatchTest.test_retry_does_not_wake_newly_working_pane) ... ok
 test_timeout_is_one_shared_budget (test_agmsg_dispatch.AgmsgDispatchTest.test_timeout_is_one_shared_budget) ... ok
-test_unread_retries_once_then_fails (test_agmsg_dispatch.AgmsgDispatchTest.test_unread_retries_once_then_fails) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff4ea3c40>
+test_unread_retries_once_then_fails (test_agmsg_dispatch.AgmsgDispatchTest.test_unread_retries_once_then_fails) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff4ea3c40>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff4ea3b50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff4ea3b50>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490cd60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490cd60>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490cf40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490cf40>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d030>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d120>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d210>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d300>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d3f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d3f0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d4e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d4e0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d5d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d5d0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d6c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d6c0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d7b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d7b0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d8a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d8a0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff490d990>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -1401,16 +1401,16 @@ test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_c
 test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
 test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
 test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
-test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff4ea3b50>
+test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff4ea3b50>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff4ea3c40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff4ea3c40>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff51d76a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff51d76a0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff4e1f880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:456: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe5eff4e1f880>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -2178,7 +2178,7 @@ test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_
 test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-3q34z30h/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-3q34z30h/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -2209,34 +2209,34 @@ OK
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
 Installed 1 package in 2ms
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -2349,36 +2349,36 @@ https://github.com/mryfmo/dotfiles/pull/265
 
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -3159,36 +3159,36 @@ Wait finished: 2026-10-04T18:54:33.631613+00:00
 
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok

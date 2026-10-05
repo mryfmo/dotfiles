@@ -1,7 +1,7 @@
 # WP-M: Require verbatim validation output in worker RESULT evidence
 
 task_id: WP-M
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 

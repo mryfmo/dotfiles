@@ -65,7 +65,7 @@ mise-pinned pnpm, and `make doctor` warns when `dist` is missing or stale, so
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`; `git switch -c fix/ua-core-build origin/main`.
   Verify the dispatched task_rev sha256 against this file on your base, else
   stop and PONG. If the worktree has uncommitted files, stop and PONG.
@@ -95,7 +95,7 @@ make validate-agent-assets
 make unit-test
 shellcheck scripts/update-agent-assets.sh
 shfmt --indent 4 --space-redirects --diff scripts/update-agent-assets.sh
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

@@ -27,7 +27,7 @@ a managed step and verified by doctor (operator 2026-09-27).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`, then
   `git switch -c feat/codex-apparmor-userns origin/main`.
   (Verify the dispatched task_rev sha256 against this file on your base, else
@@ -139,7 +139,7 @@ EXACTLY as written — operator-provided text, do not edit or reflow it:
 ```
 make validate-agent-assets
 make unit-test
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

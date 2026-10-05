@@ -1,7 +1,7 @@
 # T50: `contextdb recall` — dual-view fusion retrieval (P3)
 
 task_id: T50
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-compactiondb-research-integration.md (Phase 5)

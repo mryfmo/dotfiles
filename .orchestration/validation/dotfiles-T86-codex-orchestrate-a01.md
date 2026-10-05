@@ -46,24 +46,24 @@ test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_code
 ERROR: test_no_literal_model_or_profile_flags_and_bounded_size (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_no_literal_model_or_profile_flags_and_bounded_size)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 183, in test_no_literal_model_or_profile_flags_and_bounded_size
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 183, in test_no_literal_model_or_profile_flags_and_bounded_size
     text = SCRIPT.read_text()
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py", line 546, in read_text
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py", line 546, in read_text
     return PathBase.read_text(self, encoding, errors, newline)
            ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_abc.py", line 632, in read_text
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_abc.py", line 632, in read_text
     with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
          ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py", line 537, in open
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py", line 537, in open
     return io.open(self, mode, buffering, encoding, errors, newline)
            ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate'
+FileNotFoundError: [Errno 2] No such file or directory: '~/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate'
 
 ======================================================================
 FAIL: test_exec_failure_restores_seat (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_exec_failure_restores_seat)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 164, in test_exec_failure_restores_seat
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 164, in test_exec_failure_restores_seat
     self.assertEqual(self.run_script().returncode, 9)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 127 != 9
@@ -72,17 +72,17 @@ AssertionError: 127 != 9
 FAIL: test_exec_resume_profile_transcript_and_restore (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_exec_resume_profile_transcript_and_restore)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 93, in test_exec_resume_profile_transcript_and_restore
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 93, in test_exec_resume_profile_transcript_and_restore
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 127 != 0 : bash: /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate: No such file or directory
+AssertionError: 127 != 0 : bash: ~/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate: No such file or directory
 
 
 ======================================================================
 FAIL: test_existing_codex_seat_is_not_rejoined_or_removed (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_is_not_rejoined_or_removed)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 120, in test_existing_codex_seat_is_not_rejoined_or_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 120, in test_existing_codex_seat_is_not_rejoined_or_removed
     self.assertEqual(self.run_script().returncode, 0)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 127 != 0
@@ -91,26 +91,26 @@ AssertionError: 127 != 0
 FAIL: test_hook_mode_resumes_empty_without_poll (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_hook_mode_resumes_empty_without_poll)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 158, in test_hook_mode_resumes_empty_without_poll
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 158, in test_hook_mode_resumes_empty_without_poll
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 127 != 0 : bash: /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate: No such file or directory
+AssertionError: 127 != 0 : bash: ~/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate: No such file or directory
 
 
 ======================================================================
 FAIL: test_max_turns_does_not_poll_after_last_turn (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_max_turns_does_not_poll_after_last_turn)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 142, in test_max_turns_does_not_poll_after_last_turn
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 142, in test_max_turns_does_not_poll_after_last_turn
     self.assertIn("max-turns", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 'max-turns' not found in 'bash: /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate: No such file or directory\n'
+AssertionError: 'max-turns' not found in 'bash: ~/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate: No such file or directory\n'
 
 ======================================================================
 FAIL: test_repeated_runs_restore_and_increment_transcripts (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_repeated_runs_restore_and_increment_transcripts)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 112, in test_repeated_runs_restore_and_increment_transcripts
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 112, in test_repeated_runs_restore_and_increment_transcripts
     self.assertEqual(self.run_script().returncode, 0)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 127 != 0
@@ -119,27 +119,27 @@ AssertionError: 127 != 0
 FAIL: test_timeout_restores_identity_and_polls_at_fifteen_seconds (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_timeout_restores_identity_and_polls_at_fifteen_seconds)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 149, in test_timeout_restores_identity_and_polls_at_fifteen_seconds
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 149, in test_timeout_restores_identity_and_polls_at_fifteen_seconds
     self.assertEqual(result.returncode, 124, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 127 != 124 : bash: /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate: No such file or directory
+AssertionError: 127 != 124 : bash: ~/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate: No such file or directory
 
 
 ======================================================================
 FAIL: test_worker_seats_and_multiple_previous_identities_are_preserved (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_worker_seats_and_multiple_previous_identities_are_preserved)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 133, in test_worker_seats_and_multiple_previous_identities_are_preserved
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 133, in test_worker_seats_and_multiple_previous_identities_are_preserved
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 127 != 0 : bash: /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate: No such file or directory
+AssertionError: 127 != 0 : bash: ~/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_codex-orchestrate: No such file or directory
 
 
 ======================================================================
 FAIL: test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_wrong_kind_and_invalid_arguments_fail_before_exchange) (args=('--timeout', 'no'))
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 175, in test_wrong_kind_and_invalid_arguments_fail_before_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 175, in test_wrong_kind_and_invalid_arguments_fail_before_exchange
     self.assertEqual(self.run_script(*args).returncode, 2)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 127 != 2
@@ -148,7 +148,7 @@ AssertionError: 127 != 2
 FAIL: test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_wrong_kind_and_invalid_arguments_fail_before_exchange) (args=('--max-turns', '0'))
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 175, in test_wrong_kind_and_invalid_arguments_fail_before_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 175, in test_wrong_kind_and_invalid_arguments_fail_before_exchange
     self.assertEqual(self.run_script(*args).returncode, 2)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 127 != 2
@@ -157,7 +157,7 @@ AssertionError: 127 != 2
 FAIL: test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_wrong_kind_and_invalid_arguments_fail_before_exchange) (args=('--unknown',))
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 175, in test_wrong_kind_and_invalid_arguments_fail_before_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 175, in test_wrong_kind_and_invalid_arguments_fail_before_exchange
     self.assertEqual(self.run_script(*args).returncode, 2)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 127 != 2
@@ -166,7 +166,7 @@ AssertionError: 127 != 2
 FAIL: test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_wrong_kind_and_invalid_arguments_fail_before_exchange)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 178, in test_wrong_kind_and_invalid_arguments_fail_before_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 178, in test_wrong_kind_and_invalid_arguments_fail_before_exchange
     self.assertEqual(result.returncode, 2)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 127 != 2
@@ -225,7 +225,7 @@ exit=0
 uv run --with pyyaml scripts/validate-agent-assets.py
 error: Could not acquire lock
   cause: Could not create temporary file
-  cause: Read-only file system (os error 30) at path "/home/moriya/.cache/uv/.tmpspvrAp"
+  cause: Read-only file system (os error 30) at path "~/.cache/uv/.tmpspvrAp"
 make: *** [Makefile:163: validate-agent-assets] Error 2
 ```
 
@@ -234,115 +234,115 @@ make: *** [Makefile:163: validate-agent-assets] Error 2
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
 Installed 1 package in 2ms
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -356,7 +356,7 @@ agent asset validation ok
   "daemon": {
     "running": false
   },
-  "review_file": "/home/moriya/.crit/reviews/3cf50a04c7f3/review.json",
+  "review_file": "~/.crit/reviews/3cf50a04c7f3/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -388,7 +388,7 @@ test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_code
 FAIL: test_cross_project_claude_identity_is_rejected_without_changes (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_cross_project_claude_identity_is_rejected_without_changes)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 222, in test_cross_project_claude_identity_is_rejected_without_changes
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 222, in test_cross_project_claude_identity_is_rejected_without_changes
     self.assertEqual(result.returncode, 2, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -397,7 +397,7 @@ AssertionError: 0 != 2 :
 FAIL: test_target_codex_identity_elsewhere_is_rejected_without_changes (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_target_codex_identity_elsewhere_is_rejected_without_changes)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 232, in test_target_codex_identity_elsewhere_is_rejected_without_changes
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 232, in test_target_codex_identity_elsewhere_is_rejected_without_changes
     self.assertEqual(result.returncode, 2, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -504,7 +504,7 @@ test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_code
 FAIL: test_cross_project_claude_registration_is_preserved (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_cross_project_claude_registration_is_preserved)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 227, in test_cross_project_claude_registration_is_preserved
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 227, in test_cross_project_claude_registration_is_preserved
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Traceback (most recent call last):
@@ -517,7 +517,7 @@ codex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot
 FAIL: test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 203, in test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 203, in test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Traceback (most recent call last):
@@ -530,7 +530,7 @@ codex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot
 FAIL: test_exec_failure_restores_seat (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_exec_failure_restores_seat)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 191, in test_exec_failure_restores_seat
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 191, in test_exec_failure_restores_seat
     self.assertEqual(self.run_script().returncode, 9)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 9
@@ -539,7 +539,7 @@ AssertionError: 2 != 9
 FAIL: test_exec_resume_profile_transcript_and_restore (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_exec_resume_profile_transcript_and_restore)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 112, in test_exec_resume_profile_transcript_and_restore
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 112, in test_exec_resume_profile_transcript_and_restore
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Traceback (most recent call last):
@@ -552,7 +552,7 @@ codex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot
 FAIL: test_existing_codex_seat_is_not_rejoined_or_removed (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_is_not_rejoined_or_removed)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 147, in test_existing_codex_seat_is_not_rejoined_or_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 147, in test_existing_codex_seat_is_not_rejoined_or_removed
     self.assertEqual(self.run_script().returncode, 0)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0
@@ -561,7 +561,7 @@ AssertionError: 2 != 0
 FAIL: test_existing_lock_refuses_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_lock_refuses_exchange)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 220, in test_existing_lock_refuses_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 220, in test_existing_lock_refuses_exchange
     self.assertIn("another launcher", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'another launcher' not found in 'Traceback (most recent call last):\n  File "<stdin>", line 13, in <module>\nRuntimeError: forbidden pane read or whole-member removal\ncodex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot\n'
@@ -570,7 +570,7 @@ AssertionError: 'another launcher' not found in 'Traceback (most recent call las
 FAIL: test_hook_mode_resumes_empty_without_poll (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_hook_mode_resumes_empty_without_poll)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 185, in test_hook_mode_resumes_empty_without_poll
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 185, in test_hook_mode_resumes_empty_without_poll
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Traceback (most recent call last):
@@ -583,7 +583,7 @@ codex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot
 FAIL: test_join_failure_restores_previous_seat (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_join_failure_restores_previous_seat)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 197, in test_join_failure_restores_previous_seat
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 197, in test_join_failure_restores_previous_seat
     self.assertIn([str(self.repo), "claude-code", self.member[1]], self.calls("reset.sh"))
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: ['/tmp/codex-orchestrate-qbvosn51/repo with spaces', 'claude-code', 'claude-orchestrator-dot'] not found in []
@@ -592,7 +592,7 @@ AssertionError: ['/tmp/codex-orchestrate-qbvosn51/repo with spaces', 'claude-cod
 FAIL: test_max_turns_does_not_poll_after_last_turn (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_max_turns_does_not_poll_after_last_turn)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 169, in test_max_turns_does_not_poll_after_last_turn
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 169, in test_max_turns_does_not_poll_after_last_turn
     self.assertIn("max-turns", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'max-turns' not found in 'Traceback (most recent call last):\n  File "<stdin>", line 13, in <module>\nRuntimeError: forbidden pane read or whole-member removal\ncodex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot\n'
@@ -601,7 +601,7 @@ AssertionError: 'max-turns' not found in 'Traceback (most recent call last):\n  
 FAIL: test_repeated_runs_restore_and_increment_transcripts (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_repeated_runs_restore_and_increment_transcripts)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 135, in test_repeated_runs_restore_and_increment_transcripts
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 135, in test_repeated_runs_restore_and_increment_transcripts
     self.assertEqual(self.run_script().returncode, 0)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0
@@ -610,7 +610,7 @@ AssertionError: 2 != 0
 FAIL: test_restore_failure_keeps_lock_and_snapshot_for_recovery (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_restore_failure_keeps_lock_and_snapshot_for_recovery)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 258, in test_restore_failure_keeps_lock_and_snapshot_for_recovery
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 258, in test_restore_failure_keeps_lock_and_snapshot_for_recovery
     self.assertEqual(result.returncode, 1, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 1 : Traceback (most recent call last):
@@ -623,7 +623,7 @@ codex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot
 FAIL: test_snapshot_covers_all_teams_before_partial_reset_and_restores_them (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_snapshot_covers_all_teams_before_partial_reset_and_restores_them)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 246, in test_snapshot_covers_all_teams_before_partial_reset_and_restores_them
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 246, in test_snapshot_covers_all_teams_before_partial_reset_and_restores_them
     self.assertEqual(result.returncode, 5, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 5 : Traceback (most recent call last):
@@ -636,7 +636,7 @@ codex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot
 FAIL: test_target_codex_registration_elsewhere_is_preserved (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_target_codex_registration_elsewhere_is_preserved)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 236, in test_target_codex_registration_elsewhere_is_preserved
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 236, in test_target_codex_registration_elsewhere_is_preserved
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Traceback (most recent call last):
@@ -649,7 +649,7 @@ codex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot
 FAIL: test_team_selection_restores_all_exchanged_registrations (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_team_selection_restores_all_exchanged_registrations)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 213, in test_team_selection_restores_all_exchanged_registrations
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 213, in test_team_selection_restores_all_exchanged_registrations
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Traceback (most recent call last):
@@ -662,7 +662,7 @@ codex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot
 FAIL: test_timeout_restores_identity_and_polls_at_fifteen_seconds (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_timeout_restores_identity_and_polls_at_fifteen_seconds)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 176, in test_timeout_restores_identity_and_polls_at_fifteen_seconds
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 176, in test_timeout_restores_identity_and_polls_at_fifteen_seconds
     self.assertEqual(result.returncode, 124, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 124 : Traceback (most recent call last):
@@ -675,7 +675,7 @@ codex-orchestrate: shared identity or unavailable roster: team/codex-fixture-dot
 FAIL: test_worker_alias_is_excluded_across_teams (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_worker_alias_is_excluded_across_teams)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 271, in test_worker_alias_is_excluded_across_teams
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 271, in test_worker_alias_is_excluded_across_teams
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -685,7 +685,7 @@ AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --te
 FAIL: test_worker_seats_and_multiple_previous_identities_are_preserved (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_worker_seats_and_multiple_previous_identities_are_preserved)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 160, in test_worker_seats_and_multiple_previous_identities_are_preserved
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 160, in test_worker_seats_and_multiple_previous_identities_are_preserved
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : Traceback (most recent call last):
@@ -735,118 +735,118 @@ OK
 
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -995,9 +995,9 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:16.2671760Z   FIL
 test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:16.2672010Z   DOTFILES_MISE_VERSION: 2026.9.14
 test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:16.2672200Z   MISE_LOG_LEVEL: info
 test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:16.2673890Z   MISE_GITHUB_TOKEN: ***
-test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:16.2674140Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/dotfiles/dotfiles
+test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:16.2674140Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:16.2674410Z   MISE_YES: 1
-test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:16.2674620Z   UV_PYTHON_INSTALL_DIR: /Users/runner/work/_temp/uv-python-dir
+test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:16.2674620Z   UV_PYTHON_INSTALL_DIR: ~/work/_temp/uv-python-dir
 test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:16.2674890Z ##[endgroup]
 test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:17.0661320Z uv run python -m unittest discover -s tests/unit -v
 test (macos-14, client)	Run Python unit tests	2026-10-04T22:59:19.1118330Z test_bounded_scan_finishes_under_wall_limit (test_agent_session_staleness.AgentSessionStalenessTest.test_bounded_scan_finishes_under_wall_limit) ... ok
@@ -2004,7 +2004,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3445510Z test_
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3480410Z test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3586620Z test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3606990Z test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3621810Z test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/s6/5hzmn6lx4dz5nxs7k_0slzph0000gn/T/validate-agent-assets-test-pwg0my3q/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3621810Z test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/s6/5hzmn6lx4dz5nxs7k_0slzph0000gn/T/validate-agent-assets-test-pwg0my3q/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3630130Z ok
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3667910Z test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3691390Z test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -2027,7 +2027,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3918760Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3920320Z FAIL: test_cross_project_claude_registration_is_preserved (test_codex_orchestrate.CodexOrchestrateTest.test_cross_project_claude_registration_is_preserved)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3921950Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3922700Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3944410Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 232, in test_cross_project_claude_registration_is_preserved
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3944410Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 232, in test_cross_project_claude_registration_is_preserved
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3946670Z     self.assertEqual(result.returncode, 0, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3947530Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3948530Z AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2037,7 +2037,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3950800Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3953420Z FAIL: test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body (test_codex_orchestrate.CodexOrchestrateTest.test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3955470Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3956310Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3958610Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 208, in test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3958610Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 208, in test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3979850Z     self.assertEqual(result.returncode, 0, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3980970Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3981940Z AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2047,7 +2047,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3982990Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3984330Z FAIL: test_exec_failure_restores_seat (test_codex_orchestrate.CodexOrchestrateTest.test_exec_failure_restores_seat)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3985700Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3986480Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3987970Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 196, in test_exec_failure_restores_seat
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3987970Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 196, in test_exec_failure_restores_seat
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3989380Z     self.assertEqual(self.run_script().returncode, 9)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3990120Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3990740Z AssertionError: 2 != 9
@@ -2056,7 +2056,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3991330Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3992970Z FAIL: test_exec_resume_profile_transcript_and_restore (test_codex_orchestrate.CodexOrchestrateTest.test_exec_resume_profile_transcript_and_restore)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3994550Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3995470Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3997000Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 113, in test_exec_resume_profile_transcript_and_restore
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3997000Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 113, in test_exec_resume_profile_transcript_and_restore
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3998910Z     self.assertEqual(result.returncode, 0, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.3999740Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4000680Z AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2066,7 +2066,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4001660Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4003210Z FAIL: test_existing_codex_seat_is_not_rejoined_or_removed (test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_is_not_rejoined_or_removed)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4004850Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4005610Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4007140Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 152, in test_existing_codex_seat_is_not_rejoined_or_removed
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4007140Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 152, in test_existing_codex_seat_is_not_rejoined_or_removed
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4008650Z     self.assertEqual(self.run_script().returncode, 0)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4009400Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4010040Z AssertionError: 2 != 0
@@ -2075,7 +2075,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4010610Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4011990Z FAIL: test_existing_lock_refuses_exchange (test_codex_orchestrate.CodexOrchestrateTest.test_existing_lock_refuses_exchange)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4013390Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4014150Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4016700Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 225, in test_existing_lock_refuses_exchange
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4016700Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 225, in test_existing_lock_refuses_exchange
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4017410Z     self.assertIn("another launcher", result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4017690Z     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4018110Z AssertionError: 'another launcher' not found in 'codex-orchestrate: select one registered team with --team\n'
@@ -2084,7 +2084,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4018860Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4019470Z FAIL: test_hook_mode_resumes_empty_without_poll (test_codex_orchestrate.CodexOrchestrateTest.test_hook_mode_resumes_empty_without_poll)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4020010Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4020280Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4020800Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 190, in test_hook_mode_resumes_empty_without_poll
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4020800Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 190, in test_hook_mode_resumes_empty_without_poll
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4021340Z     self.assertEqual(result.returncode, 0, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4021660Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4022060Z AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2094,7 +2094,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4022420Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4022930Z FAIL: test_join_failure_restores_previous_seat (test_codex_orchestrate.CodexOrchestrateTest.test_join_failure_restores_previous_seat)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4023560Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4023820Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4024320Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 202, in test_join_failure_restores_previous_seat
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4024320Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 202, in test_join_failure_restores_previous_seat
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4024930Z     self.assertIn([str(self.repo), "claude-code", self.member[1]], self.calls("reset.sh"))
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4025330Z     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4025970Z AssertionError: ['/var/folders/s6/5hzmn6lx4dz5nxs7k_0slzph0000gn/T/codex-orchestrate-rc4rryqh/repo with spaces', 'claude-code', 'claude-orchestrator-dot'] not found in []
@@ -2103,7 +2103,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4026610Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4027210Z FAIL: test_max_turns_does_not_poll_after_last_turn (test_codex_orchestrate.CodexOrchestrateTest.test_max_turns_does_not_poll_after_last_turn)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4027760Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4028030Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4028550Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 174, in test_max_turns_does_not_poll_after_last_turn
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4028550Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 174, in test_max_turns_does_not_poll_after_last_turn
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4029070Z     self.assertIn("max-turns", result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4029310Z     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4029930Z AssertionError: 'max-turns' not found in 'codex-orchestrate: select one registered team with --team\n'
@@ -2112,7 +2112,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4030550Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4031160Z FAIL: test_repeated_runs_restore_and_increment_transcripts (test_codex_orchestrate.CodexOrchestrateTest.test_repeated_runs_restore_and_increment_transcripts)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4031750Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4032030Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4032740Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 140, in test_repeated_runs_restore_and_increment_transcripts
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4032740Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 140, in test_repeated_runs_restore_and_increment_transcripts
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4033290Z     self.assertEqual(self.run_script().returncode, 0)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4034080Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4034430Z AssertionError: 2 != 0
@@ -2121,7 +2121,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4034640Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4035250Z FAIL: test_restore_failure_keeps_lock_and_snapshot_for_recovery (test_codex_orchestrate.CodexOrchestrateTest.test_restore_failure_keeps_lock_and_snapshot_for_recovery)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4036190Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4036740Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4037730Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 263, in test_restore_failure_keeps_lock_and_snapshot_for_recovery
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4037730Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 263, in test_restore_failure_keeps_lock_and_snapshot_for_recovery
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4038310Z     self.assertEqual(result.returncode, 1, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4038660Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4039080Z AssertionError: 2 != 1 : codex-orchestrate: select one registered team with --team
@@ -2131,7 +2131,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4039640Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4040330Z FAIL: test_snapshot_covers_all_teams_before_partial_reset_and_restores_them (test_codex_orchestrate.CodexOrchestrateTest.test_snapshot_covers_all_teams_before_partial_reset_and_restores_them)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4041070Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4041460Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4042480Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 251, in test_snapshot_covers_all_teams_before_partial_reset_and_restores_them
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4042480Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 251, in test_snapshot_covers_all_teams_before_partial_reset_and_restores_them
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4043160Z     self.assertEqual(result.returncode, 5, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4043490Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4044020Z AssertionError: 2 != 5 : codex-orchestrate: ambiguous or missing project suffix; check herdr-agents registration
@@ -2141,7 +2141,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4044480Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4045210Z FAIL: test_target_codex_registration_elsewhere_is_preserved (test_codex_orchestrate.CodexOrchestrateTest.test_target_codex_registration_elsewhere_is_preserved)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4045810Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4046350Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4047100Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 241, in test_target_codex_registration_elsewhere_is_preserved
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4047100Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 241, in test_target_codex_registration_elsewhere_is_preserved
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4047750Z     self.assertEqual(result.returncode, 0, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4048050Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4048420Z AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2151,7 +2151,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4048800Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4049390Z FAIL: test_team_selection_restores_all_exchanged_registrations (test_codex_orchestrate.CodexOrchestrateTest.test_team_selection_restores_all_exchanged_registrations)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4050350Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4050640Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4051250Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 218, in test_team_selection_restores_all_exchanged_registrations
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4051250Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 218, in test_team_selection_restores_all_exchanged_registrations
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4051820Z     self.assertEqual(result.returncode, 0, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4052090Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4052520Z AssertionError: 2 != 0 : codex-orchestrate: ambiguous or missing project suffix; check herdr-agents registration
@@ -2161,7 +2161,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4053460Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4054060Z FAIL: test_timeout_restores_identity_and_polls_at_fifteen_seconds (test_codex_orchestrate.CodexOrchestrateTest.test_timeout_restores_identity_and_polls_at_fifteen_seconds)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4054790Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4055070Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4055720Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 181, in test_timeout_restores_identity_and_polls_at_fifteen_seconds
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4055720Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 181, in test_timeout_restores_identity_and_polls_at_fifteen_seconds
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4056300Z     self.assertEqual(result.returncode, 124, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4056590Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4056930Z AssertionError: 2 != 124 : codex-orchestrate: select one registered team with --team
@@ -2171,7 +2171,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4057300Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4057820Z FAIL: test_worker_alias_is_excluded_across_teams (test_codex_orchestrate.CodexOrchestrateTest.test_worker_alias_is_excluded_across_teams)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4058410Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4058740Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4059320Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 276, in test_worker_alias_is_excluded_across_teams
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4059320Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 276, in test_worker_alias_is_excluded_across_teams
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4059890Z     self.assertEqual(result.returncode, 0, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4060200Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4061110Z AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2181,7 +2181,7 @@ test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4061540Z =====
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4062170Z FAIL: test_worker_seats_and_multiple_previous_identities_are_preserved (test_codex_orchestrate.CodexOrchestrateTest.test_worker_seats_and_multiple_previous_identities_are_preserved)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4062830Z ----------------------------------------------------------------------
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4063100Z Traceback (most recent call last):
-test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4063780Z   File "/Users/runner/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 165, in test_worker_seats_and_multiple_previous_identities_are_preserved
+test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4063780Z   File "~/work/dotfiles/dotfiles/tests/unit/test_codex_orchestrate.py", line 165, in test_worker_seats_and_multiple_previous_identities_are_preserved
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4064350Z     self.assertEqual(result.returncode, 0, result.stderr)
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4064640Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 test (macos-14, client)	Run Python unit tests	2026-10-04T23:04:22.4064990Z AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2224,7 +2224,7 @@ test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_code
 FAIL: test_cross_project_claude_registration_is_preserved (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_cross_project_claude_registration_is_preserved)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 232, in test_cross_project_claude_registration_is_preserved
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 232, in test_cross_project_claude_registration_is_preserved
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2234,7 +2234,7 @@ AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --te
 FAIL: test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 208, in test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 208, in test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2244,7 +2244,7 @@ AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --te
 FAIL: test_exec_failure_restores_seat (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_exec_failure_restores_seat)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 196, in test_exec_failure_restores_seat
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 196, in test_exec_failure_restores_seat
     self.assertEqual(self.run_script().returncode, 9)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 9
@@ -2253,7 +2253,7 @@ AssertionError: 2 != 9
 FAIL: test_exec_resume_profile_transcript_and_restore (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_exec_resume_profile_transcript_and_restore)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 113, in test_exec_resume_profile_transcript_and_restore
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 113, in test_exec_resume_profile_transcript_and_restore
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2263,7 +2263,7 @@ AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --te
 FAIL: test_existing_codex_seat_is_not_rejoined_or_removed (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_is_not_rejoined_or_removed)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 152, in test_existing_codex_seat_is_not_rejoined_or_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 152, in test_existing_codex_seat_is_not_rejoined_or_removed
     self.assertEqual(self.run_script().returncode, 0)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0
@@ -2272,7 +2272,7 @@ AssertionError: 2 != 0
 FAIL: test_existing_lock_refuses_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_lock_refuses_exchange)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 225, in test_existing_lock_refuses_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 225, in test_existing_lock_refuses_exchange
     self.assertIn("another launcher", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'another launcher' not found in 'codex-orchestrate: select one registered team with --team\n'
@@ -2281,7 +2281,7 @@ AssertionError: 'another launcher' not found in 'codex-orchestrate: select one r
 FAIL: test_hook_mode_resumes_empty_without_poll (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_hook_mode_resumes_empty_without_poll)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 190, in test_hook_mode_resumes_empty_without_poll
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 190, in test_hook_mode_resumes_empty_without_poll
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2291,7 +2291,7 @@ AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --te
 FAIL: test_join_failure_restores_previous_seat (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_join_failure_restores_previous_seat)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 202, in test_join_failure_restores_previous_seat
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 202, in test_join_failure_restores_previous_seat
     self.assertIn([str(self.repo), "claude-code", self.member[1]], self.calls("reset.sh"))
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: ['/tmp/t86-path-repro-ouc10rld/alias/codex-orchestrate-nmgqa8nr/repo with spaces', 'claude-code', 'claude-orchestrator-dot'] not found in []
@@ -2300,7 +2300,7 @@ AssertionError: ['/tmp/t86-path-repro-ouc10rld/alias/codex-orchestrate-nmgqa8nr/
 FAIL: test_max_turns_does_not_poll_after_last_turn (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_max_turns_does_not_poll_after_last_turn)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 174, in test_max_turns_does_not_poll_after_last_turn
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 174, in test_max_turns_does_not_poll_after_last_turn
     self.assertIn("max-turns", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'max-turns' not found in 'codex-orchestrate: select one registered team with --team\n'
@@ -2309,7 +2309,7 @@ AssertionError: 'max-turns' not found in 'codex-orchestrate: select one register
 FAIL: test_repeated_runs_restore_and_increment_transcripts (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_repeated_runs_restore_and_increment_transcripts)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 140, in test_repeated_runs_restore_and_increment_transcripts
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 140, in test_repeated_runs_restore_and_increment_transcripts
     self.assertEqual(self.run_script().returncode, 0)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0
@@ -2318,7 +2318,7 @@ AssertionError: 2 != 0
 FAIL: test_restore_failure_keeps_lock_and_snapshot_for_recovery (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_restore_failure_keeps_lock_and_snapshot_for_recovery)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 263, in test_restore_failure_keeps_lock_and_snapshot_for_recovery
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 263, in test_restore_failure_keeps_lock_and_snapshot_for_recovery
     self.assertEqual(result.returncode, 1, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 1 : codex-orchestrate: select one registered team with --team
@@ -2328,7 +2328,7 @@ AssertionError: 2 != 1 : codex-orchestrate: select one registered team with --te
 FAIL: test_snapshot_covers_all_teams_before_partial_reset_and_restores_them (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_snapshot_covers_all_teams_before_partial_reset_and_restores_them)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 251, in test_snapshot_covers_all_teams_before_partial_reset_and_restores_them
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 251, in test_snapshot_covers_all_teams_before_partial_reset_and_restores_them
     self.assertEqual(result.returncode, 5, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 5 : codex-orchestrate: ambiguous or missing project suffix; check herdr-agents registration
@@ -2338,7 +2338,7 @@ AssertionError: 2 != 5 : codex-orchestrate: ambiguous or missing project suffix;
 FAIL: test_target_codex_registration_elsewhere_is_preserved (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_target_codex_registration_elsewhere_is_preserved)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 241, in test_target_codex_registration_elsewhere_is_preserved
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 241, in test_target_codex_registration_elsewhere_is_preserved
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2348,7 +2348,7 @@ AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --te
 FAIL: test_team_selection_restores_all_exchanged_registrations (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_team_selection_restores_all_exchanged_registrations)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 218, in test_team_selection_restores_all_exchanged_registrations
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 218, in test_team_selection_restores_all_exchanged_registrations
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: ambiguous or missing project suffix; check herdr-agents registration
@@ -2358,7 +2358,7 @@ AssertionError: 2 != 0 : codex-orchestrate: ambiguous or missing project suffix;
 FAIL: test_timeout_restores_identity_and_polls_at_fifteen_seconds (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_timeout_restores_identity_and_polls_at_fifteen_seconds)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 181, in test_timeout_restores_identity_and_polls_at_fifteen_seconds
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 181, in test_timeout_restores_identity_and_polls_at_fifteen_seconds
     self.assertEqual(result.returncode, 124, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 124 : codex-orchestrate: select one registered team with --team
@@ -2368,7 +2368,7 @@ AssertionError: 2 != 124 : codex-orchestrate: select one registered team with --
 FAIL: test_worker_alias_is_excluded_across_teams (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_worker_alias_is_excluded_across_teams)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 276, in test_worker_alias_is_excluded_across_teams
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 276, in test_worker_alias_is_excluded_across_teams
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2378,7 +2378,7 @@ AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --te
 FAIL: test_worker_seats_and_multiple_previous_identities_are_preserved (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_worker_seats_and_multiple_previous_identities_are_preserved)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 165, in test_worker_seats_and_multiple_previous_identities_are_preserved
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 165, in test_worker_seats_and_multiple_previous_identities_are_preserved
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: select one registered team with --team
@@ -2521,7 +2521,7 @@ test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_code
 FAIL: test_claude_delivery_restore_failure_keeps_recovery_lock (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_claude_delivery_restore_failure_keeps_recovery_lock)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 165, in test_claude_delivery_restore_failure_keeps_recovery_lock
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 165, in test_claude_delivery_restore_failure_keeps_recovery_lock
     self.assertEqual(result.returncode, 1, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : 
@@ -2530,7 +2530,7 @@ AssertionError: 0 != 1 :
 FAIL: test_codex_delivery_failure_restores_claude_without_starting_a_turn (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_codex_delivery_failure_restores_claude_without_starting_a_turn)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 156, in test_codex_delivery_failure_restores_claude_without_starting_a_turn
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 156, in test_codex_delivery_failure_restores_claude_without_starting_a_turn
     self.assertEqual(result.returncode, 8, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 8 : 
@@ -2539,7 +2539,7 @@ AssertionError: 0 != 8 :
 FAIL: test_exec_resume_profile_transcript_and_restore (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_exec_resume_profile_transcript_and_restore)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 129, in test_exec_resume_profile_transcript_and_restore
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 129, in test_exec_resume_profile_transcript_and_restore
     self.assertEqual(
     ~~~~~~~~~~~~~~~~^
         self.calls("delivery.sh"),
@@ -2565,7 +2565,7 @@ First extra element 0:
 FAIL: test_existing_codex_seat_is_not_rejoined_or_removed (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_is_not_rejoined_or_removed)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 190, in test_existing_codex_seat_is_not_rejoined_or_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 190, in test_existing_codex_seat_is_not_rejoined_or_removed
     self.assertEqual(self.calls("delivery.sh"), [["set", "turn", "codex", str(self.repo)]])
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Lists differ: [] != [['set', 'turn', 'codex', '/tmp/codex-orchestrate-vyqtpscn/repo with spaces']]
@@ -2662,138 +2662,138 @@ OK
 ### t86-assets-delivery.log
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -2964,7 +2964,7 @@ Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 ## RESULT handoff
 
 ```text
-AGMSG-RESULT v1 task_id=dotfiles-T86 task_rev=sha256:a51214c0963afb191f236f0caab8ba840192167dc975ba09e5abc2a15bb44ca2 status=ready-for-integration pr=https://github.com/mryfmo/dotfiles/pull/271 head=567c8d1777bbc000284928ed5a46f036f1f6d7bd diff_head=4598d30be64f05c37fb84a90a567136ac61556ed repo=/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e report=.orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md validation=.orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md sandbox=.orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md learning=.orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md autoskill=.orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md review_source=.orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json review_receipt=.orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md summary=141-line-launcher;23-fake-tests;delivery-turn-and-Claude-both-restoration;814-local-unit-tests-pass;final-CI-all-green;origin-main-behind=0;independent-review-correct;review-gate-pass bot=none wait=2026-10-04T23:25:58Z..23:40:59Z unresolved_thread=PRRT_kwDOSMyAV86o3a9U disposition=fixed:f2d4d7096a41ced56562e9d95c111e9d5d8c8995 unresolved_thread=PRRT_kwDOSMyAV86o3a9T proposed_disposition=not-applicable:T84-owns-the-manifest-and-generated-orchestrator-kind;T86-was-explicitly-dispatched-with-fake-interfaces-as-a-soft-dependency;live-activation-requires-T84-and-T87 note=remaining-T84-variable-absent;no-threads-resolved;Stop-hook-probe-inconclusive-and-authorized-deferred-to-T87;CompactionDB-decision-by-orchestrator;seven-artifacts-uncommitted;plan-mode-used=no cost=n/a
+AGMSG-RESULT v1 task_id=dotfiles-T86 task_rev=sha256:a51214c0963afb191f236f0caab8ba840192167dc975ba09e5abc2a15bb44ca2 status=ready-for-integration pr=https://github.com/mryfmo/dotfiles/pull/271 head=567c8d1777bbc000284928ed5a46f036f1f6d7bd diff_head=4598d30be64f05c37fb84a90a567136ac61556ed repo=~/Workspace/dotfiles/.claude/worktrees/worker-e report=.orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md validation=.orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md sandbox=.orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md learning=.orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md autoskill=.orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md review_source=.orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json review_receipt=.orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md summary=141-line-launcher;23-fake-tests;delivery-turn-and-Claude-both-restoration;814-local-unit-tests-pass;final-CI-all-green;origin-main-behind=0;independent-review-correct;review-gate-pass bot=none wait=2026-10-04T23:25:58Z..23:40:59Z unresolved_thread=PRRT_kwDOSMyAV86o3a9U disposition=fixed:f2d4d7096a41ced56562e9d95c111e9d5d8c8995 unresolved_thread=PRRT_kwDOSMyAV86o3a9T proposed_disposition=not-applicable:T84-owns-the-manifest-and-generated-orchestrator-kind;T86-was-explicitly-dispatched-with-fake-interfaces-as-a-soft-dependency;live-activation-requires-T84-and-T87 note=remaining-T84-variable-absent;no-threads-resolved;Stop-hook-probe-inconclusive-and-authorized-deferred-to-T87;CompactionDB-decision-by-orchestrator;seven-artifacts-uncommitted;plan-mode-used=no cost=n/a
 agmsg-dispatch exit=0
 ```
 
@@ -3010,7 +3010,7 @@ test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_code
 FAIL: test_exec_resume_profile_transcript_and_restore (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_exec_resume_profile_transcript_and_restore)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 138, in test_exec_resume_profile_transcript_and_restore
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 138, in test_exec_resume_profile_transcript_and_restore
     self.assertEqual(
     ~~~~~~~~~~~~~~~~^
         first[-1],
@@ -3030,7 +3030,7 @@ AssertionError: 'agms[58 chars]value' != 'agms[58 chars]value\nWhen the orchestr
 FAIL: test_existing_codex_seat_in_multiple_teams_is_reused (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_in_multiple_teams_is_reused) (team='team')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 326, in test_existing_codex_seat_in_multiple_teams_is_reused
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 326, in test_existing_codex_seat_in_multiple_teams_is_reused
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: another Codex seat exists at this checkout
@@ -3040,7 +3040,7 @@ AssertionError: 2 != 0 : codex-orchestrate: another Codex seat exists at this ch
 FAIL: test_existing_codex_seat_in_multiple_teams_is_reused (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_in_multiple_teams_is_reused) (team='other-team')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 326, in test_existing_codex_seat_in_multiple_teams_is_reused
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 326, in test_existing_codex_seat_in_multiple_teams_is_reused
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: another Codex seat exists at this checkout
@@ -3050,7 +3050,7 @@ AssertionError: 2 != 0 : codex-orchestrate: another Codex seat exists at this ch
 FAIL: test_legacy_target_registration_elsewhere_is_refused (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_legacy_target_registration_elsewhere_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 307, in test_legacy_target_registration_elsewhere_is_refused
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 307, in test_legacy_target_registration_elsewhere_is_refused
     self.assertEqual(result.returncode, 2, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -3059,7 +3059,7 @@ AssertionError: 0 != 2 :
 FAIL: test_malformed_global_registration_fails_before_mutation (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_malformed_global_registration_fails_before_mutation)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 316, in test_malformed_global_registration_fails_before_mutation
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 316, in test_malformed_global_registration_fails_before_mutation
     self.assertNotEqual(result.returncode, 0)
     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 == 0
@@ -3068,7 +3068,7 @@ AssertionError: 0 == 0
 FAIL: test_target_codex_registration_elsewhere_is_refused_before_mutation (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_target_codex_registration_elsewhere_is_refused_before_mutation) (team='team')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 296, in test_target_codex_registration_elsewhere_is_refused_before_mutation
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 296, in test_target_codex_registration_elsewhere_is_refused_before_mutation
     self.assertEqual(result.returncode, 2, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -3077,7 +3077,7 @@ AssertionError: 0 != 2 :
 FAIL: test_target_codex_registration_elsewhere_is_refused_before_mutation (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_target_codex_registration_elsewhere_is_refused_before_mutation) (team='unrelated-team')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 296, in test_target_codex_registration_elsewhere_is_refused_before_mutation
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 296, in test_target_codex_registration_elsewhere_is_refused_before_mutation
     self.assertEqual(result.returncode, 2, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -3130,154 +3130,154 @@ OK
 ### t86-r1-assets.log
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -3453,7 +3453,7 @@ test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_code
 FAIL: test_failed_masker_cleans_raw_files_and_restores_seats (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_failed_masker_cleans_raw_files_and_restores_seats)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 223, in test_failed_masker_cleans_raw_files_and_restores_seats
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 223, in test_failed_masker_cleans_raw_files_and_restores_seats
     self.assertNotEqual(result.returncode, 0)
     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 == 0
@@ -3462,7 +3462,7 @@ AssertionError: 0 == 0
 FAIL: test_masks_each_turn_before_publishing_transcripts (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_masks_each_turn_before_publishing_transcripts)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 198, in test_masks_each_turn_before_publishing_transcripts
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 198, in test_masks_each_turn_before_publishing_transcripts
     self.assertEqual(len(masks), 2)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
 AssertionError: 0 != 2
@@ -3471,7 +3471,7 @@ AssertionError: 0 != 2
 FAIL: test_missing_masker_refuses_before_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_missing_masker_refuses_before_exchange)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 214, in test_missing_masker_refuses_before_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 214, in test_missing_masker_refuses_before_exchange
     self.assertEqual(result.returncode, 2, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -3480,7 +3480,7 @@ AssertionError: 0 != 2 :
 FAIL: test_only_the_final_nonblank_line_completes_orchestration (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_only_the_final_nonblank_line_completes_orchestration) (waiting='The worker said `ORCHESTRATION-DONE`, but I am waiting.')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 190, in test_only_the_final_nonblank_line_completes_orchestration
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 190, in test_only_the_final_nonblank_line_completes_orchestration
     self.assertEqual(len(self.calls("codex")), 2)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 2
@@ -3489,7 +3489,7 @@ AssertionError: 1 != 2
 FAIL: test_only_the_final_nonblank_line_completes_orchestration (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_only_the_final_nonblank_line_completes_orchestration) (waiting='ORCHESTRATION-DONE\nStill waiting')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 190, in test_only_the_final_nonblank_line_completes_orchestration
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 190, in test_only_the_final_nonblank_line_completes_orchestration
     self.assertEqual(len(self.calls("codex")), 2)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 2
@@ -3547,156 +3547,156 @@ OK
 ### t86-r1b-assets.log
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T83-docs-diet-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T87-live-e2e-matrix-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T83-docs-diet-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T87-live-e2e-matrix-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -3847,7 +3847,7 @@ test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_code
 FAIL: test_child_cannot_redirect_parent_status_or_restore_writes (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_child_cannot_redirect_parent_status_or_restore_writes)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 276, in test_child_cannot_redirect_parent_status_or_restore_writes
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 276, in test_child_cannot_redirect_parent_status_or_restore_writes
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -3857,7 +3857,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_claude_delivery_restore_failure_keeps_recovery_lock (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_claude_delivery_restore_failure_keeps_recovery_lock)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 291, in test_claude_delivery_restore_failure_keeps_recovery_lock
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 291, in test_claude_delivery_restore_failure_keeps_recovery_lock
     self.assertEqual(result.returncode, 1, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 1 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -3867,7 +3867,7 @@ AssertionError: 2 != 1 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_codex_delivery_failure_restores_claude_without_starting_a_turn (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_codex_delivery_failure_restores_claude_without_starting_a_turn)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 282, in test_codex_delivery_failure_restores_claude_without_starting_a_turn
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 282, in test_codex_delivery_failure_restores_claude_without_starting_a_turn
     self.assertEqual(result.returncode, 8, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 8 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -3877,7 +3877,7 @@ AssertionError: 2 != 8 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_cross_project_claude_registration_is_preserved (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_cross_project_claude_registration_is_preserved)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 395, in test_cross_project_claude_registration_is_preserved
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 395, in test_cross_project_claude_registration_is_preserved
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -3887,7 +3887,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_different_codex_identity_at_checkout_is_refused (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_different_codex_identity_at_checkout_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 461, in test_different_codex_identity_at_checkout_is_refused
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 461, in test_different_codex_identity_at_checkout_is_refused
     self.assertIn("another Codex seat", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'another Codex seat' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -3896,7 +3896,7 @@ AssertionError: 'another Codex seat' not found in 'codex-orchestrate: require uv
 FAIL: test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 370, in test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 370, in test_empty_poll_waits_fifteen_seconds_and_preserves_option_like_body
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -3906,7 +3906,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_exec_failure_restores_seat (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_exec_failure_restores_seat)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 358, in test_exec_failure_restores_seat
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 358, in test_exec_failure_restores_seat
     self.assertEqual(self.run_script().returncode, 9)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 9
@@ -3915,7 +3915,7 @@ AssertionError: 2 != 9
 FAIL: test_exec_resume_profile_transcript_and_restore (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_exec_resume_profile_transcript_and_restore)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 143, in test_exec_resume_profile_transcript_and_restore
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 143, in test_exec_resume_profile_transcript_and_restore
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -3925,7 +3925,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_existing_codex_seat_in_multiple_teams_is_reused (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_in_multiple_teams_is_reused) (team='team')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 441, in test_existing_codex_seat_in_multiple_teams_is_reused
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 441, in test_existing_codex_seat_in_multiple_teams_is_reused
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -3935,7 +3935,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_existing_codex_seat_in_multiple_teams_is_reused (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_in_multiple_teams_is_reused) (team='other-team')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 441, in test_existing_codex_seat_in_multiple_teams_is_reused
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 441, in test_existing_codex_seat_in_multiple_teams_is_reused
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -3945,7 +3945,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_existing_codex_seat_is_not_rejoined_or_removed (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_is_not_rejoined_or_removed)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 312, in test_existing_codex_seat_is_not_rejoined_or_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 312, in test_existing_codex_seat_is_not_rejoined_or_removed
     self.assertEqual(self.run_script().returncode, 0)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0
@@ -3954,7 +3954,7 @@ AssertionError: 2 != 0
 FAIL: test_existing_codex_seat_requires_membership_in_selected_team (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_requires_membership_in_selected_team)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 452, in test_existing_codex_seat_requires_membership_in_selected_team
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 452, in test_existing_codex_seat_requires_membership_in_selected_team
     self.assertIn("select a team", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'select a team' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -3963,7 +3963,7 @@ AssertionError: 'select a team' not found in 'codex-orchestrate: require uv and 
 FAIL: test_existing_lock_refuses_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_lock_refuses_exchange)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 388, in test_existing_lock_refuses_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 388, in test_existing_lock_refuses_exchange
     self.assertIn("another launcher", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'another launcher' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -3972,7 +3972,7 @@ AssertionError: 'another launcher' not found in 'codex-orchestrate: require uv a
 FAIL: test_existing_private_run_is_not_reused (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_private_run_is_not_reused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 252, in test_existing_private_run_is_not_reused
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 252, in test_existing_private_run_is_not_reused
     self.assertEqual(self.run_script().returncode, 0)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0
@@ -3981,7 +3981,7 @@ AssertionError: 2 != 0
 FAIL: test_join_failure_restores_previous_seat (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_join_failure_restores_previous_seat)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 364, in test_join_failure_restores_previous_seat
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 364, in test_join_failure_restores_previous_seat
     self.assertIn([str(self.repo), "claude-code", self.member[1]], self.calls("reset.sh"))
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: ['/tmp/codex-orchestrate-mv2oxdb0/repo with spaces', 'claude-code', 'claude-orchestrator-dot'] not found in []
@@ -3990,7 +3990,7 @@ AssertionError: ['/tmp/codex-orchestrate-mv2oxdb0/repo with spaces', 'claude-cod
 FAIL: test_large_inbox_body_uses_stdin (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_large_inbox_body_uses_stdin)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 227, in test_large_inbox_body_uses_stdin
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 227, in test_large_inbox_body_uses_stdin
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -4000,7 +4000,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_legacy_target_registration_elsewhere_is_refused (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_legacy_target_registration_elsewhere_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 421, in test_legacy_target_registration_elsewhere_is_refused
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 421, in test_legacy_target_registration_elsewhere_is_refused
     self.assertIn("/legacy", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '/legacy' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4009,7 +4009,7 @@ AssertionError: '/legacy' not found in 'codex-orchestrate: require uv and script
 FAIL: test_max_turns_does_not_poll_after_last_turn (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_max_turns_does_not_poll_after_last_turn)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 335, in test_max_turns_does_not_poll_after_last_turn
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 335, in test_max_turns_does_not_poll_after_last_turn
     self.assertIn("max-turns", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'max-turns' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4018,7 +4018,7 @@ AssertionError: 'max-turns' not found in 'codex-orchestrate: require uv and scri
 FAIL: test_missing_generated_environment_names_herdr_and_exits_two (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_missing_generated_environment_names_herdr_and_exits_two)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 521, in test_missing_generated_environment_names_herdr_and_exits_two
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 521, in test_missing_generated_environment_names_herdr_and_exits_two
     self.assertIn("herdr-agents", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'herdr-agents' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4027,7 +4027,7 @@ AssertionError: 'herdr-agents' not found in 'codex-orchestrate: require uv and s
 FAIL: test_only_the_final_nonblank_line_completes_orchestration (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_only_the_final_nonblank_line_completes_orchestration) (waiting='The worker said `ORCHESTRATION-DONE`, but I am waiting.')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 191, in test_only_the_final_nonblank_line_completes_orchestration
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 191, in test_only_the_final_nonblank_line_completes_orchestration
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -4037,7 +4037,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_only_the_final_nonblank_line_completes_orchestration (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_only_the_final_nonblank_line_completes_orchestration) (waiting='ORCHESTRATION-DONE\nStill waiting')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 191, in test_only_the_final_nonblank_line_completes_orchestration
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 191, in test_only_the_final_nonblank_line_completes_orchestration
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -4047,7 +4047,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_private_path_rejects_repo_agmsg_and_temp_including_symlinks (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_private_path_rejects_repo_agmsg_and_temp_including_symlinks) (root=PosixPath('/tmp/codex-orchestrate-6_vq2xjl/repo with spaces'))
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 239, in test_private_path_rejects_repo_agmsg_and_temp_including_symlinks
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 239, in test_private_path_rejects_repo_agmsg_and_temp_including_symlinks
     self.assertIn("private state", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'private state' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4056,7 +4056,7 @@ AssertionError: 'private state' not found in 'codex-orchestrate: require uv and 
 FAIL: test_private_path_rejects_repo_agmsg_and_temp_including_symlinks (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_private_path_rejects_repo_agmsg_and_temp_including_symlinks) (root=PosixPath('/tmp/codex-orchestrate-6_vq2xjl/home/.agents/skills/agmsg'))
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 239, in test_private_path_rejects_repo_agmsg_and_temp_including_symlinks
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 239, in test_private_path_rejects_repo_agmsg_and_temp_including_symlinks
     self.assertIn("private state", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'private state' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4065,7 +4065,7 @@ AssertionError: 'private state' not found in 'codex-orchestrate: require uv and 
 FAIL: test_private_path_rejects_repo_agmsg_and_temp_including_symlinks (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_private_path_rejects_repo_agmsg_and_temp_including_symlinks) (root=PosixPath('/tmp/codex-orchestrate-6_vq2xjl/tmp'))
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 239, in test_private_path_rejects_repo_agmsg_and_temp_including_symlinks
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 239, in test_private_path_rejects_repo_agmsg_and_temp_including_symlinks
     self.assertIn("private state", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'private state' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4074,7 +4074,7 @@ AssertionError: 'private state' not found in 'codex-orchestrate: require uv and 
 FAIL: test_raw_content_stays_private_with_status_only_publication (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_raw_content_stays_private_with_status_only_publication)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 199, in test_raw_content_stays_private_with_status_only_publication
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 199, in test_raw_content_stays_private_with_status_only_publication
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -4084,7 +4084,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_repeated_runs_restore_and_increment_transcripts (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_repeated_runs_restore_and_increment_transcripts)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 300, in test_repeated_runs_restore_and_increment_transcripts
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 300, in test_repeated_runs_restore_and_increment_transcripts
     self.assertEqual(self.run_script().returncode, 0)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0
@@ -4093,7 +4093,7 @@ AssertionError: 2 != 0
 FAIL: test_restore_failure_keeps_lock_and_snapshot_for_recovery (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_restore_failure_keeps_lock_and_snapshot_for_recovery)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 482, in test_restore_failure_keeps_lock_and_snapshot_for_recovery
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 482, in test_restore_failure_keeps_lock_and_snapshot_for_recovery
     self.assertEqual(result.returncode, 1, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 1 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -4103,7 +4103,7 @@ AssertionError: 2 != 1 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_snapshot_covers_all_teams_before_partial_reset_and_restores_them (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_snapshot_covers_all_teams_before_partial_reset_and_restores_them)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 470, in test_snapshot_covers_all_teams_before_partial_reset_and_restores_them
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 470, in test_snapshot_covers_all_teams_before_partial_reset_and_restores_them
     self.assertEqual(result.returncode, 5, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 5 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -4113,7 +4113,7 @@ AssertionError: 2 != 5 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_target_codex_registration_elsewhere_is_refused_before_mutation (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_target_codex_registration_elsewhere_is_refused_before_mutation) (team='team', already_here=False)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 410, in test_target_codex_registration_elsewhere_is_refused_before_mutation
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 410, in test_target_codex_registration_elsewhere_is_refused_before_mutation
     self.assertIn("/another/project", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '/another/project' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4122,7 +4122,7 @@ AssertionError: '/another/project' not found in 'codex-orchestrate: require uv a
 FAIL: test_target_codex_registration_elsewhere_is_refused_before_mutation (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_target_codex_registration_elsewhere_is_refused_before_mutation) (team='team', already_here=True)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 410, in test_target_codex_registration_elsewhere_is_refused_before_mutation
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 410, in test_target_codex_registration_elsewhere_is_refused_before_mutation
     self.assertIn("/another/project", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '/another/project' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4131,7 +4131,7 @@ AssertionError: '/another/project' not found in 'codex-orchestrate: require uv a
 FAIL: test_target_codex_registration_elsewhere_is_refused_before_mutation (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_target_codex_registration_elsewhere_is_refused_before_mutation) (team='unrelated-team', already_here=True)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 410, in test_target_codex_registration_elsewhere_is_refused_before_mutation
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 410, in test_target_codex_registration_elsewhere_is_refused_before_mutation
     self.assertIn("/another/project", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '/another/project' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4140,7 +4140,7 @@ AssertionError: '/another/project' not found in 'codex-orchestrate: require uv a
 FAIL: test_team_selection_restores_all_exchanged_registrations (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_team_selection_restores_all_exchanged_registrations)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 381, in test_team_selection_restores_all_exchanged_registrations
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 381, in test_team_selection_restores_all_exchanged_registrations
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -4150,7 +4150,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_timeout_restores_identity_and_polls_at_fifteen_seconds (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_timeout_restores_identity_and_polls_at_fifteen_seconds)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 342, in test_timeout_restores_identity_and_polls_at_fifteen_seconds
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 342, in test_timeout_restores_identity_and_polls_at_fifteen_seconds
     self.assertEqual(result.returncode, 124, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 124 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -4160,7 +4160,7 @@ AssertionError: 2 != 124 : codex-orchestrate: require uv and scripts/validate-ag
 FAIL: test_unvalidated_hook_mode_refuses_before_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_unvalidated_hook_mode_refuses_before_exchange)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 352, in test_unvalidated_hook_mode_refuses_before_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 352, in test_unvalidated_hook_mode_refuses_before_exchange
     self.assertIn("not validated; T87", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'not validated; T87' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4169,7 +4169,7 @@ AssertionError: 'not validated; T87' not found in 'codex-orchestrate: require uv
 FAIL: test_worker_alias_is_excluded_across_teams (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_worker_alias_is_excluded_across_teams)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 495, in test_worker_alias_is_excluded_across_teams
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 495, in test_worker_alias_is_excluded_across_teams
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -4179,7 +4179,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_worker_seats_and_multiple_previous_identities_are_preserved (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_worker_seats_and_multiple_previous_identities_are_preserved)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 326, in test_worker_seats_and_multiple_previous_identities_are_preserved
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 326, in test_worker_seats_and_multiple_previous_identities_are_preserved
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking
@@ -4189,7 +4189,7 @@ AssertionError: 2 != 0 : codex-orchestrate: require uv and scripts/validate-agen
 FAIL: test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_wrong_kind_and_invalid_arguments_fail_before_exchange)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 514, in test_wrong_kind_and_invalid_arguments_fail_before_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 514, in test_wrong_kind_and_invalid_arguments_fail_before_exchange
     self.assertIn("herdr-agents", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'herdr-agents' not found in 'codex-orchestrate: require uv and scripts/validate-agent-assets.py for transcript masking\n'
@@ -4313,61 +4313,61 @@ test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_c
 test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
 test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
 test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
-test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7813c40>
+test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7813c40>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7813b50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7813b50>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73805e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73805e0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73804f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73804f0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380400>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380400>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380220>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380040>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73807c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73807c0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380a90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380a90>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380b80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380b80>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380c70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380c70>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380d60>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380e50>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380f40>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381030>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381120>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381210>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381300>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f778f880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f778f880>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -5036,139 +5036,139 @@ test_missing_file_exits_2_without_touching_others (test_validate_agent_assets.Ma
 test_a_key_after_json_escaped_whitespace_is_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
 test_a_key_prefix_inside_a_hyphenated_word_is_clean (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
 test_a_long_hyphenated_run_scans_in_linear_time (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
-test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381c60>
+test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381c60>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73817b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73817b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73808b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73808b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380310>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381030>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380e50>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380220>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381d50>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380040>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7380d60>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7381120>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7172b60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7172b60>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7382020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7382020>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7170220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7170220>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7382890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7382890>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7382980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7382980>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73805e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f73805e0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7382110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7382110>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7383a60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f7383a60>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d7b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d7b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d5d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d5d0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d120>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d300>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d210>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6c040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6c040>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6c130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6c130>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6cb80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6cb80>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6c7c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6c7c0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6c8b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6c8b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6cc70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6cc70>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6ca90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6ca90>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6cf40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6cf40>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d8a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d8a0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6d990>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6da80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6da80>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6dd50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6dd50>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e020>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e110>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e200>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e2f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e2f0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e3e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e3e0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e4d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e4d0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e5c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e5c0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e6b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e6b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e7a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xeb25f6e6e7a0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -5235,7 +5235,7 @@ test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_
 test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-mrpg75mr/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-mrpg75mr/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -5258,7 +5258,7 @@ test_workflows_have_no_job_level_permission_overrides (test_workflow_security.Wo
 FAIL: test_no_literal_model_or_profile_flags_and_bounded_size (test_codex_orchestrate.CodexOrchestrateTest.test_no_literal_model_or_profile_flags_and_bounded_size)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 528, in test_no_literal_model_or_profile_flags_and_bounded_size
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 528, in test_no_literal_model_or_profile_flags_and_bounded_size
     self.assertLessEqual(len(text.splitlines()), 150)
     ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 153 not less than or equal to 150
@@ -5337,158 +5337,158 @@ All checks passed!
 ### make validate-agent-assets
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T83-docs-diet-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T87-live-e2e-matrix-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-c466231.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-c466231.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T83-docs-diet-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T87-live-e2e-matrix-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-c466231.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-c466231.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -5502,7 +5502,7 @@ agent asset validation ok
   "daemon": {
     "running": false
   },
-  "review_file": "/home/moriya/.crit/reviews/3cf50a04c7f3/review.json",
+  "review_file": "~/.crit/reviews/3cf50a04c7f3/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -5653,61 +5653,61 @@ test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_c
 test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
 test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
 test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
-test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513e0bbc40>
+test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513e0bbc40>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513e0bbb50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513e0bbb50>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc185e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc185e0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc184f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc184f0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18400>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18400>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18220>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18040>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc187c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc187c0>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18a90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18a90>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18b80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18b80>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18c70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18c70>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18d60>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18e50>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18f40>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19030>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19120>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19210>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19300>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513e037880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/glob.py:513: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513e037880>
   entries = list(scandir_it)
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -6376,139 +6376,139 @@ test_missing_file_exits_2_without_touching_others (test_validate_agent_assets.Ma
 test_a_key_after_json_escaped_whitespace_is_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
 test_a_key_prefix_inside_a_hyphenated_word_is_clean (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
 test_a_long_hyphenated_run_scans_in_linear_time (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
-test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc188b0>
+test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc188b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc193f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc193f0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18310>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1b3d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1b3d0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1a890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1a890>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18e50>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18220>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19d50>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18040>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc18d60>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19e40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19e40>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513da0eb60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513da0eb60>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1a020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1a020>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513da0c220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513da0c220>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc196c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc196c0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1a7a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1a7a0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1a980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1a980>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19120>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc19990>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1ba60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513dc1ba60>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7057b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7057b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7055d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7055d0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705120>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705300>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705210>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704040>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704130>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704b80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704b80>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7047c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7047c0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7048b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7048b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704c70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704c70>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704a90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704a90>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d704f40>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7058a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7058a0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705990>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705c60>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d705f30>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d706020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d706020>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d706110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d706110>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d706200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d706200>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7062f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7062f0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7063e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7063e0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7064d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7064d0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7065c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7065c0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7066b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe1513d7066b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -6575,7 +6575,7 @@ test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_
 test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-nedifd4u/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-nedifd4u/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -6739,7 +6739,7 @@ test_wrong_kind_and_invalid_arguments_fail_before_exchange (tests.unit.test_code
 ERROR: test_snapshot_covers_all_teams_before_partial_reset_and_restores_them (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_snapshot_covers_all_teams_before_partial_reset_and_restores_them)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 522, in test_snapshot_covers_all_teams_before_partial_reset_and_restores_them
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 522, in test_snapshot_covers_all_teams_before_partial_reset_and_restores_them
     snapshot = state["snapshots_at_reset"][0][0]
                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
 IndexError: list index out of range
@@ -6748,7 +6748,7 @@ IndexError: list index out of range
 FAIL: test_added_teams_are_removed_without_losing_preexisting_codex_memberships (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_added_teams_are_removed_without_losing_preexisting_codex_memberships) (partial_join_failure=False)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 413, in test_added_teams_are_removed_without_losing_preexisting_codex_memberships
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 413, in test_added_teams_are_removed_without_losing_preexisting_codex_memberships
     self.assertCountEqual(state["members_during_exec"][0], [existing, ["other-team", existing[1], "codex", str(self.repo)]])
     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Element counts were not equal:
@@ -6758,7 +6758,7 @@ First has 0, Second has 1:  ['other-team', 'codex-fixture-dot', 'codex', '/tmp/c
 FAIL: test_added_teams_are_removed_without_losing_preexisting_codex_memberships (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_added_teams_are_removed_without_losing_preexisting_codex_memberships) (partial_join_failure=True)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 409, in test_added_teams_are_removed_without_losing_preexisting_codex_memberships
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 409, in test_added_teams_are_removed_without_losing_preexisting_codex_memberships
     self.assertEqual(result.returncode, 7 if fail else 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 7 : 
@@ -6767,7 +6767,7 @@ AssertionError: 0 != 7 :
 FAIL: test_claude_delivery_restore_failure_keeps_recovery_lock (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_claude_delivery_restore_failure_keeps_recovery_lock)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 307, in test_claude_delivery_restore_failure_keeps_recovery_lock
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 307, in test_claude_delivery_restore_failure_keeps_recovery_lock
     self.assertTrue(self.lock.exists())
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
 AssertionError: False is not true
@@ -6776,7 +6776,7 @@ AssertionError: False is not true
 FAIL: test_existing_lock_refuses_exchange (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_lock_refuses_exchange)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 435, in test_existing_lock_refuses_exchange
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 435, in test_existing_lock_refuses_exchange
     self.assertEqual(result.returncode, 2)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2
@@ -6785,7 +6785,7 @@ AssertionError: 0 != 2
 FAIL: test_lock_precedes_identity_reads_and_recovery_files_are_private (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_lock_precedes_identity_reads_and_recovery_files_are_private)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 423, in test_lock_precedes_identity_reads_and_recovery_files_are_private
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 423, in test_lock_precedes_identity_reads_and_recovery_files_are_private
     self.assertTrue(all(str(self.lock) in locks for locks in state["locks_at_identities"]))
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: False is not true
@@ -6794,7 +6794,7 @@ AssertionError: False is not true
 FAIL: test_restore_failure_keeps_lock_and_snapshot_for_recovery (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_restore_failure_keeps_lock_and_snapshot_for_recovery)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 532, in test_restore_failure_keeps_lock_and_snapshot_for_recovery
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 532, in test_restore_failure_keeps_lock_and_snapshot_for_recovery
     self.assertTrue(self.lock.exists())
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
 AssertionError: False is not true
@@ -6803,7 +6803,7 @@ AssertionError: False is not true
 FAIL: test_team_selection_joins_all_exchanged_teams_but_polls_only_selected (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_team_selection_joins_all_exchanged_teams_but_polls_only_selected)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 398, in test_team_selection_joins_all_exchanged_teams_but_polls_only_selected
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 398, in test_team_selection_joins_all_exchanged_teams_but_polls_only_selected
     self.assertCountEqual(state["members_during_exec"][0], expected)
     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Element counts were not equal:
@@ -6824,7 +6824,7 @@ test_existing_codex_seat_joins_the_selected_exchanged_team (tests.unit.test_code
 FAIL: test_existing_codex_seat_joins_the_selected_exchanged_team (tests.unit.test_codex_orchestrate.CodexOrchestrateTest.test_existing_codex_seat_joins_the_selected_exchanged_team)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 509, in test_existing_codex_seat_joins_the_selected_exchanged_team
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_codex_orchestrate.py", line 509, in test_existing_codex_seat_joins_the_selected_exchanged_team
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : codex-orchestrate: select a team containing the existing Codex seat
@@ -6918,160 +6918,160 @@ All checks passed!
 ### make validate-agent-assets
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T83-docs-diet-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T87-live-e2e-matrix-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-9ff2ad5.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-9ff2ad5.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-c466231.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-c466231.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T83-docs-diet-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T84-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T87-live-e2e-matrix-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-audit-43d45ff.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-audit-123bf10.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T79-remove-adh-profile-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-audit-8a4cf12.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T80-codex-command-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-8c8cf69.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-audit-a1c69c4.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T81-compactiondb-vendor-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-7ee9108.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-94761d1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-9ff2ad5.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-9ff2ad5.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-c466231.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-audit-c466231.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-audit-20361c5.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-audit-567c8d1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T86-codex-orchestrate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok
@@ -7085,7 +7085,7 @@ agent asset validation ok
   "daemon": {
     "running": false
   },
-  "review_file": "/home/moriya/.crit/reviews/3cf50a04c7f3/review.json",
+  "review_file": "~/.crit/reviews/3cf50a04c7f3/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -7231,61 +7231,61 @@ test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_c
 test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
 test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
 test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
-test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b064fc40>
+test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b064fc40>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b064fb50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b064fb50>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c9a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c9a0>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c4f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c4f0>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c220>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c400>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c400>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c310>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c130>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c040>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023ca90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023ca90>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023cb80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023cb80>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023cc70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023cc70>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023cd60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023cd60>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023ce50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023ce50>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023cf40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023cf40>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023d030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023d030>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023d120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023d120>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023d210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023d210>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b05c7880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:117: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b05c7880>
   def __init__(self, *args):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -7956,139 +7956,139 @@ test_missing_file_exits_2_without_touching_others (test_validate_agent_assets.Ma
 test_a_key_after_json_escaped_whitespace_is_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
 test_a_key_prefix_inside_a_hyphenated_word_is_clean (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
 test_a_long_hyphenated_run_scans_in_linear_time (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
-test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023e110>
+test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023e110>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023d4e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023d4e0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023db70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023db70>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c5e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c5e0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023e6b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023e6b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023ca90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023ca90>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c130>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c400>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c400>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023cb80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023cb80>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023df30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023df30>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023da80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023da80>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541affdea70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541affdea70>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023de40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023de40>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541affdc130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541affdc130>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023e7a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023e7a0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023f2e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023f2e0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c7c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c7c0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023c310>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023f6a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541b023f6a0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca16c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca16c0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca14e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca14e0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1030>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1210>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1120>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca0040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca0040>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca06d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca06d0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca0b80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca0b80>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca07c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca07c0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca0a90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca0a90>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca09a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca09a0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca0e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca0e50>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca17b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca17b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca18a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca18a0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1990>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1a80>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca1d50>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca2020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca2020>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca2110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca2110>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca2200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca2200>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca22f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca22f0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca23e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca23e0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca24d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca24d0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca25c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca25c0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca26b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca26b0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca27a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/functools.py:504: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe541afca27a0>
   def lru_cache(maxsize=128, typed=False):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -8155,7 +8155,7 @@ test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_
 test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-8lnkd5vj/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-8lnkd5vj/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -8217,7 +8217,7 @@ blocked
  tests/unit/test_codex_orchestrate.py               | 592 +++++++++++++++++++++
  3 files changed, 838 insertions(+)
 {"baseRefOid":"2e65742cb8c8897917f975b230b24377a43066f3","headRefOid":"63a9b107cd327639659b11b87b34276c32c1d3fe","mergeStateStatus":"BLOCKED","reviewDecision":"","state":"OPEN","url":"https://github.com/mryfmo/dotfiles/pull/271"}
-dc73ec191595a158a1eea96a4f1422e470093e81cd83b071bf7a77c6afb36542  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
+dc73ec191595a158a1eea96a4f1422e470093e81cd83b071bf7a77c6afb36542  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T86-codex-orchestrate-a01.md
 
 ```
 

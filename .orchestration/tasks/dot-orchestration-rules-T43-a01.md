@@ -46,7 +46,7 @@ Understand-Anything auto-update hook is out of scope for task workers unless
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`;
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`;
   branch `feat/orchestration-rules-T43` from `origin/main`. Verify the
   dispatched task_rev sha256 against this file on your base, else stop and
   PONG. If the worktree has uncommitted files, stop and PONG.

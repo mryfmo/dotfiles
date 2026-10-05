@@ -1,7 +1,7 @@
 # T49: `contextdb probe` — deterministic probe generation (P4)
 
 task_id: T49
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-compactiondb-research-integration.md (Phase 4)

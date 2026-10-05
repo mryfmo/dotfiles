@@ -29,8 +29,8 @@ Result:
 Each current profile under "$HOME/.codex" was piped through its regenerated modify script.
 
 Results:
-  PASS deep: notify=/Users/mryfmo/.local/bin/common/contextdb-codex-notify; template_markers=0
-  PASS standard: notify=/Users/mryfmo/.local/bin/common/contextdb-codex-notify; template_markers=0
+  PASS deep: notify=~/.local/bin/common/contextdb-codex-notify; template_markers=0
+  PASS standard: notify=~/.local/bin/common/contextdb-codex-notify; template_markers=0
   PASS express: notify=absent
   PASS review: notify=absent
 

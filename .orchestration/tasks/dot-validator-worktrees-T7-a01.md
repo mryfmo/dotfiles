@@ -24,6 +24,6 @@ no git commit; no push; no PR; no local bats; no other files.
 
 ## Validation (verbatim)
 
-`make unit-test`; `uv run --with pyyaml python scripts/validate-agent-assets.py` run from the MAIN worktree `/Users/mryfmo/Workspace/dotfiles` with the patched script copied there? NO — do not touch main; instead reproduce with a temp nested `.git` inside your worktree during the test only. `git diff --check`.
+`make unit-test`; `uv run --with pyyaml python scripts/validate-agent-assets.py` run from the MAIN worktree `~/Workspace/dotfiles` with the patched script copied there? NO — do not touch main; instead reproduce with a temp nested `.git` inside your worktree during the test only. `git diff --check`.
 
 Worktree: `.claude/worktrees/validator-worktrees` (branch `fix/validator-skip-nested-worktrees`) from `origin/main`. max_turns=20. Reply with `AGMSG-RESULT v1`.

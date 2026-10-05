@@ -1,6 +1,6 @@
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -11,10 +11,10 @@ session id: 01a0e705-fb8e-76d2-a951-ef717c6dbeb5
 --------
 user
 commit 297f25f
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md; cat /home/moriya/.agents/skills/understand-diff/SKILL.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.agents/skills/understand-diff/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 # AGENTS.md
@@ -490,7 +490,7 @@ The knowledge graph JSON has this structure:
    After writing, tell the user they can run `/understand-anything:understand-dashboard` to see the diff overlay visually.
 
 exec
-/usr/bin/zsh -lc 'git status --short; git rev-parse HEAD; git show --stat --oneline 297f25f; git show --format=fuller --no-ext-diff 297f25f; ls .ua/meta.json .ua/knowledge-graph.json 2>/dev/null; find .. -name AGENTS.override.md -o -name AGENTS.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'git status --short; git rev-parse HEAD; git show --stat --oneline 297f25f; git show --format=fuller --no-ext-diff 297f25f; ls .ua/meta.json .ua/knowledge-graph.json 2>/dev/null; find .. -name AGENTS.override.md -o -name AGENTS.md' in ~/Workspace/dotfiles
  succeeded in 56ms:
 ../ai-coe-projects/ai-education/spec/AGENTS.md
 ../ai-coe-projects/five-layer-platform/specs/AGENTS.md
@@ -515,7 +515,7 @@ exec
 
 **Assessing git objects with scripts**
 exec
-/usr/bin/zsh -lc "git status --porcelain -uno | head -12; git ls-tree -r --name-only 297f25f | grep -E '("'^|/)(AGENTS('"\\.override)?\\.md|\\.understandignore)"'$'"'; git show 297f25f:.ua/.understandignore; git show 297f25f:.ua/config.json; cat .orchestration/reports/dot-ua-graph-refresh-T33c-a01.md; cat .orchestration/validation/dot-ua-graph-refresh-T33c-a01.md" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "git status --porcelain -uno | head -12; git ls-tree -r --name-only 297f25f | grep -E '("'^|/)(AGENTS('"\\.override)?\\.md|\\.understandignore)"'$'"'; git show 297f25f:.ua/.understandignore; git show 297f25f:.ua/config.json; cat .orchestration/reports/dot-ua-graph-refresh-T33c-a01.md; cat .orchestration/validation/dot-ua-graph-refresh-T33c-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 .ua/.understandignore
 AGENTS.md
@@ -607,7 +607,7 @@ reviews/
 # T33c report — dot-ua-graph-refresh-T33c-a01 (revision 1)
 
 - worker: `claude-standard-dot-a005`; orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `chore/ua-graph-refresh` from `origin/main` = `935e198`
 - task_rev: sha256 `42d2f7e7083f9797b21d4e354250f72f52da30b37b83cea05000e2e75ecdb392`, checked
 - PR: https://github.com/mryfmo/dotfiles/pull/198, head `297f25f58eae900ace42a9d3976e850b5e081f55`
@@ -771,10 +771,10 @@ $ grep -n "\.ua" .gitignore
 18:.ua/tmp/
 19:.ua/diff-overlay.json
 $ readlink -f ~/.understand-anything-plugin
-/home/moriya/.understand-anything/repo/understand-anything-plugin
-$ test -f /home/moriya/.understand-anything-plugin/packages/core/dist/index.js; echo $?
+~/.understand-anything/repo/understand-anything-plugin
+$ test -f ~/.understand-anything-plugin/packages/core/dist/index.js; echo $?
 1
-$ test -f /home/moriya/.claude/plugins/cache/understand-anything/understand-anything/2.9.7/packages/core/dist/index.js; echo $?
+$ test -f ~/.claude/plugins/cache/understand-anything/understand-anything/2.9.7/packages/core/dist/index.js; echo $?
 1
 $ sed -n 117,119p <plugin cache 2.9.7>/skills/understand/SKILL.md
    if [ ! -f "$PLUGIN_ROOT/packages/core/dist/index.js" ]; then
@@ -855,7 +855,7 @@ Output: 870 nodes, 1285 edges
 Imports edge recovery:
   Recovered 0 `imports` edges from importMap (424 entries scanned)
 
-Written to /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (762 KB)
+Written to ~/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (762 KB)
 ```
 
 ### Coverage and graph checks
@@ -891,7 +891,7 @@ $ git diff --name-only $(jq -r .gitCommitHash .ua/meta.json)..HEAD | head
 .ua/fingerprints.json
 .ua/knowledge-graph.json
 .ua/meta.json
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
  .ua/knowledge-graph.json | 43851 +++++++++++++++------------------------------
  .ua/meta.json            |     6 +-
  3 files changed, 14964 insertions(+), 32238 deletions(-)
@@ -954,7 +954,7 @@ for p,f in fp['files'].items():
 print('fingerprint mismatches',bad)
 print('UA nodes',[(n['id'],n.get('summary')) for n in g['nodes'] if (n.get('filePath') or '').startswith('.ua/')])
 PY
-ls -la .ua | head -18; git show 297f25f:AGENTS.md | nl -ba | tail -45" in /home/moriya/Workspace/dotfiles
+ls -la .ua | head -18; git show 297f25f:AGENTS.md | nl -ba | tail -45" in ~/Workspace/dotfiles
  succeeded in 0ms:
 zsh:1: can't create temp file for here document: read-only file system
 total 1652
@@ -1026,7 +1026,7 @@ for p,f in fp["files"].items():
  if hashlib.sha256(content).hexdigest()!=f["contentHash"]:bad.append((p,"hash mismatch"))
 print("fingerprint mismatches",bad)
 print("UA nodes",[(n["id"],n.get("summary")) for n in g["nodes"] if (n.get("filePath") or "").startswith(".ua/")])
-'"'" in /home/moriya/Workspace/dotfiles
+'"'" in ~/Workspace/dotfiles
  succeeded in 539ms:
 project {'name': 'dotfiles', 'languages': ['bats', 'css', 'dockerfile', 'json', 'makefile', 'markdown', 'nix', 'python', 'ruby', 'shell', 'tmpl', 'toml', 'yaml'], 'frameworks': ['Docker', 'GitHub Actions'], 'description': 'Personal chezmoi-managed dotfiles for macOS, Ubuntu Desktop (client), and Ubuntu Server (server) machines, with home/ as the public source state and setup.sh as the bootstrap entry point. Note: this project has over 100 source files; consider scoping analysis to a subdirectory for faster results.', 'analyzedAt': '2026-09-28T07:32:56.000Z', 'gitCommitHash': '935e198406e5df993c84de67c695c7083f4b6b54'}
 keys dict_keys(['version', 'project', 'nodes', 'edges', 'layers', 'tour'])
@@ -1042,7 +1042,7 @@ UA nodes [('config:.ua/config.json', 'Understand-Anything project settings selec
 
 **Analyzing dependency and function graph integrity**
 exec
-/usr/bin/zsh -lc "sed -n '1,240p' /home/moriya/.understand-anything-plugin/skills/understand/build-fingerprints.mjs; sed -n '1,200p' /home/moriya/.understand-anything-plugin/skills/understand/prepare-incremental.mjs; ls /home/moriya/.understand-anything-plugin/packages/core/src; git diff --check 297f25f"'^ 297f25f; git show 297f25f:.ua/meta.json' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "sed -n '1,240p' ~/.understand-anything-plugin/skills/understand/build-fingerprints.mjs; sed -n '1,200p' ~/.understand-anything-plugin/skills/understand/prepare-incremental.mjs; ls ~/.understand-anything-plugin/packages/core/src; git diff --check 297f25f"'^ 297f25f; git show 297f25f:.ua/meta.json' in ~/Workspace/dotfiles
  succeeded in 0ms:
 #!/usr/bin/env node
 /**
@@ -1385,7 +1385,7 @@ print("recent related nodes")
 for n in g["nodes"]:
  if any(x in n.get("filePath","") for x in ("herdr-agents","agent-config.yaml","apparmor","require-crit")) and n["type"]!="function":print(n)
 print("functions/file counts new",collections.Counter(n.get("filePath") for n in g["nodes"] if n["type"]=="function"))
-'"'" in /home/moriya/Workspace/dotfiles
+'"'" in ~/Workspace/dotfiles
  succeeded in 0ms:
 node keys Counter({'id': 870, 'type': 870, 'name': 870, 'filePath': 870, 'summary': 870, 'tags': 870, 'complexity': 870, 'lineRange': 448, 'languageNotes': 118})
 function samples [{'id': 'function:.claude/contextdb/contextdb/cli.py:build_parser', 'type': 'function', 'name': 'build_parser', 'filePath': '.claude/contextdb/contextdb/cli.py', 'lineRange': [31, 134], 'summary': 'Constructs the argparse parser with all top-level and memory subcommands, scope options, and limits.', 'tags': ['cli', 'argument-parsing', 'factory'], 'complexity': 'moderate'}, {'id': 'function:.claude/contextdb/contextdb/cli.py:run', 'type': 'function', 'name': 'run', 'filePath': '.claude/contextdb/contextdb/cli.py', 'lineRange': [162, 365], 'summary': 'Main dispatcher that resolves project paths, loads config, opens the ContextStore, drains the spool, and executes the selected subcommand.', 'tags': ['cli', 'command-dispatch', 'orchestration'], 'complexity': 'complex'}, {'id': 'function:.claude/contextdb/contextdb/cli.py:_run_memory', 'type': 'function', 'name': '_run_memory', 'filePath': '.claude/contextdb/contextdb/cli.py', 'lineRange': [368, 457], 'summary': 'Handles the memory subcommand family: list, search, candidates, promote, add, retract, embed, semantic-search, and compact.', 'tags': ['cli', 'memory', 'command-dispatch'], 'complexity': 'complex'}]
@@ -1421,7 +1421,7 @@ for rev in (\"297f25f"'^","297f25f"):
 fp=json.loads(get(\".ua/fingerprints.json\"));p=\"home/.key.txt.age\";content=get(p)
 print(\"age hash as UTF8\",hashlib.sha256(content.decode(\"utf-8\",errors=\"replace\").encode()).hexdigest()==fp[\"files\"][p][\"contentHash\"])
 ' 
-sed -n '1,180p' /home/moriya/.understand-anything-plugin/packages/core/src/schema.ts; sed -n '1,200p' /home/moriya/.understand-anything-plugin/packages/core/src/fingerprint.ts" in /home/moriya/Workspace/dotfiles
+sed -n '1,180p' ~/.understand-anything-plugin/packages/core/src/schema.ts; sed -n '1,200p' ~/.understand-anything-plugin/packages/core/src/fingerprint.ts" in ~/Workspace/dotfiles
  succeeded in 225ms:
 Traceback (most recent call last):
   File "<string>", line 10, in <module>
@@ -1830,40 +1830,40 @@ print(\"out of bounds\",errors);print(\"name mismatches\",len(mismatches),mismat
 fp=json.loads(get(\".ua/fingerprints.json\"));p=\"home/.key.txt.age\";content=get(p)
 print(\"age hash as UTF8\",hashlib.sha256(content.decode(\"utf-8\",errors=\"replace\").encode()).hexdigest()==fp[\"files\"][p][\"contentHash\"])
 '
-rg -n 'lineRange|KnowledgeGraphSchema|validateGraph|sanitizeGraph' /home/moriya/.understand-anything-plugin/packages/core/src/schema.ts /home/moriya/.understand-anything-plugin/packages/core/src/persistence /home/moriya/.understand-anything-plugin/packages/dashboard/src | head -70" in /home/moriya/Workspace/dotfiles
+rg -n 'lineRange|KnowledgeGraphSchema|validateGraph|sanitizeGraph' ~/.understand-anything-plugin/packages/core/src/schema.ts ~/.understand-anything-plugin/packages/core/src/persistence ~/.understand-anything-plugin/packages/dashboard/src | head -70" in ~/Workspace/dotfiles
  succeeded in 129ms:
 INVALID RANGE {'id': 'file:Makefile', 'type': 'file', 'name': 'Makefile', 'filePath': 'Makefile', 'summary': 'Repository lifecycle entry point with 21 targets: Docker test container, setup/init/update/apply via chezmoi, doctor and upgrade tool checks, agmsg bootstrap, formatting, Python unit tests, agent asset validation, the Crit review guard, and mkdocs build/serve/deploy/clean.', 'tags': ['build-system', 'entry-point', 'task-runner', 'infrastructure', 'documentation-build', 'tested'], 'complexity': 'moderate', 'lineRange': 'Uses .PHONY targets with $(if $(filter ...)) conditionals and backslash-continued shell recipes that accumulate exit statuses so doctor reports a combined summary.'}
 INVALID RANGE {'id': 'file:setup.sh', 'type': 'file', 'name': 'setup.sh', 'filePath': 'setup.sh', 'summary': 'Bootstrap entry point that prepares the OS (checksum-verified Homebrew on macOS), keeps sudo alive, downloads a pinned checksum-verified chezmoi release, initializes and updates the dotfiles source, refuses to apply over local drift or outside CI RUNNER_TEMP, then applies the target state.', 'tags': ['entry-point', 'bootstrap', 'installer', 'security', 'chezmoi', 'tested'], 'complexity': 'complex', 'lineRange': 'Strict-mode Bash (set -Eeuo pipefail) with shdoc annotations, an accumulating EXIT trap via at_exit, nested function definitions, and a BASH_SOURCE guard so the script can be sourced by tests without running main.'}
 out of bounds []
 name mismatches 0 []
 age hash as UTF8 True
-/home/moriya/.understand-anything-plugin/packages/core/src/schema.ts:87:  // sanitizeGraph lowercases every node type, and "componentSet" is the only
-/home/moriya/.understand-anything-plugin/packages/core/src/schema.ts:188:export function sanitizeGraph(data: Record<string, unknown>): Record<string, unknown> {
-/home/moriya/.understand-anything-plugin/packages/core/src/schema.ts:202:      if (n.lineRange === null) delete n.lineRange;
-/home/moriya/.understand-anything-plugin/packages/core/src/schema.ts:432:  lineRange: z.tuple([z.number(), z.number()]).optional(),
-/home/moriya/.understand-anything-plugin/packages/core/src/schema.ts:475:export const KnowledgeGraphSchema = z.object({
-/home/moriya/.understand-anything-plugin/packages/core/src/schema.ts:494:  data?: z.infer<typeof KnowledgeGraphSchema>;
-/home/moriya/.understand-anything-plugin/packages/core/src/schema.ts:563:export function validateGraph(data: unknown): ValidationResult {
-/home/moriya/.understand-anything-plugin/packages/core/src/schema.ts:573:  const sanitized = sanitizeGraph(raw);
-/home/moriya/.understand-anything-plugin/packages/core/src/persistence/persistence.test.ts:38:        lineRange: [1, 50],
-/home/moriya/.understand-anything-plugin/packages/core/src/persistence/index.ts:5:import { validateGraph } from "../schema.js";
-/home/moriya/.understand-anything-plugin/packages/core/src/persistence/index.ts:110:    const result = validateGraph(data);
-/home/moriya/.understand-anything-plugin/packages/core/src/persistence/index.ts:187:    const result = validateGraph(data);
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/App.tsx:2:import { validateGraph } from "@understand-anything/core/schema";
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/App.tsx:150:        // gets parsed and handed to validateGraph, which fails project-metadata
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/App.tsx:167:        const result = validateGraph(data);
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/App.tsx:250:        const result = validateGraph(data);
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/components/CodeViewer.tsx:145:  // source for line numbers / lineRange highlighting.
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/components/CodeViewer.tsx:188:    if (!node?.lineRange) return null;
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/components/CodeViewer.tsx:189:    return { start: node.lineRange[0], end: node.lineRange[1] };
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/components/CodeViewer.tsx:190:  }, [node?.lineRange]);
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/components/NodeInfo.tsx:268:            {node.lineRange && <span className="text-text-muted">:{node.lineRange[0]}-{node.lineRange[1]}</span>}
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/components/NodeInfo.tsx:415:                {node.lineRange && (
-/home/moriya/.understand-anything-plugin/packages/dashboard/src/components/NodeInfo.tsx:417:                    L{node.lineRange[0]}-{node.lineRange[1]}
+~/.understand-anything-plugin/packages/core/src/schema.ts:87:  // sanitizeGraph lowercases every node type, and "componentSet" is the only
+~/.understand-anything-plugin/packages/core/src/schema.ts:188:export function sanitizeGraph(data: Record<string, unknown>): Record<string, unknown> {
+~/.understand-anything-plugin/packages/core/src/schema.ts:202:      if (n.lineRange === null) delete n.lineRange;
+~/.understand-anything-plugin/packages/core/src/schema.ts:432:  lineRange: z.tuple([z.number(), z.number()]).optional(),
+~/.understand-anything-plugin/packages/core/src/schema.ts:475:export const KnowledgeGraphSchema = z.object({
+~/.understand-anything-plugin/packages/core/src/schema.ts:494:  data?: z.infer<typeof KnowledgeGraphSchema>;
+~/.understand-anything-plugin/packages/core/src/schema.ts:563:export function validateGraph(data: unknown): ValidationResult {
+~/.understand-anything-plugin/packages/core/src/schema.ts:573:  const sanitized = sanitizeGraph(raw);
+~/.understand-anything-plugin/packages/core/src/persistence/persistence.test.ts:38:        lineRange: [1, 50],
+~/.understand-anything-plugin/packages/core/src/persistence/index.ts:5:import { validateGraph } from "../schema.js";
+~/.understand-anything-plugin/packages/core/src/persistence/index.ts:110:    const result = validateGraph(data);
+~/.understand-anything-plugin/packages/core/src/persistence/index.ts:187:    const result = validateGraph(data);
+~/.understand-anything-plugin/packages/dashboard/src/App.tsx:2:import { validateGraph } from "@understand-anything/core/schema";
+~/.understand-anything-plugin/packages/dashboard/src/App.tsx:150:        // gets parsed and handed to validateGraph, which fails project-metadata
+~/.understand-anything-plugin/packages/dashboard/src/App.tsx:167:        const result = validateGraph(data);
+~/.understand-anything-plugin/packages/dashboard/src/App.tsx:250:        const result = validateGraph(data);
+~/.understand-anything-plugin/packages/dashboard/src/components/CodeViewer.tsx:145:  // source for line numbers / lineRange highlighting.
+~/.understand-anything-plugin/packages/dashboard/src/components/CodeViewer.tsx:188:    if (!node?.lineRange) return null;
+~/.understand-anything-plugin/packages/dashboard/src/components/CodeViewer.tsx:189:    return { start: node.lineRange[0], end: node.lineRange[1] };
+~/.understand-anything-plugin/packages/dashboard/src/components/CodeViewer.tsx:190:  }, [node?.lineRange]);
+~/.understand-anything-plugin/packages/dashboard/src/components/NodeInfo.tsx:268:            {node.lineRange && <span className="text-text-muted">:{node.lineRange[0]}-{node.lineRange[1]}</span>}
+~/.understand-anything-plugin/packages/dashboard/src/components/NodeInfo.tsx:415:                {node.lineRange && (
+~/.understand-anything-plugin/packages/dashboard/src/components/NodeInfo.tsx:417:                    L{node.lineRange[0]}-{node.lineRange[1]}
 
 **Verifying schema sanitization**
 exec
-/usr/bin/zsh -lc "sed -n '545,675p' /home/moriya/.understand-anything-plugin/packages/core/src/schema.ts; sed -n '90,128p' /home/moriya/.understand-anything-plugin/packages/core/src/persistence/index.ts; sed -n '150,193p' /home/moriya/.understand-anything-plugin/packages/dashboard/src/App.tsx; git show 297f25f:.ua/knowledge-graph.json | nl -ba | grep -B 17 -A 3 '\"lineRange\": \"'; cat /home/moriya/.understand-anything-plugin/packages/core/package.json | head -55; git show 297f25f"'^:.ua/knowledge-graph.json | grep '"'\"lineRange\": \"'" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "sed -n '545,675p' ~/.understand-anything-plugin/packages/core/src/schema.ts; sed -n '90,128p' ~/.understand-anything-plugin/packages/core/src/persistence/index.ts; sed -n '150,193p' ~/.understand-anything-plugin/packages/dashboard/src/App.tsx; git show 297f25f:.ua/knowledge-graph.json | nl -ba | grep -B 17 -A 3 '\"lineRange\": \"'; cat ~/.understand-anything-plugin/packages/core/package.json | head -55; git show 297f25f"'^:.ua/knowledge-graph.json | grep '"'\"lineRange\": \"'" in ~/Workspace/dotfiles
  exited 1 in 0ms:
 
   if (Array.isArray(d.edges)) {
@@ -2182,14 +2182,14 @@ export function loadMeta(projectRoot: string): AnalysisMeta | null {
 exec
 /usr/bin/zsh -lc "node --input-type=module -e '
 import {execFileSync} from \"node:child_process\";
-import {validateGraph, KnowledgeGraphSchema} from \"/home/moriya/.understand-anything-plugin/packages/core/dist/schema.js\";
+import {validateGraph, KnowledgeGraphSchema} from \"~/.understand-anything-plugin/packages/core/dist/schema.js\";
 for (const rev of [\"297f25f"'^", "297f25f"]) {
  const graph=JSON.parse(execFileSync("git",["show",rev+":.ua/knowledge-graph.json"],{maxBuffer:10*1024*1024}));
  const strict=KnowledgeGraphSchema.safeParse(graph);
  const r=validateGraph(graph);
  console.log(JSON.stringify({rev, strict:strict.success, strictIssues:strict.success?[]:strict.error.issues, success:r.success, before:{nodes:graph.nodes.length,edges:graph.edges.length}, after:{nodes:r.data?.nodes.length,edges:r.data?.edges.length}, issues:r.issues},null,2));
 }
-'"'" in /home/moriya/Workspace/dotfiles
+'"'" in ~/Workspace/dotfiles
  exited 1 in 0ms:
 node:internal/child_process:1144
     result.error = new ErrnoException(result.error, 'spawnSync ' + options.file);
@@ -2199,7 +2199,7 @@ node:internal/child_process:1144
     at Object.spawnSync (node:internal/child_process:1144:20)
     at spawnSync (node:child_process:928:24)
     at execFileSync (node:child_process:971:15)
-    at file:///home/moriya/Workspace/dotfiles/[eval1]:5:25
+    at file://~/Workspace/dotfiles/[eval1]:5:25
     at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
     at async node:internal/modules/esm/loader:226:26
     at async ModuleLoader.executeModuleJob (node:internal/modules/esm/loader:223:20)
@@ -2249,11 +2249,11 @@ Node.js v26.9.0
 exec
 /usr/bin/zsh -lc "for rev in '297f25f"'^'"' 297f25f; do echo \""'$rev"; git show "$rev:.ua/knowledge-graph.json" | node --input-type=module -e '"'
 import {readFileSync} from \"node:fs\";
-import {validateGraph, KnowledgeGraphSchema} from \"/home/moriya/.understand-anything-plugin/packages/core/dist/schema.js\";
+import {validateGraph, KnowledgeGraphSchema} from \"~/.understand-anything-plugin/packages/core/dist/schema.js\";
 const graph=JSON.parse(readFileSync(0,\"utf8\"));
 const strict=KnowledgeGraphSchema.safeParse(graph); const r=validateGraph(graph);
 console.log(JSON.stringify({strict:strict.success,strictIssues:strict.success?[]:strict.error.issues,success:r.success,before:{nodes:graph.nodes.length,edges:graph.edges.length},after:{nodes:r.data?.nodes.length,edges:r.data?.edges.length},issues:r.issues},null,2));
-'; done" in /home/moriya/Workspace/dotfiles
+'; done" in ~/Workspace/dotfiles
  succeeded in 97ms:
 {
   "strict": false,
@@ -2562,11 +2562,11 @@ The rebuilt graph introduces two schema-invalid nodes. Normal graph loading remo
 
 Review comment:
 
-- [P2] Move prose out of the lineRange fields — /home/moriya/Workspace/dotfiles/.ua/knowledge-graph.json:1671-1671
+- [P2] Move prose out of the lineRange fields — ~/Workspace/dotfiles/.ua/knowledge-graph.json:1671-1671
   Both the Makefile node here and the setup.sh node at line 1759 store descriptive strings in `lineRange`, which requires a two-number tuple. When the dashboard or `loadGraph()` validates this graph, it drops both nodes and their 42 connected edges; running the core validator reproduces this, while the parent graph passes unchanged. Move these descriptions to `languageNotes` and omit `lineRange` or supply valid numeric ranges.
 The rebuilt graph introduces two schema-invalid nodes. Normal graph loading removes these important entry points and 42 relationships, degrading navigation and dependency analysis.
 
 Review comment:
 
-- [P2] Move prose out of the lineRange fields — /home/moriya/Workspace/dotfiles/.ua/knowledge-graph.json:1671-1671
+- [P2] Move prose out of the lineRange fields — ~/Workspace/dotfiles/.ua/knowledge-graph.json:1671-1671
   Both the Makefile node here and the setup.sh node at line 1759 store descriptive strings in `lineRange`, which requires a two-number tuple. When the dashboard or `loadGraph()` validates this graph, it drops both nodes and their 42 connected edges; running the core validator reproduces this, while the parent graph passes unchanged. Move these descriptions to `languageNotes` and omit `lineRange` or supply valid numeric ranges.

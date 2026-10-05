@@ -21,10 +21,10 @@ $ grep -n "\.ua" .gitignore
 18:.ua/tmp/
 19:.ua/diff-overlay.json
 $ readlink -f ~/.understand-anything-plugin
-/home/moriya/.understand-anything/repo/understand-anything-plugin
-$ test -f /home/moriya/.understand-anything-plugin/packages/core/dist/index.js; echo $?
+~/.understand-anything/repo/understand-anything-plugin
+$ test -f ~/.understand-anything-plugin/packages/core/dist/index.js; echo $?
 1
-$ test -f /home/moriya/.claude/plugins/cache/understand-anything/understand-anything/2.9.7/packages/core/dist/index.js; echo $?
+$ test -f ~/.claude/plugins/cache/understand-anything/understand-anything/2.9.7/packages/core/dist/index.js; echo $?
 1
 $ sed -n 117,119p <plugin cache 2.9.7>/skills/understand/SKILL.md
    if [ ! -f "$PLUGIN_ROOT/packages/core/dist/index.js" ]; then
@@ -105,7 +105,7 @@ Output: 870 nodes, 1285 edges
 Imports edge recovery:
   Recovered 0 `imports` edges from importMap (424 entries scanned)
 
-Written to /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (762 KB)
+Written to ~/Workspace/dotfiles/.claude/worktrees/worker-c/.ua/intermediate/assembled-graph.json (762 KB)
 ```
 
 ### Coverage and graph checks
@@ -141,7 +141,7 @@ $ git diff --name-only $(jq -r .gitCommitHash .ua/meta.json)..HEAD | head
 .ua/fingerprints.json
 .ua/knowledge-graph.json
 .ua/meta.json
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
  .ua/knowledge-graph.json | 43851 +++++++++++++++------------------------------
  .ua/meta.json            |     6 +-
  3 files changed, 14964 insertions(+), 32238 deletions(-)
@@ -250,7 +250,7 @@ $ git diff --name-only $(jq -r .gitCommitHash .ua/meta.json)..HEAD | head
 .ua/fingerprints.json
 .ua/knowledge-graph.json
 .ua/meta.json
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
  .ua/knowledge-graph.json | 43851 +++++++++++++++------------------------------
  .ua/meta.json            |     6 +-
  3 files changed, 14964 insertions(+), 32238 deletions(-)
@@ -286,7 +286,7 @@ $ gh pr view 198 --json number,url,headRefOid,state
   "state": "OPEN",
   "url": "https://github.com/mryfmo/dotfiles/pull/198"
 }
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c log --oneline -2
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c log --oneline -2
 6f46a11 fix(ua): move misplaced prose out of lineRange on the Makefile and setup.sh nodes
 297f25f chore(ua): full knowledge-graph rebuild to 935e198
 ```

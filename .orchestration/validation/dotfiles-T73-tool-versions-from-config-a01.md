@@ -37,14 +37,14 @@ The grep pattern's fingerprint prefix `FB5DB77F` is the real prefix of `AWS_CLI_
 
 ```
 $ mise -C <copy> where npm:ccstatusline / npm:ccusage
-/home/moriya/.local/share/mise/installs/npm-ccstatusline/2.2.30
-/home/moriya/.local/share/mise/installs/npm-ccusage/20.0.24
+~/.local/share/mise/installs/npm-ccstatusline/2.2.30
+~/.local/share/mise/installs/npm-ccusage/20.0.24
 $ mise -C <copy> install --locked --dry-run npm:ccstatusline npm:ccusage
 mise npm:ccstatusline@2.2.30     ⇢ already installed
 mise npm:ccusage@20.0.24         ⇢ already installed
 rc=0
 $ mise -C <copy> which ccstatusline
-/home/moriya/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline
+~/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline
 $ PATH=<mise node>:$PATH python3 scripts/check-statusline-tools.py --ccstatusline $(mise -C <copy> which ccstatusline) --ccusage $(mise -C <copy> which ccusage); echo exit=$?
 exit=0
 expected_versions() {'ccstatusline': '2.2.30', 'ccusage': '20.0.24'}
@@ -73,7 +73,7 @@ agent asset validation ok
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T73 (operator 2026-10-03): ccstatusline/ccusage versions are read from home/dot_mise/config.toml by the statusline smoke script, its unit test and the CI workflow (no `@version` literals), and the awscli fingerprint test reads the installer; pins have one declaration.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T73 (operator 2026-10-03): ccstatusline/ccusage versions are read from home/dot_mise/config.toml by the statusline smoke script, its unit test and the CI workflow (no `@version` literals), and the awscli fingerprint test reads the installer; pins have one declaration.'
 b02665cb-ccee-482d-9ff8-c933438c2de6
 ```
 

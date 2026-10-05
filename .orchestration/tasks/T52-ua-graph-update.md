@@ -1,7 +1,7 @@
 # T52: Incremental understand-anything graph update (housekeeping)
 
 task_id: T52
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 
@@ -15,7 +15,7 @@ auto-update procedure so the graph reflects HEAD.
 ## Procedure
 
 Follow the plugin's auto-update instructions at
-/Users/mryfmo/.claude/plugins/cache/understand-anything/understand-anything/2.9.4/hooks/auto-update-prompt.md
+~/.claude/plugins/cache/understand-anything/understand-anything/2.9.4/hooks/auto-update-prompt.md
 (read it first; it is the authoritative procedure): structural
 fingerprinting first, LLM analysis only for files with structural changes,
 then update .ua/knowledge-graph.json and .ua/meta.json (set gitCommitHash

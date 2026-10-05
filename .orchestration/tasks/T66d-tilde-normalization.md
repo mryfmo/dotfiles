@@ -1,7 +1,7 @@
 # T66d: send.sh lane — leading-tilde normalization (E2E-π1 round-3 finding)
 
 task_id: T66d
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (Phase 2; live finding round 3)

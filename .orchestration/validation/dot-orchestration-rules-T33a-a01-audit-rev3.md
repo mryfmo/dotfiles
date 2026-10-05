@@ -1,6 +1,6 @@
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -11,10 +11,10 @@ session id: 01a0e644-4353-7b01-af3c-1d35c8152df5
 --------
 user
 commit 489c83b
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc "cat .agents/worklog/codex/learn/learn_index.md; printf '\\n---RULES---\\n'; cat AGENTS.md; printf '\\n---SKILLS---\\n'; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; sed -n '/Codex worker worklogs/,"'$p'"' /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "cat .agents/worklog/codex/learn/learn_index.md; printf '\\n---RULES---\\n'; cat AGENTS.md; printf '\\n---SKILLS---\\n'; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; sed -n '/Codex worker worklogs/,"'$p'"' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 
@@ -267,7 +267,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/usr/bin/zsh -lc "git status --short; git rev-parse HEAD; git show --stat --oneline 489c83b; git show --format=fuller --no-ext-diff 489c83b; printf '\\n---SCOPED RULES---\\n'; find .. -name AGENTS.override.md -o -name AGENTS.md; printf '\\n---GRAPH---\\n'; ls .ua 2>/dev/null" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "git status --short; git rev-parse HEAD; git show --stat --oneline 489c83b; git show --format=fuller --no-ext-diff 489c83b; printf '\\n---SCOPED RULES---\\n'; find .. -name AGENTS.override.md -o -name AGENTS.md; printf '\\n---GRAPH---\\n'; ls .ua 2>/dev/null" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ?? .orchestration/acceptance/dot-orchestration-rules-T33a-a01.md
 ?? .orchestration/autoskill/runs/dot-orchestration-rules-T33a-a01.md
@@ -396,7 +396,7 @@ for n in j.get('nodes',[]):
  if any(s in str(n).lower() for s in ['crit-review','crit_review','review guard']):
   print({k:n.get(k) for k in ['id','filePath','summary']})
 PY
-printf '\\n---CONFIG INSTRUCTIONS---\\n'; cat home/dot_config/codex/AGENTS.md; printf '\\n---COMMIT PATHS---\\n'; git ls-tree -r --name-only 489c83b | grep -E 'AGENTS|crit|review'" in /home/moriya/Workspace/dotfiles
+printf '\\n---CONFIG INSTRUCTIONS---\\n'; cat home/dot_config/codex/AGENTS.md; printf '\\n---COMMIT PATHS---\\n'; git ls-tree -r --name-only 489c83b | grep -E 'AGENTS|crit|review'" in ~/Workspace/dotfiles
  succeeded in 0ms:
 {
   "lastAnalyzedAt": "2026-09-25T05:57:40.443Z",
@@ -745,7 +745,7 @@ tests/unit/test_usage_review.py
 vendor/compactiondb/AGENTS.md
 
 exec
-/usr/bin/zsh -lc "python3 -c 'import json; j=json.load(open(\".ua/knowledge-graph.json\")); print(*[{k:n.get(k) for k in [\"id\",\"filePath\",\"summary\"]} for n in j.get(\"nodes\",[]) if \"crit\" in str(n).lower()],sep=\"\\n\")'; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86..HEAD | head -25; git show 489c83b:scripts/require-crit-review.py; git show 489c83b:tests/unit/test_require_crit_review.py" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "python3 -c 'import json; j=json.load(open(\".ua/knowledge-graph.json\")); print(*[{k:n.get(k) for k in [\"id\",\"filePath\",\"summary\"]} for n in j.get(\"nodes\",[]) if \"crit\" in str(n).lower()],sep=\"\\n\")'; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86..HEAD | head -25; git show 489c83b:scripts/require-crit-review.py; git show 489c83b:tests/unit/test_require_crit_review.py" in ~/Workspace/dotfiles
  succeeded in 0ms:
 {'id': 'pipeline:Makefile:require-crit-review', 'filePath': 'Makefile', 'summary': 'Enforces review evidence for material changes.'}
 {'id': 'document:home/dot_config/claude/rules/crit-review.md', 'filePath': 'home/dot_config/claude/rules/crit-review.md', 'summary': 'Defines agent-side Crit review evidence, receipts, resolved records, and restrictions on human/browser review requests.'}
@@ -1511,7 +1511,7 @@ if __name__ == "__main__":
 
 **Validating memory without running guard**
 exec
-/usr/bin/zsh -lc "git show 489c83b:scripts/require-crit-review.py | sed -n '245,340p'; git show 489c83b:home/dot_config/codex/AGENTS.md | sed -n '28,41p'; git diff 489c83b"'^ 489c83b --check; python3 -B -c '"'import subprocess,json; from unittest.mock import Mock; ns={\"__name__\":\"review_check\"}; exec(compile(subprocess.check_output([\"git\",\"show\",\"489c83b:scripts/require-crit-review.py\"],text=True),\"guard-at-489c83b\",\"exec\"),ns); records=[{\"id\":\"review-1\",\"body\":\"Independent review completed; no findings.\",\"scope\":\"review\",\"resolved\":True}]; p=Mock(); p.read_text.return_value=json.dumps(records); assert ns[\"crit_data_errors\"](p)==[]; records[0].update(scope=\"file\",path=\"AGENTS.md\"); p.read_text.return_value=json.dumps(records); assert ns[\"crit_data_errors\"](p)==[]; print(\"Documented review/file evidence shapes accepted by commit validator (in-memory check).\")'" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "git show 489c83b:scripts/require-crit-review.py | sed -n '245,340p'; git show 489c83b:home/dot_config/codex/AGENTS.md | sed -n '28,41p'; git diff 489c83b"'^ 489c83b --check; python3 -B -c '"'import subprocess,json; from unittest.mock import Mock; ns={\"__name__\":\"review_check\"}; exec(compile(subprocess.check_output([\"git\",\"show\",\"489c83b:scripts/require-crit-review.py\"],text=True),\"guard-at-489c83b\",\"exec\"),ns); records=[{\"id\":\"review-1\",\"body\":\"Independent review completed; no findings.\",\"scope\":\"review\",\"resolved\":True}]; p=Mock(); p.read_text.return_value=json.dumps(records); assert ns[\"crit_data_errors\"](p)==[]; records[0].update(scope=\"file\",path=\"AGENTS.md\"); p.read_text.return_value=json.dumps(records); assert ns[\"crit_data_errors\"](p)==[]; print(\"Documented review/file evidence shapes accepted by commit validator (in-memory check).\")'" in ~/Workspace/dotfiles
  exited 1 in 0ms:
     path = Path(source)
     if not path.is_absolute():
@@ -1636,7 +1636,7 @@ for scope in (\"review\",\"line\",\"file\"):
  records[0].update(scope=scope,path=\"AGENTS.md\")
  with patch.object(Path,\"is_file\",return_value=True), patch.object(Path,\"read_text\",return_value=json.dumps(records)):
   assert ns[\"crit_data_errors\"](root,\".agents/worklog/review/fallback.json\")==[]
-print(\"Documented review/line/file evidence shapes accepted by commit validator (in-memory check).\")'" in /home/moriya/Workspace/dotfiles
+print(\"Documented review/line/file evidence shapes accepted by commit validator (in-memory check).\")'" in ~/Workspace/dotfiles
  succeeded in 0ms:
         errors.extend(agent_review_errors(root, text, parsed_fields, marker))
     elif reviewer and marker == f"{NATIVE_REVIEWED_ENV}=1":

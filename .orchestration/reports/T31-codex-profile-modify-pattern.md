@@ -1,7 +1,7 @@
 # T31 result report
 
 - Task: `T31-codex-profile-modify-pattern`
-- Worktree: `/Users/mryfmo/Workspace/dotfiles-t31`
+- Worktree: `~/Workspace/dotfiles-t31`
 - Branch: `fix/codex-profile-modify`
 - Commit: `04a76fc fix(agents): preserve codex runtime state via modify profiles`
 

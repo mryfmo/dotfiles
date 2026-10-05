@@ -1,7 +1,7 @@
 # T33f report — dot-ua-core-build-T33f-a01 (revision 2)
 
 - worker: `claude-standard-dot-a005`; orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `fix/ua-core-build` from `origin/main` = `7b42472`
 - task_rev: sha256 `97c01daa9f1be4a3b566fa6a563b2607524839ff6c0d750405e6ef546688a0af`, checked
 - PR: https://github.com/mryfmo/dotfiles/pull/201, head `657bfe4fef083b0cf4c22bb7bdc34b915eb29ffe` (rev2; rev1 head `3d63f0a`)

@@ -1,7 +1,7 @@
 # T33h report — dot-permgate-codex-stdin-T33h-a01 (revision 1)
 
 - worker: `claude-standard-dot-a005`; orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `fix/permgate-codex-stdin` from `origin/main` = `a4bddfc`
 - task_rev: sha256 `15857f6d1deb08f5afeb9fa280f761bea3cf6a127aad8737ea848cf07dede14b`, checked
 - cleanup: deleted the local branch `fix/ua-core-build-shim` (was `02fdac1`, merged as `2b30a21`), as the task allows

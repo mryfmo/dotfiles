@@ -75,7 +75,7 @@ Fixture:
 The two real updater functions were sourced and called directly. `rsync` and `herdr` were shell-function stubs, so no network or real install occurred. Direct `/opt/homebrew/bin/jq` was selected because changing HOME around the mise jq shim triggers mise trust checks before the product runs.
 
 Commands invoked by the functions:
-  stub rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* /Users/mryfmo/Workspace/dotfiles/vendor/compactiondb/ /private/tmp/t57-fake-home.lrcNrT/.agents/compactiondb/
+  stub rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ~/Workspace/dotfiles/vendor/compactiondb/ /private/tmp/t57-fake-home.lrcNrT/.agents/compactiondb/
   stub herdr integration install claude
   stub herdr integration install codex
 
@@ -93,7 +93,7 @@ Resulting manifest:
         "/private/tmp/t57-fake-home.lrcNrT/.agents/compactiondb"
       ],
       "commands": [
-        "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* /Users/mryfmo/Workspace/dotfiles/vendor/compactiondb/ /private/tmp/t57-fake-home.lrcNrT/.agents/compactiondb/"
+        "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ~/Workspace/dotfiles/vendor/compactiondb/ /private/tmp/t57-fake-home.lrcNrT/.agents/compactiondb/"
       ],
       "source_version": "2.0.0+dotfiles.5"
     },

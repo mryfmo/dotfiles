@@ -234,9 +234,9 @@ directory — see CompactionDB decision `caa48801...`)
 
 ```
 $ zsh -c 'source home/dot_zshenv 2>&1; print -l $path' | head -8
-/home/moriya/.local/share/mise/shims
-/home/moriya/.local/bin
-/home/moriya/.local/bin/common
+~/.local/share/mise/shims
+~/.local/bin
+~/.local/bin/common
 /usr/local/bin
 /usr/local/sbin
 /opt/homebrew/bin
@@ -257,9 +257,9 @@ one. Re-running in a clean subshell:
 
 ```
 $ env -i HOME="$HOME" zsh -c 'source home/dot_zshenv; print -l $path'
-/home/moriya/.local/share/mise/shims
-/home/moriya/.local/bin
-/home/moriya/.local/bin/common
+~/.local/share/mise/shims
+~/.local/bin
+~/.local/bin/common
 /usr/local/bin
 /usr/local/sbin
 ```

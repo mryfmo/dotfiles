@@ -31,7 +31,7 @@ auth, which stays an open operator decision (operator 2026-09-29).
 ## CompactionDB (main checkout)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T42: the security Codex profile runs gpt-6-astra high under ChatGPT login; gpt-daybreak-blue-latest is not usable without API-key auth, which stays an open operator decision (operator 2026-09-29)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T42: the security Codex profile runs gpt-6-astra high under ChatGPT login; gpt-daybreak-blue-latest is not usable without API-key auth, which stays an open operator decision (operator 2026-09-29)."
 ba925f0b-f82e-4982-8930-085e4ff046d2
 ```
 

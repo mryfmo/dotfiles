@@ -2,7 +2,7 @@
 
 - worker: `claude-standard-dot-a005` (Claude Code, acting as worker per the dispatch note)
 - orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `docs/orchestration-rules-T33a` from `origin/main` = `ca4af19`
 - task_rev:
   - rev1 sha256 `62a1f9946980743f30032b3c3a204a937bf6a960e6a89d9ffb10e66e861b5d47` at `ca4af19`

@@ -9,7 +9,7 @@ status: ready_for_review
 ## Changes
 
 - Removed `home/dot_codex/__pycache__/`.
-- Removed empty target directory `/Users/mryfmo/.codex/__pycache__` with `rmdir`.
+- Removed empty target directory `~/.codex/__pycache__` with `rmdir`.
 - Added bytecode ignore patterns to `home/.chezmoitemplates/chezmoiignore.d/common`.
 - Set `sys.dont_write_bytecode = True` in both in-tree dynamic-loader test modules:
   - `tests/unit/test_generate_agent_configs.py`

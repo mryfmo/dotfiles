@@ -74,7 +74,7 @@ Ubuntu prerequisites and a presence-only doctor check; PR #179's own
 ## CompactionDB (main checkout)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T39: the Claude Code sandbox is rendered from claude.sandbox in agent-config.yaml (enabled, failIfUnavailable=false for the first stage, autoAllowBashIfSandboxed, allowUnsandboxedCommands, allowWrite mirrored from the Codex writable roots, GitHub-only allowedDomains, herdr/Claude unix sockets allowed) with bubblewrap+socat as Ubuntu prerequisites and a presence-only doctor check; PR #179's own /etc/apparmor.d/bwrap profile is dropped in favour of main's bwrap-userns (T30). Flipping failIfUnavailable to true waits for live E2E (operator 2026-09-29)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T39: the Claude Code sandbox is rendered from claude.sandbox in agent-config.yaml (enabled, failIfUnavailable=false for the first stage, autoAllowBashIfSandboxed, allowUnsandboxedCommands, allowWrite mirrored from the Codex writable roots, GitHub-only allowedDomains, herdr/Claude unix sockets allowed) with bubblewrap+socat as Ubuntu prerequisites and a presence-only doctor check; PR #179's own /etc/apparmor.d/bwrap profile is dropped in favour of main's bwrap-userns (T30). Flipping failIfUnavailable to true waits for live E2E (operator 2026-09-29)."
 41736f91-68ac-4412-9874-9960402043ad
 ```
 

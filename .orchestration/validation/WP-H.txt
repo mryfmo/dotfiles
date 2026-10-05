@@ -11,7 +11,7 @@ grep -n "update-codex-statusline-tools\|codexbar" tests/install/common/lifecycle
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: zero hits.
@@ -26,7 +26,7 @@ sed -n '95,115p' tests/install/common/lifecycle.bats
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
     grep -q 'run_mise_with_isolated_git_config "${mise_command}" --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'warning: unable to list current mise tools for %s; continuing' scripts/upgrade-tools.sh
     grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
@@ -60,7 +60,7 @@ grep -n "update-codex-statusline-tools\|install/common/hermes.sh\|install/common
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: no other references found.
@@ -75,7 +75,7 @@ git diff --stat tests/install/common/lifecycle.bats
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
  tests/install/common/lifecycle.bats | 5 -----
  1 file changed, 5 deletions(-)
 ```
@@ -90,7 +90,7 @@ git status --porcelain -- tests/install/common/lifecycle.bats .orchestration/rep
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
  M tests/install/common/lifecycle.bats
 ?? .orchestration/autoskill/runs/WP-H.md
 ?? .orchestration/learning/WP-H.md

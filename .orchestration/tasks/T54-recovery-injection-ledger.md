@@ -1,7 +1,7 @@
 # T54: Record the injected recovery packet in the ledger (H2, vendor dotfiles.5)
 
 task_id: T54
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-harness-composability-integration.md (Phase 1)

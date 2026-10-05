@@ -1,7 +1,7 @@
 # T69: CompactionDB Pi extension — tool-granular capture (π3)
 
 task_id: T69
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-pi-worker-integration.md (Phase 5)

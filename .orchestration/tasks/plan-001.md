@@ -25,11 +25,11 @@ Implement `plans/001-contain-starship-cleanup.md` in the isolated worktree.
 
 ## Expected artifacts
 
-- Report: `/Users/mryfmo/Workspace/dotfiles/.orchestration/reports/plan-001.md`
-- Validation: `/Users/mryfmo/Workspace/dotfiles/.orchestration/validation/plan-001.md`
-- Sandbox: `/Users/mryfmo/Workspace/dotfiles/.orchestration/sandboxes/plan-001.md`
-- Learning: `/Users/mryfmo/Workspace/dotfiles/.orchestration/learning/plan-001.md`
-- AutoSkill: `/Users/mryfmo/Workspace/dotfiles/.orchestration/autoskill/runs/plan-001.md`
+- Report: `~/Workspace/dotfiles/.orchestration/reports/plan-001.md`
+- Validation: `~/Workspace/dotfiles/.orchestration/validation/plan-001.md`
+- Sandbox: `~/Workspace/dotfiles/.orchestration/sandboxes/plan-001.md`
+- Learning: `~/Workspace/dotfiles/.orchestration/learning/plan-001.md`
+- AutoSkill: `~/Workspace/dotfiles/.orchestration/autoskill/runs/plan-001.md`
 
 ## Completion
 

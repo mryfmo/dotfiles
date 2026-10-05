@@ -1,7 +1,7 @@
 # T76: 吸収 — send.sh 識別子文法の内蔵+ACCEPTANCE コスト欄規約
 
 task_id: T76
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-pivot.md (Phase 3)

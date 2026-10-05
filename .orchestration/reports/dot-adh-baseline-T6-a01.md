@@ -3,7 +3,7 @@ status: ready_for_review
 cost: n/a
 
 ## Completed
-Created task-specified worktree /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/adh-baseline, branch docs/adh-integrated-plan-baseline, from origin/main. Copied reviews with rsync -a --exclude .DS_Store.
+Created task-specified worktree ~/Workspace/dotfiles/.claude/worktrees/adh-baseline, branch docs/adh-integrated-plan-baseline, from origin/main. Copied reviews with rsync -a --exclude .DS_Store.
 197 checksum entries OK; zero non-OK lines. All 196 PACKAGE_MANIFEST.json listed files exist.
 198 total files; 5072 KiB allocated size. Exact byte total is in validation.
 Requested secret-pattern scan via rg --hidden --no-ignore: empty output, exit 1 (no matches).

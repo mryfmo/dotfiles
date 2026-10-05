@@ -35,7 +35,7 @@
 
 ## Shared-repo hazard found and reported (PONG at start of T44)
 
-- `/home/moriya/Workspace/dotfiles/.git/config.lock` exists as a read-only, zero-byte file (mtime 06:01 JST), and no process holds it. It looks like a stub the sandbox's bubblewrap leaves on disk when it protects `.git/config` for linked worktrees.
+- `~/Workspace/dotfiles/.git/config.lock` exists as a read-only, zero-byte file (mtime 06:01 JST), and no process holds it. It looks like a stub the sandbox's bubblewrap leaves on disk when it protects `.git/config` for linked worktrees.
 - It blocks every git config write in the shared repo, sandboxed or not.
 - My sandboxed `git switch -c fix/sandbox-unix-sockets origin/main` half-applied: the branch ref, index and tree moved, but HEAD and the tracking config did not.
 - I repaired only this worktree's HEAD with `git symbolic-ref HEAD refs/heads/fix/sandbox-unix-sockets`, a per-worktree file with no config write. T43's 1843dd1 was untouched throughout.
@@ -54,7 +54,7 @@ sandboxed Bash on Linux; file and network isolation are unchanged
 ## CompactionDB (main checkout)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T44: the Claude Code sandbox sets network.allowAllUnixSockets: true so the herdr control plane works from sandboxed Bash on Linux; file and network isolation are unchanged (operator 2026-09-29, from T39 live E2E leg 1)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T44: the Claude Code sandbox sets network.allowAllUnixSockets: true so the herdr control plane works from sandboxed Bash on Linux; file and network isolation are unchanged (operator 2026-09-29, from T39 live E2E leg 1)."
 5ab13bbc-7eb0-41cf-a99c-9aa95b8a51b3
 ```
 

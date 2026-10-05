@@ -86,7 +86,7 @@ chezmoi: template: stdin:2:5: executing "stdin" at <fail (printf "Unknown OS for
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T74 (operator 2026-10-03): the unused bootstrap paths are deleted: `install/macos/arm64/run.sh`, the `make init` private-init branch, setup.sh'"'"'s disabled `restart_shell` family, the empty macOS/Ubuntu chezmoiexternal templates, and the whole nix flake with its CI job and test; bootstrap is `./setup.sh` + chezmoi only.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T74 (operator 2026-10-03): the unused bootstrap paths are deleted: `install/macos/arm64/run.sh`, the `make init` private-init branch, setup.sh'"'"'s disabled `restart_shell` family, the empty macOS/Ubuntu chezmoiexternal templates, and the whole nix flake with its CI job and test; bootstrap is `./setup.sh` + chezmoi only.'
 9c4baa38-0730-4e71-b6a7-fcc6b06be80c
 ```
 

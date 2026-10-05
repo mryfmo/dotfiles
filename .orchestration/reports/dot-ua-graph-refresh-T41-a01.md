@@ -66,7 +66,7 @@ orchestrator never runs the graph update in its own session (operator
 ## CompactionDB (main checkout)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T41 (re-affirms T36): the .ua/ knowledge graph is refreshed incrementally by a worker task whenever the SessionStart hook reports it stale; the orchestrator never runs the graph update in its own session (operator 2026-09-29)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T41 (re-affirms T36): the .ua/ knowledge graph is refreshed incrementally by a worker task whenever the SessionStart hook reports it stale; the orchestrator never runs the graph update in its own session (operator 2026-09-29)."
 6704a725-799b-4c4b-ad51-d8adec806abc
 $ python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content "T41: any Understand-Anything incremental update that touches a .sh file with function nodes blocks at merge-batch-graphs (symbol gate marks them unknown: no deterministic shell parser) until the plugin gains a shell parser or .sh symbols are excluded; the fallback is a full /understand rebuild."
 16001714-ab6e-4386-ab29-1915fe73fdf7
@@ -114,6 +114,6 @@ cost (revision 2): 3 more dispatches (targeted batches 32 and 33, assemble revie
 CompactionDB (revision 2):
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content "T41 rev2: a full /understand rebuild can silently drop previously-published function/class nodes (significance filter, extractor gaps); validateGraph does not detect it. Gate every graph commit with a per-file symbol-count comparison against the previous graph (new >= old unless the source lost definitions) and repair with a targeted batch carrying previousSymbols."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content "T41 rev2: a full /understand rebuild can silently drop previously-published function/class nodes (significance filter, extractor gaps); validateGraph does not detect it. Gate every graph commit with a per-file symbol-count comparison against the previous graph (new >= old unless the source lost definitions) and repair with a targeted batch carrying previousSymbols."
 69a96c4c-6b56-44c1-be92-4e99b6391c0b
 ```

@@ -1,6 +1,6 @@
 # dotfiles-T88-parallel-execution-rule-a01 — sandbox
 
-- Isolation: dedicated git worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d`, branch `docs/parallel-execution-rule`. It was created from `origin/main` 3a0816e6 and rebased onto 40d9eb6c (#241, no overlap with this task's files) before the first push. Worker identity: `claude-standard-dot-a006` (Claude Code, `standard`). The T66 branch `chore/permgate-dead-lanes` was kept as instructed.
+- Isolation: dedicated git worktree `~/Workspace/dotfiles/.claude/worktrees/worker-d`, branch `docs/parallel-execution-rule`. It was created from `origin/main` 3a0816e6 and rebased onto 40d9eb6c (#241, no overlap with this task's files) before the first push. Worker identity: `claude-standard-dot-a006` (Claude Code, `standard`). The T66 branch `chore/permgate-dead-lanes` was kept as instructed.
 - Edits, the docs test, `make unit-test`, `make validate-agent-assets` and prettier ran in the Claude Code Bash sandbox. These ran unsandboxed through the normal permission gate:
   - `git fetch`/`rebase`/`push`, `gh pr create`/`checks`/`api`;
   - `python3 .claude/hooks/contextdb_cli.py memory add` in the main checkout (state dir read-only from this worktree's sandbox);

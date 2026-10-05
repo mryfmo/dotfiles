@@ -1,7 +1,7 @@
 # dotfiles-T96-codex-worker-gpt61-sol-high-a01 — sandbox
 
 - Isolation:
-  - Dedicated git worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d`.
+  - Dedicated git worktree `~/Workspace/dotfiles/.claude/worktrees/worker-d`.
   - Branch `feat/codex-worker-gpt61-sol`, created from `origin/main` 40993f20 (#257, T76) with `git switch --no-track -c`.
   - Worker identity: `claude-standard-dot-a006` (Claude Code, `standard`).
 - Ran in the Claude Code Bash sandbox: the edits, `make render-check`, the generator write, the focused and full unit tests, `make validate-agent-assets`, prettier and ruff.

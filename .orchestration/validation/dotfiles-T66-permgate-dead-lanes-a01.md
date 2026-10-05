@@ -191,17 +191,17 @@ chatgpt-codex-connector[bot]	+1	2026-10-04T00:48:33Z
 ### CompactionDB (main checkout, run unsandboxed)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T66 (operator 2026-10-03): permgate keeps only its deterministic deny/allow lanes and the native-prompt fallthrough; the shadow LLM classifier lane, the cli workspace lane and the benchmark are deleted as dead code (0 denies in 425 decisions, 0 callers)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T66 (operator 2026-10-03): permgate keeps only its deterministic deny/allow lanes and the native-prompt fallthrough; the shadow LLM classifier lane, the cli workspace lane and the benchmark are deleted as dead code (0 denies in 425 decisions, 0 callers)."
 151d0f98-0bd5-4d65-a43d-ebebcd3004ed
 ```
 
 ### Crit server close (`pgrep -af "[c]rit _serve"` unsandboxed, before and after `kill 4129281`)
 
 ```text
-4129281 /home/moriya/.local/bin/crit _serve --plan-dir /home/moriya/.crit/plans/plan-agmsg-actas-claude-standard-dot-a006-2026-10-04 ...
-4150161 /home/moriya/.local/bin/crit _serve --plan-dir /home/moriya/.crit/plans/plan-agmsg-actas-claude-standard-dot-a007-2026-10-04 ...
+4129281 ~/.local/bin/crit _serve --plan-dir ~/.crit/plans/plan-agmsg-actas-claude-standard-dot-a006-2026-10-04 ...
+4150161 ~/.local/bin/crit _serve --plan-dir ~/.crit/plans/plan-agmsg-actas-claude-standard-dot-a007-2026-10-04 ...
 --- after kill 4129281 ---
-4150161 /home/moriya/.local/bin/crit _serve --plan-dir /home/moriya/.crit/plans/plan-agmsg-actas-claude-standard-dot-a007-2026-10-04 --name plan-agmsg-actas-claude-standard-dot-a007-2026-10-04 /home/moriya/.crit/plans/plan-agmsg-actas-claude-standard-dot-a007-2026-10-04/current.md
+4150161 ~/.local/bin/crit _serve --plan-dir ~/.crit/plans/plan-agmsg-actas-claude-standard-dot-a007-2026-10-04 --name plan-agmsg-actas-claude-standard-dot-a007-2026-10-04 ~/.crit/plans/plan-agmsg-actas-claude-standard-dot-a007-2026-10-04/current.md
 ```
 
 ## Revise round 1 (task_rev b7fa55fe…) — fix commit `a93fcb94793627c525a01263f2255d86d79004ba` on top of f26975ab

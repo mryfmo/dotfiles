@@ -79,7 +79,7 @@ agent asset validation ok
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T67 (operator 2026-10-03): `herdr-agents --audit <sha> --task <id>` audits a task once on its final head with the task file, the worker artifacts, the PR feedback JSON (CI and Bot threads) and the full PR diff from the merge-base, across specification conformance, implementation and evidence reality; output `<id>-audit-<sha7>.md`; per-commit audits are no longer the default.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T67 (operator 2026-10-03): `herdr-agents --audit <sha> --task <id>` audits a task once on its final head with the task file, the worker artifacts, the PR feedback JSON (CI and Bot threads) and the full PR diff from the merge-base, across specification conformance, implementation and evidence reality; output `<id>-audit-<sha7>.md`; per-commit audits are no longer the default.'
 0de2f024-59c6-48dd-ba90-b85a669cc0cc
 ```
 

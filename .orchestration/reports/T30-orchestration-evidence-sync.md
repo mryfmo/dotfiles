@@ -1,7 +1,7 @@
 # T30 result report
 
 - Task: `T30-orchestration-evidence-sync`
-- Worktree: `/Users/mryfmo/Workspace/dotfiles-t30`
+- Worktree: `~/Workspace/dotfiles-t30`
 - Branch: `chore/t29-evidence-sync`
 - Commit: `c67a662 chore(orchestration): sync T29 regime default-on evidence`
 - Copied and committed the seven authorized T29 evidence files byte-identically.

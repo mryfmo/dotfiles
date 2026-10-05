@@ -1,7 +1,7 @@
 # AGMSG-TASK dot-worker-kind-guard-T14-a01: worker_kind validation and the same-type identity guard (plan Phase 1.2 / 1.3)
 
-Plan: `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/remediation-plan-20260925.md` §Phase 1 (1.2, 1.3). Read the plan's §0 and §2 first so the guard's message states the real problem.
-Repo (your worktree): `/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10`. You are `claude-standard-dot-a003`.
+Plan: `~/Workspace/dotfiles/.agents/worklog/claude/remediation-plan-20260925.md` §Phase 1 (1.2, 1.3). Read the plan's §0 and §2 first so the guard's message states the real problem.
+Repo (your worktree): `~/Workspace/dotfiles/.claude/worktrees/env-converge-T10`. You are `claude-standard-dot-a003`.
 
 ## Preparation (your worktree currently holds PR #179's branch with one uncommitted bats fix)
 
@@ -43,7 +43,7 @@ Two commits: `fix(validate): constrain worker_kind and keep README in step with 
 
 changing `worker_kind`'s value; pushing `feat/claude-sandbox-manifest`; merging; `make update`/`make upgrade`/`chezmoi apply`; writes outside your worktree except artefacts; local bats; force-push.
 
-## Artefacts (in `/home/moriya/Workspace/dotfiles`)
+## Artefacts (in `~/Workspace/dotfiles`)
 
 report/validation/sandbox/learning/autoskill at `.orchestration/<dir>/dot-worker-kind-guard-T14-a01.md`. `[memory:decision]`: "worker_kind is validated to codex|claude and README must state the manifest value; a same-type claude worker is refused unless a second claude-code identity (worker role) is registered on the workdir (temporary guard until the agmsg role model, plan Phase 3)". `contextdb_cli.py memory add` from the main checkout; paste command and output.
 

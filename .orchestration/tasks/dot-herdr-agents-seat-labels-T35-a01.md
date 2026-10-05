@@ -57,7 +57,7 @@ agmsg 1.5.0 self-naming no longer hides the workspace from `--audit`,
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`; `git switch -c fix/herdr-agents-seat-labels origin/main`
   (T34 #206 may or may not be merged when you start: if it is not, branch from
   `origin/main` anyway and keep the change independent of T34's worktree-seat
@@ -90,7 +90,7 @@ make validate-agent-assets
 make unit-test
 shellcheck -x home/dot_local/bin/common/executable_herdr-agents
 shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_herdr-agents
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

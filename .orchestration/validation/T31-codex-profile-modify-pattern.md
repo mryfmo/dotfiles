@@ -1,12 +1,12 @@
 # T31 validation
 
-Worktree: `/Users/mryfmo/Workspace/dotfiles-t31`
+Worktree: `~/Workspace/dotfiles-t31`
 
 ```text
 $ uv run --with pytest pytest tests/unit/test_generate_agent_configs.py tests/unit/test_check_agent_runtime.py
 ============================= test session starts ==============================
 platform darwin -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0
-rootdir: /Users/mryfmo/Workspace/dotfiles-t31
+rootdir: ~/Workspace/dotfiles-t31
 collected 34 items
 
 tests/unit/test_generate_agent_configs.py .............                  [ 38%]

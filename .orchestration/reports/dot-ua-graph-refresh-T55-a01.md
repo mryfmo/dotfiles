@@ -1,6 +1,6 @@
 # Report: dot-ua-graph-refresh-T55-a01
 
-- Worker: `claude-standard-dot-a005` in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`
+- Worker: `claude-standard-dot-a005` in `~/Workspace/dotfiles/.claude/worktrees/worker-c`
 - Task file sha256 `c4f1df2e32d7a7ae634d25fd4a93573f5b3c8abab0e97fd74c99e27b7a95ffae`. It matches the dispatched task_rev. It was verified against the main-checkout copy because the task file is not committed on `origin/main`: `git show origin/main:<task>` is empty, sha `e3b0c442…`.
 - Branch `chore/ua-graph-refresh-T55` from `origin/main` 940a3a2b; one commit `98bdf43ff966f4b73dd25832d1f77c1196dc0bdb`; PR #226 (https://github.com/mryfmo/dotfiles/pull/226).
 - Status: ready_for_review. CI is green on `98bdf43f`: 12 pass and `nix` skipped by change detection. CodeRabbit shows pass because automatic reviews are disabled. The verbatim `gh pr checks 226` output is in the validation file.
@@ -51,7 +51,7 @@ Results:
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T55 (operator 2026-10-02): the .ua/ graph is rebuilt in full as the semantic index before the whole-repository review of tools, libraries and content; the orchestrator never runs the graph build in its own session."
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T55 (operator 2026-10-02): the .ua/ graph is rebuilt in full as the semantic index before the whole-repository review of tools, libraries and content; the orchestrator never runs the graph build in its own session."
 958a79ca-0099-4276-9294-b834ee886185
 ```
 

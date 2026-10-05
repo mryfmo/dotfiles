@@ -108,7 +108,7 @@ PR #79 was squash-merged and local `main` was fast-forwarded to:
 ```
 
 A real `make update` was then run from
-`/Users/mryfmo/Workspace/dotfiles`. It exited 0. The complete 338-line output
+`~/Workspace/dotfiles`. It exited 0. The complete 338-line output
 is captured at
 `/private/tmp/T20-agmsg-setup-automation-make-update.log` with SHA-256:
 
@@ -120,7 +120,7 @@ The output ends with the new explicit step:
 
 ```text
 /Library/Developer/CommandLineTools/usr/bin/make agmsg-bootstrap
-Multiple agmsg Claude Code identities are registered for /Users/mryfmo/Workspace/dotfiles; worker identity is ambiguous.
+Multiple agmsg Claude Code identities are registered for ~/Workspace/dotfiles; worker identity is ambiguous.
 ```
 
 Steady-state evidence before and after the real update was identical:
@@ -146,7 +146,7 @@ The same live Claude Code watcher survived the update:
 wrapper PID: 99013
 watch.sh PID: 99017
 session: 5643c3ca-540b-4cad-8bf4-cf97f9e8928b
-project: /Users/mryfmo/Workspace/dotfiles
+project: ~/Workspace/dotfiles
 type: claude-code
 ```
 

@@ -36,7 +36,7 @@ express=none
 standard=["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"]
 review=none
 deep=["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"]
-template_home=/Users/mryfmo
+template_home=~
 
 INTEGRATION CHECK
 Scratch root: /private/tmp/t48-notify-final.hShPSj

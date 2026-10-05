@@ -1,6 +1,6 @@
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -11,10 +11,10 @@ session id: 01a0e57a-39a0-78b1-ace1-c10d1e126376
 --------
 user
 commit e7de371
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 ---
@@ -323,9 +323,9 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/usr/bin/zsh -lc 'pwd; git status --short; git rev-parse HEAD; git show --stat --oneline e7de371; cat AGENTS.md; find .. -name AGENTS.override.md -print; test ! -f .ua/meta.json || cat .ua/meta.json' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'pwd; git status --short; git rev-parse HEAD; git show --stat --oneline e7de371; cat AGENTS.md; find .. -name AGENTS.override.md -print; test ! -f .ua/meta.json || cat .ua/meta.json' in ~/Workspace/dotfiles
  succeeded in 0ms:
-/home/moriya/Workspace/dotfiles
+~/Workspace/dotfiles
 ?? .orchestration/acceptance/dot-audit-pane-hardening-T32b-a01.md
 ?? .orchestration/autoskill/runs/dot-audit-pane-hardening-T32b-a01.md
 ?? .orchestration/learning/dot-audit-pane-hardening-T32b-a01.md
@@ -428,7 +428,7 @@ Standing review rules for the auditor (`codex --profile audit review --commit <s
 }
 
 exec
-/usr/bin/zsh -lc 'git show --format=fuller e7de371 --; for d in home home/dot_local home/dot_local/bin home/dot_local/bin/common tests tests/unit; do for f in AGENTS.override.md AGENTS.md; do test ! -f "$d/$f" || { echo "$d/$f"; cat "$d/$f"; }; done; done; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86..HEAD; head -40 home/dot_local/bin/common/executable_herdr-agents' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'git show --format=fuller e7de371 --; for d in home home/dot_local home/dot_local/bin home/dot_local/bin/common tests tests/unit; do for f in AGENTS.override.md AGENTS.md; do test ! -f "$d/$f" || { echo "$d/$f"; cat "$d/$f"; }; done; done; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86..HEAD; head -40 home/dot_local/bin/common/executable_herdr-agents' in ~/Workspace/dotfiles
  succeeded in 0ms:
 commit e7de371a0b4cf0e9ffb6bc67924d3cb9e321ae13
 Author:     moriya-fumio-thd <moriya.fumio@technopro.com>
@@ -963,7 +963,7 @@ tests/unit/test_validate_agent_assets.py
 
 **Investigating zsh quoting behavior**
 exec
-/usr/bin/zsh -lc "cat /home/moriya/.agents/skills/shdoc-shell-docs/SKILL.md; sed -n '830,950p' home/dot_local/bin/common/executable_herdr-agents; sed -n '1,140p' tests/unit/test_herdr_agents.py; sed -n '2000,2290p' tests/unit/test_herdr_agents.py; rg -n 'AUDIT|audit|recent-unwrapped' tests/unit/test_herdr_agents.py | head -45; command -v herdr; git diff --quiet; echo tracked_diff_status="'$?' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "cat ~/.agents/skills/shdoc-shell-docs/SKILL.md; sed -n '830,950p' home/dot_local/bin/common/executable_herdr-agents; sed -n '1,140p' tests/unit/test_herdr_agents.py; sed -n '2000,2290p' tests/unit/test_herdr_agents.py; rg -n 'AUDIT|audit|recent-unwrapped' tests/unit/test_herdr_agents.py | head -45; command -v herdr; git diff --quiet; echo tracked_diff_status="'$?' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: shdoc-shell-docs
@@ -1601,12 +1601,12 @@ if [[ $1 == tab && $2 == create ]]; then
 2184:                / f".orchestration/validation/audit-{AUDIT_SHA}.md"
 2188:    def test_audit_quotes_a_non_ascii_out_path_under_the_c_locale(self) -> None:
 2189:        self.write_audit_pair_state(self.audit_tab_pane())
-/home/moriya/.local/share/mise/shims/herdr
+~/.local/share/mise/shims/herdr
 tracked_diff_status=0
 
 **Checking shell quoting and escape**
 exec
-/usr/bin/zsh -lc "herdr pane wait-output --help; herdr pane read --help; rg -n 'resolve_audit_codex_args|audit_pane_id|single_managed_workspace|wait_for_shell_prompt' home/dot_local/bin/common/executable_herdr-agents; bash -n home/dot_local/bin/common/executable_herdr-agents; python3 -B -c 'import ast,pathlib; ast.parse(pathlib.Path(\"tests/unit/test_herdr_agents.py\").read_text()); print(\"Python syntax OK\")'" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "herdr pane wait-output --help; herdr pane read --help; rg -n 'resolve_audit_codex_args|audit_pane_id|single_managed_workspace|wait_for_shell_prompt' home/dot_local/bin/common/executable_herdr-agents; bash -n home/dot_local/bin/common/executable_herdr-agents; python3 -B -c 'import ast,pathlib; ast.parse(pathlib.Path(\"tests/unit/test_herdr_agents.py\").read_text()); print(\"Python syntax OK\")'" in ~/Workspace/dotfiles
  succeeded in 54ms:
 Python syntax OK
 
@@ -1640,7 +1640,7 @@ for p in paths:
         assert r.stdout == b\"AUDIT-EXIT-1-2:7\\n\", r.stdout
         count += 1
 print(f\"{count} Bash/zsh quote round-trips and failure-marker checks passed\")
-'" in /home/moriya/Workspace/dotfiles
+'" in ~/Workspace/dotfiles
  succeeded in 42ms:
 10 Bash/zsh quote round-trips and failure-marker checks passed
 

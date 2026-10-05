@@ -11,7 +11,7 @@ drive GitHub Actions CI to green. Do NOT merge until the orchestrator sends
 
 ## Background
 
-Two completed-but-uncommitted workstreams sit in /Users/mryfmo/Workspace/dotfiles:
+Two completed-but-uncommitted workstreams sit in ~/Workspace/dotfiles:
 
 - A) upgrade tooling: mise pin bumps, skip `mise upgrade` for pinned `http:*`
   tools, npm `--allow-scripts` repair, removal of npm-global agent CLI shadows,
@@ -28,7 +28,7 @@ All 180 unit tests, `generate-agent-configs.py --check`, and
 
 ## Steps
 
-1. From /Users/mryfmo/Workspace/dotfiles:
+1. From ~/Workspace/dotfiles:
    - `git diff --binary --cached > /tmp/T21-staged.patch` (holds the 2 ccgate.jsonnet deletions)
    - `git diff --binary > /tmp/T21-unstaged.patch`
 2. `git worktree add ../dotfiles-model-profiles origin/main -b feat/model-profiles`
@@ -66,7 +66,7 @@ All 180 unit tests, `generate-agent-configs.py --check`, and
 
 1. `gh pr merge <pr> --squash --delete-branch` (or `--merge` if the repo
    setting rejects squash).
-2. In /Users/mryfmo/Workspace/dotfiles: `git fetch origin` and confirm
+2. In ~/Workspace/dotfiles: `git fetch origin` and confirm
    `git diff origin/main --stat -- <the enumerated tracked files>` is EMPTY
    (identical content landed). Only if empty: `git reset --hard origin/main`
    and `git worktree remove ../dotfiles-model-profiles`. If not empty, STOP

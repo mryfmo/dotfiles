@@ -1,6 +1,6 @@
 # Sandbox: dot-orchestrator-delivery-sandbox-T49-a01
 
-- worker: claude-standard-dot-a005, worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`, branch
+- worker: claude-standard-dot-a005, worktree `~/Workspace/dotfiles/.claude/worktrees/worker-c`, branch
   `fix/orchestrator-delivery-sandbox` from origin/main 9b60b4b (`git switch --no-track -c`, sandboxed).
 - The herdr probes ran unsandboxed, because the herdr socket is a Unix socket and the sandbox blocks it on Linux, which is
   T44 r2's status quo. They read only the worker's own pane (`wN:p2`): `herdr agent list` (agent metadata),

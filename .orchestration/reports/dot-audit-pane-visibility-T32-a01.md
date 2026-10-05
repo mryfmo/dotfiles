@@ -2,7 +2,7 @@
 
 - worker: `claude-standard-dot-a005` (Claude Code, acting as worker per the dispatch note)
 - orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `feat/audit-pane-visibility` from `origin/main` = `7f3164e`
 - task_rev: sha256 `f3e9313e9d899fe66a0a639272e00e8b12c45482d146ac3503c9b14561852363`,
   checked against the task file on `origin/main` 7f3164e (the hashes match)

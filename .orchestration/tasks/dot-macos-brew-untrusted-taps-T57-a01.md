@@ -1,6 +1,6 @@
 # AGMSG-TASK dot-macos-brew-untrusted-taps-T57-a01
 
-Drafted 2026-10-02 by the orchestrator seat; operator-approved (queued after T56; dispatch comes after T56 acceptance). Worker: `claude-standard-dot-a005` in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`. Do not start before the AGMSG-TASK dispatch for T57 arrives.
+Drafted 2026-10-02 by the orchestrator seat; operator-approved (queued after T56; dispatch comes after T56 acceptance). Worker: `claude-standard-dot-a005` in `~/Workspace/dotfiles/.claude/worktrees/worker-c`. Do not start before the AGMSG-TASK dispatch for T57 arrives.
 
 ## Objective
 

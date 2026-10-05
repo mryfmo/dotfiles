@@ -6,7 +6,7 @@ PR: https://github.com/mryfmo/dotfiles/pull/253 — branch `docs/protocol-unific
 
 ```text
 $ sha256sum .orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
-40b66d86d0896e85e2e4f3f756aa09cf573d2f23cab13032a1ea00a02bc47ff9  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
+40b66d86d0896e85e2e4f3f756aa09cf573d2f23cab13032a1ea00a02bc47ff9  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
 ```
 
 ### commits
@@ -264,7 +264,7 @@ review of final head: no (bot: none)
 ### CompactionDB (main checkout, run unsandboxed)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T69 (operator 2026-10-03): the written protocol names one audit per task on the final head via \`herdr-agents --audit <sha> --task <id>\` (headless \`codex … exec --sandbox read-only\` otherwise), the acceptance order sweep → audit → acceptance record → gate with \`AUDIT_EVIDENCE\` → merge → ACCEPTANCE, the worker's Bot-wait by listing reviews of the final head, and the boundary PR as a sweep-free, audit-free exception; \`codex --profile audit review --commit\` is no longer written anywhere."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T69 (operator 2026-10-03): the written protocol names one audit per task on the final head via \`herdr-agents --audit <sha> --task <id>\` (headless \`codex … exec --sandbox read-only\` otherwise), the acceptance order sweep → audit → acceptance record → gate with \`AUDIT_EVIDENCE\` → merge → ACCEPTANCE, the worker's Bot-wait by listing reviews of the final head, and the boundary PR as a sweep-free, audit-free exception; \`codex --profile audit review --commit\` is no longer written anywhere."
 784fed94-42f9-4daf-8f1c-5f1f2fa53214
 ```
 
@@ -272,7 +272,7 @@ $ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py m
 
 ```text
 $ sha256sum .orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
-4ba1a66b966c4c1033cc980df0d8dd6e69076d8fc40a6ac70cbefdd27e6a00cd  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
+4ba1a66b966c4c1033cc980df0d8dd6e69076d8fc40a6ac70cbefdd27e6a00cd  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
 $ git log --format="%H %s" d31dc32d..HEAD
 4656f19f2183467052aa010e741e4df73bc663d8 docs(orchestration): trusted masker and task-level prompt for headless audits; match the Bot wait to the final head
 36086f4858e008cd86e60e7e14f12b26a1e21661 Merge branch 'main' into docs/protocol-unification
@@ -409,7 +409,7 @@ review of final head: no (bot: none)
 
 ```text
 $ sha256sum .orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
-1b6220c2e6642f447e0adb8b7fbbdfefb132c73cbb9be131e69835c1caab83ef  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
+1b6220c2e6642f447e0adb8b7fbbdfefb132c73cbb9be131e69835c1caab83ef  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
 6b060ac49354977f5b466d15ce81ef93b74f20e3 docs(orchestration): point to the SKILL for the audit and gate, and state the Claude seat's GitHub exception
  AGENTS.md                                           | 2 +-
  README.md                                           | 2 +-
@@ -523,7 +523,7 @@ review of final head: yes
 
 ```text
 $ sha256sum .orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
-e48f28ccac5666c8b88704c3a287a54e287e68c570edca6beedc59d48b0a792d  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
+e48f28ccac5666c8b88704c3a287a54e287e68c570edca6beedc59d48b0a792d  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
 fdb938ad6ac7964ea01905c4a2a5b96b5c565c4f docs(orchestration): GitHub exception wording per round-2 addendum and branch creation without .git/config writes
  home/dot_agents/skills/agmsg-orchestration/SKILL.md | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
@@ -599,7 +599,7 @@ The task file changed after round-3 dispatch only by the appended "Round 3 adden
 
 ```text
 $ sha256sum .orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
-e48f28ccac5666c8b88704c3a287a54e287e68c570edca6beedc59d48b0a792d  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
+e48f28ccac5666c8b88704c3a287a54e287e68c570edca6beedc59d48b0a792d  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T69-protocol-docs-unification-a01.md
 $ git log --format="%H %s" fdb938ad..d9bbd800
 d9bbd800d2b87f4575fcd64d9791447cc84be35e style(tests): ruff-format the no-workspace audit hint pin
 29ea2528c5e1c7c8b4767691da4682a49d5aef1e Merge branch 'main' into docs/protocol-unification

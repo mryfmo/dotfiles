@@ -87,7 +87,7 @@ Ubuntu prerequisites and a presence-only doctor check; PR #179's own
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - Base `origin/main`; verify the dispatched task_rev sha256 against this file
   on your base, else stop and PONG. If the worktree has uncommitted files or a
   branch other than the task branch is checked out with local commits, stop

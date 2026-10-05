@@ -70,7 +70,7 @@ A re-review on the final head was requested with `@codex review` (review 5403473
 The decision was recorded in the main checkout:
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T65 (operator 2026-10-03): a project-level Stop hook scripts/agent-stop-gate.sh blocks the orchestrator seat from stopping with repository changes outside .orchestration or with a RESULT lacking an ACCEPTANCE, and blocks a worker seat from stopping with a TASK lacking a RESULT/PONG; exit 2 with reasons, no prompt.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T65 (operator 2026-10-03): a project-level Stop hook scripts/agent-stop-gate.sh blocks the orchestrator seat from stopping with repository changes outside .orchestration or with a RESULT lacking an ACCEPTANCE, and blocks a worker seat from stopping with a TASK lacking a RESULT/PONG; exit 2 with reasons, no prompt.'
 ```
 
 Output: `1680aee8-ce0c-4f11-83c6-915814de3eb2` (pasted in validation).

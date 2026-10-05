@@ -1,7 +1,7 @@
 # T74: Pi source removal + surgical mixed-file edits + pi->cli lane rename
 
 task_id: T74
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-pi-pivot.md (Phase 1)

@@ -3,7 +3,7 @@
 ## Assignment
 
 - Task ID: `T34-profile-codex-turn-delivery`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`（main worktree。開始時に `git checkout main && git pull --ff-only origin main` の後、ブランチ `fix/t34-profile-hooks-parity` を作成）
+- Repo: `~/Workspace/dotfiles`（main worktree。開始時に `git checkout main && git pull --ff-only origin main` の後、ブランチ `fix/t34-profile-hooks-parity` を作成）
 - 発行: claude-deep-dot（orchestrator）2026-08-07
 - 担当: codex-standard-dot（herdr pane w1C:pE, `codex --profile standard` = gpt-5.6-terra / reasoning medium）
 - レビュー・受入: claude-deep-dot（orchestrator）。**delivery hooks に関わる変更のため、受入には
@@ -20,7 +20,7 @@
 状態の非対称（実測）:
 
 - `~/.codex/config.toml`: `[features] hooks = true` があり、`[hooks.state]` に
-  `/Users/mryfmo/Workspace/{ai-ops-platform,dotfiles}/.codex/hooks.json:stop:0:0` の
+  `~/Workspace/{ai-ops-platform,dotfiles}/.codex/hooks.json:stop:0:0` の
   trusted_hash エントリが存在する
 - `~/.codex/standard.config.toml`: `[hooks.state]` は permission_request 1件のみ。repo hooks の trust なし
 - `~/.codex/deep.config.toml`: hooks 関連の記述なし（`hooks = true` すら無い可能性）

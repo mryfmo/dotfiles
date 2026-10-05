@@ -5,8 +5,8 @@ Every output below is verbatim; exits were captured directly (ANSI colour codes 
 ## Task file
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-codex-worktree-git-writable-T50-a01.md
-34158aac86d5f9db685c4ef554695de9d9bb00de148408726b6d2963a86efbc6  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-codex-worktree-git-writable-T50-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-codex-worktree-git-writable-T50-a01.md
+34158aac86d5f9db685c4ef554695de9d9bb00de148408726b6d2963a86efbc6  ~/Workspace/dotfiles/.orchestration/tasks/dot-codex-worktree-git-writable-T50-a01.md
 ```
 
 ## Probe script (probe.sh)
@@ -14,7 +14,7 @@ $ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-codex-workt
 ```sh
 #!/bin/sh
 # T50 probe: run from a nested worktree cwd inside `codex sandbox`.
-main=/home/moriya/Workspace/dotfiles
+main=~/Workspace/dotfiles
 common="$(git rev-parse --path-format=absolute --git-common-dir)"
 name="$(basename "$(git rev-parse --path-format=absolute --git-dir)")"
 echo "cwd=$(pwd) common=${common} gitdir=${common}/worktrees/${name}"
@@ -57,29 +57,29 @@ exit=2
 ### codex sandbox without -P (read-only default; not the worker mode)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe && codex sandbox -- sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh   # before: config.toml workspace-write, no extra writable roots
-cwd=/home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe common=/home/moriya/Workspace/dotfiles/.git gitdir=/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe
-dir  /home/moriya/Workspace/dotfiles/.git/objects: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/objects/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/refs: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/refs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/logs: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/logs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/hooks: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/hooks/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/info: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/info/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-file /home/moriya/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/config: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/HEAD: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/packed-refs: Read-only file system)
+$ cd ~/Workspace/dotfiles/.claude/worktrees/t50-probe && codex sandbox -- sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh   # before: config.toml workspace-write, no extra writable roots
+cwd=~/Workspace/dotfiles/.claude/worktrees/t50-probe common=~/Workspace/dotfiles/.git gitdir=~/Workspace/dotfiles/.git/worktrees/t50-probe
+dir  ~/Workspace/dotfiles/.git/objects: DENIED (touch: '~/Workspace/dotfiles/.git/objects/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/refs: DENIED (touch: '~/Workspace/dotfiles/.git/refs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/logs: DENIED (touch: '~/Workspace/dotfiles/.git/logs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/worktrees/t50-probe: DENIED (touch: '~/Workspace/dotfiles/.git/worktrees/t50-probe/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/hooks: DENIED (touch: '~/Workspace/dotfiles/.git/hooks/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/info: DENIED (touch: '~/Workspace/dotfiles/.git/info/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git: DENIED (touch: '~/Workspace/dotfiles/.git/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+file ~/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/config: Read-only file system)
+file ~/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/HEAD: Read-only file system)
+file ~/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/packed-refs: Read-only file system)
 $ git commit --allow-empty -q -m t50 probe commit
-fatal: Unable to create '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/index.lock': 読み込み専用ファイルシステムです
+fatal: Unable to create '~/Workspace/dotfiles/.git/worktrees/t50-probe/index.lock': 読み込み専用ファイルシステムです
 exit=128
 $ git fetch origin
-error: cannot open '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
+error: cannot open '~/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
 exit=255
-$ git fetch -q /home/moriya/Workspace/dotfiles main
-error: cannot open '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
+$ git fetch -q ~/Workspace/dotfiles main
+error: cannot open '~/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
 exit=255
 $ git rebase origin/main
-error: could not create temporary /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/rebase-merge: 読み込み専用ファイルシステムです
+error: could not create temporary ~/Workspace/dotfiles/.git/worktrees/t50-probe/rebase-merge: 読み込み専用ファイルシステムです
 exit=1
 $ git push --dry-run origin HEAD:refs/heads/scratch/t50-probe
 ssh: Could not resolve hostname github.com: Temporary failure in name resolution
@@ -88,8 +88,8 @@ fatal: Could not read from remote repository.
 Please make sure you have the correct access rights
 and the repository exists.
 exit=128
-$ git push --dry-run /home/moriya/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
-To /home/moriya/Workspace/dotfiles
+$ git push --dry-run ~/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
+To ~/Workspace/dotfiles
  * [new branch]      HEAD -> scratch/t50-probe-push
 exit=0
 $ git log --oneline -2
@@ -102,29 +102,29 @@ exit=0
 ### codex sandbox without -P, legacy -c writable_roots (ignored)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe && codex sandbox -c 'sandbox_workspace_write.writable_roots=["/home/moriya/.agents/skills/agmsg/db","/home/moriya/.agents/skills/agmsg/teams","/home/moriya/.agents/skills/agmsg/run","/home/moriya/.agents/skills/agmsg/ext-tools","/home/moriya/Workspace/dotfiles/.git/objects","/home/moriya/Workspace/dotfiles/.git/refs","/home/moriya/Workspace/dotfiles/.git/logs","/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe"]' -- sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh   # after: manifest roots + the four git paths
-cwd=/home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe common=/home/moriya/Workspace/dotfiles/.git gitdir=/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe
-dir  /home/moriya/Workspace/dotfiles/.git/objects: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/objects/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/refs: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/refs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/logs: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/logs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/hooks: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/hooks/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/info: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/info/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-file /home/moriya/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/config: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/HEAD: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/packed-refs: Read-only file system)
+$ cd ~/Workspace/dotfiles/.claude/worktrees/t50-probe && codex sandbox -c 'sandbox_workspace_write.writable_roots=["~/.agents/skills/agmsg/db","~/.agents/skills/agmsg/teams","~/.agents/skills/agmsg/run","~/.agents/skills/agmsg/ext-tools","~/Workspace/dotfiles/.git/objects","~/Workspace/dotfiles/.git/refs","~/Workspace/dotfiles/.git/logs","~/Workspace/dotfiles/.git/worktrees/t50-probe"]' -- sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh   # after: manifest roots + the four git paths
+cwd=~/Workspace/dotfiles/.claude/worktrees/t50-probe common=~/Workspace/dotfiles/.git gitdir=~/Workspace/dotfiles/.git/worktrees/t50-probe
+dir  ~/Workspace/dotfiles/.git/objects: DENIED (touch: '~/Workspace/dotfiles/.git/objects/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/refs: DENIED (touch: '~/Workspace/dotfiles/.git/refs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/logs: DENIED (touch: '~/Workspace/dotfiles/.git/logs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/worktrees/t50-probe: DENIED (touch: '~/Workspace/dotfiles/.git/worktrees/t50-probe/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/hooks: DENIED (touch: '~/Workspace/dotfiles/.git/hooks/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/info: DENIED (touch: '~/Workspace/dotfiles/.git/info/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git: DENIED (touch: '~/Workspace/dotfiles/.git/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+file ~/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/config: Read-only file system)
+file ~/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/HEAD: Read-only file system)
+file ~/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/packed-refs: Read-only file system)
 $ git commit --allow-empty -q -m t50 probe commit
-fatal: Unable to create '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/index.lock': 読み込み専用ファイルシステムです
+fatal: Unable to create '~/Workspace/dotfiles/.git/worktrees/t50-probe/index.lock': 読み込み専用ファイルシステムです
 exit=128
 $ git fetch origin
-error: cannot open '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
+error: cannot open '~/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
 exit=255
-$ git fetch -q /home/moriya/Workspace/dotfiles main
-error: cannot open '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
+$ git fetch -q ~/Workspace/dotfiles main
+error: cannot open '~/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
 exit=255
 $ git rebase origin/main
-error: could not create temporary /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/rebase-merge: 読み込み専用ファイルシステムです
+error: could not create temporary ~/Workspace/dotfiles/.git/worktrees/t50-probe/rebase-merge: 読み込み専用ファイルシステムです
 exit=1
 $ git push --dry-run origin HEAD:refs/heads/scratch/t50-probe
 ssh: Could not resolve hostname github.com: Temporary failure in name resolution
@@ -133,8 +133,8 @@ fatal: Could not read from remote repository.
 Please make sure you have the correct access rights
 and the repository exists.
 exit=128
-$ git push --dry-run /home/moriya/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
-To /home/moriya/Workspace/dotfiles
+$ git push --dry-run ~/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
+To ~/Workspace/dotfiles
  * [new branch]      HEAD -> scratch/t50-probe-push
 exit=0
 $ git log --oneline -2
@@ -148,14 +148,14 @@ exit=0
 
 ```text
 $ codex sandbox -- sh ctl.sh   # base config
-dir /home/moriya/.agents/skills/agmsg/run: DENIED (touch: '/home/moriya/.agents/skills/agmsg/run/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir ~/.agents/skills/agmsg/run: DENIED (touch: '~/.agents/skills/agmsg/run/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
 dir /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/ctl: DENIED (touch: '/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/ctl/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir /home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe: DENIED (touch: '/home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir ~/Workspace/dotfiles/.claude/worktrees/t50-probe: DENIED (touch: '~/Workspace/dotfiles/.claude/worktrees/t50-probe/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
 exit=0
 $ codex sandbox -c 'sandbox_workspace_write.writable_roots=["/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/ctl"]' -- sh ctl.sh
-dir /home/moriya/.agents/skills/agmsg/run: DENIED (touch: '/home/moriya/.agents/skills/agmsg/run/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir ~/.agents/skills/agmsg/run: DENIED (touch: '~/.agents/skills/agmsg/run/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
 dir /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/ctl: DENIED (touch: '/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/ctl/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir /home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe: DENIED (touch: '/home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir ~/Workspace/dotfiles/.claude/worktrees/t50-probe: DENIED (touch: '~/Workspace/dotfiles/.claude/worktrees/t50-probe/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
 exit=0
 ```
 
@@ -164,29 +164,29 @@ exit=0
 ### codex sandbox -P :workspace (before)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe && codex sandbox -P :workspace -- sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh   # before: built-in :workspace profile
-cwd=/home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe common=/home/moriya/Workspace/dotfiles/.git gitdir=/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe
-dir  /home/moriya/Workspace/dotfiles/.git/objects: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/objects/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/refs: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/refs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/logs: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/logs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/hooks: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/hooks/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/info: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/info/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-file /home/moriya/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/config: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/HEAD: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/packed-refs: Read-only file system)
+$ cd ~/Workspace/dotfiles/.claude/worktrees/t50-probe && codex sandbox -P :workspace -- sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh   # before: built-in :workspace profile
+cwd=~/Workspace/dotfiles/.claude/worktrees/t50-probe common=~/Workspace/dotfiles/.git gitdir=~/Workspace/dotfiles/.git/worktrees/t50-probe
+dir  ~/Workspace/dotfiles/.git/objects: DENIED (touch: '~/Workspace/dotfiles/.git/objects/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/refs: DENIED (touch: '~/Workspace/dotfiles/.git/refs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/logs: DENIED (touch: '~/Workspace/dotfiles/.git/logs/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/worktrees/t50-probe: DENIED (touch: '~/Workspace/dotfiles/.git/worktrees/t50-probe/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/hooks: DENIED (touch: '~/Workspace/dotfiles/.git/hooks/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/info: DENIED (touch: '~/Workspace/dotfiles/.git/info/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git: DENIED (touch: '~/Workspace/dotfiles/.git/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+file ~/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/config: Read-only file system)
+file ~/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/HEAD: Read-only file system)
+file ~/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/packed-refs: Read-only file system)
 $ git commit --allow-empty -q -m t50 probe commit
-fatal: Unable to create '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/index.lock': 読み込み専用ファイルシステムです
+fatal: Unable to create '~/Workspace/dotfiles/.git/worktrees/t50-probe/index.lock': 読み込み専用ファイルシステムです
 exit=128
 $ git fetch origin
-error: cannot open '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
+error: cannot open '~/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
 exit=255
-$ git fetch -q /home/moriya/Workspace/dotfiles main
-error: cannot open '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
+$ git fetch -q ~/Workspace/dotfiles main
+error: cannot open '~/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': 読み込み専用ファイルシステムです
 exit=255
 $ git rebase origin/main
-error: could not create temporary /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/rebase-merge: 読み込み専用ファイルシステムです
+error: could not create temporary ~/Workspace/dotfiles/.git/worktrees/t50-probe/rebase-merge: 読み込み専用ファイルシステムです
 exit=1
 $ git push --dry-run origin HEAD:refs/heads/scratch/t50-probe
 ssh: Could not resolve hostname github.com: Temporary failure in name resolution
@@ -195,8 +195,8 @@ fatal: Could not read from remote repository.
 Please make sure you have the correct access rights
 and the repository exists.
 exit=128
-$ git push --dry-run /home/moriya/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
-To /home/moriya/Workspace/dotfiles
+$ git push --dry-run ~/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
+To ~/Workspace/dotfiles
  * [new branch]      HEAD -> scratch/t50-probe-push
 exit=0
 $ git log --oneline -2
@@ -209,33 +209,33 @@ exit=0
 ### Live worker mode, before: codex exec --sandbox workspace-write (express test subject)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe && timeout 600 codex exec --profile express --sandbox workspace-write --ephemeral --json Run\ exactly\ this\ one\ shell\ command\ once\,\ then\ stop:\ sh\ /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh\ \ \ Do\ not\ retry\,\ do\ not\ request\ escalation\,\ do\ not\ run\ anything\ else. < /dev/null
+$ cd ~/Workspace/dotfiles/.claude/worktrees/t50-probe && timeout 600 codex exec --profile express --sandbox workspace-write --ephemeral --json Run\ exactly\ this\ one\ shell\ command\ once\,\ then\ stop:\ sh\ /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh\ \ \ Do\ not\ retry\,\ do\ not\ request\ escalation\,\ do\ not\ run\ anything\ else. < /dev/null
 exit=0
 # command_execution events from exec-before.jsonl (jq: .item.command, .item.exit_code, .item.aggregated_output)
 command: /usr/bin/zsh -lc 'sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh'
 exit_code: 0
-cwd=/home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe common=/home/moriya/Workspace/dotfiles/.git gitdir=/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe
-dir  /home/moriya/Workspace/dotfiles/.git/objects: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/objects/.t50-probe': Read-only file system)
-dir  /home/moriya/Workspace/dotfiles/.git/refs: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/refs/.t50-probe': Read-only file system)
-dir  /home/moriya/Workspace/dotfiles/.git/logs: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/logs/.t50-probe': Read-only file system)
-dir  /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/.t50-probe': Read-only file system)
-dir  /home/moriya/Workspace/dotfiles/.git/hooks: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/hooks/.t50-probe': Read-only file system)
-dir  /home/moriya/Workspace/dotfiles/.git/info: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/info/.t50-probe': Read-only file system)
-dir  /home/moriya/Workspace/dotfiles/.git: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/.t50-probe': Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/config: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/HEAD: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/packed-refs: Read-only file system)
+cwd=~/Workspace/dotfiles/.claude/worktrees/t50-probe common=~/Workspace/dotfiles/.git gitdir=~/Workspace/dotfiles/.git/worktrees/t50-probe
+dir  ~/Workspace/dotfiles/.git/objects: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/objects/.t50-probe': Read-only file system)
+dir  ~/Workspace/dotfiles/.git/refs: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/refs/.t50-probe': Read-only file system)
+dir  ~/Workspace/dotfiles/.git/logs: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/logs/.t50-probe': Read-only file system)
+dir  ~/Workspace/dotfiles/.git/worktrees/t50-probe: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/worktrees/t50-probe/.t50-probe': Read-only file system)
+dir  ~/Workspace/dotfiles/.git/hooks: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/hooks/.t50-probe': Read-only file system)
+dir  ~/Workspace/dotfiles/.git/info: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/info/.t50-probe': Read-only file system)
+dir  ~/Workspace/dotfiles/.git: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/.t50-probe': Read-only file system)
+file ~/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/config: Read-only file system)
+file ~/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/HEAD: Read-only file system)
+file ~/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/packed-refs: Read-only file system)
 $ git commit --allow-empty -q -m t50 probe commit
-fatal: Unable to create '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/index.lock': Read-only file system
+fatal: Unable to create '~/Workspace/dotfiles/.git/worktrees/t50-probe/index.lock': Read-only file system
 exit=128
 $ git fetch origin
-error: cannot open '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': Read-only file system
+error: cannot open '~/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': Read-only file system
 exit=255
-$ git fetch -q /home/moriya/Workspace/dotfiles main
-error: cannot open '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': Read-only file system
+$ git fetch -q ~/Workspace/dotfiles main
+error: cannot open '~/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': Read-only file system
 exit=255
 $ git rebase origin/main
-error: could not create temporary /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/rebase-merge: Read-only file system
+error: could not create temporary ~/Workspace/dotfiles/.git/worktrees/t50-probe/rebase-merge: Read-only file system
 exit=1
 $ git push --dry-run origin HEAD:refs/heads/scratch/t50-probe
 ssh: Could not resolve hostname github.com: Temporary failure in name resolution
@@ -244,8 +244,8 @@ fatal: Could not read from remote repository.
 Please make sure you have the correct access rights
 and the repository exists.
 exit=128
-$ git push --dry-run /home/moriya/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
-To /home/moriya/Workspace/dotfiles
+$ git push --dry-run ~/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
+To ~/Workspace/dotfiles
  * [new branch]      HEAD -> scratch/t50-probe-push
 exit=0
 $ git log --oneline -2
@@ -255,11 +255,11 @@ exit=0
 
 # raw exec-before.jsonl
 {"type":"thread.started","thread_id":"01a0f978-7bda-7210-b9f9-24a906bf913f"}
-{"type":"item.completed","item":{"id":"item_0","type":"error","message":"loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer"}}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer"}}
 {"type":"turn.started"}
 {"type":"item.completed","item":{"id":"item_1","type":"reasoning","text":"**Preparing to run single shell command**"}}
 {"type":"item.started","item":{"id":"item_2","type":"command_execution","command":"/usr/bin/zsh -lc 'sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh'","aggregated_output":"","exit_code":null,"status":"in_progress"}}
-{"type":"item.completed","item":{"id":"item_2","type":"command_execution","command":"/usr/bin/zsh -lc 'sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh'","aggregated_output":"cwd=/home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe common=/home/moriya/Workspace/dotfiles/.git gitdir=/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe\ndir  /home/moriya/Workspace/dotfiles/.git/objects: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/objects/.t50-probe': Read-only file system)\ndir  /home/moriya/Workspace/dotfiles/.git/refs: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/refs/.t50-probe': Read-only file system)\ndir  /home/moriya/Workspace/dotfiles/.git/logs: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/logs/.t50-probe': Read-only file system)\ndir  /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/.t50-probe': Read-only file system)\ndir  /home/moriya/Workspace/dotfiles/.git/hooks: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/hooks/.t50-probe': Read-only file system)\ndir  /home/moriya/Workspace/dotfiles/.git/info: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/info/.t50-probe': Read-only file system)\ndir  /home/moriya/Workspace/dotfiles/.git: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/.t50-probe': Read-only file system)\nfile /home/moriya/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/config: Read-only file system)\nfile /home/moriya/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/HEAD: Read-only file system)\nfile /home/moriya/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/packed-refs: Read-only file system)\n$ git commit --allow-empty -q -m t50 probe commit\nfatal: Unable to create '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/index.lock': Read-only file system\nexit=128\n$ git fetch origin\nerror: cannot open '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': Read-only file system\nexit=255\n$ git fetch -q /home/moriya/Workspace/dotfiles main\nerror: cannot open '/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': Read-only file system\nexit=255\n$ git rebase origin/main\nerror: could not create temporary /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe/rebase-merge: Read-only file system\nexit=1\n$ git push --dry-run origin HEAD:refs/heads/scratch/t50-probe\nssh: Could not resolve hostname github.com: Temporary failure in name resolution\r\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\nexit=128\n$ git push --dry-run /home/moriya/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push\nTo /home/moriya/Workspace/dotfiles\n * [new branch]      HEAD -> scratch/t50-probe-push\nexit=0\n$ git log --oneline -2\nbb3370a fix(herdr-agents): end --add-worker with linkage evidence and codify the regime boundary checks (#220)\na5f33ee chore(orchestration): T45 accepted and merged (#216 → 119fdc3, plain-start visibility and on-demand worker seating); T46 dispatched; six T45 audits\nexit=0\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_2","type":"command_execution","command":"/usr/bin/zsh -lc 'sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh'","aggregated_output":"cwd=~/Workspace/dotfiles/.claude/worktrees/t50-probe common=~/Workspace/dotfiles/.git gitdir=~/Workspace/dotfiles/.git/worktrees/t50-probe\ndir  ~/Workspace/dotfiles/.git/objects: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/objects/.t50-probe': Read-only file system)\ndir  ~/Workspace/dotfiles/.git/refs: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/refs/.t50-probe': Read-only file system)\ndir  ~/Workspace/dotfiles/.git/logs: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/logs/.t50-probe': Read-only file system)\ndir  ~/Workspace/dotfiles/.git/worktrees/t50-probe: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/worktrees/t50-probe/.t50-probe': Read-only file system)\ndir  ~/Workspace/dotfiles/.git/hooks: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/hooks/.t50-probe': Read-only file system)\ndir  ~/Workspace/dotfiles/.git/info: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/info/.t50-probe': Read-only file system)\ndir  ~/Workspace/dotfiles/.git: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/.t50-probe': Read-only file system)\nfile ~/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/config: Read-only file system)\nfile ~/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/HEAD: Read-only file system)\nfile ~/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/packed-refs: Read-only file system)\n$ git commit --allow-empty -q -m t50 probe commit\nfatal: Unable to create '~/Workspace/dotfiles/.git/worktrees/t50-probe/index.lock': Read-only file system\nexit=128\n$ git fetch origin\nerror: cannot open '~/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': Read-only file system\nexit=255\n$ git fetch -q ~/Workspace/dotfiles main\nerror: cannot open '~/Workspace/dotfiles/.git/worktrees/t50-probe/FETCH_HEAD': Read-only file system\nexit=255\n$ git rebase origin/main\nerror: could not create temporary ~/Workspace/dotfiles/.git/worktrees/t50-probe/rebase-merge: Read-only file system\nexit=1\n$ git push --dry-run origin HEAD:refs/heads/scratch/t50-probe\nssh: Could not resolve hostname github.com: Temporary failure in name resolution\r\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\nexit=128\n$ git push --dry-run ~/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push\nTo ~/Workspace/dotfiles\n * [new branch]      HEAD -> scratch/t50-probe-push\nexit=0\n$ git log --oneline -2\nbb3370a fix(herdr-agents): end --add-worker with linkage evidence and codify the regime boundary checks (#220)\na5f33ee chore(orchestration): T45 accepted and merged (#216 → 119fdc3, plain-start visibility and on-demand worker seating); T46 dispatched; six T45 audits\nexit=0\n","exit_code":0,"status":"completed"}}
 {"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"Command executed once."}}
 {"type":"turn.completed","usage":{"input_tokens":40476,"cached_input_tokens":29184,"cache_write_input_tokens":0,"output_tokens":207,"reasoning_output_tokens":39}}
 # stderr
@@ -271,38 +271,38 @@ Reading additional input from stdin...
 ### codex sandbox -P t50 (explicit write entries for the four paths)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe && CODEX_HOME=/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/codex-home codex sandbox -P t50 -- sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh   # explicit profile: :workspace + four git paths = write
+$ cd ~/Workspace/dotfiles/.claude/worktrees/t50-probe && CODEX_HOME=/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/codex-home codex sandbox -P t50 -- sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh   # explicit profile: :workspace + four git paths = write
 # [permissions.t50] appended to a copy of ~/.codex/config.toml:
 [permissions.t50]
 extends = ":workspace"
 
 [permissions.t50.filesystem]
-"/home/moriya/Workspace/dotfiles/.git/objects" = "write"
-"/home/moriya/Workspace/dotfiles/.git/refs" = "write"
-"/home/moriya/Workspace/dotfiles/.git/logs" = "write"
-"/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe" = "write"
+"~/Workspace/dotfiles/.git/objects" = "write"
+"~/Workspace/dotfiles/.git/refs" = "write"
+"~/Workspace/dotfiles/.git/logs" = "write"
+"~/Workspace/dotfiles/.git/worktrees/t50-probe" = "write"
 WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir "/tmp" (codex_home: AbsolutePathBuf("/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/codex-home"))
-cwd=/home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe common=/home/moriya/Workspace/dotfiles/.git gitdir=/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe
-dir  /home/moriya/Workspace/dotfiles/.git/objects: writable
-dir  /home/moriya/Workspace/dotfiles/.git/refs: writable
-dir  /home/moriya/Workspace/dotfiles/.git/logs: writable
-dir  /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe: writable
-dir  /home/moriya/Workspace/dotfiles/.git/hooks: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/hooks/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git/info: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/info/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-dir  /home/moriya/Workspace/dotfiles/.git: DENIED (touch: '/home/moriya/Workspace/dotfiles/.git/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
-file /home/moriya/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/config: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/HEAD: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/packed-refs: Read-only file system)
+cwd=~/Workspace/dotfiles/.claude/worktrees/t50-probe common=~/Workspace/dotfiles/.git gitdir=~/Workspace/dotfiles/.git/worktrees/t50-probe
+dir  ~/Workspace/dotfiles/.git/objects: writable
+dir  ~/Workspace/dotfiles/.git/refs: writable
+dir  ~/Workspace/dotfiles/.git/logs: writable
+dir  ~/Workspace/dotfiles/.git/worktrees/t50-probe: writable
+dir  ~/Workspace/dotfiles/.git/hooks: DENIED (touch: '~/Workspace/dotfiles/.git/hooks/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git/info: DENIED (touch: '~/Workspace/dotfiles/.git/info/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+dir  ~/Workspace/dotfiles/.git: DENIED (touch: '~/Workspace/dotfiles/.git/.t50-probe' に touch できません: 読み込み専用ファイルシステムです)
+file ~/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/config: Read-only file system)
+file ~/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/HEAD: Read-only file system)
+file ~/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/packed-refs: Read-only file system)
 $ git commit --allow-empty -q -m t50 probe commit
 exit=0
 $ git fetch origin
 fatal: unable to access 'https://github.com/mryfmo/dotfiles.git/': Could not resolve host: github.com
 exit=128
-$ git fetch -q /home/moriya/Workspace/dotfiles main
+$ git fetch -q ~/Workspace/dotfiles main
 exit=0
 $ git rebase origin/main
-Rebasing (1/1)error: Unable to create '/home/moriya/Workspace/dotfiles/.git/packed-refs.lock': 読み込み専用ファイルシステムです
-error: Unable to create '/home/moriya/Workspace/dotfiles/.git/packed-refs.lock': 読み込み専用ファイルシステムです
+Rebasing (1/1)error: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': 読み込み専用ファイルシステムです
+error: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': 読み込み専用ファイルシステムです
                                                                                 Successfully rebased and updated refs/heads/scratch/t50-probe.
 exit=0
 $ git push --dry-run origin HEAD:refs/heads/scratch/t50-probe
@@ -312,8 +312,8 @@ fatal: Could not read from remote repository.
 Please make sure you have the correct access rights
 and the repository exists.
 exit=128
-$ git push --dry-run /home/moriya/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
-To /home/moriya/Workspace/dotfiles
+$ git push --dry-run ~/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
+To ~/Workspace/dotfiles
  * [new branch]      HEAD -> scratch/t50-probe-push
 exit=0
 $ git log --oneline -2
@@ -328,72 +328,72 @@ exit=0
 ```text
 $ codex doctor --json   # .checks["sandbox.filesystem_paths"].details (effective policy)
 exit=0 (run above)
-  path 1 = /home/moriya/.agents/skills/agmsg/db (write); path resolved (read/write access not tested)
-  path 2 = /home/moriya/.agents/skills/agmsg/ext-tools (write); missing (may be intentional)
-  path 3 = /home/moriya/.agents/skills/agmsg/run (write); path resolved (read/write access not tested)
-  path 4 = /home/moriya/.agents/skills/agmsg/teams (write); path resolved (read/write access not tested)
+  path 1 = ~/.agents/skills/agmsg/db (write); path resolved (read/write access not tested)
+  path 2 = ~/.agents/skills/agmsg/ext-tools (write); missing (may be intentional)
+  path 3 = ~/.agents/skills/agmsg/run (write); path resolved (read/write access not tested)
+  path 4 = ~/.agents/skills/agmsg/teams (write); path resolved (read/write access not tested)
   paths checked = 4 of 4
-$ codex doctor --json -c 'sandbox_workspace_write.writable_roots=["/home/moriya/.agents/skills/agmsg/db","/home/moriya/.agents/skills/agmsg/teams","/home/moriya/.agents/skills/agmsg/run","/home/moriya/.agents/skills/agmsg/ext-tools","/home/moriya/Workspace/dotfiles/.git/objects","/home/moriya/Workspace/dotfiles/.git/refs","/home/moriya/Workspace/dotfiles/.git/logs","/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe"]'
+$ codex doctor --json -c 'sandbox_workspace_write.writable_roots=["~/.agents/skills/agmsg/db","~/.agents/skills/agmsg/teams","~/.agents/skills/agmsg/run","~/.agents/skills/agmsg/ext-tools","~/Workspace/dotfiles/.git/objects","~/Workspace/dotfiles/.git/refs","~/Workspace/dotfiles/.git/logs","~/Workspace/dotfiles/.git/worktrees/t50-probe"]'
 exit=0 (run above)
-  path 1 = /home/moriya/.agents/skills/agmsg/db (write); path resolved (read/write access not tested)
-  path 2 = /home/moriya/.agents/skills/agmsg/ext-tools (write); missing (may be intentional)
-  path 3 = /home/moriya/.agents/skills/agmsg/run (write); path resolved (read/write access not tested)
-  path 4 = /home/moriya/.agents/skills/agmsg/teams (write); path resolved (read/write access not tested)
-  path 5 = /home/moriya/Workspace/dotfiles/.git/logs (write); path resolved (read/write access not tested)
-  path 6 = /home/moriya/Workspace/dotfiles/.git/objects (write); path resolved (read/write access not tested)
-  path 7 = /home/moriya/Workspace/dotfiles/.git/refs (write); path resolved (read/write access not tested)
-  path 8 = /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe (write); path resolved (read/write access not tested)
+  path 1 = ~/.agents/skills/agmsg/db (write); path resolved (read/write access not tested)
+  path 2 = ~/.agents/skills/agmsg/ext-tools (write); missing (may be intentional)
+  path 3 = ~/.agents/skills/agmsg/run (write); path resolved (read/write access not tested)
+  path 4 = ~/.agents/skills/agmsg/teams (write); path resolved (read/write access not tested)
+  path 5 = ~/Workspace/dotfiles/.git/logs (write); path resolved (read/write access not tested)
+  path 6 = ~/Workspace/dotfiles/.git/objects (write); path resolved (read/write access not tested)
+  path 7 = ~/Workspace/dotfiles/.git/refs (write); path resolved (read/write access not tested)
+  path 8 = ~/Workspace/dotfiles/.git/worktrees/t50-probe (write); path resolved (read/write access not tested)
   paths checked = 8 of 8
 ```
 
 ### Launcher-computed value and its effective policy
 
 ```text
-$ codex_worktree_writable_roots /home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe   # the launcher function (sourced from executable_herdr-agents)
+$ codex_worktree_writable_roots ~/Workspace/dotfiles/.claude/worktrees/t50-probe   # the launcher function (sourced from executable_herdr-agents)
 exit=0
-sandbox_workspace_write.writable_roots=["/home/moriya/.agents/skills/agmsg/db","/home/moriya/.agents/skills/agmsg/teams","/home/moriya/.agents/skills/agmsg/run","/home/moriya/.agents/skills/agmsg/ext-tools","/home/moriya/Workspace/dotfiles/.git/objects","/home/moriya/Workspace/dotfiles/.git/refs","/home/moriya/Workspace/dotfiles/.git/logs","/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe"]
-$ cd /home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe && codex doctor --json -c '<that value>'   # effective filesystem policy
+sandbox_workspace_write.writable_roots=["~/.agents/skills/agmsg/db","~/.agents/skills/agmsg/teams","~/.agents/skills/agmsg/run","~/.agents/skills/agmsg/ext-tools","~/Workspace/dotfiles/.git/objects","~/Workspace/dotfiles/.git/refs","~/Workspace/dotfiles/.git/logs","~/Workspace/dotfiles/.git/worktrees/t50-probe"]
+$ cd ~/Workspace/dotfiles/.claude/worktrees/t50-probe && codex doctor --json -c '<that value>'   # effective filesystem policy
 exit=0
-  path 1 = /home/moriya/.agents/skills/agmsg/db (write); path resolved (read/write access not tested)
-  path 2 = /home/moriya/.agents/skills/agmsg/ext-tools (write); missing (may be intentional)
-  path 3 = /home/moriya/.agents/skills/agmsg/run (write); path resolved (read/write access not tested)
-  path 4 = /home/moriya/.agents/skills/agmsg/teams (write); path resolved (read/write access not tested)
-  path 5 = /home/moriya/Workspace/dotfiles/.git/logs (write); path resolved (read/write access not tested)
-  path 6 = /home/moriya/Workspace/dotfiles/.git/objects (write); path resolved (read/write access not tested)
-  path 7 = /home/moriya/Workspace/dotfiles/.git/refs (write); path resolved (read/write access not tested)
-  path 8 = /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe (write); path resolved (read/write access not tested)
+  path 1 = ~/.agents/skills/agmsg/db (write); path resolved (read/write access not tested)
+  path 2 = ~/.agents/skills/agmsg/ext-tools (write); missing (may be intentional)
+  path 3 = ~/.agents/skills/agmsg/run (write); path resolved (read/write access not tested)
+  path 4 = ~/.agents/skills/agmsg/teams (write); path resolved (read/write access not tested)
+  path 5 = ~/Workspace/dotfiles/.git/logs (write); path resolved (read/write access not tested)
+  path 6 = ~/Workspace/dotfiles/.git/objects (write); path resolved (read/write access not tested)
+  path 7 = ~/Workspace/dotfiles/.git/refs (write); path resolved (read/write access not tested)
+  path 8 = ~/Workspace/dotfiles/.git/worktrees/t50-probe (write); path resolved (read/write access not tested)
   paths checked = 8 of 8
 ```
 
 ### Live worker mode, after: codex exec --sandbox workspace-write -c <launcher value>
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe && timeout 600 codex exec --profile express --sandbox workspace-write -c 'sandbox_workspace_write.writable_roots=["/home/moriya/.agents/skills/agmsg/db","/home/moriya/.agents/skills/agmsg/teams","/home/moriya/.agents/skills/agmsg/run","/home/moriya/.agents/skills/agmsg/ext-tools","/home/moriya/Workspace/dotfiles/.git/objects","/home/moriya/Workspace/dotfiles/.git/refs","/home/moriya/Workspace/dotfiles/.git/logs","/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe"]' --ephemeral --json Run\ exactly\ this\ one\ shell\ command\ once\,\ then\ stop:\ sh\ /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh\ \ \ Do\ not\ retry\,\ do\ not\ request\ escalation\,\ do\ not\ run\ anything\ else. < /dev/null
+$ cd ~/Workspace/dotfiles/.claude/worktrees/t50-probe && timeout 600 codex exec --profile express --sandbox workspace-write -c 'sandbox_workspace_write.writable_roots=["~/.agents/skills/agmsg/db","~/.agents/skills/agmsg/teams","~/.agents/skills/agmsg/run","~/.agents/skills/agmsg/ext-tools","~/Workspace/dotfiles/.git/objects","~/Workspace/dotfiles/.git/refs","~/Workspace/dotfiles/.git/logs","~/Workspace/dotfiles/.git/worktrees/t50-probe"]' --ephemeral --json Run\ exactly\ this\ one\ shell\ command\ once\,\ then\ stop:\ sh\ /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh\ \ \ Do\ not\ retry\,\ do\ not\ request\ escalation\,\ do\ not\ run\ anything\ else. < /dev/null
 exit=0
 # command_execution events from exec-after.jsonl (jq: .item.command, .item.exit_code, .item.aggregated_output)
 command: /usr/bin/zsh -c 'sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh'
 exit_code: 0
-cwd=/home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe common=/home/moriya/Workspace/dotfiles/.git gitdir=/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe
-dir  /home/moriya/Workspace/dotfiles/.git/objects: writable
-dir  /home/moriya/Workspace/dotfiles/.git/refs: writable
-dir  /home/moriya/Workspace/dotfiles/.git/logs: writable
-dir  /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe: writable
-dir  /home/moriya/Workspace/dotfiles/.git/hooks: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/hooks/.t50-probe': Read-only file system)
-dir  /home/moriya/Workspace/dotfiles/.git/info: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/info/.t50-probe': Read-only file system)
-dir  /home/moriya/Workspace/dotfiles/.git: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/.t50-probe': Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/config: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/HEAD: Read-only file system)
-file /home/moriya/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/packed-refs: Read-only file system)
+cwd=~/Workspace/dotfiles/.claude/worktrees/t50-probe common=~/Workspace/dotfiles/.git gitdir=~/Workspace/dotfiles/.git/worktrees/t50-probe
+dir  ~/Workspace/dotfiles/.git/objects: writable
+dir  ~/Workspace/dotfiles/.git/refs: writable
+dir  ~/Workspace/dotfiles/.git/logs: writable
+dir  ~/Workspace/dotfiles/.git/worktrees/t50-probe: writable
+dir  ~/Workspace/dotfiles/.git/hooks: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/hooks/.t50-probe': Read-only file system)
+dir  ~/Workspace/dotfiles/.git/info: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/info/.t50-probe': Read-only file system)
+dir  ~/Workspace/dotfiles/.git: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/.t50-probe': Read-only file system)
+file ~/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/config: Read-only file system)
+file ~/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/HEAD: Read-only file system)
+file ~/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/packed-refs: Read-only file system)
 $ git commit --allow-empty -q -m t50 probe commit
 exit=0
 $ git fetch origin
 fatal: unable to access 'https://github.com/mryfmo/dotfiles.git/': Could not resolve host: github.com
 exit=128
-$ git fetch -q /home/moriya/Workspace/dotfiles main
+$ git fetch -q ~/Workspace/dotfiles main
 exit=0
 $ git rebase origin/main
-Rebasing (1/1)error: Unable to create '/home/moriya/Workspace/dotfiles/.git/packed-refs.lock': Read-only file system
-error: Unable to create '/home/moriya/Workspace/dotfiles/.git/packed-refs.lock': Read-only file system
+Rebasing (1/1)error: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': Read-only file system
+error: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': Read-only file system
                                                                                 Successfully rebased and updated refs/heads/scratch/t50-probe.
 exit=0
 $ git push --dry-run origin HEAD:refs/heads/scratch/t50-probe
@@ -403,8 +403,8 @@ fatal: Could not read from remote repository.
 Please make sure you have the correct access rights
 and the repository exists.
 exit=128
-$ git push --dry-run /home/moriya/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
-To /home/moriya/Workspace/dotfiles
+$ git push --dry-run ~/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push
+To ~/Workspace/dotfiles
  * [new branch]      HEAD -> scratch/t50-probe-push
 exit=0
 $ git log --oneline -2
@@ -414,11 +414,11 @@ exit=0
 
 # raw exec-after.jsonl
 {"type":"thread.started","thread_id":"01a0f978-cb81-7fb0-bb51-65877a9e05f2"}
-{"type":"item.completed","item":{"id":"item_0","type":"error","message":"loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer"}}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer"}}
 {"type":"turn.started"}
 {"type":"item.completed","item":{"id":"item_1","type":"reasoning","text":"**Clarifying command execution rules**"}}
 {"type":"item.started","item":{"id":"item_2","type":"command_execution","command":"/usr/bin/zsh -c 'sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh'","aggregated_output":"","exit_code":null,"status":"in_progress"}}
-{"type":"item.completed","item":{"id":"item_2","type":"command_execution","command":"/usr/bin/zsh -c 'sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh'","aggregated_output":"cwd=/home/moriya/Workspace/dotfiles/.claude/worktrees/t50-probe common=/home/moriya/Workspace/dotfiles/.git gitdir=/home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe\ndir  /home/moriya/Workspace/dotfiles/.git/objects: writable\ndir  /home/moriya/Workspace/dotfiles/.git/refs: writable\ndir  /home/moriya/Workspace/dotfiles/.git/logs: writable\ndir  /home/moriya/Workspace/dotfiles/.git/worktrees/t50-probe: writable\ndir  /home/moriya/Workspace/dotfiles/.git/hooks: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/hooks/.t50-probe': Read-only file system)\ndir  /home/moriya/Workspace/dotfiles/.git/info: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/info/.t50-probe': Read-only file system)\ndir  /home/moriya/Workspace/dotfiles/.git: DENIED (touch: cannot touch '/home/moriya/Workspace/dotfiles/.git/.t50-probe': Read-only file system)\nfile /home/moriya/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/config: Read-only file system)\nfile /home/moriya/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/HEAD: Read-only file system)\nfile /home/moriya/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create /home/moriya/Workspace/dotfiles/.git/packed-refs: Read-only file system)\n$ git commit --allow-empty -q -m t50 probe commit\nexit=0\n$ git fetch origin\nfatal: unable to access 'https://github.com/mryfmo/dotfiles.git/': Could not resolve host: github.com\nexit=128\n$ git fetch -q /home/moriya/Workspace/dotfiles main\nexit=0\n$ git rebase origin/main\nRebasing (1/1)\rerror: Unable to create '/home/moriya/Workspace/dotfiles/.git/packed-refs.lock': Read-only file system\nerror: Unable to create '/home/moriya/Workspace/dotfiles/.git/packed-refs.lock': Read-only file system\n\r                                                                                \rSuccessfully rebased and updated refs/heads/scratch/t50-probe.\nexit=0\n$ git push --dry-run origin HEAD:refs/heads/scratch/t50-probe\nssh: Could not resolve hostname github.com: Temporary failure in name resolution\r\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\nexit=128\n$ git push --dry-run /home/moriya/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push\nTo /home/moriya/Workspace/dotfiles\n * [new branch]      HEAD -> scratch/t50-probe-push\nexit=0\n$ git log --oneline -2\ndac3b6d t50 probe commit\n5a43c85 chore(orchestration): T46 accepted and merged (#220 → bb3370a, --add-worker linkage evidence and regime boundary checks); T40 resumed as revision 3 (#221 pending); T50 drafted; twelve T46 audits and two T40 audits\nexit=0\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_2","type":"command_execution","command":"/usr/bin/zsh -c 'sh /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh'","aggregated_output":"cwd=~/Workspace/dotfiles/.claude/worktrees/t50-probe common=~/Workspace/dotfiles/.git gitdir=~/Workspace/dotfiles/.git/worktrees/t50-probe\ndir  ~/Workspace/dotfiles/.git/objects: writable\ndir  ~/Workspace/dotfiles/.git/refs: writable\ndir  ~/Workspace/dotfiles/.git/logs: writable\ndir  ~/Workspace/dotfiles/.git/worktrees/t50-probe: writable\ndir  ~/Workspace/dotfiles/.git/hooks: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/hooks/.t50-probe': Read-only file system)\ndir  ~/Workspace/dotfiles/.git/info: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/info/.t50-probe': Read-only file system)\ndir  ~/Workspace/dotfiles/.git: DENIED (touch: cannot touch '~/Workspace/dotfiles/.git/.t50-probe': Read-only file system)\nfile ~/Workspace/dotfiles/.git/config: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/config: Read-only file system)\nfile ~/Workspace/dotfiles/.git/HEAD: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/HEAD: Read-only file system)\nfile ~/Workspace/dotfiles/.git/packed-refs: DENIED (/tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/bd93da57-464a-4d88-ba14-2513c71c9c24/scratchpad/t50/probe.sh: 9: cannot create ~/Workspace/dotfiles/.git/packed-refs: Read-only file system)\n$ git commit --allow-empty -q -m t50 probe commit\nexit=0\n$ git fetch origin\nfatal: unable to access 'https://github.com/mryfmo/dotfiles.git/': Could not resolve host: github.com\nexit=128\n$ git fetch -q ~/Workspace/dotfiles main\nexit=0\n$ git rebase origin/main\nRebasing (1/1)\rerror: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': Read-only file system\nerror: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': Read-only file system\n\r                                                                                \rSuccessfully rebased and updated refs/heads/scratch/t50-probe.\nexit=0\n$ git push --dry-run origin HEAD:refs/heads/scratch/t50-probe\nssh: Could not resolve hostname github.com: Temporary failure in name resolution\r\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\nexit=128\n$ git push --dry-run ~/Workspace/dotfiles HEAD:refs/heads/scratch/t50-probe-push\nTo ~/Workspace/dotfiles\n * [new branch]      HEAD -> scratch/t50-probe-push\nexit=0\n$ git log --oneline -2\ndac3b6d t50 probe commit\n5a43c85 chore(orchestration): T46 accepted and merged (#220 → bb3370a, --add-worker linkage evidence and regime boundary checks); T40 resumed as revision 3 (#221 pending); T50 drafted; twelve T46 audits and two T40 audits\nexit=0\n","exit_code":0,"status":"completed"}}
 {"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"Ran the command once and stopped."}}
 {"type":"turn.completed","usage":{"input_tokens":41463,"cached_input_tokens":29184,"cache_write_input_tokens":0,"output_tokens":171,"reasoning_output_tokens":56}}
 # stderr
@@ -452,7 +452,7 @@ $ git branch --list "scratch/t50*"; git worktree list | grep -c t50-probe
 $ python3 -m unittest tests.unit.test_herdr_agents -k codex_profile_and_sandbox -k git_metadata_roots  # herdr-agents at bb3370a
 exit=1
 cmp=0
-/home/moriya/.local/share/mise/installs/python/3.14.7/lib/python3.14/textwrap.py:440: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf9988aa318a0>
+~/.local/share/mise/installs/python/3.14.7/lib/python3.14/textwrap.py:440: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf9988aa318a0>
   for margin, c in enumerate(l1):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 FF
@@ -460,7 +460,7 @@ FF
 FAIL: test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2768, in test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2768, in test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options
     self.assertEqual(
     ~~~~~~~~~~~~~~~~^
         options.read_text(),
@@ -482,7 +482,7 @@ AssertionError: 'code[50 chars]ite\n' != 'code[50 chars]ite\n  --config: sandbox
 FAIL: test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots (tests.unit.test_herdr_agents.HerdrAgentsTest.test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2498, in test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2498, in test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots
     self.assertTrue(
     ~~~~~~~~~~~~~~~^
         starts[0].endswith(f" -- --sandbox workspace-write --profile standard -c sandbox_workspace_write.writable_roots={roots}"),
@@ -875,88 +875,88 @@ test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_he
 test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
 test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
 test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
-test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f885e0>
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f885e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89030>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88a90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88a90>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f897b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f897b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a6b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a6b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89f30>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89e40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89e40>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88f40>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a5c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a5c0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89a80>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f889a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f889a0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a890>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a385733f10>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a385733f10>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a38521d120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a38521d120>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88d60>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89c60>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88e50>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a020>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a4d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a4d0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88400>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88400>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8a200>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8b100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f8b100>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f89300>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f88040>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f3d6c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f3d6c0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f3d8a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f3d8a0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f3d210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f3d210>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f3d3f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf0a384f3d3f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -1335,7 +1335,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-78t_a3bx/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-78t_a3bx/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1363,16 +1363,16 @@ exit=0
 ```text
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-audit-10dfc10.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-audit-10dfc10.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-audit-10dfc10.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-audit-10dfc10.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-sec (herdr-agents --remove-worker)
 agent asset validation ok
 exit=0
@@ -1457,21 +1457,21 @@ exit=0
 
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-sec (herdr-agents --remove-worker)
 agent asset validation ok
 exit=0
@@ -1480,8 +1480,8 @@ exit=0
 ## Revision 2 — verbatim at head e334af5; every exit captured directly (ANSI colour codes stripped)
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-codex-worktree-git-writable-T50-a01.md
-52c0b98fa859a570dcfeb34d896ca6ce11134b921a9de582ab2f3dad47ff55a1  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-codex-worktree-git-writable-T50-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-codex-worktree-git-writable-T50-a01.md
+52c0b98fa859a570dcfeb34d896ca6ce11134b921a9de582ab2f3dad47ff55a1  ~/Workspace/dotfiles/.orchestration/tasks/dot-codex-worktree-git-writable-T50-a01.md
 ```
 
 ### Negative check (herdr-agents at 5952ab8 swapped in, then restored)
@@ -1490,7 +1490,7 @@ $ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-codex-workt
 $ python3 -m unittest tests.unit.test_herdr_agents -k indented_multi_line -k unparseable_codex -k shallow_metadata  # herdr-agents at 5952ab8
 exit=1
 cmp=0
-/home/moriya/.local/share/mise/installs/python/3.14.7/lib/python3.14/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2262a5c98a0>
+~/.local/share/mise/installs/python/3.14.7/lib/python3.14/contextlib.py:552: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2262a5c98a0>
   def _push_exit_callback(self, callback, is_sync=True):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 FFF
@@ -1498,7 +1498,7 @@ FFF
 FAIL: test_add_worker_emits_no_override_for_an_unparseable_codex_config (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_emits_no_override_for_an_unparseable_codex_config)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2784, in test_add_worker_emits_no_override_for_an_unparseable_codex_config
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2784, in test_add_worker_emits_no_override_for_an_unparseable_codex_config
     self.assertEqual(options, "codex:\n  --profile: review\n  --sandbox: workspace-write\n")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'code[50 chars]ite\n  --config: sandbox_workspace_write.writa[228 chars]"]\n' != 'code[50 chars]ite\n'
@@ -1512,7 +1512,7 @@ AssertionError: 'code[50 chars]ite\n  --config: sandbox_workspace_write.writa[22
 FAIL: test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2777, in test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2777, in test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array
     self.assertIn(f"  --config: sandbox_workspace_write.writable_roots={roots}\n", options)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '  --config: sandbox_workspace_write.writable_roots=["/tmp/herdr-agents-test-fdujskel/home/.agents/skills/agmsg/db","/tmp/herdr-agents-test-fdujskel/home/.agents/skills/agmsg/teams","/tmp/herdr-agents-test-fdujskel/home/.agents/skills/agmsg/run","/tmp/herdr-agents-test-fdujskel/home/.agents/skills/agmsg/ext-tools","/tmp/herdr-agents-test-fdujskel/project/.git/objects","/tmp/herdr-agents-test-fdujskel/project/.git/refs","/tmp/herdr-agents-test-fdujskel/project/.git/logs","/tmp/herdr-agents-test-fdujskel/project/.git/worktrees/b2"]\n' not found in 'codex:\n  --profile: review\n  --sandbox: workspace-write\n  --config: sandbox_workspace_write.writable_roots=["/tmp/herdr-agents-test-fdujskel/project/.git/objects","/tmp/herdr-agents-test-fdujskel/project/.git/refs","/tmp/herdr-agents-test-fdujskel/project/.git/logs","/tmp/herdr-agents-test-fdujskel/project/.git/worktrees/b2"]\n'
@@ -1521,7 +1521,7 @@ AssertionError: '  --config: sandbox_workspace_write.writable_roots=["/tmp/herdr
 FAIL: test_add_worker_reports_shallow_metadata_as_not_granted (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_shallow_metadata_as_not_granted)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2803, in test_add_worker_reports_shallow_metadata_as_not_granted
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2803, in test_add_worker_reports_shallow_metadata_as_not_granted
     self.assertIn("is a shallow clone; its shallow metadata (", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'is a shallow clone; its shallow metadata (' not found in 'Codex loads the new hook in /tmp/herdr-agents-test-iu39u73r/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.\n'
@@ -1536,10 +1536,10 @@ FAILED (failures=3)
 
 ```text
 # old: the 5952ab8 value for .claude/worktrees/t50-probe (validation file, launcher-after.txt line 3), with t50-probe replaced by worker-c
-sandbox_workspace_write.writable_roots=["/home/moriya/.agents/skills/agmsg/db","/home/moriya/.agents/skills/agmsg/teams","/home/moriya/.agents/skills/agmsg/run","/home/moriya/.agents/skills/agmsg/ext-tools","/home/moriya/Workspace/dotfiles/.git/objects","/home/moriya/Workspace/dotfiles/.git/refs","/home/moriya/Workspace/dotfiles/.git/logs","/home/moriya/Workspace/dotfiles/.git/worktrees/worker-c"]
-$ codex_worktree_writable_roots /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c   # new parser
+sandbox_workspace_write.writable_roots=["~/.agents/skills/agmsg/db","~/.agents/skills/agmsg/teams","~/.agents/skills/agmsg/run","~/.agents/skills/agmsg/ext-tools","~/Workspace/dotfiles/.git/objects","~/Workspace/dotfiles/.git/refs","~/Workspace/dotfiles/.git/logs","~/Workspace/dotfiles/.git/worktrees/worker-c"]
+$ codex_worktree_writable_roots ~/Workspace/dotfiles/.claude/worktrees/worker-c   # new parser
 exit=0
-sandbox_workspace_write.writable_roots=["/home/moriya/.agents/skills/agmsg/db","/home/moriya/.agents/skills/agmsg/teams","/home/moriya/.agents/skills/agmsg/run","/home/moriya/.agents/skills/agmsg/ext-tools","/home/moriya/Workspace/dotfiles/.git/objects","/home/moriya/Workspace/dotfiles/.git/refs","/home/moriya/Workspace/dotfiles/.git/logs","/home/moriya/Workspace/dotfiles/.git/worktrees/worker-c"]
+sandbox_workspace_write.writable_roots=["~/.agents/skills/agmsg/db","~/.agents/skills/agmsg/teams","~/.agents/skills/agmsg/run","~/.agents/skills/agmsg/ext-tools","~/Workspace/dotfiles/.git/objects","~/Workspace/dotfiles/.git/refs","~/Workspace/dotfiles/.git/logs","~/Workspace/dotfiles/.git/worktrees/worker-c"]
 $ cmp <(old) <(new)
 exit=0
 ```
@@ -1923,97 +1923,97 @@ test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_he
 test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
 test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
 test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
-test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a85e0>
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a85e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a9030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a9030>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8a90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8a90>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a97b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a97b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa6b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa6b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a9f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a9f30>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8f40>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa5c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa5c0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a9a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a9a80>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a89a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a89a0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa890>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc883f10>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc883f10>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a9c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a9c60>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc319210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc319210>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8e50>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8d60>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8400>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8400>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa020>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa4d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa4d0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0aa200>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0ab100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0ab100>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a9300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a9300>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8040>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0a8040>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0516c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0516c0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0518a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0518a0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc051210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc051210>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0513f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0513f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc051300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc051300>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc050130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc050130>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0505e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc0505e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc050a90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfeaffc050a90>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -2392,7 +2392,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-dqup9zv6/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-dqup9zv6/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -2420,23 +2420,23 @@ exit=0
 ```text
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-sec (herdr-agents --remove-worker)
 agent asset validation ok
 exit=0
@@ -2500,25 +2500,25 @@ exit=0
 
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-e334af5.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-e334af5.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-5952ab8.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-e334af5.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-audit-e334af5.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-codex-worktree-git-writable-T50-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/autoskill/runs/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/learning/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/reports/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/sandboxes/dot-pr-gate-trust-boundary-T40-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-sec: .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-sec (herdr-agents --remove-worker)
 agent asset validation ok
 exit=0

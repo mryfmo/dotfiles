@@ -11,7 +11,7 @@ grep -n -i "tmux\|hermes\|tpm" Makefile scripts/check-tools.sh scripts/upgrade-t
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: zero hits in the required WP-F validation scope.
@@ -26,7 +26,7 @@ shfmt --indent 4 --space-redirects --diff scripts/ home/dot_local/bin/common/exe
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: no shfmt diff.
@@ -41,7 +41,7 @@ for target in scripts/update-codex-statusline-tools.sh; do if [ -e "$target" ]; 
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ABSENT scripts/update-codex-statusline-tools.sh
 ```
 
@@ -55,7 +55,7 @@ git status --porcelain
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
  M .github/workflows/agent-assets.yml
  M .github/workflows/macos.yaml
  M .github/workflows/ubuntu.yaml
@@ -130,7 +130,7 @@ scripts/upgrade-tools.sh
 Scoped status for WP-F-owned files and artifacts:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
  M .github/workflows/agent-assets.yml
  M .github/workflows/macos.yaml
  M .github/workflows/ubuntu.yaml

@@ -1,7 +1,7 @@
 # T64: Add the `security` model profile (gpt-daybreak-blue-latest, security-audit tier)
 
 task_id: T64
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 

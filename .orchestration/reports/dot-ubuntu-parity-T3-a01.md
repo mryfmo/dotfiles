@@ -2,7 +2,7 @@
 
 status: ready_for_review
 worker: claude-standard-dot
-branch: feat/ubuntu-parity (worktree: /home/moriya/Workspace/worktrees/chezmoi-ubuntu-parity)
+branch: feat/ubuntu-parity (worktree: ~/Workspace/worktrees/chezmoi-ubuntu-parity)
 
 ## Summary
 

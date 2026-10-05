@@ -40,7 +40,7 @@ because background-tab visible snapshots can be stale (operator 2026-09-29).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`; `git switch -c fix/audit-pane-prompt-detect origin/main`
   (after T33i #204 merges; if it has not, PONG and wait — the audit-mode code
   you edit must include T33i's mask step).
@@ -69,7 +69,7 @@ make validate-agent-assets
 make unit-test
 shellcheck -x home/dot_local/bin/common/executable_herdr-agents
 shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_herdr-agents
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

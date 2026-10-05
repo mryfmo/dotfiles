@@ -133,10 +133,10 @@ exit=0
 The first entry was written before the operator override and is superseded by the second.
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T48:\ the\ auditor\ \(\`audit\`\ profile\)\ runs\ Codex\ \`gpt-6-sol\`\ at\ \`xhigh\`,\ read-only\;\ \`gpt-6.1-sol\`\ is\ rejected\ under\ the\ ChatGPT-login\ account\ \(operator\ decision\ 2026-10-01,\ probe\ recorded\ in\ the\ T48\ task\ file\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T48:\ the\ auditor\ \(\`audit\`\ profile\)\ runs\ Codex\ \`gpt-6-sol\`\ at\ \`xhigh\`,\ read-only\;\ \`gpt-6.1-sol\`\ is\ rejected\ under\ the\ ChatGPT-login\ account\ \(operator\ decision\ 2026-10-01,\ probe\ recorded\ in\ the\ T48\ task\ file\).
 ae7ca177-4bce-4581-88ae-03f9c01299aa
 exit=0
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T48:\ the\ auditor\ \(\`audit\`\ profile\)\ runs\ Codex\ \`gpt-6.1-sol\`\ at\ \`xhigh\`,\ read-only\;\ it\ requires\ API-key\ auth\;\ ChatGPT\ login\ rejects\ it\ \(operator\ decision\ 2026-10-01,\ probe\ recorded\ in\ the\ T48\ task\ file\).\ Supersedes\ ae7ca177\ \(gpt-6-sol\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T48:\ the\ auditor\ \(\`audit\`\ profile\)\ runs\ Codex\ \`gpt-6.1-sol\`\ at\ \`xhigh\`,\ read-only\;\ it\ requires\ API-key\ auth\;\ ChatGPT\ login\ rejects\ it\ \(operator\ decision\ 2026-10-01,\ probe\ recorded\ in\ the\ T48\ task\ file\).\ Supersedes\ ae7ca177\ \(gpt-6-sol\).
 90843027-5c79-4107-9bcb-8d2174d6b36b
 exit=0
 ```
@@ -798,7 +798,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-3856jagw/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-3856jagw/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -824,7 +824,7 @@ make unit-test exit=0
 ## make validate-agent-assets in the main checkout with these artifacts present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0

@@ -177,7 +177,7 @@ resolved=false outdated=false ruff.toml | Exclude `.agents` from direct Ruff for
 ## CompactionDB (main checkout, unsandboxed)
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T61 (operator 2026-10-03): the repository is formatted once with ruff (line length 120) and prettier 3, both pinned in the mise config; the Claude formatter hook runs only `ruff format` and `prettier --write` from the pinned tools, and CI checks formatting, so an agent'"'"'s edit never produces unrelated diff lines. Vendored and record paths are excluded.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T61 (operator 2026-10-03): the repository is formatted once with ruff (line length 120) and prettier 3, both pinned in the mise config; the Claude formatter hook runs only `ruff format` and `prettier --write` from the pinned tools, and CI checks formatting, so an agent'"'"'s edit never produces unrelated diff lines. Vendored and record paths are excluded.'
 d7c79b1d-bad6-491b-b0f1-e77c4b54e164
 ```
 
@@ -239,7 +239,7 @@ resolved=false outdated=true ruff.toml | Exclude `.agents` from direct Ruff form
 
 ```
 $ sha256sum <task file>
-c4c2fb43ba38f3dc75c5eda7e4085dfa6943a7bfc08beaa5a1c4da862a65080e  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-formatter-hook-root-fix-T61-a01.md
+c4c2fb43ba38f3dc75c5eda7e4085dfa6943a7bfc08beaa5a1c4da862a65080e  ~/Workspace/dotfiles/.orchestration/tasks/dot-formatter-hook-root-fix-T61-a01.md
 $ git log --oneline origin/main..HEAD
 0827371f fix(format): install the formatters on update and setup; keep CLAUDE.md out of prettier
 ae806f37 fix(format): exclude .agents from ruff as from prettier
@@ -368,7 +368,7 @@ resolved=false outdated=false home/dot_claude/hooks/executable_format-edited-fil
 
 ```
 $ sha256sum <task file>
-47e7df2050f249ff52947086f76b99c71e9e1fafbb74266ed88055f1cd95a5d8  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-formatter-hook-root-fix-T61-a01.md
+47e7df2050f249ff52947086f76b99c71e9e1fafbb74266ed88055f1cd95a5d8  ~/Workspace/dotfiles/.orchestration/tasks/dot-formatter-hook-root-fix-T61-a01.md
 $ git log --oneline origin/main..HEAD | head -3
 74ade52f fix(format): close the three remaining formatting-check gaps
 3da4cfad Merge branch 'main' into chore/formatter-root-fix
@@ -457,7 +457,7 @@ resolved=false outdated=false home/dot_claude/hooks/executable_format-edited-fil
 
 ```
 $ sha256sum <task file>
-d08362336484b2258b09803c0539d73ede1dc7aac6c7c3340076bab7df350638  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-formatter-hook-root-fix-T61-a01.md
+d08362336484b2258b09803c0539d73ede1dc7aac6c7c3340076bab7df350638  ~/Workspace/dotfiles/.orchestration/tasks/dot-formatter-hook-root-fix-T61-a01.md
 $ git log --oneline origin/main..HEAD | head -2
 7dff3a5c fix(ci): read changed paths unquoted in the should_test filter
 74ade52f fix(format): close the three remaining formatting-check gaps

@@ -1,7 +1,7 @@
 # T29 result report
 
 - Task: `T29-agmsg-regime-default-on`
-- Worktree: `/Users/mryfmo/Workspace/dotfiles-t29`
+- Worktree: `~/Workspace/dotfiles-t29`
 - Branch: `docs/agmsg-regime-default-on`
 - Commit: `ee39911 docs(rules): make agmsg orchestration default-on`
 - Changed only `home/dot_config/claude/rules/agmsg-orchestration.md`, first bullet only.

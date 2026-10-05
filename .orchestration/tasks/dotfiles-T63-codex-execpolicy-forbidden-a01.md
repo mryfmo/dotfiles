@@ -1,6 +1,6 @@
 # AGMSG-TASK dotfiles-T63-codex-execpolicy-forbidden-a01
 
-Drafted 2026-10-03 by the orchestrator seat from the approved correction plan (`.agents/worklog/claude/delegated-honking-frost.md`, Phase 1, dotfiles-T63). Worker: `claude-standard-dot-a005` in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`. Task ids now carry the team prefix (`dotfiles-T<n>`); `dot-` was the short form of the same series.
+Drafted 2026-10-03 by the orchestrator seat from the approved correction plan (`.agents/worklog/claude/delegated-honking-frost.md`, Phase 1, dotfiles-T63). Worker: `claude-standard-dot-a005` in `~/Workspace/dotfiles/.claude/worktrees/worker-c`. Task ids now carry the team prefix (`dotfiles-T<n>`); `dot-` was the short form of the same series.
 
 ## Objective
 

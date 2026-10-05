@@ -16,7 +16,7 @@ claude side at Opus 5.5.
 
 ## Repo / branch
 
-- Work ONLY in the worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in the worktree `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - Step 0 — preserve the leftover T21 WIP first (this completes the step-0 the
   withdrawn T20 task already authorized): the worktree is on a detached HEAD
   with uncommitted modifications from task T21. Commit them AS-IS to a new
@@ -26,7 +26,7 @@ claude side at Opus 5.5.
 wip/orchestrator-guardrails-T21`. Do not review, fix, or extend that WIP.
   If the preservation commit or push fails, stop and report via AGMSG-PONG.
 - Step 1: `git fetch origin`, then `git switch -c feat/worker-profile-opus55 origin/main`.
-- Never touch the main checkout at `/home/moriya/Workspace/dotfiles` (except the
+- Never touch the main checkout at `~/Workspace/dotfiles` (except the
   `.orchestration` artifact paths below, which live in the main checkout).
 
 ## Changes (all line numbers against origin/main 8332803)
@@ -139,7 +139,7 @@ new `HERDR_AGENTS_WORKER_PROFILE="standard"` after `HERDR_AGENTS_WORKER_KIND`).
 uv run --with pyyaml scripts/generate-agent-configs.py --check
 make validate-agent-assets
 make unit-test
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

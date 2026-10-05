@@ -11,7 +11,7 @@ from `references/` to `archive/` as the provenance artifact.
 ## Branch / commits
 
 Branch `feat/compactiondb-integration`, now checked out IN THIS registered
-worktree (/Users/mryfmo/Workspace/dotfiles). Work ONLY here: scratch
+worktree (~/Workspace/dotfiles). Work ONLY here: scratch
 worktrees under /private/tmp are outside the Codex sandbox workspace and
 every write there triggers an approval pause — never use them. Commits 1
 (b76522c) and 2 (53467d5) are done; only commit 3 remains:

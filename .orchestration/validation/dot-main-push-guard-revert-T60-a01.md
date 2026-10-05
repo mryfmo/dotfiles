@@ -31,7 +31,7 @@ Ran 709 tests in 159.070s
 OK (skipped=2)
 (exit 0)
 $ make validate-agent-assets
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-main-push-guard-revert-T60-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-main-push-guard-revert-T60-a01.md
 agent asset validation ok
 (exit 0)
 $ mise x shfmt@3.14.1 -- shfmt -i 4 -sr -d home/dot_local/bin/common/executable_herdr-agents
@@ -446,7 +446,7 @@ For more information about output formatting flags, see `gh help formatting`.
 ## CompactionDB (main checkout, unsandboxed)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T60 (operator 2026-10-03): the GitHub ruleset "main integration gate" is the sole boundary for `main`; the T54 client-side pre-push guard and the `ORCH_PUSH_MAIN` convention are removed, and the `.orchestration` boundary commit travels as a squash-merged PR like every other change.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T60 (operator 2026-10-03): the GitHub ruleset "main integration gate" is the sole boundary for `main`; the T54 client-side pre-push guard and the `ORCH_PUSH_MAIN` convention are removed, and the `.orchestration` boundary commit travels as a squash-merged PR like every other change.'
 b81a4935-5ec0-4c23-9e86-bd202fd610fd
 (exit 0)
 ```
@@ -454,8 +454,8 @@ b81a4935-5ec0-4c23-9e86-bd202fd610fd
 # Revise round 1 (task_rev sha256:36500453…, audit finding on 4445917b live on 8259cf5c)
 
 ```
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-main-push-guard-revert-T60-a01.md
-365004531c5482a380aabfb8d3d15dce861e32e5ed5e3694e44c81602ee87278  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-main-push-guard-revert-T60-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-main-push-guard-revert-T60-a01.md
+365004531c5482a380aabfb8d3d15dce861e32e5ed5e3694e44c81602ee87278  ~/Workspace/dotfiles/.orchestration/tasks/dot-main-push-guard-revert-T60-a01.md
 $ git log --oneline origin/main..HEAD
 65f54c46 fix(herdr-agents): compare the retired stub on raw bytes (hash-object --no-filters)
 8259cf5c fix(herdr-agents): keep stub cleanup inside the common git dir; fresh boundary branches

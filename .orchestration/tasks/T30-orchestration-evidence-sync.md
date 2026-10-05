@@ -3,7 +3,7 @@
 ## Assignment
 
 - Task ID: `T30-orchestration-evidence-sync`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`
+- Repo: `~/Workspace/dotfiles`
 - The main worktree is dirty with UNRELATED changes (`home/dot_mise/*`).
   Create a separate git worktree from `origin/main` (e.g. `git worktree add
 ../dotfiles-t30 -b chore/t29-evidence-sync origin/main`) and do ALL work

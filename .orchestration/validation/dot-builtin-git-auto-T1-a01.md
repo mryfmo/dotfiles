@@ -24,8 +24,8 @@ The first full E2E attempt was rejected before VM access. Verbatim output:
 
 ```text
 time="2026-09-21T13:25:11+09:00" level=warning msg="failed to detect whether running under rosetta, assuming false" error="failed to read sysctl \"sysctl.proc_translated\": operation not permitted"
-time="2026-09-21T13:25:11+09:00" level=error msg="Instance `adh-test` has configuration errors" error="failed to get Info from `/Users/mryfmo/.lima/adh-test/ha.sock`: Get \"http://lima-hostagent/v1/info\": dial unix /Users/mryfmo/.lima/adh-test/ha.sock: connect: operation not permitted"
-Control socket connect(/Users/mryfmo/.lima/adh-test/ssh.sock): Operation not permitted
+time="2026-09-21T13:25:11+09:00" level=error msg="Instance `adh-test` has configuration errors" error="failed to get Info from `~/.lima/adh-test/ha.sock`: Get \"http://lima-hostagent/v1/info\": dial unix ~/.lima/adh-test/ha.sock: connect: operation not permitted"
+Control socket connect(~/.lima/adh-test/ssh.sock): Operation not permitted
 ssh: connect to host 127.0.0.1 port 63006: Operation not permitted
 ```
 
@@ -65,8 +65,8 @@ Verbatim output:
 
 ```text
 chezmoi_2.70.4_linux_arm64.tar.gz: OK
-Cloning into '/home/dotgita01/.local/share/chezmoi'...
-git-present command: clone --recurse-submodules --branch main https://github.com/mryfmo/dotfiles.git /home/dotgita01/.local/share/chezmoi
+Cloning into '~/.local/share/chezmoi'...
+git-present command: clone --recurse-submodules --branch main https://github.com/mryfmo/dotfiles.git ~/.local/share/chezmoi
 git-present clone: OK
 git-absent builtin clone: OK
 userdel: dotgita01 mail spool (/var/mail/dotgita01) not found

@@ -58,14 +58,14 @@ PASS command -v ccgate is absent
 PASS mise ls contains no ccgate
 PASS mise ls --installed contains no ccgate
 PASS no ccgate install directory or shim remains
-PASS live mise config targets /Users/mryfmo/Workspace/dotfiles/home/dot_mise/config.toml
+PASS live mise config targets ~/Workspace/dotfiles/home/dot_mise/config.toml
 PASS canonical live source content is identical to PR #93 for home/dot_mise/config.toml
 
 Live deployment
 ---------------
 PASS ~/.local/bin/common/permgate exists and is executable
 PASS Claude PermissionRequest command is ~/.local/bin/common/permgate claude
-PASS Codex PermissionRequest command is /Users/mryfmo/.local/bin/common/permgate codex
+PASS Codex PermissionRequest command is ~/.local/bin/common/permgate codex
 PASS Claude llm_enabled is false
 PASS Codex llm_enabled is false
 PASS known-version-check no longer contains ccgate

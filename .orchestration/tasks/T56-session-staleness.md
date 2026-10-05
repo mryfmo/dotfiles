@@ -1,7 +1,7 @@
 # T56: Session staleness detection (H4)
 
 task_id: T56
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-harness-composability-integration.md (Phase 3)

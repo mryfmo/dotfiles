@@ -47,7 +47,7 @@ Behavior coverage:
 - atomic hard-link publication cannot replace a concurrently created snapshot
 
 Crit-data review:
-- review file: /Users/mryfmo/.crit/reviews/bcb66848a92a/review.json
+- review file: ~/.crit/reviews/bcb66848a92a/review.json
 - evidence:
   .agents/worklog/codex/review/20260723_183944_T24_crit-comments.json
 - receipt:

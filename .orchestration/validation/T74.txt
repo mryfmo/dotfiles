@@ -206,7 +206,7 @@ One diagnostic extraction command initially used zsh's special lowercase
 rerun successfully with `artifact_path`, following the existing indexed learn.
 
 REVIEW
-- Crit review: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Crit review: ~/.crit/reviews/dfcf30aea611/review.json
 - Records: r_60db89 approval and r_5f8ece addressed helper-name residue;
   both resolved=true.
 - Evidence: .agents/worklog/codex/review/T74-crit-comments.json

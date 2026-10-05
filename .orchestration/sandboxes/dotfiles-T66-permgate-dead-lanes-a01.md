@@ -1,6 +1,6 @@
 # dotfiles-T66-permgate-dead-lanes-a01 — sandbox
 
-- Isolation: dedicated git worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d`, branch `chore/permgate-dead-lanes` from `origin/main` 523fda06. Worker identity: `claude-standard-dot-a006` (Claude Code, `standard`).
+- Isolation: dedicated git worktree `~/Workspace/dotfiles/.claude/worktrees/worker-d`, branch `chore/permgate-dead-lanes` from `origin/main` 523fda06. Worker identity: `claude-standard-dot-a006` (Claude Code, `standard`).
 - Edits, unit tests, smoke runs, prettier and ruff ran in the Claude Code Bash sandbox. These ran unsandboxed through the normal permission gate:
   - `git push`, `gh pr create`/`checks`/`api`;
   - `python3 .claude/hooks/contextdb_cli.py memory add` in the main checkout (state dir read-only from this worktree's sandbox);

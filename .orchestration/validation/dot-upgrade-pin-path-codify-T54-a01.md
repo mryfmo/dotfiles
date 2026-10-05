@@ -3,8 +3,8 @@
 ## task_rev
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-92670f30dee0817aa3277322a1b0ddeec76f67e620f6137bd0887f8e88d884f6  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+92670f30dee0817aa3277322a1b0ddeec76f67e620f6137bd0887f8e88d884f6  ~/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
 dispatched task_rev=92670f30dee0817aa3277322a1b0ddeec76f67e620f6137bd0887f8e88d884f6 (match)
 ```
 
@@ -432,97 +432,97 @@ test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_he
 test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
 test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
 test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
-test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d5928388b0>
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d5928388b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592839030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592839030>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283a980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283a980>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283aa70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283aa70>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592839210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592839210>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592839d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592839d50>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283a110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283a110>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d5928389a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d5928389a0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592838b80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592838b80>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283ac50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283ac50>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d5928394e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d5928394e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d593087d30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d593087d30>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592838f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592838f40>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592b493f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592b493f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592839f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592839f30>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592839b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592839b70>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592838310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592838310>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d5928395d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d5928395d0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d5928385e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d5928385e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283a200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283a200>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283a3e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d59283a3e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf9a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf9a80>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf96c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf96c0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf95d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf95d0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf97b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf97b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf8220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf8220>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf89a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf89a0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf9c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf9c60>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf8d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf8d60>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf8310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf8310>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf84f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf7d592cf84f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -924,7 +924,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-6gh0mc9a/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-6gh0mc9a/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -952,17 +952,17 @@ exit=0
 ```text
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
 agent asset validation ok
 exit=0
 ```
@@ -972,17 +972,17 @@ exit=0
 ```text
 $ make check-regime-boundary
 ./scripts/check-regime-boundary.sh
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
 make: *** [Makefile:169: check-regime-boundary] エラー 1
 exit=2
 ```
@@ -992,8 +992,8 @@ Every violation is an untracked `.orchestration` file on the orchestrator side (
 ## Item 3 demonstration: scratch bare remote, guard installed by the branch herdr-agents
 
 ```text
-$ bash /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/3fab84a1-57c4-4118-81ed-2c7cb8bbe748/scratchpad/t54-guard-demo.sh /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c   # scratch path masked as <scratch>
-$ bash /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
+$ bash /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/3fab84a1-57c4-4118-81ed-2c7cb8bbe748/scratchpad/t54-guard-demo.sh ~/Workspace/dotfiles/.claude/worktrees/worker-c   # scratch path masked as <scratch>
+$ bash ~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
 herdr-agents: installed the main-push guard at <scratch>/project/.git/hooks/pre-push.
 agmsg delivery script not found; skipping bootstrap: <scratch>/home/.agents/skills/agmsg/scripts/delivery.sh
 exit=0
@@ -1060,7 +1060,7 @@ The Codex `AGENTS.md` does not carry the clause. The single `agent-config.yaml` 
 ## CompactionDB
 
 ```text
-$ python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T54: make upgrade pins travel by one worker task + class-pure PR with the tests/** expected-version sync and make require-crit-review; the orchestrator never pushes a repository change to main (boundary commits use ORCH_PUSH_MAIN=boundary, local acceptance merges ORCH_PUSH_MAIN=acceptance); regime activation is hook-injected by the SessionStart herdr-agents --attach agmsg-orchestration: directive; direct main pushes are refused by the herdr-agents-installed pre-push guard; the mise pin tests assert a v2026.9.12 floor (operator 2026-10-02; PR #225).'  # cwd /home/moriya/Workspace/dotfiles
+$ python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T54: make upgrade pins travel by one worker task + class-pure PR with the tests/** expected-version sync and make require-crit-review; the orchestrator never pushes a repository change to main (boundary commits use ORCH_PUSH_MAIN=boundary, local acceptance merges ORCH_PUSH_MAIN=acceptance); regime activation is hook-injected by the SessionStart herdr-agents --attach agmsg-orchestration: directive; direct main pushes are refused by the herdr-agents-installed pre-push guard; the mise pin tests assert a v2026.9.12 floor (operator 2026-10-02; PR #225).'  # cwd ~/Workspace/dotfiles
 834ba299-4226-4f5a-910e-fd19e49c8aa8
 exit=0
 ```
@@ -1103,24 +1103,24 @@ exit=0
 ## make validate-agent-assets (main checkout, after writing the artifacts)
 
 ```text
-$ make validate-agent-assets   # cwd /home/moriya/Workspace/dotfiles
+$ make validate-agent-assets   # cwd ~/Workspace/dotfiles
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
 WARN: regime-boundary: crit review server still running (pgrep -f 'crit _serve')
 agent asset validation ok
 exit=0
@@ -1131,8 +1131,8 @@ exit=0
 ## task_rev
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-94a4a4a043ce5a8f09e8ec8b9411cea007cb379d3780cc2b831c55cdf9f01c92  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+94a4a4a043ce5a8f09e8ec8b9411cea007cb379d3780cc2b831c55cdf9f01c92  ~/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
 dispatched task_rev=94a4a4a043ce5a8f09e8ec8b9411cea007cb379d3780cc2b831c55cdf9f01c92 (match)
 ```
 
@@ -1567,97 +1567,97 @@ test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_he
 test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
 test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
 test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
-test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb47c0>
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb47c0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb4f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb4f40>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb6890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb6890>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb6980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb6980>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb5120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb5120>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb5c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb5c60>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb6020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb6020>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb48b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb48b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb4a90>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb4a90>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb6b60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb6b60>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb53f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb53f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df188fc40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df188fc40>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb4e50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb4e50>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df1369300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df1369300>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb5e40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb5e40>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb5a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb5a80>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb4220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb4220>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb54e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb54e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb44f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb44f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb6110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb6110>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb62f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df0fb62f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d1990>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d1990>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d15d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d15d0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d14e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d14e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d16c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d16c0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d0130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d0130>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d08b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d08b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d1b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d1b70>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d0c70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d0c70>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d0220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d0220>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d0400>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xfe4df14d0400>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -2062,7 +2062,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-g17fhoz1/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-g17fhoz1/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -2090,26 +2090,26 @@ exit=0
 ```text
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
 agent asset validation ok
 exit=0
 ```
@@ -2119,26 +2119,26 @@ exit=0
 ```text
 $ make check-regime-boundary
 ./scripts/check-regime-boundary.sh
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
 make: *** [Makefile:169: check-regime-boundary] エラー 1
 exit=2
 ```
@@ -2163,8 +2163,8 @@ test_session_start_attach_prints_the_regime_directive_with_a_worker_seat (test_h
 ## Scratch-remote demonstration (round 1, including the merge and fail-closed cases)
 
 ```text
-$ bash /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/3fab84a1-57c4-4118-81ed-2c7cb8bbe748/scratchpad/t54-guard-demo.sh /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c   # scratch path masked as <scratch>
-$ bash /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
+$ bash /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/3fab84a1-57c4-4118-81ed-2c7cb8bbe748/scratchpad/t54-guard-demo.sh ~/Workspace/dotfiles/.claude/worktrees/worker-c   # scratch path masked as <scratch>
+$ bash ~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
 herdr-agents: installed the main-push guard at <scratch>/project/.git/hooks/pre-push.
 agmsg delivery script not found; skipping bootstrap: <scratch>/home/.agents/skills/agmsg/scripts/delivery.sh
 exit=0
@@ -2241,7 +2241,7 @@ exit=0
 ## CompactionDB (round 1)
 
 ```text
-$ python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T54 round 1: the main-push pre-push hook is a fixed stub that execs herdr-agents --main-push-guard (PATH, then ~/.local/bin/common/herdr-agents; none refuses every push), so guard updates land with the launcher and bootstrap never rewrites an existing or edited hook; ORCH_PUSH_MAIN=boundary is checked by the tree diff git diff --name-only <remote> <local> (merge resolutions count) and fails closed when the diff cannot be listed; the local hook is bypassable with --no-verify, so GitHub branch protection is the server-side boundary (PR #225, c636452).'  # cwd /home/moriya/Workspace/dotfiles
+$ python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T54 round 1: the main-push pre-push hook is a fixed stub that execs herdr-agents --main-push-guard (PATH, then ~/.local/bin/common/herdr-agents; none refuses every push), so guard updates land with the launcher and bootstrap never rewrites an existing or edited hook; ORCH_PUSH_MAIN=boundary is checked by the tree diff git diff --name-only <remote> <local> (merge resolutions count) and fails closed when the diff cannot be listed; the local hook is bypassable with --no-verify, so GitHub branch protection is the server-side boundary (PR #225, c636452).'  # cwd ~/Workspace/dotfiles
 485d3eb6-a3e7-4047-8625-b53b1a7a60ad
 exit=0
 ```
@@ -2284,28 +2284,28 @@ exit=0
 ## make validate-agent-assets (main checkout, round 1, after the artifacts)
 
 ```text
-$ make validate-agent-assets   # cwd /home/moriya/Workspace/dotfiles
+$ make validate-agent-assets   # cwd ~/Workspace/dotfiles
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
 WARN: regime-boundary: crit review server still running (pgrep -f 'crit _serve')
 agent asset validation ok
 exit=0
@@ -2316,8 +2316,8 @@ exit=0
 ## task_rev
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-edba9d79d973bc84c1692137f8bd099366144b5a1aa2dfb397b146264b8750c0  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+edba9d79d973bc84c1692137f8bd099366144b5a1aa2dfb397b146264b8750c0  ~/Workspace/dotfiles/.orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
 dispatched task_rev=edba9d79d973bc84c1692137f8bd099366144b5a1aa2dfb397b146264b8750c0 (match)
 ```
 
@@ -2762,97 +2762,97 @@ test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_he
 test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
 test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
 test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
-test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9120>
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9120>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9030>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068ca980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068ca980>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068caa70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068caa70>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9210>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9210>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9d50>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068ca110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068ca110>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c89a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c89a0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c8b80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c8b80>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068cac50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068cac50>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c94e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c94e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940071a7c40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940071a7c40>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c8f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c8f40>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006c5d3f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006c5d3f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9f30>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c9b70>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c8310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c8310>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c95d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c95d0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c85e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068c85e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068ca200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068ca200>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068ca3e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe940068ca3e0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd5a80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd5a80>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd56c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd56c0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd55d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd55d0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd57b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd57b0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd4220>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd4220>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd49a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd49a0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd5c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd5c60>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd4d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd4d60>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd4310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd4310>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd44f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/pathlib/_local.py:277: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe94006dd44f0>
   @property
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -3258,7 +3258,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-t229a5xw/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-t229a5xw/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -3286,28 +3286,28 @@ exit=0
 ```text
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
 agent asset validation ok
 exit=0
 ```
@@ -3317,28 +3317,28 @@ exit=0
 ```text
 $ make check-regime-boundary
 ./scripts/check-regime-boundary.sh
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md.last.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
-regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md.last.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
+regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
 make: *** [Makefile:169: check-regime-boundary] エラー 1
 exit=2
 ```
@@ -3359,8 +3359,8 @@ test_main_push_guard_stub_without_a_launcher_refuses_only_main (test_herdr_agent
 ## Scratch-remote demonstration (round 2: stale launcher, bootstrap skip, lost execute bit)
 
 ```text
-$ bash /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/3fab84a1-57c4-4118-81ed-2c7cb8bbe748/scratchpad/t54-guard-demo.sh /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c   # scratch path masked as <scratch>
-$ bash /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
+$ bash /tmp/claude-1000/-home-moriya-Workspace-dotfiles--claude-worktrees-worker-c/3fab84a1-57c4-4118-81ed-2c7cb8bbe748/scratchpad/t54-guard-demo.sh ~/Workspace/dotfiles/.claude/worktrees/worker-c   # scratch path masked as <scratch>
+$ bash ~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
 herdr-agents: installed the main-push guard at <scratch>/project/.git/hooks/pre-push.
 agmsg delivery script not found; skipping bootstrap: <scratch>/home/.agents/skills/agmsg/scripts/delivery.sh
 exit=0
@@ -3441,19 +3441,19 @@ $ env ORCH_PUSH_MAIN=boundary git push --dry-run origin main
 pre-push: no herdr-agents with --main-push-guard is installed (run make update), so this push to main is refused
 error: failed to push some refs to '<scratch>/remote.git'
 exit=1
-$ bash /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
+$ bash ~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
 herdr-agents: the installed launcher (<scratch>/bin/herdr-agents) has no --main-push-guard mode yet; not installing the main-push guard until the next make update applies it.
 agmsg delivery script not found; skipping bootstrap: <scratch>/home/.agents/skills/agmsg/scripts/delivery.sh
 exit=0
 $ test -e .git/hooks/pre-push
 exit=1
-$ bash /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
+$ bash ~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
 herdr-agents: installed the main-push guard at <scratch>/project/.git/hooks/pre-push.
 agmsg delivery script not found; skipping bootstrap: <scratch>/home/.agents/skills/agmsg/scripts/delivery.sh
 exit=0
 $ test -x .git/hooks/pre-push
 exit=1
-$ bash /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
+$ bash ~/Workspace/dotfiles/.claude/worktrees/worker-c/home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg <scratch>/project
 herdr-agents: restored the execute bit of the main-push guard at <scratch>/project/.git/hooks/pre-push.
 agmsg delivery script not found; skipping bootstrap: <scratch>/home/.agents/skills/agmsg/scripts/delivery.sh
 exit=0
@@ -3482,7 +3482,7 @@ The round-2 part starts at `<scratch>/bin/herdr-agents --help`. The scratch laun
 ## CompactionDB (round 2)
 
 ```text
-$ python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T54 round 2: the main-push pre-push stub execs herdr-agents --main-push-guard only when that launcher advertises the mode in --help; with no such launcher (missing, or a build older than the guard) the stub refuses only refs/heads/main updates and lets other refs pass, and bootstrap installs the stub only once the launcher on PATH has the mode (make upgrade bootstraps before make update applies the new launcher); an identical stub that lost its execute bit is made executable again (PR #225, 1128abb).'  # cwd /home/moriya/Workspace/dotfiles
+$ python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T54 round 2: the main-push pre-push stub execs herdr-agents --main-push-guard only when that launcher advertises the mode in --help; with no such launcher (missing, or a build older than the guard) the stub refuses only refs/heads/main updates and lets other refs pass, and bootstrap installs the stub only once the launcher on PATH has the mode (make upgrade bootstraps before make update applies the new launcher); an identical stub that lost its execute bit is made executable again (PR #225, 1128abb).'  # cwd ~/Workspace/dotfiles
 595b7377-9e28-45a7-bcd8-f603c328396c
 exit=0
 ```
@@ -3525,30 +3525,30 @@ exit=0
 ## make validate-agent-assets (main checkout, round 2, after the artifacts)
 
 ```text
-$ make validate-agent-assets   # cwd /home/moriya/Workspace/dotfiles
+$ make validate-agent-assets   # cwd ~/Workspace/dotfiles
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-mise-pin-test-sync-T53-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit-c636452.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-upgrade-pin-path-codify-T54-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/orchestrator-review: .orchestration/validation/dot-mise-pin-test-sync-T53-a01-pr-feedback.json
 WARN: regime-boundary: crit review server still running (pgrep -f 'crit _serve')
 agent asset validation ok
 exit=0

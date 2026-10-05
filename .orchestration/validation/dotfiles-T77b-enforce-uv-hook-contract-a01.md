@@ -135,15 +135,15 @@ test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='pip install requests')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 29 (char 53)
@@ -152,15 +152,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 29 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='pip install -r requirements.txt')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 41 (char 65)
@@ -169,15 +169,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 41 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='pip install --dev pytest')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 30 (char 54)
@@ -186,15 +186,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 30 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='pip install -e .')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 30 (char 54)
@@ -203,15 +203,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 30 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='pip uninstall -y requests')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 26 (char 50)
@@ -220,15 +220,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 26 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='pip list')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 27 (char 51)
@@ -237,15 +237,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 27 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='pip freeze')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 27 (char 51)
@@ -254,15 +254,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 27 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='pip show requests')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 30 (char 54)
@@ -271,15 +271,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 30 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='pip3 install numpy')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 29 (char 53)
@@ -288,15 +288,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 29 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='python -m pip install -r requirements.txt')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 41 (char 65)
@@ -305,15 +305,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 41 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='python -m pip install requests')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 29 (char 53)
@@ -322,15 +322,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 29 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='python -m pip list')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 30 (char 54)
@@ -339,15 +339,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 30 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='python -m pytest')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 26 (char 50)
@@ -356,15 +356,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 26 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='python script.py')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 27 (char 51)
@@ -373,15 +373,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 27 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='python3 script.py')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 27 (char 51)
@@ -390,15 +390,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 27 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='py script.py')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 27 (char 51)
@@ -407,15 +407,15 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 27 (ch
 ERROR: test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) (command='python -m \'mod"quoted\\\\path\' ')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 43, in test_all_blocking_branches_emit_current_deny_json
     output = json.loads(result.stdout)
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/__init__.py", line 352, in loads
     return _default_decoder.decode(s)
            ~~~~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 345, in decode
     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
+  File "~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/json/decoder.py", line 361, in raw_decode
     obj, end = self.scan_once(s, idx)
                ~~~~~~~~~~~~~~^^^^^^^^
 json.decoder.JSONDecodeError: Invalid control character at: line 3 column 26 (char 50)
@@ -424,7 +424,7 @@ json.decoder.JSONDecodeError: Invalid control character at: line 3 column 26 (ch
 FAIL: test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) (payload='')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
     self.assertEqual("", result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: '' != '{"decision": "approve"}\n'
@@ -435,7 +435,7 @@ AssertionError: '' != '{"decision": "approve"}\n'
 FAIL: test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) (payload='not json')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
     self.assertEqual("", result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: '' != '{"decision": "approve"}\n'
@@ -446,7 +446,7 @@ AssertionError: '' != '{"decision": "approve"}\n'
 FAIL: test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) (payload='null')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
     self.assertEqual("", result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: '' != '{"decision": "approve"}\n'
@@ -457,7 +457,7 @@ AssertionError: '' != '{"decision": "approve"}\n'
 FAIL: test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) (payload='{}')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
     self.assertEqual("", result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: '' != '{"decision": "approve"}\n'
@@ -468,7 +468,7 @@ AssertionError: '' != '{"decision": "approve"}\n'
 FAIL: test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) (payload='{"tool_name": "Bash", "tool_input": {"command": "uv run python -V"}}')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
     self.assertEqual("", result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: '' != '{"decision": "approve"}\n'
@@ -479,7 +479,7 @@ AssertionError: '' != '{"decision": "approve"}\n'
 FAIL: test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) (payload='{"tool_name": "Bash", "tool_input": {"command": "uv add requests"}}')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
     self.assertEqual("", result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: '' != '{"decision": "approve"}\n'
@@ -490,7 +490,7 @@ AssertionError: '' != '{"decision": "approve"}\n'
 FAIL: test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) (payload='{"tool_name": "Bash", "tool_input": {"command": "git status"}}')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
     self.assertEqual("", result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: '' != '{"decision": "approve"}\n'
@@ -501,7 +501,7 @@ AssertionError: '' != '{"decision": "approve"}\n'
 FAIL: test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) (payload='{"tool_name": "Bash", "tool_input": {"command": ""}}')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
     self.assertEqual("", result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: '' != '{"decision": "approve"}\n'
@@ -512,7 +512,7 @@ AssertionError: '' != '{"decision": "approve"}\n'
 FAIL: test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) (payload='{"tool_name": "Read", "tool_input": {"command": "pip install requests"}}')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
     self.assertEqual("", result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: '' != '{"decision": "approve"}\n'
@@ -523,7 +523,7 @@ AssertionError: '' != '{"decision": "approve"}\n'
 FAIL: test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) (payload='{"tool_name": "Bash", "tool_input": {"command": "echo python"}}')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py", line 69, in test_nonblocking_input_exits_zero_without_output
     self.assertEqual("", result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
 AssertionError: '' != '{"decision": "approve"}\n'
@@ -540,7 +540,7 @@ FAILED (failures=10, errors=17)
 ## /tmp/t77b-focused.log
 
 ```text
-/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py:37: SyntaxWarning: invalid escape sequence '\p'
+~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_enforce_uv.py:37: SyntaxWarning: invalid escape sequence '\p'
   (r"""python -m 'mod"quoted\path' """, 'mod"quoted\path'),
 test_all_blocking_branches_emit_current_deny_json (test_enforce_uv.EnforceUvTest.test_all_blocking_branches_emit_current_deny_json) ... ok
 test_nonblocking_input_exits_zero_without_output (test_enforce_uv.EnforceUvTest.test_nonblocking_input_exits_zero_without_output) ... ok
@@ -608,7 +608,7 @@ rc=0
   "daemon": {
     "running": false
   },
-  "review_file": "/home/moriya/.crit/reviews/e71eb51ce705/review.json",
+  "review_file": "~/.crit/reviews/e71eb51ce705/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -633,55 +633,55 @@ exit=0
 ```text
 uv run --with pyyaml scripts/validate-agent-assets.py
 Installed 1 package in 3ms
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-507e9c1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-audit-e2d5c9a.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-audit-5db3200.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T90b-ruleset-sole-merger-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90-github-identity-separation-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01.md
 WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
 WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
 agent asset validation ok

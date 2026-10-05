@@ -1,7 +1,7 @@
 # WP-H: Fix CI bats failure in lifecycle.bats (deleted-script grep)
 
 task_id: WP-H
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wph
 

@@ -5,7 +5,7 @@
 - Task ID: `T14-t13-pr-lifecycle`
 - Executor model: `gpt-5.6-sol`
 - Reasoning effort: `high`
-- Repo: `/Users/mryfmo/Workspace/dotfiles`, branch `rule/agmsg-orchestration`
+- Repo: `~/Workspace/dotfiles`, branch `rule/agmsg-orchestration`
   (HEAD `c4f80cf`, one commit ahead of `main`)
 
 ## Objective (phase 1 of the PR lifecycle)

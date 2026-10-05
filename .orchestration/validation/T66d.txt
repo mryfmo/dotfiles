@@ -57,7 +57,7 @@ $ git diff --check
 PASS
 
 REVIEW
-- Crit review file: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Crit review file: ~/.crit/reviews/dfcf30aea611/review.json
 - Record: r_b25ddc
 - Resolved: true
 - Evidence: .agents/worklog/codex/review/T66d-crit-comments.json

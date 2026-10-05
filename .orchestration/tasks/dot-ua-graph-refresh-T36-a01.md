@@ -6,7 +6,7 @@ Bring the Understand-Anything knowledge graph in `.ua/` up to date with
 `origin/main` (stale since the T33c rebuild at 935e198: T33a–T35 changed herdr-agents, update-agent-assets.sh, validate-agent-assets.py, check-agent-runtime.py, permgate, rules and tests; the plugin core is now built by `make update`, so the incremental path should work).
 
 - Read and execute the plugin's incremental procedure at
-  `/home/moriya/.claude/plugins/cache/understand-anything/understand-anything/2.9.7/hooks/auto-update-prompt.md`
+  `~/.claude/plugins/cache/understand-anything/understand-anything/2.9.7/hooks/auto-update-prompt.md`
   (incremental update only; do not run a full `/understand` from scratch
   unless the procedure itself falls back to it — if it does, stop and PONG
   with the reason and the estimated size first).
@@ -23,7 +23,7 @@ orchestrator never runs the graph update in its own session (operator
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`; `git switch -c chore/ua-graph-refresh-T36 origin/main`.
   Verify the dispatched task_rev sha256 against this file on your base, else
   stop and PONG. If the worktree has uncommitted files, stop and PONG.
@@ -47,7 +47,7 @@ orchestrator never runs the graph update in its own session (operator
 jq -r .gitCommitHash .ua/meta.json
 git rev-parse HEAD
 git diff --name-only $(jq -r .gitCommitHash .ua/meta.json)..HEAD | head
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat | tail -3
 gh pr checks <pr-number>
 ```
 

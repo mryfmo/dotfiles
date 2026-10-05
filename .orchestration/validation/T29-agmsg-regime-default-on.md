@@ -1,12 +1,12 @@
 # T29 validation
 
-Worktree: `/Users/mryfmo/Workspace/dotfiles-t29`
+Worktree: `~/Workspace/dotfiles-t29`
 
 ```text
-$ git -C /Users/mryfmo/Workspace/dotfiles-t29 diff --stat
+$ git -C ~/Workspace/dotfiles-t29 diff --stat
 (no output; the required change was committed before final validation)
 
-$ git -C /Users/mryfmo/Workspace/dotfiles-t29 status --short
+$ git -C ~/Workspace/dotfiles-t29 status --short
 (no output)
 
 $ uv run --with pyyaml scripts/validate-agent-assets.py

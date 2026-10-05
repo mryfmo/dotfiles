@@ -178,7 +178,7 @@ blocked
 ### CompactionDB (main checkout, run unsandboxed)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T68 (operator 2026-10-03): \`make require-crit-review\` with BASE requires \`AUDIT_EVIDENCE=<.orchestration/validation/<id>-audit-<sha7>.md>\` whose sha matches HEAD and whose last \`Verdict:\` is \`correct\`, or \`incorrect\` with every finding dispositioned \`not-applicable\` in the acceptance record (\`AUDIT_DISPOSITIONS\`); \`.orchestration\`-only PRs are exempt."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T68 (operator 2026-10-03): \`make require-crit-review\` with BASE requires \`AUDIT_EVIDENCE=<.orchestration/validation/<id>-audit-<sha7>.md>\` whose sha matches HEAD and whose last \`Verdict:\` is \`correct\`, or \`incorrect\` with every finding dispositioned \`not-applicable\` in the acceptance record (\`AUDIT_DISPOSITIONS\`); \`.orchestration\`-only PRs are exempt."
 5a73b2dc-d0e5-42aa-b935-87078b55547a
 $ python3 .claude/hooks/contextdb_cli.py memory search dotfiles-T68
 5a73b2dc-d0e5-42aa-b935-87078b55547a [project/decision] dotfiles-T68 (operator 2026-10-03): `make require-crit-review` with BASE requires `AUDIT_EVIDENCE=<.orchestration/validation/<id>-audit-<sha7>.md>` whose sha matches HEAD and whose last `Verdict:` is `correct`, or `incorrect` with every finding dispositioned `not-applicable` in the acceptance record (`AUDIT_DISPOSITIONS`); `.orchestration`-only PRs are exempt.
@@ -297,8 +297,8 @@ chatgpt-codex-connector[bot]	COMMENTED	5168613a	2026-10-04T05:11:53Z
 ### `sha256sum` of the current task file (run for this round)
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
-de14890fe72e1f272420bb4ec68845440b46d83bc91bbf213cc52693217dd2a1  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
+de14890fe72e1f272420bb4ec68845440b46d83bc91bbf213cc52693217dd2a1  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
 ```
 
 This matches the round-2 dispatch `task_rev=sha256:de14890fe72e1f272420bb4ec68845440b46d83bc91bbf213cc52693217dd2a1`.
@@ -307,14 +307,14 @@ This matches the round-2 dispatch `task_rev=sha256:de14890fe72e1f272420bb4ec6884
 
 ```text
 # dispatch (2026-10-04T02:50:29Z), task_rev 3959867c…
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
-3959867cdc71c645d78c30576f02abd172cc3e2562d39910a7d2435d068d9c7a  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
+3959867cdc71c645d78c30576f02abd172cc3e2562d39910a7d2435d068d9c7a  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
 # PONG decision 1 (2026-10-04T03:16:24Z), task_rev fcbe596a…
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
-fcbe596a2cc8c909efb419a81ea42751b2ee2d278414a11937e6cfed6df3c745  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
+fcbe596a2cc8c909efb419a81ea42751b2ee2d278414a11937e6cfed6df3c745  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
 # revise round 1 (2026-10-04T04:56:31Z), task_rev 9e175902…
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
-9e17590276236f01de9ee18e68c9fa284c17bb6f5585bf5f8869eeafcb4b8cc3  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
+9e17590276236f01de9ee18e68c9fa284c17bb6f5585bf5f8869eeafcb4b8cc3  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T68-gate-audit-evidence-a01.md
 ```
 
 PONG decision 2 (2026-10-04T03:41:07Z, `task_rev=sha256:7d99160137bdaf60600e8fc83733219c6d8567b586b62079742bc2381fe08692`) was **not** verified with `sha256sum`. Its decision (4175981351 `fixed:22efc32c`; 4175981346 not-applicable to T69) was taken from the dispatch message alone. The report's earlier claim that this revision was verified is corrected there.

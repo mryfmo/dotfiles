@@ -1,6 +1,6 @@
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -11,10 +11,10 @@ session id: 01a0e55d-69ca-71c1-8967-4c62d5eecef6
 --------
 user
 commit 6b9babc
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 # AGENTS.md
@@ -401,7 +401,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/usr/bin/zsh -lc 'git status --short; git rev-parse HEAD; git show --stat --oneline 6b9babc; git show --format=fuller --no-ext-diff 6b9babc; find .. -name AGENTS.override.md -o -name AGENTS.md | head -60; ls .ua 2>/dev/null' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'git status --short; git rev-parse HEAD; git show --stat --oneline 6b9babc; git show --format=fuller --no-ext-diff 6b9babc; find .. -name AGENTS.override.md -o -name AGENTS.md | head -60; ls .ua 2>/dev/null' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ?? .orchestration/acceptance/dot-audit-pane-visibility-T32-a01.md
 ?? .orchestration/autoskill/runs/dot-audit-pane-visibility-T32-a01.md
@@ -1110,13 +1110,13 @@ knowledge-graph.json
 meta.json
 
 exec
-/usr/bin/zsh -lc "cat /home/moriya/.agents/skills/shdoc-shell-docs/SKILL.md; cat /home/moriya/.agents/skills/understand-diff/SKILL.md; cat .ua/meta.json; python3 - <<'PY'
+/usr/bin/zsh -lc "cat ~/.agents/skills/shdoc-shell-docs/SKILL.md; cat ~/.agents/skills/understand-diff/SKILL.md; cat .ua/meta.json; python3 - <<'PY'
 import json
 x=json.load(open('.ua/knowledge-graph.json'))
 for n in x.get('nodes',[]):
  if 'herdr' in str(n).lower(): print(n.get('filePath'),n.get('summary'))
 PY
-nl -ba home/dot_local/bin/common/executable_herdr-agents | sed -n '85,290p;430,610p;740,955p'; find home tests -name 'AGENTS*'" in /home/moriya/Workspace/dotfiles
+nl -ba home/dot_local/bin/common/executable_herdr-agents | sed -n '85,290p;430,610p;740,955p'; find home tests -name 'AGENTS*'" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: shdoc-shell-docs
@@ -1856,7 +1856,7 @@ home/dot_config/codex/AGENTS.md
 
 **Investigating config and audit arguments**
 exec
-/usr/bin/zsh -lc "python3 -c 'import json; x=json.load(open(\".ua/knowledge-graph.json\")); print(*[(n.get(\"filePath\"),n.get(\"summary\")) for n in x.get(\"nodes\",[]) if \"herdr\" in str(n).lower()],sep=\"\\n\")'; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86..HEAD | head -35; sed -n '320,430p' home/dot_local/bin/common/executable_herdr-agents; sed -n '1000,1110p' home/dot_local/bin/common/executable_herdr-agents; rg -n 'AUDIT_CODEX|audit:|audit.*sandbox|require-crit-review' home/dot_agents/agent-config.yaml install scripts Makefile; nl -ba AGENTS.md | tail -55; ls references; command -v herdr; head -15 home/dot_local/bin/common/executable_herdr-agents" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "python3 -c 'import json; x=json.load(open(\".ua/knowledge-graph.json\")); print(*[(n.get(\"filePath\"),n.get(\"summary\")) for n in x.get(\"nodes\",[]) if \"herdr\" in str(n).lower()],sep=\"\\n\")'; git diff --name-only d906b00bff8729625b895d6f7765e3186ab5bb86..HEAD | head -35; sed -n '320,430p' home/dot_local/bin/common/executable_herdr-agents; sed -n '1000,1110p' home/dot_local/bin/common/executable_herdr-agents; rg -n 'AUDIT_CODEX|audit:|audit.*sandbox|require-crit-review' home/dot_agents/agent-config.yaml install scripts Makefile; nl -ba AGENTS.md | tail -55; ls references; command -v herdr; head -15 home/dot_local/bin/common/executable_herdr-agents" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ('Makefile', 'Converges committed source and locked tools, refreshes agent assets, and reloads Herdr.')
 ('home/dot_agents/model-profiles.env', 'Provides generated shell arguments for each Claude and Codex profile and the Herdr worker kind consumed by launchers.')
@@ -2320,7 +2320,7 @@ UAT_TEMPLATE.md
 UT_GUIDE.md
 UT_SAMPLE.md
 UT_TEMPLATE.md
-/home/moriya/.local/share/mise/shims/herdr
+~/.local/share/mise/shims/herdr
 #!/usr/bin/env bash
 
 # @file herdr-agents
@@ -2339,7 +2339,7 @@ UT_TEMPLATE.md
 
 **Analyzing bash tee input and JSON parsing**
 exec
-/usr/bin/zsh -lc "sed -n '1,90p' home/dot_agents/agent-config.yaml; grep AUDIT home/dot_agents/model-profiles.env; sed -n '350,417p' home/dot_local/bin/common/executable_herdr-agents; herdr pane wait-output --help; herdr tab create --help; sed -n '1,130p' .orchestration/validation/dot-audit-pane-visibility-T32-a01-live-e2e.md; sed -n '1,130p' .orchestration/reports/dot-audit-pane-visibility-T32-a01.md" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "sed -n '1,90p' home/dot_agents/agent-config.yaml; grep AUDIT home/dot_agents/model-profiles.env; sed -n '350,417p' home/dot_local/bin/common/executable_herdr-agents; herdr pane wait-output --help; herdr tab create --help; sed -n '1,130p' .orchestration/validation/dot-audit-pane-visibility-T32-a01-live-e2e.md; sed -n '1,130p' .orchestration/reports/dot-audit-pane-visibility-T32-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 # Canonical AI-agent configuration managed by chezmoi.
 #
@@ -2556,7 +2556,7 @@ Options:
 
 OpenAI Codex v0.157.1
 --------
-workdir: /home/moriya/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -2567,10 +2567,10 @@ session id: 01a0e55d-69ca-71c1-8967-4c62d5eecef6
 --------
 user
 commit 6b9babc
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
-warning: loading hooks from both /home/moriya/.codex/hooks.json and /home/moriya/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 exec
-/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat /home/moriya/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat /home/moriya/.agents/skills/agmsg-orchestration/SKILL.md' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc 'cat .agents/worklog/codex/learn/learn_index.md; cat AGENTS.md; cat ~/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md; cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 cat: .agents/worklog/codex/learn/learn_index.md: No such file or directory
 # AGENTS.md
@@ -2688,7 +2688,7 @@ Switch: `/ponytail lite|full|ultra`.
 
 - worker: `claude-standard-dot-a005` (Claude Code, acting as worker per the dispatch note)
 - orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `feat/audit-pane-visibility` from `origin/main` = `7f3164e`
 - task_rev: sha256 `f3e9313e9d899fe66a0a639272e00e8b12c45482d146ac3503c9b14561852363`,
   checked against the task file on `origin/main` 7f3164e (the hashes match)
@@ -2818,7 +2818,7 @@ E2E.
 **Reviewing log output nuances**
 **Analyzing orchestration and environment issues**
 exec
-/usr/bin/zsh -lc "herdr pane read --help; sed -n '1,170p' home/dot_zshrc; rg -n 'FPATH|LANG|LC_' home/dot_zprofile home/dot_zshrc home/dot_config/herdr/config.toml; sed -n '1,230p' scripts/require-crit-review.py; git diff --exit-code; bash -n home/dot_local/bin/common/executable_herdr-agents; locale" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "herdr pane read --help; sed -n '1,170p' home/dot_zshrc; rg -n 'FPATH|LANG|LC_' home/dot_zprofile home/dot_zshrc home/dot_config/herdr/config.toml; sed -n '1,230p' scripts/require-crit-review.py; git diff --exit-code; bash -n home/dot_local/bin/common/executable_herdr-agents; locale" in ~/Workspace/dotfiles
  succeeded in 0ms:
 Read pane terminal output
 
@@ -3154,7 +3154,7 @@ LC_ALL=C.UTF-8
 
 **Analyzing logging and commit issues**
 exec
-/usr/bin/zsh -lc "python3 -c 'import subprocess; paths=[\"/tmp/日本\", \"/tmp/test\\u200b.md\", \"/tmp/test\\u00a0.md\", \"/tmp/test\\u2028.md\"]; code=\"for path in \\\""'$@'"\\\"; do printf \\\"%q\\\\n\\\" \\\""'$path'"\\\"; done\"; print(\"UTF-8:\"); print(subprocess.check_output([\"bash\",\"-c\",code,\"bash\",*paths],text=True)); print(\"C:\"); print(subprocess.check_output([\"bash\",\"-c\",code,\"bash\",*paths],env={\"LC_ALL\":\"C\"},text=True))'; ls /home/moriya/.local/share/mise/installs/herdr; rg -n 'recent-unwrapped' README.md home tests .orchestration/validation/dot-audit-pane-visibility-T32-a01.md .orchestration/tasks/dot-audit-pane-visibility-T32-a01.md; sed -n '1,160p' .orchestration/tasks/dot-audit-pane-visibility-T32-a01.md; sed -n '90,120p' home/dot_agents/model-profiles.env" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "python3 -c 'import subprocess; paths=[\"/tmp/日本\", \"/tmp/test\\u200b.md\", \"/tmp/test\\u00a0.md\", \"/tmp/test\\u2028.md\"]; code=\"for path in \\\""'$@'"\\\"; do printf \\\"%q\\\\n\\\" \\\""'$path'"\\\"; done\"; print(\"UTF-8:\"); print(subprocess.check_output([\"bash\",\"-c\",code,\"bash\",*paths],text=True)); print(\"C:\"); print(subprocess.check_output([\"bash\",\"-c\",code,\"bash\",*paths],env={\"LC_ALL\":\"C\"},text=True))'; ls ~/.local/share/mise/installs/herdr; rg -n 'recent-unwrapped' README.md home tests .orchestration/validation/dot-audit-pane-visibility-T32-a01.md .orchestration/tasks/dot-audit-pane-visibility-T32-a01.md; sed -n '1,160p' .orchestration/tasks/dot-audit-pane-visibility-T32-a01.md; sed -n '90,120p' home/dot_agents/model-profiles.env" in ~/Workspace/dotfiles
  succeeded in 0ms:
 UTF-8:
 /tmp/日本
@@ -3168,7 +3168,7 @@ $'/tmp/test\342\200\213.md'
 $'/tmp/test\302\240.md'
 $'/tmp/test\342\200\250.md'
 
-ls: cannot access '/home/moriya/.local/share/mise/installs/herdr': No such file or directory
+ls: cannot access '~/.local/share/mise/installs/herdr': No such file or directory
 # AGMSG-TASK dot-audit-pane-visibility-T32-a01
 
 ## Objective
@@ -3195,7 +3195,7 @@ workspace (operator 2026-09-27).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`, then
   `git switch -c feat/audit-pane-visibility origin/main`.
   (Verify the dispatched task_rev sha256 against this file on your base, else
@@ -3279,7 +3279,7 @@ audit tab present).
 ```
 make validate-agent-assets
 make unit-test
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 
@@ -3301,7 +3301,7 @@ gh pr checks <pr-number>
 
 I’m exploring how injection risks arise from user paths with non-ASCII characters and command substitutions under C locale on Linux. I’m testing safe script generation using environment-exported bash functions and variable substitution without writing files. This includes using stubs to capture command arguments and verifying execution in nested shells while managing Unicode and quoting challenges.
 exec
-/usr/bin/zsh -lc "python3 -c 'import os,subprocess,pathlib; src=pathlib.Path(\"home/dot_local/bin/common/executable_herdr-agents\").read_text(); line=next(l.strip() for l in src.splitlines() if l.strip().startswith(\"herdr pane run \\\""'${audit_pane}'"\\\"\")); line=line.removesuffix(\" > /dev/null\"); env=dict(os.environ,LC_ALL=\"C\",workdir=\"/tmp\",audit_out=\"/tmp/日本.md\",audit_codex=\"codex --profile audit review --commit 926d9f1\",audit_marker=\"AUDIT-EXIT-123-456\",audit_pane=\"stub\"); cmd=subprocess.check_output([\"bash\",\"-c\",\"herdr() { printf \\\"%s\\\\n\\\" \\\""'$4'"\\\"; }; \"+line],env=env,text=True); print(\"Generated command:\",cmd); env[\"BASH_FUNC_codex%%\"]=\"() { printf audit-ok; }\"; env[\"BASH_FUNC_tee%%\"]=\"() { printf \\\"tee args: [%s] [%s]\\\\n\\\" \\\""'$1'"\\\" \\\""'$2'"\\\" >&2; cat; }\"; result=subprocess.run([\"zsh\",\"-fc\",cmd],env=env,text=True,capture_output=True); print(result.stdout,result.stderr,sep=\"\\n\")'" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "python3 -c 'import os,subprocess,pathlib; src=pathlib.Path(\"home/dot_local/bin/common/executable_herdr-agents\").read_text(); line=next(l.strip() for l in src.splitlines() if l.strip().startswith(\"herdr pane run \\\""'${audit_pane}'"\\\"\")); line=line.removesuffix(\" > /dev/null\"); env=dict(os.environ,LC_ALL=\"C\",workdir=\"/tmp\",audit_out=\"/tmp/日本.md\",audit_codex=\"codex --profile audit review --commit 926d9f1\",audit_marker=\"AUDIT-EXIT-123-456\",audit_pane=\"stub\"); cmd=subprocess.check_output([\"bash\",\"-c\",\"herdr() { printf \\\"%s\\\\n\\\" \\\""'$4'"\\\"; }; \"+line],env=env,text=True); print(\"Generated command:\",cmd); env[\"BASH_FUNC_codex%%\"]=\"() { printf audit-ok; }\"; env[\"BASH_FUNC_tee%%\"]=\"() { printf \\\"tee args: [%s] [%s]\\\\n\\\" \\\""'$1'"\\\" \\\""'$2'"\\\" >&2; cat; }\"; result=subprocess.run([\"zsh\",\"-fc\",cmd],env=env,text=True,capture_output=True); print(result.stdout,result.stderr,sep=\"\\n\")'" in ~/Workspace/dotfiles
  succeeded in 0ms:
 Generated command: bash -c 'cd -- /tmp && set -o pipefail && codex --profile audit review --commit 926d9f1 2>&1 | tee -- $'/tmp/\346\227\245\346\234\254.md'; printf "AUDIT-EXIT-123-456:%s\n" "$?"'
 
@@ -3312,10 +3312,10 @@ tee args: [--] [$/tmp/346227245346234254.md]
 
 **Verifying shell quoting issues**
 exec
-/usr/bin/zsh -lc "mise which herdr; ls /home/moriya/Workspace | grep herdr; rg -n 'recent-unwrapped|soft.wrap|soft_wrap' /home/moriya/.cache/herdr /home/moriya/.local/share/herdr /home/moriya/.local/share/mise/installs/cargo-herdr 2>/dev/null | head -25; sed -n '50,120p' tests/unit/test_herdr_agents.py; sed -n '120,260p' tests/unit/test_herdr_agents.py" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "mise which herdr; ls ~/Workspace | grep herdr; rg -n 'recent-unwrapped|soft.wrap|soft_wrap' ~/.cache/herdr ~/.local/share/herdr ~/.local/share/mise/installs/cargo-herdr 2>/dev/null | head -25; sed -n '50,120p' tests/unit/test_herdr_agents.py; sed -n '120,260p' tests/unit/test_herdr_agents.py" in ~/Workspace/dotfiles
  succeeded in 0ms:
 mise WARN  tool purgatory cleanup failed: Read-only file system (os error 30)
-/home/moriya/.local/share/mise/installs/github-ogulcancelik-herdr/0.9.1/herdr
+~/.local/share/mise/installs/github-ogulcancelik-herdr/0.9.1/herdr
         self.agent_get_path = self.temp_dir / "agent-get.json"
         self.agent_start_failures_path = self.temp_dir / "agent-start-failures.txt"
         self.agent_start_not_ready_path = self.temp_dir / "agent-start-not-ready.txt"
@@ -3534,7 +3534,7 @@ fi
 **Reviewing audit environment and string inspection**
 **Testing Unicode guard character**
 exec
-/usr/bin/zsh -lc "python3 -c 'import os,pathlib,subprocess; s=pathlib.Path(\"home/dot_local/bin/common/executable_herdr-agents\").read_text(); guard=next(l.strip() for l in s.splitlines() if l.strip().startswith(\"if [[ "'${workdir}${audit_out}")); code=guard+" printf rejected; else printf accepted; fi; printf '"\\\" => %q\\\\n\\\" \\\""'$audit_out'"\\\"\"; paths=[\"/tmp/日本.md\",\"/tmp/test\\u2028.md\",\"/tmp/test\\u0085.md\"]; print(*[(loc,p,subprocess.check_output([\"bash\",\"-c\",code],env=dict(os.environ,LC_ALL=loc,workdir=\"/tmp\",audit_out=p),text=True)) for loc in [\"C.UTF-8\",\"C\"] for p in paths],sep=\"\\n\")'; ls /home/moriya/.local/share/mise/installs/github-ogulcancelik-herdr/0.9.1; git diff --check 6b9babc"'^ 6b9babc' in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "python3 -c 'import os,pathlib,subprocess; s=pathlib.Path(\"home/dot_local/bin/common/executable_herdr-agents\").read_text(); guard=next(l.strip() for l in s.splitlines() if l.strip().startswith(\"if [[ "'${workdir}${audit_out}")); code=guard+" printf rejected; else printf accepted; fi; printf '"\\\" => %q\\\\n\\\" \\\""'$audit_out'"\\\"\"; paths=[\"/tmp/日本.md\",\"/tmp/test\\u2028.md\",\"/tmp/test\\u0085.md\"]; print(*[(loc,p,subprocess.check_output([\"bash\",\"-c\",code],env=dict(os.environ,LC_ALL=loc,workdir=\"/tmp\",audit_out=p),text=True)) for loc in [\"C.UTF-8\",\"C\"] for p in paths],sep=\"\\n\")'; ls ~/.local/share/mise/installs/github-ogulcancelik-herdr/0.9.1; git diff --check 6b9babc"'^ 6b9babc' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ('C.UTF-8', '/tmp/日本.md', 'accepted => /tmp/日本.md\n')
 ('C.UTF-8', '/tmp/test\u2028.md', "rejected => $'/tmp/test\\342\\200\\250.md'\n")
@@ -3546,7 +3546,7 @@ herdr
 
 **Ensuring source and test integrity**
 exec
-/usr/bin/zsh -lc "strings /home/moriya/.local/share/mise/installs/github-ogulcancelik-herdr/0.9.1/herdr | grep -E 'unwrapped|soft.wrap' | head -12" in /home/moriya/Workspace/dotfiles
+/usr/bin/zsh -lc "strings ~/.local/share/mise/installs/github-ogulcancelik-herdr/0.9.1/herdr | grep -E 'unwrapped|soft.wrap' | head -12" in ~/Workspace/dotfiles
  succeeded in 0ms:
 R=.config/opencodeQODER_CONFIG_DIRfeature_disabledDisable a plugintrust-repositoryShow a workspacerecent-unwrappedagent-session-idWindowsKeyRecordvirtual_key_codewindows_dead_key
 session.snapshotagent.view.clearevents.subscribeplugin.pane.openstruct TabTargetrecent_unwrappedcollapsed_groups_>Y
@@ -3570,17 +3570,17 @@ The audit launcher mishandles non-ASCII paths under the C locale and can miss co
 
 Full review comments:
 
-- [P2] Quote the complete Bash payload instead of nesting `%q` output — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:927-927
+- [P2] Quote the complete Bash payload instead of nesting `%q` output — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:927-927
   With `LC_ALL=C`, non-ASCII paths pass validation but `%q` renders them using `$'...'` quoting, which breaks the surrounding single-quoted `bash -c` argument. For example, `/tmp/日本.md` reaches `tee` as a corrupted path; shell metacharacters in such paths can also become executable syntax. Build the inner command first, then shell-quote that entire command as one argument.
 
-- [P2] Match the exit marker against unwrapped terminal output — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:928-928
+- [P2] Match the exit marker against unwrapped terminal output — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:928-928
   If the audit pane becomes narrower than the exit marker, Herdr's `recent` snapshot splits the marker across rendered lines. The regex then misses a successfully completed audit, waits the full timeout, and incorrectly reports it as still running. Use `recent-unwrapped` for both the marker wait and the subsequent status read so terminal resizing cannot change completion detection.
 The audit launcher mishandles non-ASCII paths under the C locale and can miss completion when terminal output wraps. Syntax and whitespace checks passed; the filesystem-writing unit suite was not run in the read-only sandbox.
 
 Full review comments:
 
-- [P2] Quote the complete Bash payload instead of nesting `%q` output — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:927-927
+- [P2] Quote the complete Bash payload instead of nesting `%q` output — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:927-927
   With `LC_ALL=C`, non-ASCII paths pass validation but `%q` renders them using `$'...'` quoting, which breaks the surrounding single-quoted `bash -c` argument. For example, `/tmp/日本.md` reaches `tee` as a corrupted path; shell metacharacters in such paths can also become executable syntax. Build the inner command first, then shell-quote that entire command as one argument.
 
-- [P2] Match the exit marker against unwrapped terminal output — /home/moriya/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:928-928
+- [P2] Match the exit marker against unwrapped terminal output — ~/Workspace/dotfiles/home/dot_local/bin/common/executable_herdr-agents:928-928
   If the audit pane becomes narrower than the exit marker, Herdr's `recent` snapshot splits the marker across rendered lines. The regex then misses a successfully completed audit, waits the full timeout, and incorrectly reports it as still running. Use `recent-unwrapped` for both the marker wait and the subsequent status read so terminal resizing cannot change completion detection.

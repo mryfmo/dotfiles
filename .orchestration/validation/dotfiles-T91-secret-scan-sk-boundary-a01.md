@@ -69,7 +69,7 @@ The one file the branch pattern still flags is the T91 task file itself. Its val
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T91 (operator 2026-10-04): the committed-secret scan anchors key prefixes (`ghp_`, `github_pat_`, `sk-`) at a word boundary so hyphenated slugs such as `…audit-task-level…` are not flagged; real keys after whitespace, quotes or at line start still are.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T91 (operator 2026-10-04): the committed-secret scan anchors key prefixes (`ghp_`, `github_pat_`, `sk-`) at a word boundary so hyphenated slugs such as `…audit-task-level…` are not flagged; real keys after whitespace, quotes or at line start still are.'
 319df352-4d15-4ebd-8e74-20113096861a
 ```
 

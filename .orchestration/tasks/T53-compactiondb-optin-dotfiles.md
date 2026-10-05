@@ -1,7 +1,7 @@
 # T53: Opt dotfiles into CompactionDB + codify the regime-activation trigger
 
 task_id: T53
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 
@@ -33,7 +33,7 @@ touching .claude/settings.local.json (agmsg delivery owns it).
 
 ## Work order
 
-1. Run `~/.local/bin/common/compactiondb-install /Users/mryfmo/Workspace/dotfiles`
+1. Run `~/.local/bin/common/compactiondb-install ~/Workspace/dotfiles`
    and paste its full output in the validation artifact.
 2. Verify: `.claude/contextdb/config.json` has max_chars 12000 /
    files_budget_chars 2000 (dotfiles.4 defaults);

@@ -1,12 +1,12 @@
 # T30 validation
 
-Worktree: `/Users/mryfmo/Workspace/dotfiles-t30`
+Worktree: `~/Workspace/dotfiles-t30`
 
 ```text
-$ git -C /Users/mryfmo/Workspace/dotfiles-t30 status --short
+$ git -C ~/Workspace/dotfiles-t30 status --short
 (no output; clean after commit)
 
-$ git -C /Users/mryfmo/Workspace/dotfiles-t30 show --stat HEAD
+$ git -C ~/Workspace/dotfiles-t30 show --stat HEAD
 commit c67a662894f92f61164c843836debf49c7c45e87
 Author: mryfmo <mryfmo@gmail.com>
 Date:   Sat Jul 25 10:23:05 2026 +0900

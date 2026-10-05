@@ -1,7 +1,7 @@
 # T33j report: dot-audit-pane-prompt-detect-T33j-a01 (revision 1)
 
 - worker: `claude-standard-dot-a005`; orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`, clean before the switch
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c`, clean before the switch
 - branch: `fix/audit-pane-prompt-detect`, from `origin/main` = `d7a5947`, which includes T33i #204 as a9783ad
 - task_rev: sha256 `eb2423221107e3152a204dcfd6c49481b54df0baef786566c2fd6b5476b448d6`, checked against `origin/main`
 - cleanup: deleted the merged local branch `fix/orchestration-hygiene-T33i` (was `1994142`)

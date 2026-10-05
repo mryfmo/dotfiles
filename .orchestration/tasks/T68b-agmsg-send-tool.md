@@ -1,7 +1,7 @@
 # T68b: First-class agmsg_send tool for Pi workers (root fix for the RESULT lane)
 
 task_id: T68b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (Phase 2/4; E2E rounds 3-4 root cause)

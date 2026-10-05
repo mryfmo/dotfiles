@@ -8,7 +8,7 @@ The previous template-only edit missed the authoritative manifest. Changed its h
 status: ready_for_review
 cost: n/a
 
-Implemented on branch `fix/update-convergence` in `/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence`. No commit, push, PR, dependency changes, mise changes, or operator-home apply. Source changes are limited to the seven allowed paths. Only required task artifacts and explicitly requested CompactionDB decision writes were made in herdr-sheldon.
+Implemented on branch `fix/update-convergence` in `~/Workspace/dotfiles/.claude/worktrees/update-convergence`. No commit, push, PR, dependency changes, mise changes, or operator-home apply. Source changes are limited to the seven allowed paths. Only required task artifacts and explicitly requested CompactionDB decision writes were made in herdr-sheldon.
 
 - [memory:decision] The managed herdr SessionStart matcher now uses `^(startup|resume|clear|compact|fork)$`, matching the canonical herdr integration.
 - The update target checks `git ls-files -u` before the tracked-dirty check and explains conflict resolution before pulling. Plain-dirty notice remains unchanged. Added unit and CI-only bats regression.

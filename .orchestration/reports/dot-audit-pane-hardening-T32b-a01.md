@@ -2,7 +2,7 @@
 
 - worker: `claude-standard-dot-a005` (Claude Code, acting as worker per the dispatch note)
 - orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `fix/audit-pane-hardening` from `origin/main` = `c48e614` (includes 6b9babc)
 - task_rev: sha256 `a4694adf98c32ef2818072bee50e0cdbaa2cd0ff21f1a6a2707ecc84a0980038`,
   checked against the task file on `origin/main` c48e614 (the hashes match)

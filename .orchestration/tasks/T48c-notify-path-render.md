@@ -1,7 +1,7 @@
 # T48c: Render the notify command path at apply time (T48 live-deploy defect)
 
 task_id: T48c
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-compactiondb-research-integration.md (Phase 3; defect found by T51 deployment)

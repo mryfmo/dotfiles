@@ -47,8 +47,8 @@ Revision 1 list; additionally: enabling `llm_enabled` for any provider; adding `
 
 # AGMSG-TASK dot-claude-sandbox-T13-a01: manage the Claude Code Bash sandbox in the shared manifest, symmetric with the Codex workspace-write sandbox (plan part F)
 
-Plan: `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/melodic-conjuring-sifakis.md` §F.
-Repo (your worktree): `/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10`, branch `feat/claude-sandbox-manifest` created with `git switch -c feat/claude-sandbox-manifest origin/main` once the T10 branch is pushed and the tree is clean. You are `claude-standard-dot-a003`.
+Plan: `~/Workspace/dotfiles/.agents/worklog/claude/melodic-conjuring-sifakis.md` §F.
+Repo (your worktree): `~/Workspace/dotfiles/.claude/worktrees/env-converge-T10`, branch `feat/claude-sandbox-manifest` created with `git switch -c feat/claude-sandbox-manifest origin/main` once the T10 branch is pushed and the tree is clean. You are `claude-standard-dot-a003`.
 
 ## Problem (verified 2026-09-25)
 
@@ -85,7 +85,7 @@ Official reference (read it first): https://code.claude.com/docs/en/sandboxing a
 
 `scratch-home-e2e` (reverse: `rm -rf <scratchpad>/claude-sandbox-e2e-*`).
 
-## Artefacts (in `/home/moriya/Workspace/dotfiles`)
+## Artefacts (in `~/Workspace/dotfiles`)
 
 report `.orchestration/reports/dot-claude-sandbox-T13-a01.md` (design table, E2E results, open questions such as the ssh push decision, PR URL, `[memory:decision]`: "Claude Code sandbox is rendered from claude.sandbox in agent-config.yaml, symmetric with codex.sandbox_workspace_write; agmsg writable roots come from one manifest list"), validation, sandbox, learning, autoskill (same basename). `contextdb_cli.py memory add` from the main checkout; paste command and output.
 

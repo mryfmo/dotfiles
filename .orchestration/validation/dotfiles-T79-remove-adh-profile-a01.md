@@ -8,8 +8,8 @@ PR #267 (https://github.com/mryfmo/dotfiles/pull/267), branch `chore/remove-adh-
 ## Task file verification
 
 ```text
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T79-remove-adh-profile-a01.md
-def2ae58e778a8416769efb1f16fa7b7e1e7d63bac9011bfcc6e39a37a66dbc7  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T79-remove-adh-profile-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T79-remove-adh-profile-a01.md
+def2ae58e778a8416769efb1f16fa7b7e1e7d63bac9011bfcc6e39a37a66dbc7  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T79-remove-adh-profile-a01.md
 dispatched task_rev def2ae58…; matches
 ```
 
@@ -139,6 +139,6 @@ chatgpt-codex-connector[bot]	+1	2026-10-04T19:37:42Z
 ## CompactionDB (main checkout, unsandboxed)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T79 (operator 2026-10-03): the `adh` model profile is deleted from the manifest, the generator, the validator, the runtime check and the Codex profile sources; `.codex/adh.config.toml` is retired through `.chezmoiremove`.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T79 (operator 2026-10-03): the `adh` model profile is deleted from the manifest, the generator, the validator, the runtime check and the Codex profile sources; `.codex/adh.config.toml` is retired through `.chezmoiremove`.'
 bc88afea-5083-42ca-9cee-6b78d3e7ad98
 ```

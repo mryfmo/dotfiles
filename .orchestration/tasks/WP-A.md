@@ -1,7 +1,7 @@
 # WP-A: Remove tmux installation path
 
 task_id: WP-A
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wpa
 

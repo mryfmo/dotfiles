@@ -51,7 +51,7 @@ T38 (operator 2026-09-29).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec`;
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-sec`;
   ignore the Understand-Anything auto-update hook during this task; branch `fix/pr-gate-trust-boundary` from `origin/main`.
   Verify the dispatched task_rev sha256 against this file; else stop and
   PONG blocked.

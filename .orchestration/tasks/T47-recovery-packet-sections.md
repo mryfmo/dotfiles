@@ -1,7 +1,7 @@
 # T47: Recovery packet — fixed sections + deterministic artifact trail (P1+P2)
 
 task_id: T47
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-compactiondb-research-integration.md (Phase 2)

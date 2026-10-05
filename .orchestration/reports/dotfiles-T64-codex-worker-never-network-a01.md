@@ -84,7 +84,7 @@ The PR was opened only after `d950ac69` was pushed, so `b9c1aefa` never had a bo
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T64 (operator 2026-10-03): herdr-agents launches Codex worker seats with `--ask-for-approval never` and `sandbox_workspace_write.network_access=true`; a worker never prompts, out-of-sandbox and execpolicy-forbidden actions fail and are reported as blocked PONGs; interactive Codex sessions keep on-request and network off.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T64 (operator 2026-10-03): herdr-agents launches Codex worker seats with `--ask-for-approval never` and `sandbox_workspace_write.network_access=true`; a worker never prompts, out-of-sandbox and execpolicy-forbidden actions fail and are reported as blocked PONGs; interactive Codex sessions keep on-request and network off.'
 cd40adce-50c0-49f2-8016-6ca52883df0a
 ```
 

@@ -19,7 +19,7 @@ The rules name the two environment variables and `express` profile, not either m
 Required validation
 -------------------
 command: make validate-agent-assets
-attempt 1: sandbox could not initialize /Users/mryfmo/.cache/uv (Operation not permitted); no validation ran
+attempt 1: sandbox could not initialize ~/.cache/uv (Operation not permitted); no validation ran
 attempt 2: same command with existing uv cache access
 result: agent asset validation ok
 

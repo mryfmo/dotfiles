@@ -2,7 +2,7 @@
 
 - worker: `claude-standard-dot-a005` (Claude Code, acting as worker per dispatch note)
 - orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c`
 - branch: `fix/restart-worker-name-wait` (base `origin/main` = `02a0069`)
 - task_rev: sha256 `ac90ed8328b939f3f2672e1ea7100628de0b1d650378afd0ce2b2088401bd4cf`
   verified against the task file on `origin/main` and again on the branch base
@@ -88,7 +88,7 @@ in the validation file.
 
 - Plan mode was active at session start, so the harness required a plan file,
   which was written at
-  `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/agmsg-new-message-363-tender-cook.md`
+  `~/Workspace/dotfiles/.agents/worklog/claude/agmsg-new-message-363-tender-cook.md`
   (main checkout). That is a write outside the worktree and outside the listed
   `.orchestration` paths. It is untracked worklog content and was not
   committed.

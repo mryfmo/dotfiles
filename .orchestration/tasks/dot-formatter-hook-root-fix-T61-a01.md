@@ -1,6 +1,6 @@
 # AGMSG-TASK dot-formatter-hook-root-fix-T61-a01
 
-Drafted 2026-10-03 by the orchestrator seat; operator-approved ("後者で進めろ、T61 を起票しろ": format the repository once and keep it formatted in CI, rather than deleting the hook). Worker: `claude-standard-dot-a005` in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+Drafted 2026-10-03 by the orchestrator seat; operator-approved ("後者で進めろ、T61 を起票しろ": format the repository once and keep it formatted in CI, rather than deleting the hook). Worker: `claude-standard-dot-a005` in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 
 ## Objective
 

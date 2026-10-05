@@ -1,7 +1,7 @@
 # dotfiles-T82-codex-compaction-hooks-a01 — sandbox
 
 - Isolation:
-  - dedicated worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d`;
+  - dedicated worktree `~/Workspace/dotfiles/.claude/worktrees/worker-d`;
   - branch `feat/codex-compaction-hooks`, created from `origin/main` 2527be54 with `git switch --no-track -c`, run sandboxed (only `git fetch` ran outside, per the T79 audit lesson);
   - identity `claude-standard-dot-a006` (Claude Code, `standard`).
 - Ran in the Claude Code Bash sandbox:

@@ -1,7 +1,7 @@
 # T83 Sandbox
 
 - Worker: `codex-deep-dot`
-- Repository: `/Users/mryfmo/Workspace/dotfiles`
+- Repository: `~/Workspace/dotfiles`
 - Durable worker writes are limited to `.ua/fingerprints.json`, `.ua/knowledge-graph.json`, `.ua/meta.json`, and the five T83 artifacts.
 - Skill-requested analyzers wrote only ignored `.ua/intermediate/**` and `.ua/tmp/**` scratch outputs.
 - Repository sources and the installed Understand-Anything plugin were read-only.

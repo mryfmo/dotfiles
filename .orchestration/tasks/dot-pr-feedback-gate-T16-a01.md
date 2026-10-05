@@ -6,7 +6,7 @@ revision: 2
 
 Revision 2 replaces revision 1 entirely. Operator decision 2026-09-26T02:58Z: **CodeRabbit is removed from the gate; Codex review replaces it.** Reason: CodeRabbit's included limit is one review per hour per repository, which serialized every PR round onto a wall clock; Codex cloud review already ran on this repo (PRs #172–#177) without such a limit.
 
-Repo: `/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10`, branch `feat/pr-feedback-gate` (PR #182, head b25c005). You are `claude-standard-dot-a003`. Rebase onto origin/main (3375fb0 or later) first.
+Repo: `~/Workspace/dotfiles/.claude/worktrees/env-converge-T10`, branch `feat/pr-feedback-gate` (PR #182, head b25c005). You are `claude-standard-dot-a003`. Rebase onto origin/main (3375fb0 or later) first.
 
 ## Facts (verified by the orchestrator from GitHub data, 2026-09-26 03:0xZ)
 - `chatgpt-codex-connector[bot]` posted a Codex PR review on every PR authored by `mryfmo` (#172–#177): one issue comment carrying the markers `<!-- codex-pull-request-review-summary -->` and `<!-- codex-security-review:v1 {"blockingSeverityThreshold":"P0","headSha":"<sha>", …} -->`, plus inline review comments with `P1`/`P2` badges. It reviewed none of #178–#184 (author `moriya-fumio-thd`, the only gh account on this host).

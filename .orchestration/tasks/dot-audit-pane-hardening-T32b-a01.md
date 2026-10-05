@@ -33,7 +33,7 @@ audit-lane findings).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`, then `git switch -c fix/audit-pane-hardening origin/main`
   (origin/main includes 6b9babc). Verify the dispatched task_rev sha256
   against this file on your base, else stop and PONG.
@@ -78,7 +78,7 @@ make validate-agent-assets
 make unit-test
 shellcheck home/dot_local/bin/common/executable_herdr-agents
 shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_herdr-agents
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

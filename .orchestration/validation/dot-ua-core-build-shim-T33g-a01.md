@@ -19,7 +19,7 @@ Precondition printed before the run: `script unmodified vs origin/main`.
 FAIL: test_prefers_mise_exec_over_an_unbacked_pnpm_shim (tests.unit.test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_prefers_mise_exec_over_an_unbacked_pnpm_shim)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_update_agent_assets_ua_core.py", line 275, in test_prefers_mise_exec_over_an_unbacked_pnpm_shim
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_update_agent_assets_ua_core.py", line 275, in test_prefers_mise_exec_over_an_unbacked_pnpm_shim
     self.assertNotIn("WARN", result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'WARN' unexpectedly found in 'mise ERROR No version is set for shim: pnpm\nWARN: Understand-Anything core build failed in /tmp/ua-core-build-test-ors3ewy_/home/.claude/plugins/cache/understand-anything/understand-anything/2.9.7; run: cd /tmp/ua-core-build-test-ors3ewy_/home/.claude/plugins/cache/understand-anything/understand-anything/2.9.7 && pnpm install --frozen-lockfile && pnpm --filter @understand-anything/core build\n'
@@ -40,14 +40,14 @@ F
 FAIL: test_make_update_installs_the_pinned_pnpm (tests.unit.test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_make_update_installs_the_pinned_pnpm)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_update_agent_assets_ua_core.py", line 307, in test_make_update_installs_the_pinned_pnpm
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_update_agent_assets_ua_core.py", line 307, in test_make_update_installs_the_pinned_pnpm
     self.assertIn(
     ~~~~~~~~~~~~~^
         "mise install --locked npm:ccstatusline npm:ccusage npm:pnpm\n", result.stdout
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-AssertionError: 'mise install --locked npm:ccstatusline npm:ccusage npm:pnpm\n' not found in 'branch="$(git branch --show-current 2>/dev/null || true)"; \\\nupstream="$(git rev-parse --abbrev-ref --symbolic-full-name \'@{upstream}\' 2>/dev/null || true)"; \\\nreason=""; \\\nif [ -n "$(git ls-files -u)" ]; then \\\n\treason="index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"; \\\nelif [ "$branch" != main ]; then \\\n\treason="current branch is ${branch:-detached}, not main"; \\\nelif [ "$upstream" != origin/main ]; then \\\n\treason="upstream is ${upstream:-unset}, not origin/main"; \\\nelif ! git diff --quiet || ! git diff --cached --quiet; then \\\n\treason="tracked files have staged or unstaged changes"; \\\nfi; \\\nif [ -n "$reason" ]; then \\\n\tprintf "Notice: local source not pulled (%s); run \'git -C %s pull\' to fetch remote updates.\\n" "$reason" "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c"; \\\nelif ! git pull --ff-only; then \\\n\tprintf \'Warning: git pull --ff-only failed; continuing with local source.\\n\' >&2; \\\nfi\nchezmoi apply --verbose\nif [ -d "$HOME/.local/share/chezmoi-private" ] && [ -f "$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \\\n\tchezmoi --source "$HOME/.local/share/chezmoi-private" \\\n\t\t--config "$HOME/.config/chezmoi-private/chezmoi.yaml" \\\n\t\tapply --verbose; \\\nelse \\\n\techo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \\\nfi\nmise install --locked node\nmise install --locked npm:ccstatusline npm:ccusage\n./scripts/update-agent-assets.sh\nif ! command -v herdr > /dev/null 2>&1; then \\\n\techo "Herdr command not found; skipping config reload."; \\\n\texit 0; \\\nfi; \\\nif ! herdr_status="$(herdr status server --json)"; then \\\n\techo "Failed to read Herdr server status." >&2; \\\n\texit 1; \\\nfi; \\\nif ! server_status="$(printf \'%s\\n\' "$herdr_status" | jq -er \' if type == "object" and (.status | type == "string") then .status else error("invalid Herdr server status") end\')"; then \\\n\techo "Ambiguous or missing Herdr server status." >&2; \\\n\texit 1; \\\nfi; \\\ncase "$server_status" in \\\n\trunning) \\\n\t\tif reload_output="$(herdr server reload-config 2>&1)"; then \\\n\t\t\t[ -z "$reload_output" ] || printf \'%s\\n\' "$reload_output"; \\\n\t\telse \\\n\t\t\t[ -z "$reload_output" ] || printf \'%s\\n\' "$reload_output" >&2; \\\n\t\t\tcase "$reload_output" in \\\n\t\t\t\t*protocol_mismatch*) printf \'%s\\n\' "Herdr was updated; restart the server with \'herdr server stop\' or recreate the Ghostty session, then run \'herdr server reload-config\' manually." >&2 ;; \\\n\t\t\t\t*) exit 1 ;; \\\n\t\t\tesac; \\\n\t\tfi ;; \\\n\tnot_running) echo "Herdr server is not running; skipping config reload." ;; \\\n\t*) echo "Unknown or missing Herdr server status: ${server_status:-<missing>}" >&2; exit 1 ;; \\\nesac\nmake agmsg-bootstrap\nmake[1]: ディレクトリ \'/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c\' に入ります\nif [ -f home/dot_local/bin/common/executable_herdr-agents ]; then \\\n\tbash home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c"; \\\nelse \\\n\techo "Herdr agents source helper not found; skipping agmsg bootstrap."; \\\nfi\nmake[1]: ディレクトリ \'/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c\' から出ます\n'
+AssertionError: 'mise install --locked npm:ccstatusline npm:ccusage npm:pnpm\n' not found in 'branch="$(git branch --show-current 2>/dev/null || true)"; \\\nupstream="$(git rev-parse --abbrev-ref --symbolic-full-name \'@{upstream}\' 2>/dev/null || true)"; \\\nreason=""; \\\nif [ -n "$(git ls-files -u)" ]; then \\\n\treason="index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"; \\\nelif [ "$branch" != main ]; then \\\n\treason="current branch is ${branch:-detached}, not main"; \\\nelif [ "$upstream" != origin/main ]; then \\\n\treason="upstream is ${upstream:-unset}, not origin/main"; \\\nelif ! git diff --quiet || ! git diff --cached --quiet; then \\\n\treason="tracked files have staged or unstaged changes"; \\\nfi; \\\nif [ -n "$reason" ]; then \\\n\tprintf "Notice: local source not pulled (%s); run \'git -C %s pull\' to fetch remote updates.\\n" "$reason" "~/Workspace/dotfiles/.claude/worktrees/worker-c"; \\\nelif ! git pull --ff-only; then \\\n\tprintf \'Warning: git pull --ff-only failed; continuing with local source.\\n\' >&2; \\\nfi\nchezmoi apply --verbose\nif [ -d "$HOME/.local/share/chezmoi-private" ] && [ -f "$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \\\n\tchezmoi --source "$HOME/.local/share/chezmoi-private" \\\n\t\t--config "$HOME/.config/chezmoi-private/chezmoi.yaml" \\\n\t\tapply --verbose; \\\nelse \\\n\techo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \\\nfi\nmise install --locked node\nmise install --locked npm:ccstatusline npm:ccusage\n./scripts/update-agent-assets.sh\nif ! command -v herdr > /dev/null 2>&1; then \\\n\techo "Herdr command not found; skipping config reload."; \\\n\texit 0; \\\nfi; \\\nif ! herdr_status="$(herdr status server --json)"; then \\\n\techo "Failed to read Herdr server status." >&2; \\\n\texit 1; \\\nfi; \\\nif ! server_status="$(printf \'%s\\n\' "$herdr_status" | jq -er \' if type == "object" and (.status | type == "string") then .status else error("invalid Herdr server status") end\')"; then \\\n\techo "Ambiguous or missing Herdr server status." >&2; \\\n\texit 1; \\\nfi; \\\ncase "$server_status" in \\\n\trunning) \\\n\t\tif reload_output="$(herdr server reload-config 2>&1)"; then \\\n\t\t\t[ -z "$reload_output" ] || printf \'%s\\n\' "$reload_output"; \\\n\t\telse \\\n\t\t\t[ -z "$reload_output" ] || printf \'%s\\n\' "$reload_output" >&2; \\\n\t\t\tcase "$reload_output" in \\\n\t\t\t\t*protocol_mismatch*) printf \'%s\\n\' "Herdr was updated; restart the server with \'herdr server stop\' or recreate the Ghostty session, then run \'herdr server reload-config\' manually." >&2 ;; \\\n\t\t\t\t*) exit 1 ;; \\\n\t\t\tesac; \\\n\t\tfi ;; \\\n\tnot_running) echo "Herdr server is not running; skipping config reload." ;; \\\n\t*) echo "Unknown or missing Herdr server status: ${server_status:-<missing>}" >&2; exit 1 ;; \\\nesac\nmake agmsg-bootstrap\nmake[1]: ディレクトリ \'~/Workspace/dotfiles/.claude/worktrees/worker-c\' に入ります\nif [ -f home/dot_local/bin/common/executable_herdr-agents ]; then \\\n\tbash home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg "~/Workspace/dotfiles/.claude/worktrees/worker-c"; \\\nelse \\\n\techo "Herdr agents source helper not found; skipping agmsg bootstrap."; \\\nfi\nmake[1]: ディレクトリ \'~/Workspace/dotfiles/.claude/worktrees/worker-c\' から出ます\n'
 
 ----------------------------------------------------------------------
 Ran 1 test in 0.005s
@@ -146,118 +146,118 @@ test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_
 test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
 test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
 test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
-test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196ed9e40>
+test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196ed9e40>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196ed9f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196ed9f30>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196ed9d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196ed9d50>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196ed9b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196ed9b70>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda110>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda020>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda2f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda2f0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda200>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda3e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda3e0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda4d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda4d0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda5c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda5c0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda6b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda6b0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda7a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda7a0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda890>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb1972ac310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb1972ac310>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edaa70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edaa70>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edac50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edac50>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edad40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edad40>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edab60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edab60>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edae30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edae30>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edaf20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edaf20>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb010>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb010>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb100>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb1f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb1f0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb2e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb2e0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb3d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb3d0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb4c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb4c0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb5b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb5b0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb6a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb6a0>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196eda980>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb880>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb970>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb970>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb790>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edb790>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edba60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edba60>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edbc40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edbc40>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edbb50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edbb50>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edbd30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edbd30>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edbf10>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:338: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xedb196edbf10>
   relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -711,7 +711,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-ffic7z_g/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-ffic7z_g/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -746,7 +746,7 @@ exit=0
 ## git diff origin/main --stat
 
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main...HEAD --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main...HEAD --stat
  Makefile                                       |  2 +-
  README.md                                      |  3 +-
  scripts/update-agent-assets.sh                 | 13 ++++--
@@ -788,7 +788,7 @@ $ gh pr view 202 --json number,url,headRefOid,state
   "state": "OPEN",
   "url": "https://github.com/mryfmo/dotfiles/pull/202"
 }
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c log --oneline -2
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c log --oneline -2
 02fdac1 fix(make): install the pinned pnpm in make update
 2f012d2 fix(agent-assets): run pnpm through mise exec so an unbacked shim cannot break the core build
 ```

@@ -48,7 +48,7 @@ All outputs are verbatim in `.orchestration/validation/dotfiles-T70-make-update-
 CompactionDB, run in the main checkout outside the sandbox (its state dir is read-only from this worktree's sandbox):
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the [memory:decision] text above, verbatim>"
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the [memory:decision] text above, verbatim>"
 1b3e2eaf-7bed-4b48-a234-dda7568b32b3
 ```
 

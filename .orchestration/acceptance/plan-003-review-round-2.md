@@ -56,4 +56,4 @@ No other P0-P2 defect was found in the requested areas.
 
 The target repository exposes no plan-quality validator, Make target, hook, subagent definition, or CI entry point. The installed `plan-quality-gate` skill's manual independent-review checklist was therefore applied; no source or plan was edited. The plan has the expected scope, current-state evidence, commands, adversarial checks, STOP conditions, maintenance notes, and safety section, but the contradictory no-mutation wording above prevents acceptance.
 
-REVIEW-RESULT v1 task_id=plan-003 verdict=REVISE report=/Users/mryfmo/Workspace/dotfiles/.orchestration/acceptance/plan-003-review-round-2.md
+REVIEW-RESULT v1 task_id=plan-003 verdict=REVISE report=~/Workspace/dotfiles/.orchestration/acceptance/plan-003-review-round-2.md

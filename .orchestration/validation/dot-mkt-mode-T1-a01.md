@@ -21,7 +21,7 @@ F
 FAIL: test_codex_crit_normalizes_managed_marketplace_mode (__main__.RuntimeHealthTest.test_codex_crit_normalizes_managed_marketplace_mode)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/marketplace-mode/tests/unit/test_runtime_health.py", line 309, in test_codex_crit_normalizes_managed_marketplace_mode
+  File "~/Workspace/dotfiles/.claude/worktrees/marketplace-mode/tests/unit/test_runtime_health.py", line 309, in test_codex_crit_normalizes_managed_marketplace_mode
     self.assertEqual(0o644, stat.S_IMODE(marketplace.stat().st_mode))
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 420 != 436
@@ -68,7 +68,7 @@ After adding native `chezmoi init`, Lima exposed its host-mount mode translation
 ```text
 chezmoi_2.70.4_linux_arm64.tar.gz: OK
 === cycle 1: chezmoi apply ===
-chezmoi: .agents/plugins/marketplace.json: stat /home/dotmktcheck/.agents/plugins: no such file or directory
+chezmoi: .agents/plugins/marketplace.json: stat ~/.agents/plugins: no such file or directory
 diff --git a/.agents/plugins/marketplace.json b/.agents/plugins/marketplace.json
 new file mode 100664
 userdel: dotmktcheck mail spool (/var/mail/dotmktcheck) not found
@@ -78,7 +78,7 @@ scratch-user-removed=yes
 After copying the source into the VM-local scratch filesystem, an intermediate run proved why the writers need their real umasks: first apply under 002 records 0664, so a later normalized 0644 file correctly triggers the opposite mode prompt.
 
 ```text
-mode=644 path=/home/dotmktcheck/.agents/plugins/marketplace.json
+mode=644 path=~/.agents/plugins/marketplace.json
 === cycle 1: content diff ===
 content-diff=clean
 === cycle 2: chezmoi apply (drift gate) ===
@@ -146,17 +146,17 @@ index 0000000000000000000000000000000000000000..ea291c482cd03513b1b840fe1a2e82ef
 ==> Crit CLI
 
 ==> Codex Crit plugin
-  Installed: /home/dotmktcheck/.agents/plugins/marketplace.json
+  Installed: ~/.agents/plugins/marketplace.json
   Installed: .agents/skills/crit/SKILL.md
   Installed: .agents/skills/crit-cli/SKILL.md
   Installed: .agents/skills/crit-story/SKILL.md
-  Installed: /home/dotmktcheck/.codex/plugins/crit/.codex-plugin/plugin.json
-  Installed: /home/dotmktcheck/.codex/plugins/crit/skills/crit/SKILL.md
-  Installed: /home/dotmktcheck/.codex/plugins/crit/skills/crit-cli/SKILL.md
-  Installed: /home/dotmktcheck/.codex/plugins/crit/skills/crit-story/SKILL.md
-  Installed: /home/dotmktcheck/.codex/plugins/crit/hooks/hooks.json
-  Installed: /home/dotmktcheck/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
-  Installed: /home/dotmktcheck/.codex/config.toml
+  Installed: ~/.codex/plugins/crit/.codex-plugin/plugin.json
+  Installed: ~/.codex/plugins/crit/skills/crit/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-cli/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-story/SKILL.md
+  Installed: ~/.codex/plugins/crit/hooks/hooks.json
+  Installed: ~/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
+  Installed: ~/.codex/config.toml
   Use $crit in Codex to start a review loop
   The crit-cli skill is available to Codex agents when needed
   Use $crit-story in Codex to author a story and continue the review loop
@@ -167,24 +167,24 @@ index 0000000000000000000000000000000000000000..ea291c482cd03513b1b840fe1a2e82ef
   The Crit plugin includes a Codex Stop hook for proposed-plan review
   The Crit Codex plugin is enabled as crit@mryfmo-personal-plugins
 
-mode=644 path=/home/dotmktcheck/.agents/plugins/marketplace.json
+mode=644 path=~/.agents/plugins/marketplace.json
 === cycle 1: content diff ===
 content-diff=clean
 === cycle 2: chezmoi apply (drift gate) ===
 === cycle 2: agent-assets update_codex_crit (umask 002) ===
 
 ==> Codex Crit plugin
-  Installed: /home/dotmktcheck/.agents/plugins/marketplace.json
+  Installed: ~/.agents/plugins/marketplace.json
   Installed: .agents/skills/crit/SKILL.md
   Installed: .agents/skills/crit-cli/SKILL.md
   Installed: .agents/skills/crit-story/SKILL.md
-  Installed: /home/dotmktcheck/.codex/plugins/crit/.codex-plugin/plugin.json
-  Installed: /home/dotmktcheck/.codex/plugins/crit/skills/crit/SKILL.md
-  Installed: /home/dotmktcheck/.codex/plugins/crit/skills/crit-cli/SKILL.md
-  Installed: /home/dotmktcheck/.codex/plugins/crit/skills/crit-story/SKILL.md
-  Installed: /home/dotmktcheck/.codex/plugins/crit/hooks/hooks.json
-  Installed: /home/dotmktcheck/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
-  Skipped:   /home/dotmktcheck/.codex/config.toml (Codex plugin already enabled)
+  Installed: ~/.codex/plugins/crit/.codex-plugin/plugin.json
+  Installed: ~/.codex/plugins/crit/skills/crit/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-cli/SKILL.md
+  Installed: ~/.codex/plugins/crit/skills/crit-story/SKILL.md
+  Installed: ~/.codex/plugins/crit/hooks/hooks.json
+  Installed: ~/.codex/plugins/cache/mryfmo-personal-plugins/crit/local
+  Skipped:   ~/.codex/config.toml (Codex plugin already enabled)
   Use $crit in Codex to start a review loop
   The crit-cli skill is available to Codex agents when needed
   Use $crit-story in Codex to author a story and continue the review loop
@@ -195,7 +195,7 @@ content-diff=clean
   The Crit plugin includes a Codex Stop hook for proposed-plan review
   The Crit Codex plugin is enabled as crit@mryfmo-personal-plugins
 
-mode=644 path=/home/dotmktcheck/.agents/plugins/marketplace.json
+mode=644 path=~/.agents/plugins/marketplace.json
 === cycle 2: content diff ===
 content-diff=clean
 === final chezmoi status ===

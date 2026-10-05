@@ -58,7 +58,7 @@ account (operator decision 2026-10-01, probe recorded in the T48 task file).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`;
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`;
   start only after your T43 r5 RESULT is sent. `git fetch`, then branch
   `fix/audit-profile-gpt6-sol` from `origin/main`. Leave
   `feat/orchestration-rules-T43` and `fix/sandbox-unix-sockets` untouched.

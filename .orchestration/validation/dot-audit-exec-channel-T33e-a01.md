@@ -17,7 +17,7 @@ Precondition printed before the run: `script unmodified vs origin/main`. Command
 FAIL: test_audit_gates_on_the_concluding_line_of_the_last_message (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) (case='b', verdict='correct')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2386, in test_audit_gates_on_the_concluding_line_of_the_last_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2386, in test_audit_gates_on_the_concluding_line_of_the_last_message
     self.assertEqual(result.returncode, returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : Audit exit: 0
@@ -29,7 +29,7 @@ Audit verdict: missing
 FAIL: test_audit_gates_on_the_concluding_line_of_the_last_message (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) (case='b2', verdict='correct')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2386, in test_audit_gates_on_the_concluding_line_of_the_last_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2386, in test_audit_gates_on_the_concluding_line_of_the_last_message
     self.assertEqual(result.returncode, returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : Audit exit: 0
@@ -41,7 +41,7 @@ Audit verdict: missing
 FAIL: test_audit_gates_on_the_concluding_line_of_the_last_message (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) (case='d', verdict='incorrect')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2387, in test_audit_gates_on_the_concluding_line_of_the_last_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2387, in test_audit_gates_on_the_concluding_line_of_the_last_message
     self.assertIn(f"Audit verdict: {verdict}\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict: incorrect\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-vxp_xzfo/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: missing\n'
@@ -50,7 +50,7 @@ AssertionError: 'Audit verdict: incorrect\n' not found in 'Audit exit: 0\nAudit 
 FAIL: test_audit_gates_on_the_concluding_line_of_the_last_message (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) (case='d2', verdict='blocked')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2387, in test_audit_gates_on_the_concluding_line_of_the_last_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2387, in test_audit_gates_on_the_concluding_line_of_the_last_message
     self.assertIn(f"Audit verdict: {verdict}\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict: blocked\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-vxp_xzfo/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: missing\n'
@@ -59,7 +59,7 @@ AssertionError: 'Audit verdict: blocked\n' not found in 'Audit exit: 0\nAudit ev
 FAIL: test_audit_gates_on_the_concluding_line_of_the_last_message (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) (case='e', verdict='blocked')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2387, in test_audit_gates_on_the_concluding_line_of_the_last_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2387, in test_audit_gates_on_the_concluding_line_of_the_last_message
     self.assertIn(f"Audit verdict: {verdict}\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict: blocked\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-vxp_xzfo/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: missing\n'
@@ -68,7 +68,7 @@ AssertionError: 'Audit verdict: blocked\n' not found in 'Audit exit: 0\nAudit ev
 FAIL: test_audit_gates_on_the_concluding_line_of_the_last_message (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) (case='e2', verdict='correct')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2386, in test_audit_gates_on_the_concluding_line_of_the_last_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2386, in test_audit_gates_on_the_concluding_line_of_the_last_message
     self.assertEqual(result.returncode, returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : Audit exit: 0
@@ -80,7 +80,7 @@ Audit verdict: missing
 FAIL: test_audit_gates_on_the_concluding_line_of_the_last_message (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) (case='f', verdict='correct')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2388, in test_audit_gates_on_the_concluding_line_of_the_last_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2388, in test_audit_gates_on_the_concluding_line_of_the_last_message
     self.assertEqual(
     ~~~~~~~~~~~~~~~~^
         "Audit verdict source: transcript\n" in result.stdout, fallback, result.stdout
@@ -96,7 +96,7 @@ Audit verdict: correct
 FAIL: test_audit_gates_on_the_concluding_line_of_the_last_message (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) (case='f2', verdict='correct')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2388, in test_audit_gates_on_the_concluding_line_of_the_last_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2388, in test_audit_gates_on_the_concluding_line_of_the_last_message
     self.assertEqual(
     ~~~~~~~~~~~~~~~~^
         "Audit verdict source: transcript\n" in result.stdout, fallback, result.stdout
@@ -112,7 +112,7 @@ Audit verdict: correct
 FAIL: test_audit_gates_on_the_concluding_line_of_the_last_message (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) (case='g', verdict='missing')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2388, in test_audit_gates_on_the_concluding_line_of_the_last_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2388, in test_audit_gates_on_the_concluding_line_of_the_last_message
     self.assertEqual(
     ~~~~~~~~~~~~~~~~^
         "Audit verdict source: transcript\n" in result.stdout, fallback, result.stdout
@@ -128,7 +128,7 @@ Audit verdict: missing
 FAIL: test_audit_pane_command_tees_evidence_and_waits_for_a_fresh_marker (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_pane_command_tees_evidence_and_waits_for_a_fresh_marker)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2153, in test_audit_pane_command_tees_evidence_and_waits_for_a_fresh_marker
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2153, in test_audit_pane_command_tees_evidence_and_waits_for_a_fresh_marker
     self.assertRegex(
     ~~~~~~~~~~~~~~~~^
         inner,
@@ -145,7 +145,7 @@ AssertionError: Regex didn't match: '^cd -- \\S+ && set -o pipefail && rm -f -- 
 FAIL: test_audit_quotes_the_last_message_path_for_a_non_ascii_out (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_quotes_the_last_message_path_for_a_non_ascii_out)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2401, in test_audit_quotes_the_last_message_path_for_a_non_ascii_out
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2401, in test_audit_quotes_the_last_message_path_for_a_non_ascii_out
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : Audit exit: 0
@@ -157,7 +157,7 @@ Audit verdict: missing
 FAIL: test_audit_runs_codex_exec_with_the_prompt_and_last_message_file (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_runs_codex_exec_with_the_prompt_and_last_message_file)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2336, in test_audit_runs_codex_exec_with_the_prompt_and_last_message_file
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2336, in test_audit_runs_codex_exec_with_the_prompt_and_last_message_file
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : Audit exit: 0
@@ -169,7 +169,7 @@ Audit verdict: missing
 FAIL: test_audit_uses_manifest_audit_codex_args (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_uses_manifest_audit_codex_args)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2254, in test_audit_uses_manifest_audit_codex_args
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2254, in test_audit_uses_manifest_audit_codex_args
     self.assertIn(
     ~~~~~~~~~~~~~^
         " && codex --profile audit-e2e exec --sandbox read-only -C ",
@@ -184,7 +184,7 @@ AssertionError: ' && codex --profile audit-e2e exec --sandbox read-only -C ' not
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='a', verdict='correct')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: correct\n'
@@ -193,7 +193,7 @@ AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='h', verdict='blocked')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: blocked\n'
@@ -202,7 +202,7 @@ AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='b', verdict='blocked')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: blocked\n'
@@ -211,7 +211,7 @@ AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='c', verdict='missing')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: missing\n'
@@ -220,7 +220,7 @@ AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='d', verdict='incorrect')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: incorrect\n'
@@ -229,7 +229,7 @@ AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='f', verdict='missing')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: missing\n'
@@ -238,7 +238,7 @@ AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='g', verdict='correct')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: correct\n'
@@ -247,7 +247,7 @@ AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='i', verdict='missing')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: missing\n'
@@ -256,7 +256,7 @@ AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='j', verdict='incorrect')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: incorrect\n'
@@ -265,7 +265,7 @@ AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='k', verdict='correct')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: correct\n'
@@ -274,7 +274,7 @@ AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0
 FAIL: test_audit_verdict_gate_reads_only_the_final_codex_block (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) (case='l', verdict='incorrect')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2321, in test_audit_verdict_gate_reads_only_the_final_codex_block
     self.assertIn("Audit verdict source: transcript\n", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'Audit verdict source: transcript\n' not found in 'Audit exit: 0\nAudit evidence: /tmp/herdr-agents-test-jf7i6hjd/project/.orchestration/validation/audit-926d9f1.md\nAudit verdict: incorrect\n'
@@ -356,118 +356,118 @@ test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_
 test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
 test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
 test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
-test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a020>
+test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a020>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a110>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a049f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a049f30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a049d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a049d50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a2f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a2f0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a200>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a4d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a4d0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a3e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a3e0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a5c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a5c0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a6b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a6b0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a7a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a7a0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a890>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04a980>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04aa70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04aa70>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a6d8310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a6d8310>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04ac50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04ac50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04ae30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04ae30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04af20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04af20>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04ad40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04ad40>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b010>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b010>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b100>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b1f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b1f0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b2e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b2e0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b3d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b3d0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b4c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b4c0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b5b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b5b0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b6a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b6a0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b790>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b790>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b880>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04ab60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04ab60>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04ba60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04ba60>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04bb50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04bb50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b970>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04b970>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04bc40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04bc40>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04be20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04be20>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04bd30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04bd30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04bf10>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c91a04bf10>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c919fc4130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2c919fc4130>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -904,7 +904,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-bbh3kx9w/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-bbh3kx9w/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -924,7 +924,7 @@ test_workflows_have_no_job_level_permission_overrides (test_workflow_security.Wo
 FAIL: test_bench_runs_five_layer_two_fixtures (test_permgate.PermgateTest.test_bench_runs_five_layer_two_fixtures)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_permgate.py", line 837, in test_bench_runs_five_layer_two_fixtures
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_permgate.py", line 837, in test_bench_runs_five_layer_two_fixtures
     self.assertEqual(result["successful_classifications"], 5)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 5
@@ -996,118 +996,118 @@ test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_
 test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
 test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
 test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
-test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392020>
+test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392020>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392110>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df391f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df391f30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df391d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df391d50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3922f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3922f0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392200>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3924d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3924d0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3923e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3923e0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3925c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3925c0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3926b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3926b0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3927a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3927a0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392890>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392980>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392a70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392a70>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773dfa1c310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773dfa1c310>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392c50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392c50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392e30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392e30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392f20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392f20>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392d40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392d40>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393010>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393010>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393100>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3931f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3931f0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3932e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3932e0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3933d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3933d0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3934c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3934c0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3935b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3935b0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3936a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df3936a0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393790>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393790>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393880>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392b60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df392b60>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393a60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393a60>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393b50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393b50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393970>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393970>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393c40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393c40>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393e20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393e20>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393d30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393d30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393f10>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df393f10>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df30c130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe773df30c130>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -1544,7 +1544,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-acm8ey_w/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-acm8ey_w/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1636,118 +1636,118 @@ test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_
 test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
 test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
 test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
-test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a020>
+test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a020>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a110>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a49f30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a49f30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a49d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a49d50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a2f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a2f0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a200>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a4d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a4d0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a3e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a3e0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a5c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a5c0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a6b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a6b0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a7a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a7a0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a890>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4a980>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4aa70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4aa70>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba70d8310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba70d8310>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4ac50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4ac50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4ae30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4ae30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4af20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4af20>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4ad40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4ad40>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b010>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b010>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b100>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b1f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b1f0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b2e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b2e0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b3d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b3d0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b4c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b4c0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b5b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b5b0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b6a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b6a0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b790>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b790>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b880>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4ab60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4ab60>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4ba60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4ba60>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4bb50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4bb50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b970>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4b970>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4bc40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4bc40>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4be20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4be20>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4bd30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4bd30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4bf10>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba6a4bf10>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba69c4130>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe2aba69c4130>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -2184,7 +2184,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-vicfpqx1/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-vicfpqx1/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -2219,7 +2219,7 @@ exit=0
 ## Rebase and push
 
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c log --oneline -3
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c log --oneline -3
 bbd70c1 fix(herdr-agents): run the audit through codex exec and gate on its last message
 f6b76b8 chore(orchestration): mask the remaining *_token schema field quotes in the T33c audit evidence (secret validator false positive)
 e8cf7e1 chore(orchestration): mask schema field names in the T33c rev2 audit evidence that tripped the secret validator (false positive)
@@ -2232,7 +2232,7 @@ exit=0
 ## git diff origin/main --stat
 
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
  README.md                                         |  47 +++++-----
  home/dot_local/bin/common/executable_herdr-agents |  64 +++++++++-----
  tests/unit/test_herdr_agents.py                   | 100 +++++++++++++++++++++-
@@ -2291,7 +2291,7 @@ Precondition printed before the run: `script == bbd70c1 (HEAD)` (`git diff --qui
 FAIL: test_audit_gates_on_the_concluding_line_of_the_last_message (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) (case='m', verdict='incorrect')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2405, in test_audit_gates_on_the_concluding_line_of_the_last_message
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2405, in test_audit_gates_on_the_concluding_line_of_the_last_message
     self.assertEqual(result.returncode, returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : Audit exit: 0
@@ -2386,118 +2386,118 @@ test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_
 test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
 test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
 test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
-test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc29f30>
+test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc29f30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a020>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc29e40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc29e40>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc29c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc29c60>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a200>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a110>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a110>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a3e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a3e0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a2f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a2f0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a4d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a4d0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a5c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a5c0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a6b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a6b0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a7a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a7a0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a890>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2a980>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cc248310>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cc248310>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2ab60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2ab60>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2ad40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2ad40>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2ae30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2ae30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2ac50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2ac50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2af20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2af20>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b010>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b010>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b100>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b100>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b1f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b1f0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b2e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b2e0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b3d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b3d0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b4c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b4c0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b5b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b5b0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b6a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b6a0>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b790>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b790>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2aa70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2aa70>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b970>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b970>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2ba60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2ba60>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2b880>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2bb50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2bb50>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2bd30>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2bd30>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2bc40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2bc40>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2be20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2be20>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2bf10>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/tomllib/_parser.py:219: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf159cbc2bf10>
   if not isinstance(cont, dict):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -2934,7 +2934,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-ef0d1aj0/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-ef0d1aj0/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -2969,7 +2969,7 @@ exit=0
 ## git diff origin/main --stat
 
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
  README.md                                         |  47 +++++----
  home/dot_local/bin/common/executable_herdr-agents |  66 +++++++-----
  tests/unit/test_herdr_agents.py                   | 119 +++++++++++++++++++++-
@@ -3006,7 +3006,7 @@ $ gh pr view 199 --json number,url,headRefOid,state
   "state": "OPEN",
   "url": "https://github.com/mryfmo/dotfiles/pull/199"
 }
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c log --oneline -2
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c log --oneline -2
 1696638 fix(herdr-agents): skip only the exact tokens-used footer in the transcript fallback
 bbd70c1 fix(herdr-agents): run the audit through codex exec and gate on its last message
 ```

@@ -1,7 +1,7 @@
 # fix-chezmoi-pycache-modify-exec: Repair `make update` chezmoi exec format error
 
 task_id: fix-chezmoi-pycache-modify-exec
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-gpt55-high
 

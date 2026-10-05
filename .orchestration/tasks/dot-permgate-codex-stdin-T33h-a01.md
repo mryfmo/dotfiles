@@ -32,7 +32,7 @@ stdin (operator 2026-09-28, from the T33d diagnosis).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`; `git switch -c fix/permgate-codex-stdin origin/main`.
   Verify the dispatched task_rev sha256 against this file on your base, else
   stop and PONG. If the worktree has uncommitted files, stop and PONG. After
@@ -58,7 +58,7 @@ stdin (operator 2026-09-28, from the T33d diagnosis).
 make validate-agent-assets
 make unit-test
 sleep 20 | python3 -m unittest tests.unit.test_permgate -k <new case>   (before and after)
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

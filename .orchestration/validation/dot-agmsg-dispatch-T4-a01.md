@@ -1,6 +1,6 @@
 # Validation
 
-Worktree: `/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch`. No local Bats. Empty output blocks mean the command produced no output.
+Worktree: `~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch`. No local Bats. Empty output blocks mean the command produced no output.
 
 ## uv run python -m unittest discover -s tests/unit -p test_agmsg_dispatch.py -v (red)
 
@@ -10,9 +10,9 @@ Exit: 2
 actas-lock.sh
 identifier.sh
 storage.sh
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/b7416bf3fb814042: Operation not permitted (os error 1)
-error: Failed to initialize cache at `/Users/mryfmo/.cache/uv`
-  cause: failed to open file `/Users/mryfmo/.cache/uv/sdists-v9/.git`: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/mise.toml ~/.local/state/mise/tracked-configs/b7416bf3fb814042: Operation not permitted (os error 1)
+error: Failed to initialize cache at `~/.cache/uv`
+  cause: failed to open file `~/.cache/uv/sdists-v9/.git`: Operation not permitted (os error 1)
 ```
 
 ## uv run python -m unittest discover -s tests/unit -p test_agmsg_dispatch.py -v (red retry)
@@ -29,17 +29,17 @@ test_working_unread_never_wakes (test_agmsg_dispatch.AgmsgDispatchTest.test_work
 FAIL: test_idle_wakes_once_and_reads (test_agmsg_dispatch.AgmsgDispatchTest.test_idle_wakes_once_and_reads)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 74, in test_idle_wakes_once_and_reads
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 74, in test_idle_wakes_once_and_reads
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 127 != 0 : bash: /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/home/dot_local/bin/common/executable_agmsg-dispatch: No such file or directory
+AssertionError: 127 != 0 : bash: ~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/home/dot_local/bin/common/executable_agmsg-dispatch: No such file or directory
 
 
 ======================================================================
 FAIL: test_unread_retries_once_then_fails (test_agmsg_dispatch.AgmsgDispatchTest.test_unread_retries_once_then_fails)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 92, in test_unread_retries_once_then_fails
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 92, in test_unread_retries_once_then_fails
     self.assertEqual(result.returncode, 1)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 127 != 1
@@ -48,17 +48,17 @@ AssertionError: 127 != 1
 FAIL: test_working_does_not_wake (test_agmsg_dispatch.AgmsgDispatchTest.test_working_does_not_wake)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 86, in test_working_does_not_wake
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 86, in test_working_does_not_wake
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 127 != 0 : bash: /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/home/dot_local/bin/common/executable_agmsg-dispatch: No such file or directory
+AssertionError: 127 != 0 : bash: ~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/home/dot_local/bin/common/executable_agmsg-dispatch: No such file or directory
 
 
 ======================================================================
 FAIL: test_working_unread_never_wakes (test_agmsg_dispatch.AgmsgDispatchTest.test_working_unread_never_wakes)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 100, in test_working_unread_never_wakes
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 100, in test_working_unread_never_wakes
     self.assertEqual(result.returncode, 1)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 127 != 1
@@ -83,7 +83,7 @@ test_working_unread_never_wakes (test_agmsg_dispatch.AgmsgDispatchTest.test_work
 FAIL: test_idle_wakes_once_and_reads (test_agmsg_dispatch.AgmsgDispatchTest.test_idle_wakes_once_and_reads)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 74, in test_idle_wakes_once_and_reads
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 74, in test_idle_wakes_once_and_reads
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : agmsg-dispatch: send failed
@@ -93,7 +93,7 @@ AssertionError: 1 != 0 : agmsg-dispatch: send failed
 FAIL: test_unread_retries_once_then_fails (test_agmsg_dispatch.AgmsgDispatchTest.test_unread_retries_once_then_fails)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 93, in test_unread_retries_once_then_fails
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 93, in test_unread_retries_once_then_fails
     self.assertIn("unread", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'unread' not found in 'agmsg-dispatch: send failed\n'
@@ -102,7 +102,7 @@ AssertionError: 'unread' not found in 'agmsg-dispatch: send failed\n'
 FAIL: test_working_does_not_wake (test_agmsg_dispatch.AgmsgDispatchTest.test_working_does_not_wake)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 86, in test_working_does_not_wake
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 86, in test_working_does_not_wake
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : agmsg-dispatch: send failed
@@ -215,7 +215,7 @@ Exit: 0
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/b3755dff5c33/review.json",
+  "review_file": "~/.crit/reviews/b3755dff5c33/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -284,7 +284,7 @@ Exit: 0
 ```text
 ```
 
-## uv run --with pyyaml python /Users/mryfmo/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
+## uv run --with pyyaml python ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
 
 Exit: 0
 
@@ -766,7 +766,7 @@ test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.Vali
 test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-ispzj8hq/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-ispzj8hq/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -819,7 +819,7 @@ test_working_unread_never_wakes (test_agmsg_dispatch.AgmsgDispatchTest.test_work
 FAIL: test_missing_pane_inserts_nothing (test_agmsg_dispatch.AgmsgDispatchTest.test_missing_pane_inserts_nothing)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 149, in test_missing_pane_inserts_nothing
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 149, in test_missing_pane_inserts_nothing
     self.assertEqual(result.returncode, 1)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 4 != 1
@@ -828,7 +828,7 @@ AssertionError: 4 != 1
 FAIL: test_retry_does_not_wake_newly_working_pane (test_agmsg_dispatch.AgmsgDispatchTest.test_retry_does_not_wake_newly_working_pane)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 136, in test_retry_does_not_wake_newly_working_pane
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 136, in test_retry_does_not_wake_newly_working_pane
     self.assertEqual(len(self.calls.read_text().splitlines()), 1)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1
@@ -837,7 +837,7 @@ AssertionError: 0 != 1
 FAIL: test_timeout_is_one_shared_budget (test_agmsg_dispatch.AgmsgDispatchTest.test_timeout_is_one_shared_budget)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 143, in test_timeout_is_one_shared_budget
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 143, in test_timeout_is_one_shared_budget
     self.assertLess(time.monotonic() - started, 3.0)
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 4.132944250013679 not less than 3.0
@@ -846,7 +846,7 @@ AssertionError: 4.132944250013679 not less than 3.0
 FAIL: test_wake_failure_identifies_sent_message (test_agmsg_dispatch.AgmsgDispatchTest.test_wake_failure_identifies_sent_message)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 158, in test_wake_failure_identifies_sent_message
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 158, in test_wake_failure_identifies_sent_message
     self.assertIn("sent message 1;", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'sent message 1;' not found in ''
@@ -876,7 +876,7 @@ test_working_unread_never_wakes (test_agmsg_dispatch.AgmsgDispatchTest.test_work
 FAIL: test_missing_pane_inserts_nothing (test_agmsg_dispatch.AgmsgDispatchTest.test_missing_pane_inserts_nothing)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 151, in test_missing_pane_inserts_nothing
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 151, in test_missing_pane_inserts_nothing
     self.assertEqual(result.returncode, 1)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 4 != 1
@@ -885,7 +885,7 @@ AssertionError: 4 != 1
 FAIL: test_retry_does_not_wake_newly_working_pane (test_agmsg_dispatch.AgmsgDispatchTest.test_retry_does_not_wake_newly_working_pane)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 138, in test_retry_does_not_wake_newly_working_pane
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 138, in test_retry_does_not_wake_newly_working_pane
     self.assertEqual(len(self.calls.read_text().splitlines()), 1)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 1
@@ -894,7 +894,7 @@ AssertionError: 2 != 1
 FAIL: test_timeout_is_one_shared_budget (test_agmsg_dispatch.AgmsgDispatchTest.test_timeout_is_one_shared_budget)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 145, in test_timeout_is_one_shared_budget
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 145, in test_timeout_is_one_shared_budget
     self.assertLess(time.monotonic() - started, 3.0)
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 4.143756375007797 not less than 3.0
@@ -903,7 +903,7 @@ AssertionError: 4.143756375007797 not less than 3.0
 FAIL: test_wake_failure_identifies_sent_message (test_agmsg_dispatch.AgmsgDispatchTest.test_wake_failure_identifies_sent_message)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 160, in test_wake_failure_identifies_sent_message
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 160, in test_wake_failure_identifies_sent_message
     self.assertIn("sent message 1;", result.stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'sent message 1;' not found in ''
@@ -912,7 +912,7 @@ AssertionError: 'sent message 1;' not found in ''
 FAIL: test_worker_becoming_idle_after_send_is_woken (test_agmsg_dispatch.AgmsgDispatchTest.test_worker_becoming_idle_after_send_is_woken)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 131, in test_worker_becoming_idle_after_send_is_woken
+  File "~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/tests/unit/test_agmsg_dispatch.py", line 131, in test_worker_becoming_idle_after_send_is_woken
     self.assertEqual(result.returncode, 0, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : agmsg-dispatch: message 1 remains unread by worker after timeout
@@ -1003,7 +1003,7 @@ Exit: 0
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/mryfmo/.crit/reviews/b3755dff5c33/review.json",
+  "review_file": "~/.crit/reviews/b3755dff5c33/review.json",
   "review_file_exists": true,
   "round": 1,
   "sessions": [],
@@ -1551,7 +1551,7 @@ test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.Vali
 test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-a45vvzvx/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-a45vvzvx/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok

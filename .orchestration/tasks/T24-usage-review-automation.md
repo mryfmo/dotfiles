@@ -50,7 +50,7 @@ adoption-gate check inside `make upgrade`.
 
 - A chezmoi-managed LaunchAgent plist (label
   `com.mryfmo.dotfiles.usage-snapshot`) that runs
-  `make -C /Users/mryfmo/Workspace/dotfiles usage-snapshot usage-report`
+  `make -C ~/Workspace/dotfiles usage-snapshot usage-report`
   weekly (Monday 09:00), logging stdout/err to
   `~/.config/dotfiles/usage-review.log`.
 - Follow the repo's existing pattern for installing LaunchAgents if one

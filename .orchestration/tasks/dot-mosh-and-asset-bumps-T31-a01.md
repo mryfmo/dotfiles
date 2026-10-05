@@ -35,7 +35,7 @@ fails required when bwrap is missing with codex present (audit P2)
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`, then
   `git switch -c feat/mosh-and-asset-bumps origin/main`.
   (Verify the dispatched task_rev sha256 against this file on your base, else
@@ -188,7 +188,7 @@ v1.26.0` (published 2026-06-28, outside the window) and `sheldon`
 uv run --with pyyaml scripts/generate-agent-configs.py --check
 make validate-agent-assets
 make unit-test
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

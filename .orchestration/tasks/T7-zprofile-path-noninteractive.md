@@ -1,7 +1,7 @@
 # T7: Make PATH available to non-interactive login shells (fix ghostty initial-command chain)
 
 task_id: T7
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-gpt55-high
 
@@ -59,7 +59,7 @@ git commit; git push; chezmoi apply; make update/upgrade; make require-crit-revi
 2. Simulated clean-login check WITHOUT touching deployed files: run
    `env -i HOME=$(mktemp -d) ... zsh -lc` style simulation is not possible
    against repo sources directly, so instead assert content statically AND
-   run: `zsh -fc 'HOME=/Users/mryfmo; source home/dot_zprofile 2>/dev/null; print -l $path | grep -c "/Users/mryfmo/.local/bin/common"'` → >= 1
+   run: `zsh -fc 'HOME=~; source home/dot_zprofile 2>/dev/null; print -l $path | grep -c "~/.local/bin/common"'` → >= 1
    (stub `brew`/`mise` on a fake PATH first if sourcing errors otherwise; show what you did)
 3. `uv run python -m unittest discover -s tests/unit -v` → green including new/updated tests
 4. `git status --porcelain` → only expected changes

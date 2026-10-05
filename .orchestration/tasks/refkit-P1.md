@@ -1,14 +1,14 @@
 # AGMSG-TASK refkit-P1: import kit v3 as the v4 baseline tree and reproduce its validation
 
-Covers plan tasks P1-01, P1-02, P1-03, P1-04, P1-05 and P0-03 (baseline reproduction). Plan: `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/ai-references-vivid-sparrow.md` (第 2 部 §3 and P0-03). The findings referenced below (A-01 … E-02) are in 第 1 部 of the same file — read section A and E before starting.
+Covers plan tasks P1-01, P1-02, P1-03, P1-04, P1-05 and P0-03 (baseline reproduction). Plan: `~/Workspace/dotfiles/.agents/worklog/claude/ai-references-vivid-sparrow.md` (第 2 部 §3 and P0-03). The findings referenced below (A-01 … E-02) are in 第 1 部 of the same file — read section A and E before starting.
 
 ## Objective
 Replace the current flat, mixed-generation `references/` layout with the single v3 kit tree, archive the zips with checksums, and reproduce the kit's own validation (`kit_lint`, examples, Mermaid) on this machine so we know the real baseline (versions, results) before any content changes.
 
 ## Inputs (read-only, outside your worktree)
-`/home/moriya/Workspace/dotfiles/references/` in the MAIN worktree (untracked there). It contains 30 loose `.md` files and 4 zips: `PRD_ADR_BDD.zip`, `PRD_ADR_BDD_Kit_v2_20260919.zip`, `PRD_ADR_BDD_TEST_Kit_v3_20260919.zip`, `TestSuite.zip`. Do not modify anything in the main worktree.
+`~/Workspace/dotfiles/references/` in the MAIN worktree (untracked there). It contains 30 loose `.md` files and 4 zips: `PRD_ADR_BDD.zip`, `PRD_ADR_BDD_Kit_v2_20260919.zip`, `PRD_ADR_BDD_TEST_Kit_v3_20260919.zip`, `TestSuite.zip`. Do not modify anything in the main worktree.
 
-## Scope (allowed_files, all inside /home/moriya/Workspace/dotfiles-w1)
+## Scope (allowed_files, all inside ~/Workspace/dotfiles-w1)
 - `references/**` (new tree), `.gitignore`
 - `.orchestration/reports/refkit-P1.md`, `.orchestration/validation/refkit-P1.md`, `.orchestration/sandboxes/refkit-P1.md`, `.orchestration/learning/refkit-P1.md`, `.orchestration/autoskill/runs/refkit-P1.md`
 

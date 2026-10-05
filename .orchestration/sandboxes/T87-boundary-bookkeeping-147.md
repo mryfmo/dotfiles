@@ -1,6 +1,6 @@
 # T87 Sandboxes
 
-- Canonical checkout: `/Users/mryfmo/Workspace/dotfiles`
+- Canonical checkout: `~/Workspace/dotfiles`
 - PR A worktree: `/private/tmp/dotfiles-t87-ua` (`chore/t87-ua-147`)
 - PR B worktree: `/private/tmp/dotfiles-t87-agmsg` (`chore/t87-agmsg-template`)
 - PR C worktree: `/private/tmp/dotfiles-t87-mise` (`chore/t87-mise-upgrade`)

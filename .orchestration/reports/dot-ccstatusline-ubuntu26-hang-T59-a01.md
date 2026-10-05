@@ -39,7 +39,7 @@ The diagnostics runs left `failure` check runs on older heads only. On the final
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T59 (operator 2026-10-03): the Ubuntu 26.04 canary stays non-required but must be green; a canary failure is fixed at its root (here `ccstatusline --version` hanging without network on the 26.04 image), never dispositioned repeatedly.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T59 (operator 2026-10-03): the Ubuntu 26.04 canary stays non-required but must be green; a canary failure is fixed at its root (here `ccstatusline --version` hanging without network on the 26.04 image), never dispositioned repeatedly.'
 e547c5a4-c593-47a6-bb13-3eff3f99ea7d
 ```
 

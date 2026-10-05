@@ -1,7 +1,7 @@
 # T57: Asset install manifest (H1, part 1)
 
 task_id: T57
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-harness-composability-integration.md (Phase 4)

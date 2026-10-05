@@ -1,7 +1,7 @@
 # T56b: Staleness baseline fix — per-session first-seen epoch (T61 E2E defect)
 
 task_id: T56b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-harness-composability-integration.md (Phase 3; defect found in T61 live verification)

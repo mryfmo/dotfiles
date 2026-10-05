@@ -1,7 +1,7 @@
 # T61a: CI fixes for PR #128 — chezmoi-rendered sourcing + shellcheck
 
 task_id: T61a
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-harness-composability-integration.md (Phase 7; CI failures on PR #128)

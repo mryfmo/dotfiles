@@ -1,6 +1,6 @@
 # T17 sandbox record
 
-- Codex workspace-write sandbox at `/Users/mryfmo/Workspace/dotfiles`.
+- Codex workspace-write sandbox at `~/Workspace/dotfiles`.
 - Mutating delivery behavior was exercised only through fake scripts under
   unittest temporary HOME directories.
 - The hook-present fixture mirrors the real matcher object containing nested

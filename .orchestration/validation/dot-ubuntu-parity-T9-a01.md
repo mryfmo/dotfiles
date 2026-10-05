@@ -53,13 +53,13 @@ $ chezmoi data --format json | python3 -c "..."
 system: client
 os: linux
 osRelease.idLike: debian
-homeDir: /home/moriya
-workingTree: /home/moriya/.local/share/chezmoi
+homeDir: ~
+workingTree: ~/.local/share/chezmoi
 
 ## Render the modified template against THIS worktree's source
 
 $ chezmoi execute-template -S "$(pwd)/home" '{{ .chezmoi.sourceDir }}'
-/home/moriya/Workspace/worktrees/chezmoi-ubuntu-parity/home
+~/Workspace/worktrees/chezmoi-ubuntu-parity/home
 
 $ chezmoi execute-template -S "$(pwd)/home" --file home/.chezmoiscripts/ubuntu/run_onchange_after_60-enable-usage-snapshot-timer.sh.tmpl
 #!/usr/bin/env bash
@@ -107,7 +107,7 @@ bash -n OK
 ## Scenario (a): real $HOME (unit already exists and already enabled)
 
 $ ls -la "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/usage-snapshot.timer"
--rw-rw-r-- 1 moriya moriya 147 9 月 23 08:37 /home/moriya/.config/systemd/user/usage-snapshot.timer
+-rw-rw-r-- 1 moriya moriya 147 9 月 23 08:37 ~/.config/systemd/user/usage-snapshot.timer
 
 $ systemctl --user is-enabled usage-snapshot.timer
 enabled

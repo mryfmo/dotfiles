@@ -9,7 +9,7 @@ FF.FFF
 FAIL: test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info) (recent='~/project ❯ \n\n\n')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2846, in test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2846, in test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info
     self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : herdr-agents: audit pane w-old:p9 is busy (not at a shell prompt); refusing a second audit.
@@ -19,7 +19,7 @@ AssertionError: 2 != 0 : herdr-agents: audit pane w-old:p9 is busy (not at a she
 FAIL: test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info) (recent='codex output\n\n')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2847, in test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2847, in test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info
     self.assertIn("pane read w-old:p9 --source recent-unwrapped --lines 50", calls)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'pane read w-old:p9 --source recent-unwrapped --lines 50' not found in ['workspace list', 'pane list --workspace w-old', 'tab list --workspace w-old', 'pane list --workspace w-old', 'pane rename w-old:p9 audit', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9', 'pane process-info --pane w-old:p9']
@@ -28,7 +28,7 @@ AssertionError: 'pane read w-old:p9 --source recent-unwrapped --lines 50' not fo
 FAIL: test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot) (state='shell')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2829, in test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2829, in test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : herdr-agents: audit pane w-old:p9 is busy (not at a shell prompt); refusing a second audit.
@@ -38,7 +38,7 @@ AssertionError: 2 != 0 : herdr-agents: audit pane w-old:p9 is busy (not at a she
 FAIL: test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot) (state='shell-pid')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2829, in test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2829, in test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : herdr-agents: audit pane w-old:p9 is busy (not at a shell prompt); refusing a second audit.
@@ -48,7 +48,7 @@ AssertionError: 2 != 0 : herdr-agents: audit pane w-old:p9 is busy (not at a she
 FAIL: test_audit_waits_for_the_prompt_on_a_new_audit_tab (tests.unit.test_herdr_agents.HerdrAgentsTest.test_audit_waits_for_the_prompt_on_a_new_audit_tab)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2859, in test_audit_waits_for_the_prompt_on_a_new_audit_tab
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_herdr_agents.py", line 2859, in test_audit_waits_for_the_prompt_on_a_new_audit_tab
     self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 2 : Audit exit: 0
@@ -106,7 +106,7 @@ exit=0
 
 ## git diff --stat / commit / branch
 ```
-$ git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+$ git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
  README.md                                         |  4 +-
  home/dot_local/bin/common/executable_herdr-agents | 46 ++++++++++----
  tests/unit/test_herdr_agents.py                   | 75 ++++++++++++++++++++++-

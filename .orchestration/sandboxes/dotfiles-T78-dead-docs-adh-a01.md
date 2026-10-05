@@ -1,7 +1,7 @@
 # dotfiles-T78-dead-docs-adh-a01 — sandbox
 
 - Isolation:
-  - dedicated worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d`;
+  - dedicated worktree `~/Workspace/dotfiles/.claude/worktrees/worker-d`;
   - branch `chore/dead-docs-adh`, created from `origin/main` 6534df0f (#258) with `git switch --no-track -c`;
   - identity `claude-standard-dot-a006` (Claude Code, `standard`).
 - Ran in the Claude Code Bash sandbox: `git rm`, the edits, prettier, the docs unit test, `make unit-test` and `make validate-agent-assets`.

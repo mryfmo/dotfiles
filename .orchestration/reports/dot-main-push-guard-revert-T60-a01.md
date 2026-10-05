@@ -88,7 +88,7 @@ The launcher no longer contains the marker literal. It recognises the stub by it
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T60 (operator 2026-10-03): the GitHub ruleset "main integration gate" is the sole boundary for `main`; the T54 client-side pre-push guard and the `ORCH_PUSH_MAIN` convention are removed, and the `.orchestration` boundary commit travels as a squash-merged PR like every other change.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T60 (operator 2026-10-03): the GitHub ruleset "main integration gate" is the sole boundary for `main`; the T54 client-side pre-push guard and the `ORCH_PUSH_MAIN` convention are removed, and the `.orchestration` boundary commit travels as a squash-merged PR like every other change.'
 b81a4935-5ec0-4c23-9e86-bd202fd610fd
 ```
 

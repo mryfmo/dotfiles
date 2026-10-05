@@ -146,7 +146,7 @@ No join.sh, bridge, permgate, vendor, dependency, Claude/Codex configuration,
 or unrelated product path was changed by T68c.
 
 REVIEW
-- Crit review: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Crit review: ~/.crit/reviews/dfcf30aea611/review.json
 - Record: r_df68e0; resolved=true.
 - Evidence: .agents/worklog/codex/review/T68c-crit-comments.json
 - Receipt: .agents/worklog/codex/review/T68c-receipt.md

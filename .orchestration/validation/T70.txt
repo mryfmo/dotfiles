@@ -101,7 +101,7 @@ $ git diff --check
 PASS
 
 REVIEW
-- Crit review file: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Crit review file: ~/.crit/reviews/dfcf30aea611/review.json
 - Record: r_7b358d
 - Resolved: true
 - Evidence: .agents/worklog/codex/review/T70-crit-comments.json

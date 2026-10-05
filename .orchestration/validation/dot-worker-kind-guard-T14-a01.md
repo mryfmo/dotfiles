@@ -4,7 +4,7 @@ Verbatim stdout+stderr (ANSI stripped), captured by claude-standard-dot-a003.
 
 ## Preparation (live re-check)
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline -2 feat/claude-sandbox-manifest; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse feat/claude-sandbox-manifest; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse origin/feat/claude-sandbox-manifest`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline -2 feat/claude-sandbox-manifest; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse feat/claude-sandbox-manifest; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse origin/feat/claude-sandbox-manifest`
 
 ```text
 3857331 test(install): capture the fake sudo log on stderr in bwrap_apparmor.bats
@@ -13,7 +13,7 @@ b729f54 docs(readme): document the Claude Code sandbox
 b729f54875ab9a24b6a961d4ee68b075d938a146
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show --stat --format='%h %s' 3857331`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show --stat --format='%h %s' 3857331`
 
 ```text
 3857331 test(install): capture the fake sudo log on stderr in bwrap_apparmor.bats
@@ -22,7 +22,7 @@ b729f54875ab9a24b6a961d4ee68b075d938a146
  1 file changed, 1 insertion(+), 1 deletion(-)
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 branch --show-current; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline origin/main..HEAD; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l; git -C /home/moriya/Workspace/dotfiles branch --show-current`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 branch --show-current; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline origin/main..HEAD; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l; git -C ~/Workspace/dotfiles branch --show-current`
 
 ```text
 fix/worker-kind-guard
@@ -34,17 +34,17 @@ main
 
 ## Required validation
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
 
 ```text
 agent asset validation ok
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_herdr_agents tests.unit.test_validate_agent_assets tests.unit.test_generate_agent_configs -q; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_herdr_agents tests.unit.test_validate_agent_assets tests.unit.test_generate_agent_configs -q; echo exit=$?`
 
 ```text
-ERROR: /tmp/validate-agent-assets-test-l289j5y7/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ERROR: /tmp/validate-agent-assets-test-l289j5y7/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ERROR: model profile standard is missing codex
 ERROR: model profile standard.claude.model must be a launcher-safe string
 ERROR: model_profiles must define the express profile
@@ -57,7 +57,7 @@ OK
 exit=0
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff --stat origin/main...HEAD`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff --stat origin/main...HEAD`
 
 ```text
  README.md                                         |  12 +-
@@ -70,7 +70,7 @@ exit=0
 
 ## Supplementary checks
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_herdr_agents tests.unit.test_validate_agent_assets -v -k worker_kind -k identity -k claude_worker -k codex_worker_is 2>&1 | grep -E ' \.\.\. |^Ran|^OK|FAILED'`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_herdr_agents tests.unit.test_validate_agent_assets -v -k worker_kind -k identity -k claude_worker -k codex_worker_is 2>&1 | grep -E ' \.\.\. |^Ran|^OK|FAILED'`
 
 ```text
 test_bootstrap_accepts_same_identity_in_multiple_teams (tests.unit.test_herdr_agents.HerdrAgentsTest.test_bootstrap_accepts_same_identity_in_multiple_teams) ... ok
@@ -94,7 +94,7 @@ test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_va
 Ran 18 tests in 4.936s
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run python -m unittest discover -s tests/unit 2>&1 | tail -3`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run python -m unittest discover -s tests/unit 2>&1 | tail -3`
 
 ```text
 Ran 417 tests in 36.065s
@@ -102,20 +102,20 @@ Ran 417 tests in 36.065s
 OK (skipped=1)
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && shellcheck -x home/dot_local/bin/common/executable_herdr-agents; echo shellcheck-exit=$?; shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_herdr-agents; echo shfmt-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && shellcheck -x home/dot_local/bin/common/executable_herdr-agents; echo shellcheck-exit=$?; shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_herdr-agents; echo shfmt-exit=$?`
 
 ```text
 shellcheck-exit=0
 shfmt-exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && grep -rln 'herdr-agents' tests --include='*.bats'; echo bats-coverage-grep-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && grep -rln 'herdr-agents' tests --include='*.bats'; echo bats-coverage-grep-exit=$?`
 
 ```text
 bats-coverage-grep-exit=1
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && grep -n 'currently `' README.md; grep -n '^worker_kind' home/dot_agents/agent-config.yaml`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && grep -n 'currently `' README.md; grep -n '^worker_kind' home/dot_agents/agent-config.yaml`
 
 ```text
 303:from `worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`;
@@ -207,7 +207,7 @@ $ python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope proj
 
 # Revision round 1 (review of PR #180)
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline origin/main..HEAD; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline origin/main..HEAD; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l`
 
 ```text
 aa17407 test(herdr-agents): compare against the resolved workdir in the bootstrap hint test
@@ -217,7 +217,7 @@ aa17407 test(herdr-agents): compare against the resolved workdir in the bootstra
 0
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show --stat --format='%h %s' 01b38be aa17407`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 show --stat --format='%h %s' 01b38be aa17407`
 
 ```text
 01b38be fix(herdr-agents): state what the identity guard does and does not fix
@@ -232,36 +232,36 @@ aa17407 test(herdr-agents): compare against the resolved workdir in the bootstra
  1 file changed, 2 insertions(+), 2 deletions(-)
 ```
 
-### `grep -n -A2 'if ((count < 2))' /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_local/bin/common/executable_herdr-agents; grep -n 'worker identity for' /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_local/bin/common/executable_herdr-agents; grep -c 'remediation-plan' /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_local/bin/common/executable_herdr-agents /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/README.md`
+### `grep -n -A2 'if ((count < 2))' ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_local/bin/common/executable_herdr-agents; grep -n 'worker identity for' ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_local/bin/common/executable_herdr-agents; grep -c 'remediation-plan' ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_local/bin/common/executable_herdr-agents ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/README.md`
 
 ```text
 543:    if ((count < 2)); then
 544-        printf "herdr-agents: worker_kind=%s would share the orchestrator's claude-code agmsg identity on %q (%s claude-code identity registered); refusing so messages do not collide silently. Registering a second identity (%s/join.sh <team> <role> claude-code %q) lifts this guard but does not give the two sessions distinct delivery until agmsg roles land; use worker_kind=codex for separate delivery now. See the herdr-agents section of the dotfiles README.\n" \
 545-            "${kind}" "${workdir}" "${count}" "${HOME}/.agents/skills/agmsg/scripts" "${workdir}" >&2
 618:            printf 'No agmsg Claude Code worker identity for %s; herdr-agents full and --attach modes refuse a claude worker until a second claude-code identity is registered.\n' \
-/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_local/bin/common/executable_herdr-agents:0
-/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/README.md:0
+~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_local/bin/common/executable_herdr-agents:0
+~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/README.md:0
 ```
 
 ### `grep -n -i -E 'multiple|first agent' ~/.agents/skills/agmsg/scripts/whoami.sh ~/.agents/skills/agmsg/scripts/check-inbox.sh | head -4`
 
 ```text
-/home/moriya/.agents/skills/agmsg/scripts/whoami.sh:133:    echo "multiple=true agents=$AGENT_NAMES teams=$TEAM_NAMES type=$AGENT_TYPE project=$PROJECT_PATH"
-/home/moriya/.agents/skills/agmsg/scripts/check-inbox.sh:55:# Handle multiple identities: use first agent name
-/home/moriya/.agents/skills/agmsg/scripts/check-inbox.sh:56:if echo "$WHOAMI" | grep -q "multiple=true"; then
+~/.agents/skills/agmsg/scripts/whoami.sh:133:    echo "multiple=true agents=$AGENT_NAMES teams=$TEAM_NAMES type=$AGENT_TYPE project=$PROJECT_PATH"
+~/.agents/skills/agmsg/scripts/check-inbox.sh:55:# Handle multiple identities: use first agent name
+~/.agents/skills/agmsg/scripts/check-inbox.sh:56:if echo "$WHOAMI" | grep -q "multiple=true"; then
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
 
 ```text
 agent asset validation ok
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_herdr_agents tests.unit.test_validate_agent_assets tests.unit.test_generate_agent_configs -q; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_herdr_agents tests.unit.test_validate_agent_assets tests.unit.test_generate_agent_configs -q; echo exit=$?`
 
 ```text
-ERROR: /tmp/validate-agent-assets-test-g3l9p_s5/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ERROR: /tmp/validate-agent-assets-test-g3l9p_s5/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ERROR: model profile standard is missing codex
 ERROR: model profile standard.claude.model must be a launcher-safe string
 ERROR: model_profiles must define the express profile
@@ -274,14 +274,14 @@ OK
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && shellcheck -x home/dot_local/bin/common/executable_herdr-agents; echo shellcheck-exit=$?; shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_herdr-agents; echo shfmt-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && shellcheck -x home/dot_local/bin/common/executable_herdr-agents; echo shellcheck-exit=$?; shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_herdr-agents; echo shfmt-exit=$?`
 
 ```text
 shellcheck-exit=0
 shfmt-exit=0
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff --stat origin/main...HEAD`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff --stat origin/main...HEAD`
 
 ```text
  README.md                                         |  21 ++-
@@ -334,7 +334,7 @@ run5 exit=0
 FAIL: test_bench_runs_five_layer_two_fixtures (test_permgate.PermgateTest.test_bench_runs_five_layer_two_fixtures)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/tests/unit/test_permgate.py", line 837, in test_bench_runs_five_layer_two_fixtures
+  File "~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/tests/unit/test_permgate.py", line 837, in test_bench_runs_five_layer_two_fixtures
     self.assertEqual(result["successful_classifications"], 5)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 5
@@ -342,20 +342,20 @@ AssertionError: 0 != 5
 ----------------------------------------------------------------------
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && for i in $(seq 1 10); do python3 -m unittest tests.unit.test_permgate.PermgateTest.test_bench_runs_five_layer_two_fixtures > /dev/null 2>&1 && printf 'ok ' || printf 'FAIL '; done; echo`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && for i in $(seq 1 10); do python3 -m unittest tests.unit.test_permgate.PermgateTest.test_bench_runs_five_layer_two_fixtures > /dev/null 2>&1 && printf 'ok ' || printf 'FAIL '; done; echo`
 
 ```text
 FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL 
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_herdr_agents tests.unit.test_permgate -q 2>&1 | tail -2`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_herdr_agents tests.unit.test_permgate -q 2>&1 | tail -2`
 
 ```text
 
 FAILED (failures=1, skipped=1)
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff --stat origin/main -- tests/unit/test_permgate.py home/dot_local/bin/common/executable_permgate; echo permgate-diff-exit=$?`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff --stat origin/main -- tests/unit/test_permgate.py home/dot_local/bin/common/executable_permgate; echo permgate-diff-exit=$?`
 
 ```text
 permgate-diff-exit=0

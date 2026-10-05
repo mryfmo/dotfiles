@@ -133,7 +133,7 @@ cost: n/a
 # Revision 1: blocked (preserved)
 
 
-- Worker: claude-standard-dot-a003 (worktree `/home/moriya/Workspace/dotfiles-w3`, branch `chore/upgrade-pins-20260925b` at 3303fbc = origin/main, clean)
+- Worker: claude-standard-dot-a003 (worktree `~/Workspace/dotfiles-w3`, branch `chore/upgrade-pins-20260925b` at 3303fbc = origin/main, clean)
 - status: **blocked**. No `make upgrade`, no commit, no push, no PR. pr=none, commit=none.
 - The operator was asked and chose "return blocked" instead of authorizing the $HOME changes.
 

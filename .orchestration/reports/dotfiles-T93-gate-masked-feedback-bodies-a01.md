@@ -149,7 +149,7 @@ Both new tests fail against the `aa5b061e` validator (2 failures). On `254d9ebf`
 ## CompactionDB
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T93 (orchestrator 2026-10-04): the integration gate compares PR-feedback bodies after the validator'"'"'s secret masking, so saved evidence may be masked; the secret scan fails, rather than skips, an `.orchestration` text file that contains a NUL byte.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T93 (orchestrator 2026-10-04): the integration gate compares PR-feedback bodies after the validator'"'"'s secret masking, so saved evidence may be masked; the secret scan fails, rather than skips, an `.orchestration` text file that contains a NUL byte.'
 2c104580-db1d-4867-9777-cb115fb37676
 [exit 0]
 ```

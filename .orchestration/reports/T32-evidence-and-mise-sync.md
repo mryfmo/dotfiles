@@ -1,7 +1,7 @@
 # T32 result report
 
 - Task: `T32-evidence-and-mise-sync`
-- Worktree: `/Users/mryfmo/Workspace/dotfiles-t32`
+- Worktree: `~/Workspace/dotfiles-t32`
 - Branch: `chore/t30-t31-evidence-mise-sync`
 - Commits, in order:
   1. `4082e29 chore(mise): bump managed claude-code to 2.1.219`

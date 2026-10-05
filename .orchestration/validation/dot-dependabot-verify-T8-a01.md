@@ -207,20 +207,20 @@ test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.2992750Z   GITHUB_TOKEN
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.2993370Z ##[endgroup]
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.5992040Z Syncing repository: mryfmo/dotfiles
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.5993630Z ##[group]Getting Git version info
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.5994420Z Working directory is '/Users/runner/work/dotfiles/dotfiles'
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.5994420Z Working directory is '~/work/dotfiles/dotfiles'
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.5995600Z [command]/opt/homebrew/bin/git version
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6011740Z git version 2.55.0
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6025600Z ##[endgroup]
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6030210Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/40791898-c880-46c7-abf8-b8a587391dbd/.gitconfig'
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6035230Z Temporarily overriding HOME='/Users/runner/work/_temp/40791898-c880-46c7-abf8-b8a587391dbd' before making global git config changes
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6030210Z Copying '~/.gitconfig' to '~/work/_temp/40791898-c880-46c7-abf8-b8a587391dbd/.gitconfig'
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6035230Z Temporarily overriding HOME='~/work/_temp/40791898-c880-46c7-abf8-b8a587391dbd' before making global git config changes
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6036900Z Adding repository directory to the temporary git global config as a safe directory
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6038440Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/dotfiles/dotfiles
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6079570Z Deleting the contents of '/Users/runner/work/dotfiles/dotfiles'
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6038440Z [command]/opt/homebrew/bin/git config --global --add safe.directory ~/work/dotfiles/dotfiles
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6079570Z Deleting the contents of '~/work/dotfiles/dotfiles'
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6081950Z ##[group]Determining repository object format
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6083150Z ##[endgroup]
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6084030Z ##[group]Initializing the repository
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6085570Z [command]/opt/homebrew/bin/git init /Users/runner/work/dotfiles/dotfiles
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6238180Z Initialized empty Git repository in /Users/runner/work/dotfiles/dotfiles/.git/
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6085570Z [command]/opt/homebrew/bin/git init ~/work/dotfiles/dotfiles
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6238180Z Initialized empty Git repository in ~/work/dotfiles/dotfiles/.git/
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6244300Z [command]/opt/homebrew/bin/git remote add origin https://github.com/mryfmo/dotfiles
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6295190Z ##[endgroup]
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.6296240Z ##[group]Disabling automatic garbage collection
@@ -236,9 +236,9 @@ test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.7154260Z [command]/opt/
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.7597430Z Removing includeIf entries pointing to credentials config files
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.7600300Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.7634810Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.8114790Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.8173460Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/Users/runner/work/dotfiles/dotfiles/.git.path /Users/runner/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.8226590Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/Users/runner/work/dotfiles/dotfiles/.git/worktrees/*.path /Users/runner/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.8114790Z [command]/opt/homebrew/bin/git config --file ~/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.8173460Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:~/work/dotfiles/dotfiles/.git.path ~/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.8226590Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:~/work/dotfiles/dotfiles/.git/worktrees/*.path ~/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.8267340Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.8306380Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:20.8342860Z ##[endgroup]
@@ -266,16 +266,16 @@ test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:21.9336000Z [command]/opt/
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:21.9383730Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:21.9864900Z Removing includeIf entries pointing to credentials config files
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:21.9866970Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:21.9909790Z includeif.gitdir:/Users/runner/work/dotfiles/dotfiles/.git.path
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0011200Z includeif.gitdir:/Users/runner/work/dotfiles/dotfiles/.git/worktrees/*.path
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:21.9909790Z includeif.gitdir:~/work/dotfiles/dotfiles/.git.path
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0011200Z includeif.gitdir:~/work/dotfiles/dotfiles/.git/worktrees/*.path
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0112550Z includeif.gitdir:/github/workspace/.git.path
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0151150Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0152630Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/Users/runner/work/dotfiles/dotfiles/.git.path
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0153480Z /Users/runner/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0155290Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/Users/runner/work/dotfiles/dotfiles/.git.path /Users/runner/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0156800Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/Users/runner/work/dotfiles/dotfiles/.git/worktrees/*.path
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0157570Z /Users/runner/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0158880Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/Users/runner/work/dotfiles/dotfiles/.git/worktrees/*.path /Users/runner/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0152630Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:~/work/dotfiles/dotfiles/.git.path
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0153480Z ~/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0155290Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:~/work/dotfiles/dotfiles/.git.path ~/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0156800Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:~/work/dotfiles/dotfiles/.git/worktrees/*.path
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0157570Z ~/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0158880Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:~/work/dotfiles/dotfiles/.git/worktrees/*.path ~/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0160280Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0184770Z /github/runner_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0190290Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
@@ -283,7 +283,7 @@ test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0226940Z [command]/opt/
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0259490Z /github/runner_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0310230Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0353290Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0796790Z Removing credentials config '/Users/runner/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config'
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0796790Z Removing credentials config '~/work/_temp/git-credentials-aa2e97a9-acb8-434d-86dd-f1cfc707913c.config'
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0801620Z ##[endgroup]
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0912140Z ##[group]Run if [ "${OS}" == "macos-14" ]; then
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:22.0912490Z ^[[36;1mif [ "${OS}" == "macos-14" ]; then^[[0m
@@ -458,24 +458,24 @@ test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:30.1139550Z ##[group]Downl
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:30.1153410Z [command]/opt/homebrew/bin/zstd --version
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:30.1178110Z *** Zstandard CLI (64-bit) v1.5.7, by Yann Collet ***
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:30.1190130Z Using curl to download mise
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.8965400Z [command]/bin/mv /var/folders/s6/5hzmn6lx4dz5nxs7k_0slzph0000gn/T/mise/bin/mise /Users/runner/.local/share/mise/bin/mise
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.8965400Z [command]/bin/mv /var/folders/s6/5hzmn6lx4dz5nxs7k_0slzph0000gn/T/mise/bin/mise ~/.local/share/mise/bin/mise
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.8994310Z ##[group]Setting env vars
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.8994590Z Setting MISE_LOG_LEVEL=info
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.8997610Z Setting MISE_GITHUB_TOKEN=***
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.8998000Z Setting MISE_TRUSTED_CONFIG_PATHS=/Users/runner/work/dotfiles/dotfiles
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.8998000Z Setting MISE_TRUSTED_CONFIG_PATHS=~/work/dotfiles/dotfiles
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.8998480Z Setting MISE_YES=1
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.8999280Z Adding /Users/runner/.local/share/mise/shims to PATH
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.8999280Z Adding ~/.local/share/mise/shims to PATH
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9001160Z ##[group]Running mise --version
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9013770Z [command]/Users/runner/.local/share/mise/bin/mise --version
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9013770Z [command]~/.local/share/mise/bin/mise --version
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9195380Z 2026.7.5 macos-arm64 (2026-07-09)
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9269710Z ##[endgroup]
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9270010Z ##[group]Running mise ls
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9280170Z [command]/Users/runner/.local/share/mise/bin/mise ls
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9280170Z [command]~/.local/share/mise/bin/mise ls
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9391540Z ##[endgroup]
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9392310Z ##[group]Exporting mise environment variables
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9528520Z [command]/Users/runner/.local/share/mise/bin/mise env --json
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9528520Z [command]~/.local/share/mise/bin/mise env --json
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9649340Z {
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9652180Z   "PATH": "/Users/runner/.local/share/mise/shims:/Users/runner/.local/share/mise/bin:/Users/runner/.local/share/gem/ruby/3.3.0/bin:/opt/homebrew/lib/ruby/gems/3.3.0/bin:/opt/homebrew/opt/ruby@3.3/bin:/Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools"
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9652180Z   "PATH": "~/.local/share/mise/shims:~/.local/share/mise/bin:~/.local/share/gem/ruby/3.3.0/bin:/opt/homebrew/lib/ruby/gems/3.3.0/bin:/opt/homebrew/opt/ruby@3.3/bin:~/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:~/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:~/bin:~/.yarn/bin:~/Library/Android/sdk/tools:~/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:~/.dotnet/tools"
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9654650Z }
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9659030Z ##[endgroup]
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9724010Z ##[group]Run mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"
@@ -493,11 +493,11 @@ test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9742960Z   GITHUB_TOKEN
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9743160Z   FILES_TEST_CHEZMOI: /opt/homebrew/bin/chezmoi
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9743390Z   MISE_LOG_LEVEL: info
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9745140Z   MISE_GITHUB_TOKEN: ***
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9745460Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/dotfiles/dotfiles
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9745460Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9745730Z   MISE_YES: 1
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9747450Z   PATH: /Users/runner/.local/share/mise/shims:/Users/runner/.local/share/mise/bin:/Users/runner/.local/share/gem/ruby/3.3.0/bin:/opt/homebrew/lib/ruby/gems/3.3.0/bin:/opt/homebrew/opt/ruby@3.3/bin:/Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9747450Z   PATH: ~/.local/share/mise/shims:~/.local/share/mise/bin:~/.local/share/gem/ruby/3.3.0/bin:/opt/homebrew/lib/ruby/gems/3.3.0/bin:/opt/homebrew/opt/ruby@3.3/bin:~/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:~/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:~/bin:~/.yarn/bin:~/Library/Android/sdk/tools:~/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:~/.dotnet/tools
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:32.9749370Z ##[endgroup]
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:33.0062120Z ^[[2mmise^[[0m trusted /Users/runner/work/_temp/statusline-mise
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:33.0062120Z ^[[2mmise^[[0m trusted ~/work/_temp/statusline-mise
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:33.0283590Z ^[[2mmise^[[0m ^[[34mnpm:ccusage^[[0m@20.0.19 [1/3] install
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:33.0284020Z ^[[2mmise^[[0m ^[[34mnpm:ccstatusline^[[0m@2.2.27 [1/3] install
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.0899050Z ^[[2mmise^[[0m ^[[34mnpm:ccstatusline^[[0m@2.2.27 [1/3] added 1 package in 640ms
@@ -563,9 +563,9 @@ test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.8362750Z   GITHUB_TOKEN
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.8362920Z   FILES_TEST_CHEZMOI: /opt/homebrew/bin/chezmoi
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.8363130Z   MISE_LOG_LEVEL: info
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.8364800Z   MISE_GITHUB_TOKEN: ***
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.8365260Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/dotfiles/dotfiles
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.8365260Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.8365520Z   MISE_YES: 1
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.8367150Z   PATH: /Users/runner/.local/share/mise/shims:/Users/runner/.local/share/mise/bin:/Users/runner/.local/share/gem/ruby/3.3.0/bin:/opt/homebrew/lib/ruby/gems/3.3.0/bin:/opt/homebrew/opt/ruby@3.3/bin:/Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.8367150Z   PATH: ~/.local/share/mise/shims:~/.local/share/mise/bin:~/.local/share/gem/ruby/3.3.0/bin:/opt/homebrew/lib/ruby/gems/3.3.0/bin:/opt/homebrew/opt/ruby@3.3/bin:~/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:~/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:~/bin:~/.yarn/bin:~/Library/Android/sdk/tools:~/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:~/.dotnet/tools
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:34.8368850Z ##[endgroup]
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.0685260Z Traceback (most recent call last):
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.0685810Z   File "<string>", line 1, in <module>
@@ -584,9 +584,9 @@ test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7136380Z   GITHUB_TOKEN
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7136560Z   FILES_TEST_CHEZMOI: /opt/homebrew/bin/chezmoi
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7136780Z   MISE_LOG_LEVEL: info
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7138390Z   MISE_GITHUB_TOKEN: ***
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7138630Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/dotfiles/dotfiles
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7138630Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7138890Z   MISE_YES: 1
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7140520Z   PATH: /Users/runner/.local/share/mise/shims:/Users/runner/.local/share/mise/bin:/Users/runner/.local/share/gem/ruby/3.3.0/bin:/opt/homebrew/lib/ruby/gems/3.3.0/bin:/opt/homebrew/opt/ruby@3.3/bin:/Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7140520Z   PATH: ~/.local/share/mise/shims:~/.local/share/mise/bin:~/.local/share/gem/ruby/3.3.0/bin:/opt/homebrew/lib/ruby/gems/3.3.0/bin:/opt/homebrew/opt/ruby@3.3/bin:~/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:~/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:~/bin:~/.yarn/bin:~/Library/Android/sdk/tools:~/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:~/.dotnet/tools
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7142150Z ##[endgroup]
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7503200Z diff scripts/upgrade-tools.sh.orig scripts/upgrade-tools.sh
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7503690Z --- scripts/upgrade-tools.sh.orig
@@ -612,10 +612,10 @@ test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7519040Z ##[error]Proce
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.7628770Z Post job cleanup.
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8344110Z [command]/opt/homebrew/bin/git version
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8382660Z git version 2.55.0
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8396860Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/1e8bcb34-4231-4dc9-8eb1-d2a9cf5d8245/.gitconfig'
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8402690Z Temporarily overriding HOME='/Users/runner/work/_temp/1e8bcb34-4231-4dc9-8eb1-d2a9cf5d8245' before making global git config changes
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8396860Z Copying '~/.gitconfig' to '~/work/_temp/1e8bcb34-4231-4dc9-8eb1-d2a9cf5d8245/.gitconfig'
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8402690Z Temporarily overriding HOME='~/work/_temp/1e8bcb34-4231-4dc9-8eb1-d2a9cf5d8245' before making global git config changes
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8403690Z Adding repository directory to the temporary git global config as a safe directory
-test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8406030Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/dotfiles/dotfiles
+test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8406030Z [command]/opt/homebrew/bin/git config --global --add safe.directory ~/work/dotfiles/dotfiles
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8446970Z Removing SSH command configuration
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8451670Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
 test (macos-14, client)	UNKNOWN STEP	2026-09-13T01:33:35.8493740Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"

@@ -18,7 +18,7 @@ branch 'fix/t4-bats-stripped-path' set up to track 'origin/main'.
 ## bats availability
 
 $ command -v bats && bats --version
-/home/moriya/.local/share/mise/installs/http-bats/1.13.0/bin/bats
+~/.local/share/mise/installs/http-bats/1.13.0/bin/bats
 Bats 1.13.0
 
 ## Reproduce all 4 named failures BEFORE any edit

@@ -48,7 +48,7 @@
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T71 (operator 2026-10-03): `generate-agent-configs.py` renders one asset pin into several target files (`render:` accepts a list) and into `declare -r` assignments; `validate-agent-assets.py` recognises `declare -r` literals; the scanned roots stay `install/` and `scripts/` until T72 adds the bootstrap asset.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T71 (operator 2026-10-03): `generate-agent-configs.py` renders one asset pin into several target files (`render:` accepts a list) and into `declare -r` assignments; `validate-agent-assets.py` recognises `declare -r` literals; the scanned roots stay `install/` and `scripts/` until T72 adds the bootstrap asset.'
 ae8fe450-a4a4-46f5-be5e-5c72fc52220f
 ```
 

@@ -2,7 +2,7 @@
 
 - Task: `.orchestration/tasks/T19-herdr-file-viewer-popup-config.md`
 - Result: accepted (first submission)
-- Worktree/branch: `/Users/mryfmo/Workspace/dotfiles-t18` / `feat/herdr-file-viewer-popup`
+- Worktree/branch: `~/Workspace/dotfiles-t18` / `feat/herdr-file-viewer-popup`
 - Commit: `968637c feat: add herdr file viewer popup`
 
 ## Adversarial review notes (orchestrator, independent re-verification)

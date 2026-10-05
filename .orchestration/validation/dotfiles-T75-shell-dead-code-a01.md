@@ -112,7 +112,7 @@ The flagged file is untracked: 907 bytes, written 10:48 local, an orchestrator r
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T75 (operator 2026-10-03): dead shell files (empty alias files, never-sourced history/cache, setup-python-env, tango.yml, chezmoi-notify, hoge/fuga ignores, the duplicate sheldon mise activation, the dev tmux branch) are deleted; a login zsh activates mise once.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T75 (operator 2026-10-03): dead shell files (empty alias files, never-sourced history/cache, setup-python-env, tango.yml, chezmoi-notify, hoge/fuga ignores, the duplicate sheldon mise activation, the dev tmux branch) are deleted; a login zsh activates mise once.'
 cf4744c8-9c09-42e6-a47f-7b44b2134329
 ```
 

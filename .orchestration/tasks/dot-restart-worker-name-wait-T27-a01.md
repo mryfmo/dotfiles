@@ -30,7 +30,7 @@ only when it actually waited (operator 2026-09-27).
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`, then
   `git switch -c fix/restart-worker-name-wait origin/main`.
   (Base must contain this task's commit; verify the task_rev sha256 from the
@@ -132,7 +132,7 @@ Use the existing fake-herdr / state-file pattern from the T25/T26 tests.
 ```
 make validate-agent-assets
 make unit-test
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

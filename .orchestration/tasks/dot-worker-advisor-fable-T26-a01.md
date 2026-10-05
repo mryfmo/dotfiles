@@ -22,7 +22,7 @@ advisor to fable; interactive settings render advisorModel from the manifest
 
 ## Repo / branch
 
-- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- Work ONLY in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - `git fetch origin`, then `git switch -c feat/worker-advisor-fable origin/main`.
   (Base must already contain the merged T25 branch; verify `--restart-worker`
   is present in README on your base, else stop and PONG.)
@@ -154,7 +154,7 @@ unchanged; if anything else changes, stop and report.
 uv run --with pyyaml scripts/generate-agent-configs.py --check
 make validate-agent-assets
 make unit-test
-git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
+git -C ~/Workspace/dotfiles/.claude/worktrees/worker-c diff origin/main --stat
 gh pr checks <pr-number>
 ```
 

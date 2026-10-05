@@ -205,14 +205,14 @@ work_packages/WP31.md: OK
 ## jq '.files|length' PACKAGE_MANIFEST.json
 Exit: 0
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/adh-baseline/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/1108ea1d4090679e: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/adh-baseline/mise.toml ~/.local/state/mise/tracked-configs/1108ea1d4090679e: Operation not permitted (os error 1)
 196
 ```
 
 ## jq -r '.files[].path' reviews/ADH_Integrated_Plan/PACKAGE_MANIFEST.json | while IFS= read -r entry; do test -f "reviews/ADH_Integrated_Plan/$entry" || { printf 'MISSING %s\n' "$entry"; exit 1; }; done
 Exit: 0
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/adh-baseline/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/1108ea1d4090679e: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/adh-baseline/mise.toml ~/.local/state/mise/tracked-configs/1108ea1d4090679e: Operation not permitted (os error 1)
 ```
 
 ## rg -n --hidden --no-ignore 'ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|BEGIN (RSA|OPENSSH) PRIVATE' reviews
@@ -227,7 +227,7 @@ Exit: 0
 5072	reviews
 ```
 
-## rsync -acni --exclude .DS_Store /Users/mryfmo/Workspace/dotfiles/reviews/ reviews/
+## rsync -acni --exclude .DS_Store ~/Workspace/dotfiles/reviews/ reviews/
 Exit: 0
 ```text
 ```
@@ -832,7 +832,7 @@ test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.Vali
 test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-e2lo5q_6/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-e2lo5q_6/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -864,7 +864,7 @@ Exit: 0
 ```text
 ```
 
-### git diff --cached --name-only | wc -l; git diff --cached --name-only -- ':!reviews/**'; git diff --cached --name-only -- 'reviews/**/.DS_Store'; git diff --name-only; rsync -acni --exclude .DS_Store /Users/mryfmo/Workspace/dotfiles/reviews/ reviews/
+### git diff --cached --name-only | wc -l; git diff --cached --name-only -- ':!reviews/**'; git diff --cached --name-only -- 'reviews/**/.DS_Store'; git diff --name-only; rsync -acni --exclude .DS_Store ~/Workspace/dotfiles/reviews/ reviews/
 Exit: 0
 ```text
      198

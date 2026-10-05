@@ -1,7 +1,7 @@
 # T33i report — dot-orchestration-hygiene-T33i-a01 (revision 3)
 
 - worker: `claude-standard-dot-a005`; orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `fix/orchestration-hygiene-T33i` from `origin/main` = `013b3d6`
 - task_rev: sha256 `3fac6e1c5efd6dcae0e5ef6bd7c4843a0afd159ae5ba61ae3eef1722beaba16e`, checked
 - cleanup: deleted the merged local branch `fix/permgate-codex-stdin` (was `6bc5918`), as the task allows

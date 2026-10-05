@@ -64,7 +64,7 @@ I did not reply to or resolve any thread.
 ## CompactionDB
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T72 (operator 2026-10-03): the chezmoi bootstrap version, the Homebrew installer commit/sha, and the mise version used by setup.sh, the Dockerfile and every CI workflow render from `agent-config.yaml` assets; no workflow or bootstrap script holds a version literal of its own.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T72 (operator 2026-10-03): the chezmoi bootstrap version, the Homebrew installer commit/sha, and the mise version used by setup.sh, the Dockerfile and every CI workflow render from `agent-config.yaml` assets; no workflow or bootstrap script holds a version literal of its own.'
 a9e30717-83d1-4b7b-8af2-efef3b533be1
 [exit 0]
 ```

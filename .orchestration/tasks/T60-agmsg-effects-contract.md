@@ -1,7 +1,7 @@
 # T60: AGMSG RESULT `effects` clause (H6, docs only)
 
 task_id: T60
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-harness-composability-integration.md (Phase 6)

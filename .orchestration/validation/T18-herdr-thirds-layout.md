@@ -309,7 +309,7 @@ w13:p2  yazi pid=6955 shell_pid=4554
 
 ### Deployed live command
 
-Run from `/Users/mryfmo/Workspace/dotfiles` with the deployed common bin first
+Run from `~/Workspace/dotfiles` with the deployed common bin first
 on `PATH`:
 
 ```text

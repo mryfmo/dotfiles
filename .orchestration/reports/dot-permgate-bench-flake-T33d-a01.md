@@ -1,7 +1,7 @@
 # T33d report — dot-permgate-bench-flake-T33d-a01 (revision 1)
 
 - worker: `claude-standard-dot-a005`; orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c` (clean before the switch)
 - branch: `test/permgate-bench-flake` from `origin/main` = `7d47e46`
 - task_rev: sha256 `30f444a16d404da68e5483c635bc21be2f350cf12138cc498d746634bfaee95c`, checked
 - PR: https://github.com/mryfmo/dotfiles/pull/200, head `e161082e393c8fb8622133140da3fda1c9e6b309`

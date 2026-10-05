@@ -1,7 +1,7 @@
 # T79b: kept-core 限定子脱落の是正と全数再監査 (PR #137 review)
 
 task_id: T79b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-pivot.md (Phase 6; PR #137 review finding)

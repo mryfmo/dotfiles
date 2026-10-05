@@ -81,8 +81,8 @@ exit=0
 ## 2. Diff and targeted tests
 
 ```
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-security-profile-model-T42-a01.md; git show 8f1061f:.orchestration/tasks/dot-security-profile-model-T42-a01.md | sha256sum
-31fd50691eb3fa906751975673a72a2500b1af4f9a174e2dbb8a85cb5bc0d2fb  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-security-profile-model-T42-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-security-profile-model-T42-a01.md; git show 8f1061f:.orchestration/tasks/dot-security-profile-model-T42-a01.md | sha256sum
+31fd50691eb3fa906751975673a72a2500b1af4f9a174e2dbb8a85cb5bc0d2fb  ~/Workspace/dotfiles/.orchestration/tasks/dot-security-profile-model-T42-a01.md
 31fd50691eb3fa906751975673a72a2500b1af4f9a174e2dbb8a85cb5bc0d2fb  -
 exit=0
 
@@ -849,7 +849,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-v7dcluut/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-v7dcluut/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok

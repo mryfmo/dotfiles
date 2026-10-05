@@ -70,7 +70,7 @@ The PermissionRequest wiring in the Claude and Codex templates is unchanged. No 
 CompactionDB, run in the main checkout outside the sandbox:
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the [memory:decision] text above, verbatim>"
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the [memory:decision] text above, verbatim>"
 151d0f98-0bd5-4d65-a43d-ebebcd3004ed
 ```
 

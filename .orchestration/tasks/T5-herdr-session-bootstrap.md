@@ -1,7 +1,7 @@
 # T5: herdr-session bootstrap — file-based entrypoint + Ghostty initial-command
 
 task_id: T5
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-gpt55-high
 

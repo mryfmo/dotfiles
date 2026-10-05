@@ -73,7 +73,7 @@ git diff --check: OK
 Command:
 
 ```text
-limactl shell adh-test -- sudo -i -u dotftest bash -lc 'set +e; /home/dotftest/.local/bin/mise --version; /home/dotftest/.local/bin/mise which uv; /home/dotftest/.local/bin/mise which yazi; /home/dotftest/.local/bin/mise exec -- uv --version; /home/dotftest/.local/bin/mise exec -- yazi --version; exit 0'
+limactl shell adh-test -- sudo -i -u dotftest bash -lc 'set +e; ~/.local/bin/mise --version; ~/.local/bin/mise which uv; ~/.local/bin/mise which yazi; ~/.local/bin/mise exec -- uv --version; ~/.local/bin/mise exec -- yazi --version; exit 0'
 ```
 
 Verbatim output:
@@ -109,8 +109,8 @@ mise ✓ yazi@26.8.15  1.1s  yazi-aarch64-unknown-linux-gnu.zip
 mise ✓ uv@0.12.5     1.3s  uv-aarch64-unknown-linux-gnu.tar.gz
 mise ████████████████ 2/2 · installed 2 tools in 1.3s
 2026.9.12 linux-arm64 (2026-09-20)
-/home/dotf2test/.local/share/mise/installs/uv/0.12.5/.mise-bins/uv
-/home/dotf2test/.local/share/mise/installs/yazi/26.8.15/.mise-bins/yazi
+~/.local/share/mise/installs/uv/0.12.5/.mise-bins/uv
+~/.local/share/mise/installs/yazi/26.8.15/.mise-bins/yazi
 uv 0.12.5 (aarch64-unknown-linux-gnu)
 Yazi
     Version: 26.8.15 (1f3588d 2026-08-15)

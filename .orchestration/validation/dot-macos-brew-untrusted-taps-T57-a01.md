@@ -137,34 +137,34 @@ $ mise x shfmt@3.14.1 -- shfmt -i 4 -sr -d install/macos/common/brew.sh   # the 
 (exit 0)
 $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-git-ignore-cc-writes-T56-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dot-ua-graph-refresh-T55-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-git-ignore-cc-writes-T56-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dot-ua-graph-refresh-T55-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-git-ignore-cc-writes-T56-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dot-ua-graph-refresh-T55-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-git-ignore-cc-writes-T56-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dot-ua-graph-refresh-T55-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-git-ignore-cc-writes-T56-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dot-ua-graph-refresh-T55-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-ci-runner-label-pin-T58-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-git-ignore-cc-writes-T56-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-macos-brew-untrusted-taps-T57-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dot-ua-graph-refresh-T55-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-audit-rev1.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-audit-rev1.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-audit.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-audit.md.last.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-crit.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-git-ignore-cc-writes-T56-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dot-ua-graph-refresh-T55-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-git-ignore-cc-writes-T56-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/autoskill/runs/dot-ua-graph-refresh-T55-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-git-ignore-cc-writes-T56-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/learning/dot-ua-graph-refresh-T55-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-git-ignore-cc-writes-T56-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/reports/dot-ua-graph-refresh-T55-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-git-ignore-cc-writes-T56-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/sandboxes/dot-ua-graph-refresh-T55-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-ci-runner-label-pin-T58-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-git-ignore-cc-writes-T56-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-macos-brew-untrusted-taps-T57-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/tasks/dot-ua-graph-refresh-T55-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-git-ignore-cc-writes-T56-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-audit-rev1.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-audit-rev1.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-audit.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-audit.md.last.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01.md
 agent asset validation ok
 (exit 0)
 $ bash "$TMPDIR/t57-smoke.sh"   # local plain-bash stand-in for the bats case (bats run in CI only)
@@ -427,7 +427,7 @@ brew trust user/repository ; brew trust --formula user/repository/formula ; brew
 ## CompactionDB (main checkout, unsandboxed)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T57 (operator 2026-10-02): recurring CI/bot findings are fixed at the root once, never dispositioned `not-applicable` repeatedly; image-provided Homebrew taps are handled in `install/macos/common/brew.sh` under `CI=true` only, derived from Homebrew's own tap listing.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T57 (operator 2026-10-02): recurring CI/bot findings are fixed at the root once, never dispositioned `not-applicable` repeatedly; image-provided Homebrew taps are handled in `install/macos/common/brew.sh` under `CI=true` only, derived from Homebrew's own tap listing.'
 4dd72a5f-3b9e-490f-8f00-fe17c8871d98
 (exit 0)
 ```
@@ -439,8 +439,8 @@ $ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py m
 ## Round-1 commands (verbatim)
 
 ```
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-macos-brew-untrusted-taps-T57-a01.md
-89a99b9765952905d8a78405fb15cb398666b4b92287559a77d0535525631f5c  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-macos-brew-untrusted-taps-T57-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-macos-brew-untrusted-taps-T57-a01.md
+89a99b9765952905d8a78405fb15cb398666b4b92287559a77d0535525631f5c  ~/Workspace/dotfiles/.orchestration/tasks/dot-macos-brew-untrusted-taps-T57-a01.md
 $ git log --oneline -4
 f568eab6 fix(macos): fall back to whole-tap trust only for runner taps with nothing installed
 50c833b3 fix(macos): trust only installed items from untrusted runner taps

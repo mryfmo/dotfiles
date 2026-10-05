@@ -1,7 +1,7 @@
 # T84b: chezmoi include 下の BASH_SOURCE 相対解決の是正
 
 task_id: T84b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: T84 follow-up (defect exposed by the first chezmoi-context run of the lifecycle script)

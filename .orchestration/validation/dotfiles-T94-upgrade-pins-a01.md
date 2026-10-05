@@ -56,7 +56,7 @@ all four sha256 match upstream: True 4
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T94 (operator 2026-10-04): pins advance to mise v2026.9.14, aws-cli 2.37.4, crit v0.21.1, claude-code 2.1.288 and pnpm 12.7.0 through one class-pure PR carrying the whole `make upgrade` diff; the canonical clone no longer holds an uncommitted pin diff.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T94 (operator 2026-10-04): pins advance to mise v2026.9.14, aws-cli 2.37.4, crit v0.21.1, claude-code 2.1.288 and pnpm 12.7.0 through one class-pure PR carrying the whole `make upgrade` diff; the canonical clone no longer holds an uncommitted pin diff.'
 ae1d260b-0507-4e32-ab4a-260d5a92ded1
 ```
 
@@ -544,103 +544,103 @@ test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_he
 test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
 test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
 test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
-test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f229210>
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f229210>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f22a980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f22a980>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f2293f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f2293f0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f22b880>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f22b880>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f2294e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f2294e0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f229300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f229300>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f816200>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f816200>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815b70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815b70>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815030>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815030>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815d50>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815d50>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f816020>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f816020>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f9c34c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f9c34c0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f814b80>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f814b80>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f9c3e20>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f9c3e20>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8145e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8145e0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8156c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8156c0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8155d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8155d0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f814f40>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f814f40>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8157b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8157b0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815120>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815120>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f814d60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f814d60>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8154e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8154e0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8163e0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8163e0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815300>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815300>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815c60>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f815c60>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8164d0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8164d0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f816890>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f816890>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8162f0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8162f0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f816a70>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f816a70>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8165c0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8165c0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8167a0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8167a0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f816980>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f816980>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8166b0>
+~/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/gzip.py:423: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xf3c30f8166b0>
   def seek(self, offset, whence=io.SEEK_SET):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
@@ -1038,7 +1038,7 @@ test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_
 test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-cifx37n7/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-1000/validate-agent-assets-test-cifx37n7/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok

@@ -75,7 +75,7 @@ No `.pyc` exec format error appeared. The command also printed unrelated target-
 
 ### output
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 No pycache matches were printed on stdout; exit 1 is from `grep` finding no matches.
@@ -108,7 +108,7 @@ No pycache matches were printed on stdout; exit 1 is from `grep` finding no matc
 
 ### output
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 No pycache matches were printed on stdout; exit 1 is from `grep` finding no matches.
@@ -155,7 +155,7 @@ rg: uv.lock: No such file or directory (os error 2)
 
 ### output
 ```text
-/Users/mryfmo/.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/bin/python3.11: No module named pytest
+~/.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/bin/python3.11: No module named pytest
 ```
 
 ### fallback command
@@ -236,7 +236,7 @@ OK
 
 ### output
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 Native agent review required before completion.
 - broad diff touches 86 files
 - broad diff changes 2974 lines
@@ -263,7 +263,7 @@ null
 
 ### output
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 ```
 

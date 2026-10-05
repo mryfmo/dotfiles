@@ -1,7 +1,7 @@
 # T2: update-agent-assets.sh に ensure_herdr_integrations を追加
 
 依頼元: orchestrator-fable5(agmsg team: dotfiles-conformance)
-repo: /Users/mryfmo/Workspace/dotfiles(branch 作成・commit 不要)
+repo: ~/Workspace/dotfiles(branch 作成・commit 不要)
 
 ## 背景
 

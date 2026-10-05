@@ -2,7 +2,7 @@
 
 - worker: `claude-standard-dot-a005` (Claude Code, acting as worker per dispatch note)
 - orchestrator: `claude-remediation-dot`
-- worktree: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`
+- worktree: `~/Workspace/dotfiles/.claude/worktrees/worker-c`
 - branch: `feat/codex-apparmor-userns` (base `origin/main` = `c326c73`)
 - task_rev: sha256 `469797747c33379e7d296ac9f0e9810ffcc9b6254ebf852b76c4699cc601c682`,
   verified against the task file at `c326c73`

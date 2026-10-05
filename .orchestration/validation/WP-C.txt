@@ -11,7 +11,7 @@ for target in install/common/hermes.sh home/.chezmoiscripts/common/run_once_afte
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ABSENT install/common/hermes.sh
 ABSENT home/.chezmoiscripts/common/run_once_after_04-install-hermes.sh.tmpl
 ABSENT tests/install/common/hermes.bats
@@ -27,7 +27,7 @@ grep -rn "\.hermes\.install\|hermes" home/.chezmoiscripts/ home/.chezmoi.yaml.tm
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: no Hermes install references remain in the scoped paths.
@@ -42,7 +42,7 @@ git status --porcelain
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
  M .github/workflows/agent-assets.yml
  M .github/workflows/macos.yaml
  M .github/workflows/ubuntu.yaml
@@ -120,7 +120,7 @@ rg -n "hermes|\.hermes\.install" home/.chezmoi.yaml.tmpl tests/install/common/li
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: no Hermes references remain in the edited config/lifecycle test files.

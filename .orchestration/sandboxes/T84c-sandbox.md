@@ -1,6 +1,6 @@
 # T84c Sandbox Record
 
-- Repository: `/Users/mryfmo/Workspace/dotfiles`
+- Repository: `~/Workspace/dotfiles`
 - Branch: `fix/chezmoi-drift-resolution`
 - Changed product/test file: `tests/install/common/lifecycle.bats`
 - No commit, push, chezmoi apply, dependency change, source rename, or local Bats execution occurred.

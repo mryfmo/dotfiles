@@ -1,7 +1,7 @@
 # T79: agmsg-orchestration ルールの二層化(progressive disclosure)
 
 task_id: T79
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-pivot.md (Phase 6)

@@ -33,11 +33,11 @@ only the final minimal non-empty resolved-comments contract.
 
 ## Expected artifacts
 
-- Report: `/Users/mryfmo/Workspace/dotfiles/.orchestration/reports/plan-002.md`
-- Validation: `/Users/mryfmo/Workspace/dotfiles/.orchestration/validation/plan-002.md`
-- Sandbox: `/Users/mryfmo/Workspace/dotfiles/.orchestration/sandboxes/plan-002.md`
-- Learning: `/Users/mryfmo/Workspace/dotfiles/.orchestration/learning/plan-002.md`
-- AutoSkill: `/Users/mryfmo/Workspace/dotfiles/.orchestration/autoskill/runs/plan-002.md`
+- Report: `~/Workspace/dotfiles/.orchestration/reports/plan-002.md`
+- Validation: `~/Workspace/dotfiles/.orchestration/validation/plan-002.md`
+- Sandbox: `~/Workspace/dotfiles/.orchestration/sandboxes/plan-002.md`
+- Learning: `~/Workspace/dotfiles/.orchestration/learning/plan-002.md`
+- AutoSkill: `~/Workspace/dotfiles/.orchestration/autoskill/runs/plan-002.md`
 
 ## Completion
 

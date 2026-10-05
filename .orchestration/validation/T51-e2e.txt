@@ -32,12 +32,12 @@ Precondition: T48 defect found at deployment (modify_ scripts are executed,
 not templated, so the notify path arrived as a literal
 '{{ .chezmoi.homeDir }}/...') was fixed by T48c (apply-time Path.home()
 expansion) and the corrected configs were applied:
-  ~/.codex/{standard,deep}.config.toml notify = ["/Users/mryfmo/.local/bin/common/contextdb-codex-notify"]
+  ~/.codex/{standard,deep}.config.toml notify = ["~/.local/bin/common/contextdb-codex-notify"]
 
 Fresh session: real Codex (gpt-5.6-sol high, --profile deep) in the
 opted-in scratch project; one read-only turn; after turn completion the
 notify chain produced ledger row:
-  18 | codex | {"client":"codex-tui","cwd":"/Users/mryfmo/Workspace/compactiondb-e2e1...
+  18 | codex | {"client":"codex-tui","cwd":"~/Workspace/compactiondb-e2e1...
 Persisted restore: session exited, resumed with
 `codex --profile deep resume --last`, one turn -> second row:
   19 | codex | {"client":"codex-tui",...

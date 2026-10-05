@@ -1,7 +1,7 @@
 # T62c: Add the omitted update_compactiondb function node (PR #130 bot finding)
 
 task_id: T62c
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 

@@ -1,7 +1,7 @@
 # Sandbox: dot-orchestrator-pane-profile-args-T47-a01
 
 - worker: claude-standard-dot-a005 (claude-code, standard profile), worktree-seated pane in
-  `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+  `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - isolation: dedicated git worktree `worker-c`, branch `fix/orchestrator-pane-profile-args`
   created with `git switch --no-track -c … origin/main` (`fa5ce03`) **inside** the sandbox (no
   config write, so the T39 `.git/config.lock` stub was not hit). `fix/plain-start-visibility`

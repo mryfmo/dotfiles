@@ -11,7 +11,7 @@ for target in home/private_dot_hermes home/dot_agents/hermes-config-base.yaml; d
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ABSENT home/private_dot_hermes
 ABSENT home/dot_agents/hermes-config-base.yaml
 ```
@@ -26,7 +26,7 @@ grep -rn -i "hermes" home/dot_agents/agent-config.yaml scripts/generate-agent-co
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: zero Hermes hits in the required WP-D files.
@@ -53,7 +53,7 @@ git diff -- home/dot_codex/private_config.toml.tmpl home/dot_claude/private_sett
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: no generated Codex/Claude output diffs.
@@ -61,7 +61,7 @@ Result: no generated Codex/Claude output diffs.
 `git status --porcelain` after generator:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
  M .github/workflows/agent-assets.yml
  M .github/workflows/macos.yaml
  M .github/workflows/ubuntu.yaml

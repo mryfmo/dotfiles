@@ -47,7 +47,7 @@
 
 ## Crit-data
 
-- `crit status --json` located `/Users/mryfmo/.crit/reviews/dc1955a5d7dc/review.json`.
+- `crit status --json` located `~/.crit/reviews/dc1955a5d7dc/review.json`.
 - `crit comments --all --json` was saved inside the Plan 004 worktree at `.agents/worklog/codex/crit-plan-004.json`.
 - Evidence contains one substantive resolved review record and no unresolved comments.
 - Receipt: `.agents/worklog/codex/crit-plan-004-receipt.md` with `review_surface: crit-data`, `reviewer: codex`, `review_outcome: addressed`.

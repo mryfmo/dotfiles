@@ -16,7 +16,7 @@ PR #180 (3be8b86, 3326e83), CI green, scope exactly the allowed files.
 - Nits: message cites the gitignored `.agents/worklog/...` plan (point to README instead), `join.sh` unqualified, workdir unquoted; `--bootstrap-agmsg` skips the worker_kind value check.
 
 ### Live evidence of the defect this PR guards against
-Worker PONG 09:31:37Z: its Stop hook (`check-inbox.sh claude-code /home/moriya/Workspace/dotfiles`) delivered and marked read message 255 (the worker's own RESULT addressed to the orchestrator). The orchestrator received it through its Monitor stream anyway. This is the (path, type) identity collision in production.
+Worker PONG 09:31:37Z: its Stop hook (`check-inbox.sh claude-code ~/Workspace/dotfiles`) delivered and marked read message 255 (the worker's own RESULT addressed to the orchestrator). The orchestrator received it through its Monitor stream anyway. This is the (path, type) identity collision in production.
 
 ### Operator preconditions before Phase 1.4 (`make update`)
 Register a worker identity or set `worker_kind: codex` (after `codex login`), otherwise the attach hook becomes a no-op on this machine.

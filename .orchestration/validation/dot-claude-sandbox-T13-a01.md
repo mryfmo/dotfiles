@@ -4,7 +4,7 @@ Verbatim stdout+stderr (ANSI stripped). Sections 1-5 were captured before the ST
 
 ## Branch and commits (live)
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline origin/main..HEAD; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse HEAD; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline origin/main..HEAD; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse HEAD; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain | wc -l`
 
 ```text
 b729f54 docs(readme): document the Claude Code sandbox
@@ -15,7 +15,7 @@ b729f54875ab9a24b6a961d4ee68b075d938a146
 0
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff --stat origin/main..HEAD`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff --stat origin/main..HEAD`
 
 ```text
  README.md                                          | 36 +++++++++++
@@ -35,16 +35,16 @@ b729f54875ab9a24b6a961d4ee68b075d938a146
  14 files changed, 417 insertions(+), 3 deletions(-)
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 worktree list | grep env-converge-T10; git -C /home/moriya/Workspace/dotfiles branch --show-current`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 worktree list | grep env-converge-T10; git -C ~/Workspace/dotfiles branch --show-current`
 
 ```text
-/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10  b729f54 [feat/claude-sandbox-manifest]
+~/Workspace/dotfiles/.claude/worktrees/env-converge-T10  b729f54 [feat/claude-sandbox-manifest]
 main
 ```
 
 ## Generated template sandbox block (live)
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -c 'import json;print(json.dumps(json.load(open("home/.chezmoitemplates/claude-settings-managed.json"))["sandbox"], indent=2))'`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -c 'import json;print(json.dumps(json.load(open("home/.chezmoitemplates/claude-settings-managed.json"))["sandbox"], indent=2))'`
 
 ```text
 {
@@ -72,7 +72,7 @@ main
 }
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --check; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/generate-agent-configs.py --check; echo exit=$?`
 
 ```text
 generated agent configs are up to date
@@ -81,14 +81,14 @@ exit=0
 
 ## Validator and unit tests (live)
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run --with pyyaml scripts/validate-agent-assets.py; echo exit=$?`
 
 ```text
 agent asset validation ok
 exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_validate_agent_assets -v -k claude_sandbox 2>&1 | tail -8`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_validate_agent_assets -v -k claude_sandbox 2>&1 | tail -8`
 
 ```text
 test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
@@ -101,7 +101,7 @@ Ran 3 tests in 0.022s
 OK
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_runtime_health -v -k doctor 2>&1 | tail -10`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && python3 -m unittest tests.unit.test_runtime_health -v -k doctor 2>&1 | tail -10`
 
 ```text
 test_doctor_reports_claude_sandbox_prerequisites (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_reports_claude_sandbox_prerequisites) ... ok
@@ -116,7 +116,7 @@ Ran 5 tests in 0.485s
 OK
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run python -m unittest discover -s tests/unit 2>&1 | tail -4`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && uv run python -m unittest discover -s tests/unit 2>&1 | tail -4`
 
 ```text
 ----------------------------------------------------------------------
@@ -127,14 +127,14 @@ OK (skipped=1)
 
 ## Shell lint (live)
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && shellcheck -x install/ubuntu/common/bwrap_apparmor.sh install/ubuntu/common/dependencies.sh scripts/check-tools.sh; echo shellcheck-exit=$?; shfmt --indent 4 --space-redirects --diff install/ubuntu/common/bwrap_apparmor.sh install/ubuntu/common/dependencies.sh scripts/check-tools.sh; echo shfmt-exit=$?`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && shellcheck -x install/ubuntu/common/bwrap_apparmor.sh install/ubuntu/common/dependencies.sh scripts/check-tools.sh; echo shellcheck-exit=$?; shfmt --indent 4 --space-redirects --diff install/ubuntu/common/bwrap_apparmor.sh install/ubuntu/common/dependencies.sh scripts/check-tools.sh; echo shfmt-exit=$?`
 
 ```text
 shellcheck-exit=0
 shfmt-exit=0
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && for f in scripts/generate-agent-configs.py scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py tests/unit/test_runtime_health.py; do a=$(git show origin/main:$f | uvx ruff check --stdin-filename $f - 2>&1 | grep -c -E '^[A-Z]+[0-9]+ |-->'); b=$(uvx ruff check $f 2>&1 | grep -c -E '^[A-Z]+[0-9]+ |-->'); echo "$f ruff-before=$a ruff-after=$b"; done`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && for f in scripts/generate-agent-configs.py scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py tests/unit/test_runtime_health.py; do a=$(git show origin/main:$f | uvx ruff check --stdin-filename $f - 2>&1 | grep -c -E '^[A-Z]+[0-9]+ |-->'); b=$(uvx ruff check $f 2>&1 | grep -c -E '^[A-Z]+[0-9]+ |-->'); echo "$f ruff-before=$a ruff-after=$b"; done`
 
 ```text
 scripts/generate-agent-configs.py ruff-before=3 ruff-after=3
@@ -157,7 +157,7 @@ ID=ubuntu
 2.1.282 (Claude Code)
 ```
 
-### `cd /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && bash -c 'source scripts/check-tools.sh; check_claude_sandbox; echo warnings=$optional_warnings'`
+### `cd ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 && bash -c 'source scripts/check-tools.sh; check_claude_sandbox; echo warnings=$optional_warnings'`
 
 ```text
 found:   bwrap -> /usr/bin/bwrap
@@ -174,7 +174,7 @@ bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted
 bwrap-exit=1
 ```
 
-### `grep -n -i -E 'sandbox|workspace-write|writable' /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_config/claude/rules/model-selection.md /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_config/claude/rules/agmsg-orchestration.md; echo rules-grep-exit=$?`
+### `grep -n -i -E 'sandbox|workspace-write|writable' ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_config/claude/rules/model-selection.md ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10/home/dot_config/claude/rules/agmsg-orchestration.md; echo rules-grep-exit=$?`
 
 ```text
 rules-grep-exit=1
@@ -213,9 +213,9 @@ Error: sandbox required but unavailable: sandbox is enabled but dependencies are
     "excludedCommands": [],
     "filesystem": {
       "allowWrite": [
-        "/home/moriya/.agents/skills/agmsg/db",
-        "/home/moriya/.agents/skills/agmsg/teams",
-        "/home/moriya/.agents/skills/agmsg/run"
+        "~/.agents/skills/agmsg/db",
+        "~/.agents/skills/agmsg/teams",
+        "~/.agents/skills/agmsg/run"
       ]
     },
     "network": {
@@ -270,7 +270,7 @@ TOOL_RESULT etTesJ is_error=true
 Exit code 1
 Hi moriya-fumio-thd! You've successfully authenticated, but GitHub does not provide shell access.
 TOOL_RESULT tzVDxW is_error=false
-{"id":"cli:pane:list","result":{"panes":[{"agent":"claude","agent_session":{"agent":"claude","kind":"id","source":"herdr:claude","value":"5277c0a1-6279-4940-bf08-6a23b59b5b84"},"agent_status":"idle","cwd":"/home/moriya/Workspace/dotfiles","focused":true,"foreground_cwd":"/home/moriya/Workspace/dotfiles","label":"claude-orchestrator","pane_id":"wE:p1","revision":7,"scroll":{"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":40},"tab_id":"wE:t1","terminal_id":"term_65c48d2bb4fa4c","terminal_title":"✳ 环境收束结构修复","terminal_title_stripped":"环境收束结构修复","workspace_id":"wE"},{"agent":"cla
+{"id":"cli:pane:list","result":{"panes":[{"agent":"claude","agent_session":{"agent":"claude","kind":"id","source":"herdr:claude","value":"5277c0a1-6279-4940-bf08-6a23b59b5b84"},"agent_status":"idle","cwd":"~/Workspace/dotfiles","focused":true,"foreground_cwd":"~/Workspace/dotfiles","label":"claude-orchestrator","pane_id":"wE:p1","revision":7,"scroll":{"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":40},"tab_id":"wE:t1","terminal_id":"term_65c48d2bb4fa4c","terminal_title":"✳ 环境收束结构修复","terminal_title_stripped":"环境收束结构修复","workspace_id":"wE"},{"agent":"cla
 ```
 
 ### `ls -la /tmp/outside-probe-20260925165649 /tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/claude-sandbox-e2e-20260925165649/repo/inside-probe.txt; ls -d ~/.claude/projects/*claude-sandbox-e2e*`
@@ -278,12 +278,12 @@ TOOL_RESULT tzVDxW is_error=false
 ```text
 ls: '/tmp/outside-probe-20260925165649' にアクセスできません: そのようなファイルやディレクトリはありません
 ls: '/tmp/claude-1000/-home-moriya-Workspace-dotfiles/73e6eabe-e514-4cad-81a9-a399b3f7c9c3/scratchpad/claude-sandbox-e2e-20260925165649/repo/inside-probe.txt' にアクセスできません: そのようなファイルやディレクトリはありません
-/home/moriya/.claude/projects/-tmp-claude-1000--home-moriya-Workspace-dotfiles-73e6eabe-e514-4cad-81a9-a399b3f7c9c3-scratchpad-claude-sandbox-e2e-20260925165649-repo
+~/.claude/projects/-tmp-claude-1000--home-moriya-Workspace-dotfiles-73e6eabe-e514-4cad-81a9-a399b3f7c9c3-scratchpad-claude-sandbox-e2e-20260925165649-repo
 ```
 
 ## 6. State at operator STOP (read-only, after STOP)
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline origin/main..HEAD; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain; git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 log --oneline origin/main..HEAD; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 status --porcelain; git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 diff`
 
 ```text
 b729f54 docs(readme): document the Claude Code sandbox
@@ -306,7 +306,7 @@ index 7a26781..4fd1306 100644
          systemctl() {
 ```
 
-### `git -C /home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse HEAD origin/feat/claude-sandbox-manifest`
+### `git -C ~/Workspace/dotfiles/.claude/worktrees/env-converge-T10 rev-parse HEAD origin/feat/claude-sandbox-manifest`
 
 ```text
 b729f54875ab9a24b6a961d4ee68b075d938a146

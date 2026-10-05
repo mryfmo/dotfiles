@@ -47,7 +47,7 @@ There are no threads.
 ## CompactionDB
 
 ```
-cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T73 (operator 2026-10-03): ccstatusline/ccusage versions are read from home/dot_mise/config.toml by the statusline smoke script, its unit test and the CI workflow (no `@version` literals), and the awscli fingerprint test reads the installer; pins have one declaration.'
+cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T73 (operator 2026-10-03): ccstatusline/ccusage versions are read from home/dot_mise/config.toml by the statusline smoke script, its unit test and the CI workflow (no `@version` literals), and the awscli fingerprint test reads the installer; pins have one declaration.'
 b02665cb-ccee-482d-9ff8-c933438c2de6
 ```
 

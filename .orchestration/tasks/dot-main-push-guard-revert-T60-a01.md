@@ -1,6 +1,6 @@
 # AGMSG-TASK dot-main-push-guard-revert-T60-a01
 
-Drafted 2026-10-03 by the orchestrator seat; operator-approved ("G1 を適用した、T60 を起票しろ"). Worker: `claude-standard-dot-a005` in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+Drafted 2026-10-03 by the orchestrator seat; operator-approved ("G1 を適用した、T60 を起票しろ"). Worker: `claude-standard-dot-a005` in `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 
 ## Objective
 

@@ -1,10 +1,10 @@
 # Validation: remote-diff-01
 
-All blocks below are verbatim stdout+stderr of the command in the heading, executed in `/home/moriya/Workspace/dotfiles` on 2026-09-25 by claude-standard-dot-a001.
+All blocks below are verbatim stdout+stderr of the command in the heading, executed in `~/Workspace/dotfiles` on 2026-09-25 by claude-standard-dot-a001.
 
 ## 1. Remote and local refs
 
-### `git -C /home/moriya/Workspace/dotfiles ls-remote origin refs/heads/main`
+### `git -C ~/Workspace/dotfiles ls-remote origin refs/heads/main`
 
 ```text
 3303fbca15ef355a66c5f57fff47b59bd1e25130	refs/heads/main
@@ -932,7 +932,7 @@ archive unchanged in range
 
 ## 7. W1/W2 fork point, overlap, merge-tree
 
-### `git -C /home/moriya/Workspace/dotfiles-w1 log -1 --format="W1 %H %s" HEAD; git -C /home/moriya/Workspace/dotfiles-w2 log -1 --format="W2 %H %s" HEAD`
+### `git -C ~/Workspace/dotfiles-w1 log -1 --format="W1 %H %s" HEAD; git -C ~/Workspace/dotfiles-w2 log -1 --format="W2 %H %s" HEAD`
 
 ```text
 W1 126e465c99d1dc6f90b9f48d57ada0b3f0391e14 merge: integrate PRD/ADR/BDD/test-doc remediation (refkit-P3, P4, P5, P7, P0-05) into feat/references-kit-v4

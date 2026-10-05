@@ -1,7 +1,7 @@
 # T81: RESULT 契約へのワーカーコスト報告の規約化
 
 task_id: T81
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-pivot.md (Phase 6)

@@ -1,7 +1,7 @@
 # WP-L: Codify the delegation boundary in the agmsg-orchestration rule
 
 task_id: WP-L
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 

@@ -1,7 +1,7 @@
 # T1: herdr-agents 冪等化 + zshrc ラッパー失敗可視化 + テスト更新
 
 依頼元: orchestrator-fable5(agmsg team: dotfiles-conformance)
-repo: /Users/mryfmo/Workspace/dotfiles(このまま作業。branch 作成・commit は不要 — コミットはオーケストレーターが統合時に行う)
+repo: ~/Workspace/dotfiles(このまま作業。branch 作成・commit は不要 — コミットはオーケストレーターが統合時に行う)
 
 ## 背景
 
@@ -28,7 +28,7 @@ herdr workspace list
    ※ cwd は含まれない → label 一致だけでは不十分
 
 herdr pane list --workspace <id>
-→ {"result":{"panes":[{"agent":"claude","agent_status":"working","cwd":"/Users/mryfmo",
+→ {"result":{"panes":[{"agent":"claude","agent_status":"working","cwd":"~",
     "foreground_cwd":"...","pane_id":"wJ:p1","tab_id":"wJ:t1","terminal_id":"...","workspace_id":"wJ"}]}}
    ※ cwd と agent フィールド(検出エージェント名 "claude"/"codex" 等、無ければ null/欠落)あり。
      pane rename した label は出力に含まれないため、判定を pane label に依存させない

@@ -1,6 +1,6 @@
 # Sandbox: dot-audit-profile-gpt6-sol-T48-a01
 
-- worker: claude-standard-dot-a005, worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`.
+- worker: claude-standard-dot-a005, worktree `~/Workspace/dotfiles/.claude/worktrees/worker-c`.
 - isolation: dedicated git worktree. I created `fix/audit-profile-gpt6-sol` from origin/main (c8fc05c)
   with `git switch --no-track -c` inside the sandbox (no config write). `feat/orchestration-rules-T43`
   and `fix/sandbox-unix-sockets` were left untouched.

@@ -1,6 +1,6 @@
 # AGMSG-TASK dotfiles-T64-codex-worker-never-network-a01
 
-Drafted 2026-10-03 by the orchestrator seat from the approved correction plan (Phase 1, dotfiles-T64). Worker: `claude-standard-dot-a005` in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c`. Depends on dotfiles-T63 (merged as c6de5156: the forbidden execpolicy exists before the prompt-free seat).
+Drafted 2026-10-03 by the orchestrator seat from the approved correction plan (Phase 1, dotfiles-T64). Worker: `claude-standard-dot-a005` in `~/Workspace/dotfiles/.claude/worktrees/worker-c`. Depends on dotfiles-T63 (merged as c6de5156: the forbidden execpolicy exists before the prompt-free seat).
 
 ## Objective
 

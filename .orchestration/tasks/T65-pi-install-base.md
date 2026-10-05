@@ -1,7 +1,7 @@
 # T65: Pi installation base — pinned tool, dot_pi skeleton, validation category
 
 task_id: T65
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-pi-worker-integration.md (Phase 1)

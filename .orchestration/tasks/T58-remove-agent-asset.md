@@ -1,7 +1,7 @@
 # T58: remove-agent-asset + doctor orphan detection (H1, part 2)
 
 task_id: T58
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-harness-composability-integration.md (Phase 4)

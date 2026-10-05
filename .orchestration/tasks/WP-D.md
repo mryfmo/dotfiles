@@ -1,7 +1,7 @@
 # WP-D: Remove Hermes config, manifest entries, and generator/validator support
 
 task_id: WP-D
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-tmux-hermes-removal
 worker: codex-wpd
 

@@ -1,7 +1,7 @@
 # T68: Pi RPC bridge + agmsg integration (π1)
 
 task_id: T68
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-pi-worker-integration.md (Phase 4, incl. the PR #132 review addition: agmsg pi type)

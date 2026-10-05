@@ -24,7 +24,7 @@ Permissions Size User   Group  Date Modified    Name
 agent-stop-gate: AGMSG-TASK task_id=dotfiles-T92 in team dotfiles to claude-standard-dot-a007 has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=dotfiles-T92 (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch
 rc=2
 
-$ git status --porcelain --untracked-files=all | head -3; grep -c " /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/" /proc/self/mountinfo
+$ git status --porcelain --untracked-files=all | head -3; grep -c " ~/Workspace/dotfiles/.claude/worktrees/worker-e/" /proc/self/mountinfo
 ?? .bash_profile
 ?? .bashrc
 ?? .claude/agents
@@ -77,9 +77,9 @@ agent asset validation ok
 exit=0
 
 $ grep -E " .../worker-e/(\.zshrc|\.claude/agents|\.mcp\.json) " /proc/self/mountinfo   # sandboxed Bash
-7130 7118 259:2 /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.mcp.json /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.mcp.json ro,nosuid,nodev,relatime - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
-7132 7118 259:2 /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/agents /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/agents ro,nosuid,nodev,relatime - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
-7138 7118 259:2 /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.zshrc /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.zshrc ro,nosuid,nodev,relatime - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
+7130 7118 259:2 ~/Workspace/dotfiles/.claude/worktrees/worker-e/.mcp.json ~/Workspace/dotfiles/.claude/worktrees/worker-e/.mcp.json ro,nosuid,nodev,relatime - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
+7132 7118 259:2 ~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/agents ~/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/agents ro,nosuid,nodev,relatime - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
+7138 7118 259:2 ~/Workspace/dotfiles/.claude/worktrees/worker-e/.zshrc ~/Workspace/dotfiles/.claude/worktrees/worker-e/.zshrc ro,nosuid,nodev,relatime - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
 
 $ awk field-6 first option for mounts under worker-e | sort | uniq -c
      26 ro
@@ -137,7 +137,7 @@ false 4176428485 Do not let a test-only override bypass the stop gate**
 false 4176428488 Keep real empty read-only bind mounts visible**
 false 4176428492 Recognize the sandbox's character-device placeholders**
 
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T92 (orchestrator 2026-10-04): the agent stop gate ignores untracked paths that are mount points in its own namespace, because the Claude Code sandbox bind-mounts 0-byte placeholders for protected paths into the repository root and the Stop hook runs inside that namespace.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T92 (orchestrator 2026-10-04): the agent stop gate ignores untracked paths that are mount points in its own namespace, because the Claude Code sandbox bind-mounts 0-byte placeholders for protected paths into the repository root and the Stop hook runs inside that namespace.'
 74bc8922-86c4-48f7-bdf1-a9e72198761e
 ```
 
@@ -273,10 +273,10 @@ F
 FAIL: test_sandbox_placeholders_are_skipped (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_are_skipped)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 386, in test_sandbox_placeholders_are_skipped
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 386, in test_sandbox_placeholders_are_skipped
     self.assertEqual(self.assert_gate(self.main, 0, args=args), "")
                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : agent-stop-gate: uncommitted change outside .orchestration: .claude/agents (delegate it to a worker task or revert it)
@@ -295,9 +295,9 @@ F
 FAIL: test_untracked_symlink_to_a_mount_point_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_untracked_symlink_to_a_mount_point_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 430, in test_untracked_symlink_to_a_mount_point_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 430, in test_untracked_symlink_to_a_mount_point_is_not_a_placeholder
     stderr = self.assert_gate(self.main, 2, args=self.mountinfo([target]))
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -314,9 +314,9 @@ F
 FAIL: test_user_bind_mount_of_a_real_file_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_user_bind_mount_of_a_real_file_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 397, in test_user_bind_mount_of_a_real_file_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 397, in test_user_bind_mount_of_a_real_file_is_not_a_placeholder
     stderr = self.assert_gate(self.main, 2, args=self.mountinfo([env_file]))
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -333,9 +333,9 @@ F
 FAIL: test_read_write_mount_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_read_write_mount_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 403, in test_read_write_mount_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 403, in test_read_write_mount_is_not_a_placeholder
     stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), options="rw,relatime"))
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -352,10 +352,10 @@ F
 FAIL: test_character_device_placeholder_is_skipped (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_character_device_placeholder_is_skipped)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 411, in test_character_device_placeholder_is_skipped
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 411, in test_character_device_placeholder_is_skipped
     self.assertEqual(self.assert_gate(self.main, 0, args=self.mountinfo([mask], root="/null")), "")
                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : agent-stop-gate: uncommitted change outside .orchestration: .gitconfig (delegate it to a worker task or revert it)
@@ -373,9 +373,9 @@ F
 FAIL: test_read_only_bind_of_another_empty_file_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_read_only_bind_of_another_empty_file_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 420, in test_read_only_bind_of_another_empty_file_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 420, in test_read_only_bind_of_another_empty_file_is_not_a_placeholder
     stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), root="/srv/empty.env"))
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -392,9 +392,9 @@ F
 FAIL: test_mountinfo_cannot_be_redirected_through_the_environment (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_mountinfo_cannot_be_redirected_through_the_environment)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 415, in test_mountinfo_cannot_be_redirected_through_the_environment
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 415, in test_mountinfo_cannot_be_redirected_through_the_environment
     stderr = self.assert_gate(self.main, 2, env={"AGENT_STOP_GATE_MOUNTINFO": fixture})
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -717,10 +717,10 @@ F
 FAIL: test_sandbox_placeholders_are_skipped (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_are_skipped)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 414, in test_sandbox_placeholders_are_skipped
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 414, in test_sandbox_placeholders_are_skipped
     self.assertEqual(self.assert_gate(self.main, 0, args=args), "")
                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : agent-stop-gate: uncommitted change outside .orchestration: .claude/agents (delegate it to a worker task or revert it)
@@ -739,9 +739,9 @@ F
 FAIL: test_untracked_symlink_to_a_mount_point_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_untracked_symlink_to_a_mount_point_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 471, in test_untracked_symlink_to_a_mount_point_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 471, in test_untracked_symlink_to_a_mount_point_is_not_a_placeholder
     stderr = self.assert_gate(self.main, 2, args=self.mountinfo([target]))
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -758,9 +758,9 @@ F
 FAIL: test_user_bind_mount_of_a_real_file_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_user_bind_mount_of_a_real_file_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 425, in test_user_bind_mount_of_a_real_file_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 425, in test_user_bind_mount_of_a_real_file_is_not_a_placeholder
     stderr = self.assert_gate(self.main, 2, args=self.mountinfo([env_file]))
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -777,9 +777,9 @@ F
 FAIL: test_read_write_mount_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_read_write_mount_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 431, in test_read_write_mount_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 431, in test_read_write_mount_is_not_a_placeholder
     stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), options="rw,relatime"))
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -796,10 +796,10 @@ F
 FAIL: test_character_device_placeholder_is_skipped (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_character_device_placeholder_is_skipped)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 439, in test_character_device_placeholder_is_skipped
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 439, in test_character_device_placeholder_is_skipped
     self.assertEqual(self.assert_gate(self.main, 0, args=self.mountinfo([mask], root="/null", dev="0:7")), "")
                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : agent-stop-gate: uncommitted change outside .orchestration: .gitconfig (delegate it to a worker task or revert it)
@@ -817,9 +817,9 @@ F
 FAIL: test_read_only_bind_of_another_empty_file_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_read_only_bind_of_another_empty_file_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 448, in test_read_only_bind_of_another_empty_file_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 448, in test_read_only_bind_of_another_empty_file_is_not_a_placeholder
     stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), root="/srv/empty.env"))
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -836,10 +836,10 @@ F
 FAIL: test_sandbox_placeholders_on_a_separate_filesystem_are_skipped (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_on_a_separate_filesystem_are_skipped)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 405, in test_sandbox_placeholders_on_a_separate_filesystem_are_skipped
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 405, in test_sandbox_placeholders_on_a_separate_filesystem_are_skipped
     self.assertEqual(self.assert_gate(self.main, 0, args=args), "")
                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : agent-stop-gate: uncommitted change outside .orchestration: .claude/agents (delegate it to a worker task or revert it)
@@ -858,7 +858,7 @@ F
 FAIL: test_same_named_file_bound_from_elsewhere_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_same_named_file_bound_from_elsewhere_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 456, in test_same_named_file_bound_from_elsewhere_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 456, in test_same_named_file_bound_from_elsewhere_is_not_a_placeholder
     self.assertIn(".zshrc", stderr)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
 AssertionError: '.zshrc' not found in 'agent-stop-gate: uncommitted change outside .orchestration: .claude/agents (delegate it to a worker task or revert it)\nagent-stop-gate: sandbox placeholders ignored: 1\n'
@@ -875,9 +875,9 @@ F
 FAIL: test_whole_filesystem_bind_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_whole_filesystem_bind_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 408, in test_whole_filesystem_bind_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 408, in test_whole_filesystem_bind_is_not_a_placeholder
     stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), root="/"))
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -894,9 +894,9 @@ F
 FAIL: test_null_device_of_another_filesystem_is_not_a_placeholder (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_null_device_of_another_filesystem_is_not_a_placeholder)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 462, in test_null_device_of_another_filesystem_is_not_a_placeholder
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 462, in test_null_device_of_another_filesystem_is_not_a_placeholder
     stderr = self.assert_gate(self.main, 2, args=self.mountinfo([mask], root="/null", dev="0:9"))
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -913,9 +913,9 @@ F
 FAIL: test_mountinfo_cannot_be_redirected_through_the_environment (tests.unit.test_agent_stop_gate.AgentStopGateTest.test_mountinfo_cannot_be_redirected_through_the_environment)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 443, in test_mountinfo_cannot_be_redirected_through_the_environment
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 443, in test_mountinfo_cannot_be_redirected_through_the_environment
     stderr = self.assert_gate(self.main, 2, env={"AGENT_STOP_GATE_MOUNTINFO": fixture})
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agent_stop_gate.py", line 98, in assert_gate
     self.assertEqual(result.returncode, code, result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 

@@ -1,7 +1,7 @@
 # T84c: bats スイートの旧 modify\_ パス参照更新 (PR #140 CI fail + P1)
 
 task_id: T84c
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: T84 follow-up; branch fix/chezmoi-drift-resolution (checked out)

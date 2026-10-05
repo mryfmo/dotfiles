@@ -61,7 +61,7 @@ I did not reply to or resolve any thread.
 ## CompactionDB
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T95 (orchestrator 2026-10-04): the Claude Code sandbox'"'"'s placeholder targets that persist on disk at the repository root are ignored through `.gitignore`, so neither `git status` nor the stop gate reports them.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T95 (orchestrator 2026-10-04): the Claude Code sandbox'"'"'s placeholder targets that persist on disk at the repository root are ignored through `.gitignore`, so neither `git status` nor the stop gate reports them.'
 672e4763-0e0b-4613-beed-1a9f1457a606
 [exit 0]
 ```

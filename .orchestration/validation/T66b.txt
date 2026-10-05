@@ -175,7 +175,7 @@ index 722a4c6..6e1e582 100755
 ```
 
 REVIEW
-- Crit review file: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Crit review file: ~/.crit/reviews/dfcf30aea611/review.json
 - Record: r_295949
 - Resolved: true
 - Evidence: .agents/worklog/codex/review/T66b-crit-comments.json

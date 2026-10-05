@@ -1,7 +1,7 @@
 # T48b: Vendored ingest — explicit trusted ingestion source (prerequisite for T48)
 
 task_id: T48b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-compactiondb-research-integration.md (Phase 3, risk clause "T48b")

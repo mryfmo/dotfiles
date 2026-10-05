@@ -1,7 +1,7 @@
 # T67e: Checker error-turn diagnostics (gap #4, live-diagnosed)
 
 task_id: T67e
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: PLAN-pi-worker-integration.md (Phase 3; live gap #4)

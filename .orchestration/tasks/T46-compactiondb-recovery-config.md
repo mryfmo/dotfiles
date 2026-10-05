@@ -1,7 +1,7 @@
 # T46: CompactionDB config schema — recovery budgets (P7 + P1 groundwork)
 
 task_id: T46
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-compactiondb-research-integration.md (Phase 2)

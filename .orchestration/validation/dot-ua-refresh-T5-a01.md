@@ -1,15 +1,15 @@
 # Validation
 
-## env UNDERSTAND_NO_WORKTREE_REDIRECT=1 node /Users/mryfmo/.understand-anything-plugin/skills/understand/prepare-incremental.mjs /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-refresh 13079e48cd4b86e0b57de6483303edef34ab5cce
+## env UNDERSTAND_NO_WORKTREE_REDIRECT=1 node ~/.understand-anything-plugin/skills/understand/prepare-incremental.mjs ~/Workspace/dotfiles/.claude/worktrees/ua-refresh 13079e48cd4b86e0b57de6483303edef34ab5cce
 
 Exit: 1
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml ~/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
 prepare-incremental.mjs failed: Previous graph commit does not match the requested base and no symbol baseline exists; cannot safely retry
 Error: Previous graph commit does not match the requested base and no symbol baseline exists; cannot safely retry
-    at main (file:///Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand/prepare-incremental.mjs:523:13)
-    at file:///Users/mryfmo/.understand-anything/repo/understand-anything-plugin/skills/understand/prepare-incremental.mjs:738:11
+    at main (file://~/.understand-anything/repo/understand-anything-plugin/skills/understand/prepare-incremental.mjs:523:13)
+    at file://~/.understand-anything/repo/understand-anything-plugin/skills/understand/prepare-incremental.mjs:738:11
 ```
 
 ## jq '{project: .project, nodes: (.nodes|length), edges: (.edges|length)}' .ua/knowledge-graph.json
@@ -17,7 +17,7 @@ Error: Previous graph commit does not match the requested base and no symbol bas
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml ~/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
 {
   "project": {
     "name": "dotfiles",
@@ -60,14 +60,14 @@ mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.c
 Exit: 0
 
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml ~/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
 {
   "gitCommitHash": "d91b835021981a2fb604c61e2ef324f972cc8795",
   "version": "1.0.0"
 }
 ```
 
-## sed -n '480,540p' /Users/mryfmo/.understand-anything-plugin/skills/understand/prepare-incremental.mjs
+## sed -n '480,540p' ~/.understand-anything-plugin/skills/understand/prepare-incremental.mjs
 
 Exit: 0
 
@@ -153,10 +153,10 @@ Exit: 0
 
 ## Authorized baseline retry
 
-### env UNDERSTAND_NO_WORKTREE_REDIRECT=1 node /Users/mryfmo/.understand-anything-plugin/skills/understand/prepare-incremental.mjs /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-refresh d91b835021981a2fb604c61e2ef324f972cc8795
+### env UNDERSTAND_NO_WORKTREE_REDIRECT=1 node ~/.understand-anything-plugin/skills/understand/prepare-incremental.mjs ~/Workspace/dotfiles/.claude/worktrees/ua-refresh d91b835021981a2fb604c61e2ef324f972cc8795
 Exit: running; see continuation
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml ~/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
 scan-project: filesScanned=1393 filteredByIgnore=0 complexity=very-large
 ```
 
@@ -171,7 +171,7 @@ Incremental plan: FULL_UPDATE; analyze=733; delete=10; cosmetic=29; ignored=6; g
 ### plan summary; git status --short .ua; git log --oneline 13079e4..d91b835 | wc -l
 Exit: 0
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml ~/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
 {
   "action": "FULL_UPDATE",
   "reason": "743 files have structural changes (>30 files and >50% of project) — full rebuild recommended",
@@ -186,7 +186,7 @@ mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.c
 ### jq '{action,reason,baseCommit,headCommit,counts,rerunArchitecture,rerunTour}' .ua/intermediate/incremental-plan.json
 Exit: 0
 ```text
-mise WARN  tracking config: failed to ln -sf /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
+mise WARN  tracking config: failed to ln -sf ~/Workspace/dotfiles/.claude/worktrees/ua-refresh/mise.toml ~/.local/state/mise/tracked-configs/9afb5d3be580542: Operation not permitted (os error 1)
 {
   "action": "FULL_UPDATE",
   "reason": "743 files have structural changes (>30 files and >50% of project) — full rebuild recommended",

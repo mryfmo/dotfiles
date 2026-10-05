@@ -1,7 +1,7 @@
 # T64b: Align Codex-facing security guidance with the security profile (PR #131 bot finding)
 
 task_id: T64b
-repo: /Users/mryfmo/Workspace/dotfiles
+repo: ~/Workspace/dotfiles
 team: dotfiles-conformance
 worker: codex-deep-dot
 

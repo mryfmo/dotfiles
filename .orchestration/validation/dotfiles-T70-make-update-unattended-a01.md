@@ -69,7 +69,7 @@ elif ! git diff --quiet || ! git diff --cached --quiet; then \
 	reason="tracked files have staged or unstaged changes"; \
 fi; \
 if [ -n "$reason" ]; then \
-	printf "Notice: local source not pulled (%s); run 'git -C %s pull' to fetch remote updates.\n" "$reason" "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-d"; \
+	printf "Notice: local source not pulled (%s); run 'git -C %s pull' to fetch remote updates.\n" "$reason" "~/Workspace/dotfiles/.claude/worktrees/worker-d"; \
 elif ! git pull --ff-only; then \
 	printf 'Warning: git pull --ff-only failed; continuing with local source.\n' >&2; \
 fi
@@ -120,9 +120,9 @@ OK (skipped=2)
 ### `make validate-agent-assets` (tail of full log; command exit status was 0)
 
 ```text
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-pr-feedback.json
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-review-receipt.md
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01.md
 agent asset validation ok
 ```
 
@@ -179,7 +179,7 @@ blocked
 ### CompactionDB (main checkout, run unsandboxed)
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the task file [memory:decision] text, verbatim>"
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "<the task file [memory:decision] text, verbatim>"
 1b3e2eaf-7bed-4b48-a234-dda7568b32b3
 ```
 

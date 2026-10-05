@@ -1,7 +1,7 @@
 # T84 Sandbox
 
 - Worker: `codex-deep-dot`
-- Repository: `/Users/mryfmo/Workspace/dotfiles`
+- Repository: `~/Workspace/dotfiles`
 - Durable repository writes are limited to T84 source/test/lifecycle changes, the five T84 artifacts, and mandated Crit evidence/receipt.
 - `scripts/validate-agent-assets.py` is included because it was the lifecycle validator hardcoding the old generated profile names.
 - Required deployed files under `~/.z*` and `~/.codex/*.config.toml` were read/stat'ed only; none were edited.

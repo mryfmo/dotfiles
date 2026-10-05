@@ -11,7 +11,7 @@ for path in home/dot_tmux.conf.tmpl home/dot_tmux.conf.d home/dot_tmux-powerline
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ABSENT home/dot_tmux.conf.tmpl
 ABSENT home/dot_tmux.conf.d
 ABSENT home/dot_tmux-powerlinerc
@@ -28,7 +28,7 @@ grep -rn "tmux" home/.chezmoitemplates/ tests/files/ home/dot_bash/ || true
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: no tmux hits left in the WP-B scoped grep paths.
@@ -43,7 +43,7 @@ git status --porcelain
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
  M .github/workflows/agent-assets.yml
  M .github/workflows/macos.yaml
  M .github/workflows/ubuntu.yaml
@@ -133,7 +133,7 @@ shfmt --indent 4 --space-redirects --diff home/dot_bash/client/bashrc || true
 Output:
 
 ```text
-mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+mise WARN  failed to write cache file: ~/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
 ```
 
 Result: no shfmt diff.

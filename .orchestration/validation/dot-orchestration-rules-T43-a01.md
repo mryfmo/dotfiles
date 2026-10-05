@@ -102,13 +102,13 @@ $ make render-check
 uv run --with pyyaml scripts/generate-agent-configs.py --check
 error: Could not acquire lock
   cause: Could not create temporary file
-  cause: Read-only file system (os error 30) at path "/home/moriya/.cache/uv/.tmp4KN7ON"
+  cause: Read-only file system (os error 30) at path "~/.cache/uv/.tmp4KN7ON"
 make: *** [Makefile:169: render-check] エラー 2
 exit=2
 
 $ make unit-test   (run inside the Bash sandbox; tail, full log in section 3)
   cause: Could not create temporary file
-  cause: Read-only file system (os error 30) at path "/home/moriya/.cache/uv/.tmpPsb3W5"
+  cause: Read-only file system (os error 30) at path "~/.cache/uv/.tmpPsb3W5"
 make: *** [Makefile:161: unit-test] エラー 2
 exit=2
 
@@ -116,7 +116,7 @@ $ make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 error: Could not acquire lock
   cause: Could not create temporary file
-  cause: Read-only file system (os error 30) at path "/home/moriya/.cache/uv/.tmpz1PBew"
+  cause: Read-only file system (os error 30) at path "~/.cache/uv/.tmpz1PBew"
 make: *** [Makefile:165: validate-agent-assets] エラー 2
 exit=2
 
@@ -153,8 +153,8 @@ Ran 1 test in 0.086s
 OK
 exit=0
 
-$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-orchestration-rules-T43-a01.md; git show origin/main:.orchestration/tasks/dot-orchestration-rules-T43-a01.md | sha256sum
-2cf825882d080212e2f6fb0b29164861074308864d162289cdbd84c77949fe89  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dot-orchestration-rules-T43-a01.md
+$ sha256sum ~/Workspace/dotfiles/.orchestration/tasks/dot-orchestration-rules-T43-a01.md; git show origin/main:.orchestration/tasks/dot-orchestration-rules-T43-a01.md | sha256sum
+2cf825882d080212e2f6fb0b29164861074308864d162289cdbd84c77949fe89  ~/Workspace/dotfiles/.orchestration/tasks/dot-orchestration-rules-T43-a01.md
 2cf825882d080212e2f6fb0b29164861074308864d162289cdbd84c77949fe89  -
 exit=0
 
@@ -816,7 +816,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-_p534007/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-_p534007/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1612,7 +1612,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-0ipj0rtg/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-0ipj0rtg/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -1724,7 +1724,7 @@ exit=0
 ```
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T43 r3: the .ua/ symbol-coverage gate is the PATH helper ua-symbol-coverage (home/dot_local/bin/common/executable_ua-symbol-coverage; scripts/ua-symbol-coverage.py removed), run with --repo-ref set to the revision the new graph was built from (its .ua/meta.json gitCommitHash, normally HEAD), never the pre-change base; a first line containing "uv run" selects the Python def grammar (orchestrator r3 2026-09-30)."
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T43 r3: the .ua/ symbol-coverage gate is the PATH helper ua-symbol-coverage (home/dot_local/bin/common/executable_ua-symbol-coverage; scripts/ua-symbol-coverage.py removed), run with --repo-ref set to the revision the new graph was built from (its .ua/meta.json gitCommitHash, normally HEAD), never the pre-change base; a first line containing "uv run" selects the Python def grammar (orchestrator r3 2026-09-30)."
 c8d78aa6-faef-45fc-9ad9-027e5b195969
 exit=0
 ```
@@ -2765,7 +2765,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-fgc_v_j4/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-fgc_v_j4/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -2799,7 +2799,7 @@ F.
 FAIL: test_uv_run_script_shebang_is_python (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_uv_run_script_shebang_is_python)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 130, in test_uv_run_script_shebang_is_python
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 130, in test_uv_run_script_shebang_is_python
     self.assertEqual(0, result.returncode, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : | file | old | new | def-like lines | status |
@@ -2822,7 +2822,7 @@ exit=0
 ### `make validate-agent-assets` in the main checkout with the revision 3 evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0
@@ -2930,7 +2930,7 @@ exit=0
 ```
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r4:\ ua-symbol-coverage\ takes\ --old-ref\ \<previous-graph\ gitCommitHash\>\ with\ --repo-ref\ \<new-graph\ gitCommitHash\>\;\ renames\ between\ them\ \(git\ diff\ -M\ --diff-filter=R\)\ are\ judged\ by\ the\ successor\ path\ under\ min\(old,\ defs\ at\ REF\),\ genuine\ deletions\ stay\ explained,\ and\ without\ --old-ref\ a\ path\ absent\ at\ REF\ is\ a\ REGRESSION\ \(fail\ closed\).\ Codex\ shell_environment_policy\ PATH\ includes\ ~/.local/bin/common\ after\ ~/.local/bin\ \(orchestrator\ r4\ 2026-10-01\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r4:\ ua-symbol-coverage\ takes\ --old-ref\ \<previous-graph\ gitCommitHash\>\ with\ --repo-ref\ \<new-graph\ gitCommitHash\>\;\ renames\ between\ them\ \(git\ diff\ -M\ --diff-filter=R\)\ are\ judged\ by\ the\ successor\ path\ under\ min\(old,\ defs\ at\ REF\),\ genuine\ deletions\ stay\ explained,\ and\ without\ --old-ref\ a\ path\ absent\ at\ REF\ is\ a\ REGRESSION\ \(fail\ closed\).\ Codex\ shell_environment_policy\ PATH\ includes\ ~/.local/bin/common\ after\ ~/.local/bin\ \(orchestrator\ r4\ 2026-10-01\).
 984c14d8-674c-4a32-92fc-561a0f487b97
 exit=0
 ```
@@ -2959,7 +2959,7 @@ FFFF
 FAIL: test_absent_path_without_old_ref_is_regression (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_absent_path_without_old_ref_is_regression)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 112, in test_absent_path_without_old_ref_is_regression
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 112, in test_absent_path_without_old_ref_is_regression
     self.assertEqual(1, result.returncode, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : | file | old | new | def-like lines | status |
@@ -2973,7 +2973,7 @@ files: 2, regressions: 0
 FAIL: test_deleted_path_with_old_ref_is_explained (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_deleted_path_with_old_ref_is_explained)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 101, in test_deleted_path_with_old_ref_is_explained
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 101, in test_deleted_path_with_old_ref_is_explained
     self.assertEqual(0, result.returncode, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -2982,7 +2982,7 @@ AssertionError: 0 != 2 :
 FAIL: test_rename_preserving_symbols_is_ok (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_rename_preserving_symbols_is_ok)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 130, in test_rename_preserving_symbols_is_ok
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 130, in test_rename_preserving_symbols_is_ok
     self.assertEqual(0, result.returncode, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 2 : 
@@ -2991,7 +2991,7 @@ AssertionError: 0 != 2 :
 FAIL: test_rename_dropping_symbols_is_regression (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_rename_dropping_symbols_is_regression)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 139, in test_rename_dropping_symbols_is_regression
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 139, in test_rename_dropping_symbols_is_regression
     self.assertEqual(1, result.returncode, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 2 : 
@@ -4047,7 +4047,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-s9dzhty8/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-s9dzhty8/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -4073,7 +4073,7 @@ make unit-test exit=0
 ### `make validate-agent-assets` in the main checkout with the revision 4 evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0
@@ -4160,7 +4160,7 @@ exit=0
 ```
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r5:\ ua-symbol-coverage\ never\ lets\ an\ undercounted\ or\ absent\ def\ count\ explain\ a\ loss:\ with\ --old-ref,\ a\ path\ whose\ blob\ is\ identical\ at\ OLD\ and\ REF\ is\ a\ REGRESSION\ on\ any\ symbol\ decrease\ \(source\ unchanged\)\;\ a\ path\ new\ to\ the\ graph\ with\ def-like\ lines\ at\ REF\ but\ zero\ symbols\ is\ a\ REGRESSION\ \(new\ file,\ no\ symbols\)\;\ Ruby\ private/protected/public\ def\ prefixes\ are\ counted\ \(orchestrator\ r5\ 2026-10-01\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r5:\ ua-symbol-coverage\ never\ lets\ an\ undercounted\ or\ absent\ def\ count\ explain\ a\ loss:\ with\ --old-ref,\ a\ path\ whose\ blob\ is\ identical\ at\ OLD\ and\ REF\ is\ a\ REGRESSION\ on\ any\ symbol\ decrease\ \(source\ unchanged\)\;\ a\ path\ new\ to\ the\ graph\ with\ def-like\ lines\ at\ REF\ but\ zero\ symbols\ is\ a\ REGRESSION\ \(new\ file,\ no\ symbols\)\;\ Ruby\ private/protected/public\ def\ prefixes\ are\ counted\ \(orchestrator\ r5\ 2026-10-01\).
 18479d26-8d15-4882-9254-723be0fd18bb
 exit=0
 ```
@@ -4187,7 +4187,7 @@ FFF
 FAIL: test_unchanged_source_cannot_explain_a_loss (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_unchanged_source_cannot_explain_a_loss)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 187, in test_unchanged_source_cannot_explain_a_loss
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 187, in test_unchanged_source_cannot_explain_a_loss
     self.assertEqual(1, unchanged.returncode, unchanged.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : | file | old | new | def-like lines | status |
@@ -4200,7 +4200,7 @@ files: 1, regressions: 0
 FAIL: test_ruby_visibility_prefixed_defs_are_counted (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_ruby_visibility_prefixed_defs_are_counted)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 198, in test_ruby_visibility_prefixed_defs_are_counted
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 198, in test_ruby_visibility_prefixed_defs_are_counted
     self.assertEqual(1, result.returncode, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : | file | old | new | def-like lines | status |
@@ -4213,7 +4213,7 @@ files: 1, regressions: 0
 FAIL: test_low_similarity_move_with_no_symbols_is_regression (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_low_similarity_move_with_no_symbols_is_regression)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 209, in test_low_similarity_move_with_no_symbols_is_regression
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 209, in test_low_similarity_move_with_no_symbols_is_regression
     self.assertEqual(1, result.returncode, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : | file | old | new | def-like lines | status |
@@ -5277,7 +5277,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-b326uny2/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-b326uny2/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -5303,7 +5303,7 @@ make unit-test exit=0
 ### `make validate-agent-assets` in the main checkout with the revision 5 evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0
@@ -5559,7 +5559,7 @@ make validate-agent-assets exit=0
 ```
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r6:\ in\ ua-symbol-coverage\ only\ structural\ git\ facts\ explain\ a\ loss\ \(with\ --old-ref:\ a\ deletion,\ or\ a\ rename\ whose\ successor\ keeps\ the\ old\ count\)\;\ every\ other\ decrease\ on\ a\ path\ present\ at\ REF\ is\ a\ REGRESSION\ to\ be\ cited,\ and\ def-like\ counts\ never\ explain\;\ SHELL_DEF\ accepts\ any\ name\ without\ whitespace,\ parentheses\ or\ =.\ The\ r6\ new-file\ flag\ \(new\ \<\ def-like\ lines\)\ over-flags\ \(138\ of\ 185\ grammar\ files\ in\ the\ accepted\ graph\ already\ have\ fewer\ symbols\ than\ def\ lines\)\;\ its\ threshold\ is\ pending\ the\ orchestrator\ decision\ \(2026-10-01\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r6:\ in\ ua-symbol-coverage\ only\ structural\ git\ facts\ explain\ a\ loss\ \(with\ --old-ref:\ a\ deletion,\ or\ a\ rename\ whose\ successor\ keeps\ the\ old\ count\)\;\ every\ other\ decrease\ on\ a\ path\ present\ at\ REF\ is\ a\ REGRESSION\ to\ be\ cited,\ and\ def-like\ counts\ never\ explain\;\ SHELL_DEF\ accepts\ any\ name\ without\ whitespace,\ parentheses\ or\ =.\ The\ r6\ new-file\ flag\ \(new\ \<\ def-like\ lines\)\ over-flags\ \(138\ of\ 185\ grammar\ files\ in\ the\ accepted\ graph\ already\ have\ fewer\ symbols\ than\ def\ lines\)\;\ its\ threshold\ is\ pending\ the\ orchestrator\ decision\ \(2026-10-01\).
 4629b961-4b39-4d7c-aeef-73801df1e2f0
 exit=0
 ```
@@ -5594,7 +5594,7 @@ FFFF
 FAIL: test_new_file_with_fewer_symbols_than_defs_is_regression (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_new_file_with_fewer_symbols_than_defs_is_regression)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 222, in test_new_file_with_fewer_symbols_than_defs_is_regression
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 222, in test_new_file_with_fewer_symbols_than_defs_is_regression
     self.assertEqual(1, result.returncode, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : | file | old | new | def-like lines | status | note |
@@ -5608,7 +5608,7 @@ files: 2, regressions: 0
 FAIL: test_shell_names_with_punctuation_are_counted (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_shell_names_with_punctuation_are_counted)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 234, in test_shell_names_with_punctuation_are_counted
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 234, in test_shell_names_with_punctuation_are_counted
     self.assertIn("| s.sh | 2 | 2 | 2 | ok |", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '| s.sh | 2 | 2 | 2 | ok |' not found in '| file | old | new | def-like lines | status | note |\n|---|---|---|---|---|---|\n| s.sh | 2 | 2 | 0 | ok |  |\nfiles: 1, regressions: 0\n'
@@ -5617,7 +5617,7 @@ AssertionError: '| s.sh | 2 | 2 | 2 | ok |' not found in '| file | old | new | d
 FAIL: test_partial_deletion_in_changed_source_is_regression (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_partial_deletion_in_changed_source_is_regression)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 154, in test_partial_deletion_in_changed_source_is_regression
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 154, in test_partial_deletion_in_changed_source_is_regression
     self.assertEqual(1, accounted.returncode, accounted.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : | file | old | new | def-like lines | status | note |
@@ -5630,7 +5630,7 @@ files: 1, regressions: 0
 FAIL: test_unchanged_source_loss_is_noted (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_unchanged_source_loss_is_noted)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 183, in test_unchanged_source_loss_is_noted
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 183, in test_unchanged_source_loss_is_noted
     self.assertEqual(1, by_defs.returncode, by_defs.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : | file | old | new | def-like lines | status | note |
@@ -6131,7 +6131,7 @@ exit=0
 ```
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r6-b:\ ua-symbol-coverage\ flags\ a\ path\ new\ to\ the\ graph\ only\ when\ it\ has\ def-like\ lines\ at\ REF\ and\ zero\ symbols\;\ partial\ under-extraction\ of\ a\ new\ file\ is\ a\ documented\ ceiling\ because\ 138\ of\ 185\ grammar\ files\ in\ the\ accepted\ graph\ already\ have\ fewer\ symbols\ than\ def-like\ lines.\ Supersedes\ the\ pending-threshold\ clause\ of\ 4629b961\;\ items\ 1\ \(only\ deletions\ and\ symbol-keeping\ renames\ explain\)\ and\ 3\ \(shell\ names\)\ stand\ \(2026-10-01\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r6-b:\ ua-symbol-coverage\ flags\ a\ path\ new\ to\ the\ graph\ only\ when\ it\ has\ def-like\ lines\ at\ REF\ and\ zero\ symbols\;\ partial\ under-extraction\ of\ a\ new\ file\ is\ a\ documented\ ceiling\ because\ 138\ of\ 185\ grammar\ files\ in\ the\ accepted\ graph\ already\ have\ fewer\ symbols\ than\ def-like\ lines.\ Supersedes\ the\ pending-threshold\ clause\ of\ 4629b961\;\ items\ 1\ \(only\ deletions\ and\ symbol-keeping\ renames\ explain\)\ and\ 3\ \(shell\ names\)\ stand\ \(2026-10-01\).
 635d9dd5-1058-4db9-aec8-6a10373ee1d3
 exit=0
 ```
@@ -7181,7 +7181,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-e375pu9g/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-e375pu9g/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -7207,7 +7207,7 @@ make unit-test exit=0
 ### `make validate-agent-assets` in the main checkout with the r6/r6-b evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0
@@ -7341,7 +7341,7 @@ exit=0
 ```
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r7:\ ua-symbol-coverage\ def-like\ counts\ skip\ \#\ comment\ lines\ in\ every\ grammar\ and\ count\ Python\ definitions\ with\ ast\ \(regex\ only\ on\ SyntaxError\)\;\ a\ grammar\ file\ at\ REF\ with\ def-like\ lines\ that\ appears\ in\ neither\ graph\ is\ a\ REGRESSION\ \(missing\ from\ graph\)\ when\ the\ new\ graph\ already\ covers\ its\ directory.\ The\ self-compare\ uses\ both\ refs\ =\ the\ graph\ own\ gitCommitHash\ \(2026-10-01\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r7:\ ua-symbol-coverage\ def-like\ counts\ skip\ \#\ comment\ lines\ in\ every\ grammar\ and\ count\ Python\ definitions\ with\ ast\ \(regex\ only\ on\ SyntaxError\)\;\ a\ grammar\ file\ at\ REF\ with\ def-like\ lines\ that\ appears\ in\ neither\ graph\ is\ a\ REGRESSION\ \(missing\ from\ graph\)\ when\ the\ new\ graph\ already\ covers\ its\ directory.\ The\ self-compare\ uses\ both\ refs\ =\ the\ graph\ own\ gitCommitHash\ \(2026-10-01\).
 67792095-e3fc-4f88-a6c1-3ede3a6f76ae
 exit=0
 ```
@@ -7367,7 +7367,7 @@ FFF
 FAIL: test_comment_lines_are_not_definitions (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_comment_lines_are_not_definitions)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 241, in test_comment_lines_are_not_definitions
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 241, in test_comment_lines_are_not_definitions
     self.assertIn("| s.sh | 0 | 1 | 1 | ok |", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '| s.sh | 0 | 1 | 1 | ok |' not found in '| file | old | new | def-like lines | status | note |\n|---|---|---|---|---|---|\n| s.sh | 0 | 1 | 2 | ok |  |\nfiles: 1, regressions: 0\n'
@@ -7376,7 +7376,7 @@ AssertionError: '| s.sh | 0 | 1 | 1 | ok |' not found in '| file | old | new | d
 FAIL: test_python_defs_inside_strings_do_not_count (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_python_defs_inside_strings_do_not_count)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 247, in test_python_defs_inside_strings_do_not_count
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 247, in test_python_defs_inside_strings_do_not_count
     self.assertEqual(0, result.returncode, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 0 != 1 : | file | old | new | def-like lines | status | note |
@@ -7389,7 +7389,7 @@ files: 1, regressions: 1
 FAIL: test_grammar_file_missing_from_graph_fails_in_covered_directories (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_grammar_file_missing_from_graph_fails_in_covered_directories)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 258, in test_grammar_file_missing_from_graph_fails_in_covered_directories
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 258, in test_grammar_file_missing_from_graph_fails_in_covered_directories
     self.assertEqual(1, result.returncode, result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : | file | old | new | def-like lines | status | note |
@@ -8457,7 +8457,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-28_1atfw/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-28_1atfw/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -8483,7 +8483,7 @@ make unit-test exit=0
 ### `make validate-agent-assets` in the main checkout with the r7 evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0
@@ -8575,7 +8575,7 @@ exit=0
 ```
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r8:\ ua-symbol-coverage\ fails\ closed\ \(exit\ 2\)\ when\ a\ missing-from-graph\ candidate\ cannot\ be\ read\ at\ REF,\ and\ its\ source\ unchanged\ note\ compares\ blob\ ids\ only,\ so\ a\ chmod-only\ change\ keeps\ the\ note\ \(2026-10-01\).
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content T43\ r8:\ ua-symbol-coverage\ fails\ closed\ \(exit\ 2\)\ when\ a\ missing-from-graph\ candidate\ cannot\ be\ read\ at\ REF,\ and\ its\ source\ unchanged\ note\ compares\ blob\ ids\ only,\ so\ a\ chmod-only\ change\ keeps\ the\ note\ \(2026-10-01\).
 4bac6923-9905-4348-aa1c-592b2a59fc18
 exit=0
 ```
@@ -8591,7 +8591,7 @@ FF
 FAIL: test_unreadable_candidate_fails_closed (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_unreadable_candidate_fails_closed)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 285, in test_unreadable_candidate_fails_closed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 285, in test_unreadable_candidate_fails_closed
     self.assertEqual(2, result.returncode, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 2 != 0 : | file | old | new | def-like lines | status | note |
@@ -8604,7 +8604,7 @@ files: 1, regressions: 0
 FAIL: test_chmod_only_change_keeps_the_source_unchanged_note (tests.unit.test_ua_symbol_coverage.UaSymbolCoverageTest.test_chmod_only_change_keeps_the_source_unchanged_note)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 298, in test_chmod_only_change_keeps_the_source_unchanged_note
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_ua_symbol_coverage.py", line 298, in test_chmod_only_change_keeps_the_source_unchanged_note
     self.assertIn("| a.py | 2 | 1 | 2 | REGRESSION | source unchanged |", result.stdout)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '| a.py | 2 | 1 | 2 | REGRESSION | source unchanged |' not found in '| file | old | new | def-like lines | status | note |\n|---|---|---|---|---|---|\n| a.py | 2 | 1 | 2 | REGRESSION |  |\nfiles: 1, regressions: 1\n'
@@ -9670,7 +9670,7 @@ test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_asset
 test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-kf4nj0gs/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-kf4nj0gs/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
 test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
@@ -9696,7 +9696,7 @@ make unit-test exit=0
 ### `make validate-agent-assets` in the main checkout with the r8 evidence present
 
 ```text
-$ cd /home/moriya/Workspace/dotfiles && make validate-agent-assets
+$ cd ~/Workspace/dotfiles && make validate-agent-assets
 uv run --with pyyaml scripts/validate-agent-assets.py
 agent asset validation ok
 exit=0

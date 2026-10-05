@@ -78,10 +78,10 @@ result: expected exit 2; shared broad diff requires native agent review
 command:
   crit status --json
 result:
-  review_file=/Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+  review_file=~/.crit/reviews/dfcf30aea611/review.json
 
 command:
-  crit comments --all --json /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+  crit comments --all --json ~/.crit/reviews/dfcf30aea611/review.json
 result:
   T61b approval r_b430f5 is resolved=true with reply rp_e81d70; scoped output saved in .orchestration/validation/T61b-crit-comments.json.
 

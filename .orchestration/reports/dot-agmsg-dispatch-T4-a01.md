@@ -3,7 +3,7 @@ status: ready_for_review
 cost: n/a
 
 ## Changes
-Worktree: `/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch`, branch `feat/agmsg-dispatch`. No commit/push/PR.
+Worktree: `~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch`, branch `feat/agmsg-dispatch`. No commit/push/PR.
 - Added one bash dispatch helper using installed agmsg identifier/storage helpers, send.sh, sqlite3, jq and herdr.
 - Idle pane receives metadata-only wake; working pane receives none. Polls read_at every five seconds, bounded by timeout (default 120 seconds per round); idle wake gets one retry.
 - Six stdlib tests exercise idle read, working read, idle unread/retry, working unread/no wake, default storage and invalid timeout. Alternate storage is used in the main fixture.
@@ -12,7 +12,7 @@ Worktree: `/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch`, b
 ## Evidence
 Red-first missing-script failures preceded implementation. Fixture quote escaping was corrected after first green attempt failed at send.
 401 unit tests passed; shellcheck, shfmt, asset validator, skill validator, diff check and evidence-backed Crit gate passed. Full output: `.orchestration/validation/dot-agmsg-dispatch-T4-a01.md`.
-Crit JSON: `/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/.agents/worklog/codex/t4-crit.json`; receipt alongside it.
+Crit JSON: `~/Workspace/dotfiles/.claude/worktrees/agmsg-dispatch/.agents/worklog/codex/t4-crit.json`; receipt alongside it.
 
 ## Limits / integration
 - Wake command includes BOTH team and recipient: actual inbox.sh requires two arguments, unlike task shorthand.

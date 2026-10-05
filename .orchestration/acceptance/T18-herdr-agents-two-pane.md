@@ -2,7 +2,7 @@
 
 - Task: `.orchestration/tasks/T18-herdr-agents-two-pane.md`
 - Result: accepted (after one revision round)
-- Worktree/branch: `/Users/mryfmo/Workspace/dotfiles-t18` / `feat/herdr-file-viewer-popup`
+- Worktree/branch: `~/Workspace/dotfiles-t18` / `feat/herdr-file-viewer-popup`
 - Commit: `b9b5eab feat: use two-pane herdr agent layout`
 
 ## Adversarial review notes (orchestrator, independent re-verification)

@@ -25,7 +25,7 @@ Ran 718 tests in 160.067s
 OK (skipped=2)
 (exit 0)
 $ make validate-agent-assets
-WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/validation/dot-ua-graph-refresh-T55-a01.md
 agent asset validation ok
 (exit 0)
 $ make render-check   # not run: agent-config.yaml and settings were not touched
@@ -70,9 +70,9 @@ $ ... | grep -ciE "timed out|TimeoutExpired|exceeded the 5-second"
 ### Diagnostics 1: run 37072287780, job 111054323730 (6e0faeba). Every variant was fast once warmed, and the real smoke step PASSED after these warm calls.
 
 ```
- T59 bin=/home/runner/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline real=/home/runner/.local/share/mise/installs/npm-ccstatusline/2.2.30/lib/node_modules/ccstatusline/dist/ccstatusline.js
+ T59 bin=~/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline real=~/.local/share/mise/installs/npm-ccstatusline/2.2.30/lib/node_modules/ccstatusline/dist/ccstatusline.js
  T59 shebang=#!/usr/bin/env node
- T59 node=/home/runner/.local/share/mise/shims/node v24.21.0
+ T59 node=~/.local/share/mise/shims/node v24.21.0
  T59 net node --version: rc=0 secs=.022508747 out=v24.21.0 
  T59 net ccstatusline --version: rc=0 secs=.434949940 out=2.2.30 
  T59 nonet node --version: rc=0 secs=.031713201 out=v24.21.0 
@@ -87,12 +87,12 @@ $ grep "Smoke-test statusline" step for errors in the same job:
 ### Diagnostics 2: run 37073281320, job 111057641867 (1e280118). Cold order with a fresh HOME per case: only the very first node run is slow, there are no network syscalls, and the mise shim resolves to SYSTEM node.
 
 ```
- T59 mise=/home/runner/.local/share/mise/bin/mise 2026.9.12 linux-x64 (2026-09-20)
+ T59 mise=~/.local/share/mise/bin/mise 2026.9.12 linux-x64 (2026-09-20)
  T59 resolv= nameserver 127.0.0.53 options edns0 trust-ad search hofw3xyzloau3bb0znavhgxo5a.qrox.internal.cloudapp.net 
  T59 nsswitch-hosts=hosts:          files dns
  T59 cold strace ccstatusline rc=0 lines=4601
  T59 cold total 2.80s over 4601 lines
- T59 key 2965  22:36:31.037397 execve("/usr/local/bin/node", ["/usr/local/bin/node", "/home/runner/.local/share/mise/i"..., "--version"], 0x651414e87b20 /* 62 vars */ <unfinished ...>
+ T59 key 2965  22:36:31.037397 execve("/usr/local/bin/node", ["/usr/local/bin/node", "~/.local/share/mise/i"..., "--version"], 0x651414e87b20 /* 62 vars */ <unfinished ...>
  T59 cold nonet node shim trace: rc=0 secs=.031833915
  T59   | TRACE  1 [src/shims.rs:335] shim[node] SYSTEM /usr/local/bin/node
  T59 cold nonet ccstatusline no-shims PATH: rc=0 secs=.214163535
@@ -117,27 +117,27 @@ $ grep -cE "connect\(|sendto\(|recvfrom\(.*:53" in the cold strace key lines:
    FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
    MISE_LOG_LEVEL: info
    MISE_GITHUB_TOKEN: ***
-   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
    MISE_YES: 1
  ##[endgroup]
- T59 system node=-rwxrwxrwx 1 root root 126595440 Sep 27 21:32 /usr/local/bin/node pinned=/home/runner/.local/share/mise/installs/node/26.10.0/bin/node
+ T59 system node=-rwxrwxrwx 1 root root 126595440 Sep 27 21:32 /usr/local/bin/node pinned=~/.local/share/mise/installs/node/26.10.0/bin/node
  T59 fincore before any run:
  T59         RES PAGES      SIZE FILE
  T59           0     0 126595440 /usr/local/bin/node
- T59   149712896 36551 149711504 /home/runner/.local/share/mise/installs/node/26.10.0/bin/node
- T59     3018752   737   3018224 /home/runner/.local/share/mise/installs/npm-ccstatusline/2.2.30/lib/node_modules/ccstatusline/dist/ccstatusline.js
+ T59   149712896 36551 149711504 ~/.local/share/mise/installs/node/26.10.0/bin/node
+ T59     3018752   737   3018224 ~/.local/share/mise/installs/npm-ccstatusline/2.2.30/lib/node_modules/ccstatusline/dist/ccstatusline.js
  T59 cold nonet ccstatusline --version, pinned node first on PATH: rc=0 secs=.218119513 out=2.2.30 
  T59 fincore after pinned-node run:
  T59         RES PAGES      SIZE FILE
  T59           0     0 126595440 /usr/local/bin/node
- T59   149712896 36551 149711504 /home/runner/.local/share/mise/installs/node/26.10.0/bin/node
- T59     3018752   737   3018224 /home/runner/.local/share/mise/installs/npm-ccstatusline/2.2.30/lib/node_modules/ccstatusline/dist/ccstatusline.js
+ T59   149712896 36551 149711504 ~/.local/share/mise/installs/node/26.10.0/bin/node
+ T59     3018752   737   3018224 ~/.local/share/mise/installs/npm-ccstatusline/2.2.30/lib/node_modules/ccstatusline/dist/ccstatusline.js
  T59 cold nonet ccstatusline --version, PATH as in the smoke (system node): rc=0 secs=.619051396 out=2.2.30 
  T59 fincore after system-node run:
  T59         RES PAGES      SIZE FILE
  T59    54837248 13388 126595440 /usr/local/bin/node
- T59   149712896 36551 149711504 /home/runner/.local/share/mise/installs/node/26.10.0/bin/node
- T59     3018752   737   3018224 /home/runner/.local/share/mise/installs/npm-ccstatusline/2.2.30/lib/node_modules/ccstatusline/dist/ccstatusline.js
+ T59   149712896 36551 149711504 ~/.local/share/mise/installs/node/26.10.0/bin/node
+ T59     3018752   737   3018224 ~/.local/share/mise/installs/npm-ccstatusline/2.2.30/lib/node_modules/ccstatusline/dist/ccstatusline.js
  T59 warm nonet ccstatusline --version, PATH as in the smoke: rc=0 secs=.230761691 out=2.2.30 
 ```
 
@@ -145,7 +145,7 @@ $ grep -cE "connect\(|sendto\(|recvfrom\(.*:53" in the cold strace key lines:
 
 ```
 Smoke-test statusline tools without network	2026-10-02T21:01:10.5459477Z     raise TimeoutExpired(
-Smoke-test statusline tools without network	2026-10-02T21:01:10.5461683Z subprocess.TimeoutExpired: Command '['/home/runner/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline', '--version']' timed out after 5 seconds
+Smoke-test statusline tools without network	2026-10-02T21:01:10.5461683Z subprocess.TimeoutExpired: Command '['~/.local/share/mise/installs/npm-ccstatusline/2.2.30/bin/ccstatusline', '--version']' timed out after 5 seconds
 ```
 
 ### Second canary failure: run 37072287780, job 111054323730
@@ -158,7 +158,7 @@ Smoke-test statusline tools without network	2026-10-02T21:01:10.5461683Z subproc
 ## CompactionDB (main checkout, unsandboxed)
 
 ```
-$ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T59 (operator 2026-10-03): the Ubuntu 26.04 canary stays non-required but must be green; a canary failure is fixed at its root (here `ccstatusline --version` hanging without network on the 26.04 image), never dispositioned repeatedly.'
+$ cd ~/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T59 (operator 2026-10-03): the Ubuntu 26.04 canary stays non-required but must be green; a canary failure is fixed at its root (here `ccstatusline --version` hanging without network on the 26.04 image), never dispositioned repeatedly.'
 e547c5a4-c593-47a6-bb13-3eff3f99ea7d
 (exit 0)
 ```

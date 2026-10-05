@@ -1,7 +1,7 @@
 # AGMSG-TASK dot-herdr-worker-worktree-T11-a01 (revision 2): give the same-cwd herdr worker its own agmsg identity through the actas flow (plan part B1)
 
-Plan: `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/melodic-conjuring-sifakis.md` §B1.
-Repo (your worktree): `/home/moriya/Workspace/dotfiles/.claude/worktrees/env-converge-T10`, branch `fix/herdr-agents-worker-actas` created with `git switch -c fix/herdr-agents-worker-actas origin/main` once the T13 branch is pushed and the tree is clean. You are `claude-standard-dot-a003`.
+Plan: `~/Workspace/dotfiles/.agents/worklog/claude/melodic-conjuring-sifakis.md` §B1.
+Repo (your worktree): `~/Workspace/dotfiles/.claude/worktrees/env-converge-T10`, branch `fix/herdr-agents-worker-actas` created with `git switch -c fix/herdr-agents-worker-actas origin/main` once the T13 branch is pushed and the tree is clean. You are `claude-standard-dot-a003`.
 
 ## Design constraints (from the repository's own definitions — read them first)
 
@@ -39,7 +39,7 @@ Scratch repo under the scratchpad with a bare `origin`, run the modified `herdr-
 
 moving the default worker pane out of the project cwd; creating sibling worktrees; editing files outside the repository; merging the PR; `make update`; `chezmoi apply`; touching the live `wE` workspace or `dotfiles` team registrations; local bats; force-push; ad-hoc `--model` flags.
 
-## Artefacts (in `/home/moriya/Workspace/dotfiles`)
+## Artefacts (in `~/Workspace/dotfiles`)
 
 report `.orchestration/reports/dot-herdr-worker-worktree-T11-a01.md` (per-function decisions, E2E table, PR URL, `[memory:decision]`: "same-cwd herdr worker gets a distinct agmsg identity via join + actas-claim in its own session; layout stays two panes in one cwd"), validation, sandbox, learning, autoskill (same basename). `contextdb_cli.py memory add` from the main checkout; paste command and output.
 

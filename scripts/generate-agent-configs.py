@@ -869,16 +869,54 @@ def report_divergence(name: str, old, new) -> None:
         print(f"warning: hook trust divergence for {name}: replacing {old} with {new}", file=sys.stderr)
 
 
-def is_hook_state_parent(name) -> bool:
-    \"\"\"True for the `[hooks.state]` table name, however it is spelled.\"\"\"
-    if not name:
-        return False
+KEY_SEGMENT = re.compile(r\"\"\"\\s*("(?:[^"\\\\]|\\\\.)*"|'[^']*'|[A-Za-z0-9_-]+)\\s*(?:\\.|$)\"\"\")
+BARE_KEY = re.compile(r"[A-Za-z0-9_-]+")
+
+
+def key_path(raw: str):
+    \"\"\"The decoded segments of a dotted TOML key, bare or quoted, else None.\"\"\"
     if hook_trust_toml is not None:
         try:
-            return hook_trust_toml.loads(f"[{name}]\\n") == {"hooks": {"state": {}}}
+            node = hook_trust_toml.loads(f"[{raw}]\\n")
         except ValueError:
-            return False
-    return re.fullmatch(r"hooks\\s*\\.\\s*state", name) is not None
+            return None
+        segments = []
+        while isinstance(node, dict) and len(node) == 1:
+            key, node = next(iter(node.items()))
+            segments.append(key)
+        return segments if node == {} and segments else None
+    segments, index = [], 0
+    while index < len(raw):
+        match = KEY_SEGMENT.match(raw, index)
+        if not match:
+            return None
+        token = match.group(1)
+        if token.startswith('"'):
+            try:
+                token = json.loads(token)
+            except ValueError:
+                return None
+        elif token.startswith("'"):
+            token = token[1:-1]
+        segments.append(token)
+        index = match.end()
+    return segments or None
+
+
+def canonical_table_name(raw: str) -> str:
+    \"\"\"One spelling per decoded key path: bare segments where TOML allows them, basic strings otherwise.\"\"\"
+    segments = key_path(raw)
+    if segments is None:
+        return raw
+    return ".".join(
+        segment if BARE_KEY.fullmatch(segment) else json.dumps(segment, ensure_ascii=False).replace("\\x7f", "\\\\u007f")
+        for segment in segments
+    )
+
+
+def is_hook_state_parent(name) -> bool:
+    \"\"\"True for the `[hooks.state]` table; split_chunks names tables canonically.\"\"\"
+    return name == "hooks.state"
 
 
 def drop_declared_assignments(chunk: str, declared: dict) -> str:
@@ -1033,7 +1071,7 @@ def table_name(header: str) -> str | None:
     rest = rest.lstrip()
     if rest and not rest.startswith("#"):
         return None
-    return stripped[start:index].strip()
+    return canonical_table_name(stripped[start:index].strip())
 
 
 def multiline_string_after(line: str, delimiter: str | None) -> str | None:

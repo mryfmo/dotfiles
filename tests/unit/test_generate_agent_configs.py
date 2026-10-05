@@ -1032,6 +1032,35 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
                 self.assertNotIn("WARN", result.stderr)
 
+    def test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        others = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        currents = [
+            f'{parent}\n"{key}" = {{ trusted_hash = "sha256:stale", enabled = false }}\n'
+            f'"other" = {{ trusted_hash = "sha256:other" }}\n' + others
+            for parent in ("[hooks . state]", '["hooks"."state"]')
+        ]
+        currents.append(
+            f'[hooks.state]\n"other" = {{ trusted_hash = "sha256:other" }}\n\n'
+            f'[ hooks . state . "{key}" ]\ntrusted_hash = "sha256:stale"\n' + others
+        )
+        for current in currents:
+            with self.subTest(current=current.splitlines()[0]):
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(state["other"], {"trusted_hash": "sha256:other"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
+
     def test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid(self) -> None:
         manifest = self.hook_trust_manifest()
         home = self.temp_dir / "target-home"
@@ -1113,7 +1142,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(
-            'warning: hook trust divergence for hooks.state."hook": profile=sha256:profile base=sha256:base',
+            "warning: hook trust divergence for hooks.state.hook: profile=sha256:profile base=sha256:base",
             result.stderr,
         )
         self.assertIn('trusted_hash = "sha256:profile"', result.stdout)

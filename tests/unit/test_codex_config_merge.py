@@ -270,6 +270,17 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertEqual(data["mcp_servers"]["context7"]["env"], {"NOTE": "kept with its parent"})
         self.assertNotIn("GITHUB_TOOLSETS", output)
 
+    def test_retired_mcp_servers_are_matched_by_decoded_key_path(self) -> None:
+        current = 'model = "gpt-5.6-sol"\n'
+        current += '\n[ mcp_servers . "github" ]\ncommand = "docker"\nenabled = false\n'
+        current += '\n["mcp_servers".github.env]\nGITHUB_TOOLSETS = "repos"\n'
+        current += '\n[mcp_servers."private_server"]\nurl = "https://example.com/mcp"\nenabled = false\n'
+
+        output = self.merge('model = "gpt-5.6-sol"\n', current)
+
+        self.assertEqual(sorted(tomllib.loads(output)["mcp_servers"]), ["private_server"])
+        self.assertNotIn("GITHUB_TOOLSETS", output)
+
     def test_managed_permgate_replaces_stale_private_ccgate_hook(self) -> None:
         output = self.merge(
             """
@@ -403,10 +414,10 @@ class CodexConfigMergeTest(unittest.TestCase):
         for header, name in (
             ("[a]", "a"),
             ("[[a.b]]", "a.b"),
-            ("  [ a . b ]  ", "a . b"),
-            ('[hooks.state."x"] # c', 'hooks.state."x"'),
+            ("  [ a . b ]  ", "a.b"),
+            ('[hooks.state."x"] # c', "hooks.state.x"),
             ('[hooks.state."a]#b"]#c', 'hooks.state."a]#b"'),
-            ("[hooks.state.'a]b'] # c", "hooks.state.'a]b'"),
+            ("[hooks.state.'a]b'] # c", 'hooks.state."a]b"'),
             ('[hooks.state."q\\"]"]', 'hooks.state."q\\"]"'),
             ("[[a]] # c", "a"),
             ("[a] = 1", None),
@@ -417,6 +428,66 @@ class CodexConfigMergeTest(unittest.TestCase):
         ):
             with self.subTest(header=header):
                 self.assertEqual(table_name(header), name)
+
+    def test_canonical_table_names_decode_each_key_segment(self) -> None:
+        canonical = runpy.run_path(str(MERGE_SCRIPT), run_name="codex_config_merge")["canonical_table_name"]
+        cases = (
+            ("hooks . state", "hooks.state"),
+            ('"hooks"."state"', "hooks.state"),
+            ("'hooks' . \"state\"", "hooks.state"),
+            (' hooks . state . "k/x:0" ', 'hooks.state."k/x:0"'),
+            ("hooks.state.'k/x:0'", 'hooks.state."k/x:0"'),
+            ('"hooks.state"', '"hooks.state"'),
+            ('projects."/work"', 'projects."/work"'),
+            ('a."b\\"c"', 'a."b\\"c"'),
+            ('a."é"', 'a."é"'),
+        )
+        globals_ = canonical.__globals__
+        toml = globals_["hook_trust_toml"]
+        try:
+            # The tomllib path and the key grammar used without tomllib agree.
+            for module in (toml, None):
+                globals_["hook_trust_toml"] = module
+                for raw, name in cases:
+                    with self.subTest(raw=raw, tomllib=module is not None):
+                        self.assertEqual(canonical(raw), name)
+        finally:
+            globals_["hook_trust_toml"] = toml
+
+    def test_equivalent_hook_state_spellings_are_one_table(self) -> None:
+        home = self.source_dir / "target-home"
+        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        self.baseline_path.write_text(
+            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
+            "enabled = true\n"
+        )
+        others = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        currents = [
+            f'{parent}\n"{key}" = {{ trusted_hash = "sha256:stale", enabled = false }}\n'
+            f'"other" = {{ trusted_hash = "sha256:other" }}\n' + others
+            for parent in ("[hooks . state]", '["hooks"."state"]')
+        ]
+        currents.append(
+            f'[hooks.state]\n"other" = {{ trusted_hash = "sha256:other" }}\n\n'
+            f'[ hooks . state . "{key}" ]\ntrusted_hash = "sha256:stale"\n' + others
+        )
+        for current in currents:
+            with self.subTest(current=current.splitlines()[0]):
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True
+                )
+
+                data = tomllib.loads(result.stdout)
+                state = data["hooks"]["state"]
+                self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
+                self.assertIs(state[key]["enabled"], True)
+                self.assertEqual(state["other"], {"trusted_hash": "sha256:other"})
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(result.stdout.count(key), 1)
+                self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
+                self.assertNotIn("WARN", result.stderr)
 
     def test_header_like_lines_inside_multiline_strings_stay_string_content(self) -> None:
         home = self.source_dir / "target-home"

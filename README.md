@@ -1257,7 +1257,11 @@ only, never logins or tokens) and rendered into `~/.agents/model-profiles.env`:
 again at any time. For each store, `gh auth status` decides:
 
 - **The store already holds a token:** it is skipped.
-- **It doesn't:** it gets gh's own device-code login with file storage (`--insecure-storage`), then `chmod 600` on its `hosts.yml` and `gh auth setup-git`.
+- **It doesn't:** it gets gh's own device-code login with file storage (`--insecure-storage`), then `chmod 600` on its `hosts.yml`.
+
+Git needs no per-store step: the managed git config's credential helper,
+`!gh auth git-credential`, reads `GH_CONFIG_DIR` and so serves every store.
+`gh auth setup-git` would rewrite that chezmoi-managed file and leave drift.
 
 When chezmoi-private provides an `encrypted_private_hosts.yml` per store,
 the files are already in place and the step prompts for nothing. `make update`
@@ -1290,7 +1294,7 @@ and outside the repository. The default path is readable under the managed
 Claude and Codex sandbox policies; a custom path must also be readable.
 Doctor warns when the worker directory is absent, but an existing directory
 requires authenticated file storage, mode 0600, and two different logins.
-The HTTPS credential helper installed by `gh auth setup-git` inherits
+The managed HTTPS credential helper (`!gh auth git-credential`) inherits
 `GH_CONFIG_DIR`. SSH pushes use SSH keys instead; this repository's SSH
 `pushInsteadOf` rewrite must be avoided when testing worker HTTPS credentials,
 for example by setting an explicit HTTPS push URL in the test repository.

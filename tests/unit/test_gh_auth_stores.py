@@ -20,7 +20,6 @@ printf '%s|%s|%s\\n' "$GH_CONFIG_DIR" "${GH_TOKEN-unset}" "$*" >> "$GH_CALLS"
 case "$1 $2" in
 "auth status") [ -f "$GH_CONFIG_DIR/token" ] ;;
 "auth login") : > "$GH_CONFIG_DIR/token"; : > "$GH_CONFIG_DIR/hosts.yml"; chmod 644 "$GH_CONFIG_DIR/hosts.yml" ;;
-"auth setup-git") ;;
 *) exit 2 ;;
 esac
 """
@@ -101,17 +100,14 @@ class GhAuthStoresTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         work, worker = self.home / ".config/gh-work", self.temp / "worker store"
         login = "auth login --hostname github.com --git-protocol https --insecure-storage"
-        setup_git = "auth setup-git --hostname github.com"
         self.assertEqual(
             self.logged_calls(),
             [
                 f"{self.home}/.config/gh|unset|auth status --hostname github.com",
                 f"{work}|unset|auth status --hostname github.com",
                 f"{work}|unset|{login}",
-                f"{work}|unset|{setup_git}",
                 f"{worker}|unset|auth status --hostname github.com",
                 f"{worker}|unset|{login}",
-                f"{worker}|unset|{setup_git}",
             ],
         )
         for store in (work, worker):

@@ -9,8 +9,10 @@
 #   A store whose `gh auth status` succeeds is skipped, so a hosts.yml that
 #   chezmoi-private already decrypted prompts for nothing. Any other store gets
 #   gh's own device-code login with file storage (the Claude sandbox cannot reach
-#   the keyring), mode 0600, and gh's HTTPS credential helper. No credential value
-#   is read or printed here. Interactive only: `make update` never runs this.
+#   the keyring) and mode 0600. Git needs no per-store setup: the managed git
+#   config's `!gh auth git-credential` helper reads GH_CONFIG_DIR, and
+#   `gh auth setup-git` would rewrite that chezmoi-managed file. No credential
+#   value is read or printed here. Interactive only: `make update` never runs this.
 
 set -Eeuo pipefail
 
@@ -44,7 +46,6 @@ function ensure_store() {
     if [[ -f ${dir}/hosts.yml ]]; then
         chmod 600 "${dir}/hosts.yml"
     fi
-    GH_CONFIG_DIR="${dir}" gh auth setup-git --hostname github.com
 }
 
 # @description Check every declared store and log in the ones without a token.

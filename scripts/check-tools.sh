@@ -210,7 +210,7 @@ function check_github_identities() {
     [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
     worker_dir="${WORKER_GH_CONFIG_DIR/#\~/$HOME}"
     if [[ ! -e ${worker_dir} ]]; then
-        warn_optional "worker GitHub config missing: ${worker_dir}; provision with GH_CONFIG_DIR=<worker-dir> gh auth login --insecure-storage (README operator phase)"
+        warn_optional "worker GitHub config missing: ${worker_dir}; run make gh-auth (README operator phase)"
         return 0
     fi
     if ! python3 - "${worker_dir}" << 'PYTHON'

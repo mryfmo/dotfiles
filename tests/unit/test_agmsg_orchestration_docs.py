@@ -35,6 +35,7 @@ class AgmsgOrchestrationRuleTest(unittest.TestCase):
             "Only the operator opts out",
             "is never an implicit opt-out",
             "Every repository mutation goes to a seated worker of the manifest's `worker_kind`",
+            "or after the operator's explicit opt-out for the current task",
             "`make require-crit-review` stay with the orchestrator and are never delegated",
             "one task-level audit of its final head",
             "AGMSG-PONG v1 status=blocked",
@@ -150,9 +151,11 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
             "until the worker gh credential is provisioned on this host (README operator phase, T90/T90b)",
             "`gh`, `git push`, and an authenticated `git fetch`",
             "-worker-crit.json",
+            "never run `git worktree prune` from a sandboxed seat",
+            "`git worktree remove <path>` only",
             "the orchestrator moves them into the main checkout",
-            "uv run .claude/hooks/contextdb_cli.py memory candidates --limit 20",
-            "uv run .claude/hooks/contextdb_cli.py memory promote <id> --scope project",
+            "uv run --no-project .claude/hooks/contextdb_cli.py memory candidates --limit 20",
+            "uv run --no-project .claude/hooks/contextdb_cli.py memory promote <id> --scope project",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
@@ -199,8 +202,14 @@ class AgmsgOrchestrationSingleSourceTest(unittest.TestCase):
             *sorted(RULES.glob("*.md")),
         ]
         for path in paths:
+            text = path.read_text()
             with self.subTest(path=path.name):
-                self.assertNotIn("python3 .claude/hooks/contextdb_cli.py", path.read_text())
+                self.assertNotIn("python3 .claude/hooks/contextdb_cli.py", text)
+                # Without --no-project, uv would create or sync the target project's environment first.
+                self.assertNotIn("uv run .claude/hooks/contextdb_cli.py", text)
+        for path in (ROOT / "CLAUDE.md", SKILL, RULES / "compactiondb.md", ROOT / "home/dot_config/codex/AGENTS.md"):
+            with self.subTest(path=path.name):
+                self.assertIn("uv run --no-project .claude/hooks/contextdb_cli.py", path.read_text())
 
 
 class AgmsgOrchestrationForbiddenPhrasesTest(unittest.TestCase):

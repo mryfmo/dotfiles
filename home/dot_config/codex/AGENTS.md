@@ -70,4 +70,4 @@
 ## CompactionDB
 
 - CompactionDB 導入済み project では、Codex standard/deep profile の turn 完了が同じ project DB へ自動記録されます。
-- 永続的な決定は従来どおり `uv run .claude/hooks/contextdb_cli.py memory add --kind decision --scope project` で明示記録します。
+- 永続的な決定は従来どおり `uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project` で明示記録します。

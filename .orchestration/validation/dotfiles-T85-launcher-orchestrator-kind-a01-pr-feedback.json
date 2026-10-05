@@ -1,0 +1,483 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 270,
+  "head_sha": "20361c5d19ca70548b27f1e0269cf5d8a7e1abf1",
+  "base_ref": "main",
+  "base_sha": "2527be54922b5f2ced50a024f4b766431996c7e0",
+  "generated_at": "2026-10-04T23:22:06+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696760/job/111554431751"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696760/job/111554431721"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696760/job/111554431697"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696760/job/111554431663"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696749/job/111554399499"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696743/job/111554399392"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696760/job/111554399372"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696743/job/111554399264"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696743/job/111554399254"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696743/job/111554399226"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696743/job/111554399170"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696743/job/111554399039"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `05249516-85b0-40e3-8d43-c7e2f63578d6`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=270)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#issuecomment-5985025335",
+      "disposition": "not-applicable:CodeRabbit summary comment (automatic reviews disabled); no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `5643ba22ef`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408531587",
+      "commit": "5643ba22ef152ca2c475a81af0b07dce2f6a6661",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `f50e6af793`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408577031",
+      "commit": "f50e6af793c3389e57e273504aef50f6a215bb26",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `4d210709b8`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408643535",
+      "commit": "4d210709b83559e00564aa1dc142cdc385151af8",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `20361c5d19`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408687923",
+      "commit": "20361c5d19ca70548b27f1e0269cf5d8a7e1abf1",
+      "disposition": "not-applicable:Codex review container; its inline findings are dispositioned on the review_comment items"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408709750",
+      "commit": "20361c5d19ca70548b27f1e0269cf5d8a7e1abf1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408709810",
+      "commit": "20361c5d19ca70548b27f1e0269cf5d8a7e1abf1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408709853",
+      "commit": "20361c5d19ca70548b27f1e0269cf5d8a7e1abf1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408709893",
+      "commit": "20361c5d19ca70548b27f1e0269cf5d8a7e1abf1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408709947",
+      "commit": "20361c5d19ca70548b27f1e0269cf5d8a7e1abf1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408710016",
+      "commit": "20361c5d19ca70548b27f1e0269cf5d8a7e1abf1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408710072",
+      "commit": "20361c5d19ca70548b27f1e0269cf5d8a7e1abf1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#pullrequestreview-5408710139",
+      "commit": "20361c5d19ca70548b27f1e0269cf5d8a7e1abf1",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition replies; no finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 215,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Render the orchestrator-kind setting from the manifest**\n\nWhen an operator sets the documented `orchestrator_kind: codex` in `home/dot_agents/agent-config.yaml` and runs `make update`, this fallback still resolves to `claude`: `render_model_profiles_env` only emits `HERDR_AGENTS_WORKER_KIND` and neither reads nor writes an orchestrator-kind field. Full mode and `--attach` will therefore continue to start a Claude orchestrator instead of taking the intended Codex safety exit unless the operator also supplies an undocumented manual environment override.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179583126",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:manifest/generator rendering of orchestrator_kind is dotfiles-T84 (drafted; both files forbidden to this task); the launcher resolves the variable like the worker kind and defaults to claude until T84 lands"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1947,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Exclude worker SessionStart hooks from the Codex gate**\n\nWith `orchestrator_kind=codex` and a Claude worker, this gate runs before `--attach` reaches its existing worker-pane exits at lines 2435–2462. The installed Claude SessionStart hook invokes `herdr-agents --attach`, so the worker now receives exit 2 rather than quietly leaving its own pane alone; preserve that worker path before applying the orchestrator-only refusal.\n\nAGENTS.md reference: [AGENTS.md:L71-L71](https://github.com/mryfmo/dotfiles/blob/5643ba22ef152ca2c475a81af0b07dce2f6a6661/AGENTS.md#L71-L71)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179583130",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:f50e6af7"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1918,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Select the Codex identity when printing its directive**\n\nWhen `HERDR_AGENTS_ORCHESTRATOR_KIND=codex`, `--directive` still invokes `print_regime_directive`, which only queries the `claude-code` identity type. A Codex orchestrator with a valid `codex` registration but no Claude registration therefore gets successful empty output, so its first turn never receives the documented directive; choose the identity type from the resolved orchestrator kind.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179583135",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f50e6af7"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1948,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Restrict the Codex attach exception to the actual worker seat**\n\nWith `HERDR_AGENTS_ORCHESTRATOR_KIND=codex`, a Claude session started in any additional, non-manifest Git linked worktree bypasses this gate because `is_linked_worktree` accepts every linked worktree. The later quiet exit recognizes only the configured `worker_worktree` (lines 2455–2460), so that SessionStart hook continues into attach and can rename/split the pane and launch a worker instead of taking the documented no-Herdr refusal; exempt only the resolved manifest worker worktree.\n\nAGENTS.md reference: [AGENTS.md:L71-L71](https://github.com/mryfmo/dotfiles/blob/f50e6af793c3389e57e273504aef50f6a215bb26/AGENTS.md#L71-L71)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179629453",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:4d210709"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1950,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Provide the advertised Codex orchestrator entrypoint**\n\nWhen `HERDR_AGENTS_ORCHESTRATOR_KIND=codex` is selected, all pair-starting paths now terminate with this instruction, but a repository-wide search of tracked paths and generated configuration finds no `codex-orchestrate` executable and no Codex hook that invokes `herdr-agents --directive`. As a result, the documented Codex configuration disables the existing launcher without providing the replacement path or delivering the directive; install or implement that entrypoint (or invoke the directive from the configured Codex startup flow).\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179692400",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the codex-orchestrate entrypoint and the Codex startup flow are dotfiles-T86, in flight on the Codex seat (PR #271); this PR provides the refusal and the directive it depends on"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1947,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Resolve worker lifecycle leaders from the orchestrator kind**\n\nWhen `HERDR_AGENTS_ORCHESTRATOR_KIND=codex` is set with only the valid Codex orchestrator identity, this newly exempted `--add-worker` path calls `ensure_worker_identity`, which still queries `identities.sh ... claude-code` at lines 310–315 and exits 2 before creating the worktree; the subsequent linkage and `--remove-worker` lookups are also fixed to `claude-code`. This makes the worker-management modes that the new gate claims remain available under Codex unusable; select the leader identity type from the resolved orchestrator kind.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179692403",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:20361c5d"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1933,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Normalize directive lookups to the repository root**\n\nWhen a Codex session starts from a subdirectory of a registered main checkout, this passes the subdirectory to `print_regime_directive`. `is_main_checkout` still succeeds there, but the `AGMSG_RESOLVE_PROJECT=0` identity lookup is an exact-path lookup and finds no identity registered at that subdirectory, so the directive is silently omitted. Resolve the Git top-level before querying the identity so normal subdirectory launches receive the orchestration instruction.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179692405",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:20361c5d"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1947,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Configure Codex delivery when allowing Codex bootstrap**\n\nWhen `HERDR_AGENTS_ORCHESTRATOR_KIND=codex` and `worker_worktree` is configured, this exemption lets `--bootstrap-agmsg` run, but `bootstrap_agmsg` still takes its worker-worktree branch at `executable_herdr-agents:1741-1745`, sets `codex_worker=false`, and checks/configures only `claude-code`. It therefore neither installs `delivery set turn codex` for the main checkout nor validates the Codex orchestrator identity, so the enabled Codex orchestrator cannot receive worker PONG/RESULT turn delivery after bootstrap. Thread the resolved orchestrator type into bootstrap and install/check the Codex hook in this configuration.\n\nAGENTS.md reference: [AGENTS.md:L71-L71](https://github.com/mryfmo/dotfiles/blob/20361c5d19ca70548b27f1e0269cf5d8a7e1abf1/AGENTS.md#L71-L71)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179731976",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:--bootstrap-agmsg is unchanged and only required to keep working under either kind; Codex orchestrator delivery and identity checks belong to the T86 seat exchange, recorded as a scope note for that task"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1918,
+      "body": "fixed:f50e6af7 — `--directive` looks up the orchestrator identity as the kind's agmsg type (`codex` under a Codex orchestrator), so a Codex registration without a Claude one prints the directive.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179753884",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1947,
+      "body": "fixed:f50e6af7 — the manifest worker's own SessionStart `--attach` in its `worker_worktree` keeps the quiet exit under `orchestrator_kind=codex`.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179753930",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1948,
+      "body": "fixed:4d210709 — the exemption is limited to the manifest `worker_worktree` seat (`is_manifest_worker_seat`, shared with the quiet exit); any other linked worktree is refused.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179753972",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1947,
+      "body": "fixed:20361c5d — the worker modes name, link and despawn workers under the orchestrator kind's identity type, so a Codex-only orchestrator identity is found.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179754028",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1933,
+      "body": "fixed:20361c5d — `--directive` resolves the git top level before the exact-path identity lookup, so a subdirectory start finds the registration.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179754074",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 215,
+      "body": "not-applicable: rendering `orchestrator_kind` from the manifest into `model-profiles.env` is dotfiles-T84 (its task file is drafted and the manifest/generator are forbidden to this task); this PR resolves the variable exactly as the worker kind is resolved and defaults to `claude` until T84 lands.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179754126",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1950,
+      "body": "not-applicable: the `codex-orchestrate` entrypoint and the Codex startup flow that calls `herdr-agents --directive` are dotfiles-T86, in flight on the Codex seat in parallel (PR #271); this PR provides the refusal message and the directive it depends on.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179754182",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1947,
+      "body": "not-applicable: `--bootstrap-agmsg` is unchanged by this PR and only required to keep working under either kind; configuring turn delivery and identity checks for a Codex orchestrator seat belongs to the seat exchange in dotfiles-T86 (`codex-orchestrate`), which this acceptance records as a scope note for that task.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/270#discussion_r4179754243",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696760/job/111554431663",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696743/job/111554399392",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37242696743/job/111554399264",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit status context reports review skipped; the gate does not require a bot review"
+    }
+  ]
+}

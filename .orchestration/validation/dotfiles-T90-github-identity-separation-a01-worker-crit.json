@@ -1,0 +1,35 @@
+[
+  {
+    "id": "t90-review-1",
+    "scope": "file",
+    "path": "scripts/require-crit-review.py",
+    "body": "Independent security reviewer /root/t97_evidence_review found review ID order can differ from submission order. Fixed with timezone-aware submitted_at and ID tie-breaker; regression verifies later changes requested with lower ID. Resolved by final independent review.",
+    "resolved": true
+  },
+  {
+    "id": "t90-approval",
+    "scope": "review",
+    "body": "Independent security reviewer /root/t97_evidence_review reviewed the final 13-file implementation/tests/docs diff and found no remaining actionable issues (Verdict: correct). Installed upstream driver handoff and real gh HTTPS helper routing checked with fake CLI and synthetic config fixtures. Review covers launcher token precedence, worker-only Codex environment override, doctor permissions/file authentication and activation/latest-head gate; live operator provisioning remains required.",
+    "resolved": true
+  },
+  {
+    "id": "t90-xdg-default",
+    "scope": "file",
+    "path": "scripts/check-tools.sh",
+    "body": "Independent security reviewer confirmed P2: empty XDG_CONFIG_HOME selected ./gh rather than HOME/.config/gh. Fixed using nonempty XDG value or HOME default. RED regression reproduced empty case; 43 runtime-health tests passed for unset/empty/custom values. Narrow final re-review approved with Verdict: correct.",
+    "resolved": true
+  },
+  {
+    "id": "t90-late-bot-p2",
+    "scope": "file",
+    "path": "README.md",
+    "body": "Independent reviewer assessed late Bot thread4178600965 on prior head01ce1acc as not-applicable: both playbooks already require sandbox-first execution and limit the permission-gated fallback until sandbox-readable worker credentials are provisioned; README leaves that provisioning, restart and verification to the operator. Existing exception ends after provisioning. GitHub thread remains unresolved for orchestrator per task; this resolved record records local disposition only.",
+    "resolved": true
+  },
+  {
+    "id": "t90-revise-round-1",
+    "scope": "review",
+    "body": "Independent reviewer /root/t97_evidence_review reviewed README revision against 507e9c15 and report completion item 4. No actionable findings: approval payload is an unapplied draft; operator stops after make doctor; both approval-only limitations and inactive gate are explicit; T90b owns main update restriction, orchestrator sole bypass actor in pull_request mode and activation order. CompactionDB record/output assigned to orchestrator acceptance. Verdict: correct.",
+    "resolved": true
+  }
+]

@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T79-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #267 (dotfiles-T79, adh model profile removal; diff head c86eb99a, final head 123bf104 = update-branch onto main 8ba3c8bc): the adh block and its two comment lines leave agent-config.yaml; ADH_PROFILE and validate_adh_profile leave the generator and the validator (the profile set is now exactly the six base profiles; the pinned failure phrase is kept); ADH_PROFILE_BLOCK and manifest_policy_failures leave check-agent-runtime.py; home/dot_codex/modify_private_adh.config.toml is deleted and home/.chezmoiremove retires .codex/adh.config.toml; model-profiles.env loses the two MODEL_PROFILE_ADH_* lines with the six other profiles byte-identical; a new test rejects an extra adh profile. Residual grep for adh under home/, scripts/ and tests/ shows only the .chezmoiremove entry and the rejection test. 788/790 unit tests pass (diff/merged head), render-check clean, validate-agent-assets ok, ruff clean, CI 13/13 green on both heads, no Bot finding, no threads. README names no adh profile, so T83 has nothing to pick up.",
+    "resolved": true
+  }
+]

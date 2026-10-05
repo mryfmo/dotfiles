@@ -1232,7 +1232,7 @@ their shell tools retain the selection with `inherit=core`.
 Operator phase (once per machine, outside the sandbox): authenticate the
 orchestrator with the merging account in its default gh config, then log into
 the worker config as a different account with repository write access. Do not
-give the worker a ruleset bypass. Use the manifest path if customized:
+give the worker a ruleset bypass. When the worker config's `hosts.yml` file is absent, `herdr-agents` prints a one-line provisioning notice to stderr in full, `--restart-worker` and `--add-worker` modes and continues seating the worker. Use the manifest path if customized:
 
 ```bash
 unset GH_CONFIG_DIR GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN

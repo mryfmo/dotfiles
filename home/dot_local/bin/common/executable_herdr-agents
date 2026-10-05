@@ -420,6 +420,16 @@ function worker_github_config_dir() (
     printf '%s\n' "${WORKER_GH_CONFIG_DIR/#\~\//${HOME}/}"
 )
 
+# @description Notify the operator of missing worker credentials without blocking seating.
+# @stderr One provisioning notice when the worker hosts.yml file is absent.
+function notice_missing_worker_github_credential() {
+    local hosts
+    hosts="$(worker_github_config_dir)/hosts.yml"
+    if [[ ! -f ${hosts} ]]; then
+        printf 'herdr-agents: worker GitHub credential missing: %s; the worker seat cannot run gh or push until the operator provisions it (README, operator provisioning)\n' "${hosts}" >&2
+    fi
+}
+
 # @description Print shell commands that select worker credentials after shell
 #   startup. Environment tokens take precedence over gh file storage.
 # @stdout Shell-quoted unset/export commands, without credential values.
@@ -2145,6 +2155,7 @@ if [[ ${add_worker_mode} == true ]]; then
         printf 'herdr-agents: %s is not a git main checkout; run --add-worker from the repository root.\n' "${workdir}" >&2
         exit 2
     fi
+    notice_missing_worker_github_credential
     write_spawn_options "${seat_kind}" > /dev/null
     [[ -e ${workdir}/${seat_worktree} ]] || ensure_worker_identity "${seat_kind}" "${workdir}" "${workdir}/${seat_worktree}" --no-join > /dev/null
     seat_dir="$(ensure_worker_worktree "${workdir}" "${seat_worktree}")"
@@ -2527,6 +2538,7 @@ if [[ ${attach_mode} == true ]]; then
     exit 0
 fi
 
+notice_missing_worker_github_credential
 workspace_label="$(basename "${workdir}") agents"
 existing_workspace_id="$(single_managed_workspace "${workspace_label}" "${workdir}")"
 

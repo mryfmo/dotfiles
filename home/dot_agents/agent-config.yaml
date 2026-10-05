@@ -67,6 +67,11 @@ interactive_profile: deep
 # ~/.agents/model-profiles.env as HERDR_AGENTS_WORKER_KIND; an explicit
 # HERDR_AGENTS_WORKER_KIND in the environment still overrides it.
 worker_kind: claude
+# Orchestrator pane agent for the herdr-agents pair: claude or codex; codex
+# means the pair is driven by codex-orchestrate (T86). Renders into
+# ~/.agents/model-profiles.env as HERDR_AGENTS_ORCHESTRATOR_KIND; an explicit
+# HERDR_AGENTS_ORCHESTRATOR_KIND in the environment still overrides it.
+orchestrator_kind: claude
 # Worker pane model profile for herdr-agents. Renders into
 # ~/.agents/model-profiles.env as HERDR_AGENTS_WORKER_PROFILE; an explicit
 # HERDR_AGENTS_WORKER_PROFILE in the environment still overrides it.

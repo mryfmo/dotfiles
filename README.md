@@ -571,7 +571,10 @@ exactly two managed panes, split 50/50: `claude-orchestrator` on the left and
 from `worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`;
 `codex` when the key is absent), rendered into `~/.agents/model-profiles.env`
 as `HERDR_AGENTS_WORKER_KIND`; exporting that variable explicitly overrides
-the manifest for one launch. A `claude` worker is a resident Claude Code
+the manifest for one launch. The orchestrator kind likewise comes from
+`orchestrator_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`;
+`claude` when the key is absent, `codex` hands the pair to `codex-orchestrate`),
+rendered as `HERDR_AGENTS_ORCHESTRATOR_KIND`. A `claude` worker is a resident Claude Code
 session — useful when Codex is unavailable (for example, not logged in) —
 inheriting the same managed
 lifecycle: dedicated workspace creation, pane wait/prompt handling, layout

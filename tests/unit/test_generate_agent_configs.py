@@ -992,6 +992,29 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.module.render_model_profiles_env(manifest)
 
+    def test_orchestrator_kind_defaults_to_claude(self) -> None:
+        env = self.module.render_model_profiles_env(sample_manifest())
+
+        self.assertIn('HERDR_AGENTS_ORCHESTRATOR_KIND="claude"', env)
+
+    def test_model_profiles_env_renders_orchestrator_kind(self) -> None:
+        manifest = sample_manifest()
+        manifest["orchestrator_kind"] = "codex"
+
+        env = self.module.render_model_profiles_env(manifest)
+
+        self.assertIn('HERDR_AGENTS_ORCHESTRATOR_KIND="codex"', env)
+        self.assertEqual("codex", self.module.orchestrator_kind(manifest))
+
+    def test_unknown_orchestrator_kind_fails(self) -> None:
+        manifest = sample_manifest()
+        manifest["orchestrator_kind"] = "banana"
+        stderr = io.StringIO()
+
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.render_model_profiles_env(manifest)
+        self.assertIn("orchestrator_kind must be one of", stderr.getvalue())
+
     def test_model_profiles_env_renders_worker_profile(self) -> None:
         manifest = sample_manifest()
         manifest["worker_profile"] = "express"

@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -71,6 +72,16 @@ def _is_contextdb_group(group: dict[str, Any]) -> bool:
     return False
 
 
+def _contextdb_group_key(group: dict[str, Any]) -> tuple[Any, frozenset[str]]:
+    commands = frozenset(
+        name
+        for handler in group.get("hooks", [])
+        for value in [handler.get("command", ""), *(handler.get("args") or [])]
+        for name in re.findall(r"\b(?:contextdb_\w+|query_log|log_event|on_compact)\.py\b", str(value))
+    )
+    return group.get("matcher"), commands
+
+
 def merge_settings(existing: dict[str, Any], fragment: dict[str, Any]) -> tuple[dict[str, Any], int, int]:
     """Replace only prior ContextDB groups while preserving every unrelated hook."""
     result = json.loads(json.dumps(existing))
@@ -79,13 +90,15 @@ def merge_settings(existing: dict[str, Any], fragment: dict[str, Any]) -> tuple[
     removed = 0
     for event, groups in fragment.get("hooks", {}).items():
         current = hooks.setdefault(event, [])
-        replacements = iter(groups)
+        replacements = list(groups)
         retained = []
         for group in current:
             if not _is_contextdb_group(group):
                 retained.append(group)
                 continue
-            replacement = next(replacements, None)
+            key = _contextdb_group_key(group)
+            index = next((i for i, candidate in enumerate(replacements) if _contextdb_group_key(candidate) == key), None)
+            replacement = replacements.pop(index) if index is not None else None
             if replacement != group:
                 removed += 1
                 added += replacement is not None

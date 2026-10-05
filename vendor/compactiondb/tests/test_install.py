@@ -97,6 +97,42 @@ class InstallerTests(unittest.TestCase):
                 self.assertEqual(mtime, settings_path.stat().st_mtime_ns)
                 self.assertEqual([], list(settings_path.parent.glob("settings.json.compactiondb-backup-*")))
 
+    def test_reinstall_preserves_reversed_managed_groups_around_unrelated_hook(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            settings_path = target / ".claude" / "settings.json"
+            settings_path.parent.mkdir()
+            settings = json.loads((ROOT / ".claude" / "settings.fragment.json").read_text())
+            groups = settings["hooks"]["SessionStart"]
+            self.assertEqual(["*", "compact"], [g["matcher"] for g in groups])
+            settings["hooks"]["SessionStart"] = [groups[1], {"hooks": [{"command": "unrelated"}]}, groups[0]]
+            settings_path.write_text(json.dumps(settings, indent=4) + "\n\n")
+            original = settings_path.read_bytes()
+            mtime = settings_path.stat().st_mtime_ns
+            backup = settings_path.with_name("settings.json.compactiondb-backup-existing")
+            backup.write_text("existing backup")
+            for _ in range(2):
+                subprocess.run([sys.executable, str(ROOT / "install.py"), "--project", str(target), "--skip-instructions"], check=True, capture_output=True)
+                self.assertEqual(original, settings_path.read_bytes())
+                self.assertEqual(mtime, settings_path.stat().st_mtime_ns)
+                self.assertEqual([backup], list(settings_path.parent.glob("settings.json.compactiondb-backup-*")))
+                self.assertEqual("existing backup", backup.read_text())
+
+    def test_merge_matches_command_sets_replaces_in_place_and_appends_new(self) -> None:
+        def group(script, *, command="python3"):
+            return {"matcher": None, "hooks": [{"command": command, "args": [f"/old/{script}.py"]}]}
+        unrelated = {"hooks": [{"command": "unrelated"}]}
+        old_hook = group("contextdb_hook")
+        old_recover = group("contextdb_recover")
+        new_hook = group("contextdb_hook", command="/new/python")
+        new_recover = group("contextdb_recover", command="/new/python")
+        new_cli = group("contextdb_cli")
+        existing = {"hooks": {"SessionStart": [old_recover, unrelated, group("log_event"), old_hook]}}
+        fragment = {"hooks": {"SessionStart": [new_hook, new_recover, new_cli]}}
+        merged, added, removed = INSTALLER.merge_settings(existing, fragment)
+        self.assertEqual([new_recover, unrelated, new_hook, new_cli], merged["hooks"]["SessionStart"])
+        self.assertEqual((3, 3), (added, removed))
+
     def test_installer_can_run_against_its_own_extracted_root(self) -> None:
         with tempfile.TemporaryDirectory(prefix="contextdb-self-") as temp:
             copy = Path(temp) / "package"

@@ -1291,10 +1291,10 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
     boundary = r"(?:(?<![\w.~-])|(?<=/root))"
     forms = [
         rf"{boundary}/(?:home|Users)/{not_repo_path}[A-Za-z0-9][A-Za-z0-9._-]*",
-        # ponytail: root's home only as a bare `/root` or a `/root/.<dir>` (where credentials live);
+        # ponytail: root's home (`/root`, macOS `/var/root`) only bare or as `<home>/.<dir>` (where credentials live);
         # a Codex sub-agent path such as `/root/t97_evidence_review` stays. Widen when evidence quotes
         # other `/root/<dir>` paths.
-        r"(?<![\w.~-])/root(?=/\.|(?!/))",
+        r"(?<![\w.~-])(?:/var)?/root(?=/\.|(?!/))",
     ]
     if home:
         # A one-segment home such as `/root` is also a path component (`/proc/self/root`), so it keeps the boundary.
@@ -1303,7 +1303,7 @@ def compiled_home_path_pattern(root: Path, home: str) -> re.Pattern[str]:
 
 
 def home_path_pattern() -> re.Pattern[str]:
-    """A user's home directory, `/home/<user>`, `/Users/<user>` or root's `/root`, as the `.orchestration` scan flags it.
+    """A home directory (`/home/<user>`, `/Users/<user>`, root's `/root` or `/var/root`) as the `.orchestration` scan flags it.
 
     A segment that names a top-level entry of the repository's `home/` tree
     (`dot_config`, `.chezmoiscripts`, ...) is a repository path, not a user, and a
@@ -1487,7 +1487,10 @@ def validate_no_obvious_secrets() -> None:
         strings = json_strings(text) or [text]
         if any(SECRET_PATTERN.search(strip_allowed_secret_placeholders(s)) for s in strings):
             fail(f"possible committed secret in {path.relative_to(ROOT)}")
-        if path.relative_to(ROOT).parts[:1] == (".orchestration",) and home_path_pattern().search(text):
+        # Decoded JSON strings too: a JSON writer may escape the slashes (`\/home\/...`).
+        if path.relative_to(ROOT).parts[:1] == (".orchestration",) and any(
+            home_path_pattern().search(s) for s in (text, *strings)
+        ):
             fail(
                 f"{path.relative_to(ROOT)} names a home directory; normalise it with "
                 "`uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`"

@@ -112,6 +112,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 ),
                 ("cat /root/.ssh/id_ed25519", "cat ~/.ssh/id_ed25519"),
                 ("HOME=/root;", "HOME=~;"),
+                ("cat /var/root/.ssh/id_ed25519", "cat ~/.ssh/id_ed25519"),
                 ("agent /root/t97_evidence_review and /proc/self/root/etc", None),
             ):
                 with self.subTest(text=text):
@@ -141,6 +142,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         evidence.write_text(self.module.mask_secret_matches(evidence.read_text())[0])
         self.assertEqual(evidence.read_text(), "$ ls ~/x\n")
         self.module.validate_no_obvious_secrets()
+        escaped = self.write_text_file(
+            ".orchestration/validation/T1-crit.json", '{"path": "\\/home\\/alice\\/.ssh\\/id"}\n'
+        )
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn("T1-crit.json names a home directory", stderr.getvalue())
+        escaped.unlink()
 
     def test_recursive_scans_skip_gitignored_local_state(self) -> None:
         git = ["git", "-C", str(self.temp_dir), "-c", "user.name=t", "-c", "user.email=t@example.invalid"]

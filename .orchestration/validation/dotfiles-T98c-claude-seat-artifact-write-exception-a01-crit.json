@@ -1,0 +1,8 @@
+[
+  {
+    "id": "T98c-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #281 head d1751647. Re-derived from the diff: Worker Playbook step 4 now names three documented out-of-sandbox cases (the main-checkout CompactionDB memory add, agmsg-dispatch via excludedCommands, and writing the task's artifacts at their expected main-checkout paths and masking them, because the main checkout is not writable from a worktree sandbox); step 5 cross-references step 4 for a Claude seat while the Codex-seat convention (write in the worktree, orchestrator copies) is unchanged; both sentences pinned in test_skill_carries_the_session_lessons; no other change; rule unedited at 429 words. CI 13/13; no Bot review (quota notice at PR open), so the task-level audit is the independent review.",
+    "scope": "review",
+    "resolved": true
+  }
+]

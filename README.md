@@ -1095,15 +1095,22 @@ counted toward the diff that decides whether review is required.
 review runs only when explicitly requested, and lets CodeRabbit request
 changes. No workflow posts review requests automatically.
 
-`main` uses two rulesets after the operator completes the activation below.
-Committing these payloads does not apply them. Keep squash-only merging,
-auto-merge enabled, and `delete_branch_on_merge` off.
+`main` has one ruleset, the **integrity ruleset** `main integration gate`,
+saved as `main-integrity.json`. Committing the payload does not apply it. Keep
+squash-only merging, auto-merge enabled, and `delete_branch_on_merge` off.
 
-The **integrity ruleset**, saved as `main-integrity.json`, updates the existing
-`main integration gate`. It has no bypass actors: required checks stay strict,
-review threads must be resolved, and deletion and force pushes remain blocked.
-Its zero required approvals lets the orchestrator merge its own boundary PRs
-when the separate merge-control ruleset is bypassed.
+Every seat on a machine acts as that machine's one GitHub account, so the
+ruleset protects `main` without telling accounts apart:
+
+- pull requests only;
+- the seven strict required checks;
+- resolved review threads;
+- squash-only merging, so history stays linear;
+- blocked force pushes and deletion.
+
+It has no bypass actors and no required approvals. An author cannot approve
+its own pull request, so under one account an approval rule would block every
+merge.
 
 ```json
 {
@@ -1167,215 +1174,45 @@ when the separate merge-control ruleset is bypassed.
 }
 ```
 
-The **merge-control ruleset**, saved as `main-merge-control.json`, restricts
-updates to `main` and requires one approval. Its sole bypass actor is the
-orchestrator user, in `pull_request` mode. The example ID `11512262` is `mryfmo`;
-verify it against `gh api user --jq '{login,id}'` in the orchestrator config,
-and replace it if using a different orchestrator account. Do not add a worker,
-a repository role, or an `always` bypass.
+Who merges is decided outside GitHub. Worker seats are denied merge commands
+natively: the Codex execpolicy forbids `gh pr merge`, `gh api -X PUT`,
+`gh api --method PUT` and `gh api graphql`. The orchestrator merges with
+`gh pr merge --squash` only after the integration gate (agmsg-orchestration
+SKILL, Orchestrator Playbook step 10). Under one OS user nothing isolates a
+deliberately misbehaving seat: the denials stop the accidental and
+prompt-injected paths, and the gate and the agmsg records make the rest
+visible. The design report (`.orchestration/validation/github-auth-design-2026-10-05.md`
+§16) holds the reasoning.
 
-```json
-{
-  "name": "main merge control",
-  "target": "branch",
-  "enforcement": "active",
-  "bypass_actors": [
-    {
-      "actor_id": 11512262,
-      "actor_type": "User",
-      "bypass_mode": "pull_request"
-    }
-  ],
-  "conditions": {
-    "ref_name": {
-      "include": ["refs/heads/main"],
-      "exclude": []
-    }
-  },
-  "rules": [
-    {
-      "type": "update",
-      "parameters": {
-        "update_allows_fetch_and_merge": false
-      }
-    },
-    {
-      "type": "pull_request",
-      "parameters": {
-        "required_approving_review_count": 1,
-        "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": false,
-        "require_last_push_approval": false,
-        "required_review_thread_resolution": true
-      }
-    }
-  ]
-}
-```
+To apply the payload:
 
-An update restriction permits ref updates only by bypass actors, so it also
-blocks a worker's PR merge even after approval. PR-only bypass allows the
-orchestrator to merge through a PR, including its own boundary PR, but does
-not permit direct pushes. This is a design inference from GitHub's
-[update rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#restrict-updates)
-and [PR-only bypass documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository#granting-bypass-permissions-for-your-branch-or-tag-ruleset);
-verify the live behavior during activation.
+1. Find the `main integration gate` ID with `gh api repos/mryfmo/dotfiles/rulesets`.
+2. Update it with
+   `gh api -X PUT repos/mryfmo/dotfiles/rulesets/<id> -H 'X-GitHub-Api-Version: 2026-03-10' --input main-integrity.json`.
+3. Read it back and check: no bypass actors, the seven strict checks, zero approvals, thread resolution, and deletion and non-fast-forward protection.
+4. Delete an earlier `main merge control` ruleset if one exists. Its approval and bypass rules need two accounts.
 
-Bypass covers all rules in its own ruleset, including status checks if placed
-there. The separate integrity ruleset remains binding on the orchestrator.
-Applicable rulesets combine, with the stricter requirement taking effect:
-workers face one approval plus thread resolution; the orchestrator bypasses
-the approval rule but still faces the integrity ruleset's checks and threads.
-See the [ruleset API](https://docs.github.com/en/rest/repos/rules?apiVersion=2026-03-10#update-a-repository-ruleset)
-(`User` actor IDs and per-ruleset bypass) and
-[rule layering](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets#about-rule-layering).
-Do not put a bypass actor on the integrity ruleset or rely on local feedback
-dispositions as a replacement for its server-side checks.
+GitHub login (once per machine, outside the sandbox): every seat on a machine
+(the orchestrator, the worker seats and the headless auditor) acts as that
+machine's one GitHub account, stored in gh's default directory.
 
-GitHub roles are configured separately. Workers (Claude and Codex, in the
-pair, restarted pair workers, and `--add-worker` seats) use the manifest's
-`worker_gh_config_dir`, default `~/.config/gh-worker`; the generated
-`WORKER_GH_CONFIG_DIR` selects that directory at launch. The orchestrator
-keeps the default gh configuration (`~/.config/gh`, or `$XDG_CONFIG_HOME/gh`).
-Worker launches clear `GH_TOKEN`, `GITHUB_TOKEN` and their enterprise variants,
-which otherwise take precedence over stored credentials. Codex workers also
-receive a worker-only `shell_environment_policy.set.GH_CONFIG_DIR` override so
-their shell tools retain the selection with `inherit=core`.
+- **The login step:** `./setup.sh` ends with it on a terminal, and
+  `make gh-auth` runs it at any time. When `gh auth status` succeeds, nothing
+  happens. Otherwise gh runs its own device-code login with its default
+  storage: the OS keyring where present, gh's file fallback elsewhere.
+- **Where credentials live:** never in a repository. Each machine logs in for
+  its own token, so a lost machine costs one revocation.
+- **`make update`:** never prompts and never logs in.
+- **Git:** needs no extra step. The managed git config's credential helper,
+  `!gh auth git-credential`, serves the login; `gh auth setup-git` would
+  rewrite that chezmoi-managed file.
+- **`make doctor`:** reports the login (`found:` with its name), or warns with
+  the `make gh-auth` hint when gh holds no working login or more than one.
 
-Operator phase (once per machine, outside the sandbox): each GitHub account
-has its own credential store, a `GH_CONFIG_DIR` that holds exactly one login.
-The stores are declared in `home/dot_agents/agent-config.yaml` (directories
-only, never logins or tokens) and rendered into `~/.agents/model-profiles.env`:
-
-| Account                                                                        | Store (`GH_CONFIG_DIR`)       | Rendered variable      | Used by                                                                                        |
-| ------------------------------------------------------------------------------ | ----------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------- |
-| owner, the merging account                                                     | `~/.config/gh` (gh's default) | `OWNER_GH_CONFIG_DIR`  | the orchestrator seat and personal repositories                                                |
-| work                                                                           | `~/.config/gh-work`           | `WORK_GH_CONFIG_DIR`   | work repositories, which set `GH_CONFIG_DIR` per repository (for example in a direnv `.envrc`) |
-| worker, a different account with repository write access and no ruleset bypass | `~/.config/gh-worker`         | `WORKER_GH_CONFIG_DIR` | worker seats, selected by `herdr-agents`                                                       |
-
-`./setup.sh` ends with the login step on a terminal, and `make gh-auth` runs it
-again at any time. For each store, `gh auth status` decides:
-
-- **The store already holds a token:** it is skipped.
-- **It doesn't:** it gets gh's own device-code login with file storage (`--insecure-storage`), then `chmod 600` on its `hosts.yml`.
-
-Git needs no per-store step: the managed git config's credential helper,
-`!gh auth git-credential`, reads `GH_CONFIG_DIR` and so serves every store.
-`gh auth setup-git` would rewrite that chezmoi-managed file and leave drift.
-
-When chezmoi-private provides an `encrypted_private_hosts.yml` per store,
-the files are already in place and the step prompts for nothing. `make update`
-never prompts and never logs in. No store holds two accounts, so `gh auth
-switch` is not used. The orchestrator seat uses gh's default directory
-without `GH_CONFIG_DIR`. So `owner_gh_config_dir` only tells `make gh-auth` and
-`make doctor` where that directory is, and must equal it: `$XDG_CONFIG_HOME/gh`
-when `XDG_CONFIG_HOME` is set. `gh auth status` needs the network. Offline, a
-store that holds a token looks empty, and `make gh-auth` offers its login
-again. When the worker
-store's `hosts.yml` is absent, `herdr-agents` prints a one-line provisioning
-notice to stderr in full, `--restart-worker` and `--add-worker` modes and
-continues seating the worker.
-
-```bash
-unset GH_CONFIG_DIR GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN
-make gh-auth
-gh api user --jq .login
-GH_CONFIG_DIR="$HOME/.config/gh-worker" gh api user --jq .login
-make doctor
-```
-
-`make doctor` reports each store: found (its `hosts.yml` is mode 0600 and it
-holds one user, whose login is printed), or a warning with the `make gh-auth`
-hint.
-
-`--insecure-storage` deliberately uses gh's token file: the Claude Linux
-sandbox cannot reach the host keyring. Keep `hosts.yml` user-owned, mode 0600,
-and outside the repository. The default path is readable under the managed
-Claude and Codex sandbox policies; a custom path must also be readable.
-Doctor warns when the worker directory is absent, but an existing directory
-requires authenticated file storage, mode 0600, and two different logins.
-The managed HTTPS credential helper (`!gh auth git-credential`) inherits
-`GH_CONFIG_DIR`. SSH pushes use SSH keys instead; this repository's SSH
-`pushInsteadOf` rewrite must be avoided when testing worker HTTPS credentials,
-for example by setting an explicit HTTPS push URL in the test repository.
-After `make doctor` succeeds, deploy the launcher and restart workers; confirm
-`gh api user --jq .login` returns the worker login in each worker and the
-orchestrator login in the orchestrator. Then, as the operator using the
-orchestrator config, activate the two payloads in this order:
-
-1. List `gh api repos/mryfmo/dotfiles/rulesets` and identify the existing
-   `main integration gate` ID. Update it with
-   `gh api -X PUT repos/mryfmo/dotfiles/rulesets/<integrity-id> -H 'X-GitHub-Api-Version: 2026-03-10' --input main-integrity.json`.
-   Read it back and verify `bypass_actors: []`, all seven strict checks, zero
-   approvals, thread resolution, deletion and non-fast-forward protection.
-   Keep enforcement active throughout.
-2. Verify the orchestrator login and numeric ID, then create `main merge control`
-   with `gh api -X POST repos/mryfmo/dotfiles/rulesets -H 'X-GitHub-Api-Version: 2026-03-10' --input main-merge-control.json`.
-   If it already exists, update its ID with `gh api -X PUT repos/mryfmo/dotfiles/rulesets/<merge-control-id> -H 'X-GitHub-Api-Version: 2026-03-10' --input main-merge-control.json`
-   instead of creating a duplicate. Read it back: exactly one `User` bypass
-   actor with the verified orchestrator ID and `pull_request` mode, `update`
-   with `update_allows_fetch_and_merge: false`, and one required approval.
-   Confirm both rulesets target `refs/heads/main`; inspect
-   `gh api repos/mryfmo/dotfiles/rules/branches/main` for both effective rule sets.
-3. Use disposable scratch PRs to `main` with harmless content and record the
-   actual responses below. Confirm all required checks and resolved threads
-   before testing merges, so failures distinguish merge authority from CI.
-
-| Operator verification                                                                                                        | Expected result                                                                   |
-| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Worker authors a scratch PR and tries `gh pr review <pr> --approve` in the worker config                                     | Self-approval refused; command fails.                                             |
-| Worker runs `gh api --method PUT repos/mryfmo/dotfiles/pulls/<pr>/merge -f merge_method=squash` before orchestrator approval | Merge refused, expected HTTP 405; PR stays open.                                  |
-| Orchestrator approves the current head; worker repeats that merge API call                                                   | Still refused, expected HTTP 405 from the update restriction; PR stays open.      |
-| Orchestrator completes the normal acceptance gate and calls the synchronous merge API below                                  | HTTP 200 with `merged: true` once integrity checks/threads pass.                  |
-| Orchestrator authors a `.orchestration`-only scratch boundary PR and calls the same merge API without approval               | After integrity checks pass, HTTP 200 with `merged: true`, without self-approval. |
-| Either account attempts a direct push to `main`                                                                              | Rejected; PR-only bypass does not allow direct pushes.                            |
-| Orchestrator attempts to merge a scratch PR with a failing/pending required check or unresolved review thread                | Merge remains blocked by the integrity ruleset, including on a boundary PR.       |
-
-After required checks succeed and threads are resolved, the orchestrator uses
-this synchronous merge for both accepted worker PRs and its own boundary PRs:
-
-```bash
-gh api --method PUT repos/mryfmo/dotfiles/pulls/<pr>/merge -f merge_method=squash -f sha=<head> -f commit_title='<title> (#<pr>)'
-```
-
-Replace the placeholders with the reviewed PR number, exact final head and
-English commit title. The `sha` guard rejects a head change with HTTP 409;
-re-review and repeat the final checks rather than dropping the guard.
-Before merge-control activation, `gh pr merge --squash` still works.
-After activation, do not rely on `gh pr merge --auto`: its completion does
-not engage bypass, and ordinary `gh pr merge` can refuse a `BLOCKED` PR before
-calling the API. See the [gh 2.101.0 preflight implementation](https://github.com/cli/cli/blob/v2.101.0/pkg/cmd/pr/merge/merge.go),
-[CLI issue #13388](https://github.com/cli/cli/issues/13388), and the
-[upstream auto-merge reproduction](https://github.com/github/docs/issues/45265).
-The direct API call still cannot bypass the separate integrity ruleset.
-
-The [merge API](https://docs.github.com/en/rest/pulls/pulls?apiVersion=2026-03-10#merge-a-pull-request)
-documents HTTP 200 for success and HTTP 405 when merging cannot be performed.
-Treat the table as expected behavior, not a completed live test: inspect the
-error body and actor/ruleset configuration if a response differs, and stop
-rollout if a prohibited merge succeeds. No credentials or rulesets are
-provisioned by installation.
-
-The integration gate (`BASE=origin/main make require-crit-review`) activates
-its role check when worker `hosts.yml` exists and effective `main` rules
-contain an `update` rule or require at least one approval. Otherwise it prints
-a `notice:` naming the missing condition. Failed or malformed queries after
-provisioning fail closed. The current authenticated user's numeric ID must be
-the sole `User` bypass actor in `pull_request` mode in every effective ruleset
-that supplies either restriction; missing bypass metadata also fails closed.
-For a worker-authored PR, that login must have approved the current head.
-Only a nonempty `.orchestration`-only PR authored by that orchestrator login
-passes without approval. Approval-only activation supports the transition;
-sole-merger enforcement additionally requires the update restriction.
-Approve worker PRs **before** collecting final feedback, so the approval is
-included in the sweep. Every new head needs another approval and sweep.
-
-The server-side merge restriction applies to distinct authenticated accounts;
-it does not isolate credentials from processes sharing the same OS user.
-Keep orchestrator credentials out of worker configuration. See
-[gh environment precedence](https://cli.github.com/manual/gh_help_environment),
-[gh file storage](https://cli.github.com/manual/gh_auth_login), and
-[Codex shell environment policy](https://learn.chatgpt.com/docs/config-file/config-advanced#shell-environment-policy).
+On Linux the Claude sandbox cannot reach the host keyring. So a Claude seat
+runs `gh`, `git push` and an authenticated `git fetch` outside the sandbox,
+through the permission gate (agmsg-orchestration SKILL, Worker Playbook step
+4). SSH pushes use SSH keys instead.
 
 Bot-review presence is not gated. The `CodeRabbit` status is not a required
 check (it reports success even when it skipped the review); with `BASE`, the

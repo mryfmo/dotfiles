@@ -5,9 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
-import shlex
 import sys
 from pathlib import Path
 from typing import Any, NoReturn
@@ -1254,30 +1252,7 @@ sys.stdout.write(merge_config(sys.stdin.read()))
 '''.replace("__HOOK_TRUST_BLOCK__\n", render_hook_trust_block(manifest))
 
 
-# One GitHub CLI credential store (a GH_CONFIG_DIR) per account: manifest key, rendered variable, default.
-GH_CONFIG_DIRS = (
-    ("owner_gh_config_dir", "OWNER_GH_CONFIG_DIR", "~/.config/gh"),
-    ("work_gh_config_dir", "WORK_GH_CONFIG_DIR", "~/.config/gh-work"),
-    ("worker_gh_config_dir", "WORKER_GH_CONFIG_DIR", "~/.config/gh-worker"),
-)
-
-
-def gh_config_dirs(manifest: dict[str, Any]) -> list[tuple[str, str]]:
-    """The (variable, path) of each GitHub credential store; every path is distinct."""
-    stores = []
-    for key, var, default in GH_CONFIG_DIRS:
-        gh_dir = manifest.get(key, default)
-        if not isinstance(gh_dir, str) or not gh_dir.startswith(("~/", "/")) or any(ord(c) < 32 for c in gh_dir):
-            fail(f"{key} must be an absolute or ~/ path without control characters")
-        stores.append((var, gh_dir))
-    paths = [os.path.normpath(os.path.expanduser(gh_dir)) for _, gh_dir in stores]
-    if len(set(paths)) != len(paths):
-        fail("owner_gh_config_dir, work_gh_config_dir and worker_gh_config_dir must name different directories")
-    return stores
-
-
 def render_model_profiles_env(manifest: dict[str, Any]) -> str:
-    stores = gh_config_dirs(manifest)
     profiles = model_profiles(manifest)
     interactive_profile(manifest)
     lines = [
@@ -1286,7 +1261,6 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
         f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
         f'HERDR_AGENTS_WORKER_KIND="{worker_kind(manifest)}"',
         f'HERDR_AGENTS_ORCHESTRATOR_KIND="{orchestrator_kind(manifest)}"',
-        *(f"{var}={shlex.quote(gh_dir)}" for var, gh_dir in stores),
     ]
     if (profile_name := worker_profile(manifest)) is not None:
         lines.append(f'HERDR_AGENTS_WORKER_PROFILE="{profile_name}"')

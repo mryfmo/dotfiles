@@ -594,69 +594,39 @@ def orchestrator_seat_lock_warnings(
 
 
 GH_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
-GH_STORE_LINE = re.compile(r"(OWNER|WORK|WORKER)_GH_CONFIG_DIR=(.+)")
+GH_LOGIN_HINT = "run make gh-auth"
 
 
-def gh_credential_store_findings(home: Path | None = None, env_path: Path | None = None, gh: str = "gh") -> list[str]:
-    """Report each GitHub credential store (one GH_CONFIG_DIR per account) declared in model-profiles.env.
+def gh_login_findings(gh: str = "gh") -> list[str]:
+    """Report this machine's one GitHub login, the one every seat acts as.
 
-    A store is present when its hosts.yml is a user-owned regular file with mode 0600 and
-    `gh auth status` finds exactly one working login; that is a `found:` line naming the
-    login. Anything else is a warning with the `make gh-auth` hint. Never prompts, and
-    never reads or prints a token: the login comes from gh's JSON status.
+    Present means `gh auth status` finds exactly one account in gh's default
+    configuration, and it works: a `found:` line naming the login. Anything else is a
+    warning with the `make gh-auth` hint. Never prompts, and never reads or prints a
+    token: the login comes from gh's JSON status, with token variables stripped so an
+    environment token cannot stand in for the stored login.
     """
-    home = HOME if home is None else home
-    env_path = env_path or SOURCE_ROOT / "dot_agents/model-profiles.env"
-    try:
-        lines = env_path.read_text().splitlines()
-    except OSError:
-        return [f"WARN: GitHub credential stores unknown: {env_path} is unreadable"]
     env = {key: value for key, value in os.environ.items() if key not in GH_TOKEN_VARIABLES}
-    findings = []
-    for line in lines:
-        match = GH_STORE_LINE.fullmatch(line)
-        if not match:
-            continue
-        label = match.group(1).lower()
-        directory = deployed_target_path(shlex.split(match.group(2))[0], home)
-        hosts = directory / "hosts.yml"
-        prefix = f"GitHub {label} credential store {directory}"
-        try:
-            metadata = hosts.lstat()
-        except OSError:
-            findings.append(f"WARN: {prefix} has no hosts.yml; run make gh-auth")
-            continue
-        if (
-            not stat.S_ISREG(metadata.st_mode)
-            or stat.S_IMODE(metadata.st_mode) != 0o600
-            or metadata.st_uid != os.getuid()
-        ):
-            findings.append(
-                f"WARN: {prefix}: hosts.yml must be a user-owned regular file with mode 0600; run make gh-auth"
-            )
-            continue
-        try:
-            status = subprocess.run(
-                [gh, "auth", "status", "--hostname", "github.com", "--json", "hosts"],
-                env={**env, "GH_CONFIG_DIR": str(directory)},
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=60,
-            )
-            accounts = json.loads(status.stdout)["hosts"]["github.com"]
-            logins = [account["login"] for account in accounts if account.get("state") == "success"]
-        except (OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError, AttributeError):
-            findings.append(f"WARN: {prefix}: gh auth status failed or gh is missing; run make gh-auth")
-            continue
-        if len(accounts) != 1 or len(logins) != 1:
-            findings.append(
-                f"WARN: {prefix} holds {len(logins)} working of {len(accounts)} logins; "
-                "keep exactly one account per store (run make gh-auth)"
-            )
-            continue
-        findings.append(f"found: {prefix} (hosts.yml 0600, one user: {logins[0]})")
-    return findings
+    try:
+        status = subprocess.run(
+            [gh, "auth", "status", "--hostname", "github.com", "--json", "hosts"],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+        accounts = json.loads(status.stdout)["hosts"]["github.com"]
+        logins = [account["login"] for account in accounts if account.get("state") == "success"]
+    except (OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError, AttributeError):
+        return [f"WARN: GitHub login: gh auth status failed or gh is missing; {GH_LOGIN_HINT}"]
+    if len(accounts) != 1 or len(logins) != 1:
+        message = (
+            f"WARN: GitHub login: gh holds {len(logins)} working of {len(accounts)} logins; keep exactly one "
+            f"(gh auth logout --user <login> for any other, or {GH_LOGIN_HINT})"
+        )
+        return [message]
+    return [f"found: GitHub login {logins[0]} (every seat on this machine acts as it)"]
 
 
 def deployed_target_path(value: str, home: Path) -> Path:
@@ -819,7 +789,7 @@ def check() -> list[str]:
         failures.extend(orphaned_asset_warnings())
     failures.extend(understand_anything_core_warnings())
     failures.extend(orchestrator_seat_lock_warnings())
-    failures.extend(gh_credential_store_findings())
+    failures.extend(gh_login_findings())
     failures.extend(chezmoi_drift_warnings())
     return failures
 

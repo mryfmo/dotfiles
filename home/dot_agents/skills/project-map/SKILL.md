@@ -17,6 +17,7 @@ You draw one thing: the project map. Nothing else.
 
 - Write only inside `<repo>/.project-map/`: `index.html` and `state.json`.
 - One exception: when `.gitignore` has no `.project-map/` line, append one.
+- Your own agent memory (MEMORY.md and the files beside it, outside the repository) is the other permitted write; nothing else.
 - Never touch any other file. Never run a git command that changes state (no add, commit, push, stash, checkout, reset).
 
 ## Reads
@@ -54,7 +55,7 @@ Keep this file as the memory of the map. Shape:
 
 ## The map: index.html
 
-- One self-contained HTML file: inline CSS and JS, no external requests, no build step, opens by double-click from `file://`. Theme and accent from memory, both contrast-checked as dataviz describes.
+- One self-contained HTML file: inline CSS and JS, no external requests, no build step, opens by double-click from `file://`. Theme and accent from memory, both contrast-checked as dataviz describes. The map is a local file, not a published Artifact: where artifact-design's page contract (CDN libraries, Google Fonts, no html/head/body tags) conflicts with this skill, this skill wins.
 - Top strip: project name, HEAD short sha and date, **N items left to <next milestone>**, **Suggested next step** in one concrete sentence, and a "changed since <last update>" count.
 - Parts: split the project into 4 to 9 major parts, derived from the directory layout, README, and recent commits, never from a fixed list. Each part shows `done`, `in-progress`, `not-started`, or `stuck`. A stuck part states what it waits on: a person, a decision, an external service, or a failing check. Parts that changed since the last update carry an accent border and a "changed" tag.
 - Milestones: when the human has not named any, read README and the commit history and propose a first version of 3 to 6 milestones, each listing the parts it needs, labelled "proposed, edit me in .project-map/state.json".

@@ -1,0 +1,23 @@
+# Sandbox: dotfiles-T108-one-login-per-machine-a01
+
+- **Sandboxed:**
+  - the inbox reads (`~/.agents/skills/agmsg/scripts/inbox.sh dotfiles claude-standard-dot-a005` from worker-c; they printed a harmless herdr pane-rename refusal);
+  - discarding the T107 branch and its uncommitted edits (`git restore`, `git switch --detach origin/main`, `git branch -D fix/gh-stores-per-machine`; the branch deletion could not update `.git/config`, which is read-only from the worktree sandbox, so its tracking entries may remain);
+  - `git switch -c`, edits, the generator run, `bash -n` and shellcheck, ruff and prettier;
+  - the unit tests, `make unit-test`, `make render-check` and the validator;
+  - `codex execpolicy check --rules home/dot_codex/rules/default.rules -- <command>` (read-only policy evaluation);
+  - the commits.
+- **Through the permission gate (Worker Playbook step 4):**
+  - `git push`, `gh pr create`, `gh pr checks` and the bot-wait polling;
+  - the CompactionDB `memory add` in the main checkout;
+  - writing and masking these artifacts in the main checkout;
+  - `agmsg-dispatch`.
+- **Credentials:**
+  - **Normal use:** the authenticated `gh` calls above (`gh pr create`, `gh pr checks`, the API polling) and `git push` used this machine's real GitHub login through gh, which is the normal path.
+  - **Never read:** no command read, listed or printed a credential value.
+  - **Tests:** the doctor, script and gate tests ran only against fake HOMEs and a fake `gh`, never the real gh configuration.
+- **Not done:**
+  - no `make update`/`apply`/`make gh-auth`, no `gh auth login`;
+  - no edits to Claude permission, sandbox or hook blocks, `modify_private_settings.json` or permgate;
+  - no thread resolution, no local bats.
+- **Revise round 1:** the same split. The docs edits and the docs test ran sandboxed; the push, CI and bot polling, the artifact writes and `agmsg-dispatch` went through the permission gate.

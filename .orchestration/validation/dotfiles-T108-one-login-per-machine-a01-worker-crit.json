@@ -1,0 +1,73 @@
+[
+  {
+    "id": "t108-review-summary",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "Independent read-only subagent reviewed a8ebd8de against origin/main e0027811 (6 commits). It found the code correct and in scope: the spawn.sh invocation is unchanged apart from the removed wrapper; the gate keeps pr_base_errors and the re-collection; there are no leftover references to removed functions or variables; no forbidden file was touched. Eight test modules passed there (488 tests). One P2 doc overclaim and seven P3s, dispositioned below. Fixes are in b66f4297."
+  },
+  {
+    "id": "t108-p2-claude-seat-deny",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "P2: README and SKILL said every worker seat is denied merge commands natively, but only Codex seats are (execpolicy). worker_kind is claude, and the Claude side denies none of gh pr merge, gh api -X/--method PUT or gh api graphql. Disposition fixed:b66f4297: README and SKILL now say Codex seats. The README states that the Claude worker-seat deny rules (settings.local.json via herdr-agents, design report section 16 step 2) are a separate Codex-seat task, and that until then a Claude worker's merge command reaches the permission prompt.",
+    "path": "README.md"
+  },
+  {
+    "id": "t108-p3-execpolicy-coverage",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "P3: the README overstated the execpolicy coverage of -X PUT/--method PUT. Disposition fixed:b66f4297: it now says the flag must come right after `api` and names the forms a prefix rule misses (a flag after the path, -XPUT, --method=PUT).",
+    "path": "README.md"
+  },
+  {
+    "id": "t108-p3-gate-authority-wording",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "P3: calling the local integration gate 'the authority' over a worker's API merge overstates it. Disposition fixed:b66f4297: the rules comment and README now say the gate and the records make such a merge visible but cannot prevent it.",
+    "path": "home/dot_codex/rules/default.rules"
+  },
+  {
+    "id": "t108-p3-squash-not-a-ruleset-rule",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "P3: squash-only merging was listed as a ruleset protection, but the payload has no rule for it. Disposition fixed:b66f4297: moved to the repository-settings sentence.",
+    "path": "README.md"
+  },
+  {
+    "id": "t108-p3-design-report-citation",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "P3: the README cites the design report section 16, which exists only in the main checkout until the next boundary PR. Disposition not-applicable: the design report is orchestrator evidence that reaches main with the boundary commit; this seat may not edit other tasks' .orchestration evidence. Flagged in the report so the boundary PR carries sections 14-16.",
+    "path": "README.md"
+  },
+  {
+    "id": "t108-p3-codex-keyring",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "P3: with default storage (keyring), a Codex seat on a Linux host with a secret service may fail gh authentication inside its sandbox (shell_environment_policy inherit=core drops the session bus variables). Disposition not-applicable: decision A and the task specify default storage (no --insecure-storage), and worker_kind is claude today. Recorded in the report as a live check needed before a Codex worker seat relies on gh.",
+    "path": "scripts/gh-auth.sh"
+  },
+  {
+    "id": "t108-p3-gate-test-fixture",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "P3: the new gate test's default-store hosts.yml fixture looked unused, because HOME seemed never pointed at role-home. Disposition not-applicable: guard_base sets HOME to collected_dir/role-home by default (test_require_crit_review.py:404), so the fixture is read by the guard under test.",
+    "path": "tests/unit/test_require_crit_review.py"
+  },
+  {
+    "id": "t108-p3-login-failure-test",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "P3: no test covered a gh auth login that does not complete. Disposition fixed:b66f4297: test_a_login_that_does_not_complete_fails checks the script's exit 1 and that setup.sh reports 'The GitHub login did not complete' and carries on.",
+    "path": "tests/unit/test_gh_auth.py"
+  }
+]

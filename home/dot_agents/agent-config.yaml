@@ -357,7 +357,7 @@ assets:
   mise:
     source: github-release
     upstream: jdx/mise
-    pin: v2026.9.14
+    pin: v2026.9.16
     verify: release-shasums
     install_path: ~/.local/bin/mise
     installer: install/common/mise.sh
@@ -387,7 +387,7 @@ assets:
   aws-cli:
     source: https-download
     upstream: https://awscli.amazonaws.com
-    pin: 2.37.4
+    pin: 2.37.5
     verify: gpg
     gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
     install_path: ~/.local/share/aws-cli
@@ -411,7 +411,7 @@ assets:
   chezmoi-bootstrap:
     source: github-release
     upstream: twpayne/chezmoi
-    pin: 2.70.4
+    pin: 2.73.0
     verify: release-shasums
     install_path: ~/.local/bin/chezmoi
     installer: setup.sh#run_chezmoi

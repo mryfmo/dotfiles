@@ -11,25 +11,25 @@
       
       
       
-        <link rel="prev" href="../gnome_settings/">
+        <link rel="prev" href="../generate-docs/">
       
       
-        <link rel="next" href="../tailscale/">
+        <link rel="next" href="../run_benchmark/">
       
       
         
       
       
-      <link rel="icon" href="../../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>install/ubuntu/client/misc.sh - Dotfiles Docs</title>
+        <title>scripts/gh-auth-stores.sh - Dotfiles Docs</title>
       
     
     
-      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
       
 
@@ -48,9 +48,9 @@
       
     
     
-      <link rel="stylesheet" href="../../../../../assets/stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installubuntuclientmiscsh" class="md-skip">
+        <a href="#scriptsgh-auth-storessh" class="md-skip">
           Skip to content
         </a>
       
@@ -84,7 +84,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+    <a href="../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              install/ubuntu/client/misc.sh
+              scripts/gh-auth-stores.sh
             
           </span>
         </div>
@@ -182,7 +182,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+    <a href="../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -200,7 +200,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -227,7 +227,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../catalog/" class="md-nav__link">
+      <a href="../../../catalog/" class="md-nav__link">
         
   
   
@@ -301,7 +301,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../history/" class="md-nav__link">
+      <a href="../../../history/" class="md-nav__link">
         
   
   
@@ -329,7 +329,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../history/nix-first-architecture/" class="md-nav__link">
+      <a href="../../../history/nix-first-architecture/" class="md-nav__link">
         
   
   
@@ -357,7 +357,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../history/nix-migration/" class="md-nav__link">
+      <a href="../../../history/nix-migration/" class="md-nav__link">
         
   
   
@@ -441,7 +441,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../chezmoi-templates/" class="md-nav__link">
+      <a href="../../chezmoi-templates/" class="md-nav__link">
         
   
   
@@ -610,7 +610,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
+      <a href="../../home/dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
         
   
   
@@ -638,7 +638,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
+      <a href="../../home/dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
         
   
   
@@ -776,7 +776,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_config/alias/common/" class="md-nav__link">
+      <a href="../../home/dot_config/alias/common/" class="md-nav__link">
         
   
   
@@ -961,7 +961,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_agent-session-staleness/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_agent-session-staleness/" class="md-nav__link">
         
   
   
@@ -989,7 +989,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_agmsg-dispatch/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_agmsg-dispatch/" class="md-nav__link">
         
   
   
@@ -1017,7 +1017,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_cdgwq/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_cdgwq/" class="md-nav__link">
         
   
   
@@ -1045,7 +1045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_cdw/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_cdw/" class="md-nav__link">
         
   
   
@@ -1073,7 +1073,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_chezmoi-cd/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_chezmoi-cd/" class="md-nav__link">
         
   
   
@@ -1101,7 +1101,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_codex-orchestrate/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_codex-orchestrate/" class="md-nav__link">
         
   
   
@@ -1129,7 +1129,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_compactiondb-install/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_compactiondb-install/" class="md-nav__link">
         
   
   
@@ -1157,7 +1157,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_contextdb-codex-notify/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_contextdb-codex-notify/" class="md-nav__link">
         
   
   
@@ -1185,7 +1185,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_dev/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_dev/" class="md-nav__link">
         
   
   
@@ -1213,7 +1213,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_fgc/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_fgc/" class="md-nav__link">
         
   
   
@@ -1241,7 +1241,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_git-delete-merged-branches/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_git-delete-merged-branches/" class="md-nav__link">
         
   
   
@@ -1269,7 +1269,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_herdr-agents/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_herdr-agents/" class="md-nav__link">
         
   
   
@@ -1297,7 +1297,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_permgate/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_permgate/" class="md-nav__link">
         
   
   
@@ -1325,7 +1325,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_provision-machine-key/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_provision-machine-key/" class="md-nav__link">
         
   
   
@@ -1353,7 +1353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_remove-agent-asset/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_remove-agent-asset/" class="md-nav__link">
         
   
   
@@ -1381,7 +1381,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
         
   
   
@@ -1409,7 +1409,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_setup-gpg/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_setup-gpg/" class="md-nav__link">
         
   
   
@@ -1437,7 +1437,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_ua-symbol-coverage/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_ua-symbol-coverage/" class="md-nav__link">
         
   
   
@@ -1465,7 +1465,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_uv-format/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_uv-format/" class="md-nav__link">
         
   
   
@@ -1548,7 +1548,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/cuda/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/server/cuda/" class="md-nav__link">
         
   
   
@@ -1576,7 +1576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/ssh_agent/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/server/ssh_agent/" class="md-nav__link">
         
   
   
@@ -1633,20 +1633,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
         
           
           <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
@@ -1667,7 +1665,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1732,7 +1730,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/chezmoi_private/" class="md-nav__link">
+      <a href="../../install/common/chezmoi_private/" class="md-nav__link">
         
   
   
@@ -1760,7 +1758,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/gh_extensions/" class="md-nav__link">
+      <a href="../../install/common/gh_extensions/" class="md-nav__link">
         
   
   
@@ -1788,7 +1786,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/mise/" class="md-nav__link">
+      <a href="../../install/common/mise/" class="md-nav__link">
         
   
   
@@ -1816,7 +1814,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/sheldon/" class="md-nav__link">
+      <a href="../../install/common/sheldon/" class="md-nav__link">
         
   
   
@@ -1946,7 +1944,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/arm64/prepare_arm64_system/" class="md-nav__link">
+      <a href="../../install/macos/arm64/prepare_arm64_system/" class="md-nav__link">
         
   
   
@@ -2029,7 +2027,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/brew/" class="md-nav__link">
+      <a href="../../install/macos/common/brew/" class="md-nav__link">
         
   
   
@@ -2057,7 +2055,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/command_line_tool/" class="md-nav__link">
+      <a href="../../install/macos/common/command_line_tool/" class="md-nav__link">
         
   
   
@@ -2085,7 +2083,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/defaults/" class="md-nav__link">
+      <a href="../../install/macos/common/defaults/" class="md-nav__link">
         
   
   
@@ -2113,7 +2111,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/dependencies/" class="md-nav__link">
+      <a href="../../install/macos/common/dependencies/" class="md-nav__link">
         
   
   
@@ -2141,7 +2139,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/docker/" class="md-nav__link">
+      <a href="../../install/macos/common/docker/" class="md-nav__link">
         
   
   
@@ -2169,7 +2167,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/ghostty/" class="md-nav__link">
+      <a href="../../install/macos/common/ghostty/" class="md-nav__link">
         
   
   
@@ -2197,7 +2195,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/misc/" class="md-nav__link">
+      <a href="../../install/macos/common/misc/" class="md-nav__link">
         
   
   
@@ -2238,20 +2236,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3" >
         
           
           <label class="md-nav__link" for="__nav_4_3_3" id="__nav_4_3_3_label" tabindex="0">
@@ -2272,7 +2268,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_3_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_3_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_3_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2287,20 +2283,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3_1" >
         
           
           <label class="md-nav__link" for="__nav_4_3_3_1" id="__nav_4_3_3_1_label" tabindex="0">
@@ -2321,7 +2315,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_3_3_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_3_3_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_3_3_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2339,7 +2333,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../default_shell/" class="md-nav__link">
+      <a href="../../install/ubuntu/client/default_shell/" class="md-nav__link">
         
   
   
@@ -2367,7 +2361,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../docker/" class="md-nav__link">
+      <a href="../../install/ubuntu/client/docker/" class="md-nav__link">
         
   
   
@@ -2395,7 +2389,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ghostty/" class="md-nav__link">
+      <a href="../../install/ubuntu/client/ghostty/" class="md-nav__link">
         
   
   
@@ -2423,7 +2417,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gnome_settings/" class="md-nav__link">
+      <a href="../../install/ubuntu/client/gnome_settings/" class="md-nav__link">
         
   
   
@@ -2448,37 +2442,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/ubuntu/client/misc.sh
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../install/ubuntu/client/misc/" class="md-nav__link">
         
   
   
@@ -2494,59 +2461,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Functions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2559,7 +2473,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tailscale/" class="md-nav__link">
+      <a href="../../install/ubuntu/client/tailscale/" class="md-nav__link">
         
   
   
@@ -2587,7 +2501,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../zed/" class="md-nav__link">
+      <a href="../../install/ubuntu/client/zed/" class="md-nav__link">
         
   
   
@@ -2670,7 +2584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/apparmor_userns/" class="md-nav__link">
+      <a href="../../install/ubuntu/common/apparmor_userns/" class="md-nav__link">
         
   
   
@@ -2698,7 +2612,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/aws_cli/" class="md-nav__link">
+      <a href="../../install/ubuntu/common/aws_cli/" class="md-nav__link">
         
   
   
@@ -2726,7 +2640,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/dependencies/" class="md-nav__link">
+      <a href="../../install/ubuntu/common/dependencies/" class="md-nav__link">
         
   
   
@@ -2754,7 +2668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/setup_locale/" class="md-nav__link">
+      <a href="../../install/ubuntu/common/setup_locale/" class="md-nav__link">
         
   
   
@@ -2782,7 +2696,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/ssh/" class="md-nav__link">
+      <a href="../../install/ubuntu/common/ssh/" class="md-nav__link">
         
   
   
@@ -2865,7 +2779,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../server/misc/" class="md-nav__link">
+      <a href="../../install/ubuntu/server/misc/" class="md-nav__link">
         
   
   
@@ -2893,7 +2807,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../server/setup_timezone/" class="md-nav__link">
+      <a href="../../install/ubuntu/server/setup_timezone/" class="md-nav__link">
         
   
   
@@ -2921,7 +2835,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../server/ssh_server/" class="md-nav__link">
+      <a href="../../install/ubuntu/server/ssh_server/" class="md-nav__link">
         
   
   
@@ -2949,7 +2863,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../server/starship/" class="md-nav__link">
+      <a href="../../install/ubuntu/server/starship/" class="md-nav__link">
         
   
   
@@ -2998,18 +2912,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
@@ -3030,7 +2946,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3048,7 +2964,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/agent-stop-gate/" class="md-nav__link">
+      <a href="../agent-stop-gate/" class="md-nav__link">
         
   
   
@@ -3076,7 +2992,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/check-regime-boundary/" class="md-nav__link">
+      <a href="../check-regime-boundary/" class="md-nav__link">
         
   
   
@@ -3104,7 +3020,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/check-tools/" class="md-nav__link">
+      <a href="../check-tools/" class="md-nav__link">
         
   
   
@@ -3132,7 +3048,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/generate-docs/" class="md-nav__link">
+      <a href="../generate-docs/" class="md-nav__link">
         
   
   
@@ -3157,10 +3073,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../../scripts/gh-auth-stores/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/gh-auth-stores.sh
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3176,6 +3119,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3188,7 +3184,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/run_benchmark/" class="md-nav__link">
+      <a href="../run_benchmark/" class="md-nav__link">
         
   
   
@@ -3216,7 +3212,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/run_unit_test/" class="md-nav__link">
+      <a href="../run_unit_test/" class="md-nav__link">
         
   
   
@@ -3244,7 +3240,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/update-agent-assets/" class="md-nav__link">
+      <a href="../update-agent-assets/" class="md-nav__link">
         
   
   
@@ -3272,7 +3268,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/upgrade-tools/" class="md-nav__link">
+      <a href="../upgrade-tools/" class="md-nav__link">
         
   
   
@@ -3300,7 +3296,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/usage-snapshot/" class="md-nav__link">
+      <a href="../usage-snapshot/" class="md-nav__link">
         
   
   
@@ -3375,7 +3371,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/lib/asset-manifest/" class="md-nav__link">
+      <a href="../lib/asset-manifest/" class="md-nav__link">
         
   
   
@@ -3403,7 +3399,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/lib/installer-pins/" class="md-nav__link">
+      <a href="../lib/installer-pins/" class="md-nav__link">
         
   
   
@@ -3548,7 +3544,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../verification/acceptance/005/" class="md-nav__link">
+      <a href="../../../verification/acceptance/005/" class="md-nav__link">
         
   
   
@@ -3660,89 +3656,122 @@
 
 
 
-<h1 id="installubuntuclientmiscsh">install/ubuntu/client/misc.sh<a class="headerlink" href="#installubuntuclientmiscsh" title="Permanent link">&para;</a></h1>
-<p>Installs or removes a small set of GUI applications used on Ubuntu client machines.</p>
+<h1 id="scriptsgh-auth-storessh">scripts/gh-auth-stores.sh<a class="headerlink" href="#scriptsgh-auth-storessh" title="Permanent link">&para;</a></h1>
+<p>Each GitHub account has its own store, a GH_CONFIG_DIR holding one login: OWNER_GH_CONFIG_DIR, WORK_GH_CONFIG_DIR and WORKER_GH_CONFIG_DIR, declared in home/dot_agents/agent-config.yaml and rendered into ~/.agents/model-profiles.env. A store whose <code>gh auth status</code> succeeds is skipped, so a hosts.yml that chezmoi-private already decrypted prompts for nothing. Any other store gets gh's own device-code login with file storage (the Claude sandbox cannot reach the keyring) and mode 0600. Git needs no per-store setup: the managed git config's <code>!gh auth git-credential</code> helper reads GH_CONFIG_DIR, and <code>gh auth setup-git</code> would rewrite that chezmoi-managed file. No credential value is read or printed here. Interactive only: <code>make update</code> never runs this.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Source: <code>install/ubuntu/client/misc.sh</code></li>
-<li>Category: install script</li>
+<li>Source: <code>scripts/gh-auth-stores.sh</code></li>
+<li>Category: repository script</li>
 <li>Renderer: <code>shell-fallback</code></li>
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>install_chromium</code></li>
-<li><code>install_misc</code></li>
+<li><code>ensure_store</code></li>
+<li><code>expand_home</code></li>
 <li><code>main</code></li>
-<li><code>uninstall_misc</code></li>
+<li><code>secure_hosts_file</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
-<span class="c1"># @file install/ubuntu/client/misc.sh</span>
-<span class="c1"># @brief Install optional Ubuntu client applications.</span>
+<span class="c1"># @file gh-auth-stores.sh</span>
+<span class="c1"># @brief Log in each GitHub CLI credential store that holds no token.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Installs or removes a small set of GUI applications used on Ubuntu client</span>
-<span class="c1">#   machines.</span>
+<span class="c1">#   Each GitHub account has its own store, a GH_CONFIG_DIR holding one login:</span>
+<span class="c1">#   OWNER_GH_CONFIG_DIR, WORK_GH_CONFIG_DIR and WORKER_GH_CONFIG_DIR, declared in</span>
+<span class="c1">#   home/dot_agents/agent-config.yaml and rendered into ~/.agents/model-profiles.env.</span>
+<span class="c1">#   A store whose `gh auth status` succeeds is skipped, so a hosts.yml that</span>
+<span class="c1">#   chezmoi-private already decrypted prompts for nothing. Any other store gets</span>
+<span class="c1">#   gh's own device-code login with file storage (the Claude sandbox cannot reach</span>
+<span class="c1">#   the keyring) and mode 0600. Git needs no per-store setup: the managed git</span>
+<span class="c1">#   config's `!gh auth git-credential` helper reads GH_CONFIG_DIR, and</span>
+<span class="c1">#   `gh auth setup-git` would rewrite that chezmoi-managed file. No credential</span>
+<span class="c1">#   value is read or printed here. Interactive only: `make update` never runs this.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
-<span class="k">fi</span>
-
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">PACKAGES</span><span class="o">=(</span>
-<span class="w">    </span>gparted
-<span class="w">    </span>language-pack-ja
-<span class="w">    </span>fonts-noto-cjk
-<span class="w">    </span>fonts-noto-color-emoji
-<span class="w">    </span>ibus-mozc
-<span class="w">    </span><span class="c1"># Chromium/Electron runtime libraries used by terminal-code and</span>
-<span class="w">    </span><span class="c1"># terminal-browser; their installers only warn when these are missing.</span>
-<span class="w">    </span><span class="c1"># libgtk-3-0 and libasound2 use their t64 package names on Ubuntu 24.04.</span>
-<span class="w">    </span>libnss3
-<span class="w">    </span>libgtk-3-0t64
-<span class="w">    </span>libasound2t64
-<span class="w">    </span>libgbm1
-<span class="o">)</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Install the optional Ubuntu client packages.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_misc<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
+<span class="c1"># @description Expand a leading `~/` to $HOME.</span>
+<span class="c1"># @arg $1 string Path as rendered in model-profiles.env.</span>
+<span class="k">function</span><span class="w"> </span>expand_home<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="se">\~</span>/*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s/%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="p">#</span><span class="s2">"~/"</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
-<span class="c1">#</span>
-<span class="c1"># @description Remove the optional Ubuntu client packages.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>uninstall_misc<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>remove<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
+<span class="c1"># @description Set an existing hosts.yml to mode 0600, failing loudly when that is impossible.</span>
+<span class="c1">#   Callers run inside `||` lists, where errexit is off, so every failure is returned explicitly.</span>
+<span class="c1"># @arg $1 string Account label: owner, work or worker.</span>
+<span class="c1"># @arg $2 string The store's GH_CONFIG_DIR.</span>
+<span class="c1"># @exitcode 1 hosts.yml exists but its mode could not be set (for example, another user owns it).</span>
+<span class="k">function</span><span class="w"> </span>secure_hosts_file<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">label</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/hosts.yml<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>chmod<span class="w"> </span><span class="m">600</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">/hosts.yml"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s store %s: cannot set hosts.yml to mode 0600; make it yours, then run "make gh-auth"\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
-<span class="c1">#</span>
-<span class="c1"># @description Install Chromium via snap.</span>
-<span class="c1"># @description</span>
-<span class="c1">#   Ubuntu 24.04 only ships Chromium as a snap (the apt package is a</span>
-<span class="c1">#   transitional snap wrapper). Google Chrome is not used instead because</span>
-<span class="c1">#   Google does not publish a linux-arm64 build. Skips gracefully when snap</span>
-<span class="c1">#   is unavailable (e.g. minimal or container images).</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_chromium<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>snap<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span>sudo<span class="w"> </span>snap<span class="w"> </span>install<span class="w"> </span>chromium
+<span class="c1"># @description Log in one store unless it already holds a working token.</span>
+<span class="c1"># @arg $1 string Account label: owner, work or worker.</span>
+<span class="c1"># @arg $2 string The store's GH_CONFIG_DIR.</span>
+<span class="k">function</span><span class="w"> </span>ensure_store<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">label</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+<span class="w">    </span>secure_hosts_file<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">GH_CONFIG_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>gh<span class="w"> </span>auth<span class="w"> </span>status<span class="w"> </span>--hostname<span class="w"> </span>github.com<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s store %s already holds a token; skipped\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s store %s has no token; run "make gh-auth" in a terminal\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s store %s has no token; log in as the %s account\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">GH_CONFIG_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>gh<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>--hostname<span class="w"> </span>github.com<span class="w"> </span>--git-protocol<span class="w"> </span>https<span class="w"> </span>--insecure-storage<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>secure_hosts_file<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="c1">#</span>
-<span class="c1"># @description Run the optional Ubuntu client package installation flow.</span>
-<span class="c1">#</span>
+<span class="c1"># @description Check every declared store and log in the ones without a token.</span>
+<span class="c1"># @exitcode 0 Every store holds a token.</span>
+<span class="c1"># @exitcode 1 A store is undeclared, gh is missing, or a login did not complete.</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>install_misc
-<span class="w">    </span>install_chromium
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">env_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">GH_AUTH_STORES_ENV</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.agents/model-profiles.env</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">failures</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>pair<span class="w"> </span>label<span class="w"> </span>var
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">env_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s is missing; run "make update" first\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">env_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># shellcheck source=/dev/null</span>
+<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">env_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># gh may exist only as a mise shim (a fresh bootstrap, or a shell without mise activated).</span>
+<span class="w">    </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/mise/shims:</span><span class="si">${</span><span class="nv">PATH</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>gh<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: gh is not installed; install it, then run "make gh-auth"\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># A token in the environment overrides every store and would hide an empty one.</span>
+<span class="w">    </span><span class="nb">unset</span><span class="w"> </span>GH_TOKEN<span class="w"> </span>GITHUB_TOKEN<span class="w"> </span>GH_ENTERPRISE_TOKEN<span class="w"> </span>GITHUB_ENTERPRISE_TOKEN
+<span class="w">    </span><span class="nb">umask</span><span class="w"> </span><span class="m">077</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>pair<span class="w"> </span><span class="k">in</span><span class="w"> </span>owner:OWNER_GH_CONFIG_DIR<span class="w"> </span>work:WORK_GH_CONFIG_DIR<span class="w"> </span>worker:WORKER_GH_CONFIG_DIR<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">label</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">pair</span><span class="p">%%:*</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">var</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">pair</span><span class="p">#*:</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="p">!var</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s is not set in %s; run "make update" first\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">var</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">env_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nv">failures</span><span class="o">=</span><span class="k">$((</span><span class="nv">failures</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span>ensure_store<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>expand_home<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!var</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failures</span><span class="o">=</span><span class="k">$((</span><span class="nv">failures</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">failures</span><span class="si">}</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span>
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span>main
-<span class="k">fi</span>
+main<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
 </code></pre></div>
 
 
@@ -3799,10 +3828,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -3156,6 +3156,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../gh-auth-stores/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/gh-auth-stores.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../run_benchmark/" class="md-nav__link">
         
   
@@ -3304,10 +3332,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4_11" >
         
           
-          <label class="md-nav__link" for="__nav_4_4_10" id="__nav_4_4_10_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_4_11" id="__nav_4_4_11_label" tabindex="0">
             
   
   
@@ -3325,8 +3353,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_4_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_4_10">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3867,7 +3895,7 @@
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/model-profiles.env<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/model-profiles.env"</span>
 <span class="w">    </span><span class="nv">worker_dir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">WORKER_GH_CONFIG_DIR</span><span class="p">/#</span><span class="se">\~</span><span class="p">/</span><span class="nv">$HOME</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">worker_dir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">"worker GitHub config missing: </span><span class="si">${</span><span class="nv">worker_dir</span><span class="si">}</span><span class="s2">; provision with GH_CONFIG_DIR=&lt;worker-dir&gt; gh auth login --insecure-storage (README operator phase)"</span>
+<span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">"worker GitHub config missing: </span><span class="si">${</span><span class="nv">worker_dir</span><span class="si">}</span><span class="s2">; run make gh-auth (README operator phase)"</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt; 'PYTHON'</span>

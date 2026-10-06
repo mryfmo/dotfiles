@@ -86,6 +86,28 @@ class AgmsgOrchestrationRuleTest(unittest.TestCase):
 class AgmsgOrchestrationSkillTest(unittest.TestCase):
     """The SKILL holds the mechanics the rule points at."""
 
+    def test_claude_worker_merge_denials_and_prefix_limits_are_documented(self) -> None:
+        for path in (ROOT / "README.md", SKILL):
+            text = " ".join(path.read_text().split())
+            with self.subTest(path=path.name):
+                for token in (
+                    "Bash(gh pr merge:*)",
+                    "Bash(gh api -X PUT:*)",
+                    "Bash(gh api --method PUT:*)",
+                    "Bash(gh api graphql:*)",
+                    "herdr-agents",
+                    ".claude/settings.local.json",
+                    "deny rules",
+                    "nested subcommands",
+                    "permission mode",
+                    "flag after the path",
+                    "integration gate",
+                    "https://code.claude.com/docs/en/permissions",
+                ):
+                    self.assertIn(token, text)
+                self.assertNotIn("Claude worker seats have no such denial yet", text)
+                self.assertNotIn("Claude seats get their deny rules in a separate task", text)
+
     def test_skill_carries_the_registration_and_delivery_mechanics(self) -> None:
         text = SKILL.read_text()
         for token in (

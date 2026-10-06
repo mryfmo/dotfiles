@@ -101,9 +101,9 @@ update:
 apply: update
 
 .PHONY: gh-auth
-# Interactive: log in each GitHub credential store (owner, work, worker) that holds no token.
+# Interactive: log in this machine's GitHub account when gh holds no working login.
 gh-auth:
-	./scripts/gh-auth-stores.sh
+	./scripts/gh-auth.sh
 
 .PHONY: doctor
 doctor:

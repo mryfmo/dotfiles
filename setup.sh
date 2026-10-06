@@ -366,19 +366,19 @@ function initialize_dotfiles() {
     run_chezmoi
 }
 
-# @description Log in each GitHub credential store that holds no token (interactive runs only).
+# @description Log in this machine's GitHub account when gh holds no working login (interactive runs only).
 #   CI and non-terminal runs skip it; `make gh-auth` in the checkout repeats it later.
 function authenticate_github() {
-    local script="${HOME}/.local/share/chezmoi/scripts/gh-auth-stores.sh"
+    local script="${HOME}/.local/share/chezmoi/scripts/gh-auth.sh"
 
     # On a fresh machine gh exists only as a mise shim, which this shell's PATH does not hold yet.
     export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     if is_ci_or_not_tty || ! command -v gh > /dev/null 2>&1 || [ ! -x "${script}" ]; then
-        echo "Skipping the GitHub logins; run \`make gh-auth\` in the dotfiles checkout once gh is installed."
+        echo "Skipping the GitHub login; run \`make gh-auth\` in the dotfiles checkout once gh is installed."
         return 0
     fi
     if ! "${script}"; then
-        echo "Some GitHub logins did not complete; run \`make gh-auth\` to retry." >&2
+        echo "The GitHub login did not complete; run \`make gh-auth\` to retry." >&2
     fi
 }
 

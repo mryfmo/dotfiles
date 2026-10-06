@@ -411,64 +411,6 @@ PY
     fi
 }
 
-# @description Resolve the manifest's worker-only GitHub CLI config directory.
-# @stdout Absolute config path; no credentials are read.
-function worker_github_config_dir() (
-    WORKER_GH_CONFIG_DIR="${HOME}/.config/gh-worker"
-    # shellcheck source=/dev/null
-    [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
-    printf '%s\n' "${WORKER_GH_CONFIG_DIR/#\~\//${HOME}/}"
-)
-
-# @description Notify the operator of missing worker credentials without blocking seating.
-# @stderr One provisioning notice when the worker hosts.yml file is absent.
-function notice_missing_worker_github_credential() {
-    local hosts
-    hosts="$(worker_github_config_dir)/hosts.yml"
-    if [[ ! -f ${hosts} ]]; then
-        printf 'herdr-agents: worker GitHub credential missing: %s; the worker seat cannot run gh or push until the operator provisions it (README, operator provisioning)\n' "${hosts}" >&2
-    fi
-}
-
-# @description Print shell commands that select worker credentials after shell
-#   startup. Environment tokens take precedence over gh file storage.
-# @stdout Shell-quoted unset/export commands, without credential values.
-function worker_github_shell_env() {
-    printf 'unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN; export GH_CONFIG_DIR=%q' "$(worker_github_config_dir)"
-}
-
-# @description Preserve the worker identity in Codex tools with inherit=core.
-#   Encode hash signs for agmsg's spawn-options comment parser.
-# @stdout One TOML CLI override.
-function codex_worker_github_config() {
-    jq -nr --arg path "$(worker_github_config_dir)" '"shell_environment_policy.set.GH_CONFIG_DIR=" + ($path | tojson | gsub("#"; "\\u0023"))'
-}
-
-# @description Carry worker identity across agmsg's Herdr driver hand-offs.
-#   The adapter exists only in spawn.sh's subprocess. Tab creation sets the
-#   initial environment; the boot prefix restores it after shell startup.
-# @arg $@ string The spawn.sh executable and its arguments.
-function spawn_worker_with_github() (
-    HERDR_WORKER_REAL_CLI="$(type -P herdr)"
-    HERDR_WORKER_GH_DIR="$(worker_github_config_dir)"
-    HERDR_WORKER_GH_SHELL="$(worker_github_shell_env)"
-    export HERDR_WORKER_REAL_CLI HERDR_WORKER_GH_DIR HERDR_WORKER_GH_SHELL
-    # The exported adapter is invoked by the upstream Bash driver.
-    # shellcheck disable=SC2329
-    function herdr() {
-        if [[ ${1:-} == tab && ${2:-} == create && ${3:-} == --workspace && ${4:-} == "${HERDR_WORKSPACE_ID}" ]]; then
-            "${HERDR_WORKER_REAL_CLI}" "$@" --env "GH_CONFIG_DIR=${HERDR_WORKER_GH_DIR}" \
-                --env GH_TOKEN= --env GITHUB_TOKEN= --env GH_ENTERPRISE_TOKEN= --env GITHUB_ENTERPRISE_TOKEN=
-        elif [[ ${1:-} == pane && ${2:-} == run && $# == 4 ]]; then
-            "${HERDR_WORKER_REAL_CLI}" "$1" "$2" "$3" "${HERDR_WORKER_GH_SHELL}; $4"
-        else
-            "${HERDR_WORKER_REAL_CLI}" "$@"
-        fi
-    }
-    export -f herdr
-    "$@"
-)
-
 # @description Print the agmsg spawn options YAML that carries a worker
 #   profile's launch arguments (spawn.sh splices the type section into the boot
 #   command): MODEL_PROFILE_<NAME>_CLAUDE_ARGS for claude, and `--profile <name>
@@ -511,9 +453,6 @@ function write_spawn_options() {
         fi
         printf '  %s: %s\n' "${words[index]}" "${words[index + 1]}"
     done
-    if [[ ${kind} == codex ]]; then
-        printf '  --config: %s\n' "$(codex_worker_github_config)"
-    fi
     if [[ ${kind} == codex && -n ${2:-} ]]; then
         roots="$(codex_worktree_writable_roots "$2")"
         [[ -z ${roots} ]] || printf '  --config: %s\n' "${roots}"
@@ -1250,10 +1189,9 @@ function start_worker_agent() {
     local -a worker_args=()
 
     if ! wait_for_shell_prompt "${pane_id}" prompt; then
-        printf 'Herdr worker pane %s is not shell-ready; refusing identity setup.\n' "${pane_id}" >&2
+        printf 'Herdr worker pane %s is not shell-ready; refusing to start the worker.\n' "${pane_id}" >&2
         return 1
     fi
-    herdr pane run "${pane_id}" "$(worker_github_shell_env)" > /dev/null
 
     if [[ ${kind} == claude ]]; then
         local profile_env_key
@@ -1280,7 +1218,6 @@ function start_worker_agent() {
         accept_claude_workspace_trust_dialog "${pane_id}" || true
     else
         worker_args=(--sandbox workspace-write --profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}" --ask-for-approval never -c sandbox_workspace_write.network_access=true)
-        worker_args+=(-c "$(codex_worker_github_config)")
         roots="$(codex_worktree_writable_roots "${worker_seat_dir:-}")"
         [[ -z ${roots} ]] || worker_args+=(-c "${roots}")
         start_agent_in_pane codex "${agent_name}" "${pane_id}" "${newly_created}" "${worker_args[@]}" > /dev/null
@@ -2155,7 +2092,6 @@ if [[ ${add_worker_mode} == true ]]; then
         printf 'herdr-agents: %s is not a git main checkout; run --add-worker from the repository root.\n' "${workdir}" >&2
         exit 2
     fi
-    notice_missing_worker_github_credential
     write_spawn_options "${seat_kind}" > /dev/null
     [[ -e ${workdir}/${seat_worktree} ]] || ensure_worker_identity "${seat_kind}" "${workdir}" "${workdir}/${seat_worktree}" --no-join > /dev/null
     seat_dir="$(ensure_worker_worktree "${workdir}" "${seat_worktree}")"
@@ -2196,7 +2132,7 @@ if [[ ${add_worker_mode} == true ]]; then
     # out of project resolution. It runs in the background so a claude worker's
     # trust dialog is accepted during the readiness wait, not after it.
     HERDR_WORKSPACE_ID="${seat_workspace_id}" AGMSG_SPAWN_OPTIONS_FILE="${seat_options}" \
-        spawn_worker_with_github "${scripts}/spawn.sh" "$(worker_agmsg_type "${seat_kind}")" "${seat_name}" \
+        "${scripts}/spawn.sh" "$(worker_agmsg_type "${seat_kind}")" "${seat_name}" \
         --project "${seat_dir}" --team "${seat_team}" --terminal-driver herdr --window \
         ${seat_ready_timeout:+--ready-timeout "${seat_ready_timeout}"} &
     spawn_pid=$!
@@ -2538,7 +2474,6 @@ if [[ ${attach_mode} == true ]]; then
     exit 0
 fi
 
-notice_missing_worker_github_credential
 workspace_label="$(basename "${workdir}") agents"
 existing_workspace_id="$(single_managed_workspace "${workspace_label}" "${workdir}")"
 

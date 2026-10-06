@@ -101,6 +101,24 @@ prefix_rule(
     not_match=["gh pr view 1"],
 )
 
+# The API forms of a merge or auto-merge. A prefix rule cannot see a method flag placed after the
+# path (`gh api <path> -X PUT`) or spelled `-XPUT`/`--method=PUT`; the gate and the records make such a merge visible.
+prefix_rule(
+    pattern=["gh", "api", ["-X", "--method"], "PUT"],
+    decision="forbidden",
+    justification="Merging and auto-merge are the orchestrator's acceptance step; report the PR instead.",
+    match=["gh api -X PUT repos/o/r/pulls/1/merge", "gh api --method PUT repos/o/r/pulls/1/merge"],
+    not_match=["gh api repos/o/r/pulls/1/reviews", "gh api -X GET repos/o/r/pulls/1"],
+)
+
+prefix_rule(
+    pattern=["gh", "api", "graphql"],
+    decision="forbidden",
+    justification="Merging and auto-merge are the orchestrator's acceptance step; report the PR instead.",
+    match=["gh api graphql -f query=q"],
+    not_match=["gh api repos/o/r/pulls/1/reviews"],
+)
+
 prefix_rule(
     pattern=["gh", "release"],
     decision="forbidden",

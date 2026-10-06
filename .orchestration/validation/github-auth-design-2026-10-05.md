@@ -141,3 +141,43 @@ The operator confirmed the §10 form as the intended one and declined to reopen 
 ## 13. Host finding (2026-10-06 01:15Z): this Linux host has no chezmoi-private configuration
 
 `make update` prints `Warning: private chezmoi source/config not found. Skipping private dotfiles.` on this host (seen in the T82b, T103 and T104 deploy logs): `~/.local/share/chezmoi-private` exists but `~/.config/chezmoi-private/chezmoi.yaml` does not, so the private layer has never been applied here. The age settings seen earlier (`encryption: age`, identity `~/.config/age/key.txt`) belong to the public chezmoi config. Consequence for §8–§11: an `encrypted_private_hosts.yml` in chezmoi-private reaches this host only after the operator creates that config file (README private layer); until then `make gh-auth` is the path that fills the stores here. Operator-side item; recorded, not acted on.
+
+## 14. Operator direction (2026-10-06): no credential copies anywhere; each machine obtains its own token from GitHub by logging in
+
+GitHub never hands an existing credential back: a PAT is shown once at creation, an OAuth token is delivered once at authorization, and `gh auth token` only prints the local copy. "Fetching the user's credential from GitHub at clone/install/update" therefore means logging in, which mints a fresh token for that machine. That is the T103 flow as built: `setup.sh` and `make gh-auth` log in each empty store; `make update` never touches credentials. Consequently nothing is stored in any repository, encrypted or not: §8–§11's chezmoi-private route is withdrawn (it would copy one token to every host under one key and remove per-machine revocation). Each machine holds only its own tokens in its own stores; a lost machine costs one revocation (Settings → Applications → GitHub CLI, or `gh auth logout`). The README sentence about an `encrypted_private_hosts.yml` per store is removed in the next documentation task.
+
+## 15. Operator fact (2026-10-06): one GitHub account per machine; the "work" store was a wrong assumption
+
+| machine | OS user | GitHub account |
+|---|---|---|
+| MacBook Pro | `a0004262` | `moriya-fumio-thd` |
+| Ubuntu `spark-9e8d` (this host, the regime host) | `moriya` | `moriya-fumio-thd` |
+| MacBook Air | `mryfmo` | `mryfmo` |
+
+So the human account is a property of the machine, not of the repository: on this host the intended account is `moriya-fumio-thd`, and the stray entry in `~/.config/gh` is `mryfmo` (keyring), not the work account as §6, §8 and §10 assumed. The three-store model of T103 is wrong in one place: there is no "work" store. The correct model has two stores on every machine: `~/.config/gh` holds that machine's human account (whichever it is; it is the merging account on that machine), and `~/.config/gh-worker` holds the one machine account the worker seats use everywhere. Both human accounts need write access to `mryfmo/dotfiles` (the repository owner already has it; `moriya-fumio-thd` already merges here), and the required-approval rule works on every machine because the PR author is always the machine account. Correction task: drop `work_gh_config_dir`/`WORK_GH_CONFIG_DIR`, rename the "owner" store to the machine's operator account in manifest, renderer, script, doctor, README and tests, and remove the chezmoi-private sentence (§14). Host hygiene on `spark-9e8d`: `gh auth logout --user mryfmo --hostname github.com` (operator's account, operator's command).
+
+## 16. Decision A (operator, 2026-10-06): one account per machine for every seat; what still protects `main`, and what does not
+
+Under A the orchestrator, the worker seats and the headless auditor on a machine all act as that machine's GitHub account (`moriya-fumio-thd` on spark-9e8d and the MacBook Pro, `mryfmo` on the MacBook Air). The auditor already is identity-less and read-only, so nothing changes there. The question is what replaces the actor separation that T90 wanted. Survey of the mechanisms, each checked against the official documentation on 2026-10-06:
+
+| layer | mechanism | works with one account? | note |
+|---|---|---|---|
+| GitHub ruleset | pull request required; required status checks; conversation resolution required; linear history; block force pushes; restrict deletions | **yes** | these are actor-independent; the repository is public, so rulesets apply on the Free plan (`mryfmo/dotfiles` `private=false`) |
+| GitHub ruleset | required approvals, "approval of the most recent push", Code Owners, bypass actors | **no** | all distinguish actors; with one account they either block everyone (author cannot approve own PR) or nobody |
+| GitHub token permissions | fine-grained PAT without merge rights | **no** | merging needs only `Contents: write`, the same permission as pushing |
+| GitHub identity | deploy key for the worker's pushes | partial, rejected | repository-scoped and account-free, but it cannot open PRs or read checks (no API), so the worker loses its autonomy |
+| GitHub identity | GitHub App or machine account | works, **not A** | these are options B/C; the operator chose A |
+| native denial in the seat (dotfiles principle 1) | Codex execpolicy: `gh pr merge` is already `forbidden` for every Codex seat (T63, `home/dot_codex/rules/default.rules:96`) | **yes** | extend to the API forms of a merge or auto-merge: `gh api -X PUT`, `gh api --method PUT`, `gh api graphql`; prefix rules cannot see a flag placed after the path, so the gate below stays the authority |
+| native denial in the seat | Claude Code `permissions.deny` for the Claude *worker* seat: `Bash(gh pr merge:*)`, `Bash(gh api -X PUT:*)`, `Bash(gh api --method PUT:*)`, `Bash(gh api graphql:*)` | **yes** | deny rules hold over allow rules and apply to nested subcommands even in auto mode (code.claude.com permissions). They must live in the worker worktree's `.claude/settings.local.json`, written by `herdr-agents` when it seats a Claude worker, because the user-level settings also govern the orchestrator, which must merge. That file is Claude's permission policy, so the change routes to a Codex seat (routing rule) |
+| integration gate | `make require-crit-review` with sweep, audit and acceptance evidence; merge only by the orchestrator through `gh pr merge --squash` | **yes** | unchanged; with one account it is the only place that knows which seat is acting, so it keeps the final word |
+| attribution | per-seat SSH signing keys on the one account plus the "require signed commits" rule; agmsg history and acceptance records | **yes** | GitHub allows unlimited signing keys per account and shows "Verified"; `git log --show-signature` names the key, so a commit can be traced to the orchestrator pane, a worker seat or the human. Adding keys needs the `admin:ssh_signing_key` scope (a one-time re-login) or the web UI; recommended as a follow-up, not a precondition |
+| residual | a deliberately misbehaving worker under the same OS user | **not closable under A** | server-side cannot tell the seats apart, and the same OS user can read every local credential; the native denials stop the accidental and the prompt-injected path, the gate and the records make the deliberate one visible after the fact. Closing it needs B (separate OS user) |
+
+Resulting form, consistent with the dotfiles intent (same environment on macOS and Linux, denial at the native layer, autonomy to completion):
+
+1. **Remove the role separation** (T90, T102, T103 surfaces): `GH_CONFIG_DIR` injection and token unsetting in `herdr-agents`, the gate's role check, the doctor's store findings and `check-tools.sh` identity check, the manifest store keys and their rendering, the `work`/`worker` stores. Keep one login per machine in gh's default directory, with `make gh-auth`/`setup.sh` logging it in only when empty.
+2. **Native denial of merging in worker seats**: extend the Codex execpolicy; add the Claude worker-seat deny rules through `herdr-agents` (Codex-seat task, after step 1 is deployed so that a Codex seat has `gh`).
+3. **Rulesets**: keep PR-only `main`, required checks, conversation resolution, linear history, force-push and deletion blocks; drop the required-approval rule and the bypass actor from the design (they cannot work under A); add "require signed commits" when the per-seat keys exist.
+4. **Gate and records**: unchanged.
+
+`gh auth logout --user mryfmo` on spark-9e8d remains the one host command (the operator's account).

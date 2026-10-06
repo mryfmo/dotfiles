@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Map"
+  short_description: "Draw the single-file project map under .project-map/"
+  default_prompt: "Use $project-map to draw or refresh the project map and report items left to the next milestone and the suggested next step."

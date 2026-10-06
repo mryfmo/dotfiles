@@ -165,7 +165,7 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
         for token in (
             "WebFetch tool, not Bash `curl`",
             "Fetch and fast-forward inside the sandbox",
-            "until the worker gh credential is provisioned on this host (README operator phase, T90/T90b)",
+            "So a Claude seat runs three commands outside the sandbox through the permission gate:",
             "`gh`, `git push`, and an authenticated `git fetch`",
             "-worker-crit.json",
             "writing the task's artifacts at their expected main-checkout paths and masking them with the repository masker, through the permission gate because the main checkout is not writable from a worktree sandbox",

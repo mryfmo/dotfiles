@@ -1,0 +1,8 @@
+[
+  {
+    "id": "T109-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #295 head c856e512 (one commit on main 15cd240a; 5 files, +106/-9). Re-derived from the diff: ensure_worker_merge_denials(kind, worktree) acts only for a claude kind in a worktree (`-f <worktree>/.git`) that is not a main checkout, merges with jq into <worktree>/.claude/settings.local.json a permissions.deny list that gains exactly Bash(gh pr merge:*), Bash(gh api -X PUT:*), Bash(gh api --method PUT:*), Bash(gh api graphql:*) once (set difference against the existing list, so other deny entries and the hooks/allow keys are kept), writes through a mktemp in the same directory and leaves the file untouched when the result is byte-identical; it is called after ensure_worker_delivery on the pair-seat path, the --restart-worker path and the --add-worker path, never for Codex seats or the main checkout, so the user-level settings that govern the orchestrator stay as they are. README and SKILL step 10.5 replace the 'separate task' sentence with the mechanism, the precedence of deny rules (code.claude.com permissions) and the flag-after-path limit that keeps the integration gate authoritative; the docs test pins the four tokens. Tests: first seat adds the four entries, second seat is byte-identical, unrelated keys survive, Codex seat writes nothing; 913 unit tests OK in the pasted output; CI 13 checks pass; no review threads; mergeStateStatus CLEAN; Codex security review completed with no findings.",
+    "scope": "review",
+    "resolved": true
+  }
+]

@@ -35,3 +35,7 @@ gh pr checks <pr>
 ## Completion
 
 PR to `main` (English, attribution footer), CI green, Bot wait per the SKILL, artifacts, `cost: n/a`; say in the report that the orchestrator records the decision (Codex seat); `AGMSG-RESULT v1 task_id=dotfiles-T109` via `agmsg-dispatch dotfiles <your identity> claude-remediation-dot wT:p1 "<single line>"`. max_turns=15.
+
+### PONG decision 1 (orchestrator, 2026-10-06 05:56Z) — the worklog write is not required
+
+`.agents/worklog/**` is read-only in your sandbox and is not an expected artifact of this task. Do what T101 and T102 did: keep your plan and todo inside your report (`.orchestration/reports/dotfiles-T109-claude-worker-merge-deny-a01.md`) and record "worklog fallback in the report" in the sandbox record. Not a blocker; proceed with the objective.

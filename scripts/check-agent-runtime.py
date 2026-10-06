@@ -601,12 +601,14 @@ def gh_login_findings(gh: str = "gh") -> list[str]:
     """Report this machine's one GitHub login, the one every seat acts as.
 
     Present means `gh auth status` finds exactly one account in gh's default
-    configuration, and it works: a `found:` line naming the login. Anything else is a
-    warning with the `make gh-auth` hint. Never prompts, and never reads or prints a
-    token: the login comes from gh's JSON status, with token variables stripped so an
-    environment token cannot stand in for the stored login.
+    configuration, it works, and its token sits in gh's own file at mode 0600 (the
+    Claude sandbox cannot reach the OS keyring): a `found:` line naming the login.
+    Anything else is a warning with the `make gh-auth` hint. Never prompts, and never
+    reads or prints a token: the login and its token source come from gh's JSON
+    status, with token variables stripped so an environment token cannot stand in for
+    the stored login, and CLICOLOR_FORCE stripped so gh prints plain JSON.
     """
-    env = {key: value for key, value in os.environ.items() if key not in GH_TOKEN_VARIABLES}
+    env = {key: value for key, value in os.environ.items() if key not in (*GH_TOKEN_VARIABLES, "CLICOLOR_FORCE")}
     try:
         status = subprocess.run(
             [gh, "auth", "status", "--hostname", "github.com", "--json", "hosts"],
@@ -626,6 +628,20 @@ def gh_login_findings(gh: str = "gh") -> list[str]:
             f"(gh auth logout --user <login> for any other, or {GH_LOGIN_HINT})"
         )
         return [message]
+    # gh names the file it read the token from; a keyring token shows "keyring", or "default" where unreachable.
+    source = str(accounts[0].get("tokenSource", ""))
+    if not source.endswith("hosts.yml"):
+        message = (
+            "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "
+            "run make gh-auth to store it in gh's file"
+        )
+        return [message]
+    try:
+        mode = Path(source).stat().st_mode & 0o777
+    except OSError:
+        return [f"WARN: GitHub login: cannot read the mode of {source}; {GH_LOGIN_HINT}"]
+    if mode != 0o600:
+        return [f"WARN: GitHub login: {source} has mode {mode:04o}, not 0600; {GH_LOGIN_HINT}"]
     return [f"found: GitHub login {logins[0]} (every seat on this machine acts as it)"]
 
 

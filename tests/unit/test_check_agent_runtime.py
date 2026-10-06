@@ -964,8 +964,17 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         gh.chmod(0o755)
         return str(gh)
 
+    def gh_hosts_file(self, mode: int = 0o600) -> str:
+        hosts = self.temp_dir / "gh-config/hosts.yml"
+        hosts.parent.mkdir(exist_ok=True)
+        hosts.touch()
+        hosts.chmod(mode)
+        return str(hosts)
+
     def test_gh_login_reports_the_one_working_login(self) -> None:
-        gh = self.fake_gh_status([{"login": "machine-login", "state": "success", "active": True}])
+        gh = self.fake_gh_status(
+            [{"login": "machine-login", "state": "success", "active": True, "tokenSource": self.gh_hosts_file()}]
+        )
 
         with mock.patch.dict(os.environ, {"GH_TOKEN": "fixture-env-token"}):
             findings = self.module.gh_login_findings(gh=gh)
@@ -993,6 +1002,38 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 self.assertTrue(findings[0].endswith("or run make gh-auth)"))
         missing = self.module.gh_login_findings(gh=str(self.temp_dir / "absent-gh"))
         self.assertEqual(missing, ["WARN: GitHub login: gh auth status failed or gh is missing; run make gh-auth"])
+
+    def test_gh_login_warns_on_a_keyring_login(self) -> None:
+        # Outside the sandbox gh names the keyring; inside it, an unreachable keyring token shows "default".
+        for source in ("keyring", "default"):
+            with self.subTest(source=source):
+                account = {"login": "machine-login", "state": "success", "active": True, "tokenSource": source}
+                findings = self.module.gh_login_findings(gh=self.fake_gh_status([account]))
+                warning = (
+                    "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "
+                    "run make gh-auth to store it in gh's file"
+                )
+                self.assertEqual(findings, [warning])
+
+    def test_gh_login_warns_on_a_hosts_file_not_0600(self) -> None:
+        hosts = self.gh_hosts_file(0o644)
+        account = {"login": "machine-login", "state": "success", "active": True, "tokenSource": hosts}
+
+        findings = self.module.gh_login_findings(gh=self.fake_gh_status([account]))
+
+        self.assertEqual(findings, [f"WARN: GitHub login: {hosts} has mode 0644, not 0600; run make gh-auth"])
+        self.assertTrue(self.module.is_warning(findings[0]))
+
+    def test_gh_login_ignores_a_forced_color_setting(self) -> None:
+        # gh colours its JSON under CLICOLOR_FORCE, which would break the parse.
+        account = {"login": "machine-login", "state": "success", "active": True, "tokenSource": self.gh_hosts_file()}
+        gh = Path(self.fake_gh_status([account]))
+        gh.write_text(gh.read_text().replace("#!/bin/sh\n", '#!/bin/sh\n[ -z "${CLICOLOR_FORCE-}" ] || exit 4\n', 1))
+
+        with mock.patch.dict(os.environ, {"CLICOLOR_FORCE": "1"}):
+            findings = self.module.gh_login_findings(gh=str(gh))
+
+        self.assertEqual(findings, ["found: GitHub login machine-login (every seat on this machine acts as it)"])
 
     def test_orchestrator_seat_lock_warns_on_a_bare_session_id(self) -> None:
         project, skill_dir, proc = self.seat_lock_fixture("e7734322-bare")

@@ -1209,9 +1209,10 @@ GitHub login (once per machine, outside the sandbox): every seat on a machine
 machine's one GitHub account, stored in gh's default directory.
 
 - **The login step:** `./setup.sh` ends with it on a terminal, and
-  `make gh-auth` runs it at any time. When `gh auth status` succeeds, nothing
-  happens. Otherwise gh runs its own device-code login with its default
-  storage: the OS keyring where present, gh's file fallback elsewhere.
+  `make gh-auth` runs it at any time. It logs in with gh's own device-code
+  login only when gh holds no working login in its `hosts.yml`, storing it
+  there (`--insecure-storage`, mode 0600) because the Claude Linux sandbox
+  cannot reach the host keyring.
 - **Where credentials live:** never in a repository. Each machine logs in for
   its own token, so a lost machine costs one revocation.
 - **`make update`:** never prompts and never logs in.

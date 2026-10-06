@@ -597,16 +597,48 @@ GH_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB
 GH_LOGIN_HINT = "run make gh-auth"
 
 
-def gh_login_findings(gh: str = "gh") -> list[str]:
+def gh_hosts_file_findings(config_dir: Path | None = None) -> list[str]:
+    """Warn unless gh's hosts.yml, when it exists, is a user-owned regular file at mode 0600.
+
+    The file is CONFIG_DIR/hosts.yml, by default gh's own
+    `${GH_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/gh}/hosts.yml`, whatever gh reports.
+    """
+    if config_dir is None:
+        xdg = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+        config_dir = Path(os.environ.get("GH_CONFIG_DIR") or xdg / "gh")
+    hosts = config_dir / "hosts.yml"
+    try:
+        info = hosts.lstat()
+    except FileNotFoundError:
+        return []
+    except OSError:
+        return [f"WARN: GitHub login: cannot read the mode of {hosts}; {GH_LOGIN_HINT}"]
+    mode = info.st_mode & 0o777
+    if not stat.S_ISREG(info.st_mode):
+        return [f"WARN: GitHub login: {hosts} is not a regular file; {GH_LOGIN_HINT}"]
+    if info.st_uid != os.getuid():
+        return [f"WARN: GitHub login: {hosts} is not owned by you; {GH_LOGIN_HINT}"]
+    if mode != 0o600:
+        return [f"WARN: GitHub login: {hosts} has mode {mode:04o}, not 0600; {GH_LOGIN_HINT}"]
+    return []
+
+
+def gh_login_findings(gh: str = "gh", config_dir: Path | None = None) -> list[str]:
     """Report this machine's one GitHub login, the one every seat acts as.
 
     Present means `gh auth status` finds exactly one account in gh's default
-    configuration, and it works: a `found:` line naming the login. Anything else is a
-    warning with the `make gh-auth` hint. Never prompts, and never reads or prints a
-    token: the login comes from gh's JSON status, with token variables stripped so an
-    environment token cannot stand in for the stored login.
+    configuration, it works, and its token sits in gh's own file at mode 0600 (the
+    Claude sandbox cannot reach the OS keyring): a `found:` line naming the login.
+    Anything else is one warning per problem with the `make gh-auth` hint. The status
+    (gh missing or failing, the count, the active login's storage) and gh's hosts.yml
+    (`gh_hosts_file_findings`) are checked independently, so the file is checked even
+    when gh fails. Never prompts, and never reads or prints a token: the login and its
+    token source come from gh's JSON status, with token variables stripped so an
+    environment token cannot stand in for the stored login, and CLICOLOR_FORCE
+    stripped so gh prints plain JSON.
     """
-    env = {key: value for key, value in os.environ.items() if key not in GH_TOKEN_VARIABLES}
+    file_findings = gh_hosts_file_findings(config_dir)
+    env = {key: value for key, value in os.environ.items() if key not in (*GH_TOKEN_VARIABLES, "CLICOLOR_FORCE")}
     try:
         status = subprocess.run(
             [gh, "auth", "status", "--hostname", "github.com", "--json", "hosts"],
@@ -619,13 +651,25 @@ def gh_login_findings(gh: str = "gh") -> list[str]:
         accounts = json.loads(status.stdout)["hosts"]["github.com"]
         logins = [account["login"] for account in accounts if account.get("state") == "success"]
     except (OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError, AttributeError):
-        return [f"WARN: GitHub login: gh auth status failed or gh is missing; {GH_LOGIN_HINT}"]
+        return [f"WARN: GitHub login: gh auth status failed or gh is missing; {GH_LOGIN_HINT}", *file_findings]
+    findings = []
     if len(accounts) != 1 or len(logins) != 1:
         message = (
             f"WARN: GitHub login: gh holds {len(logins)} working of {len(accounts)} logins; keep exactly one "
             f"(gh auth logout --user <login> for any other, or {GH_LOGIN_HINT})"
         )
-        return [message]
+        findings.append(message)
+    # Storage is checked whatever the count and auth state. gh names the file it read a token from; a keyring
+    # token shows "keyring", or, inside the sandbox where the keyring is unreachable, "default".
+    active = [account for account in accounts if account.get("active")]
+    if active and not str(active[0].get("tokenSource", "")).endswith("hosts.yml"):
+        findings.append(
+            "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "
+            "run make gh-auth to store it in gh's file"
+        )
+    findings.extend(file_findings)
+    if findings:
+        return findings
     return [f"found: GitHub login {logins[0]} (every seat on this machine acts as it)"]
 
 

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "T103-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #288 head 0a28eb74 (4 commits on main 2d0ef943; 13 files, +488/-22). Re-derived from the diff: the manifest declares owner_gh_config_dir, work_gh_config_dir and worker_gh_config_dir (directories only) and the renderer emits OWNER_/WORK_/WORKER_GH_CONFIG_DIR into model-profiles.env, failing on a non-path or on two stores naming one directory; scripts/gh-auth-stores.sh skips a store whose `gh auth status` succeeds, refuses to log in without a tty, otherwise runs gh's device-code login with --insecure-storage and chmod 600, clears the token environment variables first (they would hide an empty store), and calls no `gh auth setup-git` (PONG decision 1: the managed git config's `!gh auth git-credential` helper reads GH_CONFIG_DIR); `make gh-auth` wraps it and setup.sh calls it only on an interactive, non-CI run; `make update` paths gain no login call; check-agent-runtime.py adds `found:` info lines (never errors or repairs) and WARNs per store on missing hosts.yml, wrong mode/owner, failed status or more than one login, reading the login from gh's JSON status and never a token; check-tools.sh hint now points to make gh-auth; README operator-phase block replaced by the three-store table and the no-prompt contract. Tests: renderer keys and distinct-directory failure, doctor with fake stores and fake gh, the script with a fake gh (no-tty refusal, pty login, env token cleared, 0600), setup.sh CI skip; 915 unit tests OK in the pasted output; CI green; the single Bot P1 (owner token readable by worker seats) is the operator-accepted exposure recorded in github-auth-design-2026-10-05.md §12, replied and resolved by the orchestrator; threads unresolved 0; mergeStateStatus CLEAN.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T103-orchestrator-review-round1",
+    "body": "Orchestrator adversarial review of PR #288 round-1 head a41a56bd (one commit on 0a28eb74; 7 files, +51/-3). Re-derived from the diff: setup.sh authenticate_github and scripts/gh-auth-stores.sh prepend ~/.local/share/mise/shims to PATH before the gh lookup, so a fresh bootstrap whose gh exists only as a mise shim runs the login step (new pty test with PATH=/usr/bin:/bin and gh only as a shim: two logins, no skip); gh_config_dirs compares normpath(expanduser(path)) so the absolute spelling of a store is rejected as a duplicate (test with HOME patched); the mode/owner WARN now ends with `run make gh-auth`, and the script chmods an existing hosts.yml to 0600 before the status check so a skipped store satisfies the doctor; the sandbox record states the PONG-decision-1 authorization for the single check-tools.sh edit; the report limits the CI claim to the heads with pasted output and backs the ruff claim with its pasted added-line scan. 916 unit tests OK in the pasted output; CI green; threads unresolved 0; mergeStateStatus CLEAN; no Bot review on the final head.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T103-orchestrator-review-round2",
+    "body": "Orchestrator adversarial review of PR #288 round-2 head c4fa1c14 (one commit on a41a56bd; 2 files, +46/-8). Re-derived from the diff: secure_hosts_file() runs chmod 600 on an existing hosts.yml and returns 1 with a message when it fails; ensure_store calls it before the status check with `|| return 1` (so a non-owned readable file fails the store instead of counting as a skip) and after a login, and `mkdir -p` failure also fails the store; the fake gh in the test uses /bin/chmod so the new failing-chmod-on-PATH test exercises the script's chmod only: exit 1, the message for both the owner (skip path) and work (post-login) stores, and no 'owner store … skipped' line. The validation file now pastes the real round-1 wrapper (its exit=0 was grep's) and an unfiltered rerun with `FAILED (failures=4)` and `test exit=1`. 917 unit tests OK in the pasted output; CI green; threads unresolved 0; mergeStateStatus CLEAN; no Bot review on a41a56bd or c4fa1c14.",
+    "scope": "review",
+    "resolved": true
+  }
+]

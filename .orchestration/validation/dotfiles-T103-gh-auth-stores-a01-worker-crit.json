@@ -1,0 +1,65 @@
+[
+  {
+    "id": "t103-review-summary",
+    "body": "Independent read-only subagent reviewed bb9e92ed against origin/main 2d0ef943 (bash -n, shellcheck and the three unit modules passed there). Seven findings: one P1, one P2, five P3. Each is dispositioned in the records below; the fixes are in 5a5a9ab7, 0ec58c80 and 0a28eb74.",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code independent subagent review"
+  },
+  {
+    "id": "t103-f1-setup-git-drift",
+    "body": "P1: gh auth setup-git writes git config --global, which on this host (no ~/.gitconfig) is the chezmoi-managed ~/.config/git/config, whose template already sets helper = !gh auth git-credential; that leaves drift (make update prompt, doctor WARN, setup.sh refusal). Disposition fixed:0ec58c80 after PONG decision 1 (orchestrator): setup-git dropped from the script and README; the README states the managed helper serves every store.",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "path": "scripts/gh-auth-stores.sh"
+  },
+  {
+    "id": "t103-f2-owner-dir-unused",
+    "body": "P2: the orchestrator uses gh's default directory, so a non-default owner_gh_config_dir would log in a directory nobody reads. Disposition fixed:5a5a9ab7: README and the manifest comment state the key must equal gh's default ($XDG_CONFIG_HOME/gh when set).",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "path": "home/dot_agents/agent-config.yaml"
+  },
+  {
+    "id": "t103-f3-check-tools-hint",
+    "body": "P3: the missing-worker hint still spelled out the manual gh auth login command. Disposition fixed:0ec58c80 (check-tools.sh added to allowed_files by PONG decision 1): the hint points at make gh-auth; test_runtime_health follows in 0a28eb74.",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "path": "scripts/check-tools.sh"
+  },
+  {
+    "id": "t103-f4-unset-variable-hint",
+    "body": "P3: an unset store variable gave no next step. Disposition fixed:5a5a9ab7: the message now says to run make update first.",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "path": "scripts/gh-auth-stores.sh"
+  },
+  {
+    "id": "t103-f5-setup-ci-test",
+    "body": "P3: no test covered setup.sh's CI skip. Disposition fixed:5a5a9ab7: test_setup_skips_the_logins_in_ci_without_calling_gh sources setup.sh with CI=true and no terminal and asserts the skip line and that gh is never called.",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "path": "tests/unit/test_gh_auth_stores.py"
+  },
+  {
+    "id": "t103-f6-offline-relogin",
+    "body": "P3: offline, gh auth status fails and a populated store is offered the login again. Disposition fixed:5a5a9ab7: documented in the README operator-phase block (the spec makes gh auth status the decision).",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "path": "README.md"
+  },
+  {
+    "id": "t103-f7-token-source",
+    "body": "P3: the doctor's found: line does not check tokenSource. Disposition not-applicable: the runtime report is a presence report for all three stores; the owner and work stores are not used inside the sandbox, so keyring storage is legitimate for them, and check-tools.sh check_github_identities already requires the worker token to be file-stored in hosts.yml.",
+    "scope": "file",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "path": "scripts/check-agent-runtime.py"
+  }
+]

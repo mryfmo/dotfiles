@@ -137,3 +137,7 @@ Shape of the step, for each store in section 10's table (`~/.config/gh`, `~/.con
 ## 12. Operator decision, final (2026-10-05 23:10Z): one store per account, file storage, no further revisiting
 
 The operator confirmed the §10 form as the intended one and declined to reopen the keyring question. The Codex Bot's P1 on PR #288 (owner token in `~/.config/gh/hosts.yml` readable by worker seats) is dispositioned `not-applicable` with this record as the reason: the exposure is known (§4, §8, this section), the same-user boundary is not treated as a privilege boundary in this regime, and the server-side rules carry the protection. The orchestrator will not raise the keyring alternative again; a change of stance is the operator's to make.
+
+## 13. Host finding (2026-10-06 01:15Z): this Linux host has no chezmoi-private configuration
+
+`make update` prints `Warning: private chezmoi source/config not found. Skipping private dotfiles.` on this host (seen in the T82b, T103 and T104 deploy logs): `~/.local/share/chezmoi-private` exists but `~/.config/chezmoi-private/chezmoi.yaml` does not, so the private layer has never been applied here. The age settings seen earlier (`encryption: age`, identity `~/.config/age/key.txt`) belong to the public chezmoi config. Consequence for §8–§11: an `encrypted_private_hosts.yml` in chezmoi-private reaches this host only after the operator creates that config file (README private layer); until then `make gh-auth` is the path that fills the stores here. Operator-side item; recorded, not acted on.

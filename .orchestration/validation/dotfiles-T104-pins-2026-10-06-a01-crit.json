@@ -1,0 +1,8 @@
+[
+  {
+    "id": "T104-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #290 head bd0327a0 (merge of main b3f0bc61 into the branch; diff commit 8c4a34e6). Re-derived: `git diff b3f0bc61..bd0327a0` with index lines removed is byte-identical to the exported canonical-clone pin diff `.orchestration/validation/pins-2026-10-06.diff` (7 files, +57/-57: mise v2026.9.16, aws-cli 2.37.5, chezmoi 2.73.0 in the bootstrap pin, setup.sh, installer-pins.sh and mise config, dotenvx 2.31.1, hugo-extended 0.167.0, claude-code 2.1.289, codex 0.160.1, ccusage 20.0.26, pnpm 12.8.1, mise.lock entries); no tests/** change, and the worker's enumeration of the remaining old version strings (renderer sample fixtures, fake release listings, a comment naming Codex rust-v0.160.0) is consistent with no test asserting the live pins; make render-check clean and 917 unit tests OK in the pasted output; CI green on the diff head and the merge head (16 checks); mergeStateStatus CLEAN; the Codex security review of 8c4a34e6 completed with no findings; no review threads. The Codex 0.160.1 bump's effect on the hook-trust hash is verified by the orchestrator after deploy (app-server hooks/list), not inside this PR.",
+    "scope": "review",
+    "resolved": true
+  }
+]

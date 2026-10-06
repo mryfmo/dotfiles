@@ -1,0 +1,22 @@
+# Sandbox: dotfiles-T103-gh-auth-stores-a01
+
+- **Sandboxed:**
+  - edits, the generator run, `bash -n`, shellcheck, ruff and prettier;
+  - the unit tests, `make unit-test`, `make render-check` and the validator;
+  - the scratch worktree that ran the new tests against `origin/main`. It was added under the session scratchpad and removed with `git worktree remove --force`, without a prune.
+  - the commit.
+- **Through the permission gate (Worker Playbook step 4):**
+  - `git push`, `gh pr create`, `gh pr checks` and the bot-wait polling;
+  - the inbox read;
+  - the CompactionDB `memory add` in the main checkout;
+  - writing and masking these artifacts in the main checkout;
+  - `agmsg-dispatch`.
+- **Credentials:** no command read, listed or ran `gh` against the real `~/.config/gh`, `~/.config/gh-work` or `~/.config/gh-worker` stores. The doctor and script tests use fake HOMEs and a fake `gh`.
+- **Not done:**
+  - no `make update`/`apply`/`make gh-auth`;
+  - no `gh auth login`;
+  - no edits to permgate, sandbox or permission blocks;
+  - no thread resolution, no local bats.
+- **`scripts/check-tools.sh`:** PONG decision 1 added it to the allowed files for one change. Commit `0ec58c80` made that change and nothing else: line 213's missing-worker hint now says `run make gh-auth (README operator phase)`. `test_runtime_health` follows it in `0a28eb74`.
+- **Revise round 1:** the same split. The previous-head test run used a scratch worktree at `0a28eb74`, added in the session scratchpad and removed with `git worktree remove --force`, without a prune.
+- **Revise round 2:** the same split. The previous-head test runs used scratch worktrees at `a41a56bd` and `0a28eb74` in the session scratchpad. Both were removed with `git worktree remove --force`, without a prune.

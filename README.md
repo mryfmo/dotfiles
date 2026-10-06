@@ -1175,8 +1175,9 @@ merge.
 ```
 
 Who merges is decided outside GitHub. The orchestrator merges with
-`gh pr merge --squash` only after the integration gate (agmsg-orchestration
-SKILL, Orchestrator Playbook step 10).
+`gh pr merge <pr> --squash --match-head-commit <audited head sha>` only after
+the integration gate (agmsg-orchestration SKILL, Orchestrator Playbook step
+10), so GitHub refuses the merge if the head moved after the audit.
 
 Codex worker seats are denied merge commands natively. The Codex execpolicy
 forbids `gh pr merge`, `gh api graphql`, and `gh api -X PUT` or

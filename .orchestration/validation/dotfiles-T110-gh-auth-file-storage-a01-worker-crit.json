@@ -1,0 +1,47 @@
+[
+  {
+    "id": "t110-review-summary",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "Independent read-only subagent reviewed 04e143e2 against origin/main 46002810. bash -n, shellcheck and the two unit modules (58 tests) were clean. It verified the || true command substitution, the skip, keyring and login-failure paths, the GH_CONFIG_DIR/XDG path rule, that the failing-chmod and CLICOLOR tests fail for the right reason, shdoc format, scope (exactly the five allowed files) and that no token is read or printed. Findings: 1 P2, 4 P3, dispositioned in the records below."
+  },
+  {
+    "id": "t110-p2-doctor-order",
+    "file": "scripts/check-agent-runtime.py",
+    "line": 625,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P2] The working-count check ran before the tokenSource check, so inside the sandbox a keyring login (tokenSource default, state error) got the logout-pointing count warning instead of the keyring warning. Disposition: fixed:80cc3e3d (storage is checked first when gh holds one account; the default subtest now uses state error, matching the live gh 2.101.0 output pasted in the validation file)."
+  },
+  {
+    "id": "t110-p3-readme-stale-lines",
+    "file": "README.md",
+    "line": 402,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] README lines 402-404, 435 and 1225-1228 still describe gh reading the keyring and a Claude seat running gh outside the sandbox; the doctor bullet omits the two new warnings. Disposition: not-applicable: the task allows exactly one README sentence; reported to the orchestrator in the RESULT report as a follow-up candidate."
+  },
+  {
+    "id": "t110-p3-operator-impact",
+    "scope": "review",
+    "resolved": true,
+    "body": "[P3] The commit message gives the reason but not the operator-visible impact (a keyring login is logged in again on the next terminal make gh-auth or setup.sh; a headless run exits 1 where it skipped; the token sits in a 0600 file). Disposition: addressed in the PR #297 body (User-visible impact paragraph) and the report."
+  },
+  {
+    "id": "t110-p3-active-flag",
+    "file": "scripts/gh-auth.sh",
+    "line": 47,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] The fake gh accepts any flags, so nothing checks gh accepts --active with --json hosts --jq. Disposition: not-applicable: the exact command was run live against gh 2.101.0 (validation file, live probe section): it printed the hosts.yml path with rc=0, and printed nothing for an empty GH_CONFIG_DIR."
+  },
+  {
+    "id": "t110-p3-keyring-leftover",
+    "file": "scripts/gh-auth.sh",
+    "line": 64,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] After a keyring login is redone into the file, the old keyring entry remains. Disposition: not-applicable: gh prefers the file token over the keyring, so the leftover is never used; deleting keyring secrets is outside the task's scope and would itself need keyring access."
+  }
+]

@@ -1,0 +1,179 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 297,
+  "head_sha": "a431fd469639378e58d528c16db78d3e47ae45a0",
+  "base_ref": "main",
+  "base_sha": "46002810a20390f58e1ec5af5ac8e71638042886",
+  "generated_at": "2026-10-06T10:39:52+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274736/job/112218563133"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274736/job/112218562985"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274736/job/112218562917"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274736/job/112218562909"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274721/job/112218277831"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274721/job/112218277762"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274721/job/112218277713"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274721/job/112218277709"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274721/job/112218277693"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274721/job/112218277640"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274813/job/112218277614"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274736/job/112218277444"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "Codex usage limits have been reached for code reviews. Please check with the admins of this repo to increase the limits by adding credits.\nRepo admins can enable using credits for code reviews in their [settings](https://chatgpt.com/codex/cloud/settings/code-review).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/297#issuecomment-6012359318",
+      "disposition": "not-applicable:Codex Bot quota notice (usage limits reached); the security review still ran; no finding in this comment"
+    },
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `23b8fad2-85f6-4167-875e-ab0b6ba040b4`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=297)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/297#issuecomment-6012360689",
+      "disposition": "not-applicable:CodeRabbit auto-generated summary/skip comment, automatic reviews disabled; no finding"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"04e143e2c93d9b8a7065769e3db1dbf7cff75a8f\",\"mergeGateEnabled\":false,\"pullRequestNumber\":297,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-06T08:32:13.307394Z\">2026-10-06T08:32:13.307394Z</relative-time> | `04e143e` | PR opened |\n\n### Security findings\n\n#### Advisory findings (1)\n\n- 🟡 [Keep the machine token out of sandbox-readable storage](https://github.com/mryfmo/dotfiles/pull/297#discussion_r4193168336) · **High**\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/297#issuecomment-6012362609",
+      "disposition": "not-applicable:Codex review summary comment (status container); the inline finding is dispositioned on its thread"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 🛡️ Codex Security Review · _Automatically triggered_\n\nHere are some automated security review suggestions for this pull request.\n\n**Reviewed commit:** `04e143e2c9`\n    \n\n<details> <summary>ℹ️ About Codex security reviews in GitHub</summary>\n<br/>\n\nThis is an experimental Codex feature. Security reviews are triggered when:\n- You comment \"@codex security review\"\n- A regular code review gets triggered (for example, \"@codex review\" or when a PR is opened), and you’re opted in so security review runs alongside code review\n\nOnce complete, Codex will leave suggestions, or a comment if no findings are found.\n\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/297#pullrequestreview-5425784201",
+      "commit": "04e143e2c93d9b8a7065769e3db1dbf7cff75a8f",
+      "disposition": "not-applicable:review container for the single inline finding, dispositioned on that thread"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/297#pullrequestreview-5426094562",
+      "commit": "80cc3e3dfc6fd0e44b50c07f22db7bc50bbe4415",
+      "disposition": "not-applicable:empty review event body (container), no finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/gh-auth.sh",
+      "line": 64,
+      "body": "<!-- codex-security-review-finding:v1 -->\n\n### 🛡️ Codex Security Review · _Automatically triggered_\n\n**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub> Security: Keep the machine token out of sandbox-readable storage**\n\nOn any machine that completes interactive setup or `make gh-auth`, a prompt-injected Claude worker can now access the machine account's OAuth token: `--insecure-storage` writes it to `~/.config/gh/hosts.yml`, and the repo records that same-UID sandboxed workers can read that file and reach `api.github.com`. Mode 0600 only excludes other UIDs. The command denials do not cover direct REST clients or the documented `gh api <path> -X PUT` ordering, so the worker can impersonate the merge-capable account without the permission prompt previously imposed by keyring access. Keep this credential in the keyring, or expose GitHub operations only through a narrow broker using a separate least-privileged identity.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/297#discussion_r4193168336",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:P1 proposes keyring storage or a separate identity; operator decision A (design report §12, §16): one account per machine, login in gh's 0600 file; the keyring is unreachable from the Claude Bash sandbox (verified on this host), so keyring storage would leave every sandboxed seat without gh; exposure to a same-UID worker is accepted, protection is server-side rules, native merge denials and the integration gate; replied (comment 4193420593) and resolved by the orchestrator; unchanged at head a431fd46"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/gh-auth.sh",
+      "line": 64,
+      "body": "not-applicable: operator decision A (2026-10-06), recorded in `.orchestration/validation/github-auth-design-2026-10-05.md` §12 and §16: every seat on a machine acts as that machine's one GitHub account, and the login lives in gh's 0600 file. The keyring alternative this finding proposes is not available here: the Claude Bash sandbox denies unix sockets, so a keyring-stored login fails `gh auth status` inside every sandboxed seat (verified on this host), which would leave the worker seats without `gh` at all. The exposure to a same-UID worker is known and accepted; protection is server-side (PR-only `main`, strict checks, thread resolution, head-bound merges) plus native denial of merge commands in Codex and Claude worker seats, with the integration gate as the authority. A separate least-privileged identity (option C) was considered and declined by the operator.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/297#discussion_r4193420593",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on the P1 thread; not a finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37448274721/job/112218277713",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, informational, not about the diff"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit status success (review skipped, automatic reviews disabled); no finding"
+    }
+  ]
+}

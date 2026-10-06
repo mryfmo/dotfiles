@@ -1,0 +1,26 @@
+[
+  {
+    "id": "T110-orchestrator-review",
+    "body": "Orchestrator adversarial review of PR #297 head 80cc3e3d (2 commits on main 46002810; 5 files, +161/-34). Re-derived from the diff: scripts/gh-auth.sh reads the active login's tokenSource from `gh auth status --active --json hosts` (token variables cleared first); when it ends in hosts.yml it only sets that file to 0600 (secure_hosts_file, failing with a message when chmod fails); otherwise, on a tty only, it runs `gh auth login --insecure-storage` and then secure_hosts_file, naming the reason (no login, or a keyring login the Claude sandbox cannot reach); the doctor's GitHub login finding checks the storage before the working count (tokenSource not ending in hosts.yml → WARN naming the keyring and the make gh-auth hint; unreadable or non-0600 file → WARN) and strips CLICOLOR_FORCE so gh emits plain JSON; README restores the reason sentence. Tests: login call carries --insecure-storage and the chmod, failing chmod fails the step, keyring-only and wrong-mode doctor cases. The Bot P1 (keep the token out of sandbox-readable storage) is the operator-accepted exposure of decision A, with the added fact that keyring storage is unusable from the sandbox; replied and resolved by the orchestrator. CI checks at review time: 3 passed, the rest running; verified green before the gate.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T110-orchestrator-review-round1",
+    "body": "Orchestrator adversarial review of PR #297 round-1 head 449fa66d (one commit on 80cc3e3d; 2 files, +78/-27). Re-derived from the diff: the doctor's GitHub login finding now collects one warning per problem: the one-login count warning is kept, the active account's tokenSource is checked for the keyring regardless of the count, and every hosts.yml source among the accounts has its mode checked (unreadable or non-0600 → WARN with the make gh-auth hint) regardless of the auth state; the new test covers two accounts with the active one in the keyring, two accounts with a 0644 file, and an auth error with a 0644 file. The validation file now pastes the real Bot-wait loop for the final head (start 09:16:48Z, 30 s iterations with elapsed times, 900 s bound). Sweep re-run after the orchestrator's thread resolution: the P1 thread is resolved with the decision-A disposition. CI verified before the gate; no new review thread on 449fa66d.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T110-orchestrator-review-round2",
+    "body": "Orchestrator adversarial review of PR #297 round-2 head 1d4d2e44 (one commit on 449fa66d; 2 files, +70/-24). Re-derived from the diff: gh_login_findings now stats gh's configured hosts.yml directly (config_dir parameter, default ${GH_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/gh}) whatever gh reports as a token source: absent file passes, unreadable → WARN, not a regular file → WARN, not owned by the user → WARN, mode other than 0600 → WARN, each with the make gh-auth hint; the count warning and the tokenSource-based keyring warning stay independent. New test covers the configured-file check regardless of what gh reports (keyring-sourced active account, 0644 file). The validation file now carries the sha256sum and crit status outputs and the unelided live-verification command. Sweep re-run at this head: the P1 thread stays resolved with the decision-A disposition; no new thread.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T110-orchestrator-review-round3",
+    "body": "Orchestrator adversarial review of PR #297 round-3 head a431fd46 (one commit on 1d4d2e44; 2 files, +56/-26). Re-derived from the diff: the file check moved into gh_hosts_file_findings(config_dir) (lstat of the configured hosts.yml; absent → nothing; unreadable, not a regular file, not owned by the user, or mode other than 0600 → one WARN with the make gh-auth hint) and gh_login_findings now appends those findings on every path, including the early return when gh is missing, times out or returns invalid JSON, so the file is checked independently of gh's report and of gh's availability; the count and keyring warnings are unchanged. New test: gh failing plus a 0644 file yields both warnings. Sweep re-run at this head: the P1 thread stays resolved with the decision-A disposition; 13 checks passing; no new thread.",
+    "scope": "review",
+    "resolved": true
+  }
+]

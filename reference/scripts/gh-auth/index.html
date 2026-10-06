@@ -25,7 +25,7 @@
     
     
       
-        <title>scripts/gh-auth-stores.sh - Dotfiles Docs</title>
+        <title>scripts/gh-auth.sh - Dotfiles Docs</title>
       
     
     
@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#scriptsgh-auth-storessh" class="md-skip">
+        <a href="#scriptsgh-authsh" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              scripts/gh-auth-stores.sh
+              scripts/gh-auth.sh
             
           </span>
         </div>
@@ -3092,7 +3092,7 @@
   <span class="md-ellipsis">
     
   
-    scripts/gh-auth-stores.sh
+    scripts/gh-auth.sh
   
 
     
@@ -3110,7 +3110,7 @@
   <span class="md-ellipsis">
     
   
-    scripts/gh-auth-stores.sh
+    scripts/gh-auth.sh
   
 
     
@@ -3656,119 +3656,57 @@
 
 
 
-<h1 id="scriptsgh-auth-storessh">scripts/gh-auth-stores.sh<a class="headerlink" href="#scriptsgh-auth-storessh" title="Permanent link">&para;</a></h1>
-<p>Each GitHub account has its own store, a GH_CONFIG_DIR holding one login: OWNER_GH_CONFIG_DIR, WORK_GH_CONFIG_DIR and WORKER_GH_CONFIG_DIR, declared in home/dot_agents/agent-config.yaml and rendered into ~/.agents/model-profiles.env. A store whose <code>gh auth status</code> succeeds is skipped, so a hosts.yml that chezmoi-private already decrypted prompts for nothing. Any other store gets gh's own device-code login with file storage (the Claude sandbox cannot reach the keyring) and mode 0600. Git needs no per-store setup: the managed git config's <code>!gh auth git-credential</code> helper reads GH_CONFIG_DIR, and <code>gh auth setup-git</code> would rewrite that chezmoi-managed file. No credential value is read or printed here. Interactive only: <code>make update</code> never runs this.</p>
+<h1 id="scriptsgh-authsh">scripts/gh-auth.sh<a class="headerlink" href="#scriptsgh-authsh" title="Permanent link">&para;</a></h1>
+<p>Every seat on a machine acts as that machine's one GitHub account, stored in gh's default configuration directory. When <code>gh auth status</code> succeeds, nothing happens. Otherwise, on a terminal only, gh runs its own device-code login with its default storage: the OS keyring where present, gh's own file fallback elsewhere. Git needs no setup: the managed git config's <code>!gh auth git-credential</code> helper serves the login, and <code>gh auth setup-git</code> would rewrite that chezmoi-managed file. No credential value is read or printed here. Interactive only: <code>make update</code> never runs this.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Source: <code>scripts/gh-auth-stores.sh</code></li>
+<li>Source: <code>scripts/gh-auth.sh</code></li>
 <li>Category: repository script</li>
 <li>Renderer: <code>shell-fallback</code></li>
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>ensure_store</code></li>
-<li><code>expand_home</code></li>
 <li><code>main</code></li>
-<li><code>secure_hosts_file</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
-<span class="c1"># @file gh-auth-stores.sh</span>
-<span class="c1"># @brief Log in each GitHub CLI credential store that holds no token.</span>
+<span class="c1"># @file gh-auth.sh</span>
+<span class="c1"># @brief Log in this machine's GitHub account when gh holds no working login.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Each GitHub account has its own store, a GH_CONFIG_DIR holding one login:</span>
-<span class="c1">#   OWNER_GH_CONFIG_DIR, WORK_GH_CONFIG_DIR and WORKER_GH_CONFIG_DIR, declared in</span>
-<span class="c1">#   home/dot_agents/agent-config.yaml and rendered into ~/.agents/model-profiles.env.</span>
-<span class="c1">#   A store whose `gh auth status` succeeds is skipped, so a hosts.yml that</span>
-<span class="c1">#   chezmoi-private already decrypted prompts for nothing. Any other store gets</span>
-<span class="c1">#   gh's own device-code login with file storage (the Claude sandbox cannot reach</span>
-<span class="c1">#   the keyring) and mode 0600. Git needs no per-store setup: the managed git</span>
-<span class="c1">#   config's `!gh auth git-credential` helper reads GH_CONFIG_DIR, and</span>
-<span class="c1">#   `gh auth setup-git` would rewrite that chezmoi-managed file. No credential</span>
-<span class="c1">#   value is read or printed here. Interactive only: `make update` never runs this.</span>
+<span class="c1">#   Every seat on a machine acts as that machine's one GitHub account, stored in</span>
+<span class="c1">#   gh's default configuration directory. When `gh auth status` succeeds, nothing</span>
+<span class="c1">#   happens. Otherwise, on a terminal only, gh runs its own device-code login with</span>
+<span class="c1">#   its default storage: the OS keyring where present, gh's own file fallback</span>
+<span class="c1">#   elsewhere. Git needs no setup: the managed git config's `!gh auth git-credential`</span>
+<span class="c1">#   helper serves the login, and `gh auth setup-git` would rewrite that</span>
+<span class="c1">#   chezmoi-managed file. No credential value is read or printed here.</span>
+<span class="c1">#   Interactive only: `make update` never runs this.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="c1"># @description Expand a leading `~/` to $HOME.</span>
-<span class="c1"># @arg $1 string Path as rendered in model-profiles.env.</span>
-<span class="k">function</span><span class="w"> </span>expand_home<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="se">\~</span>/*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s/%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="p">#</span><span class="s2">"~/"</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="o">}</span>
-
-<span class="c1"># @description Set an existing hosts.yml to mode 0600, failing loudly when that is impossible.</span>
-<span class="c1">#   Callers run inside `||` lists, where errexit is off, so every failure is returned explicitly.</span>
-<span class="c1"># @arg $1 string Account label: owner, work or worker.</span>
-<span class="c1"># @arg $2 string The store's GH_CONFIG_DIR.</span>
-<span class="c1"># @exitcode 1 hosts.yml exists but its mode could not be set (for example, another user owns it).</span>
-<span class="k">function</span><span class="w"> </span>secure_hosts_file<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">label</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/hosts.yml<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>chmod<span class="w"> </span><span class="m">600</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">/hosts.yml"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s store %s: cannot set hosts.yml to mode 0600; make it yours, then run "make gh-auth"\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="o">}</span>
-
-<span class="c1"># @description Log in one store unless it already holds a working token.</span>
-<span class="c1"># @arg $1 string Account label: owner, work or worker.</span>
-<span class="c1"># @arg $2 string The store's GH_CONFIG_DIR.</span>
-<span class="k">function</span><span class="w"> </span>ensure_store<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">label</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
-<span class="w">    </span>secure_hosts_file<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">GH_CONFIG_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>gh<span class="w"> </span>auth<span class="w"> </span>status<span class="w"> </span>--hostname<span class="w"> </span>github.com<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s store %s already holds a token; skipped\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s store %s has no token; run "make gh-auth" in a terminal\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s store %s has no token; log in as the %s account\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="nv">GH_CONFIG_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>gh<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>--hostname<span class="w"> </span>github.com<span class="w"> </span>--git-protocol<span class="w"> </span>https<span class="w"> </span>--insecure-storage<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span>secure_hosts_file<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span>
-<span class="o">}</span>
-
-<span class="c1"># @description Check every declared store and log in the ones without a token.</span>
-<span class="c1"># @exitcode 0 Every store holds a token.</span>
-<span class="c1"># @exitcode 1 A store is undeclared, gh is missing, or a login did not complete.</span>
+<span class="c1"># @description Log in unless gh already holds a working login.</span>
+<span class="c1"># @exitcode 0 gh holds a working login, already or after the login.</span>
+<span class="c1"># @exitcode 1 gh is missing, there is no terminal, or the login did not complete.</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">env_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">GH_AUTH_STORES_ENV</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.agents/model-profiles.env</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">failures</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>pair<span class="w"> </span>label<span class="w"> </span>var
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">env_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s is missing; run "make update" first\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">env_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="c1"># shellcheck source=/dev/null</span>
-<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">env_file</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="c1"># gh may exist only as a mise shim (a fresh bootstrap, or a shell without mise activated).</span>
 <span class="w">    </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/mise/shims:</span><span class="si">${</span><span class="nv">PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>gh<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: gh is not installed; install it, then run "make gh-auth"\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="c1"># A token in the environment overrides every store and would hide an empty one.</span>
+<span class="w">    </span><span class="c1"># A token in the environment would answer for an empty login.</span>
 <span class="w">    </span><span class="nb">unset</span><span class="w"> </span>GH_TOKEN<span class="w"> </span>GITHUB_TOKEN<span class="w"> </span>GH_ENTERPRISE_TOKEN<span class="w"> </span>GITHUB_ENTERPRISE_TOKEN
-<span class="w">    </span><span class="nb">umask</span><span class="w"> </span><span class="m">077</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>pair<span class="w"> </span><span class="k">in</span><span class="w"> </span>owner:OWNER_GH_CONFIG_DIR<span class="w"> </span>work:WORK_GH_CONFIG_DIR<span class="w"> </span>worker:WORKER_GH_CONFIG_DIR<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="nv">label</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">pair</span><span class="p">%%:*</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="nv">var</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">pair</span><span class="p">#*:</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="p">!var</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: %s is not set in %s; run "make update" first\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">var</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">env_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">            </span><span class="nv">failures</span><span class="o">=</span><span class="k">$((</span><span class="nv">failures</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
-<span class="w">            </span><span class="k">continue</span>
-<span class="w">        </span><span class="k">fi</span>
-<span class="w">        </span>ensure_store<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>expand_home<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!var</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failures</span><span class="o">=</span><span class="k">$((</span><span class="nv">failures</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
-<span class="w">    </span><span class="k">done</span>
-<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">failures</span><span class="si">}</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>gh<span class="w"> </span>auth<span class="w"> </span>status<span class="w"> </span>--hostname<span class="w"> </span>github.com<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: gh already holds a working login; skipped\n'</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: gh holds no working login; run "make gh-auth" in a terminal\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh-auth: gh holds no working login; log in as this machine'</span><span class="s2">"'"</span><span class="s1">'s GitHub account\n'</span>
+<span class="w">    </span>gh<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>--hostname<span class="w"> </span>github.com<span class="w"> </span>--git-protocol<span class="w"> </span>https
 <span class="o">}</span>
 
 main<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>

@@ -3156,14 +3156,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../gh-auth-stores/" class="md-nav__link">
+      <a href="../gh-auth/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    scripts/gh-auth-stores.sh
+    scripts/gh-auth.sh
   
 
     
@@ -3672,7 +3672,6 @@
 <li><code>check_command</code></li>
 <li><code>check_crit_cli</code></li>
 <li><code>check_gh_extensions</code></li>
-<li><code>check_github_identities</code></li>
 <li><code>check_homebrew</code></li>
 <li><code>check_machine_ssh_key</code></li>
 <li><code>check_private_chezmoi</code></li>
@@ -3887,68 +3886,6 @@
 <span class="w">    </span><span class="o">((</span><span class="nv">required_failures</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Verify distinct authenticated GitHub roles and private worker file storage.</span>
-<span class="c1">#   Missing provisioning is optional; an existing worker directory must be valid.</span>
-<span class="k">function</span><span class="w"> </span>check_github_identities<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">WORKER_GH_CONFIG_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/gh-worker"</span><span class="w"> </span>worker_dir
-<span class="w">    </span><span class="c1"># shellcheck source=/dev/null</span>
-<span class="w">    </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/model-profiles.env<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/model-profiles.env"</span>
-<span class="w">    </span><span class="nv">worker_dir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">WORKER_GH_CONFIG_DIR</span><span class="p">/#</span><span class="se">\~</span><span class="p">/</span><span class="nv">$HOME</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">worker_dir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">"worker GitHub config missing: </span><span class="si">${</span><span class="nv">worker_dir</span><span class="si">}</span><span class="s2">; run make gh-auth (README operator phase)"</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt; 'PYTHON'</span>
-<span class="s">import json</span>
-<span class="s">import os</span>
-<span class="s">from pathlib import Path</span>
-<span class="s">import stat</span>
-<span class="s">import subprocess</span>
-<span class="s">import sys</span>
-
-<span class="s">worker = Path(sys.argv[1])</span>
-<span class="s">default = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "gh"</span>
-
-<span class="s">def fail(message):</span>
-<span class="s">    sys.exit("required failed: GitHub roles: " + message)</span>
-
-<span class="s">try:</span>
-<span class="s">    hosts = worker / "hosts.yml"</span>
-<span class="s">    metadata = hosts.lstat()</span>
-<span class="s">    if worker.resolve() == default.resolve():</span>
-<span class="s">        fail("worker and orchestrator configuration directories must differ")</span>
-<span class="s">    if not stat.S_ISREG(metadata.st_mode) or stat.S_IMODE(metadata.st_mode) != 0o600 or metadata.st_uid != os.getuid():</span>
-<span class="s">        fail("worker hosts.yml must be a user-owned regular file with mode 0600")</span>
-<span class="s">    env = {k: v for k, v in os.environ.items() if k not in {</span>
-<span class="s">        "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GH_DEBUG", "DEBUG",</span>
-<span class="s">    }}</span>
-<span class="s">    env["GH_CONFIG_DIR"] = str(worker)</span>
-<span class="s">    status = subprocess.run(["gh", "auth", "status", "--active", "--hostname", "github.com", "--json", "hosts"],</span>
-<span class="s">                            env=env, capture_output=True, text=True)</span>
-<span class="s">    if status.returncode:</span>
-<span class="s">        fail("worker authentication failed; run the operator login step")</span>
-<span class="s">    accounts = json.loads(status.stdout)["hosts"]["github.com"]</span>
-<span class="s">    active = [a for a in accounts if a.get("active") and a.get("state") == "success"]</span>
-<span class="s">    if len(active) != 1 or Path(active[0].get("tokenSource", "")).resolve() != hosts.resolve():</span>
-<span class="s">        fail("worker requires an authenticated file-stored token in hosts.yml (--insecure-storage)")</span>
-<span class="s">    worker_login = active[0]["login"]</span>
-<span class="s">    env["GH_CONFIG_DIR"] = str(default)</span>
-<span class="s">    current = subprocess.run(["gh", "api", "--hostname", "github.com", "user", "--jq", ".login"],</span>
-<span class="s">                             env=env, capture_output=True, text=True)</span>
-<span class="s">    login = current.stdout.strip()</span>
-<span class="s">    if current.returncode or not login:</span>
-<span class="s">        fail("orchestrator authentication failed")</span>
-<span class="s">    if login.casefold() == worker_login.casefold():</span>
-<span class="s">        fail("worker and orchestrator authenticate as the same login")</span>
-<span class="s">    print(f"found:   GitHub roles -&gt; orchestrator={login}, worker={worker_login} (owned 0600 file storage)")</span>
-<span class="s">except (OSError, ValueError, KeyError, TypeError, AttributeError):</span>
-<span class="s">    fail("could not verify worker file storage and authenticated logins")</span>
-<span class="s">PYTHON</span>
-<span class="w">    </span><span class="k">then</span>
-<span class="w">        </span><span class="o">((</span><span class="nv">required_failures</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="o">}</span>
-
 <span class="c1">#</span>
 <span class="c1"># @description Print the current GitHub CLI extension state when gh is installed.</span>
 <span class="c1">#</span>
@@ -4040,9 +3977,6 @@
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"Claude Code sandbox"</span>
 <span class="w">    </span>check_claude_sandbox
-
-<span class="w">    </span>section<span class="w"> </span><span class="s2">"GitHub role identities"</span>
-<span class="w">    </span>check_github_identities
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"GitHub CLI extensions"</span>
 <span class="w">    </span>check_gh_extensions

@@ -1,6 +1,7 @@
 import ast
 import itertools
 import re
+import shlex
 import unittest
 from pathlib import Path
 
@@ -25,6 +26,9 @@ REQUIRED_PREFIXES = {
     ("rm", "-r", "-f"),
     ("rm", "-f", "-r"),
     ("gh", "pr", "merge"),
+    ("gh", "api", "-X", "PUT"),
+    ("gh", "api", "--method", "PUT"),
+    ("gh", "api", "graphql"),
     ("gh", "release"),
     ("npm", "publish"),
     ("uv", "publish"),
@@ -67,6 +71,32 @@ class CodexExecpolicyTest(unittest.TestCase):
         for rule in rules:
             with self.subTest(pattern=rule["pattern"]):
                 self.assertTrue(rule["justification"])
+
+    def test_rule_examples_agree_with_their_patterns(self) -> None:
+        # Codex checks match/not_match at load time; a wrong example would make it reject the file.
+        for rule in prefix_rules(RULES.read_text()):
+            prefixes = expand(rule["pattern"])
+            for example in rule.get("match", []):
+                with self.subTest(pattern=rule["pattern"], match=example):
+                    words = tuple(shlex.split(example))
+                    self.assertTrue(any(words[: len(prefix)] == prefix for prefix in prefixes))
+            for example in rule.get("not_match", []):
+                with self.subTest(pattern=rule["pattern"], not_match=example):
+                    words = tuple(shlex.split(example))
+                    self.assertFalse(any(words[: len(prefix)] == prefix for prefix in prefixes))
+
+    def test_worker_seats_cannot_merge_through_the_api(self) -> None:
+        # One GitHub login per machine: denying merges in the seat replaces the account separation.
+        covered = set().union(*(expand(rule["pattern"]) for rule in prefix_rules(RULES.read_text())))
+        for prefix in (
+            ("gh", "pr", "merge"),
+            ("gh", "api", "-X", "PUT"),
+            ("gh", "api", "--method", "PUT"),
+            ("gh", "api", "graphql"),
+        ):
+            with self.subTest(prefix=prefix):
+                self.assertIn(prefix, covered)
+        self.assertNotIn(("gh", "api", "repos/o/r/pulls/1/reviews"), covered)
 
 
 if __name__ == "__main__":

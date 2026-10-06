@@ -1174,7 +1174,7 @@ EOF
         }
         missing = self.run_test_command(command, env=env)
         self.assertIn("warnings=1", missing.stdout)
-        self.assertIn("insecure-storage", missing.stderr)
+        self.assertIn("run make gh-auth", missing.stderr)
         worker.mkdir(parents=True)
         hosts = worker / "hosts.yml"
         hosts.write_text("fixture: never-displayed\n")

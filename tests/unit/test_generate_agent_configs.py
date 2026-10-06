@@ -16,6 +16,7 @@ import tomllib
 import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.dont_write_bytecode = True
 
@@ -1327,6 +1328,41 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             manifest["worker_gh_config_dir"] = value
             with self.subTest(value=value), self.assertRaises(SystemExit):
                 self.module.render_model_profiles_env(manifest)
+
+    def test_gh_credential_stores_render_one_directory_per_account(self) -> None:
+        manifest = sample_manifest()
+        defaults = {
+            "OWNER_GH_CONFIG_DIR": "~/.config/gh",
+            "WORK_GH_CONFIG_DIR": "~/.config/gh-work",
+            "WORKER_GH_CONFIG_DIR": "~/.config/gh-worker",
+        }
+        script = "".join(f'\nprintf "%s\\n" "${var}"' for var in defaults)
+
+        def rendered_stores() -> list[str]:
+            env = self.module.render_model_profiles_env(manifest)
+            return subprocess.run(
+                ["bash", "-c", env + script], capture_output=True, text=True, check=True
+            ).stdout.splitlines()
+
+        self.assertEqual(rendered_stores(), list(defaults.values()))
+        for key in ("owner_gh_config_dir", "work_gh_config_dir"):
+            value = f"/tmp/{key} 'quoted' $(false)"
+            manifest[key] = value
+            with self.subTest(key=key):
+                self.assertIn(value, rendered_stores())
+            for bad in ("", "relative/path", 123, "~/bad\npath"):
+                manifest[key] = bad
+                with self.subTest(key=key, value=bad), self.assertRaises(SystemExit):
+                    self.module.render_model_profiles_env(manifest)
+            manifest.pop(key)
+        # Two accounts never share a store: that is the merged-hosts.yml ambiguity this layout removes.
+        manifest["work_gh_config_dir"] = "~/.config/gh-worker/"
+        with self.assertRaises(SystemExit):
+            self.module.render_model_profiles_env(manifest)
+        # `~` is expanded before the comparison, so the absolute spelling of a store is the same store.
+        manifest["work_gh_config_dir"] = "/home/fixture/.config/gh"
+        with mock.patch.dict(os.environ, {"HOME": "/home/fixture"}), self.assertRaises(SystemExit):
+            self.module.render_model_profiles_env(manifest)
 
     def test_model_profiles_env_renders_worker_kind(self) -> None:
         manifest = sample_manifest()

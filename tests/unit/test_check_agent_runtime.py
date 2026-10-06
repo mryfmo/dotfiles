@@ -713,6 +713,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         original_findings = self.module.manifest_asset_findings
         original_orphans = self.module.orphaned_asset_warnings
         original_drift = self.module.chezmoi_drift_warnings
+        original_gh_stores = self.module.gh_credential_store_findings
         try:
             self.module.HOME = self.target_root
             self.module.same_text = lambda *args, **kwargs: True
@@ -725,6 +726,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 "manifest orphan checks must be skipped"
             )
             self.module.chezmoi_drift_warnings = list
+            self.module.gh_credential_store_findings = list
 
             failures = self.module.check()
         finally:
@@ -737,6 +739,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.manifest_asset_findings = original_findings
             self.module.orphaned_asset_warnings = original_orphans
             self.module.chezmoi_drift_warnings = original_drift
+            self.module.gh_credential_store_findings = original_gh_stores
 
         self.assertEqual(1, len(failures))
         self.assertRegex(
@@ -946,6 +949,87 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         (proc / "4242/comm").write_text("claude\n" if live else "bash\n")
         (proc / "4242/cwd").symlink_to(project)
         return project, skill_dir, proc
+
+    def gh_store_fixture(self) -> tuple[Path, Path, str]:
+        """A fake HOME with a rendered env file and a fake gh that answers from <store>/status.json."""
+        home = self.temp_dir / "home"
+        env_path = self.temp_dir / "model-profiles.env"
+        env_path.write_text(
+            "OWNER_GH_CONFIG_DIR='~/.config/gh'\n"
+            "WORK_GH_CONFIG_DIR='~/.config/gh-work'\n"
+            "WORKER_GH_CONFIG_DIR='/abs/never'\n"
+        )
+        gh = self.temp_dir / "gh"
+        gh.write_text(
+            "#!/bin/sh\n"
+            '[ -z "${GH_TOKEN-}${GITHUB_TOKEN-}" ] || { echo "token env leaked" >&2; exit 3; }\n'
+            '[ "$*" = "auth status --hostname github.com --json hosts" ] || exit 2\n'
+            'cat "$GH_CONFIG_DIR/status.json"\n'
+        )
+        gh.chmod(0o755)
+        return home, env_path, str(gh)
+
+    def write_store(self, directory: Path, accounts: list[dict], mode: int = 0o600) -> None:
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "hosts.yml").write_text("github.com:\n    user: fixture\n")
+        (directory / "hosts.yml").chmod(mode)
+        (directory / "status.json").write_text(json.dumps({"hosts": {"github.com": accounts}}))
+
+    def test_gh_credential_stores_report_present_missing_and_bad_mode(self) -> None:
+        home, env_path, gh = self.gh_store_fixture()
+        self.write_store(home / ".config/gh", [{"login": "owner-login", "state": "success", "active": True}])
+        self.write_store(home / ".config/gh-work", [{"login": "work-login", "state": "success"}], mode=0o644)
+
+        with mock.patch.dict(os.environ, {"GH_TOKEN": "fixture-env-token"}):
+            findings = self.module.gh_credential_store_findings(home=home, env_path=env_path, gh=gh)
+
+        self.assertEqual(
+            findings,
+            [
+                f"found: GitHub owner credential store {home}/.config/gh (hosts.yml 0600, one user: owner-login)",
+                (
+                    f"WARN: GitHub work credential store {home}/.config/gh-work: "
+                    "hosts.yml must be a user-owned regular file with mode 0600; run make gh-auth"
+                ),
+                "WARN: GitHub worker credential store /abs/never has no hosts.yml; run make gh-auth",
+            ],
+        )
+        # A present store is a report line, not a failure: no repair, no non-zero exit.
+        self.assertTrue(self.module.is_info(findings[0]))
+        self.assertEqual(self.module.repair_actions(findings[:1], home=home), [])
+
+    def test_gh_credential_stores_warn_on_two_logins_a_failed_status_or_no_gh(self) -> None:
+        home, env_path, gh = self.gh_store_fixture()
+        self.write_store(
+            home / ".config/gh",
+            [{"login": "owner-login", "state": "success"}, {"login": "work-login", "state": "success"}],
+        )
+        self.write_store(home / ".config/gh-work", [{"login": "work-login", "state": "error"}])
+
+        findings = self.module.gh_credential_store_findings(home=home, env_path=env_path, gh=gh)
+
+        self.assertEqual(
+            findings[:2],
+            [
+                (
+                    f"WARN: GitHub owner credential store {home}/.config/gh holds 2 working of 2 logins; "
+                    "keep exactly one account per store (run make gh-auth)"
+                ),
+                (
+                    f"WARN: GitHub work credential store {home}/.config/gh-work holds 0 working of 1 logins; "
+                    "keep exactly one account per store (run make gh-auth)"
+                ),
+            ],
+        )
+        missing_gh = self.module.gh_credential_store_findings(
+            home=home, env_path=env_path, gh=str(self.temp_dir / "absent-gh")
+        )
+        self.assertIn(
+            f"WARN: GitHub owner credential store {home}/.config/gh: gh auth status failed or gh is missing; "
+            "run make gh-auth",
+            missing_gh,
+        )
+        self.assertTrue(all(self.module.is_warning(line) for line in missing_gh))
 
     def test_orchestrator_seat_lock_warns_on_a_bare_session_id(self) -> None:
         project, skill_dir, proc = self.seat_lock_fixture("e7734322-bare")

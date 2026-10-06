@@ -1303,7 +1303,7 @@ def render_claude_project_map_agent(manifest: dict[str, Any]) -> str:
     return (
         "---\n"
         "name: project-map\n"
-        "description: Draws the project map, one double-click HTML file under .project-map/, with part status, milestones, items left to the next milestone, the suggested next step, and what changed since the last update. Use before a long solo run, after each milestone, and to answer \"どこまで進んだ？\".\n"
+        'description: Draws the project map, one double-click HTML file under .project-map/, with part status, milestones, items left to the next milestone, the suggested next step, and what changed since the last update. Use before a long solo run, after each milestone, and to answer "どこまで進んだ？".\n'
         "tools: Read, Glob, Grep, Bash, Write, Edit\n"
         f"model: {standard['model']}\n"
         f"effort: {standard['effort']}\n"

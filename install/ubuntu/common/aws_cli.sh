@@ -10,7 +10,7 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 # Rendered from assets.aws-cli in home/dot_agents/agent-config.yaml; change it there.
-readonly AWS_CLI_VERSION="2.37.4"
+readonly AWS_CLI_VERSION="2.37.5"
 readonly AWS_CLI_FINGERPRINT="FB5DB77FD5C118B80511ADA8A6310ACC4672475C"
 readonly AWS_CLI_KEY_PATH="${AWS_CLI_KEY_PATH:-${HOME}/.local/share/aws-cli-keys/aws-cli-public-key.asc}"
 readonly AWS_CLI_INSTALL_DIR="${HOME}/.local/share/aws-cli"

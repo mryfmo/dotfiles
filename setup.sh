@@ -31,7 +31,7 @@ declare -r DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/mryfmo/dot
 declare -r BRANCH_NAME="${BRANCH_NAME:-main}"
 declare -r HOMEBREW_INSTALL_COMMIT="c7952e40b7957268f61643152f4db725379b292e"
 declare -r HOMEBREW_INSTALL_SHA256="99287f194a8b3c9e6b0203a11a5fa54518be57209343e6bb954dec4635796d9d"
-declare -r CHEZMOI_VERSION="2.70.4"
+declare -r CHEZMOI_VERSION="2.73.0"
 
 function is_ci() {
     "${CI:-false}"

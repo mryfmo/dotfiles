@@ -102,7 +102,7 @@ prefix_rule(
 )
 
 # The API forms of a merge or auto-merge. A prefix rule cannot see a method flag placed after the
-# path (`gh api <path> -X PUT`) or spelled `-XPUT`/`--method=PUT`; the integration gate stays the authority.
+# path (`gh api <path> -X PUT`) or spelled `-XPUT`/`--method=PUT`; the gate and the records make such a merge visible.
 prefix_rule(
     pattern=["gh", "api", ["-X", "--method"], "PUT"],
     decision="forbidden",

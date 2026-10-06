@@ -19,7 +19,7 @@ FAKE_GH = """#!/bin/sh
 printf '%s|%s\\n' "${GH_TOKEN-unset}" "$*" >> "$GH_CALLS"
 case "$1 $2" in
 "auth status") [ -f "$HOME/.gh-login" ] ;;
-"auth login") : > "$HOME/.gh-login" ;;
+"auth login") [ -z "${FAIL_LOGIN-}" ] || exit 1; : > "$HOME/.gh-login" ;;
 *) exit 2 ;;
 esac
 """
@@ -90,8 +90,24 @@ class GhAuthTest(unittest.TestCase):
         self.assertEqual(self.logged_calls(), [f"unset|{STATUS}", f"unset|{LOGIN}"])
         self.assertNotIn("--insecure-storage", self.calls.read_text())
 
+    def test_a_login_that_does_not_complete_fails(self) -> None:
+        self.install_setup_copy()
+        env = {**self.env, "FAIL_LOGIN": "1"}
+
+        direct = self.on_a_terminal([str(SCRIPT)], env)
+        setup = self.on_a_terminal(["bash", "-c", f'source "{ROOT}/setup.sh"; authenticate_github'], env)
+
+        self.assertEqual(direct.returncode, 1)
+        # setup.sh reports it and carries on: the bootstrap itself already succeeded.
+        self.assertEqual(setup.returncode, 0, setup.stderr)
+        self.assertIn("The GitHub login did not complete; run `make gh-auth` to retry.", setup.stderr)
+
     def test_a_missing_gh_is_reported(self) -> None:
-        result = self.run_command([str(SCRIPT)], subprocess.DEVNULL, {**self.env, "PATH": "/usr/bin:/bin"})
+        # A PATH with bash alone: CI runners and most hosts have a real gh in /usr/bin.
+        bash_only = self.temp / "bash-only"
+        bash_only.mkdir()
+        (bash_only / "bash").symlink_to(shutil.which("bash"))
+        result = self.run_command([str(SCRIPT)], subprocess.DEVNULL, {**self.env, "PATH": str(bash_only)})
 
         self.assertEqual(result.returncode, 1)
         self.assertIn('gh is not installed; install it, then run "make gh-auth"', result.stderr)

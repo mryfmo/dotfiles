@@ -1096,8 +1096,9 @@ review runs only when explicitly requested, and lets CodeRabbit request
 changes. No workflow posts review requests automatically.
 
 `main` has one ruleset, the **integrity ruleset** `main integration gate`,
-saved as `main-integrity.json`. Committing the payload does not apply it. Keep
-squash-only merging, auto-merge enabled, and `delete_branch_on_merge` off.
+saved as `main-integrity.json`. Committing the payload does not apply it. In
+the repository settings, keep squash-only merging (so history stays linear),
+auto-merge enabled, and `delete_branch_on_merge` off.
 
 Every seat on a machine acts as that machine's one GitHub account, so the
 ruleset protects `main` without telling accounts apart:
@@ -1105,7 +1106,6 @@ ruleset protects `main` without telling accounts apart:
 - pull requests only;
 - the seven strict required checks;
 - resolved review threads;
-- squash-only merging, so history stays linear;
 - blocked force pushes and deletion.
 
 It has no bypass actors and no required approvals. An author cannot approve
@@ -1174,14 +1174,25 @@ merge.
 }
 ```
 
-Who merges is decided outside GitHub. Worker seats are denied merge commands
-natively: the Codex execpolicy forbids `gh pr merge`, `gh api -X PUT`,
-`gh api --method PUT` and `gh api graphql`. The orchestrator merges with
+Who merges is decided outside GitHub. The orchestrator merges with
 `gh pr merge --squash` only after the integration gate (agmsg-orchestration
-SKILL, Orchestrator Playbook step 10). Under one OS user nothing isolates a
-deliberately misbehaving seat: the denials stop the accidental and
-prompt-injected paths, and the gate and the agmsg records make the rest
-visible. The design report (`.orchestration/validation/github-auth-design-2026-10-05.md`
+SKILL, Orchestrator Playbook step 10).
+
+Codex worker seats are denied merge commands natively. The Codex execpolicy
+forbids `gh pr merge`, `gh api graphql`, and `gh api -X PUT` or
+`gh api --method PUT` when the flag comes right after `api`. A flag after the
+path, `-XPUT` and `--method=PUT` are not caught by a prefix rule.
+
+Claude worker seats have no such denial yet. The deny rules
+(`Bash(gh pr merge:*)`, `Bash(gh api -X PUT:*)`, `Bash(gh api --method PUT:*)`,
+`Bash(gh api graphql:*)` in the worker worktree's `.claude/settings.local.json`,
+written by `herdr-agents`) are a separate Codex-seat task. Until then, a Claude
+worker's merge command reaches the permission prompt, which only the operator
+or the auto-mode classifier answers.
+
+Under one OS user nothing isolates a deliberately misbehaving seat. The
+denials stop the accidental and prompt-injected paths; the gate and the agmsg
+records make the rest visible afterwards, but they cannot prevent it. The design report (`.orchestration/validation/github-auth-design-2026-10-05.md`
 §16) holds the reasoning.
 
 To apply the payload:

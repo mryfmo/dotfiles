@@ -27,14 +27,28 @@ function expand_home() {
     fi
 }
 
+# @description Set an existing hosts.yml to mode 0600, failing loudly when that is impossible.
+#   Callers run inside `||` lists, where errexit is off, so every failure is returned explicitly.
+# @arg $1 string Account label: owner, work or worker.
+# @arg $2 string The store's GH_CONFIG_DIR.
+# @exitcode 1 hosts.yml exists but its mode could not be set (for example, another user owns it).
+function secure_hosts_file() {
+    local label="$1" dir="$2"
+    if [[ ! -f ${dir}/hosts.yml ]]; then
+        return 0
+    fi
+    if ! chmod 600 "${dir}/hosts.yml"; then
+        printf 'gh-auth: %s store %s: cannot set hosts.yml to mode 0600; make it yours, then run "make gh-auth"\n' "${label}" "${dir}" >&2
+        return 1
+    fi
+}
+
 # @description Log in one store unless it already holds a working token.
 # @arg $1 string Account label: owner, work or worker.
 # @arg $2 string The store's GH_CONFIG_DIR.
 function ensure_store() {
     local label="$1" dir="$2"
-    if [[ -f ${dir}/hosts.yml ]]; then
-        chmod 600 "${dir}/hosts.yml"
-    fi
+    secure_hosts_file "${label}" "${dir}" || return 1
     if GH_CONFIG_DIR="${dir}" gh auth status --hostname github.com > /dev/null 2>&1; then
         printf 'gh-auth: %s store %s already holds a token; skipped\n' "${label}" "${dir}"
         return 0
@@ -44,11 +58,9 @@ function ensure_store() {
         return 1
     fi
     printf 'gh-auth: %s store %s has no token; log in as the %s account\n' "${label}" "${dir}" "${label}"
-    mkdir -p "${dir}"
+    mkdir -p "${dir}" || return 1
     GH_CONFIG_DIR="${dir}" gh auth login --hostname github.com --git-protocol https --insecure-storage || return 1
-    if [[ -f ${dir}/hosts.yml ]]; then
-        chmod 600 "${dir}/hosts.yml"
-    fi
+    secure_hosts_file "${label}" "${dir}"
 }
 
 # @description Check every declared store and log in the ones without a token.

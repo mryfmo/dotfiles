@@ -19,7 +19,7 @@ FAKE_GH = """#!/bin/sh
 printf '%s|%s|%s\\n' "$GH_CONFIG_DIR" "${GH_TOKEN-unset}" "$*" >> "$GH_CALLS"
 case "$1 $2" in
 "auth status") [ -f "$GH_CONFIG_DIR/token" ] ;;
-"auth login") : > "$GH_CONFIG_DIR/token"; : > "$GH_CONFIG_DIR/hosts.yml"; chmod 644 "$GH_CONFIG_DIR/hosts.yml" ;;
+"auth login") : > "$GH_CONFIG_DIR/token"; : > "$GH_CONFIG_DIR/hosts.yml"; /bin/chmod 644 "$GH_CONFIG_DIR/hosts.yml" ;;
 *) exit 2 ;;
 esac
 """
@@ -122,6 +122,32 @@ class GhAuthStoresTest(unittest.TestCase):
         self.assertNotIn("Skipping the GitHub logins", result.stdout)
         logins = [call for call in self.logged_calls() if "|auth login " in call]
         self.assertEqual(len(logins), 2)
+
+    def test_a_hosts_file_it_cannot_secure_fails_the_store(self) -> None:
+        # A chmod that fails (as for a hosts.yml another user owns) must not pass for success.
+        chmod_bin = self.temp / "chmod-bin"
+        chmod_bin.mkdir()
+        (chmod_bin / "chmod").write_text("#!/bin/sh\necho 'chmod: Operation not permitted' >&2\nexit 1\n")
+        (chmod_bin / "chmod").chmod(0o755)
+        self.env["PATH"] = f"{chmod_bin}:{self.env['PATH']}"
+        (self.home / ".config/gh/hosts.yml").touch()
+        primary, secondary = pty.openpty()
+        try:
+            result = self.run_script(secondary)
+        finally:
+            os.close(primary)
+            os.close(secondary)
+
+        self.assertEqual(result.returncode, 1, result.stderr)
+        for label, store in (("owner", self.home / ".config/gh"), ("work", self.home / ".config/gh-work")):
+            with self.subTest(store=label):
+                self.assertIn(
+                    f"gh-auth: {label} store {store}: cannot set hosts.yml to mode 0600; "
+                    'make it yours, then run "make gh-auth"',
+                    result.stderr,
+                )
+        # The owner store fails before its token check counts as a skip.
+        self.assertNotIn("owner store", result.stdout)
 
     def test_on_a_terminal_it_logs_in_only_the_empty_stores(self) -> None:
         primary, secondary = pty.openpty()

@@ -1,0 +1,219 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 288,
+  "head_sha": "c4fa1c14d447d99ca3de999bd4c47df3407ecc2b",
+  "base_ref": "main",
+  "base_sha": "2d0ef943e496482403bdd50c158a8fd94c7438f6",
+  "generated_at": "2026-10-06T00:30:39+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960980/job/112038926084"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960980/job/112038925897"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960980/job/112038925889"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960980/job/112038925858"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960980/job/112038884160"
+    },
+    {
+      "name": "build (client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960461/job/112038882900"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960457/job/112038882860"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960457/job/112038882845"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960457/job/112038882840"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960457/job/112038882805"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960457/job/112038882789"
+    },
+    {
+      "name": "build",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960502/job/112038882765"
+    },
+    {
+      "name": "build (server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960461/job/112038882645"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960460/job/112038882602"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960457/job/112038882463"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "Codex usage limits have been reached for code reviews. Please check with the admins of this repo to increase the limits by adding credits.\nRepo admins can enable using credits for code reviews in their [settings](https://chatgpt.com/codex/cloud/settings/code-review).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/288#issuecomment-6004109337",
+      "disposition": "not-applicable:Codex Bot quota notice (usage limits reached) at PR open; the security review below still ran; no finding in this comment"
+    },
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `d75af0c0-4de1-4096-9ea7-aff897e0e4ed`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=288)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/288#issuecomment-6004110958",
+      "disposition": "not-applicable:CodeRabbit auto-generated summary/skip comment, automatic reviews disabled; no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 🛡️ Codex Security Review · _Automatically triggered_\n\nHere are some automated security review suggestions for this pull request.\n\n**Reviewed commit:** `bb9e92ed17`\n    \n\n<details> <summary>ℹ️ About Codex security reviews in GitHub</summary>\n<br/>\n\nThis is an experimental Codex feature. Security reviews are triggered when:\n- You comment \"@codex security review\"\n- A regular code review gets triggered (for example, \"@codex review\" or when a PR is opened), and you’re opted in so security review runs alongside code review\n\nOnce complete, Codex will leave suggestions, or a comment if no findings are found.\n\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/288#pullrequestreview-5421306432",
+      "commit": "bb9e92ed17f7f8966a43ed5c60982dc97da58c19",
+      "disposition": "not-applicable:review container for the single P1 inline finding on scripts/gh-auth-stores.sh, dispositioned on that thread (operator-accepted exposure, design report §12)"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/288#pullrequestreview-5421860101",
+      "commit": "0a28eb74c3f921b254011f1d4cde667ada2e30a3",
+      "disposition": "not-applicable:empty review event body (container), no finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/gh-auth-stores.sh",
+      "line": 62,
+      "body": "<!-- codex-security-review-finding:v1 -->\n\n### 🛡️ Codex Security Review · _Automatically triggered_\n\n**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub> Security: Keep the owner token out of worker-readable file storage**\n\nOn a fresh machine, or whenever the owner store lacks a valid credential, this command forces the merging account's token into `~/.config/gh/hosts.yml`. Claude and Codex workers run as the same OS user, can read this path, and have outbound GitHub access; mode 0600 therefore does not isolate the token from them. A compromised worker can copy the token and act with the owner's repository and ruleset-bypass privileges. Keep the owner login in the system keyring, or enforce an OS/sandbox read boundary; reserve file storage for the intentionally exposed worker credential.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/288#discussion_r4189443339",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:P1 on bb9e92ed (owner token in ~/.config/gh/hosts.yml readable by worker seats): operator decision 2026-10-05, one store per account with file storage for all three, exposure known and accepted (github-auth-design-2026-10-05.md §4, §8, §10, §12); replied and resolved by the orchestrator (comment 4189878365); unchanged at head c4fa1c14"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/gh-auth-stores.sh",
+      "line": 62,
+      "body": "not-applicable: operator decision (2026-10-05), recorded in `.orchestration/validation/github-auth-design-2026-10-05.md` §4, §8, §10 and §12: credential stores are one per account with file storage (`--insecure-storage`) for all three, so that `chezmoi apply` can place them and no machine ever prompts for a login. The exposure this finding describes is known and accepted: both seats run as one OS user whose sandboxes restrict writes, not reads, and the same user also holds the age identity for the private source, so no at-rest encryption on this host hides a token from a worker seat. Protection is server-side (PR-only `main`, required checks, resolved threads, and the role rules once the worker store exists). The orchestrator will not reopen the keyring alternative; a change of stance is the operator's.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/288#discussion_r4189878365",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on the P1 thread; not a finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960980/job/112038925858",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, informational, not about the diff"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960457/job/112038882860",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, informational, not about the diff"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960457/job/112038882805",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, informational, not about the diff"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37391960502/job/112038882765",
+      "check": "build",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, informational, not about the diff"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit status success (review skipped, automatic reviews disabled); no finding"
+    }
+  ]
+}

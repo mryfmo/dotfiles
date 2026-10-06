@@ -1184,12 +1184,12 @@ forbids `gh pr merge`, `gh api graphql`, and `gh api -X PUT` or
 `gh api --method PUT` when the flag comes right after `api`. A flag after the
 path, `-XPUT` and `--method=PUT` are not caught by a prefix rule.
 
-Claude worker seats have no such denial yet. The deny rules
-(`Bash(gh pr merge:*)`, `Bash(gh api -X PUT:*)`, `Bash(gh api --method PUT:*)`,
-`Bash(gh api graphql:*)` in the worker worktree's `.claude/settings.local.json`,
-written by `herdr-agents`) are a separate Codex-seat task. Until then, a Claude
-worker's merge command reaches the permission prompt, which only the operator
-or the auto-mode classifier answers.
+`herdr-agents` writes the Claude worker deny rules (`Bash(gh pr merge:*)`,
+`Bash(gh api -X PUT:*)`, `Bash(gh api --method PUT:*)`, `Bash(gh api graphql:*)`)
+into the worker worktree's `.claude/settings.local.json`; [deny rules take
+precedence over allow rules and cover nested subcommands in every permission
+mode](https://code.claude.com/docs/en/permissions), but a method flag after the path
+escapes these prefix rules, so the integration gate remains the authority.
 
 Under one OS user nothing isolates a deliberately misbehaving seat. The
 denials stop the accidental and prompt-injected paths; the gate and the agmsg

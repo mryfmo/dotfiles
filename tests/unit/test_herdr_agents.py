@@ -32,6 +32,12 @@ GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
 ZSHRC = ROOT / "home/dot_zshrc"
 AUDIT_SHA = "926d9f1"
+CLAUDE_WORKER_MERGE_DENY = [
+    "Bash(gh pr merge:*)",
+    "Bash(gh api -X PUT:*)",
+    "Bash(gh api --method PUT:*)",
+    "Bash(gh api graphql:*)",
+]
 # Built at runtime so this test file never contains a literal SECRET_PATTERN match.
 SECRET_FIELD = "tok" + "en"
 AUDIT_PROMPT = (
@@ -2407,6 +2413,8 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         result = self.run_helper("--restart-worker")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        settings = json.loads((worktree / ".claude/settings.local.json").read_text())
+        self.assertEqual(settings["permissions"]["deny"], CLAUDE_WORKER_MERGE_DENY)
         calls = self.calls_path.read_text().splitlines()
         listed = subprocess.run(
             ["git", "-C", str(self.workdir), "worktree", "list", "--porcelain"],
@@ -2440,14 +2448,22 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         hooks.write_text(
             json.dumps(
                 {
+                    "permissions": {"allow": ["Bash(gh:*)"], "deny": ["Bash(sudo:*)", CLAUDE_WORKER_MERGE_DENY[0]]},
+                    "env": {"SEAT_TEST": "preserved"},
                     "hooks": {
                         "Stop": [
                             {"hooks": [{"command": "bash ~/.agents/skills/agmsg/scripts/check-inbox.sh claude-code x"}]}
                         ]
-                    }
+                    },
                 }
             )
         )
+        original = json.loads(hooks.read_text())
+        main_settings = self.workdir / ".claude/settings.local.json"
+        main_settings.write_text('{"env":{"MAIN_TEST":"preserved"}}\n')
+        user_settings = self.home_dir / ".claude/settings.json"
+        user_settings.parent.mkdir(parents=True, exist_ok=True)
+        user_settings.write_text('{"env":{"USER_TEST":"preserved"}}\n')
         self.write_legacy_seated_pair()
 
         result = self.run_helper("--restart-worker")
@@ -2458,6 +2474,17 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         self.assertFalse(any(call.startswith("delivery set") and str(worktree) in call for call in calls), calls)
         self.assertIn(f"identities {worktree} claude-code resolve=0", calls)
         self.assertIn(f"Herdr agents worker seat: {worktree} (agmsg claude-standard-dot-a005)", result.stderr)
+        seated = json.loads(hooks.read_text())
+        self.assertEqual(seated["hooks"], original["hooks"])
+        self.assertEqual(seated["env"], original["env"])
+        self.assertEqual(seated["permissions"]["allow"], original["permissions"]["allow"])
+        self.assertEqual(seated["permissions"]["deny"], ["Bash(sudo:*)", *CLAUDE_WORKER_MERGE_DENY])
+        before = hooks.read_bytes()
+        result = self.run_helper("--restart-worker")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(hooks.read_bytes(), before)
+        self.assertEqual(main_settings.read_text(), '{"env":{"MAIN_TEST":"preserved"}}\n')
+        self.assertEqual(user_settings.read_text(), '{"env":{"USER_TEST":"preserved"}}\n')
 
     def test_full_mode_splits_the_worker_pane_in_its_worktree(self) -> None:
         worktree = self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
@@ -2465,6 +2492,8 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         result = self.run_helper()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        settings = json.loads((worktree / ".claude/settings.local.json").read_text())
+        self.assertEqual(settings["permissions"]["deny"], CLAUDE_WORKER_MERGE_DENY)
         calls = self.calls_path.read_text().splitlines()
         worker_split = [call for call in calls if call.startswith("pane split") and "AGMSG_RESOLVE_PROJECT=0" in call]
         self.assertEqual(len(worker_split), 1, calls)
@@ -2473,6 +2502,18 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         self.assertIn(f"join dotfiles claude-standard-dot-a007 claude-code {worktree} resolve=0", calls)
         self.assertLess(calls.index(f"delivery set both claude-code {worktree}"), calls.index(worker_split[0]))
         self.assertNotIn("would share the orchestrator's claude-code agmsg identity", result.stderr)
+
+    def test_bootstrap_adds_claude_worker_merge_denials(self) -> None:
+        worktree = self.write_worktree_seat()
+        subprocess.run(
+            ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(worktree), "origin/main"],
+            check=True,
+            capture_output=True,
+        )
+        result = self.run_helper("--bootstrap-agmsg")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        settings = json.loads((worktree / ".claude/settings.local.json").read_text())
+        self.assertEqual(settings["permissions"]["deny"], CLAUDE_WORKER_MERGE_DENY)
 
     def test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots(self) -> None:
         worktree = self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
@@ -2485,6 +2526,7 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         result = self.run_helper()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((worktree / ".claude/settings.local.json").exists())
         roots = json.dumps(configured + self.git_metadata_roots(worktree.name), separators=(",", ":"))
         starts = [
             call for call in self.calls_path.read_text().splitlines() if call.startswith("agent start codex-worker-")
@@ -2797,6 +2839,8 @@ exit {despawn_exit}
         result = self.run_helper("--add-worker", ".claude/worktrees/b1")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        settings = json.loads((worktree / ".claude/settings.local.json").read_text())
+        self.assertEqual(settings["permissions"]["deny"], CLAUDE_WORKER_MERGE_DENY)
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
             f"workspace create --cwd {worktree} --label project worker b1 --env HERDR_AGENTS_LAYOUT=managed "

@@ -977,7 +977,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         )
 
         with mock.patch.dict(os.environ, {"GH_TOKEN": "fixture-env-token"}):
-            findings = self.module.gh_login_findings(gh=gh)
+            findings = self.module.gh_login_findings(gh=gh, config_dir=self.temp_dir / "gh-config")
 
         self.assertEqual(findings, ["found: GitHub login machine-login (every seat on this machine acts as it)"])
         # A present login is a report line, not a failure: no repair, no non-zero exit.
@@ -999,12 +999,16 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         )
         for accounts, expected in cases:
             with self.subTest(expected=expected):
-                findings = self.module.gh_login_findings(gh=self.fake_gh_status(accounts))
+                findings = self.module.gh_login_findings(
+                    gh=self.fake_gh_status(accounts), config_dir=self.temp_dir / "gh-config"
+                )
                 self.assertEqual(len(findings), 1)
                 self.assertTrue(self.module.is_warning(findings[0]))
                 self.assertIn(expected, findings[0])
                 self.assertTrue(findings[0].endswith("or run make gh-auth)"))
-        missing = self.module.gh_login_findings(gh=str(self.temp_dir / "absent-gh"))
+        missing = self.module.gh_login_findings(
+            gh=str(self.temp_dir / "absent-gh"), config_dir=self.temp_dir / "gh-config"
+        )
         self.assertEqual(missing, ["WARN: GitHub login: gh auth status failed or gh is missing; run make gh-auth"])
 
     KEYRING_WARNING = (
@@ -1028,14 +1032,18 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         for source, state, expected in cases:
             with self.subTest(source=source):
                 account = {"login": "machine-login", "state": state, "active": True, "tokenSource": source}
-                findings = self.module.gh_login_findings(gh=self.fake_gh_status([account]))
+                findings = self.module.gh_login_findings(
+                    gh=self.fake_gh_status([account]), config_dir=self.temp_dir / "gh-config"
+                )
                 self.assertEqual(findings, expected)
 
     def test_gh_login_warns_on_a_hosts_file_not_0600(self) -> None:
         hosts = self.gh_hosts_file(0o644)
         account = {"login": "machine-login", "state": "success", "active": True, "tokenSource": hosts}
 
-        findings = self.module.gh_login_findings(gh=self.fake_gh_status([account]))
+        findings = self.module.gh_login_findings(
+            gh=self.fake_gh_status([account]), config_dir=self.temp_dir / "gh-config"
+        )
 
         self.assertEqual(findings, [f"WARN: GitHub login: {hosts} has mode 0644, not 0600; run make gh-auth"])
         self.assertTrue(self.module.is_warning(findings[0]))
@@ -1050,7 +1058,15 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                     {"login": "machine-login", "state": "success", "active": True, "tokenSource": "keyring"},
                     {"login": "stray-login", "state": "success", "active": False, "tokenSource": "keyring"},
                 ],
-                [self.count_warning(2, 2), self.KEYRING_WARNING],
+                [self.count_warning(2, 2), self.KEYRING_WARNING, mode_warning],
+            ),
+            (
+                "active account in the keyring, inactive one in the 0644 file",
+                [
+                    {"login": "machine-login", "state": "success", "active": True, "tokenSource": "keyring"},
+                    {"login": "stray-login", "state": "success", "active": False, "tokenSource": hosts},
+                ],
+                [self.count_warning(2, 2), self.KEYRING_WARNING, mode_warning],
             ),
             (
                 "two accounts, 0644 file",
@@ -1068,9 +1084,28 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         )
         for name, accounts, expected in cases:
             with self.subTest(name):
-                findings = self.module.gh_login_findings(gh=self.fake_gh_status(accounts))
+                findings = self.module.gh_login_findings(
+                    gh=self.fake_gh_status(accounts), config_dir=self.temp_dir / "gh-config"
+                )
                 self.assertEqual(findings, expected)
                 self.assertTrue(all(self.module.is_warning(finding) for finding in findings))
+
+    def test_gh_login_checks_the_configured_hosts_file_whatever_gh_reports(self) -> None:
+        # One working file login whose tokenSource names another path: the configured hosts.yml is still checked.
+        elsewhere = self.temp_dir / "elsewhere/hosts.yml"
+        elsewhere.parent.mkdir()
+        elsewhere.touch(mode=0o600)
+        hosts = Path(self.gh_hosts_file(0o644))
+        account = {"login": "machine-login", "state": "success", "active": True, "tokenSource": str(elsewhere)}
+        gh = self.fake_gh_status([account])
+
+        findings = self.module.gh_login_findings(gh=gh, config_dir=hosts.parent)
+
+        self.assertEqual(findings, [f"WARN: GitHub login: {hosts} has mode 0644, not 0600; run make gh-auth"])
+        hosts.unlink()
+        hosts.symlink_to(elsewhere)
+        findings = self.module.gh_login_findings(gh=gh, config_dir=hosts.parent)
+        self.assertEqual(findings, [f"WARN: GitHub login: {hosts} is not a regular file; run make gh-auth"])
 
     def test_gh_login_ignores_a_forced_color_setting(self) -> None:
         # gh colours its JSON under CLICOLOR_FORCE, which would break the parse.
@@ -1079,7 +1114,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         gh.write_text(gh.read_text().replace("#!/bin/sh\n", '#!/bin/sh\n[ -z "${CLICOLOR_FORCE-}" ] || exit 4\n', 1))
 
         with mock.patch.dict(os.environ, {"CLICOLOR_FORCE": "1"}):
-            findings = self.module.gh_login_findings(gh=str(gh))
+            findings = self.module.gh_login_findings(gh=str(gh), config_dir=self.temp_dir / "gh-config")
 
         self.assertEqual(findings, ["found: GitHub login machine-login (every seat on this machine acts as it)"])
 

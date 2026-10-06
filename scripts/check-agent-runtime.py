@@ -597,18 +597,20 @@ GH_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB
 GH_LOGIN_HINT = "run make gh-auth"
 
 
-def gh_login_findings(gh: str = "gh") -> list[str]:
+def gh_login_findings(gh: str = "gh", config_dir: Path | None = None) -> list[str]:
     """Report this machine's one GitHub login, the one every seat acts as.
 
     Present means `gh auth status` finds exactly one account in gh's default
     configuration, it works, and its token sits in gh's own file at mode 0600 (the
     Claude sandbox cannot reach the OS keyring): a `found:` line naming the login.
-    Anything else is one warning per problem with the `make gh-auth` hint; the count,
-    the active login's storage and the file's mode are checked independently. Never
-    prompts, and never reads or prints a token: the login and its token source come
-    from gh's JSON status, with token variables stripped so an environment token
-    cannot stand in for the stored login, and CLICOLOR_FORCE stripped so gh prints
-    plain JSON.
+    Anything else is one warning per problem with the `make gh-auth` hint. The count,
+    the active login's storage and gh's hosts.yml are checked independently: the file
+    in CONFIG_DIR (by default `${GH_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/gh}`)
+    must be a user-owned regular file at mode 0600 when it exists, whatever gh
+    reports. Never prompts, and never reads or prints a token: the login and its
+    token source come from gh's JSON status, with token variables stripped so an
+    environment token cannot stand in for the stored login, and CLICOLOR_FORCE
+    stripped so gh prints plain JSON.
     """
     env = {key: value for key, value in os.environ.items() if key not in (*GH_TOKEN_VARIABLES, "CLICOLOR_FORCE")}
     try:
@@ -639,15 +641,24 @@ def gh_login_findings(gh: str = "gh") -> list[str]:
             "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "
             "run make gh-auth to store it in gh's file"
         )
-    sources = {str(account.get("tokenSource", "")) for account in accounts}
-    for source in sorted(source for source in sources if source.endswith("hosts.yml")):
-        try:
-            mode = Path(source).stat().st_mode & 0o777
-        except OSError:
-            findings.append(f"WARN: GitHub login: cannot read the mode of {source}; {GH_LOGIN_HINT}")
-            continue
-        if mode != 0o600:
-            findings.append(f"WARN: GitHub login: {source} has mode {mode:04o}, not 0600; {GH_LOGIN_HINT}")
+    if config_dir is None:
+        xdg = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+        config_dir = Path(os.environ.get("GH_CONFIG_DIR") or xdg / "gh")
+    hosts = config_dir / "hosts.yml"
+    try:
+        info = hosts.lstat()
+    except FileNotFoundError:
+        pass
+    except OSError:
+        findings.append(f"WARN: GitHub login: cannot read the mode of {hosts}; {GH_LOGIN_HINT}")
+    else:
+        mode = info.st_mode & 0o777
+        if not stat.S_ISREG(info.st_mode):
+            findings.append(f"WARN: GitHub login: {hosts} is not a regular file; {GH_LOGIN_HINT}")
+        elif info.st_uid != os.getuid():
+            findings.append(f"WARN: GitHub login: {hosts} is not owned by you; {GH_LOGIN_HINT}")
+        elif mode != 0o600:
+            findings.append(f"WARN: GitHub login: {hosts} has mode {mode:04o}, not 0600; {GH_LOGIN_HINT}")
     if findings:
         return findings
     return [f"found: GitHub login {logins[0]} (every seat on this machine acts as it)"]

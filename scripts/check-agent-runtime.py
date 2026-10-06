@@ -622,18 +622,19 @@ def gh_login_findings(gh: str = "gh") -> list[str]:
         logins = [account["login"] for account in accounts if account.get("state") == "success"]
     except (OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError, AttributeError):
         return [f"WARN: GitHub login: gh auth status failed or gh is missing; {GH_LOGIN_HINT}"]
+    # gh names the file it read the token from; a keyring token shows "keyring", or, inside the sandbox
+    # where the keyring is unreachable, "default" with state "error". So check storage before the working count.
+    source = str(accounts[0].get("tokenSource", "")) if len(accounts) == 1 else ""
+    if len(accounts) == 1 and not source.endswith("hosts.yml"):
+        message = (
+            "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "
+            "run make gh-auth to store it in gh's file"
+        )
+        return [message]
     if len(accounts) != 1 or len(logins) != 1:
         message = (
             f"WARN: GitHub login: gh holds {len(logins)} working of {len(accounts)} logins; keep exactly one "
             f"(gh auth logout --user <login> for any other, or {GH_LOGIN_HINT})"
-        )
-        return [message]
-    # gh names the file it read the token from; a keyring token shows "keyring", or "default" where unreachable.
-    source = str(accounts[0].get("tokenSource", ""))
-    if not source.endswith("hosts.yml"):
-        message = (
-            "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "
-            "run make gh-auth to store it in gh's file"
         )
         return [message]
     try:

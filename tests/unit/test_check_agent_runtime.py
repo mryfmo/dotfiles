@@ -990,7 +990,11 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 [{"login": "machine-login", "state": "success"}, {"login": "stray-login", "state": "success"}],
                 "gh holds 2 working of 2 logins",
             ),
-            ([{"login": "machine-login", "state": "error"}], "gh holds 0 working of 1 logins"),
+            # A file token that no longer works (revoked).
+            (
+                [{"login": "machine-login", "state": "error", "tokenSource": self.gh_hosts_file()}],
+                "gh holds 0 working of 1 logins",
+            ),
             ([], "gh holds 0 working of 0 logins"),
         )
         for accounts, expected in cases:
@@ -1004,10 +1008,10 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual(missing, ["WARN: GitHub login: gh auth status failed or gh is missing; run make gh-auth"])
 
     def test_gh_login_warns_on_a_keyring_login(self) -> None:
-        # Outside the sandbox gh names the keyring; inside it, an unreachable keyring token shows "default".
-        for source in ("keyring", "default"):
+        # Outside the sandbox gh names the keyring; inside it, an unreachable keyring token fails as "default".
+        for source, state in (("keyring", "success"), ("default", "error")):
             with self.subTest(source=source):
-                account = {"login": "machine-login", "state": "success", "active": True, "tokenSource": source}
+                account = {"login": "machine-login", "state": state, "active": True, "tokenSource": source}
                 findings = self.module.gh_login_findings(gh=self.fake_gh_status([account]))
                 warning = (
                     "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "

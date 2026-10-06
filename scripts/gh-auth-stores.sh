@@ -3,9 +3,10 @@
 # @file gh-auth-stores.sh
 # @brief Log in each GitHub CLI credential store that holds no token.
 # @description
-#   Each GitHub account has its own store, a GH_CONFIG_DIR holding one login:
-#   OWNER_GH_CONFIG_DIR, WORK_GH_CONFIG_DIR and WORKER_GH_CONFIG_DIR, declared in
-#   home/dot_agents/agent-config.yaml and rendered into ~/.agents/model-profiles.env.
+#   Each machine has two stores, each a GH_CONFIG_DIR holding one login:
+#   OPERATOR_GH_CONFIG_DIR (this machine's human account) and WORKER_GH_CONFIG_DIR
+#   (the worker machine account), declared in home/dot_agents/agent-config.yaml and
+#   rendered into ~/.agents/model-profiles.env.
 #   A store whose `gh auth status` succeeds is skipped, so a hosts.yml that
 #   chezmoi-private already decrypted prompts for nothing. Any other store gets
 #   gh's own device-code login with file storage (the Claude sandbox cannot reach
@@ -29,7 +30,7 @@ function expand_home() {
 
 # @description Set an existing hosts.yml to mode 0600, failing loudly when that is impossible.
 #   Callers run inside `||` lists, where errexit is off, so every failure is returned explicitly.
-# @arg $1 string Account label: owner, work or worker.
+# @arg $1 string Account label: operator or worker.
 # @arg $2 string The store's GH_CONFIG_DIR.
 # @exitcode 1 hosts.yml exists but its mode could not be set (for example, another user owns it).
 function secure_hosts_file() {
@@ -44,7 +45,7 @@ function secure_hosts_file() {
 }
 
 # @description Log in one store unless it already holds a working token.
-# @arg $1 string Account label: owner, work or worker.
+# @arg $1 string Account label: operator or worker.
 # @arg $2 string The store's GH_CONFIG_DIR.
 function ensure_store() {
     local label="$1" dir="$2"
@@ -84,7 +85,7 @@ function main() {
     # A token in the environment overrides every store and would hide an empty one.
     unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN
     umask 077
-    for pair in owner:OWNER_GH_CONFIG_DIR work:WORK_GH_CONFIG_DIR worker:WORKER_GH_CONFIG_DIR; do
+    for pair in operator:OPERATOR_GH_CONFIG_DIR worker:WORKER_GH_CONFIG_DIR; do
         label="${pair%%:*}"
         var="${pair#*:}"
         if [[ -z ${!var:-} ]]; then

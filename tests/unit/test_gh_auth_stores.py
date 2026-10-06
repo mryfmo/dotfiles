@@ -35,12 +35,9 @@ class GhAuthStoresTest(unittest.TestCase):
         (bin_dir / "gh").chmod(0o755)
         self.calls = self.temp / "calls"
         self.env_file = self.temp / "model-profiles.env"
-        self.env_file.write_text(
-            "OWNER_GH_CONFIG_DIR='~/.config/gh'\n"
-            "WORK_GH_CONFIG_DIR='~/.config/gh-work'\n"
-            f"WORKER_GH_CONFIG_DIR='{self.temp}/worker store'\n"
-        )
-        # The owner store is already populated (for example by chezmoi-private): no prompt for it.
+        self.worker = self.temp / "worker store"
+        self.env_file.write_text(f"OPERATOR_GH_CONFIG_DIR='~/.config/gh'\nWORKER_GH_CONFIG_DIR='{self.worker}'\n")
+        # The operator store already holds a token (an earlier login on this machine): no prompt for it.
         (self.home / ".config/gh").mkdir(parents=True)
         (self.home / ".config/gh/token").touch()
         self.env = {
@@ -63,18 +60,18 @@ class GhAuthStoresTest(unittest.TestCase):
         return self.calls.read_text().splitlines()
 
     def test_without_a_terminal_it_never_prompts(self) -> None:
-        owner_hosts = self.home / ".config/gh/hosts.yml"
-        owner_hosts.touch(mode=0o644)
-        owner_hosts.chmod(0o644)
+        operator_hosts = self.home / ".config/gh/hosts.yml"
+        operator_hosts.touch(mode=0o644)
+        operator_hosts.chmod(0o644)
 
         result = self.run_script(subprocess.DEVNULL)
 
         self.assertEqual(result.returncode, 1)
-        self.assertIn(f"owner store {self.home}/.config/gh already holds a token; skipped", result.stdout)
-        self.assertIn(f"work store {self.home}/.config/gh-work has no token; run", result.stderr)
+        self.assertIn(f"operator store {self.home}/.config/gh already holds a token; skipped", result.stdout)
+        self.assertIn(f"worker store {self.worker} has no token; run", result.stderr)
         self.assertFalse(any("auth login" in call for call in self.logged_calls()))
         # A store that is skipped still gets its hosts.yml mode fixed, so the doctor's hint holds.
-        self.assertEqual(stat.S_IMODE(owner_hosts.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(operator_hosts.stat().st_mode), 0o600)
 
     def test_setup_skips_the_logins_in_ci_without_calling_gh(self) -> None:
         # The public-bootstrap CI jobs run setup.sh with CI=true and no terminal: nothing may prompt.
@@ -121,7 +118,9 @@ class GhAuthStoresTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("Skipping the GitHub logins", result.stdout)
         logins = [call for call in self.logged_calls() if "|auth login " in call]
-        self.assertEqual(len(logins), 2)
+        self.assertEqual(
+            logins, [f"{self.worker}|unset|auth login --hostname github.com --git-protocol https --insecure-storage"]
+        )
 
     def test_a_hosts_file_it_cannot_secure_fails_the_store(self) -> None:
         # A chmod that fails (as for a hosts.yml another user owns) must not pass for success.
@@ -139,15 +138,15 @@ class GhAuthStoresTest(unittest.TestCase):
             os.close(secondary)
 
         self.assertEqual(result.returncode, 1, result.stderr)
-        for label, store in (("owner", self.home / ".config/gh"), ("work", self.home / ".config/gh-work")):
+        for label, store in (("operator", self.home / ".config/gh"), ("worker", self.worker)):
             with self.subTest(store=label):
                 self.assertIn(
                     f"gh-auth: {label} store {store}: cannot set hosts.yml to mode 0600; "
                     'make it yours, then run "make gh-auth"',
                     result.stderr,
                 )
-        # The owner store fails before its token check counts as a skip.
-        self.assertNotIn("owner store", result.stdout)
+        # The operator store fails before its token check counts as a skip.
+        self.assertNotIn("operator store", result.stdout)
 
     def test_on_a_terminal_it_logs_in_only_the_empty_stores(self) -> None:
         primary, secondary = pty.openpty()
@@ -158,22 +157,17 @@ class GhAuthStoresTest(unittest.TestCase):
             os.close(secondary)
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        work, worker = self.home / ".config/gh-work", self.temp / "worker store"
         login = "auth login --hostname github.com --git-protocol https --insecure-storage"
         self.assertEqual(
             self.logged_calls(),
             [
                 f"{self.home}/.config/gh|unset|auth status --hostname github.com",
-                f"{work}|unset|auth status --hostname github.com",
-                f"{work}|unset|{login}",
-                f"{worker}|unset|auth status --hostname github.com",
-                f"{worker}|unset|{login}",
+                f"{self.worker}|unset|auth status --hostname github.com",
+                f"{self.worker}|unset|{login}",
             ],
         )
-        for store in (work, worker):
-            with self.subTest(store=store):
-                self.assertEqual(stat.S_IMODE((store / "hosts.yml").stat().st_mode), 0o600)
-                self.assertEqual(stat.S_IMODE(store.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE((self.worker / "hosts.yml").stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(self.worker.stat().st_mode), 0o700)
 
 
 if __name__ == "__main__":

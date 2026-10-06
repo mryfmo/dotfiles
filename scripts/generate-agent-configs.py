@@ -1254,10 +1254,9 @@ sys.stdout.write(merge_config(sys.stdin.read()))
 '''.replace("__HOOK_TRUST_BLOCK__\n", render_hook_trust_block(manifest))
 
 
-# One GitHub CLI credential store (a GH_CONFIG_DIR) per account: manifest key, rendered variable, default.
+# The two GitHub CLI credential stores (a GH_CONFIG_DIR each) of a machine: manifest key, rendered variable, default.
 GH_CONFIG_DIRS = (
-    ("owner_gh_config_dir", "OWNER_GH_CONFIG_DIR", "~/.config/gh"),
-    ("work_gh_config_dir", "WORK_GH_CONFIG_DIR", "~/.config/gh-work"),
+    ("operator_gh_config_dir", "OPERATOR_GH_CONFIG_DIR", "~/.config/gh"),
     ("worker_gh_config_dir", "WORKER_GH_CONFIG_DIR", "~/.config/gh-worker"),
 )
 
@@ -1272,7 +1271,7 @@ def gh_config_dirs(manifest: dict[str, Any]) -> list[tuple[str, str]]:
         stores.append((var, gh_dir))
     paths = [os.path.normpath(os.path.expanduser(gh_dir)) for _, gh_dir in stores]
     if len(set(paths)) != len(paths):
-        fail("owner_gh_config_dir, work_gh_config_dir and worker_gh_config_dir must name different directories")
+        fail("operator_gh_config_dir and worker_gh_config_dir must name different directories")
     return stores
 
 

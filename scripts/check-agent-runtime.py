@@ -594,11 +594,11 @@ def orchestrator_seat_lock_warnings(
 
 
 GH_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
-GH_STORE_LINE = re.compile(r"(OWNER|WORK|WORKER)_GH_CONFIG_DIR=(.+)")
+GH_STORE_LINE = re.compile(r"(OPERATOR|WORKER)_GH_CONFIG_DIR=(.+)")
 
 
 def gh_credential_store_findings(home: Path | None = None, env_path: Path | None = None, gh: str = "gh") -> list[str]:
-    """Report each GitHub credential store (one GH_CONFIG_DIR per account) declared in model-profiles.env.
+    """Report each GitHub credential store (a GH_CONFIG_DIR, one login each) declared in model-profiles.env.
 
     A store is present when its hosts.yml is a user-owned regular file with mode 0600 and
     `gh auth status` finds exactly one working login; that is a `found:` line naming the

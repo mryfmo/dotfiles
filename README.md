@@ -1242,16 +1242,15 @@ which otherwise take precedence over stored credentials. Codex workers also
 receive a worker-only `shell_environment_policy.set.GH_CONFIG_DIR` override so
 their shell tools retain the selection with `inherit=core`.
 
-Operator phase (once per machine, outside the sandbox): each GitHub account
-has its own credential store, a `GH_CONFIG_DIR` that holds exactly one login.
-The stores are declared in `home/dot_agents/agent-config.yaml` (directories
-only, never logins or tokens) and rendered into `~/.agents/model-profiles.env`:
+Operator phase (once per machine, outside the sandbox): each machine has two
+GitHub credential stores, each a `GH_CONFIG_DIR` that holds exactly one login.
+They are declared in `home/dot_agents/agent-config.yaml` (directories only,
+never logins or tokens) and rendered into `~/.agents/model-profiles.env`:
 
-| Account                                                                        | Store (`GH_CONFIG_DIR`)       | Rendered variable      | Used by                                                                                        |
-| ------------------------------------------------------------------------------ | ----------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------- |
-| owner, the merging account                                                     | `~/.config/gh` (gh's default) | `OWNER_GH_CONFIG_DIR`  | the orchestrator seat and personal repositories                                                |
-| work                                                                           | `~/.config/gh-work`           | `WORK_GH_CONFIG_DIR`   | work repositories, which set `GH_CONFIG_DIR` per repository (for example in a direnv `.envrc`) |
-| worker, a different account with repository write access and no ruleset bypass | `~/.config/gh-worker`         | `WORKER_GH_CONFIG_DIR` | worker seats, selected by `herdr-agents`                                                       |
+| Account                                                                                                               | Store (`GH_CONFIG_DIR`)       | Rendered variable        | Used by                                  |
+| --------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------ | ---------------------------------------- |
+| operator: this machine's human account, the one that merges on this machine (which account it is differs per machine) | `~/.config/gh` (gh's default) | `OPERATOR_GH_CONFIG_DIR` | the orchestrator seat                    |
+| worker: the machine account, the same one on every machine, with repository write access and no ruleset bypass        | `~/.config/gh-worker`         | `WORKER_GH_CONFIG_DIR`   | worker seats, selected by `herdr-agents` |
 
 `./setup.sh` ends with the login step on a terminal, and `make gh-auth` runs it
 again at any time. For each store, `gh auth status` decides:
@@ -1263,15 +1262,15 @@ Git needs no per-store step: the managed git config's credential helper,
 `!gh auth git-credential`, reads `GH_CONFIG_DIR` and so serves every store.
 `gh auth setup-git` would rewrite that chezmoi-managed file and leave drift.
 
-When chezmoi-private provides an `encrypted_private_hosts.yml` per store,
-the files are already in place and the step prompts for nothing. `make update`
-never prompts and never logs in. No store holds two accounts, so `gh auth
-switch` is not used. The orchestrator seat uses gh's default directory
-without `GH_CONFIG_DIR`. So `owner_gh_config_dir` only tells `make gh-auth` and
-`make doctor` where that directory is, and must equal it: `$XDG_CONFIG_HOME/gh`
-when `XDG_CONFIG_HOME` is set. `gh auth status` needs the network. Offline, a
-store that holds a token looks empty, and `make gh-auth` offers its login
-again. When the worker
+Credentials are never stored in a repository, encrypted or not. Each machine
+logs in for its own tokens, so a lost machine costs one revocation. `make
+update` never prompts and never logs in. No store holds two accounts, so `gh
+auth switch` is not used. The orchestrator seat uses gh's default directory
+without `GH_CONFIG_DIR`. So `operator_gh_config_dir` only tells `make gh-auth`
+and `make doctor` where that directory is, and must equal it:
+`$XDG_CONFIG_HOME/gh` when `XDG_CONFIG_HOME` is set. `gh auth status` needs the
+network. Offline, a store that holds a token looks empty, and `make gh-auth`
+offers its login again. When the worker
 store's `hosts.yml` is absent, `herdr-agents` prints a one-line provisioning
 notice to stderr in full, `--restart-worker` and `--add-worker` modes and
 continues seating the worker.

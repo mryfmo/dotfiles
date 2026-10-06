@@ -954,11 +954,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         """A fake HOME with a rendered env file and a fake gh that answers from <store>/status.json."""
         home = self.temp_dir / "home"
         env_path = self.temp_dir / "model-profiles.env"
-        env_path.write_text(
-            "OWNER_GH_CONFIG_DIR='~/.config/gh'\n"
-            "WORK_GH_CONFIG_DIR='~/.config/gh-work'\n"
-            "WORKER_GH_CONFIG_DIR='/abs/never'\n"
-        )
+        env_path.write_text("OPERATOR_GH_CONFIG_DIR='~/.config/gh'\nWORKER_GH_CONFIG_DIR='~/.config/gh-worker'\n")
         gh = self.temp_dir / "gh"
         gh.write_text(
             "#!/bin/sh\n"
@@ -975,10 +971,11 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         (directory / "hosts.yml").chmod(mode)
         (directory / "status.json").write_text(json.dumps({"hosts": {"github.com": accounts}}))
 
-    def test_gh_credential_stores_report_present_missing_and_bad_mode(self) -> None:
+    def test_gh_credential_stores_report_present_bad_mode_and_missing(self) -> None:
         home, env_path, gh = self.gh_store_fixture()
-        self.write_store(home / ".config/gh", [{"login": "owner-login", "state": "success", "active": True}])
-        self.write_store(home / ".config/gh-work", [{"login": "work-login", "state": "success"}], mode=0o644)
+        operator, worker = home / ".config/gh", home / ".config/gh-worker"
+        self.write_store(operator, [{"login": "operator-login", "state": "success", "active": True}])
+        self.write_store(worker, [{"login": "worker-login", "state": "success"}], mode=0o644)
 
         with mock.patch.dict(os.environ, {"GH_TOKEN": "fixture-env-token"}):
             findings = self.module.gh_credential_store_findings(home=home, env_path=env_path, gh=gh)
@@ -986,37 +983,42 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual(
             findings,
             [
-                f"found: GitHub owner credential store {home}/.config/gh (hosts.yml 0600, one user: owner-login)",
+                f"found: GitHub operator credential store {operator} (hosts.yml 0600, one user: operator-login)",
                 (
-                    f"WARN: GitHub work credential store {home}/.config/gh-work: "
+                    f"WARN: GitHub worker credential store {worker}: "
                     "hosts.yml must be a user-owned regular file with mode 0600; run make gh-auth"
                 ),
-                "WARN: GitHub worker credential store /abs/never has no hosts.yml; run make gh-auth",
             ],
         )
         # A present store is a report line, not a failure: no repair, no non-zero exit.
         self.assertTrue(self.module.is_info(findings[0]))
         self.assertEqual(self.module.repair_actions(findings[:1], home=home), [])
+        (worker / "hosts.yml").unlink()
+        self.assertEqual(
+            self.module.gh_credential_store_findings(home=home, env_path=env_path, gh=gh)[1],
+            f"WARN: GitHub worker credential store {worker} has no hosts.yml; run make gh-auth",
+        )
 
     def test_gh_credential_stores_warn_on_two_logins_a_failed_status_or_no_gh(self) -> None:
         home, env_path, gh = self.gh_store_fixture()
+        operator, worker = home / ".config/gh", home / ".config/gh-worker"
         self.write_store(
-            home / ".config/gh",
-            [{"login": "owner-login", "state": "success"}, {"login": "work-login", "state": "success"}],
+            operator,
+            [{"login": "operator-login", "state": "success"}, {"login": "other-login", "state": "success"}],
         )
-        self.write_store(home / ".config/gh-work", [{"login": "work-login", "state": "error"}])
+        self.write_store(worker, [{"login": "worker-login", "state": "error"}])
 
         findings = self.module.gh_credential_store_findings(home=home, env_path=env_path, gh=gh)
 
         self.assertEqual(
-            findings[:2],
+            findings,
             [
                 (
-                    f"WARN: GitHub owner credential store {home}/.config/gh holds 2 working of 2 logins; "
+                    f"WARN: GitHub operator credential store {operator} holds 2 working of 2 logins; "
                     "keep exactly one account per store (run make gh-auth)"
                 ),
                 (
-                    f"WARN: GitHub work credential store {home}/.config/gh-work holds 0 working of 1 logins; "
+                    f"WARN: GitHub worker credential store {worker} holds 0 working of 1 logins; "
                     "keep exactly one account per store (run make gh-auth)"
                 ),
             ],
@@ -1025,7 +1027,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             home=home, env_path=env_path, gh=str(self.temp_dir / "absent-gh")
         )
         self.assertIn(
-            f"WARN: GitHub owner credential store {home}/.config/gh: gh auth status failed or gh is missing; "
+            f"WARN: GitHub operator credential store {operator}: gh auth status failed or gh is missing; "
             "run make gh-auth",
             missing_gh,
         )

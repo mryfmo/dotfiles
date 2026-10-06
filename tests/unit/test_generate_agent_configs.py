@@ -1329,13 +1329,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(SystemExit):
                 self.module.render_model_profiles_env(manifest)
 
-    def test_gh_credential_stores_render_one_directory_per_account(self) -> None:
+    def test_gh_credential_stores_render_two_directories_per_machine(self) -> None:
         manifest = sample_manifest()
-        defaults = {
-            "OWNER_GH_CONFIG_DIR": "~/.config/gh",
-            "WORK_GH_CONFIG_DIR": "~/.config/gh-work",
-            "WORKER_GH_CONFIG_DIR": "~/.config/gh-worker",
-        }
+        defaults = {"OPERATOR_GH_CONFIG_DIR": "~/.config/gh", "WORKER_GH_CONFIG_DIR": "~/.config/gh-worker"}
         script = "".join(f'\nprintf "%s\\n" "${var}"' for var in defaults)
 
         def rendered_stores() -> list[str]:
@@ -1345,22 +1341,24 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             ).stdout.splitlines()
 
         self.assertEqual(rendered_stores(), list(defaults.values()))
-        for key in ("owner_gh_config_dir", "work_gh_config_dir"):
-            value = f"/tmp/{key} 'quoted' $(false)"
-            manifest[key] = value
-            with self.subTest(key=key):
-                self.assertIn(value, rendered_stores())
-            for bad in ("", "relative/path", 123, "~/bad\npath"):
-                manifest[key] = bad
-                with self.subTest(key=key, value=bad), self.assertRaises(SystemExit):
-                    self.module.render_model_profiles_env(manifest)
-            manifest.pop(key)
-        # Two accounts never share a store: that is the merged-hosts.yml ambiguity this layout removes.
-        manifest["work_gh_config_dir"] = "~/.config/gh-worker/"
+        # The human account is a property of the machine: these two are the only stores rendered.
+        env = self.module.render_model_profiles_env(manifest)
+        stores = {
+            line.split("=", 1)[0] for line in env.splitlines() if line.split("=", 1)[0].endswith("_GH_CONFIG_DIR")
+        }
+        self.assertEqual(stores, set(defaults))
+        value = "/tmp/operator gh 'quoted' $(false)"
+        manifest["operator_gh_config_dir"] = value
+        self.assertIn(value, rendered_stores())
+        for bad in ("", "relative/path", 123, "~/bad\npath"):
+            manifest["operator_gh_config_dir"] = bad
+            with self.subTest(value=bad), self.assertRaises(SystemExit):
+                self.module.render_model_profiles_env(manifest)
+        # The two accounts never share a store, however the directory is spelled.
+        manifest["operator_gh_config_dir"] = "~/.config/gh-worker/"
         with self.assertRaises(SystemExit):
             self.module.render_model_profiles_env(manifest)
-        # `~` is expanded before the comparison, so the absolute spelling of a store is the same store.
-        manifest["work_gh_config_dir"] = "/home/fixture/.config/gh"
+        manifest["operator_gh_config_dir"] = "/home/fixture/.config/gh-worker"
         with mock.patch.dict(os.environ, {"HOME": "/home/fixture"}), self.assertRaises(SystemExit):
             self.module.render_model_profiles_env(manifest)
 

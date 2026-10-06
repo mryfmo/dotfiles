@@ -1107,6 +1107,27 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         findings = self.module.gh_login_findings(gh=gh, config_dir=hosts.parent)
         self.assertEqual(findings, [f"WARN: GitHub login: {hosts} is not a regular file; run make gh-auth"])
 
+    def test_gh_login_checks_the_hosts_file_when_gh_fails(self) -> None:
+        # A missing gh, a timeout or unparsable output still leaves the configured hosts.yml checked.
+        hosts = Path(self.gh_hosts_file(0o644))
+        failed = "WARN: GitHub login: gh auth status failed or gh is missing; run make gh-auth"
+        mode_warning = f"WARN: GitHub login: {hosts} has mode 0644, not 0600; run make gh-auth"
+        garbage = self.temp_dir / "garbage-gh"
+        garbage.write_text("#!/bin/sh\necho not-json\n")
+        garbage.chmod(0o755)
+        timeout = mock.patch.object(
+            self.module.subprocess, "run", side_effect=self.module.subprocess.TimeoutExpired("gh", 60)
+        )
+        cases = (
+            ("gh missing", str(self.temp_dir / "absent-gh"), contextlib.nullcontext()),
+            ("gh times out", "gh", timeout),
+            ("invalid JSON", str(garbage), contextlib.nullcontext()),
+        )
+        for name, gh, context in cases:
+            with self.subTest(name), context:
+                findings = self.module.gh_login_findings(gh=gh, config_dir=hosts.parent)
+                self.assertEqual(findings, [failed, mode_warning])
+
     def test_gh_login_ignores_a_forced_color_setting(self) -> None:
         # gh colours its JSON under CLICOLOR_FORCE, which would break the parse.
         account = {"login": "machine-login", "state": "success", "active": True, "tokenSource": self.gh_hosts_file()}

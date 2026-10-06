@@ -603,10 +603,12 @@ def gh_login_findings(gh: str = "gh") -> list[str]:
     Present means `gh auth status` finds exactly one account in gh's default
     configuration, it works, and its token sits in gh's own file at mode 0600 (the
     Claude sandbox cannot reach the OS keyring): a `found:` line naming the login.
-    Anything else is a warning with the `make gh-auth` hint. Never prompts, and never
-    reads or prints a token: the login and its token source come from gh's JSON
-    status, with token variables stripped so an environment token cannot stand in for
-    the stored login, and CLICOLOR_FORCE stripped so gh prints plain JSON.
+    Anything else is one warning per problem with the `make gh-auth` hint; the count,
+    the active login's storage and the file's mode are checked independently. Never
+    prompts, and never reads or prints a token: the login and its token source come
+    from gh's JSON status, with token variables stripped so an environment token
+    cannot stand in for the stored login, and CLICOLOR_FORCE stripped so gh prints
+    plain JSON.
     """
     env = {key: value for key, value in os.environ.items() if key not in (*GH_TOKEN_VARIABLES, "CLICOLOR_FORCE")}
     try:
@@ -622,27 +624,32 @@ def gh_login_findings(gh: str = "gh") -> list[str]:
         logins = [account["login"] for account in accounts if account.get("state") == "success"]
     except (OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError, AttributeError):
         return [f"WARN: GitHub login: gh auth status failed or gh is missing; {GH_LOGIN_HINT}"]
-    # gh names the file it read the token from; a keyring token shows "keyring", or, inside the sandbox
-    # where the keyring is unreachable, "default" with state "error". So check storage before the working count.
-    source = str(accounts[0].get("tokenSource", "")) if len(accounts) == 1 else ""
-    if len(accounts) == 1 and not source.endswith("hosts.yml"):
-        message = (
-            "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "
-            "run make gh-auth to store it in gh's file"
-        )
-        return [message]
+    findings = []
     if len(accounts) != 1 or len(logins) != 1:
         message = (
             f"WARN: GitHub login: gh holds {len(logins)} working of {len(accounts)} logins; keep exactly one "
             f"(gh auth logout --user <login> for any other, or {GH_LOGIN_HINT})"
         )
-        return [message]
-    try:
-        mode = Path(source).stat().st_mode & 0o777
-    except OSError:
-        return [f"WARN: GitHub login: cannot read the mode of {source}; {GH_LOGIN_HINT}"]
-    if mode != 0o600:
-        return [f"WARN: GitHub login: {source} has mode {mode:04o}, not 0600; {GH_LOGIN_HINT}"]
+        findings.append(message)
+    # Storage and file mode are checked whatever the count and auth state. gh names the file it read a token
+    # from; a keyring token shows "keyring", or, inside the sandbox where the keyring is unreachable, "default".
+    active = [account for account in accounts if account.get("active")]
+    if active and not str(active[0].get("tokenSource", "")).endswith("hosts.yml"):
+        findings.append(
+            "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "
+            "run make gh-auth to store it in gh's file"
+        )
+    sources = {str(account.get("tokenSource", "")) for account in accounts}
+    for source in sorted(source for source in sources if source.endswith("hosts.yml")):
+        try:
+            mode = Path(source).stat().st_mode & 0o777
+        except OSError:
+            findings.append(f"WARN: GitHub login: cannot read the mode of {source}; {GH_LOGIN_HINT}")
+            continue
+        if mode != 0o600:
+            findings.append(f"WARN: GitHub login: {source} has mode {mode:04o}, not 0600; {GH_LOGIN_HINT}")
+    if findings:
+        return findings
     return [f"found: GitHub login {logins[0]} (every seat on this machine acts as it)"]
 
 

@@ -1007,17 +1007,29 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         missing = self.module.gh_login_findings(gh=str(self.temp_dir / "absent-gh"))
         self.assertEqual(missing, ["WARN: GitHub login: gh auth status failed or gh is missing; run make gh-auth"])
 
+    KEYRING_WARNING = (
+        "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "
+        "run make gh-auth to store it in gh's file"
+    )
+
+    def count_warning(self, working: int, total: int) -> str:
+        return (
+            f"WARN: GitHub login: gh holds {working} working of {total} logins; keep exactly one "
+            "(gh auth logout --user <login> for any other, or run make gh-auth)"
+        )
+
     def test_gh_login_warns_on_a_keyring_login(self) -> None:
-        # Outside the sandbox gh names the keyring; inside it, an unreachable keyring token fails as "default".
-        for source, state in (("keyring", "success"), ("default", "error")):
+        # Outside the sandbox gh names the keyring; inside it, an unreachable keyring token fails as "default",
+        # and the storage warning still appears next to the count warning.
+        cases = (
+            ("keyring", "success", [self.KEYRING_WARNING]),
+            ("default", "error", [self.count_warning(0, 1), self.KEYRING_WARNING]),
+        )
+        for source, state, expected in cases:
             with self.subTest(source=source):
                 account = {"login": "machine-login", "state": state, "active": True, "tokenSource": source}
                 findings = self.module.gh_login_findings(gh=self.fake_gh_status([account]))
-                warning = (
-                    "WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; "
-                    "run make gh-auth to store it in gh's file"
-                )
-                self.assertEqual(findings, [warning])
+                self.assertEqual(findings, expected)
 
     def test_gh_login_warns_on_a_hosts_file_not_0600(self) -> None:
         hosts = self.gh_hosts_file(0o644)
@@ -1027,6 +1039,38 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertEqual(findings, [f"WARN: GitHub login: {hosts} has mode 0644, not 0600; run make gh-auth"])
         self.assertTrue(self.module.is_warning(findings[0]))
+
+    def test_gh_login_storage_and_mode_are_checked_whatever_the_count_and_auth_state(self) -> None:
+        hosts = self.gh_hosts_file(0o644)
+        mode_warning = f"WARN: GitHub login: {hosts} has mode 0644, not 0600; run make gh-auth"
+        cases = (
+            (
+                "two accounts, active one in the keyring",
+                [
+                    {"login": "machine-login", "state": "success", "active": True, "tokenSource": "keyring"},
+                    {"login": "stray-login", "state": "success", "active": False, "tokenSource": "keyring"},
+                ],
+                [self.count_warning(2, 2), self.KEYRING_WARNING],
+            ),
+            (
+                "two accounts, 0644 file",
+                [
+                    {"login": "machine-login", "state": "success", "active": True, "tokenSource": hosts},
+                    {"login": "stray-login", "state": "error", "active": False, "tokenSource": "default"},
+                ],
+                [self.count_warning(1, 2), mode_warning],
+            ),
+            (
+                "auth error, 0644 file",
+                [{"login": "machine-login", "state": "error", "active": True, "tokenSource": hosts}],
+                [self.count_warning(0, 1), mode_warning],
+            ),
+        )
+        for name, accounts, expected in cases:
+            with self.subTest(name):
+                findings = self.module.gh_login_findings(gh=self.fake_gh_status(accounts))
+                self.assertEqual(findings, expected)
+                self.assertTrue(all(self.module.is_warning(finding) for finding in findings))
 
     def test_gh_login_ignores_a_forced_color_setting(self) -> None:
         # gh colours its JSON under CLICOLOR_FORCE, which would break the parse.

@@ -176,9 +176,9 @@ and has no staged or unstaged tracked-file changes. Otherwise it prints the
 reason and the exact manual `git -C <repo> pull` command, then continues with
 the local source; a failed fast-forward pull also warns and continues.
 `chezmoi apply` refuses a source tree whose `home/`, `install/` or `scripts/`
-differ from its fetched upstream, through uncommitted, unmerged or not yet pulled
-changes (override `CHEZMOI_ALLOW_DIRTY_SOURCE=1`), so changes reach the host
-only through a merged pull request. `make update` then
+differ from the last-fetched `origin/main`, through uncommitted, unmerged,
+unpushed or not yet pulled changes (override `CHEZMOI_ALLOW_DIRTY_SOURCE=1`), so
+changes reach the host only through a merged pull request. `make update` then
 ensures the locked Node/npm runtime is installed before the two locked
 statusline tools required by the applied config, without upgrading other tools.
 The asset refresh also converges configured GitHub CLI extensions, syncs the

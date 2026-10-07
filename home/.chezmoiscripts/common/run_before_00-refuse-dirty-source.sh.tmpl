@@ -4,9 +4,10 @@
 # @brief Refuse chezmoi apply from a source tree that differs from its merged upstream.
 # @description
 #   Compares home/, install/ and scripts/ of the source repository (the parent
-#   of the chezmoi source directory) with the upstream ref as last fetched:
-#   `@{upstream}`, else `origin/main`, else HEAD. A tree whose content equals
-#   that ref applies; uncommitted, untracked, unmerged or not yet pulled changes stop the apply,
+#   of the chezmoi source directory) with the merged branch as last fetched:
+#   `origin/main`, else `@{upstream}`, else HEAD. A tree whose content equals
+#   that ref applies; uncommitted, untracked, unmerged or not yet pulled changes
+#   stop the apply, and so does a pushed but unmerged feature branch,
 #   so changes reach the host only through a merged pull request. The guard
 #   never touches the network. It is skipped for a non-git source, when CI=true,
 #   and when CHEZMOI_ALLOW_DIRTY_SOURCE=1.
@@ -17,19 +18,20 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
 
-# @description Print the ref the source tree must equal: @{upstream}, else origin/main, else HEAD.
+# @description Print the ref the source tree must equal: origin/main, else @{upstream}, else HEAD.
 # @arg $1 path Source repository.
 function comparison_ref() {
     local repo="$1"
     local upstream
 
+    # The merged branch comes first: a pushed feature branch equals its own upstream.
+    if git -C "${repo}" rev-parse --verify --quiet 'origin/main^{commit}' > /dev/null; then
+        echo origin/main
+        return 0
+    fi
     # Capture first: a configured upstream whose ref is gone prints the literal @{upstream}.
     if upstream="$(git -C "${repo}" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null)"; then
         echo "${upstream}"
-        return 0
-    fi
-    if git -C "${repo}" rev-parse --verify --quiet 'origin/main^{commit}' > /dev/null; then
-        echo origin/main
         return 0
     fi
     echo HEAD
@@ -50,7 +52,9 @@ function refuse_dirty_source() {
     fi
 
     ref="$(comparison_ref "${repo}")"
+    # A conflicted path restored to the ref's content still diffs clean, so unmerged entries count on their own.
     if git -C "${repo}" diff --quiet "${ref}" -- home install scripts &&
+        [ -z "$(git -C "${repo}" ls-files --unmerged -- home install scripts)" ] &&
         [ -z "$(git -C "${repo}" ls-files --others --exclude-standard -- home install scripts)" ]; then
         return 0
     fi

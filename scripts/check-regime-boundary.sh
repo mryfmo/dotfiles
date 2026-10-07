@@ -8,7 +8,10 @@
 #   (`git worktree list`); exactly one agmsg identity name across claude-code
 #   and codex at each active seat (the main checkout and the manifest
 #   `worker_worktree`; an empty seat is reported too), and more than one name
-#   per type at any other checkout; running `crit _serve` review servers; leftover `<repo> worker <name>` Herdr
+#   per type at any other checkout; a seated main checkout whose HEAD is
+#   not the `main` branch (a detached HEAD or another branch; a checkout with
+#   no identity, such as a CI checkout, is never flagged); running
+#   `crit _serve` review servers; leftover `<repo> worker <name>` Herdr
 #   workspaces and added-worker tabs in the pair workspace (only when `herdr`
 #   is reachable); and a bare-id orchestrator
 #   seat lock, through the one implementation in
@@ -82,6 +85,14 @@ if [[ -x ${scripts}/identities.sh ]]; then
             violations+=("no agmsg identity at the active seat ${seat} (expected one)")
         elif ((names > 1)); then
             violations+=("stray identities at the active seat ${seat}: ${names} names across claude-code and codex (expected one)")
+        fi
+        # Only a seated orchestrator checkout must stay on main; a CI checkout
+        # with no identity may sit at a detached HEAD.
+        if [[ ${seat} == "${main}" ]] && ((names > 0)); then
+            branch="$(git -C "${main}" symbolic-ref -q --short HEAD 2> /dev/null || true)"
+            if [[ ${branch} != main ]]; then
+                violations+=("orchestrator seat is not on main: ${branch:-detached at $(git -C "${main}" rev-parse --short HEAD 2> /dev/null || echo unknown)}")
+            fi
         fi
     done
     for checkout in "${checkouts[@]}"; do

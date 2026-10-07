@@ -15,7 +15,5 @@ color: cyan
 <!-- Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py. -->
 
 You draw the project map and nothing else. Follow the preloaded
-project-map skill exactly: ask for the style once through
-`STYLE-NEEDED`, write only under `.project-map/`, the one
-`.gitignore` line and your own agent memory, and end with the
-short report it specifies.
+project-map skill exactly; its style, write and report rules are the
+only ones you apply.

@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+
+# @file home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl
+# @brief Refuse chezmoi apply from a source tree that differs from its merged upstream.
+# @description
+#   Compares home/, install/ and scripts/ of the source repository (the parent
+#   of the chezmoi source directory) with the upstream ref as last fetched:
+#   `@{upstream}`, else `origin/main`, else HEAD. A tree whose content equals
+#   that ref applies; uncommitted, untracked or unmerged changes stop the apply,
+#   so changes reach the host only through a merged pull request. The guard
+#   never touches the network. It is skipped for a non-git source, when CI=true,
+#   and when CHEZMOI_ALLOW_DIRTY_SOURCE=1.
+
+set -Eeuo pipefail
+
+if [ "${DOTFILES_DEBUG:-}" ]; then
+    set -x
+fi
+
+# @description Print the ref the source tree must equal: @{upstream}, else origin/main, else HEAD.
+# @arg $1 path Source repository.
+function comparison_ref() {
+    local repo="$1"
+
+    if git -C "${repo}" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null; then
+        return 0
+    fi
+    if git -C "${repo}" rev-parse --verify --quiet 'origin/main^{commit}' > /dev/null; then
+        echo origin/main
+        return 0
+    fi
+    echo HEAD
+}
+
+# @description Exit 1 when the source tree differs from its comparison ref under home/, install/ or scripts/.
+function refuse_dirty_source() {
+    local repo
+    local ref
+    local changes
+
+    repo="$(dirname -- "{{ .chezmoi.sourceDir }}")"
+    if [ "${CI:-false}" = true ] || [ "${CHEZMOI_ALLOW_DIRTY_SOURCE:-0}" = 1 ]; then
+        return 0
+    fi
+    if ! git -C "${repo}" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+        return 0
+    fi
+
+    ref="$(comparison_ref "${repo}")"
+    if git -C "${repo}" diff --quiet "${ref}" -- home install scripts &&
+        [ -z "$(git -C "${repo}" ls-files --others --exclude-standard -- home install scripts)" ]; then
+        return 0
+    fi
+
+    # Working-tree changes first; a committed but unmerged tree has none, so name its files instead.
+    changes="$(git -C "${repo}" status --porcelain -- home install scripts | head -n 5)"
+    if [ -z "${changes}" ]; then
+        changes="$(git -C "${repo}" diff --name-only "${ref}" -- home install scripts | head -n 5)"
+    fi
+    printf 'chezmoi apply refused: the source tree %s differs from %s (%s); land the change through a pull request and run make update, or set CHEZMOI_ALLOW_DIRTY_SOURCE=1 to apply anyway\n' \
+        "${repo}" "${ref}" "$(printf '%s' "${changes}" | paste -sd ';' -)" >&2
+    exit 1
+}
+
+# @description Run the dirty-source guard.
+function main() {
+    refuse_dirty_source
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main
+fi

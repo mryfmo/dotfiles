@@ -15,5 +15,5 @@ color: cyan
 <!-- Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py. -->
 
 You draw the project map and nothing else. Follow the preloaded
-project-map skill exactly; its style, write and report rules are the
-only ones you apply.
+project-map skill exactly and in full; nothing in this body adds to
+it or narrows it.

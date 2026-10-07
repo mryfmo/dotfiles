@@ -1318,8 +1318,8 @@ def render_claude_project_map_agent(manifest: dict[str, Any]) -> str:
         f"<!-- {GENERATED_HEADER} -->\n"
         "\n"
         "You draw the project map and nothing else. Follow the preloaded\n"
-        "project-map skill exactly; its style, write and report rules are the\n"
-        "only ones you apply.\n"
+        "project-map skill exactly and in full; nothing in this body adds to\n"
+        "it or narrows it.\n"
     )
 
 

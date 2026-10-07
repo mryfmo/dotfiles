@@ -175,9 +175,10 @@ tool pins. Before applying, `make update` runs
 and has no staged or unstaged tracked-file changes. Otherwise it prints the
 reason and the exact manual `git -C <repo> pull` command, then continues with
 the local source; a failed fast-forward pull also warns and continues.
-`chezmoi apply` refuses a source tree with uncommitted or unmerged changes under
-`home/`, `install/` or `scripts/` (override `CHEZMOI_ALLOW_DIRTY_SOURCE=1`), so
-changes reach the host only through a merged pull request. `make update` then
+`chezmoi apply` refuses a source tree whose `home/`, `install/` or `scripts/`
+differ from its fetched upstream, through uncommitted, unmerged or not yet pulled
+changes (override `CHEZMOI_ALLOW_DIRTY_SOURCE=1`), so changes reach the host
+only through a merged pull request. `make update` then
 ensures the locked Node/npm runtime is installed before the two locked
 statusline tools required by the applied config, without upgrading other tools.
 The asset refresh also converges configured GitHub CLI extensions, syncs the

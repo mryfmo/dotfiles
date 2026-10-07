@@ -6,7 +6,7 @@
 #   Compares home/, install/ and scripts/ of the source repository (the parent
 #   of the chezmoi source directory) with the upstream ref as last fetched:
 #   `@{upstream}`, else `origin/main`, else HEAD. A tree whose content equals
-#   that ref applies; uncommitted, untracked or unmerged changes stop the apply,
+#   that ref applies; uncommitted, untracked, unmerged or not yet pulled changes stop the apply,
 #   so changes reach the host only through a merged pull request. The guard
 #   never touches the network. It is skipped for a non-git source, when CI=true,
 #   and when CHEZMOI_ALLOW_DIRTY_SOURCE=1.
@@ -21,8 +21,11 @@ fi
 # @arg $1 path Source repository.
 function comparison_ref() {
     local repo="$1"
+    local upstream
 
-    if git -C "${repo}" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null; then
+    # Capture first: a configured upstream whose ref is gone prints the literal @{upstream}.
+    if upstream="$(git -C "${repo}" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null)"; then
+        echo "${upstream}"
         return 0
     fi
     if git -C "${repo}" rev-parse --verify --quiet 'origin/main^{commit}' > /dev/null; then
@@ -52,12 +55,13 @@ function refuse_dirty_source() {
         return 0
     fi
 
-    # Working-tree changes first; a committed but unmerged tree has none, so name its files instead.
-    changes="$(git -C "${repo}" status --porcelain -- home install scripts | head -n 5)"
+    # Working-tree changes first; a committed but unmerged or a stale tree has none, so name its files instead.
+    # head closes the pipe early on long output, so || true keeps pipefail from discarding the lines.
+    changes="$(git -C "${repo}" status --porcelain -- home install scripts | head -n 5)" || true
     if [ -z "${changes}" ]; then
-        changes="$(git -C "${repo}" diff --name-only "${ref}" -- home install scripts | head -n 5)"
+        changes="$(git -C "${repo}" diff --name-only "${ref}" -- home install scripts | head -n 5)" || true
     fi
-    printf 'chezmoi apply refused: the source tree %s differs from %s (%s); land the change through a pull request and run make update, or set CHEZMOI_ALLOW_DIRTY_SOURCE=1 to apply anyway\n' \
+    printf 'chezmoi apply refused: the source tree %s differs from %s (%s); land the change through a pull request and run make update (which also pulls a stale tree), or set CHEZMOI_ALLOW_DIRTY_SOURCE=1 to apply anyway\n' \
         "${repo}" "${ref}" "$(printf '%s' "${changes}" | paste -sd ';' -)" >&2
     exit 1
 }

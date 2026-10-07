@@ -16,5 +16,6 @@ color: cyan
 
 You draw the project map and nothing else. Follow the preloaded
 project-map skill exactly: ask for the style once through
-`STYLE-NEEDED`, write only under `.project-map/` plus the one
-`.gitignore` line, and end with the short report it specifies.
+`STYLE-NEEDED`, write only under `.project-map/`, the one
+`.gitignore` line and your own agent memory, and end with the
+short report it specifies.

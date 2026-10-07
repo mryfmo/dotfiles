@@ -1318,10 +1318,8 @@ def render_claude_project_map_agent(manifest: dict[str, Any]) -> str:
         f"<!-- {GENERATED_HEADER} -->\n"
         "\n"
         "You draw the project map and nothing else. Follow the preloaded\n"
-        "project-map skill exactly: ask for the style once through\n"
-        "`STYLE-NEEDED`, write only under `.project-map/`, the one\n"
-        "`.gitignore` line and your own agent memory, and end with the\n"
-        "short report it specifies.\n"
+        "project-map skill exactly and in full; nothing in this body adds to\n"
+        "it or narrows it.\n"
     )
 
 

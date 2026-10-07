@@ -43,6 +43,7 @@ init:
 # diff touches install/** or .chezmoiscripts/**.
 # Unattended `make update`: never prompts.
 update:
+	@git fetch --quiet origin main || true
 	@branch="$$(git branch --show-current 2>/dev/null || true)"; \
 	upstream="$$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"; \
 	reason=""; \

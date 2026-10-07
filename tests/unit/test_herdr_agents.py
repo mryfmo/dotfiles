@@ -3580,6 +3580,49 @@ exit {exit_code}
             )
         self.assertNotIn("review", result.stdout)
 
+    def test_regime_boundary_check_flags_a_seated_main_checkout_off_main(self) -> None:
+        main, worktree, _ = self.boundary_repo()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(main)]
+        subprocess.run([*git, "checkout", "-q", "-B", "main"], check=True)
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        # One claude-code identity everywhere: the main checkout is a seated orchestrator.
+        (scripts / "identities.sh").write_text(
+            "#!/usr/bin/env bash\n[[ $2 == claude-code ]] && printf 'dotfiles\\tclaude-x\\n'\nexit 0\n"
+        )
+        (scripts / "identities.sh").chmod(0o755)
+
+        on_main = self.run_boundary_check(worktree)
+        subprocess.run([*git, "checkout", "-q", "--detach"], check=True)
+        sha = subprocess.run(
+            [*git, "rev-parse", "--short", "HEAD"], check=True, text=True, stdout=subprocess.PIPE
+        ).stdout.strip()
+        detached = self.run_boundary_check(worktree)
+        subprocess.run([*git, "checkout", "-q", "-b", "feature"], check=True)
+        on_feature = self.run_boundary_check(worktree)
+
+        for result in (on_main, detached, on_feature):
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("not on main", on_main.stdout)
+        self.assertIn(
+            f"regime-boundary: orchestrator seat is not on main: detached at {sha}", detached.stdout.splitlines()
+        )
+        self.assertIn("regime-boundary: orchestrator seat is not on main: feature", on_feature.stdout.splitlines())
+
+    def test_regime_boundary_check_leaves_an_unseated_detached_checkout_alone(self) -> None:
+        main, worktree, _ = self.boundary_repo()
+        subprocess.run(["git", "-C", str(main), "checkout", "-q", "--detach"], check=True)
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        # No identity anywhere, as in a CI checkout: no seat, so no branch check.
+        (scripts / "identities.sh").write_text("#!/usr/bin/env bash\nexit 0\n")
+        (scripts / "identities.sh").chmod(0o755)
+
+        result = self.run_boundary_check(worktree)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("not on main", result.stdout)
+
     def test_regime_boundary_check_gives_the_seat_lock_check_the_main_checkout(self) -> None:
         main, worktree, _ = self.boundary_repo()
         recorded = self.home_dir / "lock-check-path.txt"

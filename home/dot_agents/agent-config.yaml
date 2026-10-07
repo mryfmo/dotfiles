@@ -37,8 +37,8 @@ model_profiles:
       model_reasoning_effort: high
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
   review:
-    # One capability tier above the worker at reduced effort.
-    claude: { model: claude-fable-5, effort: medium }
+    # One capability tier above the worker at full effort (operator decision 2026-10-07).
+    claude: { model: claude-fable-5-1, effort: high }
     codex: { model: gpt-5.6-sol, model_reasoning_effort: low }
   deep:
     claude: { model: claude-fable-5-1, effort: high, advisor: fable }

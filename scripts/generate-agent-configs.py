@@ -1298,6 +1298,33 @@ def render_claude_express_agent(manifest: dict[str, Any]) -> str:
     )
 
 
+def render_claude_project_map_agent(manifest: dict[str, Any]) -> str:
+    standard = model_profiles(manifest)["standard"]["claude"]
+    return (
+        "---\n"
+        "name: project-map\n"
+        'description: Draws the project map, one double-click HTML file under .project-map/, with part status, milestones, items left to the next milestone, the suggested next step, and what changed since the last update. Use before a long solo run, after each milestone, and to answer "どこまで進んだ？".\n'
+        "tools: Read, Glob, Grep, Bash, Write, Edit\n"
+        f"model: {standard['model']}\n"
+        f"effort: {standard['effort']}\n"
+        "memory: user\n"
+        "skills:\n"
+        "  - project-map\n"
+        "  - dataviz\n"
+        "  - artifact-design\n"
+        "color: cyan\n"
+        "---\n"
+        "\n"
+        f"<!-- {GENERATED_HEADER} -->\n"
+        "\n"
+        "You draw the project map and nothing else. Follow the preloaded\n"
+        "project-map skill exactly: ask for the style once through\n"
+        "`STYLE-NEEDED`, write only under `.project-map/`, the one\n"
+        "`.gitignore` line and your own agent memory, and end with the\n"
+        "short report it specifies.\n"
+    )
+
+
 def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs = {
         ROOT / manifest["codex"]["config_path"]: render_codex(manifest),
@@ -1312,6 +1339,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs[ROOT / "home/dot_codex/modify_private_config.toml"] = render_codex_base_modify(manifest)
     outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
     outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
+    outputs[ROOT / "home/dot_claude/agents/project-map.md"] = render_claude_project_map_agent(manifest)
     for plugin in manifest["plugins"].get("codex_plugins", []):
         if not plugin.get("managed_manifest", True):
             continue

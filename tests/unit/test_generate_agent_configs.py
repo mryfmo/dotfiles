@@ -769,6 +769,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn("model: haiku", outputs[agent_path])
         self.assertIn("effort: low", outputs[agent_path])
 
+        project_map_path = self.temp_dir / "home/dot_claude/agents/project-map.md"
+        self.assertIn("model: sonnet", outputs[project_map_path])
+        self.assertIn("effort: high", outputs[project_map_path])
+        self.assertIn("  - project-map\n", outputs[project_map_path])
+
         self.assertFalse([path for path in outputs if path.name == "ccgate.jsonnet"])
 
     def hook_trust_namespace(self, manifest: dict) -> dict:

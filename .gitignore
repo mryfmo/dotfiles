@@ -21,6 +21,10 @@ __pycache__/
 
 # crit local review state (evidence copies live under .orchestration/)
 .crit/
+
+# project-map subagent output (one local HTML map and its state)
+.project-map/
+
 .claude/contextdb/state/*
 !.claude/contextdb/state/.gitkeep
 .claude/contextdb/spool/incoming/*

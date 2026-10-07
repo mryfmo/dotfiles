@@ -20,6 +20,7 @@ Generated files include:
 - `home/.chezmoitemplates/claude-settings-managed.json`
 - `home/dot_claude/private_mcp.json.tmpl`
 - `home/dot_claude/agents/express-explorer.md`
+- `home/dot_claude/agents/project-map.md`
 - `home/dot_claude/skills/**/symlink_*.tmpl`
 - `home/dot_agents/model-profiles.env`
 - `home/dot_agents/plugins/create_marketplace.json`

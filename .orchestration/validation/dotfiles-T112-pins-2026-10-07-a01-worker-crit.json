@@ -1,0 +1,41 @@
+[
+  {
+    "id": "t112-review-summary",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "Independent read-only subagent reviewed 7d3a45ee..f6789995 (one commit). It verified that exactly the five allowed files change and only the two pin lines in agent-config.yaml; that the commit diff equals the orchestrator's pins patch line for line; that the four non-manifest files are sha256-identical to the canonical clone; that config.toml versions match the task list and each of the 37 config tools has exactly one lock entry at its config version, with no stale old-version entry; that no old version string survives in tests, workflows or docs; and that all lock URLs stay on github.com with checksums and provenance kept or added. Findings: 4 informational P3, dispositioned below. Overall: approve."
+  },
+  {
+    "id": "t112-p3-herdr-owner-path",
+    "file": "home/dot_mise/mise.lock",
+    "line": 335,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] herdr lock URLs move from github.com/herdrdev/herdr to github.com/ogulcancelik/herdr. Disposition: not-applicable: gh api repos/ogulcancelik/herdr resolves to the canonical herdrdev/herdr (same repository via GitHub redirect, pasted in the validation file), the github:ogulcancelik/herdr backend was already declared in config.toml on main, provenance github-attestations is kept, and the lock must stay byte-identical to the canonical clone; a backend rename is reported to the orchestrator as a separate-task candidate."
+  },
+  {
+    "id": "t112-p3-yq-sha512",
+    "file": "home/dot_mise/mise.lock",
+    "line": 60,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] The yq linux-arm64 checksum is now sha512 while the other yq platforms use sha256. Disposition: not-applicable: informational; mise wrote a stronger checksum, a checksum is still present, and cosign provenance is kept."
+  },
+  {
+    "id": "t112-p3-ghq-provenance",
+    "file": "home/dot_mise/mise.lock",
+    "line": 381,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] All four ghq platforms gain provenance github-attestations. Disposition: not-applicable: informational, an improvement mise recorded for the new release."
+  },
+  {
+    "id": "t112-p3-orphan-ccgate",
+    "file": "home/dot_mise/mise.lock",
+    "line": 83,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] An orphan aqua:tak848/ccgate 0.9.5 lock entry has no config.toml entry. Disposition: not-applicable: it already exists at 7d3a45ee and this commit does not touch it; outside this changeset, reported to the orchestrator."
+  }
+]

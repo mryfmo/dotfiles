@@ -1,0 +1,6 @@
+- [P2] high implementation/evidence-reality `home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl:58` — `--exclude-standard` permits Git-ignored files that chezmoi still applies: `git check-ignore` confirms `home/dot_config/tool/coverage.conf` matches `coverage*`, while the chezmoi ignore rules do not exclude its target. With otherwise clean content, the guard allows this unreviewed configuration onto the host. The disposition at `.orchestration/validation/dotfiles-T113-codify-T111-lessons-a01-pr-feedback.json:280` cites excluded `__pycache__` files, which does not refute this counterexample. Although the task explicitly prescribed this predicate, its broader merged-only guarantee remains unsupported.
+
+Otherwise, the ten changed files respect the amended allowlist, expected artifacts exist, and no forbidden action is evidenced. The supplied final-head snapshot records 15 successful checks and six resolved Bot threads. Bash syntax, ShellCheck, and diff whitespace checks passed independently; live GitHub verification was unavailable.
+
+📝 まとめ: Completed the three-dimension audit of `d0fa723a`; the ignored-file bypass and its unsupported disposition remain actionable.
+Verdict: incorrect

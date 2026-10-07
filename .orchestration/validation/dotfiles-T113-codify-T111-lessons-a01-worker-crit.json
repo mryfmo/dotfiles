@@ -1,0 +1,55 @@
+[
+  {
+    "id": "t113-review-summary",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code independent subagent review (three passes)",
+    "body": "An independent read-only subagent reviewed 7d3a45ee..2e28c274 (changes-needed: 1 P2, 5 P3), re-verified 353b149d (approve, 1 P3) and re-verified f0a6f42b (approve, 1 P3). Across the passes it ran the guard in scratch repositories over the full scenario table (clean, modified, override, CI, untracked, outside scope, unpushed, pushed feature branch, behind upstream, post-merge pins, detached HEAD, conflicted-but-restored, 20000 untracked, gone upstream, no origin, non-git), checked the boundary line in a scratch seat, the verbatim rule/SKILL/agent/Amendment 1 text, the rule word budget (449/450), scope and the PR-body impact, and judged the four Codex Bot findings left unfixed. Records below."
+  },
+  {
+    "id": "t113-p2-sigpipe",
+    "file": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+    "line": 57,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P2] `changes=\"$(git status --porcelain … | head -n 5)\"` under pipefail exited 141 on long output before printing the refusal and override hint. Disposition: fixed:353b149d (`|| true` on both assignments; scratch case 10b, 20000 untracked files, now rc 1 with the full message)."
+  },
+  {
+    "id": "t113-p3-gone-upstream",
+    "file": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+    "line": 33,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] A configured upstream whose ref is gone made rev-parse print the literal @{upstream}, giving a two-line ref and a git fatal. Disposition: fixed:353b149d (captured before echo; scratch case 10a rc 0)."
+  },
+  {
+    "id": "t113-p3-stale-wording",
+    "file": "README.md",
+    "line": 178,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] A clean tree behind its upstream is refused, which the message, README and PR body did not say. Disposition: fixed:353b149d and f0a6f42b (message hint, header and README name not-yet-pulled changes; PR body states the stale case)."
+  },
+  {
+    "id": "t113-p3-coverage-and-fetch",
+    "scope": "review",
+    "resolved": true,
+    "body": "[P3] Targeted applies, --exclude=scripts and --keep-going bypass the guard, and make update now fetches origin main on every run. Disposition: addressed in the PR body's user-visible impact (no code change: a targeted apply not running the guard is what keeps make upgrade's mise-pin apply working)."
+  },
+  {
+    "id": "t113-p3-gitignored",
+    "file": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+    "line": 55,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] --exclude-standard skips gitignored files. Disposition: not-applicable: __pycache__ is ignored and present under home/dot_codex and scripts/ (pasted), so including ignored files would refuse every apply, and chezmoiignore.d/common already excludes **/__pycache__ and **/*.pyc from the target state."
+  },
+  {
+    "id": "t113-p3-project-map-only-wording",
+    "file": "scripts/generate-agent-configs.py",
+    "line": 1321,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] 'its style, write and report rules are the only ones you apply' can be read as excluding the skill's Reads, state.json and map sections (also the Codex Bot P2 4203015529). Disposition: not-applicable for the worker: the body is the orchestrator's verbatim item 7, and the preceding 'Follow the preloaded project-map skill exactly' covers the other sections; reported to the orchestrator for a wording decision."
+  }
+]

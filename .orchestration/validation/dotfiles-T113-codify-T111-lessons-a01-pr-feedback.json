@@ -1,0 +1,421 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 302,
+  "head_sha": "9311c6cb685b46585e2e1c52b40015ab0d0a66ea",
+  "base_ref": "main",
+  "base_sha": "a5edf2b7ef6ce4ab38d7b77f60bef84429792372",
+  "generated_at": "2026-10-07T06:15:16+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032626/job/112651252692"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032626/job/112651252590"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032626/job/112651252583"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032626/job/112651252559"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032734/job/112651210517"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032734/job/112651210495"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032734/job/112651210493"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032734/job/112651210422"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032734/job/112651210377"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032734/job/112651210196"
+    },
+    {
+      "name": "build",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032661/job/112651210025"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032626/job/112651209800"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032675/job/112651209691"
+    },
+    {
+      "name": "build (client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032613/job/112651209617"
+    },
+    {
+      "name": "build (server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032613/job/112651209361"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"2e28c274e720fb77411cc3e9708e27918e1dafc0\",\"mergeGateEnabled\":false,\"pullRequestNumber\":302,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-07T05:31:24.661598Z\">2026-10-07T05:31:24.661598Z</relative-time> | `d0fa723` | New commits |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-07T04:07:00.172152Z\">2026-10-07T04:07:00.172152Z</relative-time> | `2e28c27` | PR opened |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#issuecomment-6030631649",
+      "disposition": "not-applicable:Codex review summary container (security review completed without a finding or no review ran on this head); the gate requires no bot review"
+    },
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `71cf3689-0d35-4a06-a754-cbdc150d29c1`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=302)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#issuecomment-6030631844",
+      "disposition": "not-applicable:CodeRabbit auto-review-disabled summary comment; informational, carries no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `2e28c274e7`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#pullrequestreview-5437519326",
+      "commit": "2e28c274e720fb77411cc3e9708e27918e1dafc0",
+      "disposition": "not-applicable:Codex review container (header only, no P-finding in the body); its inline threads are dispositioned individually and resolved"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `353b149d36`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#pullrequestreview-5437584292",
+      "commit": "353b149d36aa47cea5e4f0f9ceee7ffea722ac8f",
+      "disposition": "not-applicable:Codex review container (header only, no P-finding in the body); its inline threads are dispositioned individually and resolved"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#pullrequestreview-5437774879",
+      "commit": "f0a6f42b4489c7e02a803dec8e536ba50708ce7e",
+      "disposition": "not-applicable:empty review object created by the orchestrator's thread replies; no content"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#pullrequestreview-5437774995",
+      "commit": "f0a6f42b4489c7e02a803dec8e536ba50708ce7e",
+      "disposition": "not-applicable:empty review object created by the orchestrator's thread replies; no content"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#pullrequestreview-5437775100",
+      "commit": "f0a6f42b4489c7e02a803dec8e536ba50708ce7e",
+      "disposition": "not-applicable:empty review object created by the orchestrator's thread replies; no content"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#pullrequestreview-5437775210",
+      "commit": "f0a6f42b4489c7e02a803dec8e536ba50708ce7e",
+      "disposition": "not-applicable:empty review object created by the orchestrator's thread replies; no content"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#pullrequestreview-5437775312",
+      "commit": "f0a6f42b4489c7e02a803dec8e536ba50708ce7e",
+      "disposition": "not-applicable:empty review object created by the orchestrator's thread replies; no content"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#pullrequestreview-5438041432",
+      "commit": "d0fa723a897a5d9a409c9552f76566d6e2bc3667",
+      "disposition": "not-applicable:empty review object created by the orchestrator's thread replies; no content"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+      "line": 26,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Compare dirty sources against the merged branch**\n\nWhen the checkout is a feature branch tracking `origin/feature`, this returns that feature ref; `Makefile:52-64` then skips the pull because the branch is not `main` but still runs `chezmoi apply`. A clean, pushed-but-unmerged feature branch therefore compares equal to its upstream and the guard permits its changes to reach the host, defeating the safeguard's stated purpose. Prefer `origin/main` whenever it exists, or explicitly reject non-`main` branches and upstreams.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4202957457",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f0a6f42b4489c7e02a803dec8e536ba50708ce7e"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+      "line": 61,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Preserve the targeted apply performed by make upgrade**\n\nWhen `make upgrade` actually changes `home/dot_mise`, `scripts/upgrade-tools.sh:690-720` deliberately invokes a targeted `chezmoi apply` before those source edits are committed. Chezmoi documents that `run_` scripts execute every time `chezmoi apply` runs ([script behavior](https://www.chezmoi.io/user-guide/use-scripts-to-perform-actions/)), so this guard sees the modified `home/` tree and exits 1; the required phase then makes a successful pin bump finish as a failed upgrade and leaves the live mise configuration stale. Either suppress this guard for that narrowly targeted apply or change the upgrade workflow so it no longer attempts the pre-merge apply.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4202957461",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:a targeted chezmoi apply <file> runs no run_ script (scratch chezmoi 2.73.0 probe: 0 runs vs 1 for a full apply); make upgrade applies only the two mise files by path"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+      "line": 62,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject unresolved index entries explicitly**\n\nDuring a conflicted merge, if an operator restores the working-tree copy of a conflicted file to exactly the comparison ref but has not staged the resolution, `git diff --quiet \"${ref}\"` returns success even though `git ls-files -u` still reports the path as unmerged. This follows from the documented form comparing the working tree with the named commit ([git-diff documentation](https://git-scm.com/docs/git-diff)); with no untracked files, this fast path therefore permits `chezmoi apply` despite the guard's explicit promise to reject unmerged state. Check for unmerged index entries before accepting this condition.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4202957466",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:f0a6f42b4489c7e02a803dec8e536ba50708ce7e"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+      "line": 83,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Enforce the guard outside the guarded source state**\n\nIf an uncommitted change deletes or renames this template alongside other edits under `home/`, `make update` skips the pull because the checkout is dirty, but `chezmoi apply` no longer discovers this script and applies the remaining edits without any check. Chezmoi documents that `.chezmoiscripts` is optional and that only scripts present there are read and executed ([special directories](https://www.chezmoi.io/reference/special-directories/)), so the guard cannot protect its own removal; invoke an equivalent check from the Makefile or another location outside the source state before applying.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4203015512",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the guard is a rail against accidental full applies from a dirty clone, not a boundary against the machine operator; deleting the tracked template is itself the forbidden local edit, and a Makefile copy would restate one rule twice (T111 lesson C)"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/generate-agent-configs.py",
+      "line": 1322,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Apply all project-map skill sections**\n\nWhen the generated Claude agent follows this new “only” clause literally, it is told to ignore the skill's `Reads`, `state.json`, and `The map` sections because they are neither style, write, nor report rules. Those omitted sections contain the requirements to preserve human-edited milestones and decisions, calculate changes from the previous head, and populate the map's core panels, so the agent can produce an incomplete map or overwrite retained state despite being told to follow the skill exactly. Refer to the entire project-map skill without restricting it to the three named rule categories.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4203015529",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:3f7c2e131a6865487d4b3628f3ea2fadba14c4b3"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+      "line": 61,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Include Git-ignored files in the dirty-source check**\n\nWhen a local source file matches `.gitignore`, `--exclude-standard` suppresses it from this only untracked-file check even though chezmoi does not use Git's ignore rules. For example, this repository's `.gitignore:2` pattern `coverage*` hides `home/dot_config/tool/coverage.conf`, while the chezmoi ignore templates do not exclude that path, so a clean tracked tree with this untracked file passes the guard and applies it to `~/.config/tool/coverage.conf`. Chezmoi documents `.chezmoiignore` as the mechanism for excluding source files from the target state ([usage documentation](https://www.chezmoi.io/user-guide/frequently-asked-questions/usage/)); inspect ignored untracked files too, or filter them using the rendered chezmoi exclusions rather than Git exclusions.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4203015540",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:git-ignored untracked files are out of the guard's declared scope: the README and the guard description now say so (round 2), they never travel by pull request, and including them would refuse every apply because of gitignored __pycache__ trees; a chezmoi-aware check is a separate task if ever wanted"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+      "line": 26,
+      "body": "fixed:f0a6f42b4489c7e02a803dec8e536ba50708ce7e — the guard now compares against origin/main first (then @{upstream}, then HEAD); scratch case 10c (a pushed feature branch tracking its own upstream) returns rc 1. Orchestrator disposition (dotfiles-T113).\n",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4203183254",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a resolved Codex Bot thread"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+      "line": 62,
+      "body": "fixed:f0a6f42b4489c7e02a803dec8e536ba50708ce7e — `git ls-files --unmerged` is checked before the fast path; scratch case 10d (a conflicted path restored to origin/main content, unstaged) returns rc 1. Orchestrator disposition (dotfiles-T113).\n",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4203183366",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a resolved Codex Bot thread"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+      "line": 61,
+      "body": "not-applicable: a targeted `chezmoi apply <file>` runs no run_ script. Verified on an isolated scratch chezmoi v2.73.0: a probe run_before_ script ran 0 times for `chezmoi apply <file>` and once for a full apply (pasted in .orchestration/validation/dotfiles-T113-codify-T111-lessons-a01.md). `scripts/upgrade-tools.sh` applies only the two mise files by path, so `make upgrade` never meets the guard. Orchestrator disposition (dotfiles-T113).\n",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4203183465",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a resolved Codex Bot thread"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+      "line": 83,
+      "body": "not-applicable: the guard is a rail against accidental full applies from a dirty clone, not a boundary against the machine operator; deleting the tracked template is itself the local edit the regime forbids, and it is no stronger a bypass than the documented CHEZMOI_ALLOW_DIRTY_SOURCE=1. A second copy of the check in the Makefile would restate one rule in two places, which T111 lesson C forbids. Orchestrator disposition (dotfiles-T113).\n",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4203183546",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a resolved Codex Bot thread"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl",
+      "line": 61,
+      "body": "not-applicable: git-ignored untracked files are never merged through a pull request, so they are outside what this guard protects (unmerged edits reaching the host); including them would refuse every apply because of the gitignored __pycache__ trees under home/dot_codex and scripts/ (pasted), while chezmoiignore.d/common already keeps **/__pycache__ and **/*.pyc out of the target state. Orchestrator disposition (dotfiles-T113).\n",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4203183647",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a resolved Codex Bot thread"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/generate-agent-configs.py",
+      "line": 1322,
+      "body": "fixed:3f7c2e131a6865487d4b3628f3ea2fadba14c4b3 — the body now reads \"Follow the preloaded project-map skill exactly and in full; nothing in this body adds to it or narrows it\", so no skill section is excluded; regenerated home/dot_claude/agents/project-map.md carries the same text. Orchestrator disposition (dotfiles-T113, revise round 1).\n",
+      "url": "https://github.com/mryfmo/dotfiles/pull/302#discussion_r4203411500",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a resolved Codex Bot thread"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032626/job/112651252583",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub Actions macOS arm64 runner capacity notice; the job itself passed"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032734/job/112651210493",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub Actions macOS arm64 runner capacity notice; the job itself passed"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032734/job/112651210422",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub Actions macOS arm64 runner capacity notice; the job itself passed"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37578032661/job/112651210025",
+      "check": "build",
+      "disposition": "not-applicable:GitHub Actions macOS arm64 runner capacity notice; the job itself passed"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit commit status success with automatic reviews disabled; no finding"
+    }
+  ]
+}

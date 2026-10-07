@@ -13,16 +13,16 @@ dotenvx = "2.31.1"
 fd = "10.3.0"
 jq = "1.8.2"
 hugo-extended = "0.167.0"
-uv = "0.12.19"
+uv = "0.12.21"
 yazi = "26.9.1"
 "aqua:micro-editor/micro" = "2.0.15"
-"aqua:mikefarah/yq" = "4.53.6"
+"aqua:mikefarah/yq" = "4.54.1"
 shellcheck = "0.11.0"
 shfmt = "3.14.1"
 ruff = "0.16.10"
 "aqua:watchexec/watchexec" = "2.7.3"
 
-"npm:@anthropic-ai/claude-code" = { version = "2.1.289", allow_builds = ["@anthropic-ai/claude-code"] }
+"npm:@anthropic-ai/claude-code" = { version = "2.1.292", allow_builds = ["@anthropic-ai/claude-code"] }
 "npm:@openai/codex" = "0.160.1"
 "npm:bash-language-server" = "5.8.1"
 "npm:ccstatusline" = "2.2.30"
@@ -34,10 +34,10 @@ ruff = "0.16.10"
 # plugin lockfile is lockfileVersion 9.0 and declares no packageManager.
 "npm:pnpm" = "12.8.1"
 
-"github:x-motemen/ghq" = "1.10.1"
+"github:x-motemen/ghq" = "1.11.2"
 "github:d-kuro/gwq" = "0.1.1"
 "github:cli/cli" = "2.101.0"
-"github:ogulcancelik/herdr" = "0.9.1"
+"github:ogulcancelik/herdr" = "0.9.3"
 "github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }
 
 "cargo:pueue" = "4.0.4"

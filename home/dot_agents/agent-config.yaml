@@ -348,7 +348,7 @@ assets:
   mise:
     source: github-release
     upstream: jdx/mise
-    pin: v2026.9.16
+    pin: v2026.9.17
     verify: release-shasums
     install_path: ~/.local/bin/mise
     installer: install/common/mise.sh
@@ -378,7 +378,7 @@ assets:
   aws-cli:
     source: https-download
     upstream: https://awscli.amazonaws.com
-    pin: 2.37.5
+    pin: 2.37.6
     verify: gpg
     gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
     install_path: ~/.local/share/aws-cli

@@ -1,0 +1,33 @@
+[
+  {
+    "id": "t111-review-summary",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code independent subagent review",
+    "body": "Independent read-only subagent reviewed 8e9bd072..0c1d280b (13 files). It byte-compared SKILL.md, agents/openai.yaml, rules/project-map.md and symlink_project-map.md.tmpl with the task's verbatim blocks (identical, including the nested json fence and the Japanese text), executed the task's verbatim render function and the committed one on the same manifest (byte-identical output, so the ruff quoting change is behaviour-neutral), confirmed that symlink_openai.yaml.tmpl is mandatory generator output of claude_skill_symlink_outputs() with five sibling precedents, that only review.claude and its comment changed in agent-config.yaml, that the new tests fail on a missing registration or a wrong profile, and that no secret, permission, sandbox, hook or settings-template change is present. Findings: 3 P3, dispositioned below. Overall: approve."
+  },
+  {
+    "id": "t111-p3-global-rule-gitignore-append",
+    "file": "home/dot_agents/skills/project-map/SKILL.md",
+    "line": 18,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] The rule is global and the skill appends `.project-map/` to a tracked `.gitignore` when the line is missing, so a background run in another repository (including one under the agmsg regime) edits a tracked file. Disposition: not-applicable: SKILL.md and the rule are the operator-approved verbatim text of the task file and cannot change within this task; reported to the orchestrator in the RESULT report as a design note."
+  },
+  {
+    "id": "t111-p3-prototype-overwrite",
+    "file": "home/dot_claude/agents/project-map.md",
+    "line": 1,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] `chezmoi apply` replaces the unmanaged prototype `~/.claude/agents/project-map.md` (effort medium, NEED_STYLE, style.md), and its memory MEMORY.md points to style.md instead of holding the style:/accent: keys the new skill reads. Disposition: addressed: verified locally (read-only), called out in the PR body's user-visible impact and in the RESULT report; editing ~/.claude/** is forbidden by the task, so the memory migration is left to the operator."
+  },
+  {
+    "id": "t111-p3-gitignore-blank-lines",
+    "file": ".gitignore",
+    "line": 24,
+    "scope": "line",
+    "resolved": true,
+    "body": "[P3] Two blank separator lines were added besides the two content lines. Disposition: not-applicable: cosmetic; the blanks keep the new block from reading as part of the unseparated `.claude/contextdb/...` lines that follow `.crit/`, and the report states the 4-line count."
+  }
+]

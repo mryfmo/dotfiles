@@ -11,6 +11,9 @@
 #   so changes reach the host only through a merged pull request. The guard
 #   never touches the network. It is skipped for a non-git source, when CI=true,
 #   and when CHEZMOI_ALLOW_DIRTY_SOURCE=1.
+#   Git-ignored untracked files are out of scope: they never travel by pull
+#   request, are the operator's local additions, and chezmoi's own ignore rules
+#   govern whether they apply.
 
 set -Eeuo pipefail
 

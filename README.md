@@ -178,7 +178,8 @@ the local source; a failed fast-forward pull also warns and continues.
 `chezmoi apply` refuses a source tree whose `home/`, `install/` or `scripts/`
 differ from the last-fetched `origin/main`, through uncommitted, unmerged,
 unpushed or not yet pulled changes (override `CHEZMOI_ALLOW_DIRTY_SOURCE=1`), so
-changes reach the host only through a merged pull request. `make update` then
+changes reach the host only through a merged pull request; git-ignored untracked
+files are not checked. `make update` then
 ensures the locked Node/npm runtime is installed before the two locked
 statusline tools required by the applied config, without upgrading other tools.
 The asset refresh also converges configured GitHub CLI extensions, syncs the

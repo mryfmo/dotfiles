@@ -297,14 +297,16 @@ name that one command, since a bare `python3` run fails without PyYAML.
 Agent work runs as a three-role constellation. The orchestrator uses the
 `deep` profile (Claude `claude-fable-5-1`, high effort, advisor fable) to
 author tasks, review results, and own acceptance. The worker uses the
-`standard` profile (Claude `claude-opus-5-5` or Codex `gpt-6.1-sol`, high
-effort) to implement one task at a time. The auditor uses the `audit` profile
-(Codex `gpt-6-astra`, high reasoning effort, read-only sandbox)
+`standard` profile (Claude `claude-opus-5-5` at xhigh effort, or Codex
+`gpt-6.1-sol` at high) to implement one task at a time. The auditor uses the
+`audit` profile (Codex `gpt-6-astra`, xhigh reasoning effort, read-only
+sandbox)
 for one independent task-level audit of each final head, run as the agmsg-orchestration SKILL's task-level audit bullet describes. The responsibility
 boundaries live in `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/agmsg-orchestration.md`, and the `## Audit`
 section of `AGENTS.md`. Neither Codex model needs API-key authentication: both
-answered under the ChatGPT login (probe 2026-10-05).
+answered under the ChatGPT login (probe 2026-10-05). Both xhigh settings
+answered under the ChatGPT login (probe 2026-10-09).
 
 On Ubuntu 24.04 and later, `kernel.apparmor_restrict_unprivileged_userns=1`
 stops `/usr/bin/bwrap` from creating the user namespaces that sandboxed Codex

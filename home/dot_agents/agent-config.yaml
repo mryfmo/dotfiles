@@ -31,7 +31,7 @@ model_profiles:
     claude: { model: haiku, effort: low }
     codex: { model: gpt-5.6-luna, model_reasoning_effort: low }
   standard:
-    claude: { model: claude-opus-5-5, effort: high, advisor: fable }
+    claude: { model: claude-opus-5-5, effort: xhigh, advisor: fable }
     codex:
       model: gpt-6.1-sol
       model_reasoning_effort: high
@@ -55,11 +55,12 @@ model_profiles:
       model_reasoning_effort: high
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
   audit:
-    # Auditor tier (監査役): cross-vendor read-only audit of worker changesets.
+    # Auditor tier (監査役): cross-vendor read-only audit of worker changesets
+    # at xhigh reasoning effort (operator pin 2026-10-09, T115).
     claude: { model: claude-fable-5-1, effort: high }
     codex:
       model: gpt-6-astra
-      model_reasoning_effort: high
+      model_reasoning_effort: xhigh
       sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
 interactive_profile: deep

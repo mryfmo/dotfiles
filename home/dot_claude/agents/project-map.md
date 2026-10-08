@@ -3,7 +3,7 @@ name: project-map
 description: Draws the project map, one double-click HTML file under .project-map/, with part status, milestones, items left to the next milestone, the suggested next step, and what changed since the last update. Use before a long solo run, after each milestone, and to answer "どこまで進んだ？".
 tools: Read, Glob, Grep, Bash, Write, Edit
 model: claude-opus-5-5
-effort: high
+effort: xhigh
 memory: user
 skills:
   - project-map

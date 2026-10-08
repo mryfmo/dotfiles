@@ -14,7 +14,8 @@
 #   `crit _serve` review servers; a canonical clone (`chezmoi source-path`,
 #   when it is not this working clone) with unmerged entries, a stash, or a
 #   tracked or untracked difference from `origin/main` (else `HEAD`) under
-#   `home/`, `install/` or `scripts/`; leftover `<repo> worker <name>` Herdr
+#   `home/`, `install/` or `scripts/`, or uncommitted changes there that
+#   already match `origin/main` while `HEAD` is behind it; leftover `<repo> worker <name>` Herdr
 #   workspaces and added-worker tabs in the pair workspace (only when `herdr`
 #   is reachable); and a bare-id orchestrator
 #   seat lock, through the one implementation in
@@ -137,6 +138,13 @@ if command -v chezmoi > /dev/null 2>&1 &&
     } | sort -u | paste -sd , -)"
     if [[ -n ${files} ]]; then
         violations+=("canonical clone ${canon} differs from ${ref} under home/, install/ or scripts/: ${files}; carry a make upgrade diff as a pins task, or restore a merged one with git -C ${canon} restore -SW --source=${ref} -- <files> and drop its autostash")
+    else
+        # Bytes equal to the ref still leave a stale HEAD with a dirty tree
+        # after the pins PR merged; only a pull makes the clone clean.
+        files="$(git -C "${canon}" diff --name-only HEAD -- home install scripts 2> /dev/null | paste -sd , -)"
+        if [[ -n ${files} ]]; then
+            violations+=("canonical clone ${canon} has uncommitted changes under home/, install/ or scripts/ that already match ${ref} while HEAD is behind it: ${files}; pull it (git -C ${canon} pull) so its autostash re-applies as a no-op")
+        fi
     fi
 fi
 

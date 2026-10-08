@@ -3759,6 +3759,26 @@ exit {exit_code}
             self.canonical_lines(worktree),
         )
 
+    def test_regime_boundary_check_reports_a_stale_canonical_head_whose_dirty_bytes_match_origin_main(self) -> None:
+        _, worktree, _ = self.boundary_repo()
+        canon = self.canonical_clone()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(canon)]
+        # The pins PR merged upstream; the clone still sits at the old HEAD with the same bytes uncommitted.
+        (canon / "home/dot_f").write_text("upgraded\n")
+        subprocess.run([*git, "commit", "-q", "-am", "pins"], check=True)
+        subprocess.run([*git, "update-ref", "refs/remotes/origin/main", "HEAD"], check=True)
+        subprocess.run([*git, "reset", "-q", "HEAD~1"], check=True)
+        root = canon.resolve()
+
+        self.assertEqual(
+            [
+                f"regime-boundary: canonical clone {root} has uncommitted changes under home/, install/ or scripts/ "
+                "that already match origin/main while HEAD is behind it: home/dot_f; "
+                f"pull it (git -C {root} pull) so its autostash re-applies as a no-op"
+            ],
+            self.canonical_lines(worktree),
+        )
+
     def test_regime_boundary_check_reports_a_stash_in_the_canonical_clone(self) -> None:
         _, worktree, _ = self.boundary_repo()
         canon = self.canonical_clone()

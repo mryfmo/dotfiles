@@ -306,7 +306,8 @@ boundaries live in `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/agmsg-orchestration.md`, and the `## Audit`
 section of `AGENTS.md`. Neither Codex model needs API-key authentication: both
 answered under the ChatGPT login (probe 2026-10-05). Both xhigh settings
-answered under the ChatGPT login (probe 2026-10-09).
+answered on 2026-10-09: the Codex audit probe under the ChatGPT login, the
+Claude worker probe under the Anthropic login.
 
 On Ubuntu 24.04 and later, `kernel.apparmor_restrict_unprivileged_userns=1`
 stops `/usr/bin/bwrap` from creating the user namespaces that sandboxed Codex

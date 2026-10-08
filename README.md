@@ -1281,7 +1281,7 @@ content hash, including when a newly committed script first reaches an existing
 machine through `make update`.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
 Tool versions in `home/dot_mise/config.toml` are exact and backed by `mise.lock`. Updates occur only through `make upgrade` with a reviewed config and lock diff.
-The operator runs `make upgrade` in the canonical clone; every file it changed then reaches `main` in one PR that also syncs the expected-version assertions in `tests/**` and passes `make require-crit-review`.
+The operator runs `make upgrade` in the canonical clone; every file it changed then reaches `main` in one PR that also syncs the expected-version assertions in `tests/**` and passes `make require-crit-review`; the blob-identity proof and the post-merge state of the clone are defined once, in the agmsg-orchestration SKILL's boundary bullet, and `make check-regime-boundary` reports a clone left different from `origin/main`.
 Under the agmsg regime a worker task carries that PR. The GitHub ruleset on `main` (see the ruleset payload above) is the boundary: `main` accepts only pull requests that pass the required checks, so no change, the `.orchestration` boundary commit included, is pushed to `main` directly.
 `make upgrade` edits the current checkout's `home/dot_mise`; `~/.config/mise` is an applied copy, not a live symlink into the source tree.
 For `npm:` tools, mise owns the version, lock entry, and isolated install

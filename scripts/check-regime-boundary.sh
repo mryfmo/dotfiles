@@ -11,7 +11,10 @@
 #   per type at any other checkout; a seated main checkout whose HEAD is
 #   not the `main` branch (a detached HEAD or another branch; a checkout with
 #   no identity, such as a CI checkout, is never flagged); running
-#   `crit _serve` review servers; leftover `<repo> worker <name>` Herdr
+#   `crit _serve` review servers; a canonical clone (`chezmoi source-path`,
+#   when it is not this working clone) with unmerged entries, a stash, or a
+#   tracked or untracked difference from `origin/main` (else `HEAD`) under
+#   `home/`, `install/` or `scripts/`; leftover `<repo> worker <name>` Herdr
 #   workspaces and added-worker tabs in the pair workspace (only when `herdr`
 #   is reachable); and a bare-id orchestrator
 #   seat lock, through the one implementation in
@@ -109,6 +112,32 @@ fi
 
 if command -v pgrep > /dev/null 2>&1 && pgrep -f 'crit _serve' > /dev/null 2>&1; then
     violations+=("crit review server still running (pgrep -f 'crit _serve')")
+fi
+
+# Canonical clone: the chezmoi source checkout, when it is not this working
+# clone. A make upgrade diff left there, or an autostash conflict after the
+# pins PR merged, blocks the operator's next pull and apply.
+if command -v chezmoi > /dev/null 2>&1 &&
+    src="$(chezmoi source-path 2> /dev/null)" &&
+    canon="$(git -C "${src}" rev-parse --show-toplevel 2> /dev/null)" &&
+    [[ "$(cd -- "${canon}" && pwd -P)" != "$(cd -- "${main}" && pwd -P)" ]]; then
+    ref=HEAD
+    if git -C "${canon}" rev-parse -q --verify origin/main > /dev/null 2>&1; then
+        ref=origin/main
+    fi
+    if [[ -n "$(git -C "${canon}" ls-files -u 2> /dev/null)" ]]; then
+        violations+=("canonical clone ${canon} has unmerged entries (git ls-files -u); finish or abort its pull")
+    fi
+    if [[ -n "$(git -C "${canon}" stash list 2> /dev/null)" ]]; then
+        violations+=("canonical clone ${canon} carries a stash (git stash list); drop it once its content is on origin/main")
+    fi
+    files="$({
+        git -C "${canon}" diff --name-only "${ref}" -- home install scripts 2> /dev/null || true
+        git -C "${canon}" ls-files --others --exclude-standard -- home install scripts 2> /dev/null || true
+    } | sort -u | paste -sd , -)"
+    if [[ -n ${files} ]]; then
+        violations+=("canonical clone ${canon} differs from ${ref} under home/, install/ or scripts/: ${files}; carry a make upgrade diff as a pins task, or restore a merged one with git -C ${canon} restore -SW --source=${ref} -- <files> and drop its autostash")
+    fi
 fi
 
 if command -v herdr > /dev/null 2>&1 && command -v jq > /dev/null 2>&1 &&

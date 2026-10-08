@@ -130,10 +130,11 @@ if command -v chezmoi > /dev/null 2>&1 &&
         violations+=("canonical clone ${canon} has unmerged entries (git ls-files -u); finish or abort its pull")
     fi
     if [[ -n "$(git -C "${canon}" stash list 2> /dev/null)" ]]; then
-        violations+=("canonical clone ${canon} carries a stash (git stash list); drop it once its content is on origin/main")
+        violations+=("canonical clone ${canon} carries a stash (git stash list); drop only the autostash entry once its content is on origin/main, and leave any other stash to its owner")
     fi
     files="$({
         git -C "${canon}" diff --name-only "${ref}" -- home install scripts 2> /dev/null || true
+        git -C "${canon}" diff --cached --name-only "${ref}" -- home install scripts 2> /dev/null || true
         git -C "${canon}" ls-files --others --exclude-standard -- home install scripts 2> /dev/null || true
     } | sort -u | paste -sd , -)"
     if [[ -n ${files} ]]; then
@@ -141,7 +142,10 @@ if command -v chezmoi > /dev/null 2>&1 &&
     else
         # Bytes equal to the ref still leave a stale HEAD with a dirty tree
         # after the pins PR merged; only a pull makes the clone clean.
-        files="$(git -C "${canon}" diff --name-only HEAD -- home install scripts 2> /dev/null | paste -sd , -)"
+        files="$({
+            git -C "${canon}" diff --name-only HEAD -- home install scripts 2> /dev/null || true
+            git -C "${canon}" diff --cached --name-only HEAD -- home install scripts 2> /dev/null || true
+        } | sort -u | paste -sd , -)"
         if [[ -n ${files} ]]; then
             violations+=("canonical clone ${canon} has uncommitted changes under home/, install/ or scripts/ that already match ${ref} while HEAD is behind it: ${files}; pull it (git -C ${canon} pull) so its autostash re-applies as a no-op")
         fi

@@ -3763,11 +3763,12 @@ exit {exit_code}
         _, worktree, _ = self.boundary_repo()
         canon = self.canonical_clone()
         git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(canon)]
-        # The pins PR merged upstream; the clone still sits at the old HEAD with the same bytes uncommitted.
+        # The pins PR merged upstream; the clone still sits at the old HEAD with the same bytes staged but
+        # uncommitted (unstaged bytes leave the index at HEAD, which the differs line reports instead).
         (canon / "home/dot_f").write_text("upgraded\n")
         subprocess.run([*git, "commit", "-q", "-am", "pins"], check=True)
         subprocess.run([*git, "update-ref", "refs/remotes/origin/main", "HEAD"], check=True)
-        subprocess.run([*git, "reset", "-q", "HEAD~1"], check=True)
+        subprocess.run([*git, "reset", "-q", "--soft", "HEAD~1"], check=True)
         root = canon.resolve()
 
         self.assertEqual(
@@ -3790,7 +3791,26 @@ exit {exit_code}
         self.assertEqual(
             [
                 f"regime-boundary: canonical clone {canon.resolve()} carries a stash (git stash list); "
-                "drop it once its content is on origin/main"
+                "drop only the autostash entry once its content is on origin/main, and leave any other stash to its owner"
+            ],
+            self.canonical_lines(worktree),
+        )
+
+    def test_regime_boundary_check_reports_a_staged_only_change_in_the_canonical_clone(self) -> None:
+        _, worktree, _ = self.boundary_repo()
+        canon = self.canonical_clone()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(canon)]
+        # A dirty index under a working tree equal to HEAD (and origin/main) still blocks the pull.
+        (canon / "home/dot_f").write_text("x\n")
+        subprocess.run([*git, "add", "home/dot_f"], check=True)
+        subprocess.run([*git, "restore", "--worktree", "--source=HEAD", "home/dot_f"], check=True)
+        root = canon.resolve()
+
+        self.assertEqual(
+            [
+                f"regime-boundary: canonical clone {root} differs from origin/main under home/, install/ or scripts/: "
+                f"home/dot_f; carry a make upgrade diff as a pins task, or restore a merged one with "
+                f"git -C {root} restore -SW --source=origin/main -- <files> and drop its autostash"
             ],
             self.canonical_lines(worktree),
         )

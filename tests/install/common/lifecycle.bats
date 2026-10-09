@@ -271,7 +271,7 @@ herdr server reload-config" ]
     grep -q 'GIT_CONFIG_NOSYSTEM=1' scripts/upgrade-tools.sh
     grep -q 'GIT_CONFIG_GLOBAL=/dev/null' scripts/upgrade-tools.sh
     grep -q 'XDG_CONFIG_HOME="${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
-    grep -Fq 'export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/mise}"' scripts/upgrade-tools.sh
+    grep -Fq 'export MISE_CONFIG_DIR="${HOME}/.config/mise"' scripts/upgrade-tools.sh
     grep -Fq 'export MISE_CEILING_PATHS="${repo_root}"' scripts/upgrade-tools.sh
     grep -q 'rm -rf "${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config ls --current --no-header' scripts/upgrade-tools.sh

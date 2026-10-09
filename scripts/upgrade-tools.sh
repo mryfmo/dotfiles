@@ -18,8 +18,10 @@
 set -Eeuo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# The applied host config, pinned so the isolated Git config's XDG_CONFIG_HOME below cannot redirect it.
-export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/mise}"
+# chezmoi applies home/dot_config/mise/config.toml.tmpl to ~/.config/mise whatever XDG_CONFIG_HOME
+# says, so mise reads exactly that config: no inherited MISE_CONFIG_DIR, and the isolated Git
+# config's XDG_CONFIG_HOME below cannot redirect it.
+export MISE_CONFIG_DIR="${HOME}/.config/mise"
 # No project config from this checkout upward joins the inventory, so only the host config's tools move.
 export MISE_CEILING_PATHS="${repo_root}"
 # npm's own min-release-age (7 days in home/dot_npmrc) would refuse an npm: release that mise's
@@ -297,13 +299,14 @@ function upgrade_mise_tools() {
     section "mise tools"
     local failed=0
     mise trust --yes || failed=1
+    # Snapshot node before the bare install: a "latest" node that is not installed yet moves there too.
+    local node_before node_after
+    node_before="$(run_mise_with_isolated_git_config current node 2> /dev/null)" || node_before=""
     # minimum_release_age in the config keeps freshly published releases out of both steps.
     # One bare install: it leaves installed tools alone offline, while a per-tool
     # install re-resolves "latest" over the network and fails without one.
     run_mise_with_isolated_git_config install --yes || failed=1
     # Upgrades need the network; an installed tool that cannot move yet is still converged.
-    local node_before node_after
-    node_before="$(run_mise_with_isolated_git_config current node 2> /dev/null)" || node_before=""
     local upgrade_status=0
     run_mise_tool_command upgrade || upgrade_status=$?
     if [ "${upgrade_status}" -eq 2 ]; then
@@ -312,7 +315,7 @@ function upgrade_mise_tools() {
     elif [ "${upgrade_status}" -ne 0 ]; then
         failed=1
     fi
-    # A bare install leaves installed npm: tools on the old node; reinstall them when node moved.
+    # Neither the bare install nor the upgrades rebuild installed npm: tools; reinstall them when node moved.
     node_after="$(run_mise_with_isolated_git_config current node 2> /dev/null)" || node_after=""
     if [ -n "${node_after}" ] && [ "${node_after}" != "${node_before}" ] && ! reinstall_mise_npm_tools; then
         printf 'optional warning: npm: tools were not all reinstalled on node %s\n' "${node_after}" >&2

@@ -1287,12 +1287,14 @@ EOF
                 ls) [[ "$FAIL_PHASE" != mise_inventory ]] && printf 'node 26.0.0 fixture\npython 3.13 fixture\nnpm:ccusage 20.0.0 fixture\nfd 10.3.0 fixture\nhttp:bats 1.13.0 fixture\nhttp:gcloud 575.0.1 fixture\n' ;;
                 install)
                     [[ "$FAIL_PHASE" != mise_install ]] || exit 1
+                    # The bare install moves a "latest" node that is not installed yet.
+                    [[ "$FAIL_PHASE:$*" != "node_by_install:install --yes" ]] || touch "$NODE_MOVED"
                     [[ "$FAIL_PHASE:$2" != npm_reinstall:--force ]]
                     ;;
                 upgrade)
                     [[ "$FAIL_PHASE" != mise_upgrade ]] || exit 1
                     # Upgrading node moves the current node, which the script must notice.
-                    [[ "$*" != "upgrade --yes node" || "$FAIL_PHASE" == node_stays ]] || touch "$NODE_MOVED"
+                    [[ "$*" != "upgrade --yes node" || "$FAIL_PHASE" == node_stays || "$FAIL_PHASE" == node_by_install ]] || touch "$NODE_MOVED"
                     ;;
                 current) [ -e "$NODE_MOVED" ] && printf '27.0.0\n' || printf '26.0.0\n' ;;
             esac
@@ -1337,13 +1339,13 @@ EOF
         return repo, env
 
     def test_upgrade_runs_mise_against_the_applied_host_config_and_edits_no_file(self) -> None:
-        for xdg in (None, "xdg"):
-            with self.subTest(xdg=xdg):
-                repo, env = self.upgrade_fixture(f"host-config-{xdg}")
+        # chezmoi applies the config to ~/.config/mise whatever XDG_CONFIG_HOME or an inherited MISE_CONFIG_DIR say.
+        for override in (None, "XDG_CONFIG_HOME", "MISE_CONFIG_DIR"):
+            with self.subTest(override=override):
+                repo, env = self.upgrade_fixture(f"host-config-{override}")
                 expected = f"{env['HOME']}/.config/mise"
-                if xdg:
-                    env["XDG_CONFIG_HOME"] = str(repo / xdg)
-                    expected = f"{repo / xdg}/mise"
+                if override:
+                    env[override] = str(repo / "elsewhere")
                 before = {path.relative_to(repo) for path in repo.rglob("*")}
 
                 result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
@@ -1471,6 +1473,8 @@ EOF
             ("none", True, False),
             ("node_stays", False, False),
             ("npm_reinstall", True, True),
+            # The bare install, not an upgrade, moves node: the snapshot must come before it.
+            ("node_by_install", True, False),
         ):
             with self.subTest(phase=phase):
                 repo, env = self.upgrade_fixture(phase)

@@ -453,6 +453,10 @@ install_starship
         self.assertTrue(
             any(rule.get("matchPackageNames") == ["fd"] and rule.get("enabled") is False for rule in mise_rules)
         )
+        # The held npm:pnpm must not come back through a Renovate PR either.
+        self.assertTrue(
+            any(rule.get("matchDepNames") == ["npm:pnpm"] and rule.get("enabled") is False for rule in mise_rules)
+        )
 
     def test_setup_ci_rejects_and_preserves_local_drift(self):
         for workflow_name in ("macos.yaml", "ubuntu.yaml"):

@@ -46,6 +46,12 @@
       "matchManagers": ["mise"],
       "matchPackageNames": ["fd"],
       "enabled": false
+    },
+    {
+      "description": "Hold npm:pnpm, as home/dot_mise/config.toml does: the Understand-Anything plugin lockfile needs that version.",
+      "matchManagers": ["mise"],
+      "matchDepNames": ["npm:pnpm"],
+      "enabled": false
     }
   ]
 }

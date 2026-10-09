@@ -285,8 +285,8 @@ herdr server reload-config" ]
     grep -q 'DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node node@\* python python@\* python3 pip npm pnpm yarn claude"' scripts/upgrade-tools.sh
     grep -q 'for forbidden_formula in ${DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE} ${HOMEBREW_FORBIDDEN_FORMULAE:-}' scripts/upgrade-tools.sh
     grep -q 'case "${formula}" in' scripts/upgrade-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae\[@\]}"' scripts/upgrade-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks\[@\]}"' scripts/upgrade-tools.sh
+    grep -q 'HOMEBREW_NO_ASK=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae\[@\]}"' scripts/upgrade-tools.sh
+    grep -q 'HOMEBREW_NO_ASK=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks\[@\]}"' scripts/upgrade-tools.sh
 }
 
 @test "[common] agent CLI lifecycle upgrades through mise and removes node-global shadows before asset commands" {

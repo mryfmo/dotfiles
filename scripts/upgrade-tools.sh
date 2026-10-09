@@ -140,7 +140,8 @@ function upgrade_homebrew() {
     fi
 
     if [ "${#upgrade_formulae[@]}" -gt 0 ]; then
-        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae[@]}" || return
+        # Homebrew asks for confirmation by default (brew upgrade --help); make update must not wait.
+        HOMEBREW_NO_ASK=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae[@]}" || return
     else
         printf 'No upgradeable Homebrew formulae after forbidden formula filtering.\n'
     fi
@@ -156,7 +157,7 @@ function upgrade_homebrew() {
     fi
 
     if [ "${#outdated_casks[@]}" -gt 0 ]; then
-        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks[@]}" || return
+        HOMEBREW_NO_ASK=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks[@]}" || return
     else
         printf 'No outdated Homebrew casks.\n'
     fi

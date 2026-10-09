@@ -1,0 +1,9 @@
+- [P2] high implementation `install/common/mise.sh:107` — Bootstrap still inherits `home/dot_npmrc`’s seven-day gate while mise selects releases older than 72 hours. A four-day-old statusline release therefore fails during `chezmoi apply`, before `upgrade-tools.sh` sets its three-day override. Align bootstrap’s npm gate too. The read-only simulation reproduced this failure; [npm documents the rejection](https://docs.npmjs.com/cli/v11/using-npm/config/#min-release-age).
+
+- [P2] high implementation `scripts/upgrade-tools.sh:304` — The Node snapshot still comes after a possible Node upgrade: the preceding `chezmoi apply` reruns the changed mise installer, whose line 106 installs Node. If existing npm versions remain unchanged, this snapshot already sees the new Node and skips rebuilding them. The read-only simulation returned success with `current_node=27`, `npm_built_for_node=26`, and `forced_reinstalls=0`. Cover Node changes during the installer and test the complete apply → upgrade sequence. [Mise requires `--force` to reinstall existing versions](https://mise.jdx.dev/cli/install.html).
+
+Scope and artifact checks match the amended task. The saved [PR #310](https://github.com/mryfmo/dotfiles/pull/310) evidence matches the final head: 15 successful check runs, CodeRabbit skipped with success status, and all 11 Bot findings resolved. ShellCheck and syntax checks passed; those results do not cover the two scenarios above.
+
+📝 まとめ: Completed all three audit dimensions; two implementation fixes remain.
+Not checked: live GitHub state was unreachable; host updates and local Bats were not run. Simulations used mocked tool behavior.
+Verdict: incorrect

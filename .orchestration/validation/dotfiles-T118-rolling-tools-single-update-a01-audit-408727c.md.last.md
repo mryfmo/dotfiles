@@ -1,0 +1,9 @@
+- [P2] High confidence — implementation — [scripts/upgrade-tools.sh:281](~/Workspace/dotfiles/.claude/worktrees/orchestrator-review/scripts/upgrade-tools.sh:281): Backup recovery requires `mise where` before restoring the backup. After SIGKILL leaves a held tool’s original install missing, `mise where` fails, so restoration never runs—even with the working backup intact. This matches [mise’s implementation](https://raw.githubusercontent.com/jdx/mise/main/src/cli/where.rs); the read-only reproduction returned `rebuild_rc=1 restore_called=0`. Recover backups before installation lookup and the initial install; make the regression test model missing installations accurately.
+
+- [P3] High confidence — evidence reality — [.orchestration/validation/dotfiles-T118-rolling-tools-single-update-a01.md:228](~/Workspace/dotfiles/.orchestration/validation/dotfiles-T118-rolling-tools-single-update-a01.md:228): The config-search probe still contains a truncated command ending `checkout roo` and truncated output, violating the required complete, verbatim evidence. Line 3 also labels `eee788f0` as the final head. Replace the incomplete block and correct the header.
+
+Amended file scope and expected artifacts checked out. The feedback snapshot matches `408727c9`: 15 successful check runs, one successful status, and all 13 Bot findings resolved. ShellCheck, shell syntax checks, and nine static tests passed.
+
+📝 まとめ: Audit completed; backup recovery and evidence corrections remain.
+Not checked: live GitHub was unreachable; full suites and host updates were not rerun. Interrupted installs can remain unavailable.
+Verdict: incorrect

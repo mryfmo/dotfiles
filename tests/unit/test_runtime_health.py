@@ -1365,6 +1365,14 @@ EOF
                 repo, env = self.upgrade_fixture(f"homebrew-attest-{with_gh}", "Darwin")
                 if not with_gh:
                     (repo / "bin/gh").unlink()
+                    # Runner images ship /usr/bin/gh; hide only gh, not the rest of the system tools.
+                    system = repo / "system-bin"
+                    system.mkdir()
+                    for directory in ("/usr/bin", "/bin"):
+                        for entry in os.scandir(directory):
+                            if entry.name != "gh" and not os.path.lexists(system / entry.name):
+                                (system / entry.name).symlink_to(entry.path)
+                    env["PATH"] = f"{repo / 'bin'}:{system}"
                 result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
 
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)

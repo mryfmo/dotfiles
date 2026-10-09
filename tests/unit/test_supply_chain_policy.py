@@ -25,6 +25,8 @@ curl() {
     printf payload > "${output}"
 }
 verify_mise_archive() { :; }
+github_release_tag() { printf 'v2026.10.3\n'; }
+github_release_attestation() { return 2; }
 tar() {
     local destination
     while [ "$#" -gt 0 ]; do
@@ -62,6 +64,7 @@ install_sheldon
 """,
             "install/ubuntu/server/starship.sh": r"""
 uname() { printf x86_64; }
+github_release_tag() { printf 'v1.26.0\n'; }
 curl() {
     local output
     while [ "$#" -gt 0 ]; do
@@ -109,7 +112,10 @@ install_starship
 
     def test_installer_cleanup_preserves_failure_status(self):
         cases = {
-            "install/common/mise.sh": ("mise_artifact() { return 42; }", "install_mise"),
+            "install/common/mise.sh": (
+                "github_release_tag() { printf 'v1\\n'; }; mise_artifact() { return 42; }",
+                "install_mise",
+            ),
             "install/common/sheldon.sh": (
                 'mkdir -p "$(dirname "${MISE_BIN}")"; '
                 'printf "#!/bin/sh\\nexit 42\\n" > "${MISE_BIN}"; chmod +x "${MISE_BIN}"',
@@ -334,22 +340,68 @@ install_starship
         }
         self.assertEqual(expected_gcloud, gcloud["platforms"])
         self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/config.toml").read_text())
-        bootstrap = (ROOT / "install/common/mise.sh").read_text()
-        pinned_mise = re.search(r'readonly MISE_VERSION="v(\d+)\.(\d+)\.(\d+)"', bootstrap)
-        self.assertIsNotNone(pinned_mise)
-        # A floor, not a copy of the pin: v2026.9.12 is the first release with the
-        # Linux arm64 aqua bin-path fix (#160), and the generator's --check keeps
-        # MISE_VERSION byte-identical to the agent-config.yaml pin.
-        self.assertGreaterEqual(tuple(map(int, pinned_mise.groups())), (2026, 9, 12))
+        # The bootstrap takes the newest cooled-down mise release instead of a pin;
+        # test_rolling_installers_resolve_through_the_release_helper covers it.
+        self.assertNotIn("MISE_VERSION=", (ROOT / "install/common/mise.sh").read_text())
+
+    def test_rolling_installers_resolve_through_the_release_helper(self):
+        # Each rolling GitHub-release installer names its repository once and resolves the
+        # newest release at least 72 hours old; none carries a version constant.
+        for path, repo_line, call, prefix in (
+            (
+                "install/common/mise.sh",
+                'readonly MISE_RELEASE_REPO="jdx/mise"',
+                'github_release_tag "${MISE_RELEASE_REPO}"',
+                "MISE",
+            ),
+            (
+                "install/ubuntu/server/starship.sh",
+                'readonly STARSHIP_RELEASE_REPO="starship/starship"',
+                'github_release_tag "${STARSHIP_RELEASE_REPO}"',
+                "STARSHIP",
+            ),
+            (
+                "install/ubuntu/client/zed.sh",
+                'readonly ZED_RELEASE_REPO="zed-industries/zed"',
+                'github_release_tag "${ZED_RELEASE_REPO}"',
+                "ZED",
+            ),
+            (
+                "setup.sh",
+                'readonly CHEZMOI_RELEASE_REPO="twpayne/chezmoi"',
+                'github_release_tag "${CHEZMOI_RELEASE_REPO}"',
+                "CHEZMOI",
+            ),
+            (
+                "scripts/update-agent-assets.sh",
+                'readonly CRIT_RELEASE_REPO="tomasz-tomczyk/crit"',
+                'github_release_tag "${CRIT_RELEASE_REPO}"',
+                "CRIT",
+            ),
+        ):
+            with self.subTest(path=path):
+                text = (ROOT / path).read_text()
+                self.assertIn(repo_line, text)
+                self.assertIn(call, text)
+                self.assertIsNone(
+                    re.search(rf'^(?:readonly |declare -r )?{prefix}[A-Z_]*_VERSION="v?[0-9]', text, re.MULTILINE)
+                )
+        self.assertIn("GITHUB_RELEASE_MIN_AGE_HOURS=72\n", (ROOT / "scripts/lib/github-release.sh").read_text())
+        config = tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())
+        self.assertEqual("72h", config["settings"]["minimum_release_age"])
+        installer_pins = (ROOT / "scripts/lib/installer-pins.sh").read_text()
+        for retired in ("CHEZMOI_BOOTSTRAP_PIN_VERSION", "CRIT_PIN_VERSION", "ZED_PIN_VERSION"):
+            self.assertNotIn(retired, installer_pins)
 
     def test_sheldon_uses_locked_crates_io_source(self):
         script = (ROOT / "install/common/sheldon.sh").read_text()
         for token in (
             "cargo install",
-            "--locked --features vendored --registry crates-io",
-            '--version "=${SHELDON_VERSION}" sheldon',
+            "--locked --features vendored --registry crates-io sheldon",
         ):
             self.assertIn(token, script)
+        # cargo takes the newest crate and checks it against the registry index.
+        self.assertNotIn("--version", script)
         self.assertNotIn("crate.sh", script)
         self.assertNotIn("github.com/rossmacarthur/sheldon/releases", script)
 

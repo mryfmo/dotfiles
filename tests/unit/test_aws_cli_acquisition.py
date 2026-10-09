@@ -10,8 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "install/ubuntu/common/aws_cli.sh"
-# The pins move with make upgrade; read them from the rendered installer.
-AWS_CLI_VERSION = re.search(r'^readonly AWS_CLI_VERSION="([^"]+)"$', INSTALLER.read_text(), re.MULTILINE).group(1)
+# The archive is unversioned (AWS's current release), so any reported version is a fixture value.
+AWS_CLI_VERSION = "2.37.6"
 FINGERPRINT = re.search(r'^readonly AWS_CLI_FINGERPRINT="([0-9A-F]{40})"$', INSTALLER.read_text(), re.MULTILINE).group(
     1
 )
@@ -40,7 +40,7 @@ class AwsCliAcquisitionTest(unittest.TestCase):
                 {"HOME": str(home)},
             )
 
-    def test_linux_urls_are_versioned_and_unknown_architecture_fails(self):
+    def test_linux_urls_are_the_unversioned_current_archive_and_unknown_architecture_fails(self):
         for architecture in ("x86_64", "aarch64"):
             with self.subTest(architecture=architecture):
                 result = self.run_shell(
@@ -49,7 +49,7 @@ class AwsCliAcquisitionTest(unittest.TestCase):
                 )
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(
-                    f"https://awscli.amazonaws.com/awscli-exe-linux-{architecture}-{AWS_CLI_VERSION}.zip\n",
+                    f"https://awscli.amazonaws.com/awscli-exe-linux-{architecture}.zip\n",
                     result.stdout,
                 )
 
@@ -232,6 +232,7 @@ install_aws_cli
                 },
             )
             self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn(f"Installed aws-cli/{AWS_CLI_VERSION}.", result.stdout)
             self.assertEqual(
                 [
                     "--install-dir",
@@ -242,7 +243,7 @@ install_aws_cli
                 ],
                 args.read_text().splitlines(),
             )
-            base = f"https://awscli.amazonaws.com/awscli-exe-linux-aarch64-{AWS_CLI_VERSION}.zip"
+            base = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip"
             self.assertEqual([base, f"{base}.sig"], urls.read_text().splitlines())
             verified = gpgv_args.read_text().splitlines()
             self.assertEqual("--keyring", verified[0])
@@ -251,7 +252,7 @@ install_aws_cli
             self.assertTrue(verified[3].endswith("/awscliv2.zip"))
             self.assertEqual([], list(temp.iterdir()))
 
-    def test_wrong_staged_version_preserves_existing_aws_and_skips_installer(self):
+    def test_staged_binary_that_is_not_aws_cli_preserves_existing_aws_and_skips_installer(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             home = root / "home"
@@ -301,7 +302,7 @@ EOF
     chmod +x "${destination}/aws/install"
     cat > "${destination}/aws/dist/aws" <<'EOF'
 #!/usr/bin/env bash
-printf 'aws-cli/2.35.20 Python/3.13 Linux/6\n'
+printf 'not-aws 1.0\n'
 EOF
     chmod +x "${destination}/aws/dist/aws"
 }
@@ -323,13 +324,17 @@ install_aws_cli
         result = self.run_postcondition(None)
         self.assertNotEqual(0, result.returncode)
 
-    def test_exit_zero_install_with_wrong_version_fails_postcondition(self):
-        result = self.run_postcondition("#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Linux/6\\n'\n")
+    def test_exit_zero_install_without_an_aws_cli_banner_fails_postcondition(self):
+        result = self.run_postcondition("#!/bin/sh\nprintf 'not-aws 1.0\\n'\n")
         self.assertNotEqual(0, result.returncode)
 
-    def test_exit_zero_install_with_expected_fake_binary_passes_postcondition(self):
-        result = self.run_postcondition(f"#!/bin/sh\nprintf 'aws-cli/{AWS_CLI_VERSION} Python/3.13 Linux/6\\n'\n")
-        self.assertEqual(0, result.returncode, result.stderr)
+    def test_exit_zero_install_of_any_aws_cli_version_passes_and_reports_it(self):
+        # No version is pinned: whatever release AWS serves is accepted and reported.
+        for version in (AWS_CLI_VERSION, "2.35.20"):
+            with self.subTest(version=version):
+                result = self.run_postcondition(f"#!/bin/sh\nprintf 'aws-cli/{version} Python/3.13 Linux/6\\n'\n")
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(f"Installed aws-cli/{version}.\n", result.stdout)
 
     def test_repository_key_has_expected_current_fingerprint(self):
         key = ROOT / "home/dot_local/share/aws-cli-keys/aws-cli-public-key.asc"

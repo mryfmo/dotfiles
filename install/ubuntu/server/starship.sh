@@ -3,7 +3,8 @@
 # @file install/ubuntu/server/starship.sh
 # @brief Install the Starship prompt on Ubuntu servers.
 # @description
-#   Downloads and verifies a pinned Starship release archive.
+#   Downloads the newest Starship release that is at least 72 hours old and
+#   verifies it against the .sha256 file published with it.
 
 set -Eeuo pipefail
 
@@ -12,8 +13,13 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 readonly BIN_DIR="${HOME}/.local/bin"
-# Rendered from assets.starship in home/dot_agents/agent-config.yaml; change it there.
-readonly STARSHIP_VERSION="v1.26.0"
+readonly STARSHIP_RELEASE_REPO="starship/starship"
+
+# The chezmoi script includes scripts/lib/github-release.sh before this file; a direct run sources it.
+if ! declare -F github_release_tag > /dev/null; then
+    # shellcheck source=scripts/lib/github-release.sh
+    source "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/github-release.sh"
+fi
 
 # @description Print the Starship Linux artifact name for the current architecture.
 function starship_artifact() {
@@ -31,9 +37,13 @@ function starship_artifact() {
 # @description Download and install the Starship binary.
 #
 function install_starship() (
-    local actual artifact base_url expected stage="" tmpdir
+    local actual artifact base_url expected stage="" tag tmpdir
     artifact="$(starship_artifact)" || return
-    base_url="https://github.com/starship/starship/releases/download/${STARSHIP_VERSION}"
+    tag="$(github_release_tag "${STARSHIP_RELEASE_REPO}")" || {
+        printf 'Could not resolve a %s release.\n' "${STARSHIP_RELEASE_REPO}" >&2
+        return 1
+    }
+    base_url="https://github.com/${STARSHIP_RELEASE_REPO}/releases/download/${tag}"
     tmpdir="$(mktemp -d)" || return
     trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
     mkdir -p "${BIN_DIR}" || return

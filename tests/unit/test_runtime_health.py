@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import re
@@ -144,6 +145,10 @@ class RuntimeHealthTest(unittest.TestCase):
             repo / "scripts/lib/installer-pins.sh",
         )
         shutil.copy(
+            ROOT / "scripts/lib/github-release.sh",
+            repo / "scripts/lib/github-release.sh",
+        )
+        shutil.copy(
             ROOT / "install/common/gh_extensions.sh",
             repo / "install/common/gh_extensions.sh",
         )
@@ -203,6 +208,10 @@ class RuntimeHealthTest(unittest.TestCase):
         shutil.copy(
             ROOT / "scripts/lib/installer-pins.sh",
             repo / "scripts/lib/installer-pins.sh",
+        )
+        shutil.copy(
+            ROOT / "scripts/lib/github-release.sh",
+            repo / "scripts/lib/github-release.sh",
         )
         shutil.copy(
             ROOT / "install/common/gh_extensions.sh",
@@ -361,6 +370,10 @@ EOF
             ROOT / "scripts/lib/installer-pins.sh",
             repo / "scripts/lib/installer-pins.sh",
         )
+        shutil.copy(
+            ROOT / "scripts/lib/github-release.sh",
+            repo / "scripts/lib/github-release.sh",
+        )
         (repo / "vendor/compactiondb").mkdir(parents=True)
         artifact_arch = "amd64" if arch in ("x86_64", "amd64") else "arm64"
         payload = repo / f"crit-{os_name.lower()}-{artifact_arch}"
@@ -381,16 +394,44 @@ EOF
             esac
             """,
         )
+        # The newest release is too young for the 72-hour window, so v9.9.9 is the one resolved.
+        young = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        releases = repo / "releases.json"
+        releases.write_text(
+            json.dumps(
+                [
+                    {"tag_name": "v10.0.0", "draft": False, "prerelease": False, "published_at": young},
+                    {"tag_name": "v9.9.9", "draft": False, "prerelease": False, "published_at": "2020-01-01T00:00:00Z"},
+                ],
+                indent=2,
+            )
+            + "\n"
+        )
         self.executable(
             bin_dir / "curl",
             """
             printf 'curl %s\\n' "$*" >> "$TEST_LOG"
             out=""
+            url=""
             while [ "$#" -gt 0 ]; do
-                if [ "$1" = "-o" ]; then out="$2"; shift; fi
+                case "$1" in
+                    -o) out="$2"; shift ;;
+                    https://*) url="$1" ;;
+                esac
                 shift
             done
-            cp "$CRIT_PAYLOAD" "$out"
+            case "$url" in
+                https://api.github.com/*)
+                    [ -z "${CRIT_API_FAIL:-}" ] || exit 22
+                    cat "$CRIT_RELEASES" ;;
+                */checksums.txt)
+                    name="$(basename "$CRIT_PAYLOAD")"
+                    if [ -n "${CRIT_BAD_CHECKSUM:-}" ]; then sum="$(printf '0%.0s' $(seq 64))"; else sum="$(shasum -a 256 "$CRIT_PAYLOAD" | cut -d' ' -f1)"; fi
+                    printf '%s  %s\\n' "$sum" "$name" > "$out" ;;
+                *) cp "$CRIT_PAYLOAD" "$out" ;;
+            esac
             """,
         )
         jq = shutil.which("jq")
@@ -405,6 +446,9 @@ EOF
         env = {
             **os.environ,
             "CRIT_PAYLOAD": str(payload),
+            "CRIT_RELEASES": str(releases),
+            "GITHUB_TOKEN": "",
+            "GH_TOKEN": "",
             "DOTFILES_SOURCE_DIR": str(repo),
             "HOME": str(home),
             "PATH": f"{bin_dir}:{home / '.local/bin'}:/usr/bin:/bin",
@@ -412,16 +456,13 @@ EOF
         }
         return repo, home, env, checksum
 
-    def test_linux_crit_install_is_pinned_atomic_and_recorded(self) -> None:
+    def test_linux_crit_install_takes_the_cooled_down_release_atomically_and_records_it(self) -> None:
         repo, home, env, checksum = self.crit_fixture()
         result = self.run_test_command(
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; "
-                "CRIT_PIN_VERSION=v9.9.9; "
-                f"CRIT_LINUX_AMD64_SHA256={checksum}; "
-                "ensure_crit_cli",
+                "source scripts/update-agent-assets.sh; ensure_crit_cli",
             ],
             cwd=repo,
             env=env,
@@ -431,7 +472,11 @@ EOF
         target = home / ".local/bin/crit"
         self.assertTrue(target.stat().st_mode & stat.S_IXUSR)
         self.assertIn("crit v9.9.9", self.run_test_command([str(target)]).stdout)
-        self.assertIn("/v9.9.9/crit-linux-amd64", (repo / "commands.log").read_text())
+        log = (repo / "commands.log").read_text()
+        self.assertIn("api.github.com/repos/tomasz-tomczyk/crit/releases", log)
+        self.assertIn("/v9.9.9/crit-linux-amd64", log)
+        self.assertIn("/v9.9.9/checksums.txt", log)
+        self.assertNotIn("v10.0.0", log)
         manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
         self.assertEqual([str(target)], manifest["steps"]["ensure_crit_cli"]["paths"])
 
@@ -441,24 +486,21 @@ EOF
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; "
-                "CRIT_PIN_VERSION=v9.9.9; "
-                f"CRIT_LINUX_AMD64_SHA256={checksum}; "
-                "ensure_crit_cli",
+                "source scripts/update-agent-assets.sh; ensure_crit_cli",
             ],
             cwd=repo,
             env=env,
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertFalse((repo / "commands.log").exists())
+        self.assertNotIn("/releases/download/", (repo / "commands.log").read_text())
         manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
         self.assertEqual(
             [str(home / ".local/bin/crit")],
             manifest["steps"]["ensure_crit_cli"]["paths"],
         )
 
-    def test_linux_crit_prefers_pinned_target_over_older_path_binary(self) -> None:
+    def test_linux_crit_prefers_the_managed_target_over_older_path_binary(self) -> None:
         repo, home, env, checksum = self.crit_fixture("9.9.9")
         self.executable(
             repo / "bin/crit",
@@ -468,17 +510,14 @@ EOF
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; "
-                "CRIT_PIN_VERSION=v9.9.9; "
-                f"CRIT_LINUX_AMD64_SHA256={checksum}; "
-                "ensure_crit_cli; crit --version",
+                "source scripts/update-agent-assets.sh; ensure_crit_cli; crit --version",
             ],
             cwd=repo,
             env=env,
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertFalse((repo / "commands.log").exists())
+        self.assertNotIn("/releases/download/", (repo / "commands.log").read_text())
         self.assertIn("crit v9.9.9", result.stdout)
         self.assertNotIn("shadow", result.stdout)
 
@@ -490,13 +529,10 @@ EOF
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; "
-                "CRIT_PIN_VERSION=v9.9.9; "
-                f"CRIT_LINUX_AMD64_SHA256={'0' * 64}; "
-                "ensure_crit_cli",
+                "source scripts/update-agent-assets.sh; ensure_crit_cli",
             ],
             cwd=repo,
-            env=env,
+            env={**env, "CRIT_BAD_CHECKSUM": "1"},
         )
 
         self.assertNotEqual(0, result.returncode)
@@ -508,29 +544,22 @@ EOF
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; "
-                "CRIT_PIN_VERSION=v9.9.9; "
-                f"CRIT_LINUX_AMD64_SHA256={'0' * 64}; "
-                "ensure_crit_cli || :; "
-                "later_function() { :; }; later_function",
+                "source scripts/update-agent-assets.sh; ensure_crit_cli || :; later_function() { :; }; later_function",
             ],
             cwd=repo,
-            env=env,
+            env={**env, "CRIT_BAD_CHECKSUM": "1"},
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertNotIn("unbound variable", result.stderr)
 
-    def test_darwin_crit_install_is_pinned_atomic_and_recorded(self) -> None:
+    def test_darwin_crit_install_takes_the_cooled_down_release_atomically_and_records_it(self) -> None:
         repo, home, env, checksum = self.crit_fixture(os_name="Darwin", arch="arm64")
         result = self.run_test_command(
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; "
-                "CRIT_PIN_VERSION=v9.9.9; "
-                f"CRIT_DARWIN_ARM64_SHA256={checksum}; "
-                "ensure_crit_cli",
+                "source scripts/update-agent-assets.sh; ensure_crit_cli",
             ],
             cwd=repo,
             env=env,
@@ -556,18 +585,43 @@ EOF
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; "
-                "CRIT_PIN_VERSION=v9.9.9; "
-                f"CRIT_DARWIN_ARM64_SHA256={'0' * 64}; "
-                "ensure_crit_cli",
+                "source scripts/update-agent-assets.sh; ensure_crit_cli",
             ],
             cwd=repo,
-            env=env,
+            env={**env, "CRIT_BAD_CHECKSUM": "1"},
         )
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("checksum mismatch", result.stdout + result.stderr)
         self.assertEqual(previous, target.read_bytes())
+
+    def test_crit_keeps_an_installed_binary_when_the_release_cannot_be_resolved(self) -> None:
+        # Offline make update converges: an installed Crit stays, with a warning.
+        repo, home, env, _checksum = self.crit_fixture("1.0.0")
+        target = home / ".local/bin/crit"
+        previous = target.read_bytes()
+        result = self.run_test_command(
+            ["bash", "-c", "source scripts/update-agent-assets.sh; ensure_crit_cli"],
+            cwd=repo,
+            env={**env, "CRIT_API_FAIL": "1"},
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("could not resolve a Crit release; Crit 1.0.0 stays", result.stderr)
+        self.assertEqual(previous, target.read_bytes())
+        self.assertNotIn("/releases/download/", (repo / "commands.log").read_text())
+
+    def test_crit_fails_without_an_install_when_the_release_cannot_be_resolved(self) -> None:
+        repo, home, env, _checksum = self.crit_fixture()
+        result = self.run_test_command(
+            ["bash", "-c", "source scripts/update-agent-assets.sh; ensure_crit_cli"],
+            cwd=repo,
+            env={**env, "CRIT_API_FAIL": "1"},
+        )
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("Could not resolve a tomasz-tomczyk/crit release", result.stderr)
+        self.assertFalse((home / ".local/bin/crit").exists())
 
     def agmsg_fixture(
         self,
@@ -591,6 +645,10 @@ EOF
         shutil.copy(
             ROOT / "scripts/lib/installer-pins.sh",
             repo / "scripts/lib/installer-pins.sh",
+        )
+        shutil.copy(
+            ROOT / "scripts/lib/github-release.sh",
+            repo / "scripts/lib/github-release.sh",
         )
         (repo / "vendor/compactiondb").mkdir(parents=True)
 

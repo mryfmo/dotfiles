@@ -6,7 +6,7 @@ set -Eeuo pipefail
 {{   if eq .chezmoi.osRelease.idLike "debian" -}}
 {{     if eq .system "client" -}}
 (
-{{       include "../scripts/lib/installer-pins.sh" }}
+{{       include "../scripts/lib/github-release.sh" }}
 {{       include "../install/ubuntu/client/zed.sh" }}
 )
 {{     end -}}

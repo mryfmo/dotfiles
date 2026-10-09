@@ -23,7 +23,7 @@ function setup() {
     [[ "${output}" == *"provision-machine-key"* ]]
 }
 
-@test "[common] check_crit_cli reports the pinned version and origin when installed" {
+@test "[common] check_crit_cli reports the version and its checksums.txt origin when installed" {
     local crit_path="${BATS_TEST_TMPDIR}/.local/bin/crit"
     mkdir -p "$(dirname "${crit_path}")"
     printf '#!/usr/bin/env bash\nprintf "crit 0.20.3\\n"\n' > "${crit_path}"
@@ -31,8 +31,32 @@ function setup() {
 
     run env HOME="${BATS_TEST_TMPDIR}" bash -c "source '${SCRIPT_PATH}'; check_crit_cli"
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"found:   crit ->"*"(pinned release)"* ]]
+    [[ "${output}" == *"found:   crit ->"*"(GitHub release, checked against checksums.txt)"* ]]
     [[ "${output}" == *"crit 0.20.3"* ]]
+}
+
+@test "[common] check_zed is not applicable outside an Ubuntu client" {
+    run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c "source '${SCRIPT_PATH}'; uname() { printf 'Darwin\\n'; }; chezmoi() { printf client; }; check_zed"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"not applicable: Zed (installed on Ubuntu clients only)"* ]]
+}
+
+@test "[common] check_zed warns with the gh-auth hint when Zed is missing on a client" {
+    run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c "source '${SCRIPT_PATH}'; uname() { printf 'Linux\\n'; }; chezmoi() { printf client; }; check_zed"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"optional warning: zed not installed: run make gh-auth, then make update"* ]]
+}
+
+@test "[common] check_zed reports the installed Zed on a client" {
+    local zed_path="${BATS_TEST_TMPDIR}/.local/bin/zed"
+    mkdir -p "$(dirname "${zed_path}")"
+    printf '#!/usr/bin/env bash\nprintf "Zed 1.22.0 deadbeef\\n"\n' > "${zed_path}"
+    chmod +x "${zed_path}"
+
+    run env HOME="${BATS_TEST_TMPDIR}" bash -c "source '${SCRIPT_PATH}'; uname() { printf 'Linux\\n'; }; chezmoi() { printf client; }; check_zed"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   zed -> ${zed_path}"* ]]
+    [[ "${output}" == *"Zed 1.22.0"* ]]
 }
 
 @test "[common] check_crit_cli is not applicable and not a failure when absent" {

@@ -11,9 +11,11 @@ render_role_config() {
     } | CI=true chezmoi execute-template "$@"
 }
 
+# setup.sh resolves the newest chezmoi release at least 72 hours old; the fixture serves one.
+readonly CHEZMOI_FIXTURE_VERSION="9.9.9"
+
 create_chezmoi_release_fixture() {
-    local fixture_dir="$1" os="$2" arch="$3" artifact checksum version
-    version="$(/bin/bash -c 'source ./setup.sh; printf %s "${CHEZMOI_VERSION}"')"
+    local fixture_dir="$1" os="$2" arch="$3" artifact checksum version="${CHEZMOI_FIXTURE_VERSION}"
     fixture_dir="${fixture_dir}/release"
     mkdir -p "${fixture_dir}/payload"
     artifact="chezmoi_${version}_${os}_${arch}.tar.gz"
@@ -21,6 +23,21 @@ create_chezmoi_release_fixture() {
     tar -czf "${fixture_dir}/${artifact}" -C "${fixture_dir}/payload" chezmoi
     checksum="$(/bin/bash -c 'source ./setup.sh; sha256_file "$1"' _ "${fixture_dir}/${artifact}")"
     printf '%s  %s\n' "${checksum}" "${artifact}" > "${fixture_dir}/chezmoi_${version}_checksums.txt"
+    # The releases API page, named as the fakes see it (the URL's last path segment).
+    cat > "${fixture_dir}/releases?per_page=30" << EOF
+[
+  {
+    "tag_name": "v${version}",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2020-01-01T00:00:00Z"
+  }
+]
+EOF
+    # An unauthenticated gh, so a runner's own gh never verifies the fixture.
+    mkdir -p "${1}/bin"
+    printf '#!/bin/sh\nexit 1\n' > "${1}/bin/gh"
+    chmod +x "${1}/bin/gh"
 }
 
 @test "[common] chezmoi config accepts Linux roles and defaults macOS to client" {
@@ -270,7 +287,7 @@ EOF
 while [ "$#" -gt 0 ]; do
     if [ "$1" = -o ]; then output="$2"; shift 2; else url="$1"; shift; fi
 done
-cp "${CHEZMOI_FIXTURE_DIR}/${url##*/}" "${output}"
+if [ -n "${output:-}" ]; then cp "${CHEZMOI_FIXTURE_DIR}/${url##*/}" "${output}"; else cat "${CHEZMOI_FIXTURE_DIR}/${url##*/}"; fi
 EOF
     chmod +x "${tmpdir}/bin/curl"
 
@@ -292,7 +309,7 @@ EOF
     local before_sentinel_hash
     local version
 
-    version="$(/bin/bash -c 'source ./setup.sh; printf %s "${CHEZMOI_VERSION}"')"
+    version="${CHEZMOI_FIXTURE_VERSION}"
     for mode in clean target-only drift status-fail diff-fail apply-fail; do
         tmpdir="$(mktemp -d)"
         mkdir -p "${tmpdir}/bin" "${tmpdir}/home" "${tmpdir}/release"
@@ -341,7 +358,7 @@ EOF
         chmod +x "${tmpdir}/release/chezmoi"
         create_chezmoi_release_fixture "${tmpdir}" linux amd64
 
-        for command_path in sh find rm mkdir chmod cat cp tar gzip install mv mktemp awk shasum; do
+        for command_path in sh find rm mkdir chmod cat cp tar gzip install mv mktemp awk shasum date; do
             ln -s "$(command -v "${command_path}")" "${tmpdir}/bin/${command_path}"
         done
 
@@ -355,7 +372,7 @@ while [ "$#" -gt 0 ]; do
     if [ "$1" = -qO ]; then output="$2"; shift 2; else url="$1"; shift; fi
 done
 printf 'wget %s\n' "${url}" >> "${HOME}/fetch.log"
-cp "${CHEZMOI_FIXTURE_DIR}/${url##*/}" "${output}"
+if [ "${output}" = - ]; then cat "${CHEZMOI_FIXTURE_DIR}/${url##*/}"; else cp "${CHEZMOI_FIXTURE_DIR}/${url##*/}" "${output}"; fi
 EOF
         chmod +x "${tmpdir}/bin/uname" "${tmpdir}/bin/wget"
 
@@ -364,6 +381,7 @@ EOF
             CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
             /bin/bash -c "$(cat setup.sh)"
 
+        grep -qx "wget https://api.github.com/repos/twpayne/chezmoi/releases?per_page=30" "${tmpdir}/home/fetch.log"
         grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${version}/chezmoi_${version}_linux_amd64.tar.gz" "${tmpdir}/home/fetch.log"
         grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${version}/chezmoi_${version}_checksums.txt" "${tmpdir}/home/fetch.log"
         grep -q '^chezmoi init ' "${tmpdir}/home/log"

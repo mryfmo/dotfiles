@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # @file install/ubuntu/common/aws_cli.sh
-# @brief Install the pinned AWS CLI from its verified official Linux archive.
+# @brief Install the current AWS CLI from its official Linux archive, verified with AWS's GPG signature.
 
 set -Eeuo pipefail
 
@@ -10,14 +10,14 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 # Rendered from assets.aws-cli in home/dot_agents/agent-config.yaml; change it there.
-readonly AWS_CLI_VERSION="2.37.6"
 readonly AWS_CLI_FINGERPRINT="FB5DB77FD5C118B80511ADA8A6310ACC4672475C"
 readonly AWS_CLI_KEY_PATH="${AWS_CLI_KEY_PATH:-${HOME}/.local/share/aws-cli-keys/aws-cli-public-key.asc}"
 readonly AWS_CLI_INSTALL_DIR="${HOME}/.local/share/aws-cli"
 readonly AWS_CLI_BIN_DIR="${HOME}/.local/bin"
 
 #
-# @description Print the versioned AWS CLI archive URL for the current supported architecture.
+# @description Print the AWS CLI archive URL for the current supported architecture.
+#   The unversioned archive is AWS's current release; its .sig is checked against the pinned key.
 # @stdout The official x86_64 or aarch64 archive URL.
 #
 function aws_cli_url() {
@@ -26,7 +26,7 @@ function aws_cli_url() {
     architecture="$(uname -m)"
     case "${architecture}" in
     x86_64 | aarch64)
-        printf 'https://awscli.amazonaws.com/awscli-exe-linux-%s-%s.zip\n' "${architecture}" "${AWS_CLI_VERSION}"
+        printf 'https://awscli.amazonaws.com/awscli-exe-linux-%s.zip\n' "${architecture}"
         ;;
     *)
         printf 'Unsupported AWS CLI architecture: %s\n' "${architecture}" >&2
@@ -36,9 +36,10 @@ function aws_cli_url() {
 }
 
 #
-# @description Verify that an executable reports the pinned AWS CLI version.
+# @description Verify that an executable runs as the AWS CLI and print the version it reports.
 # @arg $1 executable AWS CLI executable path.
 # @arg $2 error_prefix Error message prefix.
+# @stdout The version token, for example aws-cli/2.37.6.
 #
 function verify_aws_cli_version() {
     local executable="$1"
@@ -52,22 +53,24 @@ function verify_aws_cli_version() {
     fi
     version_output="$("${executable}" --version)" || return
     read -r version_token _ <<< "${version_output}"
-    if [[ "${version_token}" != "aws-cli/${AWS_CLI_VERSION}" ]]; then
-        printf '%s: expected aws-cli/%s, got %s.\n' \
-            "${error_prefix}" "${AWS_CLI_VERSION}" "${version_token}" >&2
+    if [[ "${version_token}" != aws-cli/* ]]; then
+        printf '%s: expected an aws-cli/<version> banner, got %s.\n' "${error_prefix}" "${version_token}" >&2
         return 1
     fi
+    printf '%s\n' "${version_token}"
 }
 
 #
-# @description Verify that the installer produced the pinned AWS CLI executable.
+# @description Verify that the installer produced a working AWS CLI and report its version.
 #
 function verify_aws_cli_install() {
-    verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI postcondition failed"
+    local version
+    version="$(verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI postcondition failed")" || return
+    printf 'Installed %s.\n' "${version}"
 }
 
 #
-# @description Verify and install the pinned AWS CLI without modifying a working install on verification failure.
+# @description Verify and install the current AWS CLI without modifying a working install on verification failure.
 #
 function install_aws_cli() (
     local archive_url
@@ -109,7 +112,7 @@ function install_aws_cli() (
     gpgv --keyring "${keyring_path}" "${signature_path}" "${archive_path}" || return
 
     unzip -q "${archive_path}" -d "${temporary_dir}" || return
-    verify_aws_cli_version "${temporary_dir}/aws/dist/aws" "AWS CLI staged artifact verification failed" || return
+    verify_aws_cli_version "${temporary_dir}/aws/dist/aws" "AWS CLI staged artifact verification failed" > /dev/null || return
     mkdir -p "${AWS_CLI_BIN_DIR}" "$(dirname "${AWS_CLI_INSTALL_DIR}")" || return
     "${temporary_dir}/aws/install" \
         --install-dir "${AWS_CLI_INSTALL_DIR}" \
@@ -119,7 +122,7 @@ function install_aws_cli() (
 )
 
 #
-# @description Install or update the pinned AWS CLI.
+# @description Install or update the AWS CLI.
 #
 function main() {
     install_aws_cli

@@ -501,6 +501,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "upstream": "jdx/mise",
                     "pin": "v1",
                     "verify": "release-shasums",
+                    "reason": "fixture: a pinned release",
                     "install_path": "~/.local/bin/mise",
                     "installer": "install/common/mise.sh",
                     "render": {
@@ -514,6 +515,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "pin": "abc",
                     "verify": "sha256",
                     "sha256": "def",
+                    "reason": "fixture: the publisher signs nothing",
                     "install_path": "/opt/homebrew",
                     "installer": "install/macos/common/brew.sh",
                 },
@@ -523,6 +525,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "pin": "2",
                     "verify": "gpg",
                     "gpg_fingerprint": "FB5D",
+                    "reason": "fixture: a pinned archive",
                     "install_path": "~/.local/share/aws-cli",
                     "installer": "install/ubuntu/common/aws_cli.sh",
                 },
@@ -542,6 +545,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "verify": "sha256",
                     "sha256": "9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059",
                     "bootstrap_integrity": "sha512-n6057L93AE+tnItTkBnClv3QvgsOlI6AO1SwodvKFJvqqTJqITHg/2O6jjHZZfh0nKbq49VKQv6F3t2d/62gyg==",
+                    "reason": "fixture: no release assets",
                     "install_path": "~/.agents/skills/agmsg",
                     "installer": "scripts/update-agent-assets.sh#update_agmsg",
                 },
@@ -575,6 +579,64 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.assertRaises(SystemExit),
                 ):
                     self.module.validate_assets(manifest)
+
+    def rolling_asset_manifest(self) -> dict:
+        """The fixture with mise and aws rolling: release: latest and no pin, sha256 or reason."""
+        manifest = self.asset_manifest()
+        mise = manifest["assets"]["mise"]
+        for key in ("pin", "reason", "render"):
+            mise.pop(key)
+        mise.update(release="latest", attestation="when-gh-authenticated")
+        aws = manifest["assets"]["aws"]
+        for key in ("pin", "reason"):
+            aws.pop(key)
+        aws.update(
+            release="latest",
+            render={
+                "file": "install/ubuntu/common/aws_cli.sh",
+                "constants": {"AWS_CLI_FINGERPRINT": "gpg_fingerprint"},
+            },
+        )
+        return manifest
+
+    def test_assets_accept_rolling_releases_without_pins(self) -> None:
+        self.write_text_file("install/ubuntu/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
+
+        self.module.validate_assets(self.rolling_asset_manifest())
+
+    def test_assets_reject_invalid_rolling_and_pinned_declarations(self) -> None:
+        self.write_text_file("install/ubuntu/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
+        cases = {
+            "release other than latest": (lambda a: a["mise"].update(release="v1"), "release must be 'latest'"),
+            "release on a git-commit source": (
+                lambda a: a["brew"].update(release="latest", pin=None) or a["brew"].pop("pin"),
+                "release must be 'latest'",
+            ),
+            "rolling with a pin": (lambda a: a["mise"].update(pin="v1"), "must not record ['pin']"),
+            "rolling with a sha256": (lambda a: a["mise"].update(sha256="abc"), "must not record ['sha256']"),
+            "rolling with a reason": (
+                lambda a: a["mise"].update(reason="x"),
+                "a reason belongs only to a pinned asset",
+            ),
+            "rolling renders a version": (
+                lambda a: a["aws"]["render"]["constants"].update(AWS_CLI_VERSION="pin"),
+                "must not render AWS_CLI_VERSION from pin",
+            ),
+            "pinned release without a reason": (lambda a: a["brew"].pop("reason"), "must give the reason"),
+            "unknown attestation": (lambda a: a["mise"].update(attestation="always"), "attestation must be"),
+            "attestation off GitHub": (
+                lambda a: a["aws"].update(attestation="when-gh-authenticated"),
+                "attestation must be",
+            ),
+        }
+        for name, (breaks, message) in cases.items():
+            with self.subTest(case=name):
+                manifest = self.rolling_asset_manifest()
+                breaks(manifest["assets"])
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_assets(manifest)
+                self.assertIn(message, stderr.getvalue())
 
     def assert_agmsg_asset_rejected(self, **changes: object) -> str:
         manifest = self.asset_manifest()

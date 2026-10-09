@@ -3,8 +3,8 @@
 # @file install/common/mise.sh
 # @brief Install and bootstrap `mise`.
 # @description
-#   Downloads and verifies a pinned standalone `mise` release, then runs `mise install`
-#   against the repository tool definitions.
+#   Downloads the newest standalone `mise` release that is at least 72 hours old,
+#   verifies it, then runs `mise install` against the repository tool definitions.
 
 # set -Eeuo pipefail
 
@@ -13,19 +13,25 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 export MISE_INSTALL_PATH="${HOME}/.local/bin/mise"
-# Rendered from assets.mise in home/dot_agents/agent-config.yaml; change it there.
-readonly MISE_VERSION="v2026.9.17"
+readonly MISE_RELEASE_REPO="jdx/mise"
+
+# The chezmoi script includes scripts/lib/github-release.sh before this file; a direct run sources it.
+if ! declare -F github_release_tag > /dev/null; then
+    # shellcheck source=scripts/lib/github-release.sh
+    source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/lib/github-release.sh"
+fi
 
 # @description Print the mise release artifact name for the current platform.
+# @arg $1 string The release tag.
 function mise_artifact() {
     local os arch
     os="$(uname -s)"
     arch="$(uname -m)"
     case "${os}/${arch}" in
-    Darwin/x86_64) printf 'mise-%s-macos-x64.tar.gz\n' "${MISE_VERSION}" ;;
-    Darwin/arm64) printf 'mise-%s-macos-arm64.tar.gz\n' "${MISE_VERSION}" ;;
-    Linux/x86_64) printf 'mise-%s-linux-x64.tar.gz\n' "${MISE_VERSION}" ;;
-    Linux/aarch64 | Linux/arm64) printf 'mise-%s-linux-arm64.tar.gz\n' "${MISE_VERSION}" ;;
+    Darwin/x86_64) printf 'mise-%s-macos-x64.tar.gz\n' "$1" ;;
+    Darwin/arm64) printf 'mise-%s-macos-arm64.tar.gz\n' "$1" ;;
+    Linux/x86_64) printf 'mise-%s-linux-x64.tar.gz\n' "$1" ;;
+    Linux/aarch64 | Linux/arm64) printf 'mise-%s-linux-arm64.tar.gz\n' "$1" ;;
     *)
         printf 'Unsupported mise platform: %s/%s\n' "${os}" "${arch}" >&2
         return 1
@@ -56,12 +62,17 @@ function verify_mise_archive() {
 }
 
 #
-# @description Install the pinned standalone `mise` binary.
+# @description Install the newest cooled-down standalone `mise` release, checked against its
+#   SHASUMS256.txt and, when an authenticated gh is present, its GitHub release attestation.
 #
 function _install_mise_binary() (
-    local artifact base_url stage="" tmpdir
-    artifact="$(mise_artifact)" || return
-    base_url="https://github.com/jdx/mise/releases/download/${MISE_VERSION}"
+    local artifact attestation=0 base_url stage="" tag tmpdir
+    tag="$(github_release_tag "${MISE_RELEASE_REPO}")" || {
+        printf 'Could not resolve a %s release.\n' "${MISE_RELEASE_REPO}" >&2
+        return 1
+    }
+    artifact="$(mise_artifact "${tag}")" || return
+    base_url="https://github.com/${MISE_RELEASE_REPO}/releases/download/${tag}"
     tmpdir="$(mktemp -d)" || return
     trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
     mkdir -p "$(dirname "${MISE_INSTALL_PATH}")" || return
@@ -70,13 +81,22 @@ function _install_mise_binary() (
     curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}" || return
     curl -fsSL "${base_url}/SHASUMS256.txt" -o "${tmpdir}/SHASUMS256.txt" || return
     verify_mise_archive "${tmpdir}/${artifact}" "${tmpdir}/SHASUMS256.txt" "${artifact}" || return
+    github_release_attestation "${MISE_RELEASE_REPO}" "${tag}" "${tmpdir}/${artifact}" || attestation=$?
+    case "${attestation}" in
+    0) ;;
+    2) printf 'gh is absent or not authenticated: mise %s is verified by SHASUMS256.txt only.\n' "${tag}" ;;
+    *)
+        printf 'GitHub release attestation failed for %s.\n' "${artifact}" >&2
+        return 1
+        ;;
+    esac
     tar -xzf "${tmpdir}/${artifact}" -C "${tmpdir}" || return
     install -m 0755 "${tmpdir}/mise/bin/mise" "${stage}" || return
     mv -f "${stage}" "${MISE_INSTALL_PATH}"
 )
 
 #
-# @description Install the pinned standalone `mise` binary and activate it for the caller.
+# @description Install the standalone `mise` binary and activate it for the caller.
 #
 function install_mise() {
     local activation

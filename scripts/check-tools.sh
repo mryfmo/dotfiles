@@ -150,9 +150,9 @@ function check_machine_ssh_key() {
 }
 
 #
-# @description Report the managed Crit CLI's pinned version and origin, when installed.
-#   Installed by ensure_crit_cli in scripts/update-agent-assets.sh from the pinned
-#   GitHub release on every OS; not required, so a missing binary is not a failure.
+# @description Report the managed Crit CLI's version and origin, when installed.
+#   Installed by ensure_crit_cli in scripts/update-agent-assets.sh from the newest
+#   cooled-down GitHub release on every OS; not required, so a missing binary is not a failure.
 #
 function check_crit_cli() {
     local target="${HOME%/}/.local/bin/crit"
@@ -162,8 +162,27 @@ function check_crit_cli() {
         return 0
     fi
 
-    printf 'found:   crit -> %s (pinned release)\n' "${target}"
+    printf 'found:   crit -> %s (GitHub release, checked against checksums.txt)\n' "${target}"
     "${target}" --version || warn_optional "crit --version failed; the managed binary may be corrupt (try REPAIR=1 make doctor)"
+}
+
+#
+# @description Report Zed on Ubuntu clients. run_after_05-client-install-zed installs it only with an
+#   authenticated gh, because a GitHub release attestation is the only verification Zed publishes.
+#
+function check_zed() {
+    local target="${HOME%/}/.local/bin/zed" system
+    system="$(chezmoi execute-template '{{ .system }}' 2> /dev/null || true)"
+    if [ "$(uname -s)" != Linux ] || [ "${system}" != client ]; then
+        printf 'not applicable: Zed (installed on Ubuntu clients only)\n'
+        return 0
+    fi
+    if [ ! -x "${target}" ]; then
+        warn_optional "zed not installed: run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh"
+        return 0
+    fi
+    printf 'found:   zed -> %s\n' "${target}"
+    "${target}" --version || warn_optional "zed --version failed; the install may be corrupt"
 }
 
 #
@@ -284,6 +303,9 @@ function main() {
 
     section "Crit CLI"
     check_crit_cli
+
+    section "Zed"
+    check_zed
 
     section "SSH"
     check_machine_ssh_key

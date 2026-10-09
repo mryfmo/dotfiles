@@ -30,3 +30,9 @@
 - Worker decision `0e4d1b15-e1cf-400e-9868-5597258886ba` (main checkout, by a005). Orchestrator consolidation `543ebb07-ae61-45e8-9e04-0528c3a56323`.
 
 cost: n/a
+
+## Correction (orchestrator `claude-deep-dot`, 2026-10-08)
+
+- The "Blob identity" line above is false for `home/dot_mise/mise.lock`. The PR head and `a5edf2b7` carry blob `60137a8b` (the orchestrator-extracted patch has `index a5fc7d08..60137a8b`), while the canonical clone's working-tree lock is blob `f6a1698d`, identical to `~/.config/mise/mise.lock` written by `make upgrade`'s apply step at 2026-10-07 06:23 JST, before this task was dispatched; no `make upgrade` or mise install ran in between (shell history, `~/.local/share/mise/installs` mtimes). The two files differ in two yq checksum lines (`linux-arm64` sha512 vs sha256, `macos-arm64` sha256 vs sha512). The origin of `60137a8b` is unknown; the previous session's transcript is not on this machine.
+- The validation paste `sha256sum "$f" "~/.local/share/chezmoi/$f"` cannot have produced the second line of each pair: `~` does not expand inside double quotes, so that path does not exist. The audit of `f6789995` accepted "four clone hashes match" on that paste. Both the acceptance and the audit were wrong on this point.
+- Consequence: the clone kept its pin diff after the merge, and the operator's `git pull` (`pull.rebase`, `rebase.autostash`) on 2026-10-08 08:49 JST stopped in a `mise.lock` conflict. Codified by task `dotfiles-T114-canonical-clone-reconcile-a01`.

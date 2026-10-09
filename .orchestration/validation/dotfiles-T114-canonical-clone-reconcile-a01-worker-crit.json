@@ -1,0 +1,40 @@
+[
+  {
+    "id": "t114-w1",
+    "scope": "file",
+    "file": "tests/unit/test_herdr_agents.py",
+    "line": 3790,
+    "body": "The working-clone skip test wrote its dirty file at the repo root, outside home/install/scripts, so it could not fail if the skip broke. Moved under home/ and proved by removing the skip (1 failure). Fixed in 689e1901.",
+    "resolved": true
+  },
+  {
+    "id": "t114-w2",
+    "scope": "file",
+    "file": "scripts/check-regime-boundary.sh",
+    "line": 117,
+    "body": "Checked the section against task item 1: resolution, skip conditions, ref choice, three violation lines in order and wording, run_before guard scope; read-only git -C probes only. No finding.",
+    "resolved": true
+  },
+  {
+    "id": "t114-w3",
+    "scope": "review",
+    "body": "Self-review of 689e1901 against the T114 task file: SKILL and README replacements are verbatim and limited to the named clause and sentence; .gitignore block as specified. Approved, pending CI once pushed.",
+    "resolved": true
+  },
+  {
+    "id": "t114-w4",
+    "scope": "file",
+    "file": "scripts/check-regime-boundary.sh",
+    "line": 137,
+    "body": "Round 1: Codex Bot P1 4224481114 confirmed (a stale HEAD whose dirty bytes equal origin/main passed). Fixed in 0f0f2cbe with a fourth line for uncommitted changes against HEAD when the ref diff is empty; regression test fails on 689e1901's script.",
+    "resolved": true
+  },
+  {
+    "id": "t114-w5",
+    "scope": "file",
+    "file": "tests/unit/test_herdr_agents.py",
+    "line": 3766,
+    "body": "Round 2: the spec-given `diff --cached \"${ref}\"` moved the unstaged stale-HEAD state onto the differs line; the round-1 fixture now stages the bytes (`reset --soft`) so the fourth line's narrowed scope is what it tests. Reported to the orchestrator as a scope change.",
+    "resolved": true
+  }
+]

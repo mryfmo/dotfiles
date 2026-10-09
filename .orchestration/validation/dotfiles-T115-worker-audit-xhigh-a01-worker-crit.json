@@ -1,0 +1,16 @@
+[
+  {
+    "id": "t115-worker-review-1",
+    "scope": "review",
+    "body": "Independent worker self-review of PR #305 head d2a9cb71 (crit daemon not running, so this is the hand-written record in crit's JSON shape). Checked: manifest changes are exactly standard.claude.effort and audit.codex.model_reasoning_effort; standard.codex, security, deep, review, express untouched. Generated files come only from scripts/generate-agent-configs.py; claude-settings-managed.json and codex-config-managed.toml unchanged; project-map.md follows standard.claude (Amendment 1). Validator audit pin and comment match the task text; security pin stays high. Tests: sample audit profile uses xhigh, and the wrong-value case for audit effort is now high so the pin is still exercised. README edits limited to the constellation paragraph. Approved.",
+    "resolved": true
+  },
+  {
+    "id": "t115-worker-review-2",
+    "scope": "file",
+    "file": "tests/unit/test_generate_agent_configs.py",
+    "line": 774,
+    "body": "The project-map effort assertion reads the test's own sample manifest (model: sonnet, effort: high), not the repository manifest, so it does not pin the changed value; no edit needed.",
+    "resolved": true
+  }
+]

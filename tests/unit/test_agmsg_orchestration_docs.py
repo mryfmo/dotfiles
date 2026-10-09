@@ -125,7 +125,10 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
             "actas.<team>__<name>.session",
             "`<common>/objects`",
             "messages.db `read_at`/PONG query",
-            "Never run full mode from inside an existing pair workspace",
+            "Never run full mode from inside an existing managed workspace",
+            "`--restart-worker` is retired and exits 2",
+            "herdr-agents --add-worker [<worktree>]",
+            "remove every worker with `herdr-agents --remove-worker <worktree>`",
             "machine-state hygiene that touches no repository",
         ):
             with self.subTest(token=token):

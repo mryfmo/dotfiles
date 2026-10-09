@@ -235,10 +235,10 @@ function install_crit_release() (
     curl -fsSL "${base_url}/checksums.txt" -o "${checksums}" || return
     expected="$(awk -v name="${artifact}" '$2 == name { print $1; exit }' "${checksums}")"
     actual="$(shasum -a 256 "${download}" | awk '{ print $1 }')"
-    [ -n "${expected}" ] && [ "${actual}" = "${expected}" ] || {
+    if [ -z "${expected}" ] || [ "${actual}" != "${expected}" ]; then
         printf 'Crit checksum mismatch for %s %s.\n' "${artifact}" "${tag}" >&2
         return 1
-    }
+    fi
 
     mkdir -p "$(dirname "${target}")" || return
     staging="$(mktemp "${target}.XXXXXX")" || return

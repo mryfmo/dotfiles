@@ -2843,14 +2843,14 @@ exit {exit_code}
         )
         self.assertNotIn("review", result.stdout)
 
-    def test_regime_boundary_check_counts_names_across_runtime_types_at_an_active_seat(self) -> None:
+    def test_regime_boundary_check_counts_names_across_runtime_types_at_the_main_seat(self) -> None:
         main, worktree, other = self.boundary_repo()
         profiles = self.home_dir / ".agents/model-profiles.env"
         profiles.parent.mkdir(parents=True, exist_ok=True)
         profiles.write_text('HERDR_AGENTS_WORKER_WORKTREE=".claude/worktrees/wt"\n')
         scripts = self.home_dir / ".agents/skills/agmsg/scripts"
         scripts.mkdir(parents=True, exist_ok=True)
-        # One name per type everywhere: a seat holds two, `review` holds one per type.
+        # One name per type everywhere: the main seat holds two; every linked worktree holds a worker.
         (scripts / "identities.sh").write_text(
             "#!/usr/bin/env bash\n"
             "case \"$2\" in claude-code) printf 'dotfiles\\tclaude-x\\n' ;; codex) printf 'dotfiles\\tcodex-x\\n' ;; esac\n"
@@ -2861,12 +2861,37 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         lines = result.stdout.splitlines()
-        for seat in (main, worktree):
+        self.assertIn(
+            f"regime-boundary: stray identities at the active seat {main.resolve()}: 2 names across claude-code and codex (expected one)",
+            lines,
+        )
+        # The manifest worker_worktree is no seat of its own any more.
+        self.assertFalse(any("active seat" in line and str(worktree.resolve()) in line for line in lines), lines)
+        for name in ("wt", "review"):
             self.assertIn(
-                f"regime-boundary: stray identities at the active seat {seat.resolve()}: 2 names across claude-code and codex (expected one)",
+                f"regime-boundary: worker still seated at .claude/worktrees/{name} "
+                f"(herdr-agents --remove-worker .claude/worktrees/{name})",
                 lines,
             )
-        self.assertNotIn("review", result.stdout)
+
+    def test_regime_boundary_check_accepts_an_empty_manifest_worker_worktree(self) -> None:
+        main, worktree, _ = self.boundary_repo()
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True, exist_ok=True)
+        profiles.write_text('HERDR_AGENTS_WORKER_WORKTREE=".claude/worktrees/wt"\n')
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        # Only the orchestrator at the main checkout: no worker is seated anywhere.
+        (scripts / "identities.sh").write_text(
+            f"#!/usr/bin/env bash\n[[ $1 == {shlex.quote(str(main.resolve()))} && $2 == claude-code ]] && printf 'dotfiles\\tclaude-x\\n'\nexit 0\n"
+        )
+        (scripts / "identities.sh").chmod(0o755)
+
+        result = self.run_boundary_check(worktree)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("worker still seated", result.stdout)
+        self.assertNotIn("active seat", result.stdout)
 
     def test_regime_boundary_check_flags_a_seated_main_checkout_off_main(self) -> None:
         main, worktree, _ = self.boundary_repo()
@@ -2997,10 +3022,13 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         reported = [line for line in result.stdout.splitlines() if "additional worker" in line]
+        # The manifest worker_worktree is seated on demand too, so its tab is reported like any other.
         self.assertEqual(
             [
                 "regime-boundary: additional worker tab still open in dotfiles: "
-                "dotfiles:claude-standard-dot-a007 (herdr-agents --remove-worker)"
+                "dotfiles:claude-standard-dot-a007 (herdr-agents --remove-worker)",
+                "regime-boundary: additional worker tab still open in dotfiles: "
+                "dotfiles:codex-standard-dot-a005 (herdr-agents --remove-worker)",
             ],
             reported,
         )

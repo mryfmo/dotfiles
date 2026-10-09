@@ -17,6 +17,8 @@ CLAUDE_STATUS = {
     "session_id": "offline-test",
     "transcript_path": "/private/tmp/nonexistent.jsonl",
 }
+
+
 def run(command: list[str], stdin: str | None = None) -> subprocess.CompletedProcess[str]:
     started = time.monotonic()
     result = subprocess.run(

@@ -1,0 +1,230 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 306,
+  "head_sha": "ff4ffa0f55a09c36db2467f2568914608aaec4d4",
+  "base_ref": "main",
+  "base_sha": "02d65ca7b3e5fe4a2cc634b7562481000997e704",
+  "generated_at": "2026-10-09T02:46:18+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985165/job/113638243369"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985165/job/113638243329"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985165/job/113638243302"
+    },
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985165/job/113638243244"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985176/job/113638195976"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985176/job/113638195925"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985165/job/113638195866"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985176/job/113638195844"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985176/job/113638195841"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985176/job/113638195840"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985176/job/113638195769"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985214/job/113638195720"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"60d4959322a8548efcb3ccc4ce29c245f4443e99\",\"mergeGateEnabled\":false,\"pullRequestNumber\":306,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-09T02:23:16.286372Z\">2026-10-09T02:23:16.286372Z</relative-time> | `ff4ffa0` | New commits |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-09T01:27:10.007331Z\">2026-10-09T01:27:10.007331Z</relative-time> | `60d4959` | PR opened |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/306#issuecomment-6072310708",
+      "disposition": "not-applicable:Codex review summary comment; its findings are the inline threads dispositioned above"
+    },
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `784ae466-8fb4-44f5-8053-1fb01a901c42`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=306)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/306#issuecomment-6072310820",
+      "disposition": "not-applicable:CodeRabbit auto-generated summary; automatic reviews are disabled for this repository"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `60d4959322`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/306#pullrequestreview-5464728184",
+      "commit": "60d4959322a8548efcb3ccc4ce29c245f4443e99",
+      "disposition": "not-applicable:Codex review header without a finding in its body; the inline threads carry the findings"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/306#pullrequestreview-5464968221",
+      "commit": "bb2edb384f8f791e46ac37a01d8884d1604b916a",
+      "disposition": "not-applicable:Codex review header without a finding in its body; the inline threads carry the findings"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/306#pullrequestreview-5464968350",
+      "commit": "bb2edb384f8f791e46ac37a01d8884d1604b916a",
+      "disposition": "not-applicable:Codex review header without a finding in its body; the inline threads carry the findings"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 2091,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Exclude Claude worker panes before skipping orchestrator repair**\n\nWhen the manifest/default Claude worker is seated and the orchestrator has exited, `managed_pane_list` normalizes that worker's self-named label to `claude-worker`; consequently `added_worker_pane_filter` no longer recognizes it, while `has_claude_pane` still accepts any remaining Claude process. Full mode therefore treats the worker as the orchestrator and skips the promised repair, leaving the workspace without an orchestrator. A legacy resident `claude-worker` pane has the same failure mode; identify and exclude worker-labeled panes before this check.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/306#discussion_r4225776331",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:dfdbb8c5a5df4b7c896a210faa1f7010d7238dff"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 2088,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Keep both Codex overrides when routing workers through spawn**\n\nWhen a Codex worker is selected, removing the direct resident-worker path makes this on-demand spawn path mandatory, but `write_spawn_options` emits two `--config:` entries: one for network access and another for writable roots. The upstream spawn-options contract is a flat map and explicitly says a flag cannot be repeated with multiple values ([agmsg #273](https://github.com/fujibee/agmsg/issues/273)), so this file cannot reliably deliver both overrides. Such a worker consequently loses either GitHub/network access or write access to its linked-worktree Git metadata, preventing the repository tasks this mode is intended to run.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/306#discussion_r4225776337",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the installed agmsg 1.5.0 spawn-options parser is line-based and emits a --config token pair per line, verified by the worker with the exact two-line shape (validation section 5); the spawn options are unchanged by this PR and the upstream flat-map contract is recorded as a known risk"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 2091,
+      "body": "fixed:dfdbb8c5. `worker_pane_filter` now excludes any pane in a linked worktree and any pane labeled `codex-worker` or `claude-worker` from the orchestrator checks (`has_claude_pane`, `empty_pane_id`, the split source), so a seated or legacy Claude worker is never taken for the orchestrator; two regression tests fail on 60d49593 and pass now.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/306#discussion_r4225998516",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on a Bot thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 2088,
+      "body": "not-applicable: the installed agmsg 1.5.0 `lib/spawn-options.sh` is line-based and `agmsg_spawn_options_tokens codex` emits a `--config` token pair for every `  --config:` line; the worker ran it with our exact two-line shape and both overrides came out (validation section 5). This PR does not change the spawn options; the upstream flat-map statement (#273) is recorded as a known risk in the acceptance record, to revisit if the parser changes.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/306#discussion_r4225998649",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on a Bot thread, not a finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985165/job/113638243302",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub Actions macOS arm64 runner capacity notice; not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985176/job/113638195840",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub Actions macOS arm64 runner capacity notice; not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37873985176/job/113638195769",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub Actions macOS arm64 runner capacity notice; not about this change"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit skipped status, automatic reviews disabled; success state"
+    }
+  ]
+}

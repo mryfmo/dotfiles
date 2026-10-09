@@ -1,0 +1,8 @@
+- [P2] high implementation `home/dot_agents/skills/agmsg-orchestration/SKILL.md:68` — The extraction command still loses index-only changes. The new test explicitly stages changed content, then restores the working file to HEAD. In that state, `git diff --full-index HEAD` produces nothing while `git diff --cached HEAD` contains the change; I reproduced this read-only using existing indexes. The boundary check reports work that the transfer procedure silently omits. Require reconciliation of differing index/worktree content before extracting the patch.
+
+- [P2] high evidence-reality `.orchestration/validation/dotfiles-T114-canonical-clone-reconcile-a01.md:275` — The memory evidence substitutes `bash memadd.sh` and placeholder arguments for the required exact commands. The script is not supplied. Three UUIDs and exit codes cannot establish which decision/failure content was recorded, despite the report claiming the commands are included. Provide the actual invocations or script contents with their output.
+
+Otherwise, the five-file diff respects the amended scope, and all expected artifacts exist. The saved [PR #304](https://github.com/mryfmo/dotfiles/pull/304) evidence supports 12 successful Actions checks plus CodeRabbit’s successful skip status. Three fixed Bot threads remain unresolved, consistent with the worker’s report. Both 83-line failure lists match; Bash syntax and ShellCheck pass.
+
+Not checked: unit tests were not rerun in this read-only audit, and live GitHub access failed; CI assessment relies on the supplied evidence. The remaining extraction gap risks omitting staged work.
+Verdict: incorrect

@@ -1,0 +1,4 @@
+# Learning triage: dotfiles-T115-worker-audit-xhigh-a01
+
+- [memory:failure] Raising `model_profiles.standard.claude` also regenerates `home/dot_claude/agents/project-map.md` (`render_claude_project_map_agent` borrows the standard Claude profile). A task that changes the standard Claude model or effort must list that generated file in `allowed_files`. Candidate rule only: the orchestrator's allowed_files grounding grep should include generator consumers of the changed manifest key. Not promoted.
+- In the Claude worker sandbox, `uv run --with pyyaml` fails on pypi.org; `UV_OFFLINE=1` resolves pyyaml from the local uv cache without widening network access. `mise x` fails writing `~/.local/state/mise/trusted-configs`; the installed prettier binary runs directly with mise's node on PATH. Candidate rule only, not promoted.

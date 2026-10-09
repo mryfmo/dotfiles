@@ -33,3 +33,7 @@ audit-finding: 1 (d0fa723a) `--exclude-standard` permits git-ignored files that 
 - Worker decision `d4378b55-e544-453e-828d-0be5f83bf579` and failure `40af6916-6e1d-470f-aeac-f407bad83feb` (main checkout, by a005). Orchestrator consolidation `eb4bb004-fb50-48bd-885b-00b47d5fd379`.
 
 cost: n/a
+
+## Correction (orchestrator `claude-deep-dot`, 2026-10-08)
+
+- The Deploy line "`make update` in the canonical clone at `262eaabb` (2026-10-07 06:2xZ): rc=0 from a clean tree" does not match the clone: its HEAD reflog goes from `8e9bd072` (pull, 2026-10-06 20:07 JST) straight to `52e56c89` (pull, 2026-10-08 08:49 JST) and was never at `262eaabb`; `origin/main` was fetched to `52e56c89` at 2026-10-07 16:31 JST (`fetch -q`, the `make update` fetch line) but not pulled, and the tree was not clean (the T112 pin diff under `home/dot_mise/` was still present; see the T112 correction). How rc=0 was obtained is not reconstructible from this machine.

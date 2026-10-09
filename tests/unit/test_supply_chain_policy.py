@@ -187,8 +187,8 @@ install_starship
         settings = config["settings"]
         for retired in ("lockfile", "locked", "lockfile_platforms"):
             self.assertNotIn(retired, settings)
-        self.assertEqual("7d", settings["minimum_release_age"])
-        self.assertEqual("7d", settings["self_update"]["minimum_release_age"])
+        self.assertEqual("72h", settings["minimum_release_age"])
+        self.assertEqual("72h", settings["self_update"]["minimum_release_age"])
         self.assertFalse((ROOT / "home/dot_mise/mise.lock").exists())
         self.assertFalse((ROOT / "home/dot_config/mise/mise.lock.tmpl").exists())
         self.assertIn(".config/mise/mise.lock", (ROOT / "home/.chezmoiremove").read_text().splitlines())

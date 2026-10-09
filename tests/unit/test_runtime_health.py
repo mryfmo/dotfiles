@@ -1267,7 +1267,12 @@ EOF
             bin_dir / "brew",
             """
             printf 'brew %s\n' "$*" >> "$TEST_LOG"
-            [[ "$FAIL_PHASE:$1" != homebrew:update ]]
+            [[ "$FAIL_PHASE:$1" != homebrew:update ]] || exit 1
+            case "$*" in
+                "outdated --formula --quiet") printf 'jq\n' ;;
+                upgrade\ *) printf 'brew-env HOMEBREW_VERIFY_ATTESTATIONS=%s HOMEBREW_NO_ASK=%s\n' \
+                    "${HOMEBREW_VERIFY_ATTESTATIONS:-unset}" "${HOMEBREW_NO_ASK:-unset}" >> "$TEST_LOG" ;;
+            esac
             """,
         )
         self.executable(
@@ -1353,6 +1358,22 @@ EOF
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual("CI=true: skipping installed-tool updates.\n", result.stdout)
         self.assertFalse((repo / "commands.log").exists())
+
+    def test_upgrade_homebrew_verifies_attestations_when_gh_is_present(self) -> None:
+        for with_gh in (True, False):
+            with self.subTest(with_gh=with_gh):
+                repo, env = self.upgrade_fixture(f"homebrew-attest-{with_gh}", "Darwin")
+                if not with_gh:
+                    (repo / "bin/gh").unlink()
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                log = (repo / "commands.log").read_text().splitlines()
+                self.assertIn("brew upgrade --formula jq", log)
+                attest = "1" if with_gh else "unset"
+                self.assertIn(f"brew-env HOMEBREW_VERIFY_ATTESTATIONS={attest} HOMEBREW_NO_ASK=1", log)
+                skipped = "gh not found; Homebrew bottle attestation verification is skipped."
+                self.assertEqual(not with_gh, skipped in result.stdout)
 
     def test_upgrade_network_only_phases_warn_and_the_mise_phase_still_runs(self) -> None:
         # An offline host must still converge: only installing the declared mise tools is required.

@@ -287,6 +287,7 @@ herdr server reload-config" ]
     grep -q 'case "${formula}" in' scripts/upgrade-tools.sh
     grep -q 'HOMEBREW_NO_ASK=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae\[@\]}"' scripts/upgrade-tools.sh
     grep -q 'HOMEBREW_NO_ASK=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks\[@\]}"' scripts/upgrade-tools.sh
+    grep -q 'local -x HOMEBREW_VERIFY_ATTESTATIONS=1' scripts/upgrade-tools.sh
 }
 
 @test "[common] agent CLI lifecycle upgrades through mise and removes node-global shadows before asset commands" {

@@ -34,7 +34,7 @@ class StatuslineToolsTest(unittest.TestCase):
     def test_mise_config_declares_the_statusline_tools_behind_the_cooldown(self) -> None:
         config = tomllib.loads(MISE_CONFIG.read_text())
         self.assertEqual({tool: "latest" for tool in EXPECTED_TOOLS}, EXPECTED_TOOLS)
-        self.assertEqual("7d", config["settings"]["minimum_release_age"])
+        self.assertEqual("72h", config["settings"]["minimum_release_age"])
 
     def test_generated_commands_are_direct_and_static(self) -> None:
         commands = self.commands()

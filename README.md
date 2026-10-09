@@ -158,32 +158,36 @@ tooling mode.
 
 **Tool versions.** No tool version is committed. `home/dot_mise/config.toml`
 requests `"latest"` for every tool not held back (below) and there is no
-`mise.lock`, so `make update`
-moves each installed tool to the newest release its manager allows and changes
-no file in the repository. The safety comes from each manager's own features:
-mise skips releases younger than `minimum_release_age = "7d"` ("Skip versions
-published more recently than this duration or date",
-[mise settings](https://mise.jdx.dev/configuration/settings)) and keeps its
-default-on verification settings `aqua.cosign`, `aqua.minisign`, `aqua.slsa`,
-`aqua.github_attestations`, `github_attestations` and `node.verify`, which need
-no lockfile; and `mise upgrade` without `--bump` "keeps the range specified in
-mise.toml" ([mise upgrade](https://mise.jdx.dev/cli/upgrade)), so a held
-exact version stays exact. Per the settings page the cooldown covers every
-backend this config uses except `http:` (`bats` and `gcloud`, which are exact
-anyway); a live probe on 2026-10-09 showed it acting on core `node` (26.11.1
-without it, 26.10.0 with it). `mise self-update` waits the same seven days
-through `self_update.minimum_release_age = "7d"` (its own default is 24h). Codex and Claude Code follow the same cooldown; listing them in
-`minimum_release_age_excludes` would take a release the day it lands.
-Homebrew, `uv tool upgrade --all` and GitHub CLI extensions take their
+`mise.lock`, so `make update` moves each installed tool to the newest release
+its manager allows and changes no file in the repository. The safety comes from
+each manager's own features. mise skips releases younger than
+`minimum_release_age = "72h"` ("Skip versions published more recently than this
+duration or date", [mise settings](https://mise.jdx.dev/configuration/settings)):
+72 hours goes past the 24-hour default of mise and pnpm and past pnpm's "In most
+cases, malicious releases are discovered and removed from the registry within
+an hour", but stops short of the several days over which the Shai-Hulud worm
+re-infected packages in waves, because a longer delay also holds back security
+fixes. mise also keeps its default-on verification settings `aqua.cosign`,
+`aqua.minisign`, `aqua.slsa`, `aqua.github_attestations`, `github_attestations`
+and `node.verify`, which need no lockfile, and `mise upgrade` without `--bump`
+"keeps the range specified in mise.toml"
+([mise upgrade](https://mise.jdx.dev/cli/upgrade)), so a held exact version
+stays exact. Per the settings page the cooldown covers every backend this
+config uses except `http:` (`bats` and `gcloud`, which are exact anyway); a live
+probe on 2026-10-09 showed the setting acting on core `node` (26.11.1 without
+it, 26.10.0 with it). `mise self-update` waits the same 72 hours through
+`self_update.minimum_release_age = "72h"` (its own default is 24h), and Codex
+and Claude Code follow the same cooldown. Homebrew bottles are verified against
+their build attestations (`HOMEBREW_VERIFY_ATTESTATIONS=1`) when `gh` is
+present. Homebrew, `uv tool upgrade --all` and GitHub CLI extensions take their
 newest release, and apt (`SYSTEM=1`) the distribution's. The trade-off: with no
 exact pins and no committed lock, machines may differ in tool versions, and CI
 tests the latest safe versions rather than one recorded set. Because the
 applied file is mise's global config, it no longer turns on lockfile mode for
 other projects on the host; a project that keeps its own `mise.lock` sets
-`lockfile` in its own config. The release-asset
-installers (the mise bootstrap, aws-cli, tode, terminal-browser, Crit, Zed, the
-chezmoi bootstrap and agmsg) keep their manifest pins until T119 moves them to
-the same policy.
+`lockfile` in its own config. The release-asset installers (the mise bootstrap,
+aws-cli, tode, terminal-browser, Crit, Zed, the chezmoi bootstrap and agmsg)
+keep their manifest pins until T119 moves them to the same policy.
 
 **Holding a tool back** uses the manager's own feature:
 
@@ -1274,7 +1278,7 @@ One-time chezmoi scripts under `home/.chezmoiscripts/**/run_once_*` run once per
 content hash, including when a newly committed script first reaches an existing
 machine through `make update`.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
-Tool versions are not committed: `home/dot_mise/config.toml` requests `"latest"` behind mise's seven-day cooldown and `make update` moves the installed tools, as the Tool versions paragraph under Lifecycle above describes.
+Tool versions are not committed: `home/dot_mise/config.toml` requests `"latest"` behind mise's 72-hour cooldown and `make update` moves the installed tools, as the Tool versions paragraph under Lifecycle above describes.
 A held tool keeps an exact version and its reason in that file, and `~/.config/mise` is its applied copy, not a live symlink into the source tree.
 Under the agmsg regime a worker task carries every repository change as a PR. The GitHub ruleset on `main` (see the ruleset payload above) is the boundary: `main` accepts only pull requests that pass the required checks, so no change, the `.orchestration` boundary commit included, is pushed to `main` directly.
 For `npm:` tools, mise owns the version and isolated install prefix, while the npm CLI performs installation through

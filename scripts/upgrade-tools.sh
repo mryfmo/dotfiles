@@ -118,6 +118,12 @@ function upgrade_homebrew() {
     has_command brew || return 1
 
     section "Homebrew"
+    if has_command gh; then
+        # Homebrew verifies bottle build-provenance attestations through gh (HOMEBREW_VERIFY_ATTESTATIONS).
+        local -x HOMEBREW_VERIFY_ATTESTATIONS=1
+    else
+        printf 'gh not found; Homebrew bottle attestation verification is skipped.\n'
+    fi
     brew update || return
 
     local outdated_formula
@@ -247,7 +253,7 @@ function run_mise_tool_command() {
             continue
         fi
         # A plain upgrade keeps the config's "latest" or exact request as written.
-        if ! run_mise_with_isolated_git_config "${mise_command}" --yes "${mise_tool}"; then
+        if ! run_mise_with_isolated_git_config upgrade --yes "${mise_tool}"; then
             printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
             failed=1
         fi
@@ -290,8 +296,8 @@ function asset_manifest_pin() {
 
 #
 # @description Print the newest version outside the supply-chain window that is newer than the current pin.
-#   Mirrors mise's minimum_release_age = "7d": a release published within the
-#   last 7 days is skipped, and the pin never moves backwards.
+#   A release published within the last 7 days is skipped (the asset pins' own
+#   window), and the pin never moves backwards.
 # @arg $1 string Asset name, for log lines.
 # @arg $2 string Current pin.
 # @arg $3 number Window cutoff as Unix epoch seconds.

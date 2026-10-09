@@ -368,6 +368,17 @@ main
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertFalse(marker.exists())
 
+    def test_main_reinstalls_a_broken_aws_cli_even_when_the_etag_matches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            aws = home / ".local/bin/aws"
+            aws.parent.mkdir(parents=True)
+            aws.write_text("#!/bin/sh\nexit 42\n")
+            aws.chmod(0o755)
+            result, marker, _state = self.run_main(home, '"abc-1"', recorded_etag='"abc-1"', installed=False)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertTrue(marker.exists())
+
     def test_main_installs_and_records_a_new_archive_etag(self):
         for recorded, installed in (('"abc-1"', True), (None, False)):
             with self.subTest(recorded=recorded, installed=installed), tempfile.TemporaryDirectory() as directory:

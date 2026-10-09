@@ -445,7 +445,7 @@ assets:
     pin: 6df3065f1d8ddc2ce3615314d1d493f36d6b1c80
     verify: sha256
     sha256: cb84ca53ced03f41662c5c86edf11fa598a0403c347f1e815f987ccaae5bc464
-    reason: Understand-Anything publishes its install script without a signature, checksum or release; the commit and script hash are the only check.
+    reason: Understand-Anything serves its install script only as a raw repository file, with no signature or checksum (its releases ship a viewer bundle, not the script); the commit and script hash are the only check.
     install_path: ~/.understand-anything/repo
     installer: scripts/update-agent-assets.sh#update_codex_understand_anything
     render:
@@ -471,7 +471,7 @@ assets:
     verify: sha256
     sha256: 9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059
     bootstrap_integrity: sha512-n6057L93AE+tnItTkBnClv3QvgsOlI6AO1SwodvKFJvqqTJqITHg/2O6jjHZZfh0nKbq49VKQv6F3t2d/62gyg==
-    reason: fujibee/agmsg publishes tags with no release assets, checksums or attestations; the npm package's provenance covers only the npx bootstrapper, not the skill tree the installer uses.
+    reason: fujibee/agmsg's skill releases (v1.5.x) carry no assets, checksums or attestations (its app-v* releases ship a separate app); the npm package's provenance covers only the npx bootstrapper, not the skill tree the installer uses.
     install_path: ~/.agents/skills/agmsg
     installer: scripts/update-agent-assets.sh#update_agmsg
     note: >-

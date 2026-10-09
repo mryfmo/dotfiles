@@ -27,6 +27,7 @@ readonly ZED_FAKES='
     }
     gh() {
         printf "gh %s\n" "$*" >> "${HOME}/calls.log"
+        [ "$1" = --version ] && { printf "gh version 2.93.0 (2026-10-01)\n"; return 0; }
         case "${GH_MODE:-ok}:$1 $2" in
             unauthenticated:"auth status") return 1 ;;
             *:"auth status") return 0 ;;
@@ -69,7 +70,8 @@ function install_fake_zed() {
         main
         [ -L "${HOME}/.local/bin/zed" ]
         [ -x "${HOME}/.local/bin/zed" ]
-        grep -Eq "^gh release verify-asset v1.22.0 .*/zed-linux-x86_64.tar.gz --repo zed-industries/zed$" "${HOME}/calls.log"
+        grep -Eq "^gh release verify-asset v1.22.0 .*/zed-linux-x86_64.tar.gz --repo github.com/zed-industries/zed$" "${HOME}/calls.log"
+        grep -qx "gh auth status --hostname github.com" "${HOME}/calls.log"
     '
     [ "${status}" -eq 0 ]
 }

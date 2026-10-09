@@ -117,7 +117,11 @@ class GithubReleaseTest(unittest.TestCase):
 
     def test_token_reaches_curl_on_stdin_never_on_the_command_line(self) -> None:
         self.serve([release("v1.0.0", hours_ago(500))])
-        self.executable("gh", 'printf "gh-credential\\n"\n')
+        # The fallback token comes from gh's github.com login, never the default (possibly Enterprise) host.
+        self.executable(
+            "gh",
+            f'''printf 'gh %s\\n' "$*" >> "{self.log}.gh"; [ "$*" = "auth token --hostname github.com" ] && printf "gh-credential\\n"\n''',
+        )
         for name, env, expected in (
             ("GITHUB_TOKEN", {"GITHUB_TOKEN": "env-credential"}, "env-credential"),
             ("GH_TOKEN", {"GH_TOKEN": "gh-env-credential"}, "gh-env-credential"),
@@ -135,6 +139,18 @@ class GithubReleaseTest(unittest.TestCase):
                 self.assertEqual(
                     f'header = "Authorization: Bearer {expected}"\n', Path(f"{self.log}.stdin").read_text()
                 )
+        self.assertEqual("gh auth token --hostname github.com\n", Path(f"{self.log}.gh").read_text())
+
+    def test_tag_fails_when_the_download_is_truncated(self) -> None:
+        # curl emits a complete eligible release and then fails: the lookup must not use it.
+        page = self.temp_dir / "releases.json"
+        page.write_text(json.dumps([release("v1.0.0", hours_ago(500))], indent=2) + "\n")
+        self.executable("curl", f'cat "{page}"\nexit 18\n')
+
+        result = self.run_helper("set +o pipefail\ngithub_release_tag owner/repo")
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual("", result.stdout)
 
     def test_wget_gets_the_token_from_a_private_wgetrc_never_the_command_line(self) -> None:
         page = self.temp_dir / "releases.json"
@@ -168,10 +184,14 @@ class GithubReleaseTest(unittest.TestCase):
         asset = self.temp_dir / "asset.tar.gz"
         asset.write_text("payload\n")
         self.assertEqual(2, self.run_helper(f'github_release_attestation owner/repo v1 "{asset}"').returncode)
-        for outcome, auth_status, verify_status, expected in (
-            ("not authenticated", 1, 0, 2),
-            ("verified", 0, 0, 0),
-            ("attestation failed", 0, 1, 1),
+        for outcome, version, auth_status, verify_status, expected in (
+            ("not authenticated", "2.93.0", 1, 0, 2),
+            ("verified", "2.93.0", 0, 0, 0),
+            ("verified with a newer gh", "3.0.1", 0, 0, 0),
+            ("attestation failed", "2.93.0", 0, 1, 1),
+            # gh 2.92.0 and earlier leak credentials to TUF mirrors (GHSA-8xvp-7hj6-mcj9): never used.
+            ("gh too old", "2.92.0", 0, 0, 2),
+            ("gh version unreadable", "", 0, 0, 2),
         ):
             with self.subTest(outcome=outcome):
                 self.log.unlink(missing_ok=True)
@@ -179,7 +199,8 @@ class GithubReleaseTest(unittest.TestCase):
                     "gh",
                     f"""
                     printf 'gh %s\\n' "$*" >> "{self.log}"
-                    [ "$1 $2" = "auth status" ] && exit {auth_status}
+                    [ "$1" = --version ] && {{ [ -n "{version}" ] && printf 'gh version {version} (2026-10-01)\\n'; exit 0; }}
+                    [ "$*" = "auth status --hostname github.com" ] && exit {auth_status}
                     [ "$1 $2" = "release verify-asset" ] && exit {verify_status}
                     exit 3
                     """,
@@ -188,10 +209,14 @@ class GithubReleaseTest(unittest.TestCase):
                 result = self.run_helper(f'github_release_attestation owner/repo v1 "{asset}"')
 
                 self.assertEqual(expected, result.returncode, result.stderr)
-                if auth_status == 0:
-                    self.assertIn(f"gh release verify-asset v1 {asset} --repo owner/repo", self.log.read_text())
+                if expected != 2:
+                    self.assertIn(
+                        f"gh release verify-asset v1 {asset} --repo github.com/owner/repo", self.log.read_text()
+                    )
                 else:
                     self.assertNotIn("verify-asset", self.log.read_text())
+                if outcome.startswith("gh version unreadable") or outcome == "gh too old":
+                    self.assertIn("GHSA-8xvp-7hj6-mcj9", result.stderr)
 
     def test_setup_sh_carries_an_exact_copy_of_the_helper(self) -> None:
         # setup.sh runs before the repository exists, so it cannot source the helper.

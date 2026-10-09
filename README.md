@@ -1337,7 +1337,7 @@ Only a component whose publisher verifies nothing keeps a `pin` with its
 checksum and says why in `reason`: the Homebrew installer and the
 Understand-Anything installer (unsigned scripts at a reviewed commit), tode and
 terminal-browser (unsigned `curl | bash` scripts; zenbu-labs publishes no
-checksum or attestation), and agmsg (tags without release assets; its npm
+checksum or attestation), and agmsg (skill releases without assets; its npm
 provenance covers only the bootstrapper). `scripts/generate-agent-configs.py`
 renders each pinned value into the installer that uses it (`install/**/*.sh`,
 `scripts/lib/installer-pins.sh`, `scripts/update-agent-assets.sh`, and the Codex

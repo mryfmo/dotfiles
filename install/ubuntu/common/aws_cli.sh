@@ -135,7 +135,8 @@ function aws_cli_archive_etag() {
 
 #
 # @description Install or update the AWS CLI. Runs on every chezmoi apply and skips when the
-#   archive's ETag still matches the one recorded after the last verified install.
+#   archive's ETag still matches the one recorded after the last verified install and that
+#   AWS CLI still runs.
 #
 function main() {
     local etag
@@ -147,7 +148,9 @@ function main() {
         printf 'warning: could not reach the AWS CLI archive; the installed AWS CLI stays.\n' >&2
         return 0
     fi
-    if [ -x "${AWS_CLI_BIN_DIR}/aws" ] && [ "$(cat "${AWS_CLI_ETAG_FILE}" 2> /dev/null)" = "${etag}" ]; then
+    # The recorded ETag counts only for an AWS CLI that still runs; a broken one is reinstalled.
+    if [ "$(cat "${AWS_CLI_ETAG_FILE}" 2> /dev/null)" = "${etag}" ] &&
+        verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1; then
         return 0
     fi
     install_aws_cli || return

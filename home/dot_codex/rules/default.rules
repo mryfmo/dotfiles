@@ -13,8 +13,8 @@
 # A forbidden match is a refusal, not a prompt, under every approval policy,
 # and it wins over any allow or prompt rule for the same prefix (the strictest
 # decision applies). Codex reads rule files at startup, so a running session
-# keeps its old policy until it restarts (herdr-agents --restart-worker for the
-# pair worker). Rules match the argument list Codex is asked to run, prefix
+# keeps its old policy until it restarts (herdr-agents --remove-worker and then
+# --add-worker for a worker seat). Rules match the argument list Codex is asked to run, prefix
 # token by token, so they cover the documented invocation forms only. Global
 # options with arbitrary values placed before the subcommand
 # (`terraform -chdir=<dir> apply`, `kubectl --context <c> apply`,

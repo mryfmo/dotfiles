@@ -1082,7 +1082,9 @@ EOF
         self.assertNotIn("claude-fable-5", herdr)
         self.assertNotIn("gpt-5.6", herdr)
         self.assertNotIn("model_reasoning_effort=", herdr)
-        self.assertIn('--profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}"', herdr)
+        # --add-worker passes the worker profile (default standard), never a model id.
+        self.assertIn('args="--profile ${HERDR_AGENTS_WORKER_PROFILE} --sandbox workspace-write', herdr)
+        self.assertIn('"${HERDR_AGENTS_WORKER_PROFILE:-${MODEL_PROFILE_INTERACTIVE:-standard}}"', herdr)
 
     def doctor_environment(self, *, fail: str = "", os_name: str = "Linux") -> dict[str, str]:
         fixture_name = (fail or "healthy").replace(":", "-").replace(" ", "-")

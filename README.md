@@ -500,8 +500,9 @@ installer renders to a temp file and `mv -f`s it over the link). It is
 therefore not in `.chezmoiremove`, which would delete upstream's file on
 every apply. `validate-agent-assets` enforces all of this.
 
-Delivery: Claude Code seats use `both`, and a resident Claude worker pane also
-carries `AGMSG_CC_MONITOR_KEEP_ALIVE=1` (see the herdr section above). Codex
+Delivery: Claude Code seats use `both`; the keep-alive rule for a Claude
+worker's Monitor watch is in the agmsg-orchestration SKILL ("Identity,
+delivery, and storage"). Codex
 seats use `turn`, not upstream's shim-based `monitor` bridge, while its
 defects #149, #151, and #1236 stay open.
 
@@ -527,9 +528,8 @@ Verified against a scratch v1.5.0 install:
 - `session-start.sh` exits before starting a watcher or writing a marker for
   any session whose cwd is under `.claude/worktrees/` (#367). A Claude seat
   launched inside a nested worktree therefore gets no Monitor watch from that
-  hook: the herdr-agents pair worker relies on turn delivery through its own
-  Stop hook, while a spawn-seated worker (`--add-worker`) starts its own
-  Monitor through its actas boot prompt.
+  hook: a worker seated with `--add-worker` starts its own Monitor through its
+  actas boot prompt and gets turn delivery through its own Stop hook.
 
 Wake and send:
 
@@ -658,15 +658,16 @@ lazily — starting Claude Code inside a Herdr pane fires the Claude
 `SessionStart` hook, which runs `herdr-agents --attach` (its stdout reaches
 the session context; stderr is logged to `~/.config/herdr/herdr-agents.log`).
 Exiting Herdr returns to the shell. A Codex orchestrator does not use this
-pair: with `orchestrator_kind: codex` the agmsg regime runs through
+layout: with `orchestrator_kind: codex` the agmsg regime runs through
 `codex-orchestrate` (see "Codex orchestration without a pane").
 
 A Claude Code session started from a plain shell outside Herdr (for example
 over mosh or ssh, or `claude -p`) never seats a worker. Its SessionStart hook
-prints a summary line into the session context: not in a Herdr pane, the pair is not
-started, the on-demand commands, and the manifest worktree's worker with its
-`<socket>:<pane>` location when one is seated. In a regime repository (a main
-checkout with one orchestrator agmsg identity and a manifest worker seat) the
+prints a summary line into the session context: not in a Herdr pane, the
+orchestrator pane is not started, the on-demand commands, and the manifest
+worktree's worker with its `<socket>:<pane>` location when one is seated. In a
+regime repository (a main checkout with one orchestrator agmsg identity and a
+manifest worker worktree) the
 `agmsg-orchestration:` directive line follows, as it follows `seat_claim=` in the
 orchestrator's Herdr pane. Such a pane-less orchestrator
 claims its seat outside the sandbox with the composite id
@@ -684,49 +685,49 @@ dispatches no task before the `AGMSG-PONG`. The auditor runs headless
 session has no Monitor watch, so RESULTs arrive by turn delivery.
 
 The workspace layout stays centralized in `herdr-agents`, which is also bound
-inside Herdr at `prefix+alt+a`. The target layout is deliberately fixed at
-exactly two managed panes, split 50/50: `claude-orchestrator` on the left and
-`<worker_kind>-worker-${workspace_id}` on the right. The worker kind comes
-from `worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`;
+inside Herdr at `prefix+alt+a`. Full mode creates the managed workspace with
+one pane, `claude-orchestrator`, and starts no worker. Workers are seated on
+demand with `herdr-agents --add-worker`, each in its own tab, and removed with
+`--remove-worker` when their task is done, the way the auditor runs in its
+`audit` tab; the procedure is the agmsg-orchestration SKILL's ("Regime
+activation and progress", "Parallel workers"). The worker kind comes from
+`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`;
 `codex` when the key is absent), rendered into `~/.agents/model-profiles.env`
-as `HERDR_AGENTS_WORKER_KIND`; exporting that variable explicitly overrides
-the manifest for one launch. The orchestrator kind likewise comes from
+as `HERDR_AGENTS_WORKER_KIND`; exporting that variable or passing `--kind`
+overrides the manifest for one seat. The orchestrator kind likewise comes from
 `orchestrator_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`;
-`claude` when the key is absent, `codex` hands the pair to `codex-orchestrate`),
-rendered as `HERDR_AGENTS_ORCHESTRATOR_KIND`. A `claude` worker is a resident Claude Code
-session — useful when Codex is unavailable (for example, not logged in) —
-inheriting the same managed
-lifecycle: dedicated workspace creation, pane wait/prompt handling, layout
-repair, and attach-mode healing. A claude worker also gets an unattended
-`Down`+`Enter` sent to its workspace-trust dialog on first start, since that
-dialog otherwise defaults to "No" and exits.
+`claude` when the key is absent, `codex` hands orchestration to
+`codex-orchestrate`), rendered as `HERDR_AGENTS_ORCHESTRATOR_KIND`. A `claude`
+worker, useful when Codex is unavailable (for example, not logged in), gets an
+unattended `Down`+`Enter` sent to its workspace-trust dialog while `spawn.sh`
+waits, since that dialog otherwise defaults to "No" and exits.
 
-The worker pane is seated in its own worktree. The worktree is
+A worker is seated in its own worktree. `--add-worker` without a worktree uses
 `worker_worktree` in the manifest (currently `.claude/worktrees/worker-c`),
-rendered into `~/.agents/model-profiles.env` as `HERDR_AGENTS_WORKER_WORKTREE`.
-Before any worker agent starts (full mode, attach repair, and
-`--restart-worker`), `herdr-agents` prepares the seat:
+rendered into `~/.agents/model-profiles.env` as `HERDR_AGENTS_WORKER_WORKTREE`;
+a lone argument outside `.claude/worktrees/` is DIR. Before the worker starts,
+`herdr-agents` prepares the seat:
 
 - It creates the worktree detached at `origin/main` when it is missing, and
   refuses a path that exists but is not a worktree of this repository. It
   never changes an existing worktree's checkout.
 - It reuses the single agmsg identity registered at that path. If there is
-  none, it joins `<kind>-<profile>-<suffix>-aNNN` into the orchestrator's team
-  with `AGMSG_RESOLVE_PROJECT=0`. The team and suffix come from the
-  orchestrator's one non-worker `claude-code` identity at the main checkout,
-  and NNN is the next free number. It refuses on any ambiguity.
+  none, it names `<kind>-<profile>-<suffix>-aNNN` in the orchestrator's team.
+  The team and suffix come from the orchestrator's one non-worker
+  `claude-code` identity at the main checkout, and NNN is the next free
+  number. It refuses on any ambiguity.
 - It points delivery at the worktree: `both` for claude-code, `turn` for
   codex.
 
-It then splits the worker pane with `--cwd <worktree>`.
+It then starts the worker through upstream `spawn.sh` (see Add-worker below).
 
 A codex worker in a linked worktree also gets that worktree's git metadata as
 writable roots. Its index, `HEAD` and refs live under the main checkout's git
 common dir (`git rev-parse --git-common-dir`), outside the `workspace-write`
 root, so without them every `git add`, `commit`, `fetch` or `rebase` fails
 with `Read-only file system`. `herdr-agents` passes
-`-c sandbox_workspace_write.writable_roots=[...]` to the pair worker and the
-same `--config` entry in the `--add-worker` spawn options file. The list starts
+`sandbox_workspace_write.writable_roots=[...]` as a `--config` entry in the
+`--add-worker` spawn options file. The list starts
 with the roots configured in `~/.codex/config.toml` (the agmsg store), because
 `-c` replaces the array, followed by `<common>/objects`, `<common>/refs`,
 `<common>/logs` and `<common>/worktrees/<name>`. The file is parsed with
@@ -739,8 +740,7 @@ cannot lock `packed-refs`). In a shallow clone, `<common>/shallow` is not
 granted either, so `git fetch --deepen` or `--unshallow` still fails;
 `herdr-agents` says so on stderr.
 
-The codex worker seat (the pair pane and the `--add-worker` spawn options
-alike) runs with `--ask-for-approval never` and
+The codex worker seat (through the `--add-worker` spawn options) runs with `--ask-for-approval never` and
 `-c sandbox_workspace_write.network_access=true`, so it never prompts and
 reaches the network, GitHub included, inside the sandbox: `git fetch`,
 `git push` and `gh` work without an escalation. There is no escalation prompt
@@ -772,7 +772,7 @@ policy and overrides any allow rule for the same prefix. The file holds no
 allow rules, so an "always allow" that an interactive session adds there does
 not survive the next `chezmoi apply`. Codex reads the rules at startup, so
 restart running Codex sessions after `make update` (`herdr-agents
---restart-worker` for the pair worker). Rules match the argument list Codex is
+--remove-worker` and then `--add-worker` for a seated worker). Rules match the argument list Codex is
 asked to run by prefix, so they cover the documented invocation forms only.
 Global options placed before the subcommand (`terraform -chdir=<dir> apply`,
 `kubectl --context <c> apply`, `chezmoi --source <d> --config <f> apply`),
@@ -782,110 +782,67 @@ coverage, for Codex and the Claude Code deny list alike; the sandbox
 them. Pipelines such as `curl … | sh` are covered by the Claude Code deny
 list.
 
-Delivery reaches the pair worker through its own Stop hook as turn delivery.
-Upstream `session-start.sh` skips sessions whose cwd is under
-`.claude/worktrees/` (#367), and the pair worker is started without an actas
-boot, so no Monitor watch starts there and the pane's
-`AGMSG_CC_MONITOR_KEEP_ALIVE=1` has no effect. Seating applies only to a git
-main checkout whose worker worktree already exists, or that has `origin/main`
-and an orchestrator identity to name the worker from; anywhere else (an
-unregistered repository, a linked worktree, a non-git directory) the legacy
-main-path seat stays unchanged. A reused worker pane is moved into the worktree
-with `cd -- <worktree>` before the agent starts, and `herdr-agents` refuses to
-start the worker when that pane never reaches a shell prompt. `herdr-agents --restart-worker` re-seats a worker pane that
-still runs in the main checkout: after `/exit` it runs
-`cd -- <worktree>` in the pane before starting the agent, because
-`herdr agent start` has no cwd option. The worker's own SessionStart
-`--attach` hook exits quietly when its cwd is that worktree.
+Delivery reaches a worker through its own Stop hook as turn delivery, and its
+Monitor watch comes from the actas boot prompt `spawn.sh` sends (upstream
+`session-start.sh` skips sessions whose cwd is under `.claude/worktrees/`,
+#367). The worker's own SessionStart `--attach` hook exits quietly in its
+linked worktree. `herdr-agents --restart-worker` is retired: it exits 2 and
+names `herdr-agents --remove-worker <worktree>` followed by
+`herdr-agents --add-worker <worktree>`, which is how new worker launch
+arguments take effect.
 
-With `worker_worktree` unset (the legacy seat in the main checkout), because
-agmsg resolves identity by project path and agent type, a claude worker shares
-the orchestrator's `claude-code` identity, so `herdr-agents` exits 2 before
-touching panes until
-a second `claude-code` identity is registered for the directory with
-`AGMSG_RESOLVE_PROJECT=0 ~/.agents/skills/agmsg/scripts/join.sh <team> <role> claude-code <dir>`.
-Registering it only lifts this temporary guard: both sessions still resolve to
-the same inbox (`whoami.sh` reports multiple identities and `check-inbox.sh`
-takes the first), so separate delivery needs `worker_kind=codex` until agmsg
-roles replace the guard. With `worker_kind: claude` applied by `make update`,
-the Claude Code SessionStart `herdr-agents --attach` hook therefore also exits
-2 on every session start in a Herdr pane outside a `herdr-agents`-managed
-layout, logging only to `~/.config/herdr/herdr-agents.log`, until that identity
-exists or `worker_kind` is `codex`; `herdr-agents --bootstrap-agmsg` prints a
-hint while the worker identity is missing. Attach mode renames the current
-Claude pane, creates a missing worker pane with
-`herdr pane split <claude-pane> --direction right --cwd <worktree>`, then starts
-the worker with `herdr agent start <name> --kind <worker_kind> --pane <id>`.
-It repairs pane order (Claude left) and the 50/50 ratio, refusing any repair
-when the layout is ambiguous or contains unmanaged panes. Unmanaged panes —
-such as a legacy `files` pane restored from a pre-two-pane persisted session
-— are deliberately preserved, never closed, split, or reused. Full mode
-(`herdr-agents [DIR]`) creates or heals the two managed panes and focuses a
-healthy existing workspace instead of recreating it, again leaving any
-unmanaged panes in place. The orchestrator starts in DIR and the worker in its
-worktree; both use the shared agmsg scripts/state for cross-agent
-messaging. The worker is a resident interactive session, kept warm so
-delegation avoids per-task cold starts and survives Herdr session restores.
-Claude Code seats use agmsg's `both` delivery mode (monitor's push plus
-turn's pull), one notch more redundant than upstream's own `monitor` default,
-since an unattended resident pane has no one to notice a Monitor watch that
-silently failed to re-arm; a resident Claude worker pane's environment also
-carries `AGMSG_CC_MONITOR_KEEP_ALIVE=1` so its watch re-arms unconditionally
-on expiry rather than only when the expired watch delivered something.
-Every worker pane's environment also carries `AGMSG_RESOLVE_PROJECT=0`, so
-agmsg's project resolution keeps a worker's own path; see [agmsg](#agmsg)
-for the registration rule.
+Attach mode, run by the SessionStart hook in the orchestrator's Herdr pane,
+renames the current Claude pane `claude-orchestrator` (unless self-naming
+already labeled it), claims the orchestrator seat, prints the directive and
+bootstraps agmsg; it never starts, restarts or repairs a worker. Full mode
+(`herdr-agents [DIR]`) creates the orchestrator pane or heals it: a healthy
+existing workspace is only focused, and an exited orchestrator is restarted in
+an agentless pane, or in a new pane split from one that is neither the `audit`
+pane, a `files` pane nor one in a linked worktree (a worker's own tab), and
+it stops with a hint when only those remain; a Claude worker never counts as
+the orchestrator. Unmanaged panes, such as a legacy `files` pane
+restored from a pre-two-pane persisted session or a worker pane left by the
+retired resident pair, are deliberately preserved, never closed or reused. The
+orchestrator starts in DIR and each worker in its worktree; both use the shared
+agmsg scripts/state for cross-agent messaging. Claude Code seats use agmsg's
+`both` delivery mode (monitor's push plus turn's pull), one notch more
+redundant than upstream's own `monitor` default, since an unattended worker
+pane has no one to notice a Monitor watch that silently failed to re-arm.
+Every worker seat's environment carries `AGMSG_RESOLVE_PROJECT=0`, so agmsg's
+project resolution keeps a worker's own path; see [agmsg](#agmsg) for the
+registration rule.
 
 Upstream agmsg 1.5.0 self-naming renames a seat's pane to `<team>:<name>`
 when the seat acts, and its herdr agent to a hash key (`scripts/lib/self-name.sh`,
 `lib/terminal-registry.sh`). So the legacy `claude-orchestrator` and
 `<kind>-worker` pane labels, and the `<kind>-worker-<workspace>` agent names,
-do not survive on a live pair; herdr exposes no workspace env to key on either.
+do not survive on live seats; herdr exposes no workspace env to key on either.
 `herdr-agents` therefore reads pane labels through the repository's agmsg
 seats, read at the main checkout (also from a linked worktree):
 
 - a pane labeled `<team>:<name>` counts as `claude-orchestrator` when `<name>`
   is the orchestrator, meaning the non-worker (no `-aNNN`) `claude-code`
   identity registered there;
-- such a pane counts as the worker when `<name>` is the pair's own
-  worker-type seat: one registered at `HERDR_AGENTS_WORKER_WORKTREE`, or for
-  the legacy seat any worker-type identity at the main checkout other than the
-  orchestrator, whether solo (e.g. `codex-standard-dot`) or `-aNNN`;
-- other members of the team are not the pair's worker, so they never become
-  a second worker;
+- such a pane counts as a worker of the retired resident pair when `<name>` is
+  a worker-type identity registered at `HERDR_AGENTS_WORKER_WORKTREE` or at the
+  main checkout other than the orchestrator, so full mode never mistakes it
+  for the orchestrator;
 - the legacy labels keep working.
 
 It never renames a pane that already carries a `<team>:<name>` label, so it does
-not fight self-naming, and the worker's own SessionStart `--attach` still
-recognizes its pane as the worker.
+not fight self-naming.
 
-An orchestrator/worker pair always lives in one Herdr workspace. A workspace
-counts as managed for DIR when it carries the full-mode `<dir> agents` label
-or has a `claude-orchestrator` pane in DIR (attach mode keeps the workspace's
-own label). Full mode never creates a second workspace for such a DIR: it
-heals the existing one, restarting an exited worker inside its agentless
-labeled `<worker_kind>-worker` pane, and exits 2 when more than one managed
-workspace already exists. Do not run full mode from inside the pair to
-relaunch the worker. Use `herdr-agents --restart-worker [DIR]` instead, for
-example after a `worker_profile` or `worker_kind` change, so the new launch
-arguments from `~/.agents/model-profiles.env` take effect. It sends `/exit`
-to the running worker agent with `herdr agent prompt <pane> "/exit"`, waits
-for the shell prompt, sending Enter once to confirm a claude exit-confirmation
-dialog, and starts the worker again in the same pane. When that start hits the
-`agent_name_taken` race, it waits (bounded, about 30 seconds) for the old
-worker's stale herdr agent registration of the same name to clear from
-`herdr agent list`, then retries the start once. It relabels a worker pane
-still carrying a legacy `claude-orchestrator` label to `<worker_kind>-worker`.
-It never
-creates panes or workspaces, and exits 2 when DIR has no managed workspace or
-when the pair's tab is ambiguous or contains unmanaged panes. Attach mode run
-by a claude worker's own `SessionStart` hook leaves its pane alone, so the
-worker pane is never relabeled as the orchestrator. To tear down a stray
-duplicate workspace, `/exit` each of its agents with
-`herdr agent prompt <pane> "/exit"`, then run `herdr workspace close <id>`.
+The orchestrator and its worker tabs always live in one Herdr workspace. A
+workspace counts as managed for DIR when it carries the full-mode `<dir> agents`
+label or has a `claude-orchestrator` pane in DIR (attach mode keeps the
+workspace's own label). Full mode never creates a second workspace for such a
+DIR: it heals the existing one, and exits 2 when more than one managed
+workspace already exists. Do not run full mode from inside the managed
+workspace. To tear down a stray duplicate workspace, `/exit` each of its agents
+with `herdr agent prompt <pane> "/exit"`, then run `herdr workspace close <id>`.
 
 When `HERDR_AGENTS_ORCHESTRATOR_KIND` (manifest `orchestrator_kind`, default
-`claude`) is `codex`, full mode, `--attach` and `--restart-worker` exit 2 with
+`claude`) is `codex`, full mode and `--attach` exit 2 with
 `herdr-agents: orchestrator_kind=codex: use codex-orchestrate` before touching
 Herdr, while the worker, audit and bootstrap modes keep working.
 `herdr-agents --directive` prints the `agmsg-orchestration:` directive line for
@@ -895,7 +852,7 @@ orchestrator's first turn can carry it.
 `herdr-agents --audit <sha> [--task ID] [--out PATH] [--timeout SECONDS] [DIR]` makes the
 orchestrator's Codex audit visible: it runs the `audit` profile's read-only
 `codex exec` (the command is in the agmsg-orchestration SKILL's task-level audit
-bullet) in the pair workspace's dedicated `audit` tab (created once, then reused and
+bullet) in the managed workspace's dedicated `audit` tab (created once, then reused and
 left open). Without `--task`, the prompt tells the auditor to audit only
 `<sha>`, follow the AGENTS.md "Audit" section, and end with one concluding
 `Verdict:` line.
@@ -939,8 +896,8 @@ commit or the validator is missing, untracked, or changed against `HEAD`, and a
 refused or failed mask ends the audit
 with `Audit verdict: unmasked` and exit 1. The busy check is based on the audit pane's foreground process (the pane's
 shell alone means free), not on its visible snapshot, which can be stale for a
-background tab. The audit pane is labeled `audit`, so the pair modes never
-reuse it, and the auditor still has no agmsg identity. It exits 2 without a
+background tab. The audit pane is labeled `audit`, so full mode never
+reuses it, and the auditor still has no agmsg identity. It exits 2 without a
 managed workspace; run the same audit headless there, in the form the
 agmsg-orchestration SKILL's task-level audit bullet gives.
 
@@ -951,28 +908,28 @@ the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE`, otherwise from the 
 `MODEL_PROFILE_INTERACTIVE` in the same file, and is `standard` only when
 that file sets neither,
 passed to `codex --profile` for a codex worker or resolved through
-`MODEL_PROFILE_<PROFILE>_CLAUDE_ARGS` (plus optional
-`HERDR_AGENTS_CLAUDE_WORKER_ARGS`) for a claude worker. The worker profile
+`MODEL_PROFILE_<PROFILE>_CLAUDE_ARGS` for a claude worker. The worker profile
 carries `advisor: fable` on its claude side, rendered into those launch args as
-`--advisor fable`; a running worker picks it up with
-`herdr-agents --restart-worker`. The orchestrator side
+`--advisor fable`; a seated worker picks it up when it is removed and seated
+again. The orchestrator side
 follows `interactive_profile` in `home/dot_agents/agent-config.yaml`,
 escalating with `/model` and `/effort` only at task boundaries. Parallelism
-never adds panes to the pair tab: one git worktree equals one resident worker,
-seated in its own tab of this workspace. `herdr-agents --add-worker <worktree> [--kind
+never adds panes to the orchestrator tab: one git worktree equals one seated
+worker, in its own tab of this workspace. `herdr-agents --add-worker [<worktree>] [--kind
 codex|claude] [--profile NAME] [DIR]` and `herdr-agents --remove-worker
 <worktree> [--force] [DIR]` are the only sanctioned way to add or remove one.
-`<worktree>` is a path under `DIR/.claude/worktrees/`.
+`<worktree>` is a path under `DIR/.claude/worktrees/`; omitted, it is the
+manifest `worker_worktree`.
 For Codex, seat ordinary tasks with `--profile standard` and reserve `--profile security` for trust-boundary tasks (permgate, redaction or secret handling, sandbox or permission policy), with an identity such as `codex-security-dot-aNNN`.
 
 Add-worker:
 
 - creates the worktree from `origin/main` when missing and names the identity
-  as for the pair worker;
+  as above;
 - points delivery at the worktree;
-- seats the worker in its own tab of the pair workspace for `DIR`, labeled
-  `<team>:<name>`, and leaves the pair tab untouched; only without a pair
-  workspace (the pane-less bring-up) does it create or reuse the workspace
+- seats the worker in its own tab of the managed workspace for `DIR`, labeled
+  `<team>:<name>`, and leaves the orchestrator tab untouched; only without a
+  managed workspace (the pane-less bring-up) does it create or reuse the workspace
   `<repo> worker <name>` instead;
 - seats the worker through upstream `spawn.sh <type> <name> --project
 <worktree> --team <team> --terminal-driver herdr --window`, which pre-joins
@@ -1000,7 +957,7 @@ failed spawn, where `--force` would fail. It retries with `--force` only when
 the graceful call reports `status=needs-force` (a record but no live actas
 lock, as for a codex seat) or when you passed `--force`. After a completed
 despawn it always runs `delivery.sh set off` and `leave.sh`, then closes the
-worker's tab in the pair workspace (only a tab whose panes all carry that
+worker's tab in the managed workspace (only a tab whose panes all carry that
 worker's `<team>:<name>` label) or its own workspace; a despawn that cannot complete stops removal with a hint. Add-worker refuses a profile that
 `~/.agents/model-profiles.env` does not define. The worktree itself is kept. Raw herdr topology commands (`tab
 create`, `pane split`, `workspace create`) stay forbidden to the orchestrator
@@ -1030,11 +987,9 @@ Verification for this flow lives in `tests/unit/test_herdr_agents.py`: it checks
 that Ghostty does not auto-start Herdr and the Herdr `prefix+alt+a` command
 binding. Its sandbox E2E fakes
 Herdr deeply enough to execute fake Claude Code and Codex commands, verifies
-Claude Code is run in the root pane, and verifies a right-side worker pane is
-created with `pane split --direction right --cwd` before
-`agent start --kind <worker_kind> --pane` launches the
-`<worker_kind>-worker-${workspace_id}` Herdr agent. It also covers existing workspace
-focus and missing-agent repair paths.
+Claude Code is run in the root pane, and verifies full mode starts no worker
+pane, since workers are seated through `--add-worker`. It also covers existing
+workspace focus and orchestrator repair paths.
 
 `make require-crit-review` is the mechanical review gate for agents
 (`scripts/require-crit-review.py` is the underlying script).

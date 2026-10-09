@@ -6,9 +6,10 @@
 #   repository and prints one line per violation:
 #   untracked `.orchestration` files in every registered checkout
 #   (`git worktree list`); exactly one agmsg identity name across claude-code
-#   and codex at each active seat (the main checkout and the manifest
-#   `worker_worktree`; an empty seat is reported too), and more than one name
-#   per type at any other checkout; a seated main checkout whose HEAD is
+#   and codex at the only active seat, the main checkout (an empty seat is
+#   reported too); any identity at a linked worktree under `.claude/worktrees/`
+#   (a worker still seated: `herdr-agents --remove-worker <worktree>`), and
+#   more than one name per type at any other checkout; a seated main checkout whose HEAD is
 #   not the `main` branch (a detached HEAD or another branch; a checkout with
 #   no identity, such as a CI checkout, is never flagged); running
 #   `crit _serve` review servers; a canonical clone (`chezmoi source-path`,
@@ -16,7 +17,7 @@
 #   tracked or untracked difference from `origin/main` (else `HEAD`) under
 #   `home/`, `install/` or `scripts/`, or uncommitted changes there that
 #   already match `origin/main` while `HEAD` is behind it; leftover `<repo> worker <name>` Herdr
-#   workspaces and added-worker tabs in the pair workspace (only when `herdr`
+#   workspaces and worker tabs in the managed workspace (only when `herdr`
 #   is reachable); and a bare-id orchestrator
 #   seat lock, through the one implementation in
 #   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`).
@@ -61,53 +62,45 @@ count_names() {
     AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "$1" "$2" 2> /dev/null | cut -f 2 | sort -u | grep -c . || true
 }
 
-worker_worktree="$(
-    # shellcheck source=/dev/null
-    [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
-    printf '%s' "${HERDR_AGENTS_WORKER_WORKTREE:-}"
-)"
-
 if [[ -x ${scripts}/identities.sh ]]; then
-    # The active seats are the main checkout (orchestrator) and the manifest
-    # worker_worktree (worker); each holds exactly one identity across both
-    # runtime types. Other worktrees are not seats: only a per-type surplus
-    # is flagged there.
-    seats=("${main}")
-    if [[ -n ${worker_worktree} && -d ${main}/${worker_worktree} ]]; then
-        seats+=("${main}/${worker_worktree}")
+    # The only active seat is the main checkout (orchestrator): it holds
+    # exactly one identity across both runtime types. Workers are seated on
+    # demand in linked worktrees, so an identity left at one at a boundary is
+    # a worker still seated; any other checkout is flagged only for a
+    # per-type surplus.
+    names="$({
+        AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${main}" claude-code 2> /dev/null || true
+        AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${main}" codex 2> /dev/null || true
+    } | cut -f 2 | sort -u | grep -c . || true)"
+    if ((names == 0)); then
+        violations+=("no agmsg identity at the active seat ${main} (expected one)")
+    elif ((names > 1)); then
+        violations+=("stray identities at the active seat ${main}: ${names} names across claude-code and codex (expected one)")
     fi
-    resolved_seats=" "
-    for seat in "${seats[@]}"; do
-        resolved_seats+="$(cd -- "${seat}" && pwd -P) "
-    done
-    for seat in "${seats[@]}"; do
-        names="$({
-            AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat}" claude-code 2> /dev/null || true
-            AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat}" codex 2> /dev/null || true
-        } | cut -f 2 | sort -u | grep -c . || true)"
-        if ((names == 0)); then
-            violations+=("no agmsg identity at the active seat ${seat} (expected one)")
-        elif ((names > 1)); then
-            violations+=("stray identities at the active seat ${seat}: ${names} names across claude-code and codex (expected one)")
+    # Only a seated orchestrator checkout must stay on main; a CI checkout
+    # with no identity may sit at a detached HEAD.
+    if ((names > 0)); then
+        branch="$(git -C "${main}" symbolic-ref -q --short HEAD 2> /dev/null || true)"
+        if [[ ${branch} != main ]]; then
+            violations+=("orchestrator seat is not on main: ${branch:-detached at $(git -C "${main}" rev-parse --short HEAD 2> /dev/null || echo unknown)}")
         fi
-        # Only a seated orchestrator checkout must stay on main; a CI checkout
-        # with no identity may sit at a detached HEAD.
-        if [[ ${seat} == "${main}" ]] && ((names > 0)); then
-            branch="$(git -C "${main}" symbolic-ref -q --short HEAD 2> /dev/null || true)"
-            if [[ ${branch} != main ]]; then
-                violations+=("orchestrator seat is not on main: ${branch:-detached at $(git -C "${main}" rev-parse --short HEAD 2> /dev/null || echo unknown)}")
-            fi
-        fi
-    done
+    fi
+    resolved_main="$(cd -- "${main}" && pwd -P)"
     for checkout in "${checkouts[@]}"; do
         resolved="$(cd -- "${checkout}" 2> /dev/null && pwd -P)" || resolved="${checkout}"
-        [[ ${resolved_seats} != *" ${resolved} "* ]] || continue
+        [[ ${resolved} != "${resolved_main}" ]] || continue
+        seated=0
         for agent_type in claude-code codex; do
             names="$(count_names "${checkout}" "${agent_type}")"
+            seated=$((seated + names))
             if ((names > 1)); then
                 violations+=("stray ${agent_type} identities at ${checkout}: ${names} names (expected one)")
             fi
         done
+        if ((seated > 0)) && [[ ${resolved} == "${resolved_main}/.claude/worktrees/"* ]]; then
+            worktree=".claude/worktrees/${resolved#"${resolved_main}/.claude/worktrees/"}"
+            violations+=("worker still seated at ${worktree} (herdr-agents --remove-worker ${worktree})")
+        fi
     done
 fi
 
@@ -165,10 +158,10 @@ if command -v herdr > /dev/null 2>&1 && command -v jq > /dev/null 2>&1 &&
         fi
     done < <(jq -r --arg prefix "$(basename -- "${main}") worker " \
         '.result.workspaces[]? | select(.workspace_id and ((.label // "") | startswith($prefix))) | [.workspace_id, .label] | @tsv' <<< "${workspaces}" 2> /dev/null)
-    # herdr-agents --add-worker seats a worker in its own tab of the pair
+    # herdr-agents --add-worker seats a worker in its own tab of the managed
     # workspace (the one with a pane in the main checkout itself; attach mode
-    # keeps the workspace's own label): a pane there whose cwd is another
-    # linked worktree than the manifest worker_worktree is an added worker.
+    # keeps the workspace's own label): a pane there whose cwd is a linked
+    # worktree is a worker tab still open.
     while IFS=$'\t' read -r workspace_id label; do
         [[ -n ${workspace_id} ]] || continue
         herdr pane list --workspace "${workspace_id}" 2> /dev/null |
@@ -176,9 +169,8 @@ if command -v herdr > /dev/null 2>&1 && command -v jq > /dev/null 2>&1 &&
         while IFS= read -r pane_label; do
             violations+=("additional worker tab still open in ${label}: ${pane_label} (herdr-agents --remove-worker)")
         done < <(herdr pane list --workspace "${workspace_id}" 2> /dev/null |
-            jq -r --arg worktrees "${main}/.claude/worktrees/" --arg seat "${worker_worktree:+${main}/${worker_worktree}}" \
-                '[.result.panes[]? | select(((.cwd // "") | startswith($worktrees)) and (.cwd | rtrimstr("/")) != $seat)
-                  | (.label // .pane_id)] | unique[]' 2> /dev/null)
+            jq -r --arg worktrees "${main}/.claude/worktrees/" \
+                '[.result.panes[]? | select((.cwd // "") | startswith($worktrees)) | (.label // .pane_id)] | unique[]' 2> /dev/null)
     done < <(jq -r --arg prefix "$(basename -- "${main}") worker " \
         '.result.workspaces[]? | select(.workspace_id and ((.label // "") | startswith($prefix) | not)) | [.workspace_id, (.label // "")] | @tsv' <<< "${workspaces}" 2> /dev/null)
 fi

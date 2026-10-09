@@ -770,8 +770,8 @@ def validate_agent_manifest() -> dict[str, Any]:
     )
     if readme_orchestrator not in readme_words:
         fail(f"README.md must state the manifest orchestrator_kind as {readme_orchestrator}")
-    if "herdr-agents --restart-worker" not in readme:
-        fail("README.md must document herdr-agents --restart-worker for worker relaunches")
+    if "herdr-agents --add-worker" not in readme or "herdr-agents --remove-worker" not in readme:
+        fail("README.md must document herdr-agents --add-worker and --remove-worker for seating workers on demand")
     worker_worktree = manifest.get("worker_worktree")
     if worker_worktree is not None and (
         not isinstance(worker_worktree, str)

@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 
 # @file herdr-agents
-# @brief Build or attach Claude Code and Codex panes in Herdr.
+# @brief Start the Claude Code orchestrator in Herdr and seat workers on demand.
 # @description
-#   Full mode creates or repairs an agents workspace and never creates a
-#   second workspace for a directory that already has a managed pair. Attach
-#   mode adds the worker beside Claude in the current Herdr pane without
-#   restarting Claude; outside a Herdr pane it only prints a bring-up summary
-#   line (and, in a regime repository, the directive line). Restart-worker mode relaunches the worker agent in its
-#   existing pane so new worker launch arguments take effect, confirming a
-#   claude exit dialog once and relabeling a legacy worker pane label. Audit
-#   mode runs the read-only Codex audit of one commit visibly in the pair
+#   Full mode creates or heals an agents workspace with the orchestrator pane
+#   only and never creates a second workspace for a directory that already has
+#   one; it never starts a worker. Attach mode, the SessionStart hook in the
+#   orchestrator pane, claims the orchestrator seat and prints the directive
+#   without starting or repairing any worker; outside a Herdr pane it only
+#   prints a bring-up summary line (and, in a regime repository, the directive
+#   line). Workers are seated on demand with --add-worker in their own tab of
+#   the orchestrator's workspace and removed with --remove-worker;
+#   --restart-worker is retired and exits 2. Audit
+#   mode runs the read-only Codex audit of one commit visibly in the
 #   workspace's dedicated `audit` tab, tees it to an evidence file, and waits
 #   (bounded) for its exit marker, then gates on the concluding `Verdict:` line
 #   of its `-o` last-message file; the auditor keeps no agmsg identity.
@@ -27,16 +29,16 @@
 #   line. agmsg bootstrap also removes the pre-push stub that earlier versions
 #   wrote for the retired main-push guard; the GitHub ruleset on `main` is the
 #   boundary.
-#   A codex worker (pair pane or --add-worker seat) is launched with
+#   A codex worker (an --add-worker seat) is launched with
 #   `--ask-for-approval never` and `sandbox_workspace_write.network_access=true`,
 #   so it never prompts and out-of-sandbox actions fail instead of escalating.
 #   The orchestrator pane starts Claude with the
 #   `MODEL_PROFILE_<NAME>_CLAUDE_ARGS` of the profile that
 #   MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
-# @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.
+# @option --restart-worker Retired: exits 2 naming --remove-worker then --add-worker.
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
-# @option --audit <sha> Run the read-only `codex <audit profile args> exec` auditor for <sha> in the pair's audit tab.
+# @option --audit <sha> Run the read-only `codex <audit profile args> exec` auditor for <sha> in the workspace's audit tab.
 # @option --out <path> Audit evidence path, relative to DIR. Defaults to
 #   `.orchestration/validation/audit-<sha>.md`.
 # @option --timeout <seconds> Audit exit-marker wait bound. Defaults to 1800.
@@ -45,14 +47,15 @@
 #   files and `<id>-pr-feedback.json` (those present), and the full PR diff from
 #   `git merge-base origin/main <sha>`. Defaults --out to
 #   `.orchestration/validation/<id>-audit-<sha7>.md`.
-# @option --add-worker <worktree> Seat an extra resident worker for DIR/<worktree> via agmsg spawn.sh.
+# @option --add-worker [<worktree>] Seat a worker for DIR/<worktree> via agmsg spawn.sh; the
+#   worktree defaults to the manifest worker_worktree when omitted.
 # @option --remove-worker <worktree> Despawn that worker and close its tab (or its own workspace).
 # @option --kind <codex|claude> Add-worker agent kind. Defaults to the manifest worker_kind.
 # @option --profile <name> Add-worker model profile. Defaults to the manifest worker_profile.
 # @option --ready-timeout <seconds> Add-worker: spawn.sh readiness wait bound (spawn.sh default 90).
 # @option --force Remove-worker: tear down a dirty worktree's worker and despawn with --force.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
-# @arg HERDR_AGENTS_WORKER_KIND Worker agent kind, `codex` or `claude`. Defaults
+# @arg HERDR_AGENTS_WORKER_KIND Add-worker agent kind, `codex` or `claude`. Defaults
 #   to `worker_kind` from the manifest via ~/.agents/model-profiles.env, then
 #   `codex`.
 # @arg HERDR_AGENTS_WORKER_PROFILE Environment variable naming the worker's
@@ -64,15 +67,12 @@
 # @arg HERDR_AGENTS_CLAUDE_ARGS Optional space-delimited Claude arguments for
 #   manifest-sourced E2E profile overrides on the orchestrator pane, appended
 #   after the interactive profile args. Defaults to no arguments.
-# @arg HERDR_AGENTS_CLAUDE_WORKER_ARGS Optional space-delimited extra Claude
-#   arguments appended after the resolved profile args for a claude worker
-#   pane. Defaults to no arguments.
 # @example
 #   herdr-agents ~/Workspace/dotfiles
 # @example
 #   herdr-agents --attach
 # @example
-#   herdr-agents --restart-worker ~/Workspace/dotfiles
+#   herdr-agents --add-worker .claude/worktrees/worker-c --kind claude
 # @example
 #   herdr-agents --bootstrap-agmsg ~/Workspace/dotfiles
 # @example
@@ -85,49 +85,42 @@ function usage() {
     cat << 'USAGE'
 Usage: herdr-agents [DIR]
        herdr-agents --attach
-       herdr-agents --restart-worker [DIR]
        herdr-agents --bootstrap-agmsg [DIR]
        herdr-agents --audit <sha> [--task ID] [--out PATH] [--timeout SECONDS] [DIR]
-       herdr-agents --add-worker <worktree> [--kind codex|claude] [--profile NAME] [--ready-timeout SECONDS] [DIR]
+       herdr-agents --add-worker [<worktree>] [--kind codex|claude] [--profile NAME] [--ready-timeout SECONDS] [DIR]
        herdr-agents --remove-worker <worktree> [--force] [DIR]
        herdr-agents --directive
 
-Create a Herdr workspace for DIR with equal-width Claude Code and worker
-panes from left to right, and open DIR in Zed when available. Herdr, jq,
-Claude Code, and the worker's own CLI (codex, or claude when
-HERDR_AGENTS_WORKER_KIND=claude) are required. DIR defaults to the current
-directory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind
-(codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,
-then codex. A codex worker runs with --sandbox workspace-write,
---ask-for-approval never and sandbox_workspace_write.network_access=true: it
-never prompts, it reaches the network (GitHub included) inside the sandbox, and
-a write outside its writable roots or a command the execpolicy forbids fails
-and is reported as a blocked PONG. Interactive codex sessions keep the base
-config (on-request approvals, no sandbox network).
+Create a Herdr workspace for DIR with the Claude Code orchestrator pane only,
+and open DIR in Zed when available; workers are seated on demand with
+--add-worker. Herdr, jq and Claude Code are required. DIR defaults to the
+current directory.
 Full mode heals an existing managed workspace for DIR instead of creating a
-second one, and exits 2 when more than one managed workspace exists.
-Attach mode uses the current Herdr pane for Claude. Outside a Herdr pane it
-changes nothing and prints a summary line: the pair is not started, the
-on-demand worker and auditor commands, and the manifest worktree's seated
-worker, if any. In a regime repository (a main checkout with one orchestrator
-agmsg identity and a manifest worker seat) an agmsg-orchestration directive
-line follows, as it follows seat_claim= inside the orchestrator's Herdr pane.
-Full, attach and restart-worker modes seat a Claude orchestrator, so they exit 2
-before touching Herdr when HERDR_AGENTS_ORCHESTRATOR_KIND (default
-orchestrator_kind from ~/.agents/model-profiles.env, then claude) is codex; the
-other modes work under either kind (the worker modes name, link and despawn
-workers under the kind's orchestrator identity), and the manifest worker's own attach in its
-worker_worktree still exits quietly. Directive mode prints the
-agmsg-orchestration directive line for the current directory when it is a
-regime repository (the orchestrator identity is looked up as the kind's agmsg
-type, claude-code or codex), and nothing otherwise; it needs no Herdr server.
-Restart-worker mode exits the worker agent in the existing pair's worker pane
-and starts it again in the same pane with the current worker_kind and
-worker_profile launch arguments; it never creates panes or workspaces.
+second one (it restarts a missing orchestrator, never a worker), and exits 2
+when more than one managed workspace exists.
+Attach mode uses the current Herdr pane for Claude: it claims the orchestrator
+seat and prints the directive, and never starts, restarts or repairs a worker.
+Outside a Herdr pane it changes nothing and prints a summary line: the
+orchestrator pane is not started, the on-demand worker and auditor commands,
+and the manifest worktree's seated worker, if any. In a regime repository (a
+main checkout with one orchestrator agmsg identity and a manifest worker
+worktree) an agmsg-orchestration directive line follows, as it follows
+seat_claim= inside the orchestrator's Herdr pane.
+Full and attach modes seat a Claude orchestrator, so they exit 2 before
+touching Herdr when HERDR_AGENTS_ORCHESTRATOR_KIND (default orchestrator_kind
+from ~/.agents/model-profiles.env, then claude) is codex; the other modes work
+under either kind (the worker modes name, link and despawn workers under the
+kind's orchestrator identity), and a worker's own attach in a linked worktree
+still exits quietly. Directive mode prints the agmsg-orchestration directive
+line for the current directory when it is a regime repository (the
+orchestrator identity is looked up as the kind's agmsg type, claude-code or
+codex), and nothing otherwise; it needs no Herdr server.
+--restart-worker is retired: it exits 2 and names --remove-worker followed by
+--add-worker, which apply new worker launch arguments.
 Bootstrap mode only configures missing repo-scoped agmsg hooks and removes the
 pre-push stub that earlier versions wrote for the retired main-push guard (any
 other pre-push hook is left alone); the GitHub ruleset on main is the boundary.
-Audit mode runs the read-only Codex audit of <sha> in the existing pair
+Audit mode runs the read-only Codex audit of <sha> in the existing managed
 workspace's audit tab (created once, then reused and left open), tees it to
 PATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits
 nonzero when the audit does or when the concluding line of PATH.last.md (the
@@ -138,12 +131,21 @@ audit covers the whole task once on its final head <sha>: the prompt names
 sandbox files and ID-pr-feedback.json (those present), and the PR diff from
 git merge-base origin/main <sha>; PATH then defaults to
 .orchestration/validation/ID-audit-<sha7>.md.
-Add-worker mode seats an extra resident worker for <worktree> (a path under
-DIR/.claude/worktrees/, created from origin/main when missing) in its own tab
-of the pair workspace for DIR (labeled <team>:<name>; the pair tab is left
-untouched), or in its own workspace when DIR has no pair workspace, through
-upstream agmsg spawn.sh, with the profile's launch args;
-a pane-less caller gets HERDR_SOCKET_PATH derived from the default Herdr server
+Add-worker mode seats a worker for <worktree> (a path under
+DIR/.claude/worktrees/, created from origin/main when missing; when it is
+omitted, the manifest worker_worktree, and a lone argument outside
+.claude/worktrees/ is DIR) in its own tab of the
+managed workspace for DIR (labeled <team>:<name>; the orchestrator tab is left
+untouched), or in its own workspace when DIR has none, through upstream agmsg
+spawn.sh, with the profile's launch args. HERDR_AGENTS_WORKER_KIND (default
+worker_kind from ~/.agents/model-profiles.env, then codex) and --kind select
+codex or claude. A codex worker runs with --sandbox workspace-write,
+--ask-for-approval never and sandbox_workspace_write.network_access=true: it
+never prompts, it reaches the network (GitHub included) inside the sandbox, and
+a write outside its writable roots or a command the execpolicy forbids fails
+and is reported as a blocked PONG. Interactive codex sessions keep the base
+config (on-request approvals, no sandbox network).
+A pane-less caller gets HERDR_SOCKET_PATH derived from the default Herdr server
 socket ~/.config/herdr/herdr.sock (the path the Claude sandbox allowlists), a claude worker's workspace-trust dialog is accepted while spawn.sh
 waits, and --ready-timeout bounds that wait (spawn.sh default 90 seconds);
 remove-worker mode despawns it, turns its delivery off, leaves its team, and
@@ -223,7 +225,7 @@ function resolve_orchestrator_kind() {
     esac
 }
 
-# @description Resolve the pair worker's worktree, relative to the repository,
+# @description Resolve the default add-worker worktree, relative to the repository,
 #   from the manifest-generated ~/.agents/model-profiles.env only. Empty means
 #   the legacy seat: the worker pane runs in the main checkout.
 # @exitcode 2 If the value is not a single path segment under .claude/worktrees/.
@@ -441,11 +443,9 @@ PY
 #   profile's launch arguments (spawn.sh splices the type section into the boot
 #   command): MODEL_PROFILE_<NAME>_CLAUDE_ARGS for claude, and `--profile <name>
 #   --sandbox workspace-write --ask-for-approval never --config
-#   sandbox_workspace_write.network_access=true` for codex, as start_worker_agent
-#   passes them, plus the worktree's git metadata roots (`--config`, see
+#   sandbox_workspace_write.network_access=true` for codex, plus the
+#   worktree's git metadata roots (`--config`, see
 #   codex_worktree_writable_roots) for a codex worker when a worktree is given.
-#   HERDR_AGENTS_CLAUDE_WORKER_ARGS (free-form pair-worker extras) is not
-#   carried.
 # @arg $1 string Worker kind.
 # @arg $2 path Worker worktree (optional).
 # @exitcode 2 If the profile is not defined in ~/.agents/model-profiles.env or
@@ -586,7 +586,7 @@ function claude_ancestor_pid() {
 #   and the claim repeated. A bare owner can only come from a sandboxed claim
 #   of this session; a same-session composite with a live pid is a parallel
 #   --resume/--continue sibling and is left alone (`seat_claim=failed`). With
-#   `--self` the claim also requires the pane to be the pair's orchestrator
+#   `--self` the claim also requires the pane to be the orchestrator
 #   pane (label `claude-orchestrator` or `<team>:<identity>`); any other
 #   Claude pane in the main checkout gets `seat_claim=skipped
 #   reason=not-orchestrator-pane`. Prints
@@ -689,7 +689,7 @@ function print_regime_directive() {
     identity="$(AGMSG_RESOLVE_PROJECT=0 "${identities}" "${workdir}" "${type}" 2> /dev/null |
         awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || identity=""
     [[ -n ${identity} && ${identity} != *$'\n'* ]] || return 0
-    printf 'agmsg-orchestration: this session is the orchestrator seat %s for %s (worker seat %s). Before any other action, invoke the agmsg-orchestration skill. Delegate every repository-mutating change, make upgrade pin diffs included, to the seated worker as an AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --restart-worker in the pair, herdr-agents --add-worker %s otherwise): no worker is never an implicit opt-out. Before acting directly under an exemption, declare which one in one line. Never push to main yourself: main accepts only pull requests (GitHub ruleset), so every change, the .orchestration boundary commit included, travels as a PR merged with gh pr merge --squash.\n' \
+    printf 'agmsg-orchestration: this session is the orchestrator seat %s for %s (default worker worktree %s). Before any other action, invoke the agmsg-orchestration skill. Delegate every repository-mutating change, make upgrade pin diffs included, to the seated worker as an AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --add-worker [<worktree>], default %s) and remove it with herdr-agents --remove-worker <worktree> when its task is done: no worker is never an implicit opt-out. Before acting directly under an exemption, declare which one in one line. Never push to main yourself: main accepts only pull requests (GitHub ruleset), so every change, the .orchestration boundary commit included, travels as a PR merged with gh pr merge --squash.\n' \
         "${identity}" "${workdir}" "${seat}" "${seat}"
 }
 
@@ -705,64 +705,6 @@ function claim_seat_and_print_directive() {
     [[ -n ${output} ]] || return 0
     printf '%s\n' "${output}"
     [[ ${output} == seat_claim=skipped* ]] || print_regime_directive "$1"
-}
-
-# @description Succeed when the manifest's worker worktree seat applies to DIR.
-#   worker_worktree is host-global, so it applies only to a git main checkout
-#   whose worktree already exists, or that has origin/main and an orchestrator
-#   (non -aNNN) claude-code agmsg identity to name the worker from (several
-#   are refused later as ambiguous). Anywhere else, e.g. an unregistered
-#   repository, the legacy main-path seat stays, unchanged and side-effect free.
-# @arg $1 workdir Absolute directory.
-function worker_seat_applies() {
-    local path="$1/${worker_worktree}"
-    local identities="${HOME}/.agents/skills/agmsg/scripts/identities.sh"
-
-    if [[ -z ${worker_worktree} ]] || ! is_main_checkout "$1"; then
-        return 1
-    fi
-    # An existing path applies; ensure_worker_worktree refuses a non-worktree one.
-    [[ ! -e ${path} ]] || return 0
-    git -C "$1" rev-parse --verify --quiet 'origin/main^{commit}' > /dev/null 2>&1 &&
-        [[ -x ${identities} ]] &&
-        [[ "$(AGMSG_RESOLVE_PROJECT=0 "${identities}" "$1" claude-code 2> /dev/null |
-            awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u | grep -c .)" -ge 1 ]]
-}
-
-# @description Prepare the worker seat before a worker agent starts: its
-#   identity (derived first, so a refusal leaves nothing behind), the worktree,
-#   the identity's registration, and the delivery hook. Sets worker_seat_dir to
-#   the pane cwd (the worktree, or workdir for the legacy main-path seat).
-# @arg $1 string Worker kind.
-# @arg $2 workdir Absolute main checkout path.
-function prepare_worker_seat() {
-    local identity
-
-    worker_seat_dir="$2"
-    [[ -n ${worker_worktree} ]] || return 0
-    [[ -e $2/${worker_worktree} ]] || ensure_worker_identity "$1" "$2" "$2/${worker_worktree}" --no-join > /dev/null
-    worker_seat_dir="$(ensure_worker_worktree "$2" "${worker_worktree}")"
-    identity="$(ensure_worker_identity "$1" "$2" "${worker_seat_dir}")"
-    ensure_worker_delivery "$1" "${worker_seat_dir}"
-    ensure_worker_merge_denials "$1" "${worker_seat_dir}"
-    [[ -z ${identity} ]] || printf 'Herdr agents worker seat: %s (agmsg %s)\n' "${worker_seat_dir}" "${identity#*$'\t'}" >&2
-}
-
-# @description Move a reused pane's shell into the worker seat before an agent
-#   starts there (herdr agent start has no cwd option). A no-op for the legacy
-#   main-path seat.
-# @arg $1 pane_id Worker pane id.
-# @exitcode 1 If the pane never reaches a shell prompt to take the cd.
-function seat_pane_shell() {
-    local cd_command
-
-    [[ ${worker_seat_dir:-} != "${workdir:-}" ]] || return 0
-    if ! wait_for_shell_prompt "$1"; then
-        printf 'herdr-agents: pane %s never reached a shell prompt; refusing to start the worker outside %s.\n' "$1" "${worker_seat_dir}" >&2
-        exit 1
-    fi
-    printf -v cd_command 'cd -- %q' "${worker_seat_dir}"
-    herdr pane run "$1" "${cd_command}" > /dev/null
 }
 
 # @description Derive and validate a herdr 0.8.2 agent registration name.
@@ -1164,7 +1106,7 @@ function accept_spawned_claude_trust_dialog() {
 }
 
 # @description Print the SessionStart summary line of a session outside a
-#   Herdr pane, which never seats a worker: the pair is not started, the
+#   Herdr pane, which never seats a worker: the orchestrator pane is not started, the
 #   on-demand worker and auditor commands, and, when the manifest worker
 #   worktree has an agmsg identity with a placement record, that worker's name
 #   and `<socket>:<pane>` location, followed by the regime directive line
@@ -1197,60 +1139,9 @@ function print_plain_start_summary() {
     else
         seated="no worker is seated at ${worker_worktree:-the manifest worker_worktree}"
     fi
-    printf 'herdr-agents: not in a Herdr pane, so the agent pair is not started; start the worker on demand with "herdr-agents --add-worker %s [DIR]" and run the auditor headless as the agmsg-orchestration SKILL task-level audit bullet shows ("codex <audit profile args> exec --sandbox read-only -C <repo> -o <out>.last.md <prompt>"); %s.\n' \
+    printf 'herdr-agents: not in a Herdr pane, so the orchestrator pane is not started; start the worker on demand with "herdr-agents --add-worker %s [DIR]" and run the auditor headless as the agmsg-orchestration SKILL task-level audit bullet shows ("codex <audit profile args> exec --sandbox read-only -C <repo> -o <out>.last.md <prompt>"); %s.\n' \
         "${worker_worktree:-<worktree>}" "${seated}"
     print_regime_directive "${workdir}"
-}
-
-# @description Start a worker agent (codex or claude) in an existing pane and return its pane id.
-# @arg $1 string Worker kind, `codex` or `claude`.
-# @arg $2 string Herdr worker agent registration name.
-# @arg $3 pane_id Target pane id.
-# @arg $4 boolean Whether the pane was newly created.
-function start_worker_agent() {
-    local kind="$1"
-    local agent_name="$2"
-    local pane_id="$3"
-    local newly_created="$4"
-    local roots
-    local -a worker_args=()
-
-    if ! wait_for_shell_prompt "${pane_id}" prompt; then
-        printf 'Herdr worker pane %s is not shell-ready; refusing to start the worker.\n' "${pane_id}" >&2
-        return 1
-    fi
-
-    if [[ ${kind} == claude ]]; then
-        local profile_env_key
-        local profile_args
-        local -a extra_worker_args=()
-        profile_env_key="MODEL_PROFILE_$(printf '%s' "${HERDR_AGENTS_WORKER_PROFILE}" | tr '[:lower:]' '[:upper:]')_CLAUDE_ARGS"
-        if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
-            # shellcheck source=/dev/null
-            source "${HOME}/.agents/model-profiles.env"
-        fi
-        profile_args="${!profile_env_key:-}"
-        if [[ -n ${profile_args} ]]; then
-            read -r -a worker_args <<< "${profile_args}"
-        fi
-        if [[ -n ${HERDR_AGENTS_CLAUDE_WORKER_ARGS:-} ]]; then
-            read -r -a extra_worker_args <<< "${HERDR_AGENTS_CLAUDE_WORKER_ARGS}"
-            # bash 3.2 (macOS's /bin/bash) treats "${arr[@]}" as unbound under
-            # set -u when arr has zero elements; bash 4.4+ does not. The
-            # ${arr[@]+"${arr[@]}"} idiom expands to nothing instead of
-            # erroring on either version.
-            worker_args+=(${extra_worker_args[@]+"${extra_worker_args[@]}"})
-        fi
-        start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" ${worker_args[@]+"${worker_args[@]}"} > /dev/null
-        accept_claude_workspace_trust_dialog "${pane_id}" || true
-    else
-        worker_args=(--sandbox workspace-write --profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}" --ask-for-approval never -c sandbox_workspace_write.network_access=true)
-        roots="$(codex_worktree_writable_roots "${worker_seat_dir:-}")"
-        [[ -z ${roots} ]] || worker_args+=(-c "${roots}")
-        start_agent_in_pane codex "${agent_name}" "${pane_id}" "${newly_created}" "${worker_args[@]}" > /dev/null
-    fi
-    rename_pane_unless_seat_named "${pane_id}" "${kind}-worker"
-    printf '%s\n' "${pane_id}"
 }
 
 # @description Load the pane labels upstream agmsg 1.5.0 self-naming gives the
@@ -1369,246 +1260,29 @@ function single_managed_workspace() {
 
     workspace_ids="$(find_managed_workspaces "$1" "$2")"
     if [[ ${workspace_ids} == *$'\n'* ]]; then
-        printf 'herdr-agents: multiple managed Herdr workspaces for %q (%s); an orchestrator/worker pair lives in one workspace. Close the stray one: herdr agent prompt <pane> "/exit" for each of its agents, then herdr workspace close <id>.\n' \
+        printf 'herdr-agents: multiple managed Herdr workspaces for %q (%s); the orchestrator and its worker tabs live in one workspace. Close the stray one: herdr agent prompt <pane> "/exit" for each of its agents, then herdr workspace close <id>.\n' \
             "$2" "$(tr '\n' ' ' <<< "${workspace_ids}" | sed 's/ $//')" >&2
         exit 2
     fi
     printf '%s\n' "${workspace_ids}"
 }
 
-# @description jq predicate for a pane of an --add-worker seat: it keeps its
-#   self-named `<team>:<name>` label (only the pair seats are normalized) and
-#   runs in a linked worktree under $workdir. Such a pane lives in its own tab
-#   of the pair workspace and is never one of the pair's panes.
-function added_worker_pane_filter() {
+# @description jq predicate for a worker's pane, which full mode never takes
+#   for the orchestrator, reuses or splits from: an --add-worker seat runs in a
+#   linked worktree under $workdir (its self-named label may be normalized to
+#   `<kind>-worker`), and a pane left by the retired resident pair keeps its
+#   `<kind>-worker` label.
+function worker_pane_filter() {
     # shellcheck disable=SC2016 # jq variables are intentional literal input.
-    printf '%s' '((.label // "") | test("^[^:[:space:]]+:[^:[:space:]]+$")) and ((.cwd // "") | startswith($worktrees))'
+    printf '%s' '(((.cwd // "") | startswith($worktrees)) or .label == "codex-worker" or .label == "claude-worker")'
 }
 
 # @description Return success when a Claude orchestrator pane is present.
-#   An added claude worker's pane (added_worker_pane_filter) does not count.
+#   A claude worker's pane (worker_pane_filter) does not count.
 # @arg $1 json Herdr pane list JSON.
-# @arg $2 pane_id Worker pane id to exclude, so a claude worker does not count.
 function has_claude_pane() {
-    local panes_json="$1"
-    local worker_pane_id="${2:-}"
-
-    printf '%s\n' "${panes_json}" | jq -e --arg worker "${worker_pane_id}" --arg worktrees "${workdir}/.claude/worktrees/" \
-        ".result.panes[]? | select(.agent == \"claude\" and .pane_id != \$worker and ($(added_worker_pane_filter) | not))" > /dev/null
-}
-
-# @description Return the worker pane id when the registered agent points to a live pane.
-# @arg $1 agent_name Herdr worker agent registration name.
-# @arg $2 json Herdr pane list JSON.
-function live_worker_pane_id() {
-    local agent_name="$1"
-    local panes_json="$2"
-    local agent_json
-    local pane_id
-
-    if ! agent_json="$(herdr agent get "${agent_name}" 2> /dev/null)"; then
-        return 1
-    fi
-    pane_id="$(printf '%s\n' "${agent_json}" | json_agent_pane_id)"
-    [[ -n ${pane_id} ]] || return 1
-    printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${pane_id}" '.result.panes[]? | select(.pane_id == $pane_id)' > /dev/null || return 1
-    printf '%s\n' "${pane_id}"
-}
-
-# @description Return the single pane labeled as the worker for a kind.
-# @arg $1 string Worker kind.
-# @arg $2 json Herdr pane list JSON.
-function labeled_worker_pane_id() {
-    printf '%s\n' "$2" | jq -er --arg label "$1-worker" \
-        '[.result.panes[]? | select(.label == $label) | .pane_id] | if length == 1 then .[0] else empty end' 2> /dev/null
-}
-
-# @description Return success when a pane has an attached agent.
-# @arg $1 json Herdr pane list JSON.
-# @arg $2 pane_id Pane to inspect.
-function pane_has_agent() {
-    printf '%s\n' "$1" | jq -e --arg pane_id "$2" '.result.panes[]? | select(.pane_id == $pane_id and (.agent? // "") != "")' > /dev/null
-}
-
-# @description Exit any agent in the worker pane, then start the worker there.
-#   A claude worker with running background tasks answers /exit with an
-#   exit-confirmation dialog, so the submit key is sent once when the shell
-#   prompt does not return. start_worker_agent waits (bounded) for the shell
-#   prompt, so the new worker starts only after the old agent has exited.
-# @arg $1 string Worker kind.
-# @arg $2 string Herdr worker agent registration name.
-# @arg $3 pane_id Worker pane id.
-# @arg $4 json Herdr pane list JSON.
-function restart_worker_in_pane() {
-    local kind="$1"
-    local agent_name="$2"
-    local pane_id="$3"
-    local panes_json="$4"
-
-    if pane_has_agent "${panes_json}" "${pane_id}"; then
-        herdr agent prompt "${pane_id}" "/exit" > /dev/null
-        if ! wait_for_shell_prompt "${pane_id}"; then
-            herdr agent send-keys "${pane_id}" Enter > /dev/null
-        fi
-    fi
-    # Re-seats a legacy main-path worker pane into its worktree.
-    seat_pane_shell "${pane_id}"
-    start_worker_agent "${kind}" "${agent_name}" "${pane_id}" true > /dev/null
-}
-
-# @description Return pane-list JSON filtered to the tab containing a pane.
-# @arg $1 json Herdr pane list JSON.
-# @arg $2 pane_id Pane whose tab should be retained.
-function panes_on_pane_tab() {
-    local panes_json="$1"
-    local pane_id="$2"
-
-    printf '%s\n' "${panes_json}" | jq -ce --arg pane_id "${pane_id}" \
-        '.result.panes as $panes
-         | ($panes | map(select(.pane_id == $pane_id and (.tab_id | type) == "string"))) as $current
-         | if ($current | length) == 1
-           then .result.panes = [$panes[] | select(.tab_id == $current[0].tab_id)]
-           else error("unable to identify pane tab")
-           end'
-}
-
-# @description Return success when attach mode can account for every pane.
-# @arg $1 json Herdr pane list JSON.
-# @arg $2 pane_id Current Claude pane id.
-# @arg $3 pane_id Live Codex pane id, or empty when missing.
-function attach_panes_are_unambiguous() {
-    local panes_json="$1"
-    local claude_pane_id="$2"
-    local codex_pane_id="$3"
-
-    printf '%s\n' "${panes_json}" | jq -e \
-        --arg claude "${claude_pane_id}" \
-        --arg codex "${codex_pane_id}" \
-        '.result.panes | map(.pane_id) as $actual
-         | ([$claude, $codex] | map(select(length > 0)) | unique) as $managed
-         | ($actual | length) == ($managed | length)
-           and all($actual[]; . as $pane_id | ($managed | index($pane_id)) != null)' > /dev/null
-}
-
-# @description Repair the left-to-right order of the two attach-mode panes.
-# @arg $1 json Herdr pane list JSON.
-# @arg $2 pane_id Current Claude pane id.
-# @arg $3 pane_id Live Codex pane id.
-function repair_attach_pane_order() {
-    local panes_json="$1"
-    local claude_pane_id="$2"
-    local codex_pane_id="$3"
-    local layout_json
-    local left_pane
-
-    if [[ -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
-        printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing order repair.\n' >&2
-        return 0
-    fi
-    if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")"; then
-        printf 'Unable to inspect Herdr attach pane order; refusing order repair.\n' >&2
-        return 0
-    fi
-    if ! left_pane="$(
-        printf '%s\n' "${layout_json}" | jq -er \
-            --arg claude "${claude_pane_id}" \
-            --arg codex "${codex_pane_id}" \
-            '[.result.layout.panes[]? | select(.pane_id == $claude or .pane_id == $codex)] as $panes
-             | if ($panes | length) == 2
-                  and all($panes[]; .rect.x | type == "number")
-                  and ([$panes[].rect.x] | unique | length) == 2
-               then ($panes | min_by(.rect.x) | .pane_id)
-               else error("ambiguous pane layout")
-               end'
-    )"; then
-        printf 'Herdr attach pane layout is ambiguous; refusing order repair.\n' >&2
-        return 0
-    fi
-
-    if [[ ${left_pane} != "${claude_pane_id}" ]]; then
-        herdr pane swap --source-pane "${left_pane}" --target-pane "${claude_pane_id}"
-    fi
-}
-
-# @description Repair a safe two-pane attach layout to equal halves.
-# @arg $1 json Herdr pane list JSON.
-# @arg $2 pane_id Current Claude pane id.
-# @arg $3 pane_id Live Codex pane id.
-function repair_attach_pane_ratio() {
-    local panes_json="$1"
-    local claude_pane_id="$2"
-    local codex_pane_id="$3"
-    local layout_json
-    local metrics
-    local direction
-    local amount
-    local geometry_filter
-
-    if [[ -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
-        printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing ratio repair.\n' >&2
-        return 0
-    fi
-
-    # shellcheck disable=SC2016 # jq variables are intentional literal input.
-    geometry_filter='
-        ([.result.layout.panes[]?
-          | select(.pane_id == $claude or .pane_id == $codex)]
-         | sort_by(.rect.x)) as $panes
-        | .result.layout.splits as $splits
-        | ($panes | map(.rect.width) | add) as $total
-        | if ($panes | length) == 2
-             and ($splits | type) == "array"
-             and ($splits | length) == 1
-             and all($panes[]; (.rect.x | type) == "number"
-                               and (.rect.width | type) == "number"
-                               and (.rect.y | type) == "number"
-                               and (.rect.height | type) == "number")
-             and all($splits[]; .direction == "right"
-                               and (.rect.x | type) == "number"
-                               and (.rect.width | type) == "number")
-             and ($panes | map(.pane_id)) == [$claude, $codex]
-             and $panes[0].rect.x + $panes[0].rect.width == $panes[1].rect.x
-             and $panes[0].rect.y == $panes[1].rect.y
-             and $panes[0].rect.height == $panes[1].rect.height
-             and $splits[0].rect.x == $panes[0].rect.x
-             and $splits[0].rect.width == $total
-          then ($total / 2) as $target
-             | [
-                 (if (($panes[0].rect.width - $target) | fabs) <= 2 then "none"
-                  elif $panes[0].rect.width > $target then "left" else "right" end),
-                 ((($panes[0].rect.width - $target) | fabs) / $total)
-               ]
-             | @tsv
-          else error("unsafe pane geometry")
-          end'
-
-    if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
-        ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
-            --arg claude "${claude_pane_id}" \
-            --arg codex "${codex_pane_id}" \
-            "${geometry_filter}")"; then
-        printf 'Unable to inspect a safe Herdr attach layout; refusing ratio repair.\n' >&2
-        return 0
-    fi
-    IFS=$'\t' read -r direction amount <<< "${metrics}"
-    [[ ${direction} == none ]] && return 0
-
-    if ! herdr pane resize --pane "${claude_pane_id}" --direction "${direction}" --amount "${amount}" > /dev/null; then
-        printf 'Unable to resize the Herdr split; refusing further ratio repair.\n' >&2
-        return 0
-    fi
-    if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
-        ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
-            --arg claude "${claude_pane_id}" \
-            --arg codex "${codex_pane_id}" \
-            "${geometry_filter}")"; then
-        printf 'Unable to verify the resized Herdr layout; refusing further ratio repair.\n' >&2
-        return 0
-    fi
-    IFS=$'\t' read -r direction _ <<< "${metrics}"
-    if [[ ${direction} != none ]]; then
-        printf 'Herdr attach pane widths did not converge; refusing further ratio repair.\n' >&2
-    fi
+    printf '%s\n' "$1" | jq -e --arg worktrees "${workdir}/.claude/worktrees/" \
+        ".result.panes[]? | select(.agent == \"claude\" and ($(worker_pane_filter) | not))" > /dev/null
 }
 
 # @description Map a worker kind to the agmsg agent type its CLI registers as.
@@ -1636,28 +1310,6 @@ function distinct_agmsg_identity_count() {
 
     count="$("${identities}" "$1" "$2" 2> /dev/null | cut -f 2 | sort -u | grep -c .)" || true
     printf '%s\n' "${count:-0}"
-}
-
-# @description Refuse a worker that would share the orchestrator's agmsg identity.
-#   agmsg resolves identity by (project path, agent type), so a claude worker on
-#   the orchestrator's workdir needs a second registered claude-code identity.
-#   A second identity only lifts this guard; it does not give distinct delivery.
-#   Temporary guard until the agmsg role/seat model replaces it.
-# @arg $1 string Worker kind.
-# @arg $2 workdir Resolved project directory.
-# @exitcode 2 If the worker would resolve to the orchestrator's identity.
-function require_distinct_worker_identity() {
-    local kind="$1"
-    local workdir="$2"
-    local count
-
-    [[ "$(worker_agmsg_type "${kind}")" == claude-code ]] || return 0
-    count="$(distinct_agmsg_identity_count "${workdir}" claude-code)"
-    if ((count < 2)); then
-        printf "herdr-agents: worker_kind=%s would share the orchestrator's claude-code agmsg identity on %q (%s claude-code identity registered); refusing so messages do not collide silently. Registering a second identity (AGMSG_RESOLVE_PROJECT=0 %s/join.sh <team> <role> claude-code %q) lifts this guard but does not give the two sessions distinct delivery until agmsg roles land; use worker_kind=codex for separate delivery now. See the herdr-agents section of the dotfiles README.\n" \
-            "${kind}" "${workdir}" "${count}" "${HOME}/.agents/skills/agmsg/scripts" "${workdir}" >&2
-        exit 2
-    fi
 }
 
 # @description Remove the pre-push stub that earlier `--bootstrap-agmsg` runs
@@ -1703,39 +1355,19 @@ function bootstrap_agmsg() {
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
     local delivery="${scripts}/delivery.sh"
     local doctor="${scripts}/doctor.sh"
-    local codex_hooks_file="${workdir}/.codex/hooks.json"
     local claude_hooks_file="${workdir}/.claude/settings.local.json"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
     local agent_type
     local agent_label
-    local codex_worker=true
-    local agent_types=(codex claude-code)
-    local max_identities=1
+    local agent_types=(claude-code)
 
-    if [[ -n ${worker_worktree:-} ]]; then
-        # The worker is seated in its worktree, with its own hooks there; the
-        # main checkout only carries the orchestrator's claude-code identity.
-        codex_worker=false
-        agent_types=(claude-code)
-    elif [[ "$(worker_agmsg_type "$(resolve_worker_kind)")" == claude-code ]]; then
-        # A claude worker is a second claude-code identity: no Codex hooks.
-        codex_worker=false
-        agent_types=(claude-code)
-        max_identities=2
-    fi
-
+    # Workers are seated in linked worktrees with their own hooks there, so
+    # the main checkout only carries the orchestrator's claude-code identity.
     if [[ ! -f ${delivery} ]]; then
         printf 'agmsg delivery script not found; skipping bootstrap: %s\n' "${delivery}" >&2
         return 0
     fi
     mkdir -p "${log_file%/*}"
-    if [[ ${codex_worker} == true ]] && ! { [[ -f ${codex_hooks_file} ]] && jq -e \
-        'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
-        "${codex_hooks_file}" > /dev/null 2>&1; }; then
-        if "${delivery}" set turn codex "${workdir}" >> "${log_file}" 2>&1; then
-            printf 'Codex loads the new repo hook only after the project .codex layer is trusted; run /hooks or trust the repo in Codex.\n' >&2
-        fi
-    fi
     if ! { [[ -f ${claude_hooks_file} ]] && jq -e \
         'any(.hooks.SessionStart[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/session-start.sh")))' \
         "${claude_hooks_file}" > /dev/null 2>&1; }; then
@@ -1760,9 +1392,7 @@ function bootstrap_agmsg() {
 
         # doctor.sh reports general per-project health (registered, warnings);
         # it does not treat multiple registrations for one type as a problem,
-        # so the ambiguity/second-identity checks below stay on the existing
-        # counting helper the T14 guard (require_distinct_worker_identity)
-        # also uses.
+        # so the ambiguity check below stays on the counting helper.
         if doctor_output="$("${doctor}" --project "${workdir}" --type "${agent_type}" 2>&1)"; then
             :
         else
@@ -1778,10 +1408,7 @@ function bootstrap_agmsg() {
 
         if [[ ${has_registration} == true ]]; then
             count="$(distinct_agmsg_identity_count "${workdir}" "${agent_type}")"
-            if [[ ${agent_type} == claude-code ]] && ((max_identities == 2)) && ((count < 2)); then
-                printf 'No agmsg Claude Code worker identity for %s; herdr-agents full and --attach modes refuse a claude worker until a second claude-code identity is registered.\n' \
-                    "${workdir}" >&2
-            elif ((count > max_identities)); then
+            if ((count > 1)); then
                 printf 'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n' \
                     "${agent_label}" "${workdir}" >&2
             fi
@@ -1791,15 +1418,11 @@ function bootstrap_agmsg() {
 
 # @description Return the first pane id without an attached agent.
 # @arg $1 json Herdr pane list JSON.
-# @arg $2 pane_id Optional pane id to exclude.
 function empty_pane_id() {
-    local panes_json="$1"
-    local exclude_pane_id="${2:-}"
-
-    # Preserve legacy files panes, the audit pane and an exited added worker's
-    # pane (added_worker_pane_filter) as non-agent panes.
-    printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" --arg worktrees "${workdir:-}/.claude/worktrees/" \
-        ".result.panes[]? | select((.agent? // \"\") == \"\" and .label? != \"files\" and .label? != \"audit\" and .pane_id != \$exclude and ($(added_worker_pane_filter) | not)) | .pane_id // empty" | head -n 1
+    # Preserve legacy files panes, the audit pane and an exited worker's pane
+    # (worker_pane_filter) as non-agent panes.
+    printf '%s\n' "$1" | jq -r --arg worktrees "${workdir:-}/.claude/worktrees/" \
+        ".result.panes[]? | select((.agent? // \"\") == \"\" and .label? != \"files\" and .label? != \"audit\" and ($(worker_pane_filter) | not)) | .pane_id // empty" | head -n 1
 }
 
 # @description Remove a node-global npm copy that shadows the dedicated mise tool install.
@@ -1836,7 +1459,7 @@ function audit_tab_ids() {
 }
 
 # @description Print the single audit pane id, creating the audit tab once.
-#   The pane is labeled audit so the pair modes never reuse it.
+#   The pane is labeled audit so full mode never reuses it.
 # @arg $1 string Herdr workspace id.
 # @arg $2 workdir Absolute workdir path.
 # @exitcode 2 If the audit tab or its pane is ambiguous.
@@ -1861,11 +1484,11 @@ function audit_pane_id() {
     printf '%s\n' "${pane_id}"
 }
 
-# @description Close the tab an added worker was seated in inside the pair
+# @description Close the tab an added worker was seated in inside the managed
 #   workspace. despawn.sh usually closes the worker's pane, and with it the
 #   tab; this closes what is left. Only a tab whose every pane carries the
 #   worker's `<team>:<name>` label, or is an unlabeled pane with no agent (an
-#   empty shell), is closed, so the pair tab, the audit tab and any tab with
+#   empty shell), is closed, so the orchestrator tab, the audit tab and any tab with
 #   another running agent are never touched.
 # @arg $1 string Pair workspace id.
 # @arg $2 string Worker seat label `<team>:<name>`.
@@ -1897,6 +1520,12 @@ if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
     exit 0
 fi
 
+# Workers are seated on demand, so there is no resident worker pane to restart.
+if [[ ${1:-} == "--restart-worker" ]]; then
+    printf 'herdr-agents: --restart-worker is retired; run herdr-agents --remove-worker <worktree> and then herdr-agents --add-worker <worktree> [--kind …] [--profile NAME]\n' >&2
+    exit 2
+fi
+
 # The orchestrator's agmsg identity type: the leader the worker modes name,
 # link and despawn under, and the identity --directive looks up.
 orchestrator_kind="$(resolve_orchestrator_kind)" || exit 2
@@ -1914,9 +1543,9 @@ if [[ ${1:-} == "--directive" ]]; then
     exit 0
 fi
 
-# The Claude pair (full mode, --attach, --restart-worker) seats a Claude
-# orchestrator, so it refuses before touching Herdr when the manifest names Codex.
-# The manifest worker's own SessionStart --attach keeps its quiet exit below.
+# Full mode and --attach seat a Claude orchestrator, so they refuse before
+# touching Herdr when the manifest names Codex. The manifest worker's own
+# SessionStart --attach keeps its quiet exit below.
 case "${1:-}" in
 --bootstrap-agmsg | --add-worker | --remove-worker | --audit) ;;
 *)
@@ -1929,7 +1558,6 @@ esac
 
 attach_mode=false
 bootstrap_mode=false
-restart_mode=false
 audit_mode=false
 audit_out=""
 audit_timeout=1800
@@ -1978,9 +1606,6 @@ if [[ ${1:-} == "--attach" ]]; then
 elif [[ ${1:-} == "--bootstrap-agmsg" ]]; then
     bootstrap_mode=true
     shift
-elif [[ ${1:-} == "--restart-worker" ]]; then
-    restart_mode=true
-    shift
 elif [[ ${1:-} == "--add-worker" || ${1:-} == "--remove-worker" ]]; then
     if [[ $1 == "--add-worker" ]]; then
         add_worker_mode=true
@@ -1988,8 +1613,10 @@ elif [[ ${1:-} == "--add-worker" || ${1:-} == "--remove-worker" ]]; then
         remove_worker_mode=true
     fi
     shift
-    seat_worktree="${1:-}"
-    [[ $# -gt 0 ]] && shift
+    if [[ -n ${1:-} && ${1} != --* ]]; then
+        seat_worktree="$1"
+        shift
+    fi
     while [[ ${1:-} == "--kind" || ${1:-} == "--profile" || ${1:-} == "--ready-timeout" || ${1:-} == "--force" ]]; do
         case "$1" in
         --kind | --profile | --ready-timeout)
@@ -2014,6 +1641,15 @@ elif [[ ${1:-} == "--add-worker" || ${1:-} == "--remove-worker" ]]; then
             ;;
         esac
     done
+    if [[ ${add_worker_mode} == true ]]; then
+        # A lone argument outside .claude/worktrees/ is DIR; an omitted
+        # worktree is the manifest worker_worktree.
+        if [[ $# -eq 0 && -n ${seat_worktree} && ${seat_worktree} != .claude/worktrees/* ]]; then
+            set -- "${seat_worktree}"
+            seat_worktree=""
+        fi
+        [[ -n ${seat_worktree} ]] || seat_worktree="$(resolve_worker_worktree)"
+    fi
 elif [[ ${1:-} == "--audit" ]]; then
     audit_mode=true
     shift
@@ -2097,7 +1733,7 @@ if [[ ${add_worker_mode} == true || ${remove_worker_mode} == true ]]; then
         printf 'herdr-agents: several Herdr workspaces are labeled %q; refusing.\n' "${seat_label}" >&2
         exit 2
     fi
-    # The pair workspace hosts each added worker in its own tab; only a
+    # The managed workspace hosts each added worker in its own tab; only a
     # pane-less caller without one gets the worker's own workspace.
     load_seat_labels "${workdir}"
     pair_workspace_id="$(single_managed_workspace "$(basename "${workdir}") agents" "${workdir}")"
@@ -2158,8 +1794,8 @@ if [[ ${add_worker_mode} == true ]]; then
     write_spawn_options "${seat_kind}" "${seat_dir}" > "${seat_options}"
     seat_panes="$(herdr pane list --workspace "${seat_workspace_id}" | jq -c '[.result.panes[]?.pane_id]')"
     # spawn.sh seats the member (placement record, actas boot, readiness wait);
-    # --window opens a tab in HERDR_WORKSPACE_ID (the pair workspace when one
-    # exists, the pair tab untouched), and --project opts the join
+    # --window opens a tab in HERDR_WORKSPACE_ID (the managed workspace when one
+    # exists, the orchestrator tab untouched), and --project opts the join
     # out of project resolution. It runs in the background so a claude worker's
     # trust dialog is accepted during the readiness wait, not after it.
     HERDR_WORKSPACE_ID="${seat_workspace_id}" AGMSG_SPAWN_OPTIONS_FILE="${seat_options}" \
@@ -2401,19 +2037,9 @@ if [[ ${audit_mode} == true ]]; then
     exit 0
 fi
 
-worker_kind="$(resolve_worker_kind)"
-case "${worker_kind}" in
-codex | claude) ;;
-*)
-    printf 'HERDR_AGENTS_WORKER_KIND must be codex or claude; got %q\n' "${worker_kind}" >&2
-    exit 2
-    ;;
-esac
-
 require_command herdr
 require_command jq
-require_command "${worker_kind}"
-if [[ ${attach_mode} == false && ${restart_mode} == false ]]; then
+if [[ ${attach_mode} == false ]]; then
     require_command claude
 fi
 # Heal PATH shadowing left behind by the agent CLIs' own `npm install -g`
@@ -2428,77 +2054,27 @@ else
 fi
 cd -- "${workdir}"
 workdir="$(pwd -P)"
-HERDR_AGENTS_WORKER_PROFILE="$(resolve_worker_profile)"
-worker_worktree="$(resolve_worker_worktree)"
-worker_seat_dir="${workdir}"
-if [[ ${attach_mode} == true ]] && is_manifest_worker_seat "${workdir}"; then
-    # The worktree-seated worker's own SessionStart hook: attach is for the orchestrator pane.
+if [[ ${attach_mode} == true ]] && ! is_main_checkout "${workdir}" &&
+    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" &&
+    [[ ${workdir} == "$(cd -- "${common_dir%/.git}" && pwd -P)/.claude/worktrees/"* ]]; then
+    # A worker's own SessionStart hook in its linked worktree: attach is for the orchestrator pane.
     exit 0
 fi
-# After the worker's own quiet exit: the seat lookups are only for the pair modes.
 load_seat_labels "${workdir}"
-worker_seat_applies "${workdir}" || worker_worktree=""
-# A worktree-seated worker has its own path, so its identity cannot collide;
-# the T14 guard only covers the legacy seat in the main checkout.
-[[ -n ${worker_worktree} ]] || require_distinct_worker_identity "${worker_kind}" "${workdir}"
 
 if [[ ${attach_mode} == true ]]; then
     workspace_id="${HERDR_WORKSPACE_ID}"
     claude_pane_id="${HERDR_PANE_ID}"
-    worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
     panes_json="$(managed_pane_list "${workspace_id}")"
-    workspace_worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" ||
-        workspace_worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")" ||
-        workspace_worker_pane_id=""
-    # A claude worker's own SessionStart hook must not relabel its pane as the
-    # orchestrator. Upstream self-naming renames the herdr agent, so the pane's
-    # (normalized) seat label identifies the worker too.
-    [[ ${workspace_worker_pane_id} == "${claude_pane_id}" ]] && exit 0
-    if printf '%s\n' "${panes_json}" | jq -e --arg pane "${claude_pane_id}" --arg label "${worker_kind}-worker" \
-        '.result.panes[]? | select(.pane_id == $pane and .label == $label)' > /dev/null; then
+    # A legacy pair worker pane (label <kind>-worker) is not the orchestrator.
+    if printf '%s\n' "${panes_json}" | jq -e --arg pane "${claude_pane_id}" \
+        '.result.panes[]? | select(.pane_id == $pane and (.label == "codex-worker" or .label == "claude-worker"))' > /dev/null; then
         exit 0
     fi
-    if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
-        printf 'Unable to identify the current Herdr tab; refusing attach repair.\n' >&2
-        exit 0
-    fi
-    # Upstream self-naming renames the herdr agent, so fall back to the seat label.
-    worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" ||
-        worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")" ||
-        worker_pane_id=""
-
     if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${claude_pane_id}" '.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")' > /dev/null; then
         rename_pane_unless_seat_named "${claude_pane_id}" claude-orchestrator
     fi
     claim_seat_and_print_directive "${workdir}" "${claude_pane_id}"
-    if ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"; then
-        printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing repair.\n' >&2
-        exit 0
-    fi
-    if [[ -z ${worker_pane_id} && -n ${workspace_worker_pane_id} ]]; then
-        printf 'The existing %s worker agent is on another Herdr tab; refusing to start a duplicate.\n' "${worker_kind}" >&2
-    fi
-
-    if [[ -z ${worker_pane_id} && -z ${workspace_worker_pane_id} ]]; then
-        prepare_worker_seat "${worker_kind}" "${workdir}"
-        # A resident claude-kind worker's Monitor watch re-arms unconditionally
-        # on expiry (upstream default: re-arm only if the expired watch
-        # delivered something); an unattended worker pane has no one to notice
-        # a silently dropped watch, unlike the interactive orchestrator pane.
-        if [[ ${worker_kind} == claude ]]; then
-            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${worker_seat_dir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
-        else
-            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${worker_seat_dir}" --env AGMSG_RESOLVE_PROJECT=0)"
-        fi
-        start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
-    fi
-    panes_json="$(managed_pane_list "${workspace_id}")"
-    if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
-        printf 'Unable to identify the current Herdr tab; refusing order repair.\n' >&2
-        exit 0
-    fi
-    repair_attach_pane_order "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
-    repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
     bootstrap_agmsg "${workdir}"
 
     printf 'Herdr agents workspace: %s\n' "${workspace_id}"
@@ -2508,96 +2084,26 @@ fi
 workspace_label="$(basename "${workdir}") agents"
 existing_workspace_id="$(single_managed_workspace "${workspace_label}" "${workdir}")"
 
-if [[ ${restart_mode} == true ]]; then
-    if [[ -z ${existing_workspace_id} ]]; then
-        printf 'herdr-agents: no managed Herdr workspace for %q; run herdr-agents %q (full mode) to create one.\n' "${workdir}" "${workdir}" >&2
-        exit 2
-    fi
-    workspace_id="${existing_workspace_id}"
-    worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
-    panes_json="$(managed_pane_list "${workspace_id}")"
-    worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" ||
-        worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")" ||
-        worker_pane_id="$(empty_pane_id "${panes_json}")"
-    if [[ -z ${worker_pane_id} ]]; then
-        printf 'herdr-agents: no %s worker pane in Herdr workspace %s; run herdr-agents %q (full mode) to heal it.\n' "${worker_kind}" "${workspace_id}" "${workdir}" >&2
-        exit 2
-    fi
-    if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${worker_pane_id}")"; then
-        printf 'herdr-agents: unable to identify the worker pane tab in Herdr workspace %s; refusing restart.\n' "${workspace_id}" >&2
-        exit 2
-    fi
-    claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r --arg worker "${worker_pane_id}" \
-        '.result.panes[]? | select(.label == "claude-orchestrator" and .pane_id != $worker) | .pane_id // empty')"
-    if [[ -z ${claude_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"; then
-        printf 'herdr-agents: Herdr workspace %s panes are ambiguous or include unmanaged panes; refusing restart.\n' "${workspace_id}" >&2
-        exit 2
-    fi
-    # Repair a legacy label (e.g. claude-orchestrator from the pre-T25 attach bug) before the restart can refuse.
-    if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${worker_pane_id}" --arg label "${worker_kind}-worker" '.result.panes[]? | select(.pane_id == $pane_id and .label == $label)' > /dev/null; then
-        rename_pane_unless_seat_named "${worker_pane_id}" "${worker_kind}-worker"
-    fi
-    prepare_worker_seat "${worker_kind}" "${workdir}"
-    restart_worker_in_pane "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${panes_json}"
-    printf 'Herdr agents worker restarted in pane %s\n' "${worker_pane_id}"
-    exit 0
-fi
-
 if [[ -n ${existing_workspace_id} ]]; then
+    # Heal only the orchestrator: a worker is seated on demand, never here.
     workspace_id="${existing_workspace_id}"
-    worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
     panes_json="$(managed_pane_list "${workspace_id}")"
-    worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || worker_pane_id=""
-
-    if [[ -z ${worker_pane_id} ]] && worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")"; then
-        # Reuse the labeled worker pane; an exited worker leaves it agentless.
-        if ! pane_has_agent "${panes_json}" "${worker_pane_id}"; then
-            prepare_worker_seat "${worker_kind}" "${workdir}"
-            restart_worker_in_pane "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${panes_json}"
-            panes_json="$(managed_pane_list "${workspace_id}")"
-        fi
-    fi
-    if [[ -z ${worker_pane_id} ]]; then
-        prepare_worker_seat "${worker_kind}" "${workdir}"
-        worker_pane_id="$(empty_pane_id "${panes_json}")"
-        worker_pane_is_new=false
-        [[ -z ${worker_pane_id} ]] || seat_pane_shell "${worker_pane_id}"
-        if [[ -z ${worker_pane_id} ]]; then
-            split_source_pane_id="$(printf '%s\n' "${panes_json}" | jq -r '[.result.panes[]? | select(.label? != "audit")][0].pane_id // empty')"
-            if [[ -z ${split_source_pane_id} ]]; then
-                printf 'Unable to find a pane for %s worker repair in Herdr workspace: %s\n' "${worker_kind}" "${workspace_id}" >&2
-                exit 1
-            fi
-            if [[ ${worker_kind} == claude ]]; then
-                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${worker_seat_dir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
-            else
-                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${worker_seat_dir}" --env AGMSG_RESOLVE_PROJECT=0)"
-            fi
-            worker_pane_is_new=true
-        fi
-        start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${worker_pane_is_new}" > /dev/null
-        panes_json="$(managed_pane_list "${workspace_id}")"
-    fi
-
-    if ! has_claude_pane "${panes_json}" "${worker_pane_id}"; then
-        claude_pane_id="$(empty_pane_id "${panes_json}" "${worker_pane_id}")"
+    if ! has_claude_pane "${panes_json}"; then
+        claude_pane_id="$(empty_pane_id "${panes_json}")"
         claude_pane_is_new=false
         if [[ -z ${claude_pane_id} ]]; then
-            claude_pane_id="$(split_agent_pane "${worker_pane_id}" "${workdir}" --env HERDR_AGENTS_LAYOUT=managed)"
+            # Never inside the audit tab or an --add-worker seat's tab (a linked
+            # worktree), whose removal closes it, and never from a files pane.
+            split_source_pane_id="$(printf '%s\n' "${panes_json}" | jq -r --arg worktrees "${workdir}/.claude/worktrees/" \
+                '[.result.panes[]? | select(.label? != "audit" and .label? != "files" and ((.cwd // "") | startswith($worktrees) | not))][0].pane_id // empty')"
+            if [[ -z ${split_source_pane_id} ]]; then
+                printf 'Unable to find a pane for the orchestrator repair in Herdr workspace: %s (only audit, files or worker-tab panes remain); open a tab with herdr tab create --workspace %s --cwd %q and run herdr-agents %q again.\n' "${workspace_id}" "${workspace_id}" "${workdir}" "${workdir}" >&2
+                exit 1
+            fi
+            claude_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}" --env HERDR_AGENTS_LAYOUT=managed)"
             claude_pane_is_new=true
-            herdr pane swap --pane "${claude_pane_id}" --direction left
         fi
         start_claude_in_pane "${claude_pane_id}" "${workspace_id}" "${claude_pane_is_new}"
-    fi
-
-    panes_json="$(managed_pane_list "${workspace_id}")"
-    if panes_json="$(panes_on_pane_tab "${panes_json}" "${worker_pane_id}")"; then
-        claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r --arg worker "${worker_pane_id}" \
-            '.result.panes[]? | select((.agent == "claude" or .label == "claude-orchestrator") and .pane_id != $worker) | .pane_id // empty')"
-        repair_attach_pane_order "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
-        repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
-    else
-        printf 'Unable to identify the existing Herdr tab; refusing layout repair.\n' >&2
     fi
     bootstrap_agmsg "${workdir}"
 
@@ -2624,15 +2130,7 @@ if [[ -z ${root_pane_id} ]]; then
     exit 1
 fi
 
-worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
 start_claude_in_pane "${root_pane_id}" "${workspace_id}" true
-prepare_worker_seat "${worker_kind}" "${workdir}"
-if [[ ${worker_kind} == claude ]]; then
-    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${worker_seat_dir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
-else
-    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${worker_seat_dir}" --env AGMSG_RESOLVE_PROJECT=0)"
-fi
-start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
 bootstrap_agmsg "${workdir}"
 
 if command -v zed > /dev/null 2>&1; then

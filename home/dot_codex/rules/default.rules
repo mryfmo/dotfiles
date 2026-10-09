@@ -184,10 +184,10 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern=["make", ["setup", "init", "update", "apply", "upgrade", "watch", "reset", "reset-config", "clean", "deploy"]],
+    pattern=["make", ["setup", "init", "update", "update-tree", "apply", "upgrade", "watch", "reset", "reset-config", "clean", "deploy"]],
     decision="forbidden",
     justification="These make targets bootstrap or run chezmoi apply, reset chezmoi state (operator lifecycle), run rm -rf (clean), or force-push the docs site (deploy); ask the operator.",
-    match=["make setup", "make init", "make update", "make apply", "make watch", "make reset", "make clean", "make deploy"],
+    match=["make setup", "make init", "make update", "make update-tree", "make apply", "make watch", "make reset", "make clean", "make deploy"],
     not_match=["make unit-test", "make format", "make render-check"],
 )
 

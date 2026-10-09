@@ -149,9 +149,9 @@ make update
 make doctor
 
 # Tool upgrades never run in that canonical clone; make upgrade refuses it.
-# 1. From the working clone, seat the pins worker; this creates the
+# 1. Seat the pins worker for the working clone (DIR); this creates its
 #    .claude/worktrees/pins worktree from origin/main when it is missing.
-herdr-agents --add-worker .claude/worktrees/pins
+herdr-agents --add-worker .claude/worktrees/pins ~/Workspace/dotfiles
 # 2. Explicitly upgrade user-level tools, mise itself, and Homebrew-managed
 #    packages in the pins worktree. A worktree that is dirty or not at
 #    origin/main is refused, and the message names the fix.
@@ -163,8 +163,8 @@ make upgrade SYSTEM=1
 # 3. The orchestrator dispatches the pins task; the worker commits the files
 #    make upgrade changed, with the matching tests/** version assertions, and
 #    opens the pull request.
-# 4. After the merge, apply the new pins on the host.
-make -C ~/.local/share/chezmoi update
+# 4. After the merge, apply the new pins on the host from the canonical clone.
+make -C "$(git -C "$(chezmoi source-path)" rev-parse --show-toplevel)" update
 ```
 
 `SYSTEM=1`, `SYSTEM=true`, and `SYSTEM=yes` enable operating-system package

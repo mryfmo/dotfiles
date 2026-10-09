@@ -1581,13 +1581,21 @@ EOF
     def test_upgrade_restores_a_rebuild_backup_left_by_a_killed_run(self) -> None:
         # A SIGKILL runs no trap: the working install sits in the backup, and the install directory is gone or partial.
         # The fake mise is offline, so its bare install fails unless the backup is back in place before it runs.
-        for name, phase, partial in (
-            ("install directory absent", "npm_reinstall-leftover-absent", False),
-            ("partial install left", "npm_reinstall-leftover-partial", True),
+        for name, phase, partial, installs_dir in (
+            ("install directory absent", "npm_reinstall-leftover-absent", False, False),
+            ("partial install left", "npm_reinstall-leftover-partial", True, False),
+            # MISE_INSTALLS_DIR moves the installs out of the data directory, and the backup with them.
+            ("custom MISE_INSTALLS_DIR", "npm_reinstall-leftover-installs-dir", False, True),
         ):
             with self.subTest(name):
                 repo, env = self.upgrade_fixture(phase)
                 tool = Path(env["CCUSAGE_DIR"])
+                if installs_dir:
+                    env["MISE_INSTALLS_DIR"] = str(self.temp_dir / f"upgrade-{phase}.installs")
+                    moved = Path(env["MISE_INSTALLS_DIR"]) / "npm-ccusage/20.0.0"
+                    moved.parent.mkdir(parents=True)
+                    tool = tool.rename(moved)
+                    env["CCUSAGE_DIR"] = str(tool)
                 tool.rename(f"{tool}.before-node-rebuild")
                 if partial:
                     (tool / "partial").mkdir(parents=True)
@@ -1600,6 +1608,34 @@ EOF
                 self.assertTrue((tool / "original").exists())
                 self.assertFalse((tool / "partial").exists())
                 self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())
+
+    def test_upgrade_never_restores_an_undeletable_backup_over_a_completed_rebuild(self) -> None:
+        if os.geteuid() == 0:
+            self.skipTest("root deletes read-only directories")
+        repo, env = self.upgrade_fixture("node_stays-undeletable-backup")
+        tool = Path(env["CCUSAGE_DIR"])
+        # An entry in a read-only directory makes deleting the moved-aside install fail after a successful rebuild.
+        (tool / "locked").mkdir()
+        (tool / "locked/file").touch()
+        (tool / "locked").chmod(0o555)
+        try:
+            first = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+            second = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+        finally:
+            # tearDown's rmtree runs before addCleanup callbacks, so the directory is made writable here.
+            for locked in self.temp_dir.rglob("locked"):
+                locked.chmod(0o755)
+
+        self.assertEqual(0, first.returncode, first.stdout + first.stderr)
+        self.assertEqual(0, second.returncode, second.stdout + second.stderr)
+        # The rebuilt install stays: the next run takes nothing for an interrupted rebuild.
+        self.assertTrue((tool / "rebuilt").exists())
+        self.assertFalse((tool / "original").exists())
+        self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())
+        self.assertEqual("26.0.0\n", (Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node").read_text())
+        self.assertIn("warning: could not delete", first.stderr)
+        # The undeletable leftover is dot-named, which mise does not list as an installed version.
+        self.assertEqual([tool.name], [p.name for p in tool.parent.iterdir() if not p.name.startswith(".")])
 
     def test_upgrade_fails_when_the_node_marker_cannot_be_written(self) -> None:
         repo, env = self.upgrade_fixture("node_stays-unwritable")

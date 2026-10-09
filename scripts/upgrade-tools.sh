@@ -296,7 +296,12 @@ function rebuild_mise_npm_tool() {
     trap "${restore}" EXIT
     if run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then
         trap - INT TERM EXIT
-        rm -rf "${backup}"
+        # Renamed before it is deleted, so a backup that cannot be fully deleted is never restored over this
+        # install; the dot keeps a leftover out of mise's installed versions.
+        local discard="${install_dir%/*}/.${install_dir##*/}.discarded-after-rebuild"
+        rm -rf "${discard}"
+        mv "${backup}" "${discard}" || return 1
+        rm -rf "${discard}" || printf 'warning: could not delete %s; nothing uses it\n' "${discard}" >&2
         return 0
     fi
     trap - INT TERM EXIT
@@ -310,8 +315,8 @@ function rebuild_mise_npm_tool() {
 #
 function restore_interrupted_npm_rebuilds() {
     local backup
-    # mise's own data directory resolution (MISE_DATA_DIR, then XDG_DATA_HOME), as `mise doctor` reports it.
-    local installs="${MISE_DATA_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/mise}/installs"
+    # mise's own installs directory resolution: MISE_INSTALLS_DIR, then the data directory (MISE_DATA_DIR, then XDG_DATA_HOME).
+    local installs="${MISE_INSTALLS_DIR:-${MISE_DATA_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/mise}/installs}"
     for backup in "${installs}"/*/*.before-node-rebuild; do
         [ -d "${backup}" ] || continue
         restore_npm_install "${backup%.before-node-rebuild}" "${backup}" || return 1

@@ -379,6 +379,89 @@ main
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertTrue(marker.exists())
 
+    def test_main_repairs_a_broken_same_version_install_the_upstream_update_would_skip(self):
+        # aws/install --update exits 0 without copying when the version directory exists, so the
+        # repair must remove a broken same-version tree first; a GPG-verified archive comes first.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            home = root / "home"
+            temp = root / "tmp"
+            key = root / "key.asc"
+            for path in (home, temp):
+                path.mkdir()
+            key.write_text("fixture\n")
+            version_dir = home / ".local/share/aws-cli/v2" / AWS_CLI_VERSION
+            (version_dir / "bin").mkdir(parents=True)
+            (version_dir / "bin/aws").write_text("#!/bin/sh\nexit 42\n")
+            (version_dir / "bin/aws").chmod(0o755)
+            (home / ".local/bin").mkdir(parents=True)
+            (home / ".local/bin/aws").symlink_to(version_dir / "bin/aws")
+            state = home / ".local/state/dotfiles/aws-cli-archive.etag"
+            state.parent.mkdir(parents=True)
+            state.write_text('"abc-1"\n')
+
+            result = self.run_shell(
+                r"""
+uname() { printf 'x86_64\n'; }
+curl() {
+    local output="" head=""
+    while [ "$#" -gt 0 ]; do
+        case "$1" in --output) output="$2"; shift 2 ;; --head) head=1; shift ;; *) shift ;; esac
+    done
+    if [ -n "${head}" ]; then printf 'HTTP/2 200\r\nETag: "abc-1"\r\n\r\n'; else printf payload > "${output}"; fi
+}
+gpg() {
+    case " $* " in
+        *" --with-colons "*)
+            printf 'pub:-:4096:1:A6310ACC4672475C:1568845749:1814472778::::::sc::::::23::0:\n'
+            printf 'fpr:::::::::@FINGERPRINT@:\n'
+            ;;
+        *" --dearmor "*)
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = --output ]; then printf keyring > "$2"; return; else shift; fi
+            done
+            ;;
+    esac
+}
+gpgv() { return 0; }
+unzip() {
+    local destination
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = -d ]; then destination="$2"; shift 2; else shift; fi
+    done
+    mkdir -p "${destination}/aws/dist"
+    printf '#!/bin/sh\nprintf "aws-cli/@AWS_CLI_VERSION@ Python/3.13 Linux/6\\n"\n' > "${destination}/aws/dist/aws"
+    chmod +x "${destination}/aws/dist/aws"
+    # Mimics upstream: --update with an existing version directory skips without copying.
+    cat > "${destination}/aws/install" <<'EOF'
+#!/usr/bin/env bash
+while [ "$#" -gt 0 ]; do
+    case "$1" in --install-dir) install_dir="$2"; shift 2 ;; --bin-dir) bin_dir="$2"; shift 2 ;; *) shift ;; esac
+done
+if [ -d "${install_dir}/v2/@AWS_CLI_VERSION@" ]; then
+    echo "Found same AWS CLI version: ${install_dir}/v2/@AWS_CLI_VERSION@. Skipping install."
+    exit 0
+fi
+mkdir -p "${install_dir}/v2/@AWS_CLI_VERSION@/bin" "${bin_dir}"
+printf '#!/bin/sh\nprintf "aws-cli/@AWS_CLI_VERSION@ Python/3.13 Linux/6\\n"\n' > "${install_dir}/v2/@AWS_CLI_VERSION@/bin/aws"
+chmod +x "${install_dir}/v2/@AWS_CLI_VERSION@/bin/aws"
+ln -snf "${install_dir}/v2/@AWS_CLI_VERSION@" "${install_dir}/v2/current"
+ln -sf "${install_dir}/v2/current/bin/aws" "${bin_dir}/aws"
+EOF
+    chmod +x "${destination}/aws/install"
+}
+main
+""".replace("@FINGERPRINT@", FINGERPRINT).replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
+                {"AWS_CLI_KEY_PATH": str(key), "HOME": str(home), "TMPDIR": str(temp), "XDG_STATE_HOME": ""},
+            )
+
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"Installed aws-cli/{AWS_CLI_VERSION}.", result.stdout)
+            self.assertEqual(
+                f"aws-cli/{AWS_CLI_VERSION} Python/3.13 Linux/6\n",
+                subprocess.run([str(home / ".local/bin/aws")], text=True, capture_output=True, check=False).stdout,
+            )
+
     def test_main_installs_and_records_a_new_archive_etag(self):
         for recorded, installed in (('"abc-1"', True), (None, False)):
             with self.subTest(recorded=recorded, installed=installed), tempfile.TemporaryDirectory() as directory:

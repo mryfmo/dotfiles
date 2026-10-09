@@ -86,6 +86,8 @@ function install_aws_cli() (
     local inspection_home
     local validity
     local temporary_dir
+    local staged_version
+    local same_version_dir
 
     archive_url="$(aws_cli_url)" || return
     temporary_dir="$(mktemp -d)" || return
@@ -114,7 +116,16 @@ function install_aws_cli() (
     gpgv --keyring "${keyring_path}" "${signature_path}" "${archive_path}" || return
 
     unzip -q "${archive_path}" -d "${temporary_dir}" || return
-    verify_aws_cli_version "${temporary_dir}/aws/dist/aws" "AWS CLI staged artifact verification failed" > /dev/null || return
+    staged_version="$(verify_aws_cli_version "${temporary_dir}/aws/dist/aws" "AWS CLI staged artifact verification failed")" || return
+    staged_version="${staged_version#aws-cli/}"
+    # The upstream installer's --update skips a version directory that already exists, so a broken
+    # install of the same version would never be repaired. Remove that directory first, after the
+    # signature and the staged CLI passed and only when the installed CLI no longer runs.
+    same_version_dir="${AWS_CLI_INSTALL_DIR}/v2/${staged_version}"
+    if [[ "${staged_version}" =~ ^[0-9]+(\.[0-9]+)*$ && -d "${same_version_dir}" ]] &&
+        ! verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1; then
+        rm -rf "${same_version_dir}" || return
+    fi
     mkdir -p "${AWS_CLI_BIN_DIR}" "$(dirname "${AWS_CLI_INSTALL_DIR}")" || return
     "${temporary_dir}/aws/install" \
         --install-dir "${AWS_CLI_INSTALL_DIR}" \

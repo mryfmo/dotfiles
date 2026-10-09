@@ -141,6 +141,44 @@ class GithubReleaseTest(unittest.TestCase):
                 )
         self.assertEqual("gh auth token --hostname github.com\n", Path(f"{self.log}.gh").read_text())
 
+    def test_an_xtrace_never_shows_the_credential_and_is_restored(self) -> None:
+        # Installers run set -x under DOTFILES_DEBUG; the credential must stay out of the trace.
+        page = self.temp_dir / "releases.json"
+        page.write_text(json.dumps([release("v1.0.0", hours_ago(500))], indent=2) + "\n")
+        for tool in ("mktemp", "rm"):
+            (self.bin_dir / tool).symlink_to(shutil.which(tool))
+        for fetcher, env, received in (
+            ("curl", {"GITHUB_TOKEN": "trace-credential"}, f"{self.log}.stdin"),
+            ("wget", {"GH_TOKEN": "trace-credential"}, f"{self.log}.wgetrc"),
+            ("curl", {}, f"{self.log}.stdin"),
+        ):
+            with self.subTest(fetcher=fetcher, source=next(iter(env), "gh auth token")):
+                for name in ("curl", "wget", "gh"):
+                    (self.bin_dir / name).unlink(missing_ok=True)
+                Path(received).unlink(missing_ok=True)
+                self.executable(
+                    fetcher,
+                    f"""
+                    [[ " $* " == *" -K - "* ]] && cat > "{self.log}.stdin"
+                    for arg in "$@"; do case "$arg" in --config=*) cat "${{arg#--config=}}" > "{self.log}.wgetrc" ;; esac; done
+                    cat "{page}"
+                    """,
+                )
+                if not env:
+                    self.executable("gh", 'printf "trace-credential\\n"\n')
+
+                result = self.run_helper(
+                    'set -x\ngithub_release_tag owner/repo\ncase $- in *x*) echo "xtrace restored" >&2 ;; esac',
+                    **env,
+                    TMPDIR=str(self.temp_dir),
+                )
+
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual("v1.0.0\n", result.stdout)
+                self.assertNotIn("trace-credential", result.stderr)
+                self.assertIn("xtrace restored", result.stderr)
+                self.assertIn("Authorization: Bearer trace-credential", Path(received).read_text())
+
     def test_tag_fails_when_the_download_is_truncated(self) -> None:
         # curl emits a complete eligible release and then fails: the lookup must not use it.
         page = self.temp_dir / "releases.json"

@@ -19,9 +19,27 @@ GITHUB_ATTESTATION_MIN_GH="2.93.0"
 #
 # @description Print the first page of a repository's releases as the GitHub API returns them.
 #   GITHUB_TOKEN, GH_TOKEN or gh's github.com token authenticate the request when one is available.
+#   An xtrace the caller turned on (DOTFILES_DEBUG) is off while the credential is handled, and
+#   restored afterwards on every path, so a trace never shows it.
 # @arg $1 string owner/repo
 #
 function github_release_list() {
+    local status=0 xtrace=""
+    case $- in *x*)
+        xtrace=1
+        set +x
+        ;;
+    esac
+    github_release_fetch "$1" || status=$?
+    [ -z "${xtrace}" ] || set -x
+    return "${status}"
+}
+
+#
+# @description The request behind github_release_list; call github_release_list, which keeps it out of a trace.
+# @arg $1 string owner/repo
+#
+function github_release_fetch() {
     local url="https://api.github.com/repos/$1/releases?per_page=30"
     local bearer="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
     if [ -z "${bearer}" ] && command -v gh > /dev/null 2>&1; then

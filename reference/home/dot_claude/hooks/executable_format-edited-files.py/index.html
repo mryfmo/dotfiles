@@ -3717,9 +3717,11 @@ def<span class="w"> </span>run_commands<span class="o">(</span>commands:<span cl
 <span class="w">            </span>try:
 <span class="w">                </span><span class="nv">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>subprocess.run<span class="o">(</span><span class="nb">command</span><span class="w"> </span>+<span class="w"> </span>file_args,<span class="w"> </span><span class="nv">cwd</span><span class="o">=</span>root,<span class="w"> </span><span class="nv">check</span><span class="o">=</span>False<span class="o">)</span>
 <span class="w">            </span>except<span class="w"> </span>FileNotFoundError:
-<span class="w">                </span><span class="c1"># make update installs only some mise tools; a full install provides</span>
-<span class="w">                </span><span class="c1"># the pinned formatters (ruff, npm:prettier in the mise config).</span>
-<span class="w">                </span>print<span class="o">(</span>f<span class="s2">"{command[0]} is not installed; run `mise install --locked`"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
+<span class="w">                </span><span class="c1"># make update installs every declared mise tool, so a missing formatter means that step was skipped or failed.</span>
+<span class="w">                </span>print<span class="o">(</span>
+<span class="w">                    </span>f<span class="s2">"{command[0]} is not installed; run `make update` (it installs every declared mise tool)"</span>,
+<span class="w">                    </span><span class="nv">file</span><span class="o">=</span>sys.stderr,
+<span class="w">                </span><span class="o">)</span>
 <span class="w">                </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>max<span class="o">(</span>status,<span class="w"> </span><span class="m">1</span><span class="o">)</span>
 <span class="w">                </span><span class="k">continue</span>
 <span class="w">            </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>max<span class="o">(</span>status,<span class="w"> </span>result.returncode<span class="o">)</span>

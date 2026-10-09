@@ -1,0 +1,10 @@
+# Sandbox: dotfiles-T117-upgrade-outside-canonical-clone-a01
+
+- Isolation: worktree `.claude/worktrees/worker-c` (seat), branch `feat/upgrade-outside-canonical-clone` from `origin/main` b37937ca with `git switch -c … --no-track`; shared `.git/config` untouched.
+- All edits, shellcheck, shfmt, ruff, prettier, the validator, the render check and the unit tests ran inside the Claude sandbox. Commit signing was disabled for the commit command (`-c commit.gpgsign=false`) because `~/.ssh` is read-denied; earlier commits from this seat are unsigned the same way. uv ran with pypi.org/files.pythonhosted.org declared. mise ran from an empty `$TMPDIR` directory (`mise -C`, as CI does), because the sandbox denies its trust symlink under `~/.local/state/mise` for this worktree.
+- The mise probe ran in a scratch detached worktree under `$TMPDIR` with `MISE_STATE_DIR`/`MISE_CACHE_DIR` in `$TMPDIR`. It sourced the script and called only `run_mise_with_isolated_git_config ls --current` and `apply_upgraded_mise_config`; no upgrade phase ran against a real checkout.
+- The scratch guard check sourced the script and called only `require_pins_checkout` for every passing case, and ran the whole script only in the canonical case, with a PATH that has no package manager. It used throwaway repos under `$TMPDIR`.
+- Two scratch detached worktrees of `origin/main` under `$TMPDIR` served the failure baselines and were removed with `git worktree remove --force` (no prune).
+- `tests/unit/test_herdr_agents.py` boundary tests that commit in scratch repos fail in this sandbox on `origin/main` too (signing key read-denied, `git commit` rc 128); they pass with `GIT_CONFIG_GLOBAL=/dev/null`, which is how they were verified here.
+- Out-of-sandbox through the permission gate: HTTPS `git push` with the task's command, `gh pr create/checks/api`, the CompactionDB `memory add`, writing and masking the artifacts in the main checkout, `agmsg-dispatch` (excludedCommands).
+- Neither `make upgrade` nor `make update` ran, and `~/.local/share/chezmoi` was only read through `chezmoi source-path`.

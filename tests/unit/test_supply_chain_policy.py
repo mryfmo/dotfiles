@@ -231,10 +231,16 @@ install_starship
             self.assertNotIn("--locked", (ROOT / relative).read_text(), relative)
         makefile = (ROOT / "Makefile").read_text()
         self.assertNotRegex(makefile, r"(?m)^upgrade:")
+        # The pull runs alone, then a second make reads the Makefile it fetched.
         update = makefile.split("\nupdate:\n", 1)[1].split("\n.PHONY:", 1)[0]
-        upgrade = update.index("\t./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)\n")
-        self.assertLess(update.index("\tchezmoi apply --verbose\n"), upgrade)
-        self.assertLess(upgrade, update.index("\t./scripts/update-agent-assets.sh\n"))
+        self.assertTrue(update.rstrip("\n").endswith("\t@$(MAKE) --no-print-directory update-tree"), update)
+        self.assertLess(update.index("git pull --ff-only"), update.index("update-tree"))
+        self.assertNotIn("chezmoi apply", update)
+        tree = makefile.split("\nupdate-tree:\n", 1)[1].split("\n.PHONY:", 1)[0]
+        upgrade = tree.index("\t./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)\n")
+        self.assertLess(tree.index("\tchezmoi apply --verbose\n"), upgrade)
+        self.assertLess(upgrade, tree.index("\t./scripts/update-agent-assets.sh\n"))
+        self.assertIn("\t$(MAKE) agmsg-bootstrap", tree)
 
     def test_mise_apply_replaces_live_symlinks_with_independent_copies(self):
         with tempfile.TemporaryDirectory() as temporary:

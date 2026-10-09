@@ -12,7 +12,7 @@
 #   operating-system package upgrades such as apt. The network-only phases
 #   (Homebrew, mise self-update, uv tools, gh extensions) only warn when they
 #   fail, so an offline host still converges; installing the declared mise tools
-#   stays required. It edits no repository file, and exits 0 without changes
+#   stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes
 #   when CI=true.
 
 set -Eeuo pipefail
@@ -226,6 +226,8 @@ function current_mise_tools() {
 #
 # @description Run a mise lifecycle command for each current tool; only upgrade is per tool.
 # @arg $1 string Mise command name: upgrade.
+# @exitcode 1 When the current tools cannot be listed.
+# @exitcode 2 When the command failed for at least one tool.
 #
 function run_mise_tool_command() {
     local mise_command="$1"
@@ -255,7 +257,7 @@ function run_mise_tool_command() {
         # A plain upgrade keeps the config's "latest" or exact request as written.
         if ! run_mise_with_isolated_git_config upgrade --yes "${mise_tool}"; then
             printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
-            failed=1
+            failed=2
         fi
     done <<< "${mise_tools}"
 
@@ -275,7 +277,15 @@ function upgrade_mise_tools() {
     # One bare install: it leaves installed tools alone offline, while a per-tool
     # install re-resolves "latest" over the network and fails without one.
     run_mise_with_isolated_git_config install --yes || failed=1
-    run_mise_tool_command upgrade || failed=1
+    # Upgrades need the network; an installed tool that cannot move yet is still converged.
+    local upgrade_status=0
+    run_mise_tool_command upgrade || upgrade_status=$?
+    if [ "${upgrade_status}" -eq 2 ]; then
+        printf 'optional warning: mise upgrade failed for at least one tool; its installed version stays\n' >&2
+        ((optional_warnings += 1))
+    elif [ "${upgrade_status}" -ne 0 ]; then
+        failed=1
+    fi
     return "${failed}"
 }
 

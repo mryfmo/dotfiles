@@ -213,7 +213,11 @@ applying, `make update` runs
 `git pull --ff-only` only when the checkout is on `main`, tracks `origin/main`,
 and has no staged or unstaged tracked-file changes. Otherwise it prints the
 reason and the exact manual `git -C <repo> pull` command, then continues with
-the local source; a failed fast-forward pull also warns and continues.
+the local source; a failed fast-forward pull also warns and continues. The
+pull runs first, in its own step, and a second `make` (`update-tree`) runs the
+rest from the Makefile it fetched, so a recipe change lands in the same run. On
+a host whose clone predates this split, the first `make update` would still run
+the old recipe; run `git -C <clone> pull && make -C <clone> update` once instead.
 `chezmoi apply` refuses a source tree whose `home/`, `install/` or `scripts/`
 differ from the last-fetched `origin/main`, through uncommitted, unmerged,
 unpushed or not yet pulled changes (override `CHEZMOI_ALLOW_DIRTY_SOURCE=1`), so

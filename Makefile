@@ -62,6 +62,13 @@ update:
 	elif ! git pull --ff-only; then \
 		printf 'Warning: git pull --ff-only failed; continuing with local source.\n' >&2; \
 	fi
+	@$(MAKE) --no-print-directory update-tree
+
+.PHONY: update-tree
+# Everything after the pull, in a second make that reads the Makefile the pull
+# just fetched, so a recipe change lands in the same run. SYSTEM reaches it
+# through MAKEFLAGS.
+update-tree:
 	chezmoi apply --verbose
 	@if [ -d "$$HOME/.local/share/chezmoi-private" ] && [ -f "$$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \
 		chezmoi --source "$$HOME/.local/share/chezmoi-private" \

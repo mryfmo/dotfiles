@@ -1400,7 +1400,6 @@ EOF
         cases = (
             ("mise_inventory", "Linux", []),
             ("mise_install", "Linux", []),
-            ("mise_upgrade", "Linux", []),
             ("apt", "Linux", ["--system"]),
         )
         for phase, os_name, args in cases:
@@ -1444,13 +1443,28 @@ EOF
         for flag in ("--bump", "--before", "--pin", " use "):
             self.assertFalse([line for line in log if flag in line], flag)
 
-        repo, env = self.upgrade_fixture("mise_upgrade")
+        repo, env = self.upgrade_fixture("mise_install")
         marker = repo / "lib/mise/mise-self-update-instructions.toml"
         marker.parent.mkdir(parents=True)
         marker.write_text('message = "managed by fixture package manager"\n')
         result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
+
+    def test_upgrade_failure_after_a_successful_install_only_warns(self) -> None:
+        # Converged means the declared tools are installed; an upgrade that cannot reach its archive only warns.
+        repo, env = self.upgrade_fixture("mise_upgrade")
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("warning: mise upgrade failed for python; continuing", result.stderr)
+        self.assertIn(
+            "optional warning: mise upgrade failed for at least one tool; its installed version stays", result.stderr
+        )
+        self.assertIn("required failures: 0; optional warnings: 1", result.stdout)
+        self.assertNotIn("required failure: mise inventory/install/upgrade", result.stderr)
+        self.assertIn("mise install --yes", (repo / "commands.log").read_text().splitlines())
 
     def test_upgrade_self_updates_mise_to_its_latest_release(self) -> None:
         repo, env = self.upgrade_fixture("none")

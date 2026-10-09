@@ -4,7 +4,6 @@
     make -n setup
     make -n update
     make -n doctor
-    make -n upgrade
     make -n require-crit-review
 }
 
@@ -18,8 +17,8 @@ function run_update_fixture() {
     local reload_exit="${3:-0}"
     local apply_exit="${4:-0}"
     local assets_exit="${5:-0}"
-    local mise_exit="${6:-0}"
-    local mise_fail_args="${7:-}"
+    local upgrade_exit="${6:-0}"
+    # $7 is unused: it named a failing mise command before make update ran upgrade-tools.sh.
     local git_branch="${8:-feature/test}"
     local git_upstream="${9:-origin/feature/test}"
     local git_dirty="${10:-0}"
@@ -38,13 +37,10 @@ function run_update_fixture() {
 printf 'chezmoi %s\n' "\$*" >> "${fixture}/calls"
 exit ${apply_exit}
 EOF
-    cat > "${fixture}/bin/mise" << EOF
+    cat > "${fixture}/scripts/upgrade-tools.sh" << EOF
 #!/usr/bin/env bash
-printf 'mise %s\n' "\$*" >> "${fixture}/calls"
-if [ -n '${mise_fail_args}' ] && [ "\$*" = '${mise_fail_args}' ]; then
-    exit ${mise_exit}
-fi
-exit 0
+printf 'upgrade-tools%s\n' "\${*:+ \$*}" >> "${fixture}/calls"
+exit ${upgrade_exit}
 EOF
     cat > "${fixture}/bin/git" << EOF
 #!/usr/bin/env bash
@@ -77,8 +73,8 @@ fi
 printf '%s\n' '${reload_output}' >&2
 exit ${reload_exit}
 EOF
-    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/git" "${fixture}/bin/mise" "${fixture}/bin/herdr" \
-        "${fixture}/scripts/update-agent-assets.sh"
+    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/git" "${fixture}/bin/herdr" \
+        "${fixture}/scripts/upgrade-tools.sh" "${fixture}/scripts/update-agent-assets.sh"
 
     run env HOME="${fixture}/home" PATH="${fixture}/bin:${PATH}" make -C "${fixture}" update
     UPDATE_FIXTURE="${fixture}"
@@ -113,33 +109,22 @@ EOF
     [ "$(grep -c '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
 }
 
-@test "[common] update installs statusline tools after applies and before agent assets" {
+@test "[common] update upgrades installed tools after applies and before agent assets" {
     run_update_fixture running
     [ "$status" -eq 0 ]
     run cat "${UPDATE_FIXTURE}/calls"
     [ "$output" = "chezmoi apply --verbose
 chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose
-mise install --locked node
-mise install --locked npm:ccstatusline npm:ccusage npm:pnpm ruff npm:prettier
+upgrade-tools
 assets
 herdr status server --json
 herdr server reload-config" ]
 }
 
-@test "[common] update stops before agent assets and Herdr when statusline install fails" {
-    run_update_fixture running 0 0 0 0 24 "install --locked npm:ccstatusline npm:ccusage npm:pnpm ruff npm:prettier"
+@test "[common] update stops before agent assets and Herdr when the tool upgrade fails" {
+    run_update_fixture running 0 0 0 0 24
     [ "$status" -ne 0 ]
-    grep -q '^mise install --locked node$' "${UPDATE_FIXTURE}/calls"
-    grep -q '^mise install --locked npm:ccstatusline npm:ccusage npm:pnpm ruff npm:prettier$' "${UPDATE_FIXTURE}/calls"
-    ! grep -q '^assets$' "${UPDATE_FIXTURE}/calls"
-    ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
-}
-
-@test "[common] update stops before npm tools when Node install fails" {
-    run_update_fixture running 0 0 0 0 25 "install --locked node"
-    [ "$status" -ne 0 ]
-    grep -q '^mise install --locked node$' "${UPDATE_FIXTURE}/calls"
-    ! grep -q '^mise install --locked npm:' "${UPDATE_FIXTURE}/calls"
+    grep -q '^upgrade-tools$' "${UPDATE_FIXTURE}/calls"
     ! grep -q '^assets$' "${UPDATE_FIXTURE}/calls"
     ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
 }
@@ -156,9 +141,9 @@ herdr server reload-config" ]
     mkdir -p "${fixture}/bin" "${fixture}/scripts" "${fixture}/home"
     cp Makefile "${fixture}/Makefile"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/bin/chezmoi"
-    printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/bin/mise"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/scripts/upgrade-tools.sh"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/scripts/update-agent-assets.sh"
-    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/mise" "${fixture}/scripts/update-agent-assets.sh"
+    chmod +x "${fixture}/bin/chezmoi" "${fixture}/scripts/upgrade-tools.sh" "${fixture}/scripts/update-agent-assets.sh"
 
     run env HOME="${fixture}/home" PATH="${fixture}/bin:/usr/bin:/bin" make -C "${fixture}" update
     [ "$status" -eq 0 ]
@@ -219,14 +204,14 @@ herdr server reload-config" ]
     [[ "$output" != *'chezmoi-private apply'* ]]
 }
 
-@test "[common] Makefile maps SYSTEM=1 upgrade to system package upgrades" {
-    run make -n upgrade SYSTEM=1
+@test "[common] Makefile maps SYSTEM=1 update to system package upgrades" {
+    run make -n update SYSTEM=1
     [ "$status" -eq 0 ]
     [[ "$output" == *'./scripts/upgrade-tools.sh --system'* ]]
 }
 
 @test "[common] Makefile does not treat SYSTEM=0 as a system package upgrade request" {
-    run make -n upgrade SYSTEM=0
+    run make -n update SYSTEM=0
     [ "$status" -eq 0 ]
     [[ "$output" == *'./scripts/upgrade-tools.sh '* ]]
     [[ "$output" != *'--system'* ]]
@@ -240,6 +225,11 @@ herdr server reload-config" ]
 
 @test "[common] Makefile does not expose a separate upgrade-system target" {
     run make -n upgrade-system
+    [ "$status" -ne 0 ]
+}
+
+@test "[common] Makefile has no upgrade target; make update upgrades installed tools" {
+    run make -n upgrade
     [ "$status" -ne 0 ]
 }
 
@@ -264,7 +254,7 @@ herdr server reload-config" ]
     local tool_upgrade_line
 
     grep -q 'mise self-update --yes' scripts/upgrade-tools.sh
-    grep -q 'run_mise_tool_command install' scripts/upgrade-tools.sh
+    grep -q 'run_mise_with_isolated_git_config install --yes || failed=1' scripts/upgrade-tools.sh
     grep -q 'run_mise_tool_command upgrade' scripts/upgrade-tools.sh
     self_update_line="$(grep -n 'upgrade_mise_self' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
     upgrade_line="$(grep -n 'upgrade_mise_tools' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
@@ -281,12 +271,12 @@ herdr server reload-config" ]
     grep -q 'GIT_CONFIG_NOSYSTEM=1' scripts/upgrade-tools.sh
     grep -q 'GIT_CONFIG_GLOBAL=/dev/null' scripts/upgrade-tools.sh
     grep -q 'XDG_CONFIG_HOME="${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
-    grep -Fq 'export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${repo_root}/home/dot_mise}"' scripts/upgrade-tools.sh
+    grep -Fq 'export MISE_CONFIG_DIR="${HOME}/.config/mise"' scripts/upgrade-tools.sh
     grep -Fq 'export MISE_CEILING_PATHS="${repo_root}"' scripts/upgrade-tools.sh
     grep -q 'rm -rf "${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config ls --current --no-header' scripts/upgrade-tools.sh
-    grep -q 'MISE_LOCKED=0 run_mise_with_isolated_git_config upgrade --bump --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
-    grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config use --global --pin --yes --minimum-release-age 0s "${versioned_mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'run_mise_with_isolated_git_config upgrade --yes "${mise_tool}"' scripts/upgrade-tools.sh
+    ! grep -Eq -- '--bump|--before|use --global' scripts/upgrade-tools.sh
     grep -q 'warning: unable to list current mise tools for %s; continuing' scripts/upgrade-tools.sh
     grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
 }
@@ -295,37 +285,21 @@ herdr server reload-config" ]
     grep -q 'DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node node@\* python python@\* python3 pip npm pnpm yarn claude"' scripts/upgrade-tools.sh
     grep -q 'for forbidden_formula in ${DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE} ${HOMEBREW_FORBIDDEN_FORMULAE:-}' scripts/upgrade-tools.sh
     grep -q 'case "${formula}" in' scripts/upgrade-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae\[@\]}"' scripts/upgrade-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks\[@\]}"' scripts/upgrade-tools.sh
+    grep -q 'HOMEBREW_NO_ASK=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae\[@\]}"' scripts/upgrade-tools.sh
+    grep -q 'HOMEBREW_NO_ASK=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks\[@\]}"' scripts/upgrade-tools.sh
+    grep -q 'local -x HOMEBREW_VERIFY_ATTESTATIONS=1' scripts/upgrade-tools.sh
 }
 
-@test "[common] agent CLI lifecycle installs npm latest into mise packages and removes node-global shadows before asset commands" {
-    local latest_line
-    local upgrade_line
-    local repair_line
+@test "[common] agent CLI lifecycle upgrades through mise and removes node-global shadows before asset commands" {
     local cleanup_line
 
     grep -q 'for npm_package in "@openai/codex" "@anthropic-ai/claude-code"' scripts/update-agent-assets.sh
     grep -q 'npm uninstall -g "${npm_package}"' scripts/update-agent-assets.sh
-    grep -q 'npm view "$1" version' scripts/upgrade-tools.sh
-    grep -q 'versioned_mise_tool="${mise_tool}@${package_version}"' scripts/upgrade-tools.sh
-    grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config use --global --pin --yes --minimum-release-age 0s "${versioned_mise_tool}"' scripts/upgrade-tools.sh
-    grep -q 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh
-    grep -q -- '--allow-scripts="@anthropic-ai/claude-code"' scripts/upgrade-tools.sh
-    grep -q -- '--ignore-scripts' scripts/upgrade-tools.sh
-    grep -q 'if ! upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then' scripts/upgrade-tools.sh
-    grep -q 'if ! upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then' scripts/upgrade-tools.sh
-    latest_line="$(grep -n 'latest_npm_package_version "${npm_package}"' scripts/upgrade-tools.sh | cut -d: -f1)"
-    upgrade_line="$(grep -n 'run_mise_with_isolated_git_config use --global --pin --yes --minimum-release-age 0s "${versioned_mise_tool}"' scripts/upgrade-tools.sh | cut -d: -f1)"
-    repair_line="$(grep -n 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh | cut -d: -f1)"
+    # Codex and Claude Code are ordinary mise tools now; no separate npm-latest phase.
+    ! grep -q 'upgrade_mise_npm_agent_tool' scripts/upgrade-tools.sh
     cleanup_line="$(grep -n '^    remove_node_global_agent_cli_shadows$' scripts/update-agent-assets.sh | cut -d: -f1)"
 
-    [ -n "${latest_line}" ]
-    [ -n "${upgrade_line}" ]
-    [ -n "${repair_line}" ]
     [ -n "${cleanup_line}" ]
-    [ "${latest_line}" -lt "${upgrade_line}" ]
-    [ "${upgrade_line}" -lt "${repair_line}" ]
     [ "${cleanup_line}" -lt "$(grep -n '^    update_claude_superpowers$' scripts/update-agent-assets.sh | cut -d: -f1)" ]
 }
 
@@ -409,8 +383,6 @@ herdr server reload-config" ]
 }
 
 @test "[common] agent asset lifecycle installs pinned zenbu-labs terminal tools" {
-    local bump_line asset_line
-
     grep -q 'TERMINAL_CODE_PIN_VERSION=' scripts/lib/installer-pins.sh
     grep -q 'TERMINAL_CODE_INSTALLER_SHA256=' scripts/lib/installer-pins.sh
     grep -q 'TERMINAL_BROWSER_PIN_VERSION=' scripts/lib/installer-pins.sh
@@ -421,12 +393,7 @@ herdr server reload-config" ]
     grep -q 'TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1' scripts/update-agent-assets.sh
     grep -q '^    update_terminal_code$' scripts/update-agent-assets.sh
     grep -q '^    update_terminal_browser$' scripts/update-agent-assets.sh
-    grep -q 'function bump_terminal_tool_pins()' scripts/upgrade-tools.sh
-    bump_line="$(grep -n 'run_optional_phase "terminal tool pin bump" bump_terminal_tool_pins' scripts/upgrade-tools.sh | cut -d: -f1)"
-    asset_line="$(grep -n 'run_required_phase "agent asset regeneration" upgrade_agent_assets' scripts/upgrade-tools.sh | cut -d: -f1)"
-    [ -n "${bump_line}" ]
-    [ -n "${asset_line}" ]
-    [ "${bump_line}" -lt "${asset_line}" ]
+    ! grep -q 'bump_terminal_tool_pins' scripts/upgrade-tools.sh
 }
 
 @test "[common] agent asset lifecycle renders model profiles and permgate hooks" {
@@ -449,13 +416,13 @@ herdr server reload-config" ]
     grep -q 'model_profiles' home/dot_config/codex/AGENTS.md
 }
 
-@test "[common] README documents setup update doctor and upgrade lifecycle" {
+@test "[common] README documents setup update and doctor lifecycle" {
     grep -q '### Lifecycle' README.md
     grep -q 'make setup' README.md
     grep -q 'make update' README.md
     grep -q 'make doctor' README.md
-    grep -q 'make upgrade' README.md
-    grep -q 'make upgrade SYSTEM=1' README.md
+    grep -q 'make update SYSTEM=1' README.md
+    ! grep -q 'make upgrade' README.md
     grep -q 'setup.sh' README.md
     grep -Fq 'git -C "$(chezmoi source-path)" rev-parse --show-toplevel' README.md
 }

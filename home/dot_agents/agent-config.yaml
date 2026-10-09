@@ -336,16 +336,10 @@ mcp_servers: {}
 # verification, install path, and installer step. generate-agent-configs.py
 # renders each `render.constants` entry into the named file by rewriting the
 # matching NAME="..." assignment, so installers carry no hand-written versions.
-# Change pins here only (make upgrade writes tode, terminal-browser, crit, and
-# zed through generate-agent-configs.py --set-asset). `pin: unknown` marks a
+# Change pins here only, through generate-agent-configs.py --set-asset (for
+# tode, terminal-browser, crit and zed too). `pin: unknown` marks a
 # component with no recorded upstream version.
 assets:
-  mise-tools:
-    source: mise
-    upstream: https://mise.jdx.dev
-    pin: home/dot_mise/mise.lock
-    verify: mise-lock
-    files: [home/dot_mise/config.toml, home/dot_mise/mise.lock]
   mise:
     source: github-release
     upstream: jdx/mise

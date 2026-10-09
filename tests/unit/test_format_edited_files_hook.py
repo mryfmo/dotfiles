@@ -69,7 +69,9 @@ class FormatEditedFilesHookTest(unittest.TestCase):
             )
 
             self.assertEqual(result.returncode, 1)
-            self.assertIn("ruff is not installed; run `mise install --locked`", result.stderr)
+            self.assertIn(
+                "ruff is not installed; run `make update` (it installs every declared mise tool)", result.stderr
+            )
             self.assertNotIn("Traceback", result.stderr)
 
 

@@ -666,8 +666,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             (missing,),
             {
                 "commands": [
-                    "mise install --force --locked npm:@anthropic-ai/claude-code",
-                    "mise install --force --locked npm:@openai/codex",
+                    "mise install --force npm:@anthropic-ai/claude-code",
+                    "mise install --force npm:@openai/codex",
                 ]
             },
         )

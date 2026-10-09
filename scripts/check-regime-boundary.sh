@@ -109,9 +109,9 @@ if command -v pgrep > /dev/null 2>&1 && pgrep -f 'crit _serve' > /dev/null 2>&1;
 fi
 
 # Canonical clone: the chezmoi source checkout, when it is not this working
-# clone. It stays pull/apply only (make upgrade runs in the pins worktree), so a
-# diff, stash or unmerged entry there means something ran where it must not,
-# and it blocks the operator's next pull and apply.
+# clone. It stays pull/apply only, so a diff, stash or unmerged entry there
+# means something ran where it must not, and it blocks the operator's next
+# pull and apply.
 if command -v chezmoi > /dev/null 2>&1 &&
     src="$(chezmoi source-path 2> /dev/null)" &&
     canon="$(git -C "${src}" rev-parse --show-toplevel 2> /dev/null)" &&
@@ -132,10 +132,10 @@ if command -v chezmoi > /dev/null 2>&1 &&
         git -C "${canon}" ls-files --others --exclude-standard -- home install scripts 2> /dev/null || true
     } | sort -u | paste -sd , -)"
     if [[ -n ${files} ]]; then
-        violations+=("canonical clone ${canon} differs from ${ref} under home/, install/ or scripts/: ${files}; run make upgrade only in the pins worktree (herdr-agents --add-worker .claude/worktrees/pins); restore a merged pins diff with git -C ${canon} restore -SW --source=${ref} -- <files> and drop its autostash")
+        violations+=("canonical clone ${canon} differs from ${ref} under home/, install/ or scripts/: ${files}; nothing but pull and apply runs in the canonical clone; restore a stray diff with git -C ${canon} restore -SW --source=${ref} -- <files> and drop its autostash")
     else
         # Bytes equal to the ref still leave a stale HEAD with a dirty tree
-        # after the pins PR merged; only a pull makes the clone clean.
+        # once the same change merged upstream; only a pull makes the clone clean.
         files="$({
             git -C "${canon}" diff --name-only HEAD -- home install scripts 2> /dev/null || true
             git -C "${canon}" diff --cached --name-only HEAD -- home install scripts 2> /dev/null || true

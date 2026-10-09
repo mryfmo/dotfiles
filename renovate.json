@@ -36,20 +36,21 @@
       "groupName": "minor and patch updates"
     },
     {
-      "description": "Notification-only: agent-config.yaml pins pair with sha256/trusted_hash fields that only scripts/upgrade-tools.sh (generate-agent-configs.py --set-asset) recomputes. A bare pin bump would break the asset's verify: check, so these updates wait for dashboard approval and are applied via make upgrade instead.",
+      "description": "Notification-only: agent-config.yaml pins pair with sha256/trusted_hash fields that only generate-agent-configs.py --set-asset recomputes, until T119 retires the pins. A bare pin bump would break the asset's verify: check, so these updates wait for dashboard approval and are applied through --set-asset instead.",
       "matchManagers": ["custom.regex"],
       "matchFileNames": ["home/dot_agents/agent-config.yaml"],
       "dependencyDashboardApproval": true
     },
     {
-      "description": "Notification-only until lock fidelity is proven: Renovate's mise artifact update runs mise lock without loading home/dot_mise/config.toml, so its PRs cannot reliably regenerate home/dot_mise/mise.lock. make upgrade remains the executing lane.",
+      "description": "Hold fd, as home/dot_mise/config.toml does: newer releases lack a macOS x64 asset.",
       "matchManagers": ["mise"],
-      "dependencyDashboardApproval": true
+      "matchDepNames": ["fd"],
+      "enabled": false
     },
     {
-      "description": "Hold fd, as scripts/upgrade-tools.sh does: newer releases lack a macOS x64 asset.",
+      "description": "Hold npm:pnpm, as home/dot_mise/config.toml does: the Understand-Anything plugin lockfile needs that version.",
       "matchManagers": ["mise"],
-      "matchPackageNames": ["fd"],
+      "matchDepNames": ["npm:pnpm"],
       "enabled": false
     }
   ]

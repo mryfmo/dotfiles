@@ -36,6 +36,8 @@ REQUIRED_PREFIXES = {
     ("kubectl", "apply"),
     ("chezmoi", "apply"),
     ("make", "update"),
+    # make update hands everything after its pull to update-tree, which applies and upgrades the host too.
+    ("make", "update-tree"),
     ("make", "apply"),
     ("./setup.sh",),
     ("make", "clean"),

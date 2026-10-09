@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-test the exact statusline binaries with representative Claude input."""
+"""Smoke-test the mise-installed statusline binaries with representative Claude input."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ import json
 import re
 import subprocess
 import time
-import tomllib
 from pathlib import Path
 
 
@@ -18,13 +17,6 @@ CLAUDE_STATUS = {
     "session_id": "offline-test",
     "transcript_path": "/private/tmp/nonexistent.jsonl",
 }
-MISE_CONFIG = Path(__file__).resolve().parents[1] / "home/dot_mise/config.toml"
-
-
-def expected_versions() -> dict[str, str]:
-    """The pins in home/dot_mise/config.toml, the one place they are declared."""
-    tools = tomllib.loads(MISE_CONFIG.read_text())["tools"]
-    return {name: tools[f"npm:{name}"] for name in ("ccstatusline", "ccusage")}
 
 
 def run(command: list[str], stdin: str | None = None) -> subprocess.CompletedProcess[str]:
@@ -54,10 +46,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ccstatusline", type=Path, required=True)
     parser.add_argument("--ccusage", type=Path, required=True)
+    # The versions mise resolved (`mise current`); config.toml requests "latest".
+    parser.add_argument("--ccstatusline-version", required=True)
+    parser.add_argument("--ccusage-version", required=True)
     args = parser.parse_args()
 
-    for name, version in expected_versions().items():
+    for name in ("ccstatusline", "ccusage"):
         binary = getattr(args, name)
+        version = getattr(args, f"{name}_version")
         if not binary.is_file():
             raise SystemExit(f"missing {name} binary: {binary}")
         require_version(binary, version)

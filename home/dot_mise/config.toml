@@ -1,47 +1,49 @@
 [tools]
-# Versions are reviewed and updated only by `make upgrade` with the lock diff.
-node = "26.10.0"
-rust = "1.98.1"
-python = "3.14.7"
+# Tools track "latest" behind minimum_release_age; make update upgrades them. A held tool keeps an exact version and says why.
+node = "latest"
+rust = "latest"
+python = "latest"
 
-age = "1.3.2"
-bun = "1.4.2"
-chezmoi = "2.73.0"
-cmake = "4.4.3"
-dotenvx = "2.31.1"
-"cargo:eza" = "0.23.5"
+age = "latest"
+bun = "latest"
+chezmoi = "latest"
+cmake = "latest"
+dotenvx = "latest"
+"cargo:eza" = "latest"
+# Held: newer fd releases lack a macOS x64 asset.
 fd = "10.3.0"
-jq = "1.8.2"
-hugo-extended = "0.167.0"
-uv = "0.12.21"
-yazi = "26.9.1"
-"aqua:micro-editor/micro" = "2.0.15"
-"aqua:mikefarah/yq" = "4.54.1"
-shellcheck = "0.11.0"
-shfmt = "3.14.1"
-ruff = "0.16.10"
-"aqua:watchexec/watchexec" = "2.7.3"
+jq = "latest"
+hugo-extended = "latest"
+uv = "latest"
+yazi = "latest"
+"aqua:micro-editor/micro" = "latest"
+"aqua:mikefarah/yq" = "latest"
+shellcheck = "latest"
+shfmt = "latest"
+ruff = "latest"
+"aqua:watchexec/watchexec" = "latest"
 
-"npm:@anthropic-ai/claude-code" = { version = "2.1.292", allow_builds = ["@anthropic-ai/claude-code"] }
-"npm:@openai/codex" = "0.160.1"
-"npm:bash-language-server" = "5.8.1"
-"npm:ccstatusline" = "2.2.30"
-"npm:ccusage" = "20.0.26"
-"npm:pyright" = "1.1.414"
-"npm:fast-cli" = "5.2.0"
-"npm:prettier" = "3.9.9"
-# Builds the Understand-Anything plugin core (update-agent-assets.sh); the
+"npm:@anthropic-ai/claude-code" = { version = "latest", allow_builds = ["@anthropic-ai/claude-code"] }
+"npm:@openai/codex" = "latest"
+"npm:bash-language-server" = "latest"
+"npm:ccstatusline" = "latest"
+"npm:ccusage" = "latest"
+"npm:pyright" = "latest"
+"npm:fast-cli" = "latest"
+"npm:prettier" = "latest"
+# Builds the Understand-Anything plugin core (update-agent-assets.sh). Held: the
 # plugin lockfile is lockfileVersion 9.0 and declares no packageManager.
 "npm:pnpm" = "12.8.1"
 
-"github:x-motemen/ghq" = "1.11.2"
-"github:d-kuro/gwq" = "0.1.1"
-"github:cli/cli" = "2.101.0"
-"github:ogulcancelik/herdr" = "0.9.3"
-"github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }
+"github:x-motemen/ghq" = "latest"
+"github:d-kuro/gwq" = "latest"
+"github:cli/cli" = "latest"
+"github:ogulcancelik/herdr" = "latest"
+"github:shuntaka9576/blocc" = { version = "latest", os = ["linux/x64"] }
 
-"cargo:pueue" = "4.0.4"
+"cargo:pueue" = "latest"
 
+# http backend: bumped by hand with its checksum.
 [tools."http:bats"]
 version = "1.13.0"
 url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.13.0.tar.gz"
@@ -49,6 +51,7 @@ checksum = "sha256:a85e12b8828271a152b338ca8109aa23493b57950987c8e6dff97ba492772
 strip_components = 1
 bin_path = "bin"
 
+# http backend: bumped by hand with its checksum.
 [tools."http:gcloud"]
 version = "575.0.1"
 bin_path = "google-cloud-sdk/bin"
@@ -63,9 +66,10 @@ macos-arm64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-c
 
 [settings]
 idiomatic_version_file_enable_tools = ["python"]
-lockfile = true
-locked = true
-lockfile_platforms = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64"]
+minimum_release_age = "72h"
+
+[settings.self_update]
+minimum_release_age = "72h"
 
 [settings.npm]
 package_manager = "npm"

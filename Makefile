@@ -36,12 +36,13 @@ init:
 	chezmoi init --apply --verbose
 
 .PHONY: update
-# run_once hashes let update converge committed scripts without advancing tool pins.
+# Pulls, applies, updates installed tools through each manager's own safety
+# features (scripts/upgrade-tools.sh; SYSTEM=1 adds apt), then refreshes agent assets.
 # Operator phase (interactive, once per machine): ./setup.sh (chezmoi init prompts,
 # age passphrase, sudo keepalive, macOS CLT read, Ubuntu chsh, SSH/gh/codex logins,
 # run_once_* scripts), plus `sudo -v` right before `make update` when the pulled
-# diff touches install/** or .chezmoiscripts/**.
-# Unattended `make update`: never prompts.
+# diff touches install/** or .chezmoiscripts/**, and with SYSTEM=1.
+# Unattended `make update`: never prompts, except a Homebrew cask whose upgrade runs sudo.
 update:
 	@git fetch --quiet origin main || true
 	@branch="$$(git branch --show-current 2>/dev/null || true)"; \
@@ -61,6 +62,13 @@ update:
 	elif ! git pull --ff-only; then \
 		printf 'Warning: git pull --ff-only failed; continuing with local source.\n' >&2; \
 	fi
+	@$(MAKE) --no-print-directory update-tree
+
+.PHONY: update-tree
+# Everything after the pull, in a second make that reads the Makefile the pull
+# just fetched, so a recipe change lands in the same run. SYSTEM reaches it
+# through MAKEFLAGS.
+update-tree:
 	chezmoi apply --verbose
 	@if [ -d "$$HOME/.local/share/chezmoi-private" ] && [ -f "$$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \
 		chezmoi --source "$$HOME/.local/share/chezmoi-private" \
@@ -69,8 +77,7 @@ update:
 	else \
 		echo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \
 	fi
-	mise install --locked node
-	mise install --locked npm:ccstatusline npm:ccusage npm:pnpm ruff npm:prettier
+	./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)
 	./scripts/update-agent-assets.sh
 	@if ! command -v herdr > /dev/null 2>&1; then \
 		echo "Herdr command not found; skipping config reload."; \
@@ -120,10 +127,6 @@ doctor:
 	tool_result=passed; [ "$$tool_status" -eq 0 ] || tool_result=failed; \
 	printf '\nDoctor summary: tools=%s; runtime=%s\n' "$$tool_result" "$$runtime_result"; \
 	[ "$$tool_status" -eq 0 ] && [ "$$runtime_status" -eq 0 ]
-
-.PHONY: upgrade
-upgrade:
-	./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)
 
 .PHONY: usage-snapshot
 usage-snapshot:

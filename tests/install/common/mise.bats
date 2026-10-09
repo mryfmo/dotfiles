@@ -35,22 +35,17 @@ function teardown() {
     ((year > 2026 || (year == 2026 && (month > 9 || (month == 9 && patch >= 12)))))
 }
 
-@test "[common] run_mise_install vets exact npm tools before the seven-day batch" {
-    printf "min-release-age=99\n" > "${HOME}/.npmrc"
-
+@test "[common] run_mise_install trusts the config and runs one bare install" {
     function mise() {
-        echo "$*" >> "${BATS_TEST_TMPDIR}/mise_install_args.txt"
+        echo "${npm_config_min_release_age:-unset} $*" >> "${BATS_TEST_TMPDIR}/mise_install_args.txt"
     }
 
     run_mise_install
 
     run cat "${BATS_TEST_TMPDIR}/mise_install_args.txt"
     [ "${status}" -eq 0 ]
-    [ "${output}" = "trust --yes
-install --locked node
-install --locked npm:ccstatusline npm:ccusage ruff npm:prettier
-install --locked npm:@anthropic-ai/claude-code npm:@openai/codex
-install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
+    [ "${output}" = "unset trust --yes
+unset install" ]
 }
 
 @test "[common] run_mise_install stops when config trust fails" {
@@ -67,58 +62,9 @@ install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
     [ ! -e "${BATS_TEST_TMPDIR}/unexpected-install" ]
 }
 
-@test "[common] run_mise_install stops when statusline install fails" {
+@test "[common] run_mise_install returns the full install failure" {
     function mise() {
-        if [ "$1" = install ] && [ "$3" = npm:ccstatusline ]; then
-            return 42
-        fi
-        if [ "$1" = install ] && [ "$3" != node ]; then
-            touch "${BATS_TEST_TMPDIR}/unexpected-batch"
-        fi
-    }
-
-    run run_mise_install
-
-    [ "${status}" -eq 42 ]
-    [ ! -e "${BATS_TEST_TMPDIR}/unexpected-batch" ]
-}
-
-@test "[common] run_mise_install stops when node install fails" {
-    function mise() {
-        if [ "$1" = install ] && [ "$3" = node ]; then
-            return 45
-        fi
-        if [ "$1" = install ]; then
-            touch "${BATS_TEST_TMPDIR}/unexpected-install"
-        fi
-    }
-
-    run run_mise_install
-
-    [ "${status}" -eq 45 ]
-    [ ! -e "${BATS_TEST_TMPDIR}/unexpected-install" ]
-}
-
-@test "[common] run_mise_install stops when agent CLI install fails" {
-    function mise() {
-        if [ "$1" = install ] && [ "$3" = npm:@anthropic-ai/claude-code ]; then
-            [ "${npm_config_min_release_age:-}" = 0 ]
-            return 44
-        fi
-        if [ "$1" = install ] && [ "$3" = --before ]; then
-            touch "${BATS_TEST_TMPDIR}/unexpected-batch"
-        fi
-    }
-
-    run run_mise_install
-
-    [ "${status}" -eq 44 ]
-    [ ! -e "${BATS_TEST_TMPDIR}/unexpected-batch" ]
-}
-
-@test "[common] run_mise_install returns the seven-day batch failure" {
-    function mise() {
-        if [ "$1" = install ] && [ "$3" = --before ]; then
+        if [ "$1" = install ] && [ "$#" -eq 1 ]; then
             return 43
         fi
     }
@@ -129,7 +75,7 @@ install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
 }
 
 @test "[common] blocc is only installed on Linux x64" {
-    run grep -F '"github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }' home/dot_mise/config.toml
+    run grep -F '"github:shuntaka9576/blocc" = { version = "latest", os = ["linux/x64"] }' home/dot_mise/config.toml
     [ "${status}" -eq 0 ]
 }
 

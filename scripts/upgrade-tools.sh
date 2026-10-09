@@ -9,8 +9,11 @@
 #   that config, brew pin, uv tool install <pkg>==<version>, apt-mark hold).
 #   The default mode updates user-level tooling and Homebrew-managed packages
 #   when those managers are available. Pass `--system` to include
-#   operating-system package upgrades such as apt. It edits no repository file,
-#   and exits 0 without changes when CI=true.
+#   operating-system package upgrades such as apt. The network-only phases
+#   (Homebrew, mise self-update, uv tools, gh extensions) only warn when they
+#   fail, so an offline host still converges; installing the declared mise tools
+#   stays required. It edits no repository file, and exits 0 without changes
+#   when CI=true.
 
 set -Eeuo pipefail
 
@@ -215,8 +218,8 @@ function current_mise_tools() {
 }
 
 #
-# @description Run a mise lifecycle command for each current tool.
-# @arg $1 string Mise command name, such as install or upgrade.
+# @description Run a mise lifecycle command for each current tool; only upgrade is per tool.
+# @arg $1 string Mise command name: upgrade.
 #
 function run_mise_tool_command() {
     local mise_command="$1"
@@ -234,22 +237,17 @@ function run_mise_tool_command() {
             continue
         fi
 
-        if [ "${mise_command}" = "upgrade" ]; then
-            if [[ "${mise_tool}" == http:* ]]; then
-                printf 'Skipping mise upgrade for pinned HTTP tool: %s.\n' "${mise_tool}"
-                continue
-            fi
-            # ponytail: keep fd pinned until upstream publishes macOS x64 assets again.
-            if [ "${mise_tool}" = "fd" ]; then
-                printf 'Skipping mise upgrade for fd: newer releases lack a macOS x64 asset.\n'
-                continue
-            fi
-            # A plain upgrade keeps the config's "latest" or exact request as written.
-            if ! run_mise_with_isolated_git_config upgrade --yes "${mise_tool}"; then
-                printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
-                failed=1
-            fi
-        elif ! run_mise_with_isolated_git_config install --yes "${mise_tool}"; then
+        if [[ "${mise_tool}" == http:* ]]; then
+            printf 'Skipping mise upgrade for pinned HTTP tool: %s.\n' "${mise_tool}"
+            continue
+        fi
+        # ponytail: keep fd pinned until upstream publishes macOS x64 assets again.
+        if [ "${mise_tool}" = "fd" ]; then
+            printf 'Skipping mise upgrade for fd: newer releases lack a macOS x64 asset.\n'
+            continue
+        fi
+        # A plain upgrade keeps the config's "latest" or exact request as written.
+        if ! run_mise_with_isolated_git_config "${mise_command}" --yes "${mise_tool}"; then
             printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
             failed=1
         fi
@@ -268,7 +266,9 @@ function upgrade_mise_tools() {
     local failed=0
     mise trust --yes || failed=1
     # minimum_release_age in the config keeps freshly published releases out of both steps.
-    run_mise_tool_command install || failed=1
+    # One bare install: it leaves installed tools alone offline, while a per-tool
+    # install re-resolves "latest" over the network and fails without one.
+    run_mise_with_isolated_git_config install --yes || failed=1
     run_mise_tool_command upgrade || failed=1
     return "${failed}"
 }
@@ -491,10 +491,11 @@ function main() {
         return 0
     fi
 
-    run_required_phase "Homebrew" upgrade_homebrew
-    run_required_phase "mise self-update" upgrade_mise_self
+    # Network-only phases warn and continue, so make update still converges offline.
+    run_optional_phase "Homebrew" upgrade_homebrew
+    run_optional_phase "mise self-update" upgrade_mise_self
     run_required_phase "mise inventory/install/upgrade" upgrade_mise_tools
-    run_required_phase "uv tool upgrade" upgrade_uv_tools
+    run_optional_phase "uv tool upgrade" upgrade_uv_tools
     run_optional_phase "GitHub CLI extension upgrade" upgrade_gh_extensions
     run_required_phase "apt system upgrade" upgrade_apt_packages
 

@@ -218,8 +218,11 @@ files are not checked. `make update` then runs `scripts/upgrade-tools.sh`, which
 installs missing mise tools and upgrades outdated ones from the applied
 `~/.config/mise/config.toml`, then Homebrew packages, uv tools and GitHub CLI
 extensions (apt with `SYSTEM=1`); it exits 0 without changes when `CI=true`.
-A required phase that fails (for example `brew update` without network) stops
-`make update` before the asset refresh; `make apply` is the same target.
+The network-only phases (Homebrew, `mise self-update`, uv tools, GitHub CLI
+extensions) only warn when they fail, so an offline host with its tools
+installed still converges; `make update` stops before the asset refresh only
+when a declared mise tool cannot be installed, or apt fails with `SYSTEM=1`.
+`make apply` is the same target.
 The asset refresh also converges configured GitHub CLI extensions, syncs the
 vendored CompactionDB tree, and updates the pinned agmsg skill in place
 (see [agmsg](#agmsg); its `teams`/`db`/`run` runtime state is backed up first

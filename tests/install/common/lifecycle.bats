@@ -254,7 +254,7 @@ herdr server reload-config" ]
     local tool_upgrade_line
 
     grep -q 'mise self-update --yes' scripts/upgrade-tools.sh
-    grep -q 'run_mise_tool_command install' scripts/upgrade-tools.sh
+    grep -q 'run_mise_with_isolated_git_config install --yes || failed=1' scripts/upgrade-tools.sh
     grep -q 'run_mise_tool_command upgrade' scripts/upgrade-tools.sh
     self_update_line="$(grep -n 'upgrade_mise_self' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
     upgrade_line="$(grep -n 'upgrade_mise_tools' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"

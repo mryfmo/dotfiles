@@ -1354,14 +1354,24 @@ EOF
         self.assertEqual("CI=true: skipping installed-tool updates.\n", result.stdout)
         self.assertFalse((repo / "commands.log").exists())
 
+    def test_upgrade_network_only_phases_warn_and_the_mise_phase_still_runs(self) -> None:
+        # An offline host must still converge: only installing the declared mise tools is required.
+        for phase, os_name in (("homebrew", "Darwin"), ("mise_self", "Linux"), ("uv", "Linux"), ("gh", "Linux")):
+            with self.subTest(phase=phase):
+                repo, env = self.upgrade_fixture(phase, os_name)
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn("required failures: 0; optional warnings: 1", result.stdout)
+                log = (repo / "commands.log").read_text().splitlines()
+                self.assertIn("mise install --yes", log)
+                self.assertIn("mise upgrade --yes python", log)
+
     def test_upgrade_required_failures_are_nonzero_and_independent(self) -> None:
         cases = (
-            ("homebrew", "Darwin", []),
-            ("mise_self", "Linux", []),
             ("mise_inventory", "Linux", []),
             ("mise_install", "Linux", []),
             ("mise_upgrade", "Linux", []),
-            ("uv", "Linux", []),
             ("apt", "Linux", ["--system"]),
         )
         for phase, os_name, args in cases:
@@ -1395,7 +1405,9 @@ EOF
         self.assertIn("Skipping mise upgrade for pinned HTTP tool: http:gcloud.", result.stdout)
         log = (repo / "commands.log").read_text().splitlines()
         self.assertNotIn("mise self-update --yes", log)
-        self.assertIn("mise install --yes python", log)
+        # One bare install (a per-tool install of a "latest" request needs the network), then per-tool upgrades.
+        self.assertIn("mise install --yes", log)
+        self.assertFalse([line for line in log if line.startswith("mise install --yes ")])
         self.assertIn("mise upgrade --yes python", log)
         self.assertNotIn("mise upgrade --yes fd", log)
         self.assertFalse([line for line in log if line.startswith("mise upgrade --yes http:")])
@@ -1419,17 +1431,6 @@ EOF
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         log = (repo / "commands.log").read_text().splitlines()
         self.assertIn("mise self-update --yes", log)
-
-    def test_upgrade_github_extensions_are_warning_only(self) -> None:
-        repo, env = self.upgrade_fixture("gh")
-        result = self.run_test_command(
-            ["bash", "scripts/upgrade-tools.sh"],
-            cwd=repo,
-            env=env,
-        )
-
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("optional warnings: 1", result.stdout)
 
 
 if __name__ == "__main__":

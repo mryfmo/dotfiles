@@ -171,9 +171,8 @@ mise.toml" ([mise upgrade](https://mise.jdx.dev/cli/upgrade)), so a held
 exact version stays exact. Per the settings page the cooldown covers every
 backend this config uses except `http:` (`bats` and `gcloud`, which are exact
 anyway); a live probe on 2026-10-09 showed it acting on core `node` (26.11.1
-without it, 26.10.0 with it). mise 2026.9.17 has no
-`self_update.minimum_release_age`, so `mise self-update` takes the newest mise
-release. Codex and Claude Code follow the same cooldown; listing them in
+without it, 26.10.0 with it). `mise self-update` waits the same seven days
+through `self_update.minimum_release_age = "7d"` (its own default is 24h). Codex and Claude Code follow the same cooldown; listing them in
 `minimum_release_age_excludes` would take a release the day it lands.
 Homebrew, `uv tool upgrade --all` and GitHub CLI extensions take their
 newest release, and apt (`SYSTEM=1`) the distribution's. The trade-off: with no
@@ -200,7 +199,8 @@ macOS Command Line Tools prompt, Ubuntu `chsh`, the SSH, `gh` and Codex logins,
 and the `run_once_*` scripts), plus `sudo -v` right before `make update` when
 the pulled diff touches `install/**` or `.chezmoiscripts/**`, and with
 `SYSTEM=1`. Everything after
-it is unattended: `make update` never prompts.
+it is unattended: `make update` never prompts, except that a Homebrew cask
+whose upgrade runs an installer package can ask for the sudo password.
 
 `make update` applies all committed public and private chezmoi state, including
 scripts. Chezmoi records each `run_once` content hash, so new or changed
@@ -218,6 +218,8 @@ files are not checked. `make update` then runs `scripts/upgrade-tools.sh`, which
 installs missing mise tools and upgrades outdated ones from the applied
 `~/.config/mise/config.toml`, then Homebrew packages, uv tools and GitHub CLI
 extensions (apt with `SYSTEM=1`); it exits 0 without changes when `CI=true`.
+A required phase that fails (for example `brew update` without network) stops
+`make update` before the asset refresh; `make apply` is the same target.
 The asset refresh also converges configured GitHub CLI extensions, syncs the
 vendored CompactionDB tree, and updates the pinned agmsg skill in place
 (see [agmsg](#agmsg); its `teams`/`db`/`run` runtime state is backed up first

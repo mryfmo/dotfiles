@@ -135,7 +135,7 @@ if command -v chezmoi > /dev/null 2>&1 &&
         violations+=("canonical clone ${canon} differs from ${ref} under home/, install/ or scripts/: ${files}; nothing but pull and apply runs in the canonical clone; restore a stray diff with git -C ${canon} restore -SW --source=${ref} -- <files> and drop its autostash")
     else
         # Bytes equal to the ref still leave a stale HEAD with a dirty tree
-        # after the pins PR merged; only a pull makes the clone clean.
+        # once the same change merged upstream; only a pull makes the clone clean.
         files="$({
             git -C "${canon}" diff --name-only HEAD -- home install scripts 2> /dev/null || true
             git -C "${canon}" diff --cached --name-only HEAD -- home install scripts 2> /dev/null || true

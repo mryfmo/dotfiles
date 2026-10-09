@@ -42,7 +42,7 @@ init:
 # age passphrase, sudo keepalive, macOS CLT read, Ubuntu chsh, SSH/gh/codex logins,
 # run_once_* scripts), plus `sudo -v` right before `make update` when the pulled
 # diff touches install/** or .chezmoiscripts/**, and with SYSTEM=1.
-# Unattended `make update`: never prompts.
+# Unattended `make update`: never prompts, except a Homebrew cask whose upgrade runs sudo.
 update:
 	@git fetch --quiet origin main || true
 	@branch="$$(git branch --show-current 2>/dev/null || true)"; \

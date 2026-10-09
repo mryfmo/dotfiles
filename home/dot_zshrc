@@ -32,9 +32,9 @@ claude-update() {
     local claude_prefix
     local claude_version
 
-    # Update claude-code to the true latest via mise, bypassing the npm
-    # `min-release-age` cooldown for THIS install only.
-    # Tool versions are not committed; mise's own minimum_release_age still applies here.
+    # Update claude-code via mise, bypassing npm's `min-release-age` cooldown
+    # for THIS install only; mise's own minimum_release_age still applies, and
+    # tool versions are not committed.
     npm_config_min_release_age=0 mise upgrade "npm:@anthropic-ai/claude-code"
     claude_prefix="$(mise where "npm:@anthropic-ai/claude-code")"
     claude_version="$(mise current "npm:@anthropic-ai/claude-code")"

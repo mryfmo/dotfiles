@@ -240,7 +240,7 @@ function run_mise_tool_command() {
                 printf 'Skipping mise upgrade for fd: newer releases lack a macOS x64 asset.\n'
                 continue
             fi
-            # Without --bump the config's "latest" or exact request stays as written.
+            # A plain upgrade keeps the config's "latest" or exact request as written.
             if ! run_mise_with_isolated_git_config upgrade --yes "${mise_tool}"; then
                 printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
                 failed=1

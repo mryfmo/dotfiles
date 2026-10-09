@@ -1289,23 +1289,34 @@ EOF
                     # The bare install moves a "latest" node that is not installed yet.
                     [[ "$FAIL_PHASE:$*" != "node_by_install:install --yes" ]] || touch "$NODE_MOVED"
                     case "$FAIL_PHASE:$*" in
-                        npm_reinstall*:"install --force --yes npm:ccusage")
-                            # mise removes the install before fetching its replacement, and the fetch fails.
-                            rm -f "$CCUSAGE_INSTALLED"
+                        npm_reinstall*:"install --yes npm:ccusage@20.0.0")
+                            # The download fails after mise created a partial install directory.
+                            mkdir -p "$CCUSAGE_DIR/partial"
                             exit 1
                             ;;
                         npm_reinstall_final_fails:"install --yes")
-                            [ -e "$CCUSAGE_INSTALLED" ] || exit 1
+                            # The first bare install succeeds; the final one cannot reach the network.
+                            [ ! -e "$NODE_MOVED.bare-install" ] || exit 1
+                            touch "$NODE_MOVED.bare-install"
                             ;;
                     esac
-                    [[ "$*" != "install --yes" ]] || touch "$CCUSAGE_INSTALLED"
+                    case "$*" in
+                        "install --yes") mkdir -p "$CCUSAGE_DIR" ;;
+                        "install --yes npm:ccusage@20.0.0") mkdir -p "$CCUSAGE_DIR" && touch "$CCUSAGE_DIR/rebuilt" ;;
+                    esac
                     ;;
                 upgrade)
                     [[ "$FAIL_PHASE" != mise_upgrade ]] || exit 1
                     # Upgrading node moves the current node, which the script must notice.
                     [[ "$*" != "upgrade --yes node" || "$FAIL_PHASE" == node_stays* || "$FAIL_PHASE" == node_by_install ]] || touch "$NODE_MOVED"
                     ;;
-                current) [ -e "$NODE_MOVED" ] && printf '27.0.0\n' || printf '26.0.0\n' ;;
+                current)
+                    case "$2" in
+                        node) [ -e "$NODE_MOVED" ] && printf '27.0.0\n' || printf '26.0.0\n' ;;
+                        npm:ccusage) printf '20.0.0\n' ;;
+                    esac
+                    ;;
+                where) [[ "$2" != npm:ccusage ]] || printf '%s\n' "$CCUSAGE_DIR" ;;
             esac
             """,
         )
@@ -1342,11 +1353,13 @@ EOF
             "TEST_LOG": str(log),
             # Outside the repository, so the no-file-written assertion still holds.
             "NODE_MOVED": str(self.temp_dir / f"upgrade-{fail_phase}.node-moved"),
-            "CCUSAGE_INSTALLED": str(self.temp_dir / f"upgrade-{fail_phase}.ccusage-installed"),
+            # The installed npm:ccusage, outside the repository; "original" marks the install before any rebuild.
+            "CCUSAGE_DIR": str(self.temp_dir / f"upgrade-{fail_phase}.ccusage"),
             # The npm-tools node marker lives outside the repository, like the host state it stands for.
             "XDG_STATE_HOME": str(self.temp_dir / f"upgrade-{fail_phase}.state"),
         }
-        Path(env["CCUSAGE_INSTALLED"]).touch()
+        (Path(env["CCUSAGE_DIR"]) / "original").parent.mkdir(parents=True)
+        (Path(env["CCUSAGE_DIR"]) / "original").touch()
         for name in ("MISE_CONFIG_DIR", "MISE_CEILING_PATHS", "XDG_CONFIG_HOME"):
             env.pop(name, None)
         return repo, env
@@ -1461,7 +1474,8 @@ EOF
         self.assertFalse([line for line in log if line.startswith("mise self-update")])
         # One bare install (a per-tool install of a "latest" request needs the network), then per-tool upgrades.
         self.assertIn("mise install --yes", log)
-        self.assertFalse([line for line in log if line.startswith("mise install --yes ")])
+        # Only exact versions (the npm rebuild) are installed per tool; a per-tool "latest" install needs the network.
+        self.assertFalse([line for line in log if line.startswith("mise install --yes ") and "@" not in line])
         self.assertIn("mise upgrade --yes python", log)
         self.assertNotIn("mise upgrade --yes fd", log)
         self.assertFalse([line for line in log if line.startswith("mise upgrade --yes http:")])
@@ -1480,17 +1494,20 @@ EOF
     def test_upgrade_rebuilds_npm_tools_when_the_node_marker_differs(self) -> None:
         # The marker records the node the npm: tools were built on, so a node moved by an earlier run or by the
         # installer during chezmoi apply is rebuilt as well as one moved here.
-        for name, phase, marker, reinstalled, warning, recorded in (
+        for name, phase, marker, rebuilt, warning, recorded in (
             ("marker absent", "node_stays-absent", None, True, False, "26.0.0"),
             ("marker equal", "node_stays-equal", "26.0.0", False, False, "26.0.0"),
             ("marker differs, node moved before this run", "node_stays-differs", "25.0.0", True, False, "26.0.0"),
             ("node upgraded in this run", "none", "26.0.0", True, False, "27.0.0"),
             ("node moved by the bare install", "node_by_install", "26.0.0", True, False, "27.0.0"),
-            ("failed reinstall restored but not recorded", "npm_reinstall", "26.0.0", True, True, "26.0.0"),
+            ("rebuild fails: previous install kept, not recorded", "npm_reinstall", "26.0.0", True, True, "26.0.0"),
+            # The first update on an existing host has no marker; offline, the working tool must survive.
+            ("marker absent and rebuild fails", "npm_reinstall-absent", None, True, True, None),
         ):
             with self.subTest(name):
                 repo, env = self.upgrade_fixture(phase)
                 marker_file = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node"
+                tool = Path(env["CCUSAGE_DIR"])
                 if marker is not None:
                     marker_file.parent.mkdir(parents=True)
                     marker_file.write_text(f"{marker}\n")
@@ -1499,19 +1516,27 @@ EOF
 
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)
                 log = (repo / "commands.log").read_text().splitlines()
-                forced = [line for line in log if line.startswith("mise install --force")]
-                self.assertEqual(["mise install --force --yes npm:ccusage"] if reinstalled else [], forced)
+                exact = [line for line in log if line.startswith("mise install --yes npm:")]
+                self.assertEqual(["mise install --yes npm:ccusage@20.0.0"] if rebuilt else [], exact)
+                self.assertFalse([line for line in log if "--force" in line])
                 self.assertEqual(
                     warning, "optional warning: npm: tools were not all reinstalled on node 27.0.0" in result.stderr
                 )
                 self.assertIn(f"required failures: 0; optional warnings: {int(warning)}", result.stdout)
-                # After a reinstall a final bare install restores anything a failed --force removed.
-                self.assertEqual(2 if reinstalled else 1, log.count("mise install --yes"))
-                self.assertTrue(Path(env["CCUSAGE_INSTALLED"]).exists())
-                self.assertEqual(f"{recorded}\n", marker_file.read_text())
+                # After a rebuild a final bare install confirms every declared tool is present.
+                self.assertEqual(2 if rebuilt else 1, log.count("mise install --yes"))
+                # A successful rebuild replaces the install; a failed one restores it untouched.
+                self.assertEqual(rebuilt and not warning, (tool / "rebuilt").exists())
+                self.assertEqual(not (rebuilt and not warning), (tool / "original").exists())
+                self.assertFalse((tool / "partial").exists())
+                self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())
+                if recorded is None:
+                    self.assertFalse(marker_file.exists())
+                else:
+                    self.assertEqual(f"{recorded}\n", marker_file.read_text())
 
-    def test_upgrade_fails_when_a_failed_reinstall_leaves_a_tool_that_cannot_be_restored(self) -> None:
-        # --force removed npm:ccusage and the final bare install cannot bring it back: not converged.
+    def test_upgrade_fails_when_the_final_install_fails_after_a_rebuild(self) -> None:
+        # The rebuild restored the previous install, but the final bare install fails: not converged.
         repo, env = self.upgrade_fixture("npm_reinstall_final_fails")
         marker_file = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node"
         marker_file.parent.mkdir(parents=True)
@@ -1522,10 +1547,21 @@ EOF
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("optional warning: npm: tools were not all reinstalled on node 27.0.0", result.stderr)
         self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
-        self.assertFalse(Path(env["CCUSAGE_INSTALLED"]).exists())
+        self.assertTrue((Path(env["CCUSAGE_DIR"]) / "original").exists())
         self.assertEqual(2, (repo / "commands.log").read_text().splitlines().count("mise install --yes"))
         # The failed final install leaves the marker unwritten, so the next run rebuilds again.
         self.assertEqual("26.0.0\n", marker_file.read_text())
+
+    def test_upgrade_fails_when_the_node_marker_cannot_be_written(self) -> None:
+        repo, env = self.upgrade_fixture("node_stays-unwritable")
+        # A regular file where the state directory should be makes mkdir -p fail.
+        Path(env["XDG_STATE_HOME"]).write_text("not a directory\n")
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("required: could not record the npm-tools node in", result.stderr)
+        self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
 
     def test_upgrade_failure_after_a_successful_install_only_warns(self) -> None:
         # Converged means the declared tools are installed; an upgrade that cannot reach its archive only warns.

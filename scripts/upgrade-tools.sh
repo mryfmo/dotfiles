@@ -268,7 +268,33 @@ function run_mise_tool_command() {
 }
 
 #
-# @description Reinstall the current npm: tools so they run on the node an upgrade just installed.
+# @description Rebuild one npm: tool on the current node, keeping its working install until the new one succeeds.
+#   mise install --force would delete the install before downloading its
+#   replacement, so a rebuild without a network would leave the tool missing.
+# @arg $1 string mise npm tool name, for example npm:ccusage.
+#
+function rebuild_mise_npm_tool() {
+    local mise_tool="$1"
+    local version install_dir backup
+
+    version="$(run_mise_with_isolated_git_config current "${mise_tool}")" || return 1
+    install_dir="$(run_mise_with_isolated_git_config where "${mise_tool}")" || return 1
+    # Only an existing absolute install directory is moved or removed.
+    [[ -n "${version}" && "${install_dir}" == /* && -d "${install_dir}" ]] || return 1
+    backup="${install_dir}.before-node-rebuild"
+    rm -rf "${backup}"
+    mv "${install_dir}" "${backup}" || return 1
+    if run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then
+        rm -rf "${backup}"
+        return 0
+    fi
+    rm -rf "${install_dir}"
+    mv "${backup}" "${install_dir}"
+    return 1
+}
+
+#
+# @description Rebuild the current npm: tools so they run on the current node.
 #
 function reinstall_mise_npm_tools() {
     local mise_tool
@@ -278,8 +304,8 @@ function reinstall_mise_npm_tools() {
     mise_tools="$(current_mise_tools)" || return 1
     while IFS= read -r mise_tool; do
         [[ "${mise_tool}" == npm:* ]] || continue
-        if ! run_mise_with_isolated_git_config install --force --yes "${mise_tool}"; then
-            printf 'warning: mise install --force %s failed after the node upgrade; rerun it; continuing\n' "${mise_tool}" >&2
+        if ! rebuild_mise_npm_tool "${mise_tool}"; then
+            printf 'warning: rebuilding %s on the current node failed; its previous install stays; continuing\n' "${mise_tool}" >&2
             failed=1
         fi
     done <<< "${mise_tools}"
@@ -324,13 +350,16 @@ function upgrade_mise_tools() {
             printf 'optional warning: npm: tools were not all reinstalled on node %s\n' "${node_now}" >&2
             ((optional_warnings += 1))
         fi
-        # --force removes an install before fetching its replacement, so a failed reinstall can leave a
-        # declared tool missing; this final bare install restores it, and decides whether the phase converged.
+        # A rebuild keeps or restores the previous install, so this final bare install only has to confirm
+        # that every declared tool is present; it decides whether the phase converged.
         if ! run_mise_with_isolated_git_config install --yes; then
             failed=1
         elif [ "${reinstalled}" -eq 1 ]; then
             # Only a complete rebuild is recorded, so a failed one is retried by the next run.
-            mkdir -p "$(dirname "${marker}")" && printf '%s\n' "${node_now}" > "${marker}"
+            if ! { mkdir -p "$(dirname "${marker}")" && printf '%s\n' "${node_now}" > "${marker}"; }; then
+                printf 'required: could not record the npm-tools node in %s\n' "${marker}" >&2
+                failed=1
+            fi
         fi
     fi
     return "${failed}"

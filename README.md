@@ -798,7 +798,9 @@ bootstraps agmsg; it never starts, restarts or repairs a worker. Full mode
 (`herdr-agents [DIR]`) creates the orchestrator pane or heals it: a healthy
 existing workspace is only focused, and an exited orchestrator is restarted in
 an agentless pane, or in a new pane split from one that is neither the `audit`
-pane nor an added worker's. Unmanaged panes, such as a legacy `files` pane
+pane, a `files` pane nor one in a linked worktree (a worker's own tab), and
+it stops with a hint when only those remain; a Claude worker never counts as
+the orchestrator. Unmanaged panes, such as a legacy `files` pane
 restored from a pre-two-pane persisted session or a worker pane left by the
 retired resident pair, are deliberately preserved, never closed or reused. The
 orchestrator starts in DIR and each worker in its worktree; both use the shared

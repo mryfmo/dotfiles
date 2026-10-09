@@ -1267,25 +1267,22 @@ function single_managed_workspace() {
     printf '%s\n' "${workspace_ids}"
 }
 
-# @description jq predicate for a pane of an --add-worker seat: it keeps its
-#   self-named `<team>:<name>` label (only the pair seats are normalized) and
-#   runs in a linked worktree under $workdir. Such a pane lives in its own tab
-#   of the pair workspace and is never one of the pair's panes.
-function added_worker_pane_filter() {
+# @description jq predicate for a worker's pane, which full mode never takes
+#   for the orchestrator, reuses or splits from: an --add-worker seat runs in a
+#   linked worktree under $workdir (its self-named label may be normalized to
+#   `<kind>-worker`), and a pane left by the retired resident pair keeps its
+#   `<kind>-worker` label.
+function worker_pane_filter() {
     # shellcheck disable=SC2016 # jq variables are intentional literal input.
-    printf '%s' '((.label // "") | test("^[^:[:space:]]+:[^:[:space:]]+$")) and ((.cwd // "") | startswith($worktrees))'
+    printf '%s' '(((.cwd // "") | startswith($worktrees)) or .label == "codex-worker" or .label == "claude-worker")'
 }
 
 # @description Return success when a Claude orchestrator pane is present.
-#   An added claude worker's pane (added_worker_pane_filter) does not count.
+#   A claude worker's pane (worker_pane_filter) does not count.
 # @arg $1 json Herdr pane list JSON.
-# @arg $2 pane_id Worker pane id to exclude, so a claude worker does not count.
 function has_claude_pane() {
-    local panes_json="$1"
-    local worker_pane_id="${2:-}"
-
-    printf '%s\n' "${panes_json}" | jq -e --arg worker "${worker_pane_id}" --arg worktrees "${workdir}/.claude/worktrees/" \
-        ".result.panes[]? | select(.agent == \"claude\" and .pane_id != \$worker and ($(added_worker_pane_filter) | not))" > /dev/null
+    printf '%s\n' "$1" | jq -e --arg worktrees "${workdir}/.claude/worktrees/" \
+        ".result.panes[]? | select(.agent == \"claude\" and ($(worker_pane_filter) | not))" > /dev/null
 }
 
 # @description Map a worker kind to the agmsg agent type its CLI registers as.
@@ -1421,15 +1418,11 @@ function bootstrap_agmsg() {
 
 # @description Return the first pane id without an attached agent.
 # @arg $1 json Herdr pane list JSON.
-# @arg $2 pane_id Optional pane id to exclude.
 function empty_pane_id() {
-    local panes_json="$1"
-    local exclude_pane_id="${2:-}"
-
-    # Preserve legacy files panes, the audit pane and an exited added worker's
-    # pane (added_worker_pane_filter) as non-agent panes.
-    printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" --arg worktrees "${workdir:-}/.claude/worktrees/" \
-        ".result.panes[]? | select((.agent? // \"\") == \"\" and .label? != \"files\" and .label? != \"audit\" and .pane_id != \$exclude and ($(added_worker_pane_filter) | not)) | .pane_id // empty" | head -n 1
+    # Preserve legacy files panes, the audit pane and an exited worker's pane
+    # (worker_pane_filter) as non-agent panes.
+    printf '%s\n' "$1" | jq -r --arg worktrees "${workdir:-}/.claude/worktrees/" \
+        ".result.panes[]? | select((.agent? // \"\") == \"\" and .label? != \"files\" and .label? != \"audit\" and ($(worker_pane_filter) | not)) | .pane_id // empty" | head -n 1
 }
 
 # @description Remove a node-global npm copy that shadows the dedicated mise tool install.
@@ -2099,11 +2092,12 @@ if [[ -n ${existing_workspace_id} ]]; then
         claude_pane_id="$(empty_pane_id "${panes_json}")"
         claude_pane_is_new=false
         if [[ -z ${claude_pane_id} ]]; then
-            # Never inside the audit tab or an added worker's tab, whose removal closes it.
+            # Never inside the audit tab or an --add-worker seat's tab (a linked
+            # worktree), whose removal closes it, and never from a files pane.
             split_source_pane_id="$(printf '%s\n' "${panes_json}" | jq -r --arg worktrees "${workdir}/.claude/worktrees/" \
-                "[.result.panes[]? | select(.label? != \"audit\" and ($(added_worker_pane_filter) | not))][0].pane_id // empty")"
+                '[.result.panes[]? | select(.label? != "audit" and .label? != "files" and ((.cwd // "") | startswith($worktrees) | not))][0].pane_id // empty')"
             if [[ -z ${split_source_pane_id} ]]; then
-                printf 'Unable to find a pane for the orchestrator repair in Herdr workspace: %s\n' "${workspace_id}" >&2
+                printf 'Unable to find a pane for the orchestrator repair in Herdr workspace: %s (only audit, files or worker-tab panes remain); open a tab with herdr tab create --workspace %s --cwd %q and run herdr-agents %q again.\n' "${workspace_id}" "${workspace_id}" "${workdir}" "${workdir}" >&2
                 exit 1
             fi
             claude_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}" --env HERDR_AGENTS_LAYOUT=managed)"

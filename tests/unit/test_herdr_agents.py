@@ -4512,6 +4512,41 @@ exit {exit_code}
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(any(call.startswith(("agent start", "pane split")) for call in calls), calls)
 
+    def test_full_mode_never_takes_a_normalized_claude_worker_for_the_orchestrator(self) -> None:
+        # The orchestrator exited (agentless p1); the manifest claude worker is live, its
+        # self-named label normalized to claude-worker, so the added-worker label test misses it.
+        worker = json.loads(self.added_worker_pane("claude"))
+        worker["label"] = "claude-worker"
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            + json.dumps(worker),
+        )
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            "agent start claude-orchestrator-w-old --kind claude --pane w-old:p1 --timeout 30000 --",
+            calls,
+        )
+        self.assertFalse(any("w-old:p5" in call for call in calls), calls)
+
+    def test_full_mode_refuses_to_seat_the_orchestrator_in_a_worker_tab(self) -> None:
+        # Only the audit pane and a live, normalized claude worker remain: the worker is not the
+        # orchestrator, and the orchestrator is never split into the worker's or the audit tab.
+        worker = json.loads(self.added_worker_pane("claude"))
+        worker["label"] = "claude-worker"
+        self.write_workspace_state("w-old", self.audit_tab_pane() + "," + json.dumps(worker))
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("only audit, files or worker-tab panes remain", result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(call.startswith(("agent start", "pane split")) for call in calls), calls)
+
     def test_full_mode_heals_the_orchestrator_beside_a_live_added_claude_worker(self) -> None:
         self.write_workspace_state(
             "w-old",

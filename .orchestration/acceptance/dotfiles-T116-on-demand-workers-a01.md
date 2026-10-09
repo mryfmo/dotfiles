@@ -20,6 +20,7 @@
 - `--directive`: prints the `agmsg-orchestration:` line naming the default worker worktree and `--add-worker`.
 - `--attach` from the orchestrator's Herdr pane (w4:p1): claims the seat and prints the directive; the pane list before and after is unchanged (orchestrator, the seated worker-c tab, the audit tab); no worker started, restarted or repaired.
 - Not performed here: a fresh full-mode run (it would heal this live workspace rather than create one) and a persisted-session restore; both are the operator's to observe at the next Herdr start after `make update`, and this record names them as the remaining live checks.
+- After the merge and `make update` (2026-10-09 04:3xZ, installed launcher carries the retirement line): bare `herdr-agents --add-worker` with no worktree seated `claude-standard-dot-a001` in the default manifest worktree `worker-c` in its own tab (w4:p7) with `linkage=ok … pong=yes` after 24 s; the orchestrator pane and the audit tab were untouched. The default-worktree path is therefore live-verified.
 
 ## Audit / sweep / gate
 

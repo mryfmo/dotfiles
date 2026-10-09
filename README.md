@@ -180,7 +180,9 @@ and Claude Code follow the same cooldown. npm's own `min-release-age` (7 days in
 `~/.npmrc`) is set to the same 3 days for the npm installs `make update` drives,
 so npm accepts the release mise chose. A `node` major bump can leave `npm:`
 tool installs invalid until `mise install` reruns, so when an upgrade moves
-`node`, `make update` reinstalls the `npm:` tools on it (`mise install --force`).
+`node`, `make update` reinstalls the `npm:` tools on it (`mise install --force`)
+and then runs `mise install` once more, so a reinstall that fails cannot leave a
+declared tool missing without failing the update.
 `mise self-update --no-plugins` leaves installed mise plugins such as `shdoc`
 alone, because a plugin update is a branch move the cooldown does not cover;
 run `mise plugins update` when you want one.

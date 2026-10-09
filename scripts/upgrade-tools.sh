@@ -317,9 +317,14 @@ function upgrade_mise_tools() {
     fi
     # Neither the bare install nor the upgrades rebuild installed npm: tools; reinstall them when node moved.
     node_after="$(run_mise_with_isolated_git_config current node 2> /dev/null)" || node_after=""
-    if [ -n "${node_after}" ] && [ "${node_after}" != "${node_before}" ] && ! reinstall_mise_npm_tools; then
-        printf 'optional warning: npm: tools were not all reinstalled on node %s\n' "${node_after}" >&2
-        ((optional_warnings += 1))
+    if [ -n "${node_after}" ] && [ "${node_after}" != "${node_before}" ]; then
+        if ! reinstall_mise_npm_tools; then
+            printf 'optional warning: npm: tools were not all reinstalled on node %s\n' "${node_after}" >&2
+            ((optional_warnings += 1))
+        fi
+        # --force removes an install before fetching its replacement, so a failed reinstall can leave a
+        # declared tool missing; this final bare install restores it, and decides whether the phase converged.
+        run_mise_with_isolated_git_config install --yes || failed=1
     fi
     return "${failed}"
 }

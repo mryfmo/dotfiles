@@ -1289,7 +1289,17 @@ EOF
                     [[ "$FAIL_PHASE" != mise_install ]] || exit 1
                     # The bare install moves a "latest" node that is not installed yet.
                     [[ "$FAIL_PHASE:$*" != "node_by_install:install --yes" ]] || touch "$NODE_MOVED"
-                    [[ "$FAIL_PHASE:$2" != npm_reinstall:--force ]]
+                    case "$FAIL_PHASE:$*" in
+                        npm_reinstall*:"install --force --yes npm:ccusage")
+                            # mise removes the install before fetching its replacement, and the fetch fails.
+                            rm -f "$CCUSAGE_INSTALLED"
+                            exit 1
+                            ;;
+                        npm_reinstall_final_fails:"install --yes")
+                            [ -e "$CCUSAGE_INSTALLED" ] || exit 1
+                            ;;
+                    esac
+                    [[ "$*" != "install --yes" ]] || touch "$CCUSAGE_INSTALLED"
                     ;;
                 upgrade)
                     [[ "$FAIL_PHASE" != mise_upgrade ]] || exit 1
@@ -1333,7 +1343,9 @@ EOF
             "TEST_LOG": str(log),
             # Outside the repository, so the no-file-written assertion still holds.
             "NODE_MOVED": str(self.temp_dir / f"upgrade-{fail_phase}.node-moved"),
+            "CCUSAGE_INSTALLED": str(self.temp_dir / f"upgrade-{fail_phase}.ccusage-installed"),
         }
+        Path(env["CCUSAGE_INSTALLED"]).touch()
         for name in ("MISE_CONFIG_DIR", "MISE_CEILING_PATHS", "XDG_CONFIG_HOME"):
             env.pop(name, None)
         return repo, env
@@ -1489,6 +1501,21 @@ EOF
                     warning, "optional warning: npm: tools were not all reinstalled on node 27.0.0" in result.stderr
                 )
                 self.assertIn(f"required failures: 0; optional warnings: {int(warning)}", result.stdout)
+                # After a reinstall a final bare install restores anything a failed --force removed.
+                self.assertEqual(2 if reinstalled else 1, log.count("mise install --yes"))
+                self.assertTrue(Path(env["CCUSAGE_INSTALLED"]).exists())
+
+    def test_upgrade_fails_when_a_failed_reinstall_leaves_a_tool_that_cannot_be_restored(self) -> None:
+        # --force removed npm:ccusage and the final bare install cannot bring it back: not converged.
+        repo, env = self.upgrade_fixture("npm_reinstall_final_fails")
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("optional warning: npm: tools were not all reinstalled on node 27.0.0", result.stderr)
+        self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
+        self.assertFalse(Path(env["CCUSAGE_INSTALLED"]).exists())
+        self.assertEqual(2, (repo / "commands.log").read_text().splitlines().count("mise install --yes"))
 
     def test_upgrade_failure_after_a_successful_install_only_warns(self) -> None:
         # Converged means the declared tools are installed; an upgrade that cannot reach its archive only warns.

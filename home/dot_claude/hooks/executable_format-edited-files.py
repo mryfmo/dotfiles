@@ -69,9 +69,11 @@ def run_commands(commands: list[list[str]], files: list[Path]) -> int:
             try:
                 result = subprocess.run(command + file_args, cwd=root, check=False)
             except FileNotFoundError:
-                # make update installs only some mise tools; a full install provides
-                # the pinned formatters (ruff, npm:prettier in the mise config).
-                print(f"{command[0]} is not installed; run `mise install --locked`", file=sys.stderr)
+                # make update installs every declared mise tool, so a missing formatter means that step was skipped or failed.
+                print(
+                    f"{command[0]} is not installed; run `make update` (it installs every declared mise tool)",
+                    file=sys.stderr,
+                )
                 status = max(status, 1)
                 continue
             status = max(status, result.returncode)

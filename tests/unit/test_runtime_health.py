@@ -611,6 +611,18 @@ EOF
         self.assertEqual(previous, target.read_bytes())
         self.assertNotIn("/releases/download/", (repo / "commands.log").read_text())
 
+    def test_crit_replaces_an_installed_binary_that_cannot_report_its_version(self) -> None:
+        repo, home, env, _checksum = self.crit_fixture()
+        self.executable(home / ".local/bin/crit", "exit 42\n")
+        result = self.run_test_command(
+            ["bash", "-c", "source scripts/update-agent-assets.sh; ensure_crit_cli"],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("/v9.9.9/crit-linux-amd64", (repo / "commands.log").read_text())
+
     def test_crit_fails_without_an_install_when_the_release_cannot_be_resolved(self) -> None:
         repo, home, env, _checksum = self.crit_fixture()
         result = self.run_test_command(

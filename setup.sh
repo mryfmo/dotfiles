@@ -59,6 +59,14 @@ function github_release_list() {
         else
             curl -fsSL -H 'Accept: application/vnd.github+json' "${url}"
         fi
+    elif [ -n "${bearer}" ]; then
+        # wget reads the credential from a private wgetrc (mktemp creates it 0600), never the command line.
+        local status=0 wgetrc
+        wgetrc="$(mktemp "${TMPDIR:-/tmp}/github-release.XXXXXX")" || return 1
+        printf 'header = Authorization: Bearer %s\n' "${bearer}" > "${wgetrc}" &&
+            wget --config="${wgetrc}" -qO - --header='Accept: application/vnd.github+json' "${url}" || status=$?
+        rm -f "${wgetrc}"
+        return "${status}"
     else
         wget -qO - --header='Accept: application/vnd.github+json' "${url}"
     fi

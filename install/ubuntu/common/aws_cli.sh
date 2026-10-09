@@ -14,6 +14,8 @@ readonly AWS_CLI_FINGERPRINT="FB5DB77FD5C118B80511ADA8A6310ACC4672475C"
 readonly AWS_CLI_KEY_PATH="${AWS_CLI_KEY_PATH:-${HOME}/.local/share/aws-cli-keys/aws-cli-public-key.asc}"
 readonly AWS_CLI_INSTALL_DIR="${HOME}/.local/share/aws-cli"
 readonly AWS_CLI_BIN_DIR="${HOME}/.local/bin"
+# The ETag of the archive the last verified install came from; a changed ETag means a new release.
+readonly AWS_CLI_ETAG_FILE="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/aws-cli-archive.etag"
 
 #
 # @description Print the AWS CLI archive URL for the current supported architecture.
@@ -122,10 +124,35 @@ function install_aws_cli() (
 )
 
 #
-# @description Install or update the AWS CLI.
+# @description Print the ETag AWS serves for the current archive.
+#
+function aws_cli_archive_etag() {
+    local url
+    url="$(aws_cli_url)" || return
+    curl --fail --location --silent --show-error --head "${url}" |
+        awk 'tolower($1) == "etag:" { etag = $2 } END { sub(/\r$/, "", etag); if (etag == "") exit 1; print etag }'
+}
+
+#
+# @description Install or update the AWS CLI. Runs on every chezmoi apply and skips when the
+#   archive's ETag still matches the one recorded after the last verified install.
 #
 function main() {
-    install_aws_cli
+    local etag
+    if ! etag="$(aws_cli_archive_etag)"; then
+        [ -x "${AWS_CLI_BIN_DIR}/aws" ] || {
+            printf 'Could not reach the AWS CLI archive.\n' >&2
+            return 1
+        }
+        printf 'warning: could not reach the AWS CLI archive; the installed AWS CLI stays.\n' >&2
+        return 0
+    fi
+    if [ -x "${AWS_CLI_BIN_DIR}/aws" ] && [ "$(cat "${AWS_CLI_ETAG_FILE}" 2> /dev/null)" = "${etag}" ]; then
+        return 0
+    fi
+    install_aws_cli || return
+    mkdir -p "$(dirname "${AWS_CLI_ETAG_FILE}")" && printf '%s\n' "${etag}" > "${AWS_CLI_ETAG_FILE}" ||
+        printf 'warning: could not record the AWS CLI archive ETag; the next apply reinstalls it.\n' >&2
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

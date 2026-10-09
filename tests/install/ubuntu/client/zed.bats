@@ -84,6 +84,17 @@ function install_fake_zed() {
     [ "${status}" -eq 0 ]
 }
 
+@test "[ubuntu-client] main replaces an installed zed that cannot report its version" {
+    install_fake_zed 1.0.0
+    printf '#!/bin/sh\nexit 42\n' > "${BATS_TEST_TMPDIR}/.local/share/zed.app/bin/zed"
+
+    run env HOME="${BATS_TEST_TMPDIR}" bash -c "${ZED_FAKES}"'
+        main
+    '
+    [ "${status}" -eq 0 ]
+    "${BATS_TEST_TMPDIR}/.local/bin/zed" | grep -q 'Zed 1.22.0'
+}
+
 @test "[ubuntu-client] main installs nothing without an authenticated gh and says how to retry" {
     run env HOME="${BATS_TEST_TMPDIR}" GH_MODE=unauthenticated bash -c "${ZED_FAKES}"'
         main

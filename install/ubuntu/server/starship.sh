@@ -4,7 +4,8 @@
 # @brief Install the Starship prompt on Ubuntu servers.
 # @description
 #   Downloads the newest Starship release that is at least 72 hours old and
-#   verifies it against the .sha256 file published with it.
+#   verifies it against the .sha256 file published with it. Runs on every
+#   chezmoi apply and skips when that release is already installed.
 
 set -Eeuo pipefail
 
@@ -34,15 +35,20 @@ function starship_artifact() {
 }
 
 #
-# @description Download and install the Starship binary.
+# @description Print the installed Starship version, or nothing when it is absent or cannot report one.
+#
+function starship_installed_version() {
+    [ -x "${BIN_DIR}/starship" ] || return 0
+    { "${BIN_DIR}/starship" --version 2> /dev/null || true; } | awk '$1 == "starship" { print $2; exit }'
+}
+
+#
+# @description Download one Starship release, verify it, and install the binary.
+# @arg $1 string The release tag.
 #
 function install_starship() (
-    local actual artifact base_url expected stage="" tag tmpdir
+    local actual artifact base_url expected stage="" tag="${1:-}" tmpdir
     artifact="$(starship_artifact)" || return
-    tag="$(github_release_tag "${STARSHIP_RELEASE_REPO}")" || {
-        printf 'Could not resolve a %s release.\n' "${STARSHIP_RELEASE_REPO}" >&2
-        return 1
-    }
     base_url="https://github.com/${STARSHIP_RELEASE_REPO}/releases/download/${tag}"
     tmpdir="$(mktemp -d)" || return
     trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
@@ -72,10 +78,21 @@ function uninstall_starship() {
 }
 
 #
-# @description Run the Starship installation flow.
+# @description Install or update Starship to the newest cooled-down release.
 #
 function main() {
-    install_starship
+    local installed tag
+    installed="$(starship_installed_version)"
+    if ! tag="$(github_release_tag "${STARSHIP_RELEASE_REPO}")"; then
+        [ -n "${installed}" ] || {
+            printf 'Could not resolve a %s release.\n' "${STARSHIP_RELEASE_REPO}" >&2
+            return 1
+        }
+        printf 'warning: could not resolve a Starship release; Starship %s stays.\n' "${installed}" >&2
+        return 0
+    fi
+    [ "${installed}" != "${tag#v}" ] || return 0
+    install_starship "${tag}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -336,6 +336,57 @@ install_aws_cli
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(f"Installed aws-cli/{version}.\n", result.stdout)
 
+    def run_main(self, home, head_etag, recorded_etag=None, installed=True):
+        """Run main with a fake HEAD response and install; returns the result and the install marker."""
+        state = home / ".local/state/dotfiles/aws-cli-archive.etag"
+        marker = home / "install-ran"
+        if installed:
+            aws = home / ".local/bin/aws"
+            aws.parent.mkdir(parents=True, exist_ok=True)
+            aws.write_text("#!/bin/sh\nprintf 'aws-cli/2.37.6 Python/3.13 Linux/6\\n'\n")
+            aws.chmod(0o755)
+        if recorded_etag is not None:
+            state.parent.mkdir(parents=True, exist_ok=True)
+            state.write_text(f"{recorded_etag}\n")
+        result = self.run_shell(
+            r"""
+uname() { printf 'x86_64\n'; }
+curl() {
+    [ -n "${HEAD_ETAG}" ] || return 6
+    printf 'HTTP/2 200\r\nETag: %s\r\ncontent-length: 1\r\n\r\n' "${HEAD_ETAG}"
+}
+install_aws_cli() { touch "${HOME}/install-ran"; }
+main
+""",
+            {"HOME": str(home), "HEAD_ETAG": head_etag, "XDG_STATE_HOME": ""},
+        )
+        return result, marker, state
+
+    def test_main_skips_when_the_archive_etag_is_the_recorded_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, marker, _state = self.run_main(Path(directory), '"abc-1"', recorded_etag='"abc-1"')
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertFalse(marker.exists())
+
+    def test_main_installs_and_records_a_new_archive_etag(self):
+        for recorded, installed in (('"abc-1"', True), (None, False)):
+            with self.subTest(recorded=recorded, installed=installed), tempfile.TemporaryDirectory() as directory:
+                result, marker, state = self.run_main(Path(directory), '"abc-2"', recorded, installed)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertTrue(marker.exists())
+                self.assertEqual('"abc-2"\n', state.read_text())
+
+    def test_main_keeps_an_installed_aws_cli_offline_and_fails_a_fresh_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, marker, _state = self.run_main(Path(directory), "", recorded_etag='"abc-1"')
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("could not reach the AWS CLI archive; the installed AWS CLI stays", result.stderr)
+            self.assertFalse(marker.exists())
+        with tempfile.TemporaryDirectory() as directory:
+            result, marker, _state = self.run_main(Path(directory), "", installed=False)
+            self.assertNotEqual(0, result.returncode)
+            self.assertFalse(marker.exists())
+
     def test_repository_key_has_expected_current_fingerprint(self):
         key = ROOT / "home/dot_local/share/aws-cli-keys/aws-cli-public-key.asc"
         with tempfile.TemporaryDirectory() as directory:
@@ -373,7 +424,7 @@ install_aws_cli
         for forbidden in (".pkg", "brew tap", "git clone", "make install"):
             self.assertNotIn(forbidden, mac_dependencies)
 
-        wrapper = (ROOT / "home/.chezmoiscripts/ubuntu/run_once_after_04-install-aws-cli.sh.tmpl").read_text()
+        wrapper = (ROOT / "home/.chezmoiscripts/ubuntu/run_after_04-install-aws-cli.sh.tmpl").read_text()
         self.assertIn('include "../install/ubuntu/common/aws_cli.sh"', wrapper)
         self.assertNotIn(".system", wrapper)
 

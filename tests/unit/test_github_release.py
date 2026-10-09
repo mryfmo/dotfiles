@@ -136,6 +136,34 @@ class GithubReleaseTest(unittest.TestCase):
                     f'header = "Authorization: Bearer {expected}"\n', Path(f"{self.log}.stdin").read_text()
                 )
 
+    def test_wget_gets_the_token_from_a_private_wgetrc_never_the_command_line(self) -> None:
+        page = self.temp_dir / "releases.json"
+        page.write_text(json.dumps([release("v1.0.0", hours_ago(500))], indent=2) + "\n")
+        self.executable(
+            "wget",
+            f"""
+            printf 'wget %s\\n' "$*" >> "{self.log}"
+            for arg in "$@"; do
+                case "$arg" in --config=*) cat "${{arg#--config=}}" > "{self.log}.wgetrc"; stat -c %a "${{arg#--config=}}" > "{self.log}.mode" 2> /dev/null || stat -f %Lp "${{arg#--config=}}" > "{self.log}.mode" ;; esac
+            done
+            cat "{page}"
+            """,
+        )
+        for tool in ("mktemp", "rm", "stat"):
+            (self.bin_dir / tool).symlink_to(shutil.which(tool))
+
+        result = self.run_helper(
+            "github_release_tag owner/repo", **{"GITHUB_TOKEN": "wget-credential", "TMPDIR": str(self.temp_dir)}
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("v1.0.0\n", result.stdout)
+        self.assertNotIn("wget-credential", self.log.read_text())
+        self.assertEqual("header = Authorization: Bearer wget-credential\n", Path(f"{self.log}.wgetrc").read_text())
+        self.assertEqual("600\n", Path(f"{self.log}.mode").read_text())
+        # The wgetrc is removed once wget returns.
+        self.assertEqual([], list(self.temp_dir.glob("github-release.*")))
+
     def test_attestation_needs_an_authenticated_gh_and_fails_hard_on_a_bad_attestation(self) -> None:
         asset = self.temp_dir / "asset.tar.gz"
         asset.write_text("payload\n")

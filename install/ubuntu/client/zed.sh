@@ -42,11 +42,12 @@ function zed_artifact() {
 }
 
 #
-# @description Print the installed Zed version, or nothing when Zed is not installed.
+# @description Print the installed Zed version, or nothing when Zed is not installed or cannot
+#   report one, so a broken install is replaced like a missing one.
 #
 function zed_installed_version() {
     [ -x "${ZED_BIN_LINK}" ] || return 0
-    "${ZED_BIN_LINK}" --version 2> /dev/null | awk '$1 == "Zed" { print $2; exit }'
+    { "${ZED_BIN_LINK}" --version 2> /dev/null || true; } | awk '$1 == "Zed" { print $2; exit }'
 }
 
 #

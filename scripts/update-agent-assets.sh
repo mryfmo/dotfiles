@@ -248,12 +248,13 @@ function install_crit_release() (
 )
 
 #
-# @description Print the version a Crit binary reports, without a leading v.
+# @description Print the version a Crit binary reports, without a leading v, or nothing when it
+#   is absent or cannot report one, so a broken install is replaced like a missing one.
 # @arg $1 path Crit executable.
 #
 function crit_version() {
     [ -x "$1" ] || return 0
-    "$1" --version 2> /dev/null | awk '$1 == "crit" { sub(/^v/, "", $2); print $2; exit }'
+    { "$1" --version 2> /dev/null || true; } | awk '$1 == "crit" { sub(/^v/, "", $2); print $2; exit }'
 }
 
 #

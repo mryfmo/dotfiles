@@ -282,9 +282,8 @@ function rebuild_mise_npm_tool() {
     # Only an existing absolute install directory is moved or removed.
     [[ -n "${version}" && "${install_dir}" == /* ]] || return 1
     backup="${install_dir}.before-node-rebuild"
-    # A backup left by a run killed past its traps is the working install: put it back, never delete it.
-    restore_npm_install "${install_dir}" "${backup}" || return 1
-    [[ -d "${install_dir}" ]] || return 1
+    # restore_interrupted_npm_rebuilds put any leftover backup back; never move an install into one.
+    [[ -d "${install_dir}" && ! -e "${backup}" ]] || return 1
     mv "${install_dir}" "${backup}" || return 1
     # Until the new install succeeds, an interruption or exit puts the working install back.
     local restore
@@ -303,6 +302,20 @@ function rebuild_mise_npm_tool() {
     trap - INT TERM EXIT
     restore_npm_install "${install_dir}" "${backup}"
     return 1
+}
+
+#
+# @description Put back every npm: install that a rebuild killed past its traps (SIGKILL, power loss) left
+#   moved aside. It runs before any mise command, because mise cannot name an install that is not in place.
+#
+function restore_interrupted_npm_rebuilds() {
+    local backup
+    # mise's own data directory resolution (MISE_DATA_DIR, then XDG_DATA_HOME), as `mise doctor` reports it.
+    local installs="${MISE_DATA_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/mise}/installs"
+    for backup in "${installs}"/*/*.before-node-rebuild; do
+        [ -d "${backup}" ] || continue
+        restore_npm_install "${backup%.before-node-rebuild}" "${backup}" || return 1
+    done
 }
 
 #
@@ -344,6 +357,7 @@ function upgrade_mise_tools() {
 
     section "mise tools"
     local failed=0
+    restore_interrupted_npm_rebuilds || failed=1
     mise trust --yes || failed=1
     # minimum_release_age in the config keeps freshly published releases out of both steps.
     # One bare install: it leaves installed tools alone offline, while a per-tool

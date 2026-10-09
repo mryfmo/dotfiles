@@ -1301,6 +1301,10 @@ EOF
                             sleep 1
                             exit 1
                             ;;
+                        *leftover*:"install --yes")
+                            # Offline: an install that is not in place cannot be downloaded again.
+                            [ -e "$CCUSAGE_DIR/original" ] || exit 1
+                            ;;
                         npm_reinstall_final_fails:"install --yes")
                             # The first bare install succeeds; the final one cannot reach the network.
                             [ ! -e "$NODE_MOVED.bare-install" ] || exit 1
@@ -1323,7 +1327,8 @@ EOF
                         npm:ccusage) printf '20.0.0\n' ;;
                     esac
                     ;;
-                where) [[ "$2" != npm:ccusage ]] || printf '%s\n' "$CCUSAGE_DIR" ;;
+                # Like mise, where fails for a tool whose install is not in place.
+                where) [[ "$2" != npm:ccusage ]] || { [ -d "$CCUSAGE_DIR" ] && printf '%s\n' "$CCUSAGE_DIR"; } ;;
             esac
             """,
         )
@@ -1360,8 +1365,10 @@ EOF
             "TEST_LOG": str(log),
             # Outside the repository, so the no-file-written assertion still holds.
             "NODE_MOVED": str(self.temp_dir / f"upgrade-{fail_phase}.node-moved"),
-            # The installed npm:ccusage, outside the repository; "original" marks the install before any rebuild.
-            "CCUSAGE_DIR": str(self.temp_dir / f"upgrade-{fail_phase}.ccusage"),
+            # mise's data directory and the installed npm:ccusage in it, outside the repository;
+            # "original" marks the install before any rebuild.
+            "MISE_DATA_DIR": str(self.temp_dir / f"upgrade-{fail_phase}.mise-data"),
+            "CCUSAGE_DIR": str(self.temp_dir / f"upgrade-{fail_phase}.mise-data/installs/npm-ccusage/20.0.0"),
             # The npm-tools node marker lives outside the repository, like the host state it stands for.
             "XDG_STATE_HOME": str(self.temp_dir / f"upgrade-{fail_phase}.state"),
         }
@@ -1572,19 +1579,27 @@ EOF
         self.assertFalse((Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node").exists())
 
     def test_upgrade_restores_a_rebuild_backup_left_by_a_killed_run(self) -> None:
-        # A SIGKILL runs no trap: the working install sits in the backup and the install directory holds a partial one.
-        repo, env = self.upgrade_fixture("npm_reinstall-leftover")
-        tool = Path(env["CCUSAGE_DIR"])
-        tool.rename(f"{tool}.before-node-rebuild")
-        (tool / "partial").mkdir(parents=True)
+        # A SIGKILL runs no trap: the working install sits in the backup, and the install directory is gone or partial.
+        # The fake mise is offline, so its bare install fails unless the backup is back in place before it runs.
+        for name, phase, partial in (
+            ("install directory absent", "npm_reinstall-leftover-absent", False),
+            ("partial install left", "npm_reinstall-leftover-partial", True),
+        ):
+            with self.subTest(name):
+                repo, env = self.upgrade_fixture(phase)
+                tool = Path(env["CCUSAGE_DIR"])
+                tool.rename(f"{tool}.before-node-rebuild")
+                if partial:
+                    (tool / "partial").mkdir(parents=True)
 
-        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
 
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("optional warning: npm: tools were not all reinstalled on node 27.0.0", result.stderr)
-        self.assertTrue((tool / "original").exists())
-        self.assertFalse((tool / "partial").exists())
-        self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertNotIn("required failure", result.stderr)
+                self.assertIn("optional warning: npm: tools were not all reinstalled on node 27.0.0", result.stderr)
+                self.assertTrue((tool / "original").exists())
+                self.assertFalse((tool / "partial").exists())
+                self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())
 
     def test_upgrade_fails_when_the_node_marker_cannot_be_written(self) -> None:
         repo, env = self.upgrade_fixture("node_stays-unwritable")

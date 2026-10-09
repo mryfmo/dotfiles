@@ -1275,6 +1275,7 @@ EOF
             """
             printf 'mise %s\n' "$*" >> "$TEST_LOG"
             printf 'MISE_CONFIG_DIR=%s\n' "$MISE_CONFIG_DIR" >> "$TEST_LOG"
+            printf 'MISE_CEILING_PATHS=%s\n' "$MISE_CEILING_PATHS" >> "$TEST_LOG"
             case "$1" in
                 self-update) [[ "$FAIL_PHASE" != mise_self ]] ;;
                 ls) [[ "$FAIL_PHASE" != mise_inventory ]] && printf 'python 3.13 fixture\nfd 10.3.0 fixture\nhttp:bats 1.13.0 fixture\nhttp:gcloud 575.0.1 fixture\n' ;;
@@ -1333,7 +1334,10 @@ EOF
 
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)
                 log = (repo / "commands.log").read_text().splitlines()
-                self.assertEqual({f"MISE_CONFIG_DIR={expected}"}, {line for line in log if line.startswith("MISE_")})
+                self.assertEqual({f"MISE_CONFIG_DIR={expected}"}, {line for line in log if line.startswith("MISE_CONFIG_DIR=")})
+                # A parent directory's mise.toml must not join the inventory: the ceiling is the checkout.
+                ceilings = {line.split("=", 1)[1] for line in log if line.startswith("MISE_CEILING_PATHS=")}
+                self.assertEqual({repo.resolve()}, {Path(ceiling).resolve() for ceiling in ceilings})
                 after = {path.relative_to(repo) for path in repo.rglob("*")}
                 self.assertEqual(before | {Path("commands.log")}, after)
                 self.assertNotIn("chezmoi", "\n".join(log))

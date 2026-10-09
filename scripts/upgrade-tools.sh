@@ -14,8 +14,11 @@
 
 set -Eeuo pipefail
 
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # The applied host config, pinned so the isolated Git config's XDG_CONFIG_HOME below cannot redirect it.
 export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/mise}"
+# No project config from this checkout upward joins the inventory, so only the host config's tools move.
+export MISE_CEILING_PATHS="${repo_root}"
 
 include_system=false
 DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node node@* python python@* python3 pip npm pnpm yarn claude"

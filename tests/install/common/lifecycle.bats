@@ -141,9 +141,9 @@ herdr server reload-config" ]
     mkdir -p "${fixture}/bin" "${fixture}/scripts" "${fixture}/home"
     cp Makefile "${fixture}/Makefile"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/bin/chezmoi"
-    printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/bin/mise"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/scripts/upgrade-tools.sh"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/scripts/update-agent-assets.sh"
-    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/mise" "${fixture}/scripts/update-agent-assets.sh"
+    chmod +x "${fixture}/bin/chezmoi" "${fixture}/scripts/upgrade-tools.sh" "${fixture}/scripts/update-agent-assets.sh"
 
     run env HOME="${fixture}/home" PATH="${fixture}/bin:/usr/bin:/bin" make -C "${fixture}" update
     [ "$status" -eq 0 ]
@@ -272,7 +272,7 @@ herdr server reload-config" ]
     grep -q 'GIT_CONFIG_GLOBAL=/dev/null' scripts/upgrade-tools.sh
     grep -q 'XDG_CONFIG_HOME="${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
     grep -Fq 'export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/mise}"' scripts/upgrade-tools.sh
-    ! grep -q 'MISE_CEILING_PATHS' scripts/upgrade-tools.sh
+    grep -Fq 'export MISE_CEILING_PATHS="${repo_root}"' scripts/upgrade-tools.sh
     grep -q 'rm -rf "${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config ls --current --no-header' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config upgrade --yes "${mise_tool}"' scripts/upgrade-tools.sh

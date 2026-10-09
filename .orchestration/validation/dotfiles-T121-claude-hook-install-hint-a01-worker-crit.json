@@ -1,0 +1,9 @@
+[
+  {
+    "id": "t121-independent-review-approval",
+    "body": "Independent read-only subagent /root/t121_review approved the two-file change and confirmed commit f25e9eaf4be9f0054922fd9163e00ebdb0b7365f, with no findings and high confidence. Makefile:65,80 reaches scripts/upgrade-tools.sh:300, which performs unrestricted mise install --yes, supporting the new make update recovery hint. Formatter execution and hook exit status remain unchanged. The regression assertion checks the new message, exit status 1 and absence of a traceback. The unused shlex import at hook line 14 predates the change. Reviewer did not rerun tests; the worker observed two passing tests. Verdict: correct. This is independent agent fallback evidence because crit status reports no review file and crit comments cannot retrieve data.",
+    "scope": "review",
+    "resolved": true,
+    "author": "Codex"
+  }
+]

@@ -1,0 +1,408 @@
+[
+  {
+    "id": "t118-w1",
+    "scope": "file",
+    "file": "scripts/check-statusline-tools.py",
+    "line": 24,
+    "body": "[P1] Independent agent review of 46a73f11 (and CI on it): expected_versions() read the literal request from config.toml, now \"latest\", so require_version() looked for \"latest\" in --version output; separately the smoke step compared `mise which` (through the latest symlink) with `mise where` (the version directory) and failed on every runner. fixed:f999cc68 (Amendment 4): the script takes --ccstatusline-version/--ccusage-version filled from `mise current`, and the job compares physical paths; 752e7265 formats it.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w2",
+    "scope": "file",
+    "file": "tests/install/common/lifecycle.bats",
+    "line": 279,
+    "body": "[P1] The new `! grep -Eq -- '--bump|--before|use --global'` assertion matched the worker's own comment \"Without --bump ...\" in upgrade-tools.sh. fixed:f999cc68: the comment says \"A plain upgrade keeps ...\"; every upgrade-tools.sh grep in lifecycle.bats was evaluated against the file and holds.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w3",
+    "scope": "file",
+    "file": "README.md",
+    "line": 174,
+    "body": "[P2] The claim that mise 2026.9.17 has no self_update.minimum_release_age was false: `mise settings ls` hides the key while unset, but `mise settings set self_update.minimum_release_age 7d` is accepted and read back while an unknown key errors. fixed:f999cc68: config.toml sets [settings.self_update] minimum_release_age = \"7d\" (Amendment 3) and README says self-update waits the same seven days.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w4",
+    "scope": "file",
+    "file": "Makefile",
+    "line": 45,
+    "body": "[P2] `make update never prompts` was no longer true once make update runs `brew upgrade --cask`, whose pkg-based casks ask for sudo. fixed:f999cc68: the Makefile comment and README operator-phase sentence name the Homebrew cask exception.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w5",
+    "scope": "file",
+    "file": "README.md",
+    "line": 216,
+    "body": "[P3] A required-phase failure (brew update offline, a missing uv, one tool's mise upgrade) now stops make update before the asset refresh, and make apply inherits it; undocumented. fixed:f999cc68: README says so in the make update paragraph.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w6",
+    "scope": "file",
+    "file": "home/dot_zshrc",
+    "line": 35,
+    "body": "[P3] \"Update claude-code to the true latest\" contradicted the new line saying mise's cooldown still applies. fixed:f999cc68: the comment block (comment only) says it bypasses npm's cooldown for that install while mise's minimum_release_age still applies.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w7",
+    "scope": "file",
+    "file": ".github/workflows/test.yaml",
+    "line": 251,
+    "body": "[P3] Stale \"pinned install\"/\"exact install\" wording in the statusline job, \"after the pins PR merged\" in check-regime-boundary.sh and the \"exact\" docstring of check-statusline-tools.py. fixed:f999cc68.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w8",
+    "scope": "file",
+    "file": "tests/unit/test_check_agent_runtime.py",
+    "line": 669,
+    "body": "[P3] Fixture strings still carried `mise install --force --locked`. fixed:f999cc68 (grep-named by task item 8).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w9",
+    "scope": "file",
+    "file": "home/dot_agents/agent-config.yaml",
+    "line": 339,
+    "body": "[P3] The assets comment still said make upgrade writes tode/terminal-browser/crit/zed pins; this PR touches the file. Reported as a scope gap (Amendment 5); Amendment 6 allowed it. fixed:46cd2a88.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w10",
+    "scope": "file",
+    "file": "renovate.json",
+    "line": 45,
+    "body": "[P3] Renovate rules still cited make upgrade, mise.lock and upgrade-tools.sh. Reported for routing; Amendment 6 allowed the three rules. fixed:46cd2a88: the lock-fidelity mise rule is deleted, the manifest rule names generate-agent-configs.py --set-asset, the fd hold cites config.toml; jq validates the file.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w11",
+    "scope": "file",
+    "file": "home/dot_codex/rules/default.rules",
+    "line": 187,
+    "body": "[P3] The forbidden `pattern` still lists \"upgrade\" after `match` dropped \"make upgrade\". not-applicable: keeping a forbidden prefix for a removed target loosens nothing, while removing it would loosen a Codex permission rule the task does not ask to change (AGENTS.md dotfiles safety); Codex validates only the match/not_match examples against the pattern.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w12",
+    "scope": "file",
+    "file": "home/dot_claude/hooks/executable_format-edited-files.py",
+    "line": 74,
+    "body": "[P3] The hook still prints `run mise install --locked` (and line 72 says make update installs only some mise tools), pinned by tests/unit/test_format_edited_files_hook.py:72. not-applicable for this Claude seat: Claude-boundary source; Amendment 6 routes the pair to a Codex seat after this PR. Named in the report as a known leftover.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w13",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 19,
+    "body": "[P2] Codex Bot thread 4229677547 on f999cc68: without MISE_CEILING_PATHS a parent directory's mise.toml joins `mise ls --current` and its tools get installed and upgraded. Confirmed: `mise config ls` in the worktree lists the parent ~/Workspace/dotfiles/mise.toml with no ceiling and with a $HOME ceiling, and only ~/.config/mise/config.toml with the checkout-root ceiling. fixed:4ab9634e: the ceiling is the checkout root again, and test_runtime_health asserts it.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w14",
+    "scope": "file",
+    "file": "tests/install/common/lifecycle.bats",
+    "line": 139,
+    "body": "[P1] CI on 752e7265: bats \"update skips reload when Herdr is absent\" built a make update fixture without scripts/upgrade-tools.sh. fixed:4ab9634e: the fixture fakes it in place of the unused fake mise. CI on f999cc68 and 4ab9634e also failed the ruff format check on check-statusline-tools.py and test_runtime_health.py: fixed:752e7265 and fixed:46cd2a88; ruff format --check now runs over every tracked .py before each push.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w16",
+    "scope": "file",
+    "file": "renovate.json",
+    "line": 48,
+    "body": "[P2] Codex Bot thread 4229994961 on 46cd2a88: the mise manager keeps normal updates for a concrete version, so Renovate could bump the held npm:pnpm. Confirmed: Renovate mise extract.ts keeps depName as the full key (`npm:pnpm`), and the docs say concrete versions retain normal source-file update behavior. fixed:0d218990: a disabled mise rule with matchDepNames [\"npm:pnpm\"] joins the fd hold, asserted in test_supply_chain_policy.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w17",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 144,
+    "body": "[P2] Codex Bot thread 4229994970 on 46cd2a88: brew upgrade asks for confirmation by default, so make update could stop. Confirmed with Homebrew 7.0.8 `brew upgrade --help`: \"-y, --no-ask, --yes  Do not ask for confirmation before downloading and upgrading. Ask mode is the default. Enabled by default if $HOMEBREW_NO_ASK is set.\" fixed:0d218990: both brew upgrade calls set HOMEBREW_NO_ASK=1 (ignored by an older brew without ask mode), and lifecycle.bats greps both.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w18",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 271,
+    "body": "[P1] Orchestrator revise round 1: brew update, mise self-update, uv tool upgrade and gh extension upgrade ran as required phases, so an offline host failed make update before update-agent-assets.sh, the Herdr reload and agmsg-bootstrap. fixed:878e227c: those phases are run_optional_phase; installing the declared mise tools stays required and is one bare `mise install --yes`, because offline a per-tool install of a \"latest\" request exits 1 even when installed (validation §12).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w19",
+    "scope": "file",
+    "file": "tests/install/common/lifecycle.bats",
+    "line": 278,
+    "body": "[P1] CI on 878e227c: bats \"mise tool lifecycle isolates Git config ...\" failed at line 278 because the round-1 refactor wrote the per-tool upgrade as `\"${mise_command}\" --yes`, and the grep pins `upgrade --yes \"${mise_tool}\"`. fixed:becc8612: the loop names upgrade literally; every static grep in lifecycle.bats and mise.bats was evaluated against the tree before the push.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w20",
+    "scope": "file",
+    "file": "tests/unit/test_runtime_health.py",
+    "line": 1362,
+    "body": "[P1] CI on becc8612: the no-gh subtest of test_upgrade_homebrew_verifies_attestations_when_gh_is_present failed because the ubuntu runner ships /usr/bin/gh. fixed:9a7a6ca0: the subtest runs on a PATH of symlinks to /usr/bin and /bin without gh.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w21",
+    "scope": "file",
+    "file": "Makefile",
+    "line": 71,
+    "body": "[P2] Orchestrator audit of 9a7a6ca0: make parses the Makefile before the update recipe pulls, so the first make update after the merge would run the old recipe and its `mise install --locked node` against the removed lock. fixed:9514a3cd: update only fetches and pulls, then `$(MAKE) --no-print-directory update-tree` reads the fetched Makefile (scratch proof in validation §14); README and the PR body carry the one-time `git -C <clone> pull && make -C <clone> update` note.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w22",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 282,
+    "body": "[P2] Orchestrator audit of 9a7a6ca0: a per-tool `mise upgrade --yes` that cannot reach its archive (cached metadata naming a newer release, no network) was a required failure. fixed:9514a3cd: per-tool upgrade failures warn and continue (exit 2 from run_mise_tool_command becomes an optional warning); the bare install and the tool listing stay required; test_upgrade_failure_after_a_successful_install_only_warns covers it.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w23",
+    "scope": "file",
+    "file": ".orchestration/reports/dotfiles-T118-rolling-tools-single-update-a01.md",
+    "line": 1,
+    "body": "[P3] Orchestrator audit of 9a7a6ca0: the report said 15 worker review records while the worker crit JSON held 20. fixed in the round-2 report: the count is read from the artifact.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w24",
+    "scope": "file",
+    "file": "tests/unit/test_codex_config_merge.py",
+    "line": 643,
+    "body": "[P1] CI on 9514a3cd: test_make_update_refreshes_codex_hook_trust_after_the_plugin_update read ./scripts/update-agent-assets.sh from the update: recipe, which now hands off to update-tree. fixed:b6e27bd7: it asserts the hand-off and reads update-tree; the full local suite showed no branch-only failure before that push.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w25",
+    "scope": "file",
+    "file": "home/dot_codex/rules/default.rules",
+    "line": 187,
+    "body": "[P2] Orchestrator audit of b6e27bd7: Codex execpolicy matches whole tokens, so the new `make update-tree` (host applies and upgrades) matched no forbidden rule (`codex execpolicy check` returned {\"matchedRules\":[]}). fixed:94f4af69: update-tree joins the forbidden make targets and match examples, and tests/unit/test_codex_execpolicy.py requires the prefix (validation §15).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w26",
+    "scope": "file",
+    "file": "tests/unit/test_codex_config_merge.py",
+    "line": 643,
+    "body": "[P3] Orchestrator audit of b6e27bd7: this Makefile test was changed in b6e27bd7 without an amendment. not-applicable: no code change follows, because the orchestrator added the file to the allowed files after the fact for that one assertion, and the report names it as a scope gap reported after the fix.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w27",
+    "scope": "file",
+    "file": "README.md",
+    "line": 180,
+    "body": "[P3] Orchestrator audit of b6e27bd7: task line 25 requires README to say a node major bump can leave npm: tool installs invalid until mise install reruns; the report claimed it while README lacked it. fixed:94f4af69: the sentence is in the Tool versions paragraph and the report matches.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w28",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 313,
+    "body": "[P2] Codex Bot thread 4231499867 on 94f4af69: the bare install runs before the per-tool upgrades, so npm: tools already installed stayed on the old node after an upgrade moved it. fixed:b621af77: upgrade_mise_tools compares `mise current node` before and after the upgrades and, when node moved, reinstalls each npm: tool with `mise install --force --yes`; a failure is an optional warning naming the rerun command; test_upgrade_reinstalls_npm_tools_only_after_node_moved covers moved, unchanged and failed reinstall.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w29",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 195,
+    "body": "[P2] Codex Bot thread 4231499881 on 94f4af69: `mise self-update` updates installed plugins unless --no-plugins is passed (mise self-update --help: \"--no-plugins  Disable auto-updating plugins\"), and plugin branch moves are outside the cooldown. fixed:b621af77: make update runs `mise self-update --yes --no-plugins`; README says to run `mise plugins update` when wanted.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w30",
+    "scope": "file",
+    "file": "home/dot_claude/hooks/executable_format-edited-files.py",
+    "line": 74,
+    "body": "[P2] Codex Bot thread 4231499859 on 94f4af69: the formatter hook still tells the user to run `mise install --locked`, which fails without a lockfile. Claude-boundary source, so this Claude seat does not edit it: fixed on this branch by the Codex seat (task T121, worker-d) in fixed:f25e9eaf; pulled into worker-c and its test module run here.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w31",
+    "scope": "file",
+    "file": "README.md",
+    "line": 126,
+    "body": "[P2] Codex Bot thread 4231739043 on f25e9eaf: the Lifecycle introduction still listed four entry points including upgrade and called bootstrap and upgrade separate paths. fixed:64c6d8a6: three entry points (setup, update, doctor), and upgrading installed tools is part of make update.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w32",
+    "scope": "file",
+    "file": "renovate.json",
+    "line": 47,
+    "body": "[P2] Codex Bot thread 4231739053 on f25e9eaf: the Renovate mise extractor resolves the fd package name to sharkdp/fd, so a matchPackageNames [\"fd\"] hold never applied. fixed:64c6d8a6: the hold matches by dependency name (matchDepNames [\"fd\"]) like the pnpm hold, asserted in test_supply_chain_policy.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w33",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 27,
+    "body": "[P2] Codex Bot thread 4231739066 on f25e9eaf: the npm min-release-age of 7 days in home/dot_npmrc refused npm: releases that the 72h mise cutoff chose while 3 to 7 days old, so the upgrade warned and left agent CLIs stale. fixed:64c6d8a6 at the root cause for every npm: tool, not only the two agent CLIs the Bot named: the script exports npm_config_min_release_age=3, the same window as minimum_release_age = 72h (a test keeps them equal), which also keeps a 3-day gate on transitive dependencies (0 would drop it) and stops a fresh mise install of a missing npm: tool from failing.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w34",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 304,
+    "body": "[P2] Codex Bot thread 4231652016 on b621af77: node_before was taken after the bare install, which installs and activates a newer node for a latest request, so the npm: tools were never reinstalled. fixed:88e369d9: the snapshot comes before the bare install; test_upgrade_reinstalls_npm_tools_only_after_node_moved adds the case where the install moves node, and that case fails against the previous script (validation section 19).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w35",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 24,
+    "body": "[P2] Codex Bot thread 4231652027 on b621af77: MISE_CONFIG_DIR inherited an environment value or a nondefault XDG_CONFIG_HOME, while chezmoi applies home/dot_config/mise/config.toml.tmpl to $HOME/.config/mise. fixed:88e369d9: MISE_CONFIG_DIR is ${HOME}/.config/mise unconditionally (the checkout-root ceiling stays); the host-config test covers both overrides and fails against the previous script.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w36",
+    "scope": "review",
+    "body": "[P3] Orchestrator, revise round 4: the round-3 RESULT named nine Bot threads and omitted 4231652016 and 4231652027, both raised on b621af77, whose Bot wait was skipped while waiting for the Codex seat, and both listed in my own final recheck without being matched to a disposition. addressed in round 4: the RESULT names all eleven threads with their fix commits, and before sending, every top-level Bot comment in the recheck listing is matched one-to-one to a disposition (validation section 10).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w37",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 327,
+    "body": "[P2] Orchestrator audit of 88e369d9: mise install --force removes the install before fetching its replacement, so a failed reinstall_mise_npm_tools left the tool missing while the phase only warned and make update exited 0. fixed:5d991b47: after the reinstall loop a final bare `mise install --yes` runs as the required step and restores what a failed --force removed; the reinstall failure stays a warning because that install decides; two tests cover a restored tool (exit 0, tool present) and a final install that fails (exit 1), and both fail against the 88e369d9 script (validation section 20).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w38",
+    "scope": "file",
+    "file": "home/dot_npmrc",
+    "line": 1,
+    "body": "[P2] Orchestrator audit of 5d991b47: install/common/mise.sh runs under chezmoi apply before upgrade-tools.sh exported npm_config_min_release_age=3, so the managed min-release-age=7 still refused an npm release the 72h mise cutoff chose; the root was two sources of truth for one policy. fixed:d0dd981d: home/dot_npmrc sets min-release-age=3 (equal to minimum_release_age = 72h), the per-script export is gone, the installer keeps its deliberate agent-CLI bypass, and test_supply_chain_policy asserts the npmrc days equal the mise hours / 24.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w39",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 314,
+    "body": "[P2] Orchestrator audit of 5d991b47: the in-process node snapshot could not see a node that install/common/mise.sh moved during the preceding chezmoi apply. fixed:d0dd981d: a persistent marker ${XDG_STATE_HOME:-~/.local/state}/dotfiles/npm-tools-node records the node the npm: tools were built on; after the install and upgrades it is compared with mise current node, a difference or a missing marker triggers the forced reinstall and the required final bare install, and the marker is written only after both succeed. Tests cover absent, equal, differs (moved before this run), moved by an upgrade, moved by the install, a failed reinstall (restored, not recorded) and a failed final install (marker unwritten); four cases fail against the 5d991b47 script (validation section 21).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w40",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 276,
+    "body": "[P2] Codex Bot thread 4233013310 on d0dd981d: every existing host lacks the new marker, and the forced reinstall that followed deleted each working npm: install before downloading its replacement, so an offline first update destroyed working tools. fixed:eee788f0 at the root, a destructive rebuild without a fallback: rebuild_mise_npm_tool moves the install aside (a rename), installs the exact current version, removes the backup on success and restores it on failure, so a rebuild that cannot download keeps the working tool, warns, and leaves the marker unwritten for the next run; no --force remains. Tests cover marker absent with a failed rebuild (tool kept, marker absent), a failed rebuild with a stale marker, and the successful rebuilds (validation section 22).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w41",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 360,
+    "body": "[P2] Codex Bot thread 4233013323 on d0dd981d: a failed mkdir -p and printf marker write never set failed, so the phase claimed convergence and the next runs rebuilt again. fixed:eee788f0: a marker that cannot be written prints 'required: could not record the npm-tools node in <path>' and fails the phase; test_upgrade_fails_when_the_node_marker_cannot_be_written points XDG_STATE_HOME at a regular file and expects exit 1, and fails against the d0dd981d script (exit 0).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w42",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 295,
+    "body": "[P2] Orchestrator, revise round 7: the non-destructive rebuild moved the working install aside with no cleanup trap, so a SIGTERM/SIGINT between the move and the restore left the tool missing (audit simulation: exit -15, not restored). fixed:408727c9: INT, TERM and EXIT traps set right after the move run restore_npm_install (delete what the interrupted install left, rename the backup back; INT exits 130, TERM 143) and are cleared as soon as the exact install returns; test_upgrade_restores_the_npm_tool_when_the_rebuild_is_interrupted has the fake mise send SIGTERM to the script and expects exit 143 with the tool back, and fails against eee788f0 with 143 != -15 (validation section 23.1).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w43",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 286,
+    "body": "[P2] Worker, revise round 7, found while fixing t118-w42: no trap runs on SIGKILL, and the rebuild's first step rm -rf of the backup would then delete the only working copy on the next run. fixed:408727c9: the rebuild first restores a leftover backup and only then requires the install directory; test_upgrade_restores_a_rebuild_backup_left_by_a_killed_run fails against eee788f0 (validation section 23.1).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w44",
+    "scope": "file",
+    "file": "install/common/mise.sh",
+    "line": 106,
+    "body": "[P2] Orchestrator, revise round 7: the run_once installer ran per-tool mise install <tool>, which re-resolves a latest request over the network and fails in a registry outage even when the tool is installed (validation 12). fixed:408727c9: run_mise_install is the config trust followed by one bare mise install; the per-tool lines and the agent-CLI npm_config_min_release_age=0 bypass are gone (~/.npmrc carries the same 72 hours as mise). mise.bats expects trust --yes then install, and test_supply_chain_policy asserts the installer sets no npm_config_min_release_age=. The per-tool order encoded different cooldowns per group (11d27f5e, 8e25a4fa), which one minimum_release_age removes; node before npm: is mise's own dependency order (report, Revise round 7).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w45",
+    "scope": "review",
+    "body": "[P3] Orchestrator, revise round 7: validation line ~846 pasted a grep that omitted matches, and line ~159 was a truncated command. addressed in round 7: the Bash tool's grep is a Claude Code shell-snapshot function running the bundled ugrep 7.8.4 with -G, which reads ${...} in a basic regex as an anchor and an interval (/usr/bin/grep matches all five lines), so the section 21 and 22 greps are replaced by fixed-string runs against the commit they describe, with complete output (eee788f0: 276, 286, 287, 292, 360; d0dd981d also 333); the cut -c1-200 that truncated section 2 is removed and section 2 rerun; section 23.4 reruns the abbreviated previous-script commands of sections 19 to 22 in full.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w46",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 360,
+    "body": "[P2] Orchestrator, revise round 8: round 7 restored a leftover backup only inside the rebuild, after mise where, which fails once a SIGKILL has left the install directory missing, so the backup was never restored (audit reproduction: rebuild_rc=1 restore_called=0). fixed:f79d7b4e: restore_interrupted_npm_rebuilds runs first in the mise phase, before mise trust, the bare install and any lookup, and moves every <mise data dir>/installs/*/*.before-node-rebuild back without asking mise; the rebuild only moves an install aside when no backup exists. test_upgrade_restores_a_rebuild_backup_left_by_a_killed_run models the install directory absent and partial, with a fake where that fails for a missing install and an offline bare install that fails unless the restore came first; both cases fail against 408727c9 (validation section 24).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w47",
+    "scope": "review",
+    "body": "[P3] Orchestrator, revise round 8: the validation section 5 probe block still held a truncated command and output (cut -c1-90), and the header still named eee788f0 as the final head. addressed in round 8: the header names the final head; section 5's probes are rerun in full; a scan of the published file at every cut width used in this session also found two section 19 lines cut at 220 columns, completed in place from section 23.4's full rerun of the same command.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w48",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 303,
+    "body": "[P2] Codex Bot thread 4234006744 on f79d7b4e: after a successful rebuild a failed rm -rf of the backup was ignored, the marker was written, and the next run's leftover scan restored the partly deleted old install over the new one, which the matching marker then never rebuilt. fixed:61c38cd6: the success path renames the backup out of the *.before-node-rebuild pattern to .<version>.discarded-after-rebuild before deleting it (a failed rename fails the rebuild; a failed delete only warns), and the dot keeps a leftover out of mise's installed versions (validation section 25). test_upgrade_never_restores_an_undeletable_backup_over_a_completed_rebuild runs the update twice with an undeletable backup and fails against f79d7b4e (rebuilt install reverted).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w49",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 319,
+    "body": "[P2] Codex Bot thread 4234006752 on f79d7b4e: the leftover scan ignored MISE_INSTALLS_DIR, where mise installs when it is set, so a killed rebuild's backup there was never restored. fixed:61c38cd6: the scan reads MISE_INSTALLS_DIR first, then the data directory; offline, mise where answers under MISE_INSTALLS_DIR (validation section 25), and a custom MISE_INSTALLS_DIR case in the killed-run test fails against f79d7b4e.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w50",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 370,
+    "body": "[P2] Codex Bot thread 4234006735 on f79d7b4e: the required bare install would fail offline with an absent cache because since mise 2026.5.6 a release-age cutoff makes installed fuzzy matches insufficient. not-applicable (proposed): on the pinned mise 2026.9.17, offline, with minimum_release_age = 72h, an empty cache and latest requests for installed tools, a bare mise install --yes exits 0 (2 already installed in 0ms) with no fetch attempt and no metadata in the cache; the Bot's alternative (a local missing-install check) is blind offline per section 12. The untestable exposure (a newer mise after self-update) and the scratch recipe to probe it are in the report.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w51",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 336,
+    "body": "[P2] Orchestrator, revise round 9: restore_npm_install ran rm -rf unchecked, so a partial install that could not be deleted survived and mv moved the working backup inside it, returning 0 with the tool gone and the backup buried. fixed:a9eb7f02: the restore moves the backup only when rm -rf succeeded and the old path is gone, and otherwise prints required failure: could not restore <install> from <backup> and counts a required failure; the backup stays at <install>.before-node-rebuild; the leftover scan continues past a failed restore. test_upgrade_fails_and_keeps_the_backup_when_a_partial_install_cannot_be_removed fails against 61c38cd6 (validation section 26.1).",
+    "resolved": true
+  },
+  {
+    "id": "t118-w52",
+    "scope": "review",
+    "body": "[P3] Orchestrator, revise round 9: section 17 pasted a min-release-age=7 line its grep pattern cannot produce, and section 14 abbreviated its make -n transcripts through an unprinted filter. addressed in round 9: section 26.2 reruns the shown grep exactly at 64c6d8a6 and prints the npmrc grep that produced the line as its own command; section 26.3 reruns the section 14 script with the filters removed and pastes the complete transcripts; sections 14 and 17 point there.",
+    "resolved": true
+  },
+  {
+    "id": "t118-w15",
+    "scope": "review",
+    "body": "Review scope: the full PR diff origin/main...eee788f0 against the task file, Amendments 1-7 and revise rounds 1-6. An independent read-only subagent reviewed 46a73f11 (Verdict: incorrect, two P1s); every finding above is fixed or carries a factual not-applicable; all thirteen Codex Bot threads are fixed (4ab9634e, 0d218990, b621af77, f25e9eaf by the Codex seat, 64c6d8a6, 88e369d9, eee788f0); the orchestrator audits of 9a7a6ca0, b6e27bd7, 88e369d9 and 5d991b47 and the round-4 omission are fixed in 9514a3cd, 94f4af69, 5d991b47, d0dd981d and round 4; the Bot review of eee788f0 raised nothing; CI is green on eee788f0 (16/16). Approved for orchestrator acceptance review.",
+    "resolved": true
+  }
+]

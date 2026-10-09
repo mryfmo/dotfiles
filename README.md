@@ -175,8 +175,10 @@ tooling mode.
 instructions, so that clone stays pull and apply only and its autostash never
 carries anything. It also refuses any checkout whose tracked files are dirty or
 whose `HEAD` is not the freshly fetched `origin/main`, because the pins diff is
-committed where it was produced. `CHEZMOI_ALLOW_UPGRADE_IN_SOURCE=1` skips both
-checks, for a machine that has only the canonical clone. A re-run after a
+committed where it was produced. It refuses as well when that fetch fails, or
+when an installed `chezmoi` cannot resolve its source checkout, since neither
+check can then be trusted. `CHEZMOI_ALLOW_UPGRADE_IN_SOURCE=1` skips every
+check, for a machine that has only the canonical clone. A re-run after a
 partly failed upgrade meets its own edits; discard them first with
 `git -C ~/Workspace/dotfiles/.claude/worktrees/pins reset --hard origin/main`,
 and the run bumps the pins again. New mise-managed tool
@@ -389,8 +391,7 @@ CRIT_REVIEW=off make require-crit-review
 # PR integration adds BASE, PR_FEEDBACK_EVIDENCE and AUDIT_EVIDENCE as the
 # agmsg-orchestration SKILL's Orchestrator Playbook step 10 gives them (see below).
 
-# Then upgrade installed tools using the applied mise and agent settings.
-make upgrade
+# Tool upgrades run in the pins worktree, never here; see "Lifecycle" above.
 ```
 
 Codex runs a hook from `~/.codex/config.toml` or a plugin only when

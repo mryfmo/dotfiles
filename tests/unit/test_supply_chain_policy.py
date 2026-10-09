@@ -189,11 +189,12 @@ install_starship
             self.assertNotIn(retired, settings)
         self.assertEqual("72h", settings["minimum_release_age"])
         self.assertEqual("72h", settings["self_update"]["minimum_release_age"])
-        # npm's own age gate for mise-driven installs must equal mise's cooldown, or npm refuses mise's choice.
+        # npm's own age gate must equal mise's cooldown, or npm refuses the release mise chose.
         hours = int(settings["minimum_release_age"].removesuffix("h"))
-        script = (ROOT / "scripts/upgrade-tools.sh").read_text()
-        self.assertIn(f"export npm_config_min_release_age={hours // 24}\n", script)
         self.assertEqual(0, hours % 24)
+        npmrc = (ROOT / "home/dot_npmrc").read_text().splitlines()
+        self.assertIn(f"min-release-age={hours // 24}", npmrc)
+        self.assertNotIn("npm_config_min_release_age=", (ROOT / "scripts/upgrade-tools.sh").read_text())
         self.assertFalse((ROOT / "home/dot_mise/mise.lock").exists())
         self.assertFalse((ROOT / "home/dot_config/mise/mise.lock.tmpl").exists())
         self.assertIn(".config/mise/mise.lock", (ROOT / "home/.chezmoiremove").read_text().splitlines())

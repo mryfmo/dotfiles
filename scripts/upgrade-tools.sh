@@ -24,9 +24,6 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export MISE_CONFIG_DIR="${HOME}/.config/mise"
 # No project config from this checkout upward joins the inventory, so only the host config's tools move.
 export MISE_CEILING_PATHS="${repo_root}"
-# npm's own min-release-age (7 days in home/dot_npmrc) would refuse an npm: release that mise's
-# minimum_release_age = "72h" already chose, so mise-driven npm installs here use the same 3 days.
-export npm_config_min_release_age=3
 
 include_system=false
 DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node node@* python python@* python3 pip npm pnpm yarn claude"
@@ -299,9 +296,6 @@ function upgrade_mise_tools() {
     section "mise tools"
     local failed=0
     mise trust --yes || failed=1
-    # Snapshot node before the bare install: a "latest" node that is not installed yet moves there too.
-    local node_before node_after
-    node_before="$(run_mise_with_isolated_git_config current node 2> /dev/null)" || node_before=""
     # minimum_release_age in the config keeps freshly published releases out of both steps.
     # One bare install: it leaves installed tools alone offline, while a per-tool
     # install re-resolves "latest" over the network and fails without one.
@@ -315,16 +309,29 @@ function upgrade_mise_tools() {
     elif [ "${upgrade_status}" -ne 0 ]; then
         failed=1
     fi
-    # Neither the bare install nor the upgrades rebuild installed npm: tools; reinstall them when node moved.
-    node_after="$(run_mise_with_isolated_git_config current node 2> /dev/null)" || node_after=""
-    if [ -n "${node_after}" ] && [ "${node_after}" != "${node_before}" ]; then
-        if ! reinstall_mise_npm_tools; then
-            printf 'optional warning: npm: tools were not all reinstalled on node %s\n' "${node_after}" >&2
+    # Neither the bare install nor the upgrades rebuild installed npm: tools, and node can also have moved
+    # in an earlier run or under the installer, so a marker records the node they were last built on.
+    local marker="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/npm-tools-node"
+    local node_built="" node_now="" reinstalled=0
+    if [ -r "${marker}" ]; then
+        node_built="$(cat "${marker}")"
+    fi
+    node_now="$(run_mise_with_isolated_git_config current node 2> /dev/null)" || node_now=""
+    if [ -n "${node_now}" ] && [ "${node_now}" != "${node_built}" ]; then
+        if reinstall_mise_npm_tools; then
+            reinstalled=1
+        else
+            printf 'optional warning: npm: tools were not all reinstalled on node %s\n' "${node_now}" >&2
             ((optional_warnings += 1))
         fi
         # --force removes an install before fetching its replacement, so a failed reinstall can leave a
         # declared tool missing; this final bare install restores it, and decides whether the phase converged.
-        run_mise_with_isolated_git_config install --yes || failed=1
+        if ! run_mise_with_isolated_git_config install --yes; then
+            failed=1
+        elif [ "${reinstalled}" -eq 1 ]; then
+            # Only a complete rebuild is recorded, so a failed one is retried by the next run.
+            mkdir -p "$(dirname "${marker}")" && printf '%s\n' "${node_now}" > "${marker}"
+        fi
     fi
     return "${failed}"
 }

@@ -1281,7 +1281,6 @@ EOF
             printf 'mise %s\n' "$*" >> "$TEST_LOG"
             printf 'MISE_CONFIG_DIR=%s\n' "$MISE_CONFIG_DIR" >> "$TEST_LOG"
             printf 'MISE_CEILING_PATHS=%s\n' "$MISE_CEILING_PATHS" >> "$TEST_LOG"
-            printf 'NPM_MIN_RELEASE_AGE=%s\n' "${npm_config_min_release_age:-unset}" >> "$TEST_LOG"
             case "$1" in
                 self-update) [[ "$FAIL_PHASE" != mise_self ]] ;;
                 ls) [[ "$FAIL_PHASE" != mise_inventory ]] && printf 'node 26.0.0 fixture\npython 3.13 fixture\nnpm:ccusage 20.0.0 fixture\nfd 10.3.0 fixture\nhttp:bats 1.13.0 fixture\nhttp:gcloud 575.0.1 fixture\n' ;;
@@ -1304,7 +1303,7 @@ EOF
                 upgrade)
                     [[ "$FAIL_PHASE" != mise_upgrade ]] || exit 1
                     # Upgrading node moves the current node, which the script must notice.
-                    [[ "$*" != "upgrade --yes node" || "$FAIL_PHASE" == node_stays || "$FAIL_PHASE" == node_by_install ]] || touch "$NODE_MOVED"
+                    [[ "$*" != "upgrade --yes node" || "$FAIL_PHASE" == node_stays* || "$FAIL_PHASE" == node_by_install ]] || touch "$NODE_MOVED"
                     ;;
                 current) [ -e "$NODE_MOVED" ] && printf '27.0.0\n' || printf '26.0.0\n' ;;
             esac
@@ -1344,6 +1343,8 @@ EOF
             # Outside the repository, so the no-file-written assertion still holds.
             "NODE_MOVED": str(self.temp_dir / f"upgrade-{fail_phase}.node-moved"),
             "CCUSAGE_INSTALLED": str(self.temp_dir / f"upgrade-{fail_phase}.ccusage-installed"),
+            # The npm-tools node marker lives outside the repository, like the host state it stands for.
+            "XDG_STATE_HOME": str(self.temp_dir / f"upgrade-{fail_phase}.state"),
         }
         Path(env["CCUSAGE_INSTALLED"]).touch()
         for name in ("MISE_CONFIG_DIR", "MISE_CEILING_PATHS", "XDG_CONFIG_HOME"):
@@ -1370,10 +1371,6 @@ EOF
                 # A parent directory's mise.toml must not join the inventory: the ceiling is the checkout.
                 ceilings = {line.split("=", 1)[1] for line in log if line.startswith("MISE_CEILING_PATHS=")}
                 self.assertEqual({repo.resolve()}, {Path(ceiling).resolve() for ceiling in ceilings})
-                # npm's own age gate matches mise's 72h cooldown, so npm accepts the release mise chose.
-                self.assertEqual(
-                    {"NPM_MIN_RELEASE_AGE=3"}, {line for line in log if line.startswith("NPM_MIN_RELEASE_AGE=")}
-                )
                 after = {path.relative_to(repo) for path in repo.rglob("*")}
                 self.assertEqual(before | {Path("commands.log")}, after)
                 self.assertNotIn("chezmoi", "\n".join(log))
@@ -1480,16 +1477,23 @@ EOF
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
 
-    def test_upgrade_reinstalls_npm_tools_only_after_node_moved(self) -> None:
-        for phase, reinstalled, warning in (
-            ("none", True, False),
-            ("node_stays", False, False),
-            ("npm_reinstall", True, True),
-            # The bare install, not an upgrade, moves node: the snapshot must come before it.
-            ("node_by_install", True, False),
+    def test_upgrade_rebuilds_npm_tools_when_the_node_marker_differs(self) -> None:
+        # The marker records the node the npm: tools were built on, so a node moved by an earlier run or by the
+        # installer during chezmoi apply is rebuilt as well as one moved here.
+        for name, phase, marker, reinstalled, warning, recorded in (
+            ("marker absent", "node_stays-absent", None, True, False, "26.0.0"),
+            ("marker equal", "node_stays-equal", "26.0.0", False, False, "26.0.0"),
+            ("marker differs, node moved before this run", "node_stays-differs", "25.0.0", True, False, "26.0.0"),
+            ("node upgraded in this run", "none", "26.0.0", True, False, "27.0.0"),
+            ("node moved by the bare install", "node_by_install", "26.0.0", True, False, "27.0.0"),
+            ("failed reinstall restored but not recorded", "npm_reinstall", "26.0.0", True, True, "26.0.0"),
         ):
-            with self.subTest(phase=phase):
+            with self.subTest(name):
                 repo, env = self.upgrade_fixture(phase)
+                marker_file = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node"
+                if marker is not None:
+                    marker_file.parent.mkdir(parents=True)
+                    marker_file.write_text(f"{marker}\n")
 
                 result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
 
@@ -1504,10 +1508,14 @@ EOF
                 # After a reinstall a final bare install restores anything a failed --force removed.
                 self.assertEqual(2 if reinstalled else 1, log.count("mise install --yes"))
                 self.assertTrue(Path(env["CCUSAGE_INSTALLED"]).exists())
+                self.assertEqual(f"{recorded}\n", marker_file.read_text())
 
     def test_upgrade_fails_when_a_failed_reinstall_leaves_a_tool_that_cannot_be_restored(self) -> None:
         # --force removed npm:ccusage and the final bare install cannot bring it back: not converged.
         repo, env = self.upgrade_fixture("npm_reinstall_final_fails")
+        marker_file = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node"
+        marker_file.parent.mkdir(parents=True)
+        marker_file.write_text("26.0.0\n")
 
         result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
 
@@ -1516,6 +1524,8 @@ EOF
         self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
         self.assertFalse(Path(env["CCUSAGE_INSTALLED"]).exists())
         self.assertEqual(2, (repo / "commands.log").read_text().splitlines().count("mise install --yes"))
+        # The failed final install leaves the marker unwritten, so the next run rebuilds again.
+        self.assertEqual("26.0.0\n", marker_file.read_text())
 
     def test_upgrade_failure_after_a_successful_install_only_warns(self) -> None:
         # Converged means the declared tools are installed; an upgrade that cannot reach its archive only warns.

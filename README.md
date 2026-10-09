@@ -176,13 +176,15 @@ config uses except `http:` (`bats` and `gcloud`, which are exact anyway); a live
 probe on 2026-10-09 showed the setting acting on core `node` (26.11.1 without
 it, 26.10.0 with it). `mise self-update` waits the same 72 hours through
 `self_update.minimum_release_age = "72h"` (its own default is 24h), and Codex
-and Claude Code follow the same cooldown. npm's own `min-release-age` (7 days in
-`~/.npmrc`) is set to the same 3 days for the npm installs `make update` drives,
-so npm accepts the release mise chose. A `node` major bump can leave `npm:`
-tool installs invalid until `mise install` reruns, so when an upgrade moves
-`node`, `make update` reinstalls the `npm:` tools on it (`mise install --force`)
-and then runs `mise install` once more, so a reinstall that fails cannot leave a
-declared tool missing without failing the update.
+and Claude Code follow the same cooldown. The managed `~/.npmrc` sets npm's own
+`min-release-age=3`, the same 72 hours, so every npm install on the host agrees
+with the release mise chose. A `node` major bump can leave `npm:` tool installs
+invalid until `mise install` reruns, so `make update` records the `node` they
+were built on in `${XDG_STATE_HOME:-~/.local/state}/dotfiles/npm-tools-node`;
+when `node` differs from it (or it is missing), whatever moved `node`, it
+reinstalls the `npm:` tools (`mise install --force`) and then runs `mise install`
+once more, so a reinstall that fails cannot leave a declared tool missing
+without failing the update. The marker is written only after both succeed.
 `mise self-update --no-plugins` leaves installed mise plugins such as `shdoc`
 alone, because a plugin update is a branch move the cooldown does not cover;
 run `mise plugins update` when you want one.

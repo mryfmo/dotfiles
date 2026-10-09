@@ -1150,8 +1150,8 @@ fi
                     f"{hook.resolve()} is an edited copy of the retired main-push guard stub" in result.stderr, notice
                 )
 
-    def test_make_update_and_upgrade_include_agmsg_bootstrap(self) -> None:
-        for target in ("update", "upgrade"):
+    def test_make_update_includes_and_upgrade_excludes_agmsg_bootstrap(self) -> None:
+        for target, included in (("update", True), ("upgrade", False)):
             with self.subTest(target=target):
                 result = subprocess.run(
                     ["make", "-n", "-f", str(MAKEFILE), target],
@@ -1163,7 +1163,10 @@ fi
                 )
 
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertIn("make agmsg-bootstrap", result.stdout)
+                if included:
+                    self.assertIn("make agmsg-bootstrap", result.stdout)
+                else:
+                    self.assertNotIn("agmsg-bootstrap", result.stdout)
 
     def test_claude_settings_add_herdr_attach_session_hook(self) -> None:
         source_dir = self.temp_dir / "source"
@@ -3069,7 +3072,8 @@ exit {exit_code}
         self.assertEqual(
             [
                 f"regime-boundary: canonical clone {root} differs from origin/main under home/, install/ or scripts/: "
-                f"home/dot_f; carry a make upgrade diff as a pins task, or restore a merged one with "
+                "home/dot_f; run make upgrade only in the pins worktree (herdr-agents --add-worker .claude/worktrees/pins); "
+                "restore a merged pins diff with "
                 f"git -C {root} restore -SW --source=origin/main -- <files> and drop its autostash"
             ],
             self.canonical_lines(worktree),
@@ -3125,7 +3129,8 @@ exit {exit_code}
         self.assertEqual(
             [
                 f"regime-boundary: canonical clone {root} differs from origin/main under home/, install/ or scripts/: "
-                f"home/dot_f; carry a make upgrade diff as a pins task, or restore a merged one with "
+                "home/dot_f; run make upgrade only in the pins worktree (herdr-agents --add-worker .claude/worktrees/pins); "
+                "restore a merged pins diff with "
                 f"git -C {root} restore -SW --source=origin/main -- <files> and drop its autostash"
             ],
             self.canonical_lines(worktree),

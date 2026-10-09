@@ -1390,6 +1390,9 @@ EOF
             """,
         )
         log = repo / "commands.log"
+        # The upgrade guard refuses an installed chezmoi whose source path is not a git checkout.
+        (self.temp_dir / "other-source/home").mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init", "-q", str(self.temp_dir / "other-source")], check=True)
         env = {
             **os.environ,
             "FAIL_PHASE": fail_phase,
@@ -1411,6 +1414,9 @@ EOF
                 initialized = self.run_test_command(["git", "init", str(source_repo)], cwd=repo, env=env)
                 self.assertEqual(0, initialized.returncode, initialized.stderr)
                 env["TEST_CHEZMOI_SOURCE"] = str(source_repo / "home")
+                if canonical:
+                    # The canonical clone is refused unless overridden; the override is the only path to its apply.
+                    env["CHEZMOI_ALLOW_UPGRADE_IN_SOURCE"] = "1"
                 result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
                 self.assertEqual(
                     0 if fail_phase == "none" else 1,
@@ -1430,6 +1436,62 @@ EOF
                         f"pins updated in {repo.resolve()}; ~/.config/mise follows after merge and make update",
                         result.stdout,
                     )
+
+    def test_upgrade_refuses_the_canonical_clone_and_a_dirty_or_stale_checkout(self) -> None:
+        canonical = "{repo} is the canonical chezmoi clone, which stays pull/apply only"
+        unresolved = "chezmoi source-path could not be resolved in {repo}, so the canonical clone cannot be told apart"
+        offline = "git fetch origin main failed in {repo}, so origin/main cannot be verified fresh"
+        stale = "{repo} is dirty or behind origin/main"
+        # case: expected refusal, or None when the upgrade proceeds
+        cases = {
+            "canonical": canonical,
+            "source-fails": unresolved,
+            "source-not-git": unresolved,
+            "fetch-fails": offline,
+            "dirty": stale,
+            "moved": stale,
+            "clean": None,
+        }
+        for name, refusal in cases.items():
+            with self.subTest(case=name):
+                repo, env = self.upgrade_fixture(f"guard-{name}")
+                # A local bare origin lets the guard's fetch succeed offline; fetch-fails points at a missing one.
+                origin = self.temp_dir / f"origin-{name}.git"
+                remote = self.temp_dir / "missing.git" if name == "fetch-fails" else origin
+                git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(repo)]
+                (repo / "tracked").write_text("pins\n")
+                for command in (
+                    ["git", "init", "-q", "--bare", str(origin)],
+                    [*git, "init", "-q"],
+                    [*git, "add", "tracked"],
+                    [*git, "commit", "-q", "-m", "base"],
+                    [*git, "remote", "add", "origin", str(remote)],
+                    [*git, "push", "-q", "origin", "HEAD:main"] if name != "fetch-fails" else ["true"],
+                ):
+                    self.assertEqual(0, self.run_test_command(command, cwd=repo, env=env).returncode, command)
+                if name == "canonical":
+                    env["TEST_CHEZMOI_SOURCE"] = str(repo / "home")
+                if name == "source-fails":
+                    self.executable(repo / "failing-bin/chezmoi", "exit 1\n")
+                    env["PATH"] = f"{repo / 'failing-bin'}:{env['PATH']}"
+                if name == "source-not-git":
+                    (self.temp_dir / "not-a-checkout").mkdir(exist_ok=True)
+                    env["TEST_CHEZMOI_SOURCE"] = str(self.temp_dir / "not-a-checkout")
+                if name == "dirty":
+                    (repo / "tracked").write_text("edited\n")
+                if name == "moved":
+                    self.run_test_command([*git, "commit", "-q", "--allow-empty", "-m", "next"], cwd=repo, env=env)
+
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                if refusal:
+                    self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(f"make upgrade refused: {refusal.format(repo=repo.resolve())}", result.stderr)
+                    self.assertNotIn("==>", result.stdout)
+                else:
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    self.assertNotIn("make upgrade refused", result.stderr)
+                    self.assertIn("Upgrade summary:", result.stdout)
 
     def test_upgrade_changes_checkout_not_live_mise_symlink_target(self) -> None:
         for override in (False, True):

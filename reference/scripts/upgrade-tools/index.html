@@ -3657,7 +3657,7 @@
 
 
 <h1 id="scriptsupgrade-toolssh">scripts/upgrade-tools.sh<a class="headerlink" href="#scriptsupgrade-toolssh" title="Permanent link">&para;</a></h1>
-<p>Keeps the bootstrap path stable by moving package-manager upgrades into an intentional lifecycle command. The default mode upgrades user-level tooling and Homebrew-managed packages when those managers are available. Pass <code>--system</code> to include operating-system package upgrades such as apt. Upgrades edit this checkout's home/dot_mise; ~/.config/mise is an applied copy.</p>
+<p>Keeps the bootstrap path stable by moving package-manager upgrades into an intentional lifecycle command. The default mode upgrades user-level tooling and Homebrew-managed packages when those managers are available. Pass <code>--system</code> to include operating-system package upgrades such as apt. Upgrades edit this checkout's home/dot_mise; ~/.config/mise is an applied copy. It refuses the canonical chezmoi clone and a checkout that is dirty or not at origin/main.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/upgrade-tools.sh</code></li>
@@ -3686,6 +3686,7 @@
 <li><code>parse_args</code></li>
 <li><code>pick_windowed_pin</code></li>
 <li><code>repair_mise_npm_package</code></li>
+<li><code>require_pins_checkout</code></li>
 <li><code>run_mise_tool_command</code></li>
 <li><code>run_mise_with_isolated_git_config</code></li>
 <li><code>run_optional_phase</code></li>
@@ -3712,6 +3713,7 @@
 <span class="c1">#   and Homebrew-managed packages when those managers are available. Pass</span>
 <span class="c1">#   `--system` to include operating-system package upgrades such as apt.</span>
 <span class="c1">#   Upgrades edit this checkout's home/dot_mise; ~/.config/mise is an applied copy.</span>
+<span class="c1">#   It refuses the canonical chezmoi clone and a checkout that is dirty or not at origin/main.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -4391,6 +4393,49 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Refuse the canonical chezmoi clone, and any git checkout that is dirty or not at origin/main.</span>
+<span class="c1">#   The pins diff must be produced where it is committed, so the canonical clone</span>
+<span class="c1">#   stays pull/apply only. An installed chezmoi whose source path cannot be</span>
+<span class="c1">#   resolved, and a failed fetch of origin main, are refused too.</span>
+<span class="c1">#   CHEZMOI_ALLOW_UPGRADE_IN_SOURCE=1 skips every check.</span>
+<span class="c1"># @exitcode 2 When the checkout is refused.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>require_pins_checkout<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>source_path<span class="w"> </span>source_root<span class="w"> </span>top<span class="w"> </span>head<span class="w"> </span>upstream
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CHEZMOI_ALLOW_UPGRADE_IN_SOURCE</span><span class="k">:-</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># Without chezmoi (CI, a fresh machine) there is no canonical clone to protect.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>chezmoi<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>chezmoi<span class="w"> </span>source-path<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span>!<span class="w"> </span><span class="nv">source_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'make upgrade refused: chezmoi source-path could not be resolved in %s, so the canonical clone cannot be told apart from this checkout (CHEZMOI_ALLOW_UPGRADE_IN_SOURCE=1 skips the guard)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'make upgrade refused: %s is the canonical chezmoi clone, which stays pull/apply only; run it in a pins worktree of the working clone (herdr-agents --add-worker .claude/worktrees/pins, then make -C &lt;working clone&gt;/.claude/worktrees/pins upgrade) and land the diff through a pull request\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="c1"># Only the checkout whose top level is repo_root, never an unrelated enclosing repository.</span>
+<span class="w">    </span><span class="nv">top</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">top</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>fetch<span class="w"> </span>--quiet<span class="w"> </span>origin<span class="w"> </span>main<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'make upgrade refused: git fetch origin main failed in %s, so origin/main cannot be verified fresh; restore network or credentials and rerun (CHEZMOI_ALLOW_UPGRADE_IN_SOURCE=1 skips the guard)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">head</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>-q<span class="w"> </span>--verify<span class="w"> </span>HEAD<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">head</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="nv">upstream</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>-q<span class="w"> </span>--verify<span class="w"> </span>refs/remotes/origin/main<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">upstream</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>status<span class="w"> </span>--porcelain<span class="w"> </span>--untracked-files<span class="o">=</span>no<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">upstream</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'make upgrade refused: %s is dirty or behind origin/main; in the pins worktree run git switch -c &lt;branch&gt; --no-track origin/main (or git reset --hard origin/main on its own branch) first\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Apply updated mise pins only from the configured chezmoi checkout.</span>
 <span class="k">function</span><span class="w"> </span>apply_upgraded_mise_config<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>source_path<span class="w"> </span>source_root
@@ -4409,6 +4454,7 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>parse_args<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
+<span class="w">    </span>require_pins_checkout
 
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">"Homebrew"</span><span class="w"> </span>upgrade_homebrew
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">"mise self-update"</span><span class="w"> </span>upgrade_mise_self

@@ -13,7 +13,6 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 export MISE_INSTALL_PATH="${HOME}/.local/bin/mise"
-readonly DEFAULT_NPM_MIN_RELEASE_AGE_DAYS=7
 # Rendered from assets.mise in home/dot_agents/agent-config.yaml; change it there.
 readonly MISE_VERSION="v2026.9.17"
 
@@ -101,14 +100,14 @@ function run_mise_install() {
     unset MISE_CURRENT_VERSION
     trust_mise_config || return
 
-    # These exact, locked versions are exercised offline by required CI. Install
-    # statusline tools with mise's default floor, and agent CLIs with the same
-    # explicit cooldown bypass used by the exact-version upgrade path.
-    mise install --locked node || return
-    mise install --locked npm:ccstatusline npm:ccusage ruff npm:prettier || return
-    npm_config_min_release_age=0 mise install --locked \
+    # The config's minimum_release_age bounds every request. Install statusline
+    # tools first, and agent CLIs without npm's own min-release-age, which would
+    # otherwise refuse a version mise already chose.
+    mise install node || return
+    mise install npm:ccstatusline npm:ccusage ruff npm:prettier || return
+    npm_config_min_release_age=0 mise install \
         npm:@anthropic-ai/claude-code npm:@openai/codex || return
-    mise install --locked --before "${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" || return
+    mise install || return
 }
 
 #

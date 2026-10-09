@@ -233,7 +233,7 @@ class RuntimeHealthTest(unittest.TestCase):
                 "${MISE_NPM_PACKAGE_MANAGER:-}" \
                 "${npm_config_min_release_age:-}" \
                 "$*" >> "$TEST_LOG"
-            if [ "$*" = "install --force --locked npm:@anthropic-ai/claude-code" ]; then
+            if [ "$*" = "install --force npm:@anthropic-ai/claude-code" ]; then
                 cat > "$BROKEN_CLAUDE" <<'EOF'
 #!/bin/bash
 printf 'claude %s\n' "$*" >> "$TEST_LOG"
@@ -258,7 +258,7 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         calls = log.read_text().splitlines()
-        repair = "mise npm 0 install --force --locked npm:@anthropic-ai/claude-code"
+        repair = "mise npm 0 install --force npm:@anthropic-ai/claude-code"
         self.assertIn(repair, calls)
         self.assertFalse(any(call.endswith("npm:@openai/codex") and call.startswith("mise ") for call in calls))
         self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list"))
@@ -1019,6 +1019,10 @@ EOF
             """,
         )
         self.executable(
+            repo / "scripts/upgrade-tools.sh",
+            'printf \'upgrade-tools %s\\n\' "$*" >> "$TEST_LOG"\n',
+        )
+        self.executable(
             repo / "scripts/update-agent-assets.sh",
             "printf 'assets\\n' >> \"$TEST_LOG\"\n",
         )
@@ -1255,53 +1259,9 @@ EOF
         repo = self.temp_dir / f"upgrade-{fail_phase}"
         bin_dir = repo / "bin"
         home = repo / "home"
-        (repo / "scripts/lib").mkdir(parents=True)
+        (repo / "scripts").mkdir(parents=True)
         home.mkdir()
         shutil.copy(ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh")
-        shutil.copy(
-            ROOT / "scripts/lib/installer-pins.sh",
-            repo / "scripts/lib/installer-pins.sh",
-        )
-        (repo / "home/dot_agents").mkdir(parents=True)
-        shutil.copy(
-            ROOT / "home/dot_agents/agent-config.yaml",
-            repo / "home/dot_agents/agent-config.yaml",
-        )
-        # Hermetic downloads keep the pin-bump phases off the network in tests.
-        self.executable(
-            bin_dir / "curl",
-            """
-            printf 'curl %s\n' "$*" >> "$TEST_LOG"
-            request="$*"
-            case "$request" in
-                *crates.io/api/*) printf '{"versions": []}\n'; exit 0 ;;
-            esac
-            out=""
-            while [ "$#" -gt 0 ]; do
-                if [ "$1" = "-o" ]; then out="$2"; shift; fi
-                shift
-            done
-            [ -n "$out" ] || exit 1
-            case "$request" in
-                *tode.sh/install*|*terminal-browser.sh/install*)
-                    printf 'VERSION="v9.9.9"\nCHANNEL="stable"\n' > "$out"
-                    ;;
-                *crit-linux-amd64*) printf 'fixture amd64\n' > "$out" ;;
-                *crit-linux-arm64*) printf 'fixture arm64\n' > "$out" ;;
-                *crit-darwin-amd64*) printf 'fixture darwin amd64\n' > "$out" ;;
-                *crit-darwin-arm64*) printf 'fixture darwin arm64\n' > "$out" ;;
-                *zed-linux-x86_64.tar.gz*) printf 'fixture zed amd64\n' > "$out" ;;
-                *zed-linux-aarch64.tar.gz*) printf 'fixture zed arm64\n' > "$out" ;;
-            esac
-            """,
-        )
-        self.executable(
-            repo / "scripts/update-agent-assets.sh",
-            """
-            printf 'assets\n' >> "$TEST_LOG"
-            [[ "$FAIL_PHASE" != assets ]]
-            """,
-        )
         self.executable(bin_dir / "uname", f"printf '{os_name}\\n'\n")
         self.executable(
             bin_dir / "brew",
@@ -1314,42 +1274,13 @@ EOF
             bin_dir / "mise",
             """
             printf 'mise %s\n' "$*" >> "$TEST_LOG"
+            printf 'MISE_CONFIG_DIR=%s\n' "$MISE_CONFIG_DIR" >> "$TEST_LOG"
             case "$1" in
                 self-update) [[ "$FAIL_PHASE" != mise_self ]] ;;
                 ls) [[ "$FAIL_PHASE" != mise_inventory ]] && printf 'python 3.13 fixture\nfd 10.3.0 fixture\nhttp:bats 1.13.0 fixture\nhttp:gcloud 575.0.1 fixture\n' ;;
                 install) [[ "$FAIL_PHASE" != mise_install ]] ;;
-                use)
-                    case "$*" in
-                        *npm:@openai/codex*) [[ "$FAIL_PHASE" != codex_cli ]] ;;
-                        *npm:@anthropic-ai/claude-code*) [[ "$FAIL_PHASE" != claude_cli ]] ;;
-                    esac
-                    ;;
                 upgrade) [[ "$FAIL_PHASE" != mise_upgrade ]] ;;
-                exec)
-                    shift
-                    [[ "$1" == node ]] || exit 90
-                    shift
-                    [[ "$1" == -- ]] || exit 91
-                    shift
-                    [[ "$1" == npm ]] || exit 92
-                    shift
-                    printf 'npm %s\n' "$*" >> "$TEST_LOG"
-                    [[ "$1" == view ]] && printf '1.2.3\n'
-                    true
-                    ;;
-                where)
-                    [[ "$FAIL_PHASE" != mise_where ]] || exit 9
-                    mkdir -p "$HOME/mise-prefix"; printf '%s\n' "$HOME/mise-prefix"
-                    ;;
             esac
-            """,
-        )
-        self.executable(
-            bin_dir / "npm",
-            """
-            printf 'npm %s\n' "$*" >> "$TEST_LOG"
-            [[ "$1" == view ]] && printf '1.2.3\n'
-            [[ "$1" != list ]]
             """,
         )
         self.executable(
@@ -1364,10 +1295,6 @@ EOF
             """
             printf 'gh %s\n' "$*" >> "$TEST_LOG"
             [[ "$FAIL_PHASE:$1" != gh:extension ]] || exit 9
-            case "$*" in
-                *tomasz-tomczyk/crit/releases/latest*) printf 'v9.9.9\n' ;;
-                *zed-industries/zed/releases/latest*) printf 'v9.9.9\n' ;;
-            esac
             """,
         )
         self.executable(
@@ -1378,160 +1305,48 @@ EOF
             """,
         )
         self.executable(bin_dir / "apt-get", "exit 0\n")
-        self.executable(
-            bin_dir / "chezmoi",
-            """
-            printf 'chezmoi %s\\n' "$*" >> "$TEST_LOG"
-            if [ "$1" = source-path ]; then
-                printf '%s\\n' "$TEST_CHEZMOI_SOURCE"
-            else
-                [ "${FAIL_PHASE}" != chezmoi_apply ]
-            fi
-            """,
-        )
         log = repo / "commands.log"
-        # The upgrade guard refuses an installed chezmoi whose source path is not a git checkout.
-        (self.temp_dir / "other-source/home").mkdir(parents=True, exist_ok=True)
-        subprocess.run(["git", "init", "-q", str(self.temp_dir / "other-source")], check=True)
         env = {
             **os.environ,
+            # GitHub Actions sets CI=true, which makes the script skip every phase.
+            "CI": "false",
             "FAIL_PHASE": fail_phase,
             "HOME": str(home),
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "TEST_LOG": str(log),
-            "TEST_CHEZMOI_SOURCE": str(self.temp_dir / "other-source/home"),
         }
+        for name in ("MISE_CONFIG_DIR", "MISE_CEILING_PATHS", "XDG_CONFIG_HOME"):
+            env.pop(name, None)
         return repo, env
 
-    def test_upgrade_applies_mise_only_from_successful_canonical_checkout(self) -> None:
-        cases = ((True, "none"), (False, "none"), (True, "uv"), (True, "chezmoi_apply"))
-        for canonical, fail_phase in cases:
-            with self.subTest(canonical=canonical, fail_phase=fail_phase):
-                repo, env = self.upgrade_fixture(f"apply-{canonical}-{fail_phase}")
-                env["FAIL_PHASE"] = fail_phase
-                source_repo = repo if canonical else repo / "other-source"
-                (source_repo / "home").mkdir(parents=True, exist_ok=True)
-                initialized = self.run_test_command(["git", "init", str(source_repo)], cwd=repo, env=env)
-                self.assertEqual(0, initialized.returncode, initialized.stderr)
-                env["TEST_CHEZMOI_SOURCE"] = str(source_repo / "home")
-                if canonical:
-                    # The canonical clone is refused unless overridden; the override is the only path to its apply.
-                    env["CHEZMOI_ALLOW_UPGRADE_IN_SOURCE"] = "1"
-                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
-                self.assertEqual(
-                    0 if fail_phase == "none" else 1,
-                    result.returncode,
-                    result.stdout + result.stderr,
-                )
-                calls = Path(env["TEST_LOG"]).read_text()
-                if canonical and fail_phase != "uv":
-                    self.assertIn(
-                        f"chezmoi apply {env['HOME']}/.config/mise/config.toml {env['HOME']}/.config/mise/mise.lock",
-                        calls,
-                    )
-                else:
-                    self.assertNotIn("chezmoi apply", calls)
-                if not canonical:
-                    self.assertIn(
-                        f"pins updated in {repo.resolve()}; ~/.config/mise follows after merge and make update",
-                        result.stdout,
-                    )
-
-    def test_upgrade_refuses_the_canonical_clone_and_a_dirty_or_stale_checkout(self) -> None:
-        canonical = "{repo} is the canonical chezmoi clone, which stays pull/apply only"
-        unresolved = "chezmoi source-path could not be resolved in {repo}, so the canonical clone cannot be told apart"
-        offline = "git fetch origin main failed in {repo}, so origin/main cannot be verified fresh"
-        stale = "{repo} is dirty or behind origin/main"
-        # case: expected refusal, or None when the upgrade proceeds
-        cases = {
-            "canonical": canonical,
-            "source-fails": unresolved,
-            "source-not-git": unresolved,
-            "fetch-fails": offline,
-            "dirty": stale,
-            "moved": stale,
-            "clean": None,
-        }
-        for name, refusal in cases.items():
-            with self.subTest(case=name):
-                repo, env = self.upgrade_fixture(f"guard-{name}")
-                # A local bare origin lets the guard's fetch succeed offline; fetch-fails points at a missing one.
-                origin = self.temp_dir / f"origin-{name}.git"
-                remote = self.temp_dir / "missing.git" if name == "fetch-fails" else origin
-                git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(repo)]
-                (repo / "tracked").write_text("pins\n")
-                for command in (
-                    ["git", "init", "-q", "--bare", str(origin)],
-                    [*git, "init", "-q"],
-                    [*git, "add", "tracked"],
-                    [*git, "commit", "-q", "-m", "base"],
-                    [*git, "remote", "add", "origin", str(remote)],
-                    [*git, "push", "-q", "origin", "HEAD:main"] if name != "fetch-fails" else ["true"],
-                ):
-                    self.assertEqual(0, self.run_test_command(command, cwd=repo, env=env).returncode, command)
-                if name == "canonical":
-                    env["TEST_CHEZMOI_SOURCE"] = str(repo / "home")
-                if name == "source-fails":
-                    self.executable(repo / "failing-bin/chezmoi", "exit 1\n")
-                    env["PATH"] = f"{repo / 'failing-bin'}:{env['PATH']}"
-                if name == "source-not-git":
-                    (self.temp_dir / "not-a-checkout").mkdir(exist_ok=True)
-                    env["TEST_CHEZMOI_SOURCE"] = str(self.temp_dir / "not-a-checkout")
-                if name == "dirty":
-                    (repo / "tracked").write_text("edited\n")
-                if name == "moved":
-                    self.run_test_command([*git, "commit", "-q", "--allow-empty", "-m", "next"], cwd=repo, env=env)
+    def test_upgrade_runs_mise_against_the_applied_host_config_and_edits_no_file(self) -> None:
+        for xdg in (None, "xdg"):
+            with self.subTest(xdg=xdg):
+                repo, env = self.upgrade_fixture(f"host-config-{xdg}")
+                expected = f"{env['HOME']}/.config/mise"
+                if xdg:
+                    env["XDG_CONFIG_HOME"] = str(repo / xdg)
+                    expected = f"{repo / xdg}/mise"
+                before = {path.relative_to(repo) for path in repo.rglob("*")}
 
                 result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
 
-                if refusal:
-                    self.assertEqual(2, result.returncode, result.stdout + result.stderr)
-                    self.assertIn(f"make upgrade refused: {refusal.format(repo=repo.resolve())}", result.stderr)
-                    self.assertNotIn("==>", result.stdout)
-                else:
-                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-                    self.assertNotIn("make upgrade refused", result.stderr)
-                    self.assertIn("Upgrade summary:", result.stdout)
-
-    def test_upgrade_changes_checkout_not_live_mise_symlink_target(self) -> None:
-        for override in (False, True):
-            with self.subTest(override=override):
-                repo, env = self.upgrade_fixture(f"symlink-{override}")
-                main_config = self.temp_dir / f"main-{override}"
-                main_config.mkdir()
-                checkout_config = repo / "home/dot_mise"
-                checkout_config.mkdir()
-                selected_config = repo / "override" if override else checkout_config
-                selected_config.mkdir(exist_ok=True)
-                live_config = Path(env["HOME"]) / ".config/mise"
-                live_config.mkdir(parents=True)
-                for name in ("config.toml", "mise.lock"):
-                    (main_config / name).write_text("main-original\n")
-                    (selected_config / name).write_text("checkout-original\n")
-                    (live_config / name).symlink_to(main_config / name)
-                env.pop("MISE_CONFIG_DIR", None)
-                env.pop("MISE_CEILING_PATHS", None)
-                if override:
-                    env["MISE_CONFIG_DIR"] = str(selected_config)
-                original_mise = repo / "bin/mise-original"
-                (repo / "bin/mise").rename(original_mise)
-                self.executable(
-                    repo / "bin/mise",
-                    f"""
-                    if [ "$1" = upgrade ] || [ "$1" = use ]; then
-                        target="${{MISE_CONFIG_DIR:-$HOME/.config/mise}}"
-                        [ "${{MISE_CEILING_PATHS:-}}" = "{repo.resolve()}" ] || target="$HOME/.config/mise"
-                        printf 'generated config\\n' > "$target/config.toml"
-                        printf 'generated lock\\n' > "$target/mise.lock"
-                    fi
-                    exec "{original_mise}" "$@"
-                    """,
-                )
-                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-                for name in ("config.toml", "mise.lock"):
-                    self.assertEqual((main_config / name).read_text(), "main-original\n")
-                    self.assertNotEqual((selected_config / name).read_text(), "checkout-original\n")
+                log = (repo / "commands.log").read_text().splitlines()
+                self.assertEqual({f"MISE_CONFIG_DIR={expected}"}, {line for line in log if line.startswith("MISE_")})
+                after = {path.relative_to(repo) for path in repo.rglob("*")}
+                self.assertEqual(before | {Path("commands.log")}, after)
+                self.assertNotIn("chezmoi", "\n".join(log))
+
+    def test_upgrade_skips_every_phase_when_ci_is_true(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+        env["CI"] = "true"
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh", "--system"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("CI=true: skipping installed-tool updates.\n", result.stdout)
+        self.assertFalse((repo / "commands.log").exists())
 
     def test_upgrade_required_failures_are_nonzero_and_independent(self) -> None:
         cases = (
@@ -1540,10 +1355,6 @@ EOF
             ("mise_inventory", "Linux", []),
             ("mise_install", "Linux", []),
             ("mise_upgrade", "Linux", []),
-            ("codex_cli", "Linux", []),
-            ("claude_cli", "Linux", []),
-            ("mise_where", "Linux", []),
-            ("assets", "Linux", []),
             ("uv", "Linux", []),
             ("apt", "Linux", ["--system"]),
         )
@@ -1576,27 +1387,15 @@ EOF
         self.assertIn("Skipping mise self-update: managed by package manager.", result.stdout)
         self.assertIn("Skipping mise upgrade for pinned HTTP tool: http:bats.", result.stdout)
         self.assertIn("Skipping mise upgrade for pinned HTTP tool: http:gcloud.", result.stdout)
-        log = (repo / "commands.log").read_text()
+        log = (repo / "commands.log").read_text().splitlines()
         self.assertNotIn("mise self-update --yes", log)
-        self.assertIn("mise upgrade --bump --yes --before 7d python", log)
-        self.assertNotIn("mise upgrade --bump --yes --before 7d fd", log)
-        self.assertNotIn("mise upgrade --bump --yes --before 7d http:", log)
-        self.assertIn(
-            "mise use --global --pin --yes --minimum-release-age 0s npm:@openai/codex@1.2.3",
-            log,
-        )
-        codex_install = next(
-            line for line in log.splitlines() if line.startswith("npm install -g") and "@openai/codex@1.2.3" in line
-        )
-        claude_install = next(
-            line
-            for line in log.splitlines()
-            if line.startswith("npm install -g") and "@anthropic-ai/claude-code@1.2.3" in line
-        )
-        self.assertIn("--ignore-scripts", codex_install)
-        self.assertNotIn("--allow-scripts", codex_install)
-        self.assertIn("--ignore-scripts=false", claude_install)
-        self.assertIn("--allow-scripts=@anthropic-ai/claude-code", claude_install)
+        self.assertIn("mise install --yes python", log)
+        self.assertIn("mise upgrade --yes python", log)
+        self.assertNotIn("mise upgrade --yes fd", log)
+        self.assertFalse([line for line in log if line.startswith("mise upgrade --yes http:")])
+        # The config's minimum_release_age is the cooldown; nothing bumps or rewrites a request.
+        for flag in ("--bump", "--before", "--pin", " use "):
+            self.assertFalse([line for line in log if flag in line], flag)
 
         repo, env = self.upgrade_fixture("mise_upgrade")
         marker = repo / "lib/mise/mise-self-update-instructions.toml"
@@ -1606,44 +1405,14 @@ EOF
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
 
-    def test_upgrade_self_updates_mise_to_the_manifest_pin(self) -> None:
-        manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
-        pin = re.search(r"^  mise:\n(?:    .*\n)*?    pin: v(\S+)$", manifest, re.MULTILINE)
-        assert pin is not None
+    def test_upgrade_self_updates_mise_to_its_latest_release(self) -> None:
         repo, env = self.upgrade_fixture("none")
 
         result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         log = (repo / "commands.log").read_text().splitlines()
-        self.assertIn(f"mise self-update --yes {pin.group(1)}", log)
-
-    def test_upgrade_uses_current_mise_node_after_runtime_replacement(self) -> None:
-        """Reject ambient npm after mise replaces the active Node runtime."""
-        repo, env = self.upgrade_fixture("none")
-        fallback_bin = repo / "fallback-bin"
-        self.executable(
-            fallback_bin / "npm",
-            """
-            printf 'fallback npm %s\n' "$*" >> "$TEST_LOG"
-            exit 86
-            """,
-        )
-        removed_node_bin = repo / "removed-node-26.6.0" / "bin"
-        env["PATH"] = f"{removed_node_bin}:{fallback_bin}:{env['PATH']}"
-
-        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
-
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        log = (repo / "commands.log").read_text()
-        self.assertNotIn("fallback npm", log)
-        self.assertIn("mise exec node -- npm view @openai/codex version", log)
-        self.assertIn("mise exec node -- npm view @anthropic-ai/claude-code version", log)
-        self.assertRegex(log, r"mise exec node -- npm install -g .* @openai/codex@1\.2\.3")
-        self.assertRegex(
-            log,
-            r"mise exec node -- npm install -g .* @anthropic-ai/claude-code@1\.2\.3",
-        )
+        self.assertIn("mise self-update --yes", log)
 
     def test_upgrade_github_extensions_are_warning_only(self) -> None:
         repo, env = self.upgrade_fixture("gh")
@@ -1655,54 +1424,6 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("optional warnings: 1", result.stdout)
-
-    def test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts(self) -> None:
-        repo, env = self.upgrade_fixture("none")
-
-        result = self.run_test_command(
-            ["bash", "scripts/upgrade-tools.sh"],
-            cwd=repo,
-            env=env,
-        )
-
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn(
-            "Pinned tode v9.9.9, terminal-browser v9.9.9, crit v9.9.9, and zed v9.9.9",
-            result.stdout,
-        )
-        # The bump writes assets: through the generator; it never writes the
-        # rendered installer-pins.sh itself.
-        self.assertEqual(
-            (ROOT / "scripts/lib/installer-pins.sh").read_text(),
-            (repo / "scripts/lib/installer-pins.sh").read_text(),
-        )
-        log = (repo / "commands.log").read_text()
-        generator = next(
-            line
-            for line in log.splitlines()
-            if line.startswith("uv run --with pyyaml scripts/generate-agent-configs.py ")
-        )
-        for name in ("tode", "terminal-browser", "crit", "zed"):
-            self.assertIn(f"--set-asset {name}.pin=v9.9.9", generator)
-        for field in (
-            "tode.sha256",
-            "terminal-browser.sha256",
-            "crit.sha256.linux-amd64",
-            "crit.sha256.linux-arm64",
-            "crit.sha256.darwin-amd64",
-            "crit.sha256.darwin-arm64",
-            "zed.sha256.linux-amd64",
-            "zed.sha256.linux-arm64",
-        ):
-            self.assertRegex(generator, rf"--set-asset {re.escape(field)}=[0-9a-f]{{64}}(?: |$)")
-        self.assertIn("curl -fsSL https://tode.sh/install", log)
-        self.assertIn("curl -fsSL https://terminal-browser.sh/install", log)
-        self.assertIn("crit-linux-amd64", log)
-        self.assertIn("crit-linux-arm64", log)
-        self.assertIn("crit-darwin-amd64", log)
-        self.assertIn("crit-darwin-arm64", log)
-        self.assertIn("zed-linux-x86_64.tar.gz", log)
-        self.assertIn("zed-linux-aarch64.tar.gz", log)
 
 
 if __name__ == "__main__":

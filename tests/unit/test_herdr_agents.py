@@ -1150,23 +1150,28 @@ fi
                     f"{hook.resolve()} is an edited copy of the retired main-push guard stub" in result.stderr, notice
                 )
 
-    def test_make_update_includes_and_upgrade_excludes_agmsg_bootstrap(self) -> None:
-        for target, included in (("update", True), ("upgrade", False)):
-            with self.subTest(target=target):
-                result = subprocess.run(
-                    ["make", "-n", "-f", str(MAKEFILE), target],
-                    cwd=ROOT,
-                    check=False,
-                    text=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
+    def test_make_update_includes_agmsg_bootstrap_and_upgrade_is_gone(self) -> None:
+        result = subprocess.run(
+            ["make", "-n", "-f", str(MAKEFILE), "update"],
+            cwd=ROOT,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("make agmsg-bootstrap", result.stdout)
 
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                if included:
-                    self.assertIn("make agmsg-bootstrap", result.stdout)
-                else:
-                    self.assertNotIn("agmsg-bootstrap", result.stdout)
+        upgrade = subprocess.run(
+            ["make", "-n", "-f", str(MAKEFILE), "upgrade"],
+            cwd=ROOT,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertNotEqual(upgrade.returncode, 0, upgrade.stdout)
+        self.assertIn("No rule to make target", upgrade.stderr)
 
     def test_claude_settings_add_herdr_attach_session_hook(self) -> None:
         source_dir = self.temp_dir / "source"
@@ -1553,7 +1558,7 @@ printf 'status=ok team=dotfiles\\n'
             directive,
             f"agmsg-orchestration: this session is the orchestrator seat claude-remediation-dot for {self.workdir.resolve()} "
             "(default worker worktree .claude/worktrees/worker-c). Before any other action, invoke the "
-            "agmsg-orchestration skill. Delegate every repository-mutating change, make upgrade pin diffs included, to "
+            "agmsg-orchestration skill. Delegate every repository-mutating change to "
             "the seated worker as an AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --add-worker "
             "[<worktree>], default .claude/worktrees/worker-c) and remove it with herdr-agents --remove-worker "
             "<worktree> when its task is done: no worker is never an implicit opt-out. "
@@ -3072,8 +3077,8 @@ exit {exit_code}
         self.assertEqual(
             [
                 f"regime-boundary: canonical clone {root} differs from origin/main under home/, install/ or scripts/: "
-                "home/dot_f; run make upgrade only in the pins worktree (herdr-agents --add-worker .claude/worktrees/pins); "
-                "restore a merged pins diff with "
+                "home/dot_f; nothing but pull and apply runs in the canonical clone; "
+                "restore a stray diff with "
                 f"git -C {root} restore -SW --source=origin/main -- <files> and drop its autostash"
             ],
             self.canonical_lines(worktree),
@@ -3129,8 +3134,8 @@ exit {exit_code}
         self.assertEqual(
             [
                 f"regime-boundary: canonical clone {root} differs from origin/main under home/, install/ or scripts/: "
-                "home/dot_f; run make upgrade only in the pins worktree (herdr-agents --add-worker .claude/worktrees/pins); "
-                "restore a merged pins diff with "
+                "home/dot_f; nothing but pull and apply runs in the canonical clone; "
+                "restore a stray diff with "
                 f"git -C {root} restore -SW --source=origin/main -- <files> and drop its autostash"
             ],
             self.canonical_lines(worktree),

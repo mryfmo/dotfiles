@@ -11,3 +11,4 @@
 .local/bin/common/agent-fanout
 .local/bin/server/history.sh
 .local/bin/server/cache.sh
+.config/mise/mise.lock

@@ -49,7 +49,7 @@ case ":${PATH}:" in *":${HOME}/.local/bin:"*) ;; *) exit 1 ;; esac
 mkdir -p "${HOME}/.local/bin"
 cat > "${HOME}/.local/bin/mise" <<'EOF'
 #!/bin/sh
-[ "$1" = exec ] && [ "$2" = --locked ] && [ "$3" = -- ] && [ "$4" = cargo ] || exit 98
+[ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = cargo ] || exit 98
     mkdir -p "${CARGO_INSTALL_ROOT}/bin"
     printf '#!/bin/sh\n' > "${CARGO_INSTALL_ROOT}/bin/sheldon"
     chmod +x "${CARGO_INSTALL_ROOT}/bin/sheldon"
@@ -181,33 +181,59 @@ install_starship
             self.assertIn(stage, text, relative)
             self.assertIn("mv -f", text, relative)
 
-    def test_mise_versions_are_exact_and_locking_is_enforced(self):
-        config = (ROOT / "home/dot_mise/config.toml").read_text()
-        self.assertNotRegex(config, r'=\s*"(?:latest|lts)"|version\s*=\s*"latest"')
-        self.assertIn("locked = true", config)
-        self.assertIn("lockfile = true", config)
-        self.assertTrue((ROOT / "home/dot_mise/mise.lock").is_file())
-        for name in ("config.toml", "mise.lock"):
-            self.assertFalse((ROOT / f"home/dot_config/mise/symlink_{name}.tmpl").exists())
-            template = ROOT / f"home/dot_config/mise/{name}.tmpl"
-            self.assertTrue(template.is_file())
-            with tempfile.TemporaryDirectory() as temporary:
-                config = Path(temporary) / "chezmoi.toml"
-                config.write_text("")
-                result = subprocess.run(
-                    [
-                        "chezmoi",
-                        "--config",
-                        str(config),
-                        "--source",
-                        str(ROOT / "home"),
-                        "execute-template",
-                        template.read_text(),
-                    ],
-                    check=True,
-                    capture_output=True,
-                )
-            self.assertEqual(result.stdout, (ROOT / f"home/dot_mise/{name}").read_bytes())
+    def test_mise_tools_track_latest_behind_the_cooldown(self):
+        text = (ROOT / "home/dot_mise/config.toml").read_text()
+        config = tomllib.loads(text)
+        settings = config["settings"]
+        for retired in ("lockfile", "locked", "lockfile_platforms"):
+            self.assertNotIn(retired, settings)
+        self.assertEqual("7d", settings["minimum_release_age"])
+        self.assertFalse((ROOT / "home/dot_mise/mise.lock").exists())
+        self.assertFalse((ROOT / "home/dot_config/mise/mise.lock.tmpl").exists())
+        self.assertIn(".config/mise/mise.lock", (ROOT / "home/.chezmoiremove").read_text().splitlines())
+
+        lines = text.splitlines()
+        held = {"fd": "fd = ", "npm:pnpm": '"npm:pnpm" = ', "http:bats": '[tools."http:bats"]'}
+        held["http:gcloud"] = '[tools."http:gcloud"]'
+        for name, request in config["tools"].items():
+            version = request if isinstance(request, str) else request["version"]
+            if name not in held:
+                self.assertEqual("latest", version, name)
+                continue
+            self.assertRegex(version, r"^\d+(\.\d+)+$", name)
+            line = next(index for index, line in enumerate(lines) if line.startswith(held[name]))
+            self.assertTrue(lines[line - 1].startswith("# "), f"{name} needs a one-line reason above it")
+        self.assertEqual(set(held), {name for name in config["tools"] if name in held})
+
+        self.assertFalse((ROOT / "home/dot_config/mise/symlink_config.toml.tmpl").exists())
+        template = ROOT / "home/dot_config/mise/config.toml.tmpl"
+        with tempfile.TemporaryDirectory() as temporary:
+            chezmoi_config = Path(temporary) / "chezmoi.toml"
+            chezmoi_config.write_text("")
+            result = subprocess.run(
+                [
+                    "chezmoi",
+                    "--config",
+                    str(chezmoi_config),
+                    "--source",
+                    str(ROOT / "home"),
+                    "execute-template",
+                    template.read_text(),
+                ],
+                check=True,
+                capture_output=True,
+            )
+        self.assertEqual(result.stdout, text.encode())
+
+    def test_lifecycle_runs_the_upgrade_through_make_update_without_locked_installs(self):
+        for relative in ("install/common/mise.sh", "Makefile", "scripts/update-agent-assets.sh"):
+            self.assertNotIn("--locked", (ROOT / relative).read_text(), relative)
+        makefile = (ROOT / "Makefile").read_text()
+        self.assertNotRegex(makefile, r"(?m)^upgrade:")
+        update = makefile.split("\nupdate:\n", 1)[1].split("\n.PHONY:", 1)[0]
+        upgrade = update.index("\t./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)\n")
+        self.assertLess(update.index("\tchezmoi apply --verbose\n"), upgrade)
+        self.assertLess(upgrade, update.index("\t./scripts/update-agent-assets.sh\n"))
 
     def test_mise_apply_replaces_live_symlinks_with_independent_copies(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -219,10 +245,10 @@ install_starship
             pins = source / "dot_mise"
             for directory in (managed, applied, pins):
                 directory.mkdir(parents=True)
-            for name in ("config.toml", "mise.lock"):
-                (pins / name).write_bytes((ROOT / f"home/dot_mise/{name}").read_bytes())
-                (managed / f"{name}.tmpl").write_text((ROOT / f"home/dot_config/mise/{name}.tmpl").read_text())
-                (applied / name).symlink_to(pins / name)
+            name = "config.toml"
+            (pins / name).write_bytes((ROOT / f"home/dot_mise/{name}").read_bytes())
+            (managed / f"{name}.tmpl").write_text((ROOT / f"home/dot_config/mise/{name}.tmpl").read_text())
+            (applied / name).symlink_to(pins / name)
             config = fixture / "chezmoi.toml"
             config.write_text("")
             subprocess.run(
@@ -242,17 +268,14 @@ install_starship
                 check=True,
                 capture_output=True,
             )
-            for name in ("config.toml", "mise.lock"):
-                self.assertFalse((applied / name).is_symlink())
-                self.assertEqual((applied / name).read_bytes(), (pins / name).read_bytes())
-                (applied / name).write_text("runtime-only change\n")
-                self.assertEqual((pins / name).read_bytes(), (ROOT / f"home/dot_mise/{name}").read_bytes())
+            self.assertFalse((applied / name).is_symlink())
+            self.assertEqual((applied / name).read_bytes(), (pins / name).read_bytes())
+            (applied / name).write_text("runtime-only change\n")
+            self.assertEqual((pins / name).read_bytes(), (ROOT / f"home/dot_mise/{name}").read_bytes())
 
     def test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts(self):
         with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:
             config = tomllib.load(config_file)
-        with (ROOT / "home/dot_mise/mise.lock").open("rb") as lock_file:
-            lock = tomllib.load(lock_file)
 
         self.assertEqual("npm", config["settings"]["npm"]["package_manager"])
         claude = config["tools"]["npm:@anthropic-ai/claude-code"]
@@ -263,40 +286,18 @@ install_starship
         codex = config["tools"]["npm:@openai/codex"]
         if isinstance(codex, dict):
             self.assertNotIn("allow_builds", codex)
-        locked_claude = lock["tools"]["npm:@anthropic-ai/claude-code"]
-        self.assertEqual(1, len(locked_claude))
-        self.assertEqual(
-            claude["allow_builds"],
-            json.loads(locked_claude[0]["options"]["allow_builds"]),
-        )
 
-    def test_mise_lock_matches_config_and_supported_platforms(self):
+    def test_mise_config_backends_and_http_tools(self):
         with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:
             config = tomllib.load(config_file)
-        with (ROOT / "home/dot_mise/mise.lock").open("rb") as lock_file:
-            lock = tomllib.load(lock_file)
-        versions = {name: entries[0]["version"] for name, entries in lock["tools"].items()}
-        for name, request in config["tools"].items():
-            version = request if isinstance(request, str) else request["version"]
-            self.assertEqual(version, versions.get(name), name)
-        self.assertEqual("0.23.5", config["tools"]["cargo:eza"])
-        self.assertEqual("0.23.5", versions["cargo:eza"])
-
-        expected = {
-            "platforms.linux-arm64",
-            "platforms.linux-x64",
-            "platforms.macos-arm64",
-            "platforms.macos-x64",
-        }
-        for name in ("fd", "aqua:mikefarah/yq"):
-            platforms = {key for key in lock["tools"][name][0] if key.startswith("platforms.")}
-            self.assertEqual(expected, platforms, name)
-        self.assertEqual("cargo:eza", lock["tools"]["cargo:eza"][0]["backend"])
+        self.assertEqual("latest", config["tools"]["cargo:eza"])
         self.assertFalse(config["settings"]["cargo"]["binstall"])
 
         bats = config["tools"]["http:bats"]
         self.assertEqual("bin", bats["bin_path"])
         self.assertEqual(1, bats["strip_components"])
+        self.assertRegex(bats["checksum"], r"^sha256:[0-9a-f]{64}$")
+        self.assertIn(f"/v{bats['version']}.tar.gz", bats["url"])
         gcloud = config["tools"]["http:gcloud"]
         self.assertEqual("google-cloud-sdk/bin", gcloud["bin_path"])
         expected_gcloud = {
@@ -318,14 +319,7 @@ install_starship
             },
         }
         self.assertEqual(expected_gcloud, gcloud["platforms"])
-        locked_gcloud = {
-            key.removeprefix("platforms."): value
-            for key, value in lock["tools"]["http:gcloud"][0].items()
-            if key.startswith("platforms.")
-        }
-        self.assertEqual(expected_gcloud, locked_gcloud)
         self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/config.toml").read_text())
-        self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/mise.lock").read_text())
         bootstrap = (ROOT / "install/common/mise.sh").read_text()
         pinned_mise = re.search(r'readonly MISE_VERSION="v(\d+)\.(\d+)\.(\d+)"', bootstrap)
         self.assertIsNotNone(pinned_mise)
@@ -333,26 +327,6 @@ install_starship
         # Linux arm64 aqua bin-path fix (#160), and the generator's --check keeps
         # MISE_VERSION byte-identical to the agent-config.yaml pin.
         self.assertGreaterEqual(tuple(map(int, pinned_mise.groups())), (2026, 9, 12))
-        lock_text = (ROOT / "home/dot_mise/mise.lock").read_text()
-        for name in ("http:bats", "http:gcloud"):
-            entry = lock["tools"][name][0]
-            self.assertEqual(name, entry["backend"])
-            platforms = {key.removeprefix("platforms.") for key in entry if key.startswith("platforms.")}
-            self.assertEqual(set(config["settings"]["lockfile_platforms"]), platforms)
-            for platform in config["settings"]["lockfile_platforms"]:
-                self.assertIn(f'[tools."{name}"."platforms.{platform}"]', lock_text)
-        self.assertEqual({"strip_components": "1"}, lock["tools"]["http:bats"][0]["options"])
-
-    def test_mise_lock_url_entries_have_checksums(self):
-        with (ROOT / "home/dot_mise/mise.lock").open("rb") as lock_file:
-            lock = tomllib.load(lock_file)
-        missing = []
-        for name, entries in lock["tools"].items():
-            for entry in entries:
-                for key, platform in entry.items():
-                    if key.startswith("platforms.") and "url" in platform and "checksum" not in platform:
-                        missing.append(f"{name}:{key}")
-        self.assertEqual([], missing)
 
     def test_sheldon_uses_locked_crates_io_source(self):
         script = (ROOT / "install/common/sheldon.sh").read_text()
@@ -472,7 +446,7 @@ install_starship
         self.assertEqual(1, len(manifest_rules))
         self.assertIs(True, manifest_rules[0]["dependencyDashboardApproval"])
         self.assertNotIn("automerge", json.dumps(config))
-        # mise PRs cannot regenerate mise.lock, and fd stays held like upgrade-tools.sh.
+        # mise PRs wait for dashboard approval, and fd stays held like upgrade-tools.sh.
         mise_rules = [rule for rule in config["packageRules"] if rule.get("matchManagers") == ["mise"]]
         self.assertTrue(
             any(

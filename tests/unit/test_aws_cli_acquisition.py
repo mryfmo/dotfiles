@@ -374,10 +374,7 @@ install_aws_cli
 
         with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:
             config = tomllib.load(config_file)
-        with (ROOT / "home/dot_mise/mise.lock").open("rb") as lock_file:
-            lock = tomllib.load(lock_file)
         self.assertNotIn("aws-cli", config["tools"])
-        self.assertNotIn("aws-cli", lock["tools"])
 
         ownership = (ROOT / "docs/history/nix-first-architecture.md").read_text()
         migration = (ROOT / "docs/history/nix-migration.md").read_text()

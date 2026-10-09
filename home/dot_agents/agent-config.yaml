@@ -340,12 +340,6 @@ mcp_servers: {}
 # zed through generate-agent-configs.py --set-asset). `pin: unknown` marks a
 # component with no recorded upstream version.
 assets:
-  mise-tools:
-    source: mise
-    upstream: https://mise.jdx.dev
-    pin: home/dot_mise/mise.lock
-    verify: mise-lock
-    files: [home/dot_mise/config.toml, home/dot_mise/mise.lock]
   mise:
     source: github-release
     upstream: jdx/mise

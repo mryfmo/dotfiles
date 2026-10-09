@@ -68,7 +68,7 @@ readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT="6df3065f1d8ddc2ce3615314d1d
 readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256="cb84ca53ced03f41662c5c86edf11fa598a0403c347f1e815f987ccaae5bc464"
 readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"
 # Versions and installer checksums for both URLs are pinned in
-# scripts/lib/installer-pins.sh and bumped by scripts/upgrade-tools.sh.
+# scripts/lib/installer-pins.sh, rendered from assets: in agent-config.yaml.
 # Rendered from assets.agmsg in home/dot_agents/agent-config.yaml; change the
 # commit, sha256, and version there together after reviewing the upstream diff.
 # Assignments stay non-readonly, like scripts/lib/installer-pins.sh, so tests
@@ -127,10 +127,10 @@ function ensure_mise_npm_agent_cli() {
 
     printf 'Repairing %s through the mise npm backend.\n' "${cli}"
     MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 \
-        mise install --force --locked "${mise_tool}"
+        mise install --force "${mise_tool}"
     hash -r
     "${cli}" --version > /dev/null
-    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force --locked ${mise_tool}"
+    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force ${mise_tool}"
 }
 
 #

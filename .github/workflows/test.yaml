@@ -196,13 +196,12 @@ jobs:
           gem install --user-install --no-document bashcov --version 3.3.0
           gem install --user-install --no-document simplecov-cobertura --version 3.1.0
 
-      - name: Prepare exact statusline tool config
+      - name: Prepare statusline tool config
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
           statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"
           mkdir -p "${statusline_mise_dir}"
           cp home/dot_mise/config.toml "${statusline_mise_dir}/mise.toml"
-          cp home/dot_mise/mise.lock "${statusline_mise_dir}/mise.lock"
 
       - name: Pin mise from install/common/mise.sh
         if: ${{ needs.changes.outputs.should_test == 'true' }}
@@ -221,14 +220,14 @@ jobs:
           install: false
           cache: true
 
-      - name: Install exact statusline tools
+      - name: Install statusline tools
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
           mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"
-          mise -C "${RUNNER_TEMP}/statusline-mise" install --locked node
-          # Every version comes from the same exact config (no literal here).
-          mise -C "${RUNNER_TEMP}/statusline-mise" install --locked npm:ccstatusline npm:ccusage
-          mise -C "${RUNNER_TEMP}/statusline-mise" install --locked ruff npm:prettier
+          mise -C "${RUNNER_TEMP}/statusline-mise" install node
+          # Every version comes from the copied config and its minimum_release_age (no literal here).
+          mise -C "${RUNNER_TEMP}/statusline-mise" install npm:ccstatusline npm:ccusage
+          mise -C "${RUNNER_TEMP}/statusline-mise" install ruff npm:prettier
 
       - name: Smoke-test statusline tools without network
         if: ${{ needs.changes.outputs.should_test == 'true' }}
@@ -240,7 +239,7 @@ jobs:
           ccusage_bin="$(mise -C "${statusline_mise_dir}" which ccusage)"
           ccstatusline_root="$(mise -C "${statusline_mise_dir}" where npm:ccstatusline)"
           ccusage_root="$(mise -C "${statusline_mise_dir}" where npm:ccusage)"
-          # Run both tools on the node pinned in mise.lock. Without this, their
+          # Run both tools on the node the copied config resolved. Without this, their
           # `#!/usr/bin/env node` falls through the mise shim to the image's
           # system node, which nothing has read yet: on the ubuntu-26.04 image
           # that cold first read of /usr/local/bin/node alone took 0.6 s to over
@@ -301,8 +300,8 @@ jobs:
       - name: Check Python and Markdown formatting
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
-          # ruff and prettier are pinned in home/dot_mise/config.toml and mise.lock.
-          # mise -C resolves those pins and changes directory, so each check
+          # ruff and prettier come from home/dot_mise/config.toml (latest behind the cooldown).
+          # mise -C resolves those versions and changes directory, so each check
           # returns to the repository, where ruff.toml and .prettierignore apply.
           # --config makes the root ruff.toml govern every file, so its
           # exclusions also cover vendor/compactiondb, which has its own pyproject.

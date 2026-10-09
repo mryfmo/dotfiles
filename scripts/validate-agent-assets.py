@@ -539,7 +539,6 @@ def validate_claude_mcp_config() -> dict[str, Any]:
 GIT_COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 NPM_SHA512_INTEGRITY = re.compile(r"^sha512-[A-Za-z0-9+/]+=*$")
 ASSET_VERIFY_BY_SOURCE = {
-    "mise": {"mise-lock"},
     "github-release": {"sha256", "release-shasums", "release-sha256", "gpg"},
     "https-download": {"sha256", "gpg"},
     "crates": {"cargo-locked"},

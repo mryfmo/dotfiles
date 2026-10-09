@@ -27,7 +27,7 @@ function install_sheldon() (
     trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
     mkdir -p "${BIN_DIR}" || return
     stage="$(mktemp "${BIN_DIR}/sheldon.tmp.XXXXXX")" || return
-    CARGO_INSTALL_ROOT="${tmpdir}" "${MISE_BIN}" exec --locked -- cargo install \
+    CARGO_INSTALL_ROOT="${tmpdir}" "${MISE_BIN}" exec -- cargo install \
         --locked --features vendored --registry crates-io \
         --version "=${SHELDON_VERSION}" sheldon || return
     install -m 0755 "${tmpdir}/bin/sheldon" "${stage}" || return

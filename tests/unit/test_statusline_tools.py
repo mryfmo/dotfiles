@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify statusline tools are pinned and execute without network installers."""
+"""Verify statusline tools are declared in mise and execute without network installers."""
 
 from __future__ import annotations
 
@@ -15,12 +15,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MISE_CONFIG = ROOT / "home/dot_mise/config.toml"
-MISE_LOCK = ROOT / "home/dot_mise/mise.lock"
 CCUSAGE_SETTINGS = ROOT / "home/dot_ccstatusline/settings.json"
 CLAUDE_SETTINGS = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
 CI_WORKFLOW = ROOT / ".github/workflows/test.yaml"
 INTEGRATION_SMOKE = ROOT / "scripts/check-statusline-tools.py"
-# The pins are declared once, in home/dot_mise/config.toml.
+# The tools are declared once, in home/dot_mise/config.toml.
 EXPECTED_TOOLS = {
     tool: tomllib.loads(MISE_CONFIG.read_text())["tools"][tool] for tool in ("npm:ccusage", "npm:ccstatusline")
 }
@@ -32,18 +31,10 @@ class StatuslineToolsTest(unittest.TestCase):
         ccstatusline = json.loads(CLAUDE_SETTINGS.read_text())["statusLine"]["command"]
         return ccusage, ccstatusline
 
-    def test_mise_config_and_lock_pin_exact_npm_versions(self) -> None:
+    def test_mise_config_declares_the_statusline_tools_behind_the_cooldown(self) -> None:
         config = tomllib.loads(MISE_CONFIG.read_text())
-        self.assertEqual(config["tools"] | EXPECTED_TOOLS, config["tools"])
-        self.assertEqual(
-            config["settings"]["lockfile_platforms"],
-            ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64"],
-        )
-
-        lock = tomllib.loads(MISE_LOCK.read_text())
-        for tool, version in EXPECTED_TOOLS.items():
-            self.assertEqual(lock["tools"][tool][0]["version"], version)
-            self.assertEqual(lock["tools"][tool][0]["backend"], tool)
+        self.assertEqual({tool: "latest" for tool in EXPECTED_TOOLS}, EXPECTED_TOOLS)
+        self.assertEqual("7d", config["settings"]["minimum_release_age"])
 
     def test_generated_commands_are_direct_and_static(self) -> None:
         commands = self.commands()
@@ -91,11 +82,11 @@ class StatuslineToolsTest(unittest.TestCase):
             self.assertLess(time.monotonic() - started, 1)
             self.assertRegex(result.stderr, r"not found|No such file")
 
-    def test_ci_smokes_exact_tools_with_network_denied(self) -> None:
+    def test_ci_smokes_statusline_tools_with_network_denied(self) -> None:
         workflow = CI_WORKFLOW.read_text()
         smoke = INTEGRATION_SMOKE.read_text()
-        node_install = 'mise -C "${RUNNER_TEMP}/statusline-mise" install --locked node'
-        tools_install = 'mise -C "${RUNNER_TEMP}/statusline-mise" install --locked npm:ccstatusline npm:ccusage'
+        node_install = 'mise -C "${RUNNER_TEMP}/statusline-mise" install node'
+        tools_install = 'mise -C "${RUNNER_TEMP}/statusline-mise" install npm:ccstatusline npm:ccusage'
 
         for token in (
             node_install,

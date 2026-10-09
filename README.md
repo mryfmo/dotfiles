@@ -142,63 +142,70 @@ bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/set
 # sourceDir.
 cd "$(git -C "$(chezmoi source-path)" rev-parse --show-toplevel)"
 
-# Update and apply committed pinned state without advancing tool pins.
+# Pull and apply the repository, update installed tools to the latest safe
+# versions, and refresh agent assets.
 make update
+# Include operating-system package upgrades such as apt when you want them:
+make update SYSTEM=1
 
 # Inspect the current tool state without modifying it.
 make doctor
-
-# Tool upgrades never run in that canonical clone; make upgrade refuses it.
-# 1. Seat the pins worker for the working clone (DIR); this creates its
-#    .claude/worktrees/pins worktree from origin/main when it is missing.
-herdr-agents --add-worker .claude/worktrees/pins ~/Workspace/dotfiles
-# 2. Explicitly upgrade user-level tools, mise itself, and Homebrew-managed
-#    packages in the pins worktree. A worktree that is dirty or not at
-#    origin/main is refused, and the message names the fix.
-make -C ~/Workspace/dotfiles/.claude/worktrees/pins upgrade
-#    The same from inside the pins worktree:
-make upgrade
-#    Include operating-system package upgrades such as apt when you want them:
-make upgrade SYSTEM=1
-# 3. The orchestrator dispatches the pins task; the worker commits the files
-#    make upgrade changed, with the matching tests/** version assertions, and
-#    opens the pull request.
-# 4. After the merge, apply the new pins on the host from the canonical clone.
-make -C "$(git -C "$(chezmoi source-path)" rev-parse --show-toplevel)" update
 ```
 
 `SYSTEM=1`, `SYSTEM=true`, and `SYSTEM=yes` enable operating-system package
-upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
+upgrades. Other values, including `SYSTEM=0`, keep `make update` in user-level
 tooling mode.
 
-`make upgrade` refuses the canonical chezmoi clone and exits 2 with these
-instructions, so that clone stays pull and apply only and its autostash never
-carries anything. It also refuses any checkout whose tracked files are dirty or
-whose `HEAD` is not the freshly fetched `origin/main`, because the pins diff is
-committed where it was produced. It refuses as well when that fetch fails, or
-when an installed `chezmoi` cannot resolve its source checkout, since neither
-check can then be trusted. `CHEZMOI_ALLOW_UPGRADE_IN_SOURCE=1` skips every
-check, for a machine that has only the canonical clone. A re-run after a
-partly failed upgrade meets its own edits; discard them first with
-`git -C ~/Workspace/dotfiles/.claude/worktrees/pins reset --hard origin/main`,
-and the run bumps the pins again. New mise-managed tool
-versions therefore reach `~/.config/mise` only after the pins pull request
-merges and `make update` runs (the upgrade run already installs the tools
-themselves); Homebrew, uv tool and GitHub CLI extension upgrades still land
-immediately.
+**Tool versions.** No tool version is committed. `home/dot_mise/config.toml`
+requests `"latest"` for every tool not held back (below) and there is no
+`mise.lock`, so `make update`
+moves each installed tool to the newest release its manager allows and changes
+no file in the repository. The safety comes from each manager's own features:
+mise skips releases younger than `minimum_release_age = "7d"` ("Skip versions
+published more recently than this duration or date",
+[mise settings](https://mise.jdx.dev/configuration/settings)) and keeps its
+default-on verification settings `aqua.cosign`, `aqua.minisign`, `aqua.slsa`,
+`aqua.github_attestations`, `github_attestations` and `node.verify`, which need
+no lockfile; and `mise upgrade` without `--bump` "keeps the range specified in
+mise.toml" ([mise upgrade](https://mise.jdx.dev/cli/upgrade)), so a held
+exact version stays exact. Per the settings page the cooldown covers every
+backend this config uses except `http:` (`bats` and `gcloud`, which are exact
+anyway); a live probe on 2026-10-09 showed it acting on core `node` (26.11.1
+without it, 26.10.0 with it). mise 2026.9.17 has no
+`self_update.minimum_release_age`, so `mise self-update` takes the newest mise
+release. Codex and Claude Code follow the same cooldown; listing them in
+`minimum_release_age_excludes` would take a release the day it lands.
+Homebrew, `uv tool upgrade --all` and GitHub CLI extensions take their
+newest release, and apt (`SYSTEM=1`) the distribution's. The trade-off: with no
+exact pins and no committed lock, machines may differ in tool versions, and CI
+tests the latest safe versions rather than one recorded set. Because the
+applied file is mise's global config, it no longer turns on lockfile mode for
+other projects on the host; a project that keeps its own `mise.lock` sets
+`lockfile` in its own config. The release-asset
+installers (the mise bootstrap, aws-cli, tode, terminal-browser, Crit, Zed, the
+chezmoi bootstrap and agmsg) keep their manifest pins until T119 moves them to
+the same policy.
+
+**Holding a tool back** uses the manager's own feature:
+
+- mise: an exact version in `home/dot_mise/config.toml` with a one-line reason
+  (today `fd`, `npm:pnpm`, and the `http:` tools `bats` and `gcloud`);
+- Homebrew: `brew pin <formula>`;
+- uv: `uv tool install <package>==<version>`;
+- apt: `sudo apt-mark hold <package>`.
 
 The **operator phase** is the interactive part, run once per machine:
 `./setup.sh` (chezmoi init prompts, the age passphrase, the sudo keepalive, the
 macOS Command Line Tools prompt, Ubuntu `chsh`, the SSH, `gh` and Codex logins,
 and the `run_once_*` scripts), plus `sudo -v` right before `make update` when
-the pulled diff touches `install/**` or `.chezmoiscripts/**`. Everything after
+the pulled diff touches `install/**` or `.chezmoiscripts/**`, and with
+`SYSTEM=1`. Everything after
 it is unattended: `make update` never prompts.
 
 `make update` applies all committed public and private chezmoi state, including
 scripts. Chezmoi records each `run_once` content hash, so new or changed
-one-time installers run once while unchanged installers stay skipped. This
-converges the machine to committed pinned state; only `make upgrade` advances
-tool pins. Before applying, `make update` runs
+one-time installers run once while unchanged installers stay skipped. Before
+applying, `make update` runs
 `git pull --ff-only` only when the checkout is on `main`, tracks `origin/main`,
 and has no staged or unstaged tracked-file changes. Otherwise it prints the
 reason and the exact manual `git -C <repo> pull` command, then continues with
@@ -207,9 +214,10 @@ the local source; a failed fast-forward pull also warns and continues.
 differ from the last-fetched `origin/main`, through uncommitted, unmerged,
 unpushed or not yet pulled changes (override `CHEZMOI_ALLOW_DIRTY_SOURCE=1`), so
 changes reach the host only through a merged pull request; git-ignored untracked
-files are not checked. `make update` then
-ensures the locked Node/npm runtime is installed before the two locked
-statusline tools required by the applied config, without upgrading other tools.
+files are not checked. `make update` then runs `scripts/upgrade-tools.sh`, which
+installs missing mise tools and upgrades outdated ones from the applied
+`~/.config/mise/config.toml`, then Homebrew packages, uv tools and GitHub CLI
+extensions (apt with `SYSTEM=1`); it exits 0 without changes when `CI=true`.
 The asset refresh also converges configured GitHub CLI extensions, syncs the
 vendored CompactionDB tree, and updates the pinned agmsg skill in place
 (see [agmsg](#agmsg); its `teams`/`db`/`run` runtime state is backed up first
@@ -292,7 +300,7 @@ Crit itself is installed on both Linux and macOS from the pinned amd64/arm64
 GitHub release binary for the matching OS, after SHA-256 verification. All
 four checksums and the version are declared under `assets.crit` in
 `home/dot_agents/agent-config.yaml`, rendered into
-`scripts/lib/installer-pins.sh`, and refreshed by `make upgrade`. Lifecycle
+`scripts/lib/installer-pins.sh`, and changed with `generate-agent-configs.py --set-asset`. Lifecycle
 checks on both platforms inspect the authoritative `~/.local/bin/crit`
 directly, prepend `~/.local/bin` to `PATH`, and run `hash -r` so an older
 ambient Crit cannot shadow it. If that managed binary is missing, `REPAIR=1
@@ -302,10 +310,8 @@ The zenbu-labs terminal tools — terminal-code (`tode`) and `terminal-browser` 
 install through their sha256-verified upstream curl installers, pinned by
 version and installer checksum under `assets:` (rendered into
 `scripts/lib/installer-pins.sh`).
-`make update` converges both tools to the pinned versions; `make upgrade`
-writes the latest upstream release into `assets:` (re-rendering the pin file)
-and installs it in the same run — like the rest of `make upgrade`, that is trust-now-and-record, and
-the pin diff then reaches `main` with the mise config/lock bump in one reviewed PR (see Tool versions below).
+`make update` converges both tools to the pinned versions; a pin changes only
+in `assets:` (see Asset manifest below).
 terminal-browser links its bundled agent skills into `~/.agents/skills`
 (expected unmanaged-skill WARNs in `make doctor`, tracked by its
 `~/.local/state/terminal-browser/skills.links` receipt), and its editor setup
@@ -390,8 +396,6 @@ CRIT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make requir
 CRIT_REVIEW=off make require-crit-review
 # PR integration adds BASE, PR_FEEDBACK_EVIDENCE and AUDIT_EVIDENCE as the
 # agmsg-orchestration SKILL's Orchestrator Playbook step 10 gives them (see below).
-
-# Tool upgrades run in the pins worktree, never here; see "Lifecycle" above.
 ```
 
 Codex runs a hook from `~/.codex/config.toml` or a plugin only when
@@ -1265,12 +1269,10 @@ One-time chezmoi scripts under `home/.chezmoiscripts/**/run_once_*` run once per
 content hash, including when a newly committed script first reaches an existing
 machine through `make update`.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
-Tool versions in `home/dot_mise/config.toml` are exact and backed by `mise.lock`. Updates occur only through `make upgrade` with a reviewed config and lock diff.
-The operator runs `make upgrade` in the pins worktree, never in the canonical clone (see Lifecycle above); every file it changed then reaches `main` in one PR, committed by the worker seated there, that also syncs the expected-version assertions in `tests/**` and passes `make require-crit-review`; the acceptance comparison is defined once, in the agmsg-orchestration SKILL's boundary bullet, and `make check-regime-boundary` reports a canonical clone left different from `origin/main` as a sign that something ran where it must not.
-Under the agmsg regime a worker task carries that PR. The GitHub ruleset on `main` (see the ruleset payload above) is the boundary: `main` accepts only pull requests that pass the required checks, so no change, the `.orchestration` boundary commit included, is pushed to `main` directly.
-`make upgrade` edits the current checkout's `home/dot_mise`; `~/.config/mise` is an applied copy, not a live symlink into the source tree.
-For `npm:` tools, mise owns the version, lock entry, and isolated install
-prefix, while the npm CLI performs installation through
+Tool versions are not committed: `home/dot_mise/config.toml` requests `"latest"` behind mise's seven-day cooldown and `make update` moves the installed tools, as the Tool versions paragraph under Lifecycle above describes.
+A held tool keeps an exact version and its reason in that file, and `~/.config/mise` is its applied copy, not a live symlink into the source tree.
+Under the agmsg regime a worker task carries every repository change as a PR. The GitHub ruleset on `main` (see the ruleset payload above) is the boundary: `main` accepts only pull requests that pass the required checks, so no change, the `.orchestration` boundary commit included, is pushed to `main` directly.
+For `npm:` tools, mise owns the version and isolated install prefix, while the npm CLI performs installation through
 `settings.npm.package_manager = "npm"`. Do not install Claude Code or Codex
 directly with user-global `npm install -g`; duplicate global installs can
 shadow the mise-managed commands. Claude Code alone permits its reviewed
@@ -1286,16 +1288,15 @@ installer, Crit, Zed, tode, terminal-browser, the Understand-Anything
 installer, the vendored CompactionDB tree, the pinned upstream agmsg skill,
 and the Claude/Codex plugins and GitHub CLI extensions — has one declaration under `assets:` in
 `home/dot_agents/agent-config.yaml`, with its upstream, pin, verification
-method, install path, and installer step. mise tools are listed there as a
-pointer to `home/dot_mise/config.toml` and `mise.lock`, which stay the mise
-manifest. `scripts/generate-agent-configs.py` renders each pinned value into
+method, install path, and installer step. mise tools are not listed there;
+`home/dot_mise/config.toml` is the mise manifest. `scripts/generate-agent-configs.py` renders each pinned value into
 the installer that uses it (`install/**/*.sh`, `scripts/lib/installer-pins.sh`,
 `scripts/update-agent-assets.sh`, and the Codex config template), and
 `scripts/validate-agent-assets.py` rejects incomplete declarations, rendered
 drift, and any hand-written `*_VERSION="..."` or `version="..."` literal left
 in `install/` or `scripts/`. Change a pin only in the manifest, then
-regenerate. `make upgrade` does this for tode, terminal-browser, Crit, and Zed
-by writing the fetched pins and checksums into `assets:` with
+regenerate. For tode, terminal-browser, Crit, and Zed, write the reviewed pins
+and checksums into `assets:` with
 `generate-agent-configs.py --set-asset NAME.FIELD=VALUE`, which re-renders
 `scripts/lib/installer-pins.sh`. `pin: unknown` marks a component with no
 recorded upstream version, and plugin pins record the installed versions,

@@ -315,12 +315,14 @@ function rebuild_mise_npm_tool() {
 #
 function restore_interrupted_npm_rebuilds() {
     local backup
+    local failed=0
     # mise's own installs directory resolution: MISE_INSTALLS_DIR, then the data directory (MISE_DATA_DIR, then XDG_DATA_HOME).
     local installs="${MISE_INSTALLS_DIR:-${MISE_DATA_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/mise}/installs}"
     for backup in "${installs}"/*/*.before-node-rebuild; do
         [ -d "${backup}" ] || continue
-        restore_npm_install "${backup%.before-node-rebuild}" "${backup}" || return 1
+        restore_npm_install "${backup%.before-node-rebuild}" "${backup}" || failed=1
     done
+    return "${failed}"
 }
 
 #
@@ -330,8 +332,13 @@ function restore_interrupted_npm_rebuilds() {
 #
 function restore_npm_install() {
     [ -d "$2" ] || return 0
-    rm -rf "$1"
-    mv "$2" "$1"
+    # The backup moves only onto a path that is gone, so it is never buried inside a partial install that survives.
+    if rm -rf "$1" && [ ! -e "$1" ] && mv "$2" "$1"; then
+        return 0
+    fi
+    printf 'required failure: could not restore %s from %s\n' "$1" "$2" >&2
+    ((required_failures += 1))
+    return 1
 }
 
 #

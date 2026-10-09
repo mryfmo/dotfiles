@@ -1637,6 +1637,29 @@ EOF
         # The undeletable leftover is dot-named, which mise does not list as an installed version.
         self.assertEqual([tool.name], [p.name for p in tool.parent.iterdir() if not p.name.startswith(".")])
 
+    def test_upgrade_fails_and_keeps_the_backup_when_a_partial_install_cannot_be_removed(self) -> None:
+        if os.geteuid() == 0:
+            self.skipTest("root deletes read-only directories")
+        # A killed rebuild left the working install in the backup and a partial install that cannot be deleted.
+        repo, env = self.upgrade_fixture("npm_reinstall-leftover-undeletable-partial")
+        tool = Path(env["CCUSAGE_DIR"])
+        backup = Path(f"{tool}.before-node-rebuild")
+        tool.rename(backup)
+        (tool / "locked").mkdir(parents=True)
+        (tool / "locked/file").touch()
+        (tool / "locked").chmod(0o555)
+        try:
+            result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+        finally:
+            for locked in self.temp_dir.rglob("locked"):
+                locked.chmod(0o755)
+
+        # The working install stays where the next run looks for it, and nothing was moved into the partial one.
+        self.assertTrue((backup / "original").exists())
+        self.assertEqual(["locked"], sorted(p.name for p in tool.iterdir()))
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"required failure: could not restore {tool} from {backup}", result.stderr)
+
     def test_upgrade_fails_when_the_node_marker_cannot_be_written(self) -> None:
         repo, env = self.upgrade_fixture("node_stays-unwritable")
         # A regular file where the state directory should be makes mkdir -p fail.

@@ -194,7 +194,8 @@ install_starship
         self.assertEqual(0, hours % 24)
         npmrc = (ROOT / "home/dot_npmrc").read_text().splitlines()
         self.assertIn(f"min-release-age={hours // 24}", npmrc)
-        self.assertNotIn("npm_config_min_release_age=", (ROOT / "scripts/upgrade-tools.sh").read_text())
+        for script in ("scripts/upgrade-tools.sh", "install/common/mise.sh"):
+            self.assertNotIn("npm_config_min_release_age=", (ROOT / script).read_text(), script)
         self.assertFalse((ROOT / "home/dot_mise/mise.lock").exists())
         self.assertFalse((ROOT / "home/dot_config/mise/mise.lock.tmpl").exists())
         self.assertIn(".config/mise/mise.lock", (ROOT / "home/.chezmoiremove").read_text().splitlines())

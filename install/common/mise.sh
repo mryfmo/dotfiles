@@ -100,14 +100,10 @@ function run_mise_install() {
     unset MISE_CURRENT_VERSION
     trust_mise_config || return
 
-    # The config's minimum_release_age bounds every request, and ~/.npmrc applies
-    # the same window. Install statusline tools first, then the agent CLIs with
-    # npm's own gate off, since mise already vetted the release they take.
-    mise install node || return
-    mise install npm:ccstatusline npm:ccusage ruff npm:prettier || return
-    npm_config_min_release_age=0 mise install \
-        npm:@anthropic-ai/claude-code npm:@openai/codex || return
-    mise install || return
+    # One bare install takes every declared tool under the config's
+    # minimum_release_age (~/.npmrc applies the same window) and skips requests
+    # already satisfied, so an installed "latest" needs no registry lookup.
+    mise install
 }
 
 #

@@ -183,8 +183,8 @@ invalid until `mise install` reruns, so `make update` records the `node` they
 were built on in `${XDG_STATE_HOME:-~/.local/state}/dotfiles/npm-tools-node`;
 when `node` differs from it (or it is missing), whatever moved `node`, it
 rebuilds each `npm:` tool at its current version, keeping the previous install
-until the new one succeeds (an offline rebuild leaves the working tool in
-place), and then runs `mise install` once more. The marker is written only after
+until the new one succeeds (an offline or interrupted rebuild leaves the working
+tool in place), and then runs `mise install` once more. The marker is written only after
 both succeed, and a marker that cannot be written fails the update.
 `mise self-update --no-plugins` leaves installed mise plugins such as `shdoc`
 alone, because a plugin update is a branch move the cooldown does not cover;

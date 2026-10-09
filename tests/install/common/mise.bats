@@ -35,9 +35,7 @@ function teardown() {
     ((year > 2026 || (year == 2026 && (month > 9 || (month == 9 && patch >= 12)))))
 }
 
-@test "[common] run_mise_install installs statusline tools and agent CLIs before the rest" {
-    printf "min-release-age=99\n" > "${HOME}/.npmrc"
-
+@test "[common] run_mise_install trusts the config and runs one bare install" {
     function mise() {
         echo "${npm_config_min_release_age:-unset} $*" >> "${BATS_TEST_TMPDIR}/mise_install_args.txt"
     }
@@ -47,9 +45,6 @@ function teardown() {
     run cat "${BATS_TEST_TMPDIR}/mise_install_args.txt"
     [ "${status}" -eq 0 ]
     [ "${output}" = "unset trust --yes
-unset install node
-unset install npm:ccstatusline npm:ccusage ruff npm:prettier
-0 install npm:@anthropic-ai/claude-code npm:@openai/codex
 unset install" ]
 }
 
@@ -65,55 +60,6 @@ unset install" ]
 
     [ "${status}" -eq 41 ]
     [ ! -e "${BATS_TEST_TMPDIR}/unexpected-install" ]
-}
-
-@test "[common] run_mise_install stops when statusline install fails" {
-    function mise() {
-        if [ "$1" = install ] && [ "$2" = npm:ccstatusline ]; then
-            return 42
-        fi
-        if [ "$1" = install ] && [ "${2:-}" != node ]; then
-            touch "${BATS_TEST_TMPDIR}/unexpected-batch"
-        fi
-    }
-
-    run run_mise_install
-
-    [ "${status}" -eq 42 ]
-    [ ! -e "${BATS_TEST_TMPDIR}/unexpected-batch" ]
-}
-
-@test "[common] run_mise_install stops when node install fails" {
-    function mise() {
-        if [ "$1" = install ] && [ "$2" = node ]; then
-            return 45
-        fi
-        if [ "$1" = install ]; then
-            touch "${BATS_TEST_TMPDIR}/unexpected-install"
-        fi
-    }
-
-    run run_mise_install
-
-    [ "${status}" -eq 45 ]
-    [ ! -e "${BATS_TEST_TMPDIR}/unexpected-install" ]
-}
-
-@test "[common] run_mise_install stops when agent CLI install fails" {
-    function mise() {
-        if [ "$1" = install ] && [ "$2" = npm:@anthropic-ai/claude-code ]; then
-            [ "${npm_config_min_release_age:-}" = 0 ]
-            return 44
-        fi
-        if [ "$1" = install ] && [ "$#" -eq 1 ]; then
-            touch "${BATS_TEST_TMPDIR}/unexpected-batch"
-        fi
-    }
-
-    run run_mise_install
-
-    [ "${status}" -eq 44 ]
-    [ ! -e "${BATS_TEST_TMPDIR}/unexpected-batch" ]
 }
 
 @test "[common] run_mise_install returns the full install failure" {

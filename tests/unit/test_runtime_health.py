@@ -1294,6 +1294,13 @@ EOF
                             mkdir -p "$CCUSAGE_DIR/partial"
                             exit 1
                             ;;
+                        rebuild_interrupted:"install --yes npm:ccusage@20.0.0")
+                            # The update is killed mid-download, after mise created a partial install directory.
+                            mkdir -p "$CCUSAGE_DIR/partial"
+                            kill -TERM "$PPID"
+                            sleep 1
+                            exit 1
+                            ;;
                         npm_reinstall_final_fails:"install --yes")
                             # The first bare install succeeds; the final one cannot reach the network.
                             [ ! -e "$NODE_MOVED.bare-install" ] || exit 1
@@ -1551,6 +1558,33 @@ EOF
         self.assertEqual(2, (repo / "commands.log").read_text().splitlines().count("mise install --yes"))
         # The failed final install leaves the marker unwritten, so the next run rebuilds again.
         self.assertEqual("26.0.0\n", marker_file.read_text())
+
+    def test_upgrade_restores_the_npm_tool_when_the_rebuild_is_interrupted(self) -> None:
+        repo, env = self.upgrade_fixture("rebuild_interrupted")
+        tool = Path(env["CCUSAGE_DIR"])
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(143, result.returncode, result.stdout + result.stderr)
+        self.assertTrue((tool / "original").exists())
+        self.assertFalse((tool / "partial").exists())
+        self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())
+        self.assertFalse((Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node").exists())
+
+    def test_upgrade_restores_a_rebuild_backup_left_by_a_killed_run(self) -> None:
+        # A SIGKILL runs no trap: the working install sits in the backup and the install directory holds a partial one.
+        repo, env = self.upgrade_fixture("npm_reinstall-leftover")
+        tool = Path(env["CCUSAGE_DIR"])
+        tool.rename(f"{tool}.before-node-rebuild")
+        (tool / "partial").mkdir(parents=True)
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("optional warning: npm: tools were not all reinstalled on node 27.0.0", result.stderr)
+        self.assertTrue((tool / "original").exists())
+        self.assertFalse((tool / "partial").exists())
+        self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())
 
     def test_upgrade_fails_when_the_node_marker_cannot_be_written(self) -> None:
         repo, env = self.upgrade_fixture("node_stays-unwritable")

@@ -280,17 +280,40 @@ function rebuild_mise_npm_tool() {
     version="$(run_mise_with_isolated_git_config current "${mise_tool}")" || return 1
     install_dir="$(run_mise_with_isolated_git_config where "${mise_tool}")" || return 1
     # Only an existing absolute install directory is moved or removed.
-    [[ -n "${version}" && "${install_dir}" == /* && -d "${install_dir}" ]] || return 1
+    [[ -n "${version}" && "${install_dir}" == /* ]] || return 1
     backup="${install_dir}.before-node-rebuild"
-    rm -rf "${backup}"
+    # A backup left by a run killed past its traps is the working install: put it back, never delete it.
+    restore_npm_install "${install_dir}" "${backup}" || return 1
+    [[ -d "${install_dir}" ]] || return 1
     mv "${install_dir}" "${backup}" || return 1
+    # Until the new install succeeds, an interruption or exit puts the working install back.
+    local restore
+    restore="$(printf 'restore_npm_install %q %q' "${install_dir}" "${backup}")"
+    # shellcheck disable=SC2064 # Expanded now on purpose: the paths are this function's locals.
+    trap "${restore}; exit 130" INT
+    # shellcheck disable=SC2064
+    trap "${restore}; exit 143" TERM
+    # shellcheck disable=SC2064
+    trap "${restore}" EXIT
     if run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then
+        trap - INT TERM EXIT
         rm -rf "${backup}"
         return 0
     fi
-    rm -rf "${install_dir}"
-    mv "${backup}" "${install_dir}"
+    trap - INT TERM EXIT
+    restore_npm_install "${install_dir}" "${backup}"
     return 1
+}
+
+#
+# @description Put a moved-aside npm: install back, replacing whatever a failed or interrupted install left.
+# @arg $1 path The install directory.
+# @arg $2 path The moved-aside working install.
+#
+function restore_npm_install() {
+    [ -d "$2" ] || return 0
+    rm -rf "$1"
+    mv "$2" "$1"
 }
 
 #

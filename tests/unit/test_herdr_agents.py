@@ -1150,8 +1150,8 @@ fi
                     f"{hook.resolve()} is an edited copy of the retired main-push guard stub" in result.stderr, notice
                 )
 
-    def test_make_update_and_upgrade_include_agmsg_bootstrap(self) -> None:
-        for target in ("update", "upgrade"):
+    def test_make_update_includes_and_upgrade_excludes_agmsg_bootstrap(self) -> None:
+        for target, included in (("update", True), ("upgrade", False)):
             with self.subTest(target=target):
                 result = subprocess.run(
                     ["make", "-n", "-f", str(MAKEFILE), target],
@@ -1163,7 +1163,10 @@ fi
                 )
 
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertIn("make agmsg-bootstrap", result.stdout)
+                if included:
+                    self.assertIn("make agmsg-bootstrap", result.stdout)
+                else:
+                    self.assertNotIn("agmsg-bootstrap", result.stdout)
 
     def test_claude_settings_add_herdr_attach_session_hook(self) -> None:
         source_dir = self.temp_dir / "source"

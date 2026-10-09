@@ -712,7 +712,7 @@ function require_pins_checkout() {
     git -C "${repo_root}" fetch --quiet origin main ||
         printf 'warning: git fetch origin main failed; comparing with the last-fetched origin/main\n' >&2
     head="$(git -C "${repo_root}" rev-parse -q --verify HEAD)" || head=""
-    upstream="$(git -C "${repo_root}" rev-parse -q --verify origin/main)" || upstream=""
+    upstream="$(git -C "${repo_root}" rev-parse -q --verify refs/remotes/origin/main)" || upstream=""
     if [ -n "$(git -C "${repo_root}" status --porcelain --untracked-files=no)" ] ||
         [ -z "${head}" ] || [ "${head}" != "${upstream}" ]; then
         printf 'make upgrade refused: %s is dirty or behind origin/main; in the pins worktree run git switch -c <branch> --no-track origin/main (or git reset --hard origin/main on its own branch) first\n' "${repo_root}" >&2

@@ -160,8 +160,9 @@ make -C ~/Workspace/dotfiles/.claude/worktrees/pins upgrade
 make upgrade
 #    Include operating-system package upgrades such as apt when you want them:
 make upgrade SYSTEM=1
-# 3. The orchestrator dispatches the pins task; the worker commits only the
-#    tracked files make upgrade changed and opens the pull request.
+# 3. The orchestrator dispatches the pins task; the worker commits the files
+#    make upgrade changed, with the matching tests/** version assertions, and
+#    opens the pull request.
 # 4. After the merge, apply the new pins on the host.
 make -C ~/.local/share/chezmoi update
 ```
@@ -175,7 +176,10 @@ instructions, so that clone stays pull and apply only and its autostash never
 carries anything. It also refuses any checkout whose tracked files are dirty or
 whose `HEAD` is not the freshly fetched `origin/main`, because the pins diff is
 committed where it was produced. `CHEZMOI_ALLOW_UPGRADE_IN_SOURCE=1` skips both
-checks, for a machine that has only the canonical clone. New mise-managed tool
+checks, for a machine that has only the canonical clone. A re-run after a
+partly failed upgrade meets its own edits; discard them first with
+`git -C ~/Workspace/dotfiles/.claude/worktrees/pins reset --hard origin/main`,
+and the run bumps the pins again. New mise-managed tool
 versions therefore reach `~/.config/mise` only after the pins pull request
 merges and `make update` runs (the upgrade run already installs the tools
 themselves); Homebrew, uv tool and GitHub CLI extension upgrades still land

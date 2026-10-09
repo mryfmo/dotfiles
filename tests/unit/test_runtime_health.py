@@ -1441,7 +1441,7 @@ EOF
         cases = {
             "canonical": (True, False, False, canonical),
             "dirty": (False, True, False, stale),
-            "behind": (False, False, True, stale),
+            "moved": (False, False, True, stale),
             "clean": (False, False, False, None),
         }
         for name, (is_canonical, dirty, moved, refusal) in cases.items():

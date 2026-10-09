@@ -3069,7 +3069,8 @@ exit {exit_code}
         self.assertEqual(
             [
                 f"regime-boundary: canonical clone {root} differs from origin/main under home/, install/ or scripts/: "
-                f"home/dot_f; carry a make upgrade diff as a pins task, or restore a merged one with "
+                "home/dot_f; run make upgrade only in the pins worktree (herdr-agents --add-worker .claude/worktrees/pins); "
+                "restore a merged pins diff with "
                 f"git -C {root} restore -SW --source=origin/main -- <files> and drop its autostash"
             ],
             self.canonical_lines(worktree),
@@ -3125,7 +3126,8 @@ exit {exit_code}
         self.assertEqual(
             [
                 f"regime-boundary: canonical clone {root} differs from origin/main under home/, install/ or scripts/: "
-                f"home/dot_f; carry a make upgrade diff as a pins task, or restore a merged one with "
+                "home/dot_f; run make upgrade only in the pins worktree (herdr-agents --add-worker .claude/worktrees/pins); "
+                "restore a merged pins diff with "
                 f"git -C {root} restore -SW --source=origin/main -- <files> and drop its autostash"
             ],
             self.canonical_lines(worktree),

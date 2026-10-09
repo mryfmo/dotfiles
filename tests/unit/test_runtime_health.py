@@ -1411,6 +1411,9 @@ EOF
                 initialized = self.run_test_command(["git", "init", str(source_repo)], cwd=repo, env=env)
                 self.assertEqual(0, initialized.returncode, initialized.stderr)
                 env["TEST_CHEZMOI_SOURCE"] = str(source_repo / "home")
+                if canonical:
+                    # The canonical clone is refused unless overridden; the override is the only path to its apply.
+                    env["CHEZMOI_ALLOW_UPGRADE_IN_SOURCE"] = "1"
                 result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
                 self.assertEqual(
                     0 if fail_phase == "none" else 1,
@@ -1430,6 +1433,44 @@ EOF
                         f"pins updated in {repo.resolve()}; ~/.config/mise follows after merge and make update",
                         result.stdout,
                     )
+
+    def test_upgrade_refuses_the_canonical_clone_and_a_dirty_or_stale_checkout(self) -> None:
+        canonical = "is the canonical chezmoi clone, which stays pull/apply only"
+        stale = "is dirty or behind origin/main"
+        # case: (canonical source, tracked edit, HEAD moved past origin/main, expected refusal or None)
+        cases = {
+            "canonical": (True, False, False, canonical),
+            "dirty": (False, True, False, stale),
+            "behind": (False, False, True, stale),
+            "clean": (False, False, False, None),
+        }
+        for name, (is_canonical, dirty, moved, refusal) in cases.items():
+            with self.subTest(case=name):
+                repo, env = self.upgrade_fixture(f"guard-{name}")
+                git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(repo)]
+                (repo / "tracked").write_text("pins\n")
+                for step in (["init", "-q"], ["add", "tracked"], ["commit", "-q", "-m", "base"]):
+                    self.assertEqual(0, self.run_test_command([*git, *step], cwd=repo, env=env).returncode)
+                # No origin remote: the guard's fetch fails offline and it compares with this ref.
+                self.run_test_command([*git, "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=repo, env=env)
+                if is_canonical:
+                    env["TEST_CHEZMOI_SOURCE"] = str(repo / "home")
+                if dirty:
+                    (repo / "tracked").write_text("edited\n")
+                if moved:
+                    self.run_test_command([*git, "commit", "-q", "--allow-empty", "-m", "next"], cwd=repo, env=env)
+
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                if refusal:
+                    self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(f"make upgrade refused: {repo.resolve()} {refusal}", result.stderr)
+                    self.assertNotIn("==>", result.stdout)
+                else:
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    self.assertNotIn("make upgrade refused", result.stderr)
+                    self.assertIn("warning: git fetch origin main failed", result.stderr)
+                    self.assertIn("Upgrade summary:", result.stdout)
 
     def test_upgrade_changes_checkout_not_live_mise_symlink_target(self) -> None:
         for override in (False, True):

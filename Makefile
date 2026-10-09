@@ -124,7 +124,6 @@ doctor:
 .PHONY: upgrade
 upgrade:
 	./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)
-	$(MAKE) agmsg-bootstrap
 
 .PHONY: usage-snapshot
 usage-snapshot:

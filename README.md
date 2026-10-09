@@ -148,16 +148,38 @@ make update
 # Inspect the current tool state without modifying it.
 make doctor
 
-# Explicitly upgrade user-level tools, mise itself, and Homebrew-managed packages.
+# Tool upgrades never run in that canonical clone; make upgrade refuses it.
+# 1. From the working clone, seat the pins worker; this creates the
+#    .claude/worktrees/pins worktree from origin/main when it is missing.
+herdr-agents --add-worker .claude/worktrees/pins
+# 2. Explicitly upgrade user-level tools, mise itself, and Homebrew-managed
+#    packages in the pins worktree. A worktree that is dirty or not at
+#    origin/main is refused, and the message names the fix.
+make -C ~/Workspace/dotfiles/.claude/worktrees/pins upgrade
+#    The same from inside the pins worktree:
 make upgrade
-
-# Include operating-system package upgrades such as apt when you want them.
+#    Include operating-system package upgrades such as apt when you want them:
 make upgrade SYSTEM=1
+# 3. The orchestrator dispatches the pins task; the worker commits only the
+#    tracked files make upgrade changed and opens the pull request.
+# 4. After the merge, apply the new pins on the host.
+make -C ~/.local/share/chezmoi update
 ```
 
 `SYSTEM=1`, `SYSTEM=true`, and `SYSTEM=yes` enable operating-system package
 upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
 tooling mode.
+
+`make upgrade` refuses the canonical chezmoi clone and exits 2 with these
+instructions, so that clone stays pull and apply only and its autostash never
+carries anything. It also refuses any checkout whose tracked files are dirty or
+whose `HEAD` is not the freshly fetched `origin/main`, because the pins diff is
+committed where it was produced. `CHEZMOI_ALLOW_UPGRADE_IN_SOURCE=1` skips both
+checks, for a machine that has only the canonical clone. New mise-managed tool
+versions therefore reach `~/.config/mise` only after the pins pull request
+merges and `make update` runs (the upgrade run already installs the tools
+themselves); Homebrew, uv tool and GitHub CLI extension upgrades still land
+immediately.
 
 The **operator phase** is the interactive part, run once per machine:
 `./setup.sh` (chezmoi init prompts, the age passphrase, the sudo keepalive, the
@@ -1239,7 +1261,7 @@ content hash, including when a newly committed script first reaches an existing
 machine through `make update`.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
 Tool versions in `home/dot_mise/config.toml` are exact and backed by `mise.lock`. Updates occur only through `make upgrade` with a reviewed config and lock diff.
-The operator runs `make upgrade` in the canonical clone; every file it changed then reaches `main` in one PR that also syncs the expected-version assertions in `tests/**` and passes `make require-crit-review`; the blob-identity proof and the post-merge state of the clone are defined once, in the agmsg-orchestration SKILL's boundary bullet, and `make check-regime-boundary` reports a clone left different from `origin/main`.
+The operator runs `make upgrade` in the pins worktree, never in the canonical clone (see Lifecycle above); every file it changed then reaches `main` in one PR, committed by the worker seated there, that also syncs the expected-version assertions in `tests/**` and passes `make require-crit-review`; the acceptance comparison is defined once, in the agmsg-orchestration SKILL's boundary bullet, and `make check-regime-boundary` reports a canonical clone left different from `origin/main` as a sign that something ran where it must not.
 Under the agmsg regime a worker task carries that PR. The GitHub ruleset on `main` (see the ruleset payload above) is the boundary: `main` accepts only pull requests that pass the required checks, so no change, the `.orchestration` boundary commit included, is pushed to `main` directly.
 `make upgrade` edits the current checkout's `home/dot_mise`; `~/.config/mise` is an applied copy, not a live symlink into the source tree.
 For `npm:` tools, mise owns the version, lock entry, and isolated install

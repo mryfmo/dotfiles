@@ -8,6 +8,7 @@
 #   and Homebrew-managed packages when those managers are available. Pass
 #   `--system` to include operating-system package upgrades such as apt.
 #   Upgrades edit this checkout's home/dot_mise; ~/.config/mise is an applied copy.
+#   It refuses the canonical chezmoi clone and a checkout that is dirty or not at origin/main.
 
 set -Eeuo pipefail
 
@@ -687,6 +688,39 @@ USAGE
 }
 
 #
+# @description Refuse the canonical chezmoi clone, and any git checkout that is dirty or not at origin/main.
+#   The pins diff must be produced where it is committed, so the canonical clone
+#   stays pull/apply only. CHEZMOI_ALLOW_UPGRADE_IN_SOURCE=1 skips both checks.
+# @exitcode 2 When the checkout is refused.
+#
+function require_pins_checkout() {
+    local source_path source_root top head upstream
+
+    if [ "${CHEZMOI_ALLOW_UPGRADE_IN_SOURCE:-0}" = 1 ]; then
+        return 0
+    fi
+    if source_path="$(chezmoi source-path 2> /dev/null)" &&
+        source_root="$(git -C "${source_path}" rev-parse --show-toplevel 2> /dev/null)" &&
+        [ "$(cd "${source_root}" && pwd -P)" = "$(cd "${repo_root}" && pwd -P)" ]; then
+        printf 'make upgrade refused: %s is the canonical chezmoi clone, which stays pull/apply only; run it in a pins worktree of the working clone (herdr-agents --add-worker .claude/worktrees/pins, then make -C <working clone>/.claude/worktrees/pins upgrade) and land the diff through a pull request\n' "${repo_root}" >&2
+        exit 2
+    fi
+
+    # Only the checkout whose top level is repo_root, never an unrelated enclosing repository.
+    top="$(git -C "${repo_root}" rev-parse --show-toplevel 2> /dev/null)" || return 0
+    [ "$(cd "${top}" && pwd -P)" = "$(cd "${repo_root}" && pwd -P)" ] || return 0
+    git -C "${repo_root}" fetch --quiet origin main ||
+        printf 'warning: git fetch origin main failed; comparing with the last-fetched origin/main\n' >&2
+    head="$(git -C "${repo_root}" rev-parse -q --verify HEAD)" || head=""
+    upstream="$(git -C "${repo_root}" rev-parse -q --verify origin/main)" || upstream=""
+    if [ -n "$(git -C "${repo_root}" status --porcelain --untracked-files=no)" ] ||
+        [ -z "${head}" ] || [ "${head}" != "${upstream}" ]; then
+        printf 'make upgrade refused: %s is dirty or behind origin/main; in the pins worktree run git switch -c <branch> --no-track origin/main (or git reset --hard origin/main on its own branch) first\n' "${repo_root}" >&2
+        exit 2
+    fi
+}
+
+#
 # @description Apply updated mise pins only from the configured chezmoi checkout.
 function apply_upgraded_mise_config() {
     local source_path source_root
@@ -705,6 +739,7 @@ function apply_upgraded_mise_config() {
 #
 function main() {
     parse_args "$@"
+    require_pins_checkout
 
     run_required_phase "Homebrew" upgrade_homebrew
     run_required_phase "mise self-update" upgrade_mise_self

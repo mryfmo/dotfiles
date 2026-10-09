@@ -25,6 +25,10 @@ __pycache__/
 # project-map subagent output (one local HTML map and its state)
 .project-map/
 
+# Linked worker worktrees (the manifest worker_worktree and herdr-agents --add-worker seats): nested
+# checkouts that git status would otherwise list as untracked; the stop gate relies on this rule.
+/.claude/worktrees/
+
 .claude/contextdb/state/*
 !.claude/contextdb/state/.gitkeep
 .claude/contextdb/spool/incoming/*

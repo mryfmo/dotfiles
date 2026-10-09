@@ -3717,6 +3717,120 @@ exit {exit_code}
             reported,
         )
 
+    def canonical_clone(self, source: Path | None = None) -> Path:
+        """A separate canonical clone with origin/main, and a fake chezmoi whose source-path is in it (or `source`)."""
+        canon = self.temp_dir / "chezmoi"
+        (canon / "home").mkdir(parents=True)
+        (canon / "home/dot_f").write_text("pinned\n")
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(canon)]
+        subprocess.run([*git, "init", "-q"], check=True)
+        subprocess.run([*git, "add", "-A"], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "c"], check=True)
+        subprocess.run([*git, "update-ref", "refs/remotes/origin/main", "HEAD"], check=True)
+        (self.bin_dir / "chezmoi").write_text(
+            f"#!/usr/bin/env bash\n[[ $1 == source-path ]] && printf '%s\\n' {shlex.quote(str(source or canon / 'home'))}\n"
+        )
+        (self.bin_dir / "chezmoi").chmod(0o755)
+        return canon
+
+    def canonical_lines(self, worktree: Path) -> list[str]:
+        result = self.run_boundary_check(worktree)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return [line for line in result.stdout.splitlines() if "canonical clone" in line]
+
+    def test_regime_boundary_check_accepts_a_clean_canonical_clone(self) -> None:
+        _, worktree, _ = self.boundary_repo()
+        self.canonical_clone()
+
+        self.assertEqual([], self.canonical_lines(worktree))
+
+    def test_regime_boundary_check_reports_a_canonical_clone_that_differs_from_origin_main(self) -> None:
+        _, worktree, _ = self.boundary_repo()
+        canon = self.canonical_clone()
+        (canon / "home/dot_f").write_text("upgraded\n")
+        root = canon.resolve()
+
+        self.assertEqual(
+            [
+                f"regime-boundary: canonical clone {root} differs from origin/main under home/, install/ or scripts/: "
+                f"home/dot_f; carry a make upgrade diff as a pins task, or restore a merged one with "
+                f"git -C {root} restore -SW --source=origin/main -- <files> and drop its autostash"
+            ],
+            self.canonical_lines(worktree),
+        )
+
+    def test_regime_boundary_check_reports_a_stale_canonical_head_whose_dirty_bytes_match_origin_main(self) -> None:
+        _, worktree, _ = self.boundary_repo()
+        canon = self.canonical_clone()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(canon)]
+        # The pins PR merged upstream; the clone still sits at the old HEAD with the same bytes staged but
+        # uncommitted (unstaged bytes leave the index at HEAD, which the differs line reports instead).
+        (canon / "home/dot_f").write_text("upgraded\n")
+        subprocess.run([*git, "commit", "-q", "-am", "pins"], check=True)
+        subprocess.run([*git, "update-ref", "refs/remotes/origin/main", "HEAD"], check=True)
+        subprocess.run([*git, "reset", "-q", "--soft", "HEAD~1"], check=True)
+        root = canon.resolve()
+
+        self.assertEqual(
+            [
+                f"regime-boundary: canonical clone {root} has uncommitted changes under home/, install/ or scripts/ "
+                "that already match origin/main while HEAD is behind it: home/dot_f; "
+                f"pull it (git -C {root} pull) so its autostash re-applies as a no-op"
+            ],
+            self.canonical_lines(worktree),
+        )
+
+    def test_regime_boundary_check_reports_a_stash_in_the_canonical_clone(self) -> None:
+        _, worktree, _ = self.boundary_repo()
+        canon = self.canonical_clone()
+        (canon / "home/dot_f").write_text("upgraded\n")
+        subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(canon), "stash", "-q"], check=True
+        )
+
+        self.assertEqual(
+            [
+                f"regime-boundary: canonical clone {canon.resolve()} carries a stash (git stash list); "
+                "drop only the autostash entry once its content is on origin/main, and leave any other stash to its owner"
+            ],
+            self.canonical_lines(worktree),
+        )
+
+    def test_regime_boundary_check_reports_a_staged_only_change_in_the_canonical_clone(self) -> None:
+        _, worktree, _ = self.boundary_repo()
+        canon = self.canonical_clone()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(canon)]
+        # A dirty index under a working tree equal to HEAD (and origin/main) still blocks the pull.
+        (canon / "home/dot_f").write_text("x\n")
+        subprocess.run([*git, "add", "home/dot_f"], check=True)
+        subprocess.run([*git, "restore", "--worktree", "--source=HEAD", "home/dot_f"], check=True)
+        root = canon.resolve()
+
+        self.assertEqual(
+            [
+                f"regime-boundary: canonical clone {root} differs from origin/main under home/, install/ or scripts/: "
+                f"home/dot_f; carry a make upgrade diff as a pins task, or restore a merged one with "
+                f"git -C {root} restore -SW --source=origin/main -- <files> and drop its autostash"
+            ],
+            self.canonical_lines(worktree),
+        )
+
+    def test_regime_boundary_check_skips_the_canonical_clone_without_chezmoi(self) -> None:
+        _, worktree, _ = self.boundary_repo()
+        canon = self.canonical_clone()
+        (canon / "home/dot_f").write_text("upgraded\n")
+        (self.bin_dir / "chezmoi").unlink()
+
+        self.assertEqual([], self.canonical_lines(worktree))
+
+    def test_regime_boundary_check_skips_a_canonical_clone_that_is_the_working_clone(self) -> None:
+        main, worktree, _ = self.boundary_repo()
+        self.canonical_clone(source=main)
+        (main / "home").mkdir()
+        (main / "home/dot_dirty").write_text("x\n")
+
+        self.assertEqual([], self.canonical_lines(worktree))
+
     def test_add_worker_reports_a_failed_spawn(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()

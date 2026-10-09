@@ -1283,9 +1283,17 @@ EOF
             printf 'MISE_CEILING_PATHS=%s\n' "$MISE_CEILING_PATHS" >> "$TEST_LOG"
             case "$1" in
                 self-update) [[ "$FAIL_PHASE" != mise_self ]] ;;
-                ls) [[ "$FAIL_PHASE" != mise_inventory ]] && printf 'python 3.13 fixture\nfd 10.3.0 fixture\nhttp:bats 1.13.0 fixture\nhttp:gcloud 575.0.1 fixture\n' ;;
-                install) [[ "$FAIL_PHASE" != mise_install ]] ;;
-                upgrade) [[ "$FAIL_PHASE" != mise_upgrade ]] ;;
+                ls) [[ "$FAIL_PHASE" != mise_inventory ]] && printf 'node 26.0.0 fixture\npython 3.13 fixture\nnpm:ccusage 20.0.0 fixture\nfd 10.3.0 fixture\nhttp:bats 1.13.0 fixture\nhttp:gcloud 575.0.1 fixture\n' ;;
+                install)
+                    [[ "$FAIL_PHASE" != mise_install ]] || exit 1
+                    [[ "$FAIL_PHASE:$2" != npm_reinstall:--force ]]
+                    ;;
+                upgrade)
+                    [[ "$FAIL_PHASE" != mise_upgrade ]] || exit 1
+                    # Upgrading node moves the current node, which the script must notice.
+                    [[ "$*" != "upgrade --yes node" || "$FAIL_PHASE" == node_stays ]] || touch "$NODE_MOVED"
+                    ;;
+                current) [ -e "$NODE_MOVED" ] && printf '27.0.0\n' || printf '26.0.0\n' ;;
             esac
             """,
         )
@@ -1320,6 +1328,8 @@ EOF
             "HOME": str(home),
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "TEST_LOG": str(log),
+            # Outside the repository, so the no-file-written assertion still holds.
+            "NODE_MOVED": str(self.temp_dir / f"upgrade-{fail_phase}.node-moved"),
         }
         for name in ("MISE_CONFIG_DIR", "MISE_CEILING_PATHS", "XDG_CONFIG_HOME"):
             env.pop(name, None)
@@ -1432,7 +1442,7 @@ EOF
         self.assertIn("Skipping mise upgrade for pinned HTTP tool: http:bats.", result.stdout)
         self.assertIn("Skipping mise upgrade for pinned HTTP tool: http:gcloud.", result.stdout)
         log = (repo / "commands.log").read_text().splitlines()
-        self.assertNotIn("mise self-update --yes", log)
+        self.assertFalse([line for line in log if line.startswith("mise self-update")])
         # One bare install (a per-tool install of a "latest" request needs the network), then per-tool upgrades.
         self.assertIn("mise install --yes", log)
         self.assertFalse([line for line in log if line.startswith("mise install --yes ")])
@@ -1450,6 +1460,26 @@ EOF
         result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
+
+    def test_upgrade_reinstalls_npm_tools_only_after_node_moved(self) -> None:
+        for phase, reinstalled, warning in (
+            ("none", True, False),
+            ("node_stays", False, False),
+            ("npm_reinstall", True, True),
+        ):
+            with self.subTest(phase=phase):
+                repo, env = self.upgrade_fixture(phase)
+
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                log = (repo / "commands.log").read_text().splitlines()
+                forced = [line for line in log if line.startswith("mise install --force")]
+                self.assertEqual(["mise install --force --yes npm:ccusage"] if reinstalled else [], forced)
+                self.assertEqual(
+                    warning, "optional warning: npm: tools were not all reinstalled on node 27.0.0" in result.stderr
+                )
+                self.assertIn(f"required failures: 0; optional warnings: {int(warning)}", result.stdout)
 
     def test_upgrade_failure_after_a_successful_install_only_warns(self) -> None:
         # Converged means the declared tools are installed; an upgrade that cannot reach its archive only warns.
@@ -1473,7 +1503,7 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         log = (repo / "commands.log").read_text().splitlines()
-        self.assertIn("mise self-update --yes", log)
+        self.assertIn("mise self-update --yes --no-plugins", log)
 
 
 if __name__ == "__main__":

@@ -191,7 +191,8 @@ function upgrade_mise_self() {
         return 0
     fi
 
-    mise self-update --yes
+    # Plugin updates are branch moves the release-age cooldown does not cover.
+    mise self-update --yes --no-plugins
 }
 
 #
@@ -265,6 +266,26 @@ function run_mise_tool_command() {
 }
 
 #
+# @description Reinstall the current npm: tools so they run on the node an upgrade just installed.
+#
+function reinstall_mise_npm_tools() {
+    local mise_tool
+    local mise_tools
+    local failed=0
+
+    mise_tools="$(current_mise_tools)" || return 1
+    while IFS= read -r mise_tool; do
+        [[ "${mise_tool}" == npm:* ]] || continue
+        if ! run_mise_with_isolated_git_config install --force --yes "${mise_tool}"; then
+            printf 'warning: mise install --force %s failed after the node upgrade; rerun it; continuing\n' "${mise_tool}" >&2
+            failed=1
+        fi
+    done <<< "${mise_tools}"
+
+    return "${failed}"
+}
+
+#
 # @description Install missing and upgrade outdated mise tools declared in the applied host config.
 #
 function upgrade_mise_tools() {
@@ -278,6 +299,8 @@ function upgrade_mise_tools() {
     # install re-resolves "latest" over the network and fails without one.
     run_mise_with_isolated_git_config install --yes || failed=1
     # Upgrades need the network; an installed tool that cannot move yet is still converged.
+    local node_before node_after
+    node_before="$(run_mise_with_isolated_git_config current node 2> /dev/null)" || node_before=""
     local upgrade_status=0
     run_mise_tool_command upgrade || upgrade_status=$?
     if [ "${upgrade_status}" -eq 2 ]; then
@@ -285,6 +308,12 @@ function upgrade_mise_tools() {
         ((optional_warnings += 1))
     elif [ "${upgrade_status}" -ne 0 ]; then
         failed=1
+    fi
+    # A bare install leaves installed npm: tools on the old node; reinstall them when node moved.
+    node_after="$(run_mise_with_isolated_git_config current node 2> /dev/null)" || node_after=""
+    if [ -n "${node_after}" ] && [ "${node_after}" != "${node_before}" ] && ! reinstall_mise_npm_tools; then
+        printf 'optional warning: npm: tools were not all reinstalled on node %s\n' "${node_after}" >&2
+        ((optional_warnings += 1))
     fi
     return "${failed}"
 }

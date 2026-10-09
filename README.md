@@ -178,7 +178,11 @@ probe on 2026-10-09 showed the setting acting on core `node` (26.11.1 without
 it, 26.10.0 with it). `mise self-update` waits the same 72 hours through
 `self_update.minimum_release_age = "72h"` (its own default is 24h), and Codex
 and Claude Code follow the same cooldown. A `node` major bump can leave `npm:`
-tool installs invalid until `mise install` reruns, which `make update` does.
+tool installs invalid until `mise install` reruns, so when an upgrade moves
+`node`, `make update` reinstalls the `npm:` tools on it (`mise install --force`).
+`mise self-update --no-plugins` leaves installed mise plugins such as `shdoc`
+alone, because a plugin update is a branch move the cooldown does not cover;
+run `mise plugins update` when you want one.
 Homebrew bottles are verified against
 their build attestations (`HOMEBREW_VERIFY_ATTESTATIONS=1`) when `gh` is
 present. Homebrew, `uv tool upgrade --all` and GitHub CLI extensions take their

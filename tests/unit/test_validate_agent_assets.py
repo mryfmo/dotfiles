@@ -367,7 +367,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.load_yaml = lambda _path: manifest
         self.write_text_file(
             "README.md",
-            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`; codex)\nherdr-agents --restart-worker\n"
+            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`; codex)\nherdr-agents --add-worker\nherdr-agents --remove-worker\n"
             "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
         )
         return manifest
@@ -454,7 +454,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.write_text_file(
             "README.md",
             "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `codex`; codex)\n"
-            "herdr-agents --restart-worker\n"
+            "herdr-agents --add-worker\nherdr-agents --remove-worker\n"
             "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
         )
         stderr = io.StringIO()
@@ -478,7 +478,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             stderr.getvalue(),
         )
 
-    def test_agent_manifest_requires_readme_to_document_restart_worker(self) -> None:
+    def test_agent_manifest_requires_readme_to_document_on_demand_seating(self) -> None:
         self.write_valid_agent_manifest()
         self.write_text_file(
             "README.md",
@@ -488,7 +488,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_agent_manifest()
-        self.assertIn("README.md must document herdr-agents --restart-worker", stderr.getvalue())
+        self.assertIn(
+            "README.md must document herdr-agents --add-worker and --remove-worker for seating workers on demand",
+            stderr.getvalue(),
+        )
 
     def asset_manifest(self) -> dict:
         return {

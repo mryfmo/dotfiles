@@ -447,14 +447,9 @@ install_starship
         self.assertEqual(1, len(manifest_rules))
         self.assertIs(True, manifest_rules[0]["dependencyDashboardApproval"])
         self.assertNotIn("automerge", json.dumps(config))
-        # mise PRs wait for dashboard approval, and fd stays held like upgrade-tools.sh.
+        # No mise.lock is left to regenerate, so no mise rule waits on lock fidelity; fd stays held like config.toml.
         mise_rules = [rule for rule in config["packageRules"] if rule.get("matchManagers") == ["mise"]]
-        self.assertTrue(
-            any(
-                rule.get("dependencyDashboardApproval") is True and "matchPackageNames" not in rule
-                for rule in mise_rules
-            )
-        )
+        self.assertFalse([rule for rule in mise_rules if "mise.lock" in rule.get("description", "")])
         self.assertTrue(
             any(rule.get("matchPackageNames") == ["fd"] and rule.get("enabled") is False for rule in mise_rules)
         )

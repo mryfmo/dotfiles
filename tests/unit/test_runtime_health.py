@@ -1334,7 +1334,9 @@ EOF
 
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)
                 log = (repo / "commands.log").read_text().splitlines()
-                self.assertEqual({f"MISE_CONFIG_DIR={expected}"}, {line for line in log if line.startswith("MISE_CONFIG_DIR=")})
+                self.assertEqual(
+                    {f"MISE_CONFIG_DIR={expected}"}, {line for line in log if line.startswith("MISE_CONFIG_DIR=")}
+                )
                 # A parent directory's mise.toml must not join the inventory: the ceiling is the checkout.
                 ceilings = {line.split("=", 1)[1] for line in log if line.startswith("MISE_CEILING_PATHS=")}
                 self.assertEqual({repo.resolve()}, {Path(ceiling).resolve() for ceiling in ceilings})

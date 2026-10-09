@@ -471,7 +471,7 @@ install_starship
         ):
             self.assertIn(token, script)
         # cargo takes the newest crate and checks it against the registry index.
-        self.assertNotIn("--version \"=", script)
+        self.assertNotIn('--version "=', script)
         self.assertNotIn("crate.sh", script)
         self.assertNotIn("github.com/rossmacarthur/sheldon/releases", script)
 

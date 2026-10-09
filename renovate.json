@@ -44,7 +44,7 @@
     {
       "description": "Hold fd, as home/dot_mise/config.toml does: newer releases lack a macOS x64 asset.",
       "matchManagers": ["mise"],
-      "matchPackageNames": ["fd"],
+      "matchDepNames": ["fd"],
       "enabled": false
     },
     {

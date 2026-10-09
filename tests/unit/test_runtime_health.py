@@ -1281,6 +1281,7 @@ EOF
             printf 'mise %s\n' "$*" >> "$TEST_LOG"
             printf 'MISE_CONFIG_DIR=%s\n' "$MISE_CONFIG_DIR" >> "$TEST_LOG"
             printf 'MISE_CEILING_PATHS=%s\n' "$MISE_CEILING_PATHS" >> "$TEST_LOG"
+            printf 'NPM_MIN_RELEASE_AGE=%s\n' "${npm_config_min_release_age:-unset}" >> "$TEST_LOG"
             case "$1" in
                 self-update) [[ "$FAIL_PHASE" != mise_self ]] ;;
                 ls) [[ "$FAIL_PHASE" != mise_inventory ]] && printf 'node 26.0.0 fixture\npython 3.13 fixture\nnpm:ccusage 20.0.0 fixture\nfd 10.3.0 fixture\nhttp:bats 1.13.0 fixture\nhttp:gcloud 575.0.1 fixture\n' ;;
@@ -1355,6 +1356,10 @@ EOF
                 # A parent directory's mise.toml must not join the inventory: the ceiling is the checkout.
                 ceilings = {line.split("=", 1)[1] for line in log if line.startswith("MISE_CEILING_PATHS=")}
                 self.assertEqual({repo.resolve()}, {Path(ceiling).resolve() for ceiling in ceilings})
+                # npm's own age gate matches mise's 72h cooldown, so npm accepts the release mise chose.
+                self.assertEqual(
+                    {"NPM_MIN_RELEASE_AGE=3"}, {line for line in log if line.startswith("NPM_MIN_RELEASE_AGE=")}
+                )
                 after = {path.relative_to(repo) for path in repo.rglob("*")}
                 self.assertEqual(before | {Path("commands.log")}, after)
                 self.assertNotIn("chezmoi", "\n".join(log))

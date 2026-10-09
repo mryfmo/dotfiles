@@ -22,6 +22,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/mise}"
 # No project config from this checkout upward joins the inventory, so only the host config's tools move.
 export MISE_CEILING_PATHS="${repo_root}"
+# npm's own min-release-age (7 days in home/dot_npmrc) would refuse an npm: release that mise's
+# minimum_release_age = "72h" already chose, so mise-driven npm installs here use the same 3 days.
+export npm_config_min_release_age=3
 
 include_system=false
 DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node node@* python python@* python3 pip npm pnpm yarn claude"

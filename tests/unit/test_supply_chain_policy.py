@@ -189,6 +189,11 @@ install_starship
             self.assertNotIn(retired, settings)
         self.assertEqual("72h", settings["minimum_release_age"])
         self.assertEqual("72h", settings["self_update"]["minimum_release_age"])
+        # npm's own age gate for mise-driven installs must equal mise's cooldown, or npm refuses mise's choice.
+        hours = int(settings["minimum_release_age"].removesuffix("h"))
+        script = (ROOT / "scripts/upgrade-tools.sh").read_text()
+        self.assertIn(f"export npm_config_min_release_age={hours // 24}\n", script)
+        self.assertEqual(0, hours % 24)
         self.assertFalse((ROOT / "home/dot_mise/mise.lock").exists())
         self.assertFalse((ROOT / "home/dot_config/mise/mise.lock.tmpl").exists())
         self.assertIn(".config/mise/mise.lock", (ROOT / "home/.chezmoiremove").read_text().splitlines())
@@ -457,7 +462,7 @@ install_starship
         mise_rules = [rule for rule in config["packageRules"] if rule.get("matchManagers") == ["mise"]]
         self.assertFalse([rule for rule in mise_rules if "mise.lock" in rule.get("description", "")])
         self.assertTrue(
-            any(rule.get("matchPackageNames") == ["fd"] and rule.get("enabled") is False for rule in mise_rules)
+            any(rule.get("matchDepNames") == ["fd"] and rule.get("enabled") is False for rule in mise_rules)
         )
         # The held npm:pnpm must not come back through a Renovate PR either.
         self.assertTrue(

@@ -123,9 +123,8 @@ To verify that the updated scripts work correctly, run the scripts on the actual
 
 ### Lifecycle
 
-The public lifecycle has four entry points: `setup`, `update`, `doctor`, and `upgrade`.
-The bootstrap path and the upgrade path are intentionally separate.
-`setup.sh` prepares a machine for dotfiles management and runs `chezmoi apply`, but it must not upgrade already-installed tools just because the bootstrap command was re-run.
+The public lifecycle has three entry points: `setup`, `update`, and `doctor`.
+`setup.sh` prepares a machine for dotfiles management and runs `chezmoi apply`, but it must not upgrade already-installed tools just because the bootstrap command was re-run; upgrading installed tools is part of `make update`.
 Use the explicit lifecycle commands below instead:
 
 ```shell
@@ -177,7 +176,9 @@ config uses except `http:` (`bats` and `gcloud`, which are exact anyway); a live
 probe on 2026-10-09 showed the setting acting on core `node` (26.11.1 without
 it, 26.10.0 with it). `mise self-update` waits the same 72 hours through
 `self_update.minimum_release_age = "72h"` (its own default is 24h), and Codex
-and Claude Code follow the same cooldown. A `node` major bump can leave `npm:`
+and Claude Code follow the same cooldown. npm's own `min-release-age` (7 days in
+`~/.npmrc`) is set to the same 3 days for the npm installs `make update` drives,
+so npm accepts the release mise chose. A `node` major bump can leave `npm:`
 tool installs invalid until `mise install` reruns, so when an upgrade moves
 `node`, `make update` reinstalls the `npm:` tools on it (`mise install --force`).
 `mise self-update --no-plugins` leaves installed mise plugins such as `shdoc`

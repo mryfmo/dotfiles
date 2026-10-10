@@ -245,7 +245,8 @@ def validate(path: Path) -> dict:
     if security:
         tier = "design"
     elif any(
-        in_review_tier(e) or not e.endswith(LOW_RISK_SUFFIXES) or any(in_review_tier(n) for n in expand(e, files))
+        # A glob can create a name carrying a review token (hooks.md), so only explicit prose paths are docs.
+        re.search(r"[*?]", e) or in_review_tier(e) or not e.endswith(LOW_RISK_SUFFIXES)
         for e in allowed
     ):
         tier = "review"

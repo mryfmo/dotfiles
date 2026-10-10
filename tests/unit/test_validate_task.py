@@ -545,6 +545,9 @@ class ValidateTaskTest(unittest.TestCase):
             ({"allowed_files": ["README.md", "many/f00.txt"]}, "docs"),
             ({"allowed_files": ["home/dot_config/claude/rules/rule.md"]}, "review"),  # prose in the review tier
             ({"allowed_files": ["tests/unit/test_x.py"]}, "review"),  # neither prose nor in a tier
+            # Gaming path: a glob can create a review-tier name (home/dot_agents/skills/new.md, docs/hooks.md).
+            ({"allowed_files": ["home/dot_agents/s*/new.md"]}, "review"),
+            ({"allowed_files": ["docs/*.md"]}, "review"),
             ({"allowed_files": ["install/common/tool.sh"], "design_review": DESIGN["design_review"]}, "design"),
             ({"security": True, "design_review": DESIGN["design_review"]}, "design"),
         ):

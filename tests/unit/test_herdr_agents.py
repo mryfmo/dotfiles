@@ -2852,17 +2852,30 @@ exit {exit_code}
             "---\nformat: 2\ntask_id: good-a01\nkind: docs\ninvariants:\n  INV-1: x\n---\n# good\n"
         )
 
+        acceptance = main / ".orchestration/acceptance"
+        acceptance.mkdir(parents=True)
+        (acceptance / "bad-a01-design-reset.md").write_text(
+            "---\nformat: 2\nreset_of: bad-a01\nredesign_task: none-a01\nredesign_seat: claude-deep-dot\nreason: x\n---\n"
+        )
+
         result = self.run_boundary_check(worktree)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         lines = [line for line in result.stdout.splitlines() if "validate-task.py" in line]
-        self.assertEqual(
-            [
-                f"regime-boundary: task file fails scripts/validate-task.py: {tasks.resolve()}/bad-a01.md: "
-                "task_id: 'other-a01' is not the file stem 'bad-a01'"
-            ],
+        self.assertIn(
+            f"regime-boundary: task file fails scripts/validate-task.py: {tasks.resolve()}/bad-a01.md: "
+            "task_id: 'other-a01' is not the file stem 'bad-a01'",
             lines,
         )
+        # A design-reset record is checked too: here its seat is not a -redesign- identity.
+        self.assertTrue(
+            any(
+                "bad-a01-design-reset.md: redesign_seat: must be an identity containing -redesign-" in line
+                for line in lines
+            ),
+            lines,
+        )
+        self.assertEqual([], [line for line in lines if "legacy-a01" in line or "good-a01" in line])
 
     def test_regime_boundary_check_flags_empty_seats_only(self) -> None:
         main, worktree, other = self.boundary_repo()

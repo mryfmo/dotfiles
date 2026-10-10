@@ -57,6 +57,7 @@ function zed_installed_version() {
 # @description Download a Zed release, verify it against the release attestation, and atomically install it.
 # @arg $1 string The release tag.
 # @exitcode 2 gh is absent or not authenticated, so nothing was installed.
+# @exitcode 3 The archive could not be downloaded, so nothing was installed.
 #
 function install_zed_release() (
     local tag="$1" artifact download status=0 tmpdir staging="${ZED_APP_DIR}.tmp"
@@ -65,7 +66,7 @@ function install_zed_release() (
     trap 'rm -rf "${tmpdir}" "${staging}"' EXIT
     download="${tmpdir}/${artifact}"
 
-    curl -fsSL "https://github.com/${ZED_RELEASE_REPO}/releases/download/${tag}/${artifact}" -o "${download}" || return
+    curl -fsSL "https://github.com/${ZED_RELEASE_REPO}/releases/download/${tag}/${artifact}" -o "${download}" || return 3
     github_release_attestation "${ZED_RELEASE_REPO}" "${tag}" "${download}" || status=$?
     case "${status}" in
     0) ;;
@@ -76,7 +77,8 @@ function install_zed_release() (
         ;;
     esac
 
-    tar -xzf "${download}" -C "${tmpdir}" || return
+    # Exit 1, never tar's own 2, which main would read as "gh not ready".
+    tar -xzf "${download}" -C "${tmpdir}" || return 1
     mkdir -p "$(dirname "${ZED_APP_DIR}")" || return
     rm -rf "${staging}"
     mv "${tmpdir}/zed.app" "${staging}" || return
@@ -126,6 +128,15 @@ function main() {
             printf 'zed %s stays (not updated to %s): run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh.\n' "${installed}" "${tag}" >&2
         else
             printf 'zed not installed: run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh.\n' >&2
+        fi
+        return 0
+        ;;
+    3)
+        # The API answered but the download did not: like offline, never fail the apply over Zed.
+        if [ -n "${installed}" ]; then
+            printf 'warning: could not download Zed %s; Zed %s stays.\n' "${tag}" "${installed}" >&2
+        else
+            printf 'zed not installed: could not download Zed %s; the next make update retries.\n' "${tag}" >&2
         fi
         return 0
         ;;

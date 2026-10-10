@@ -27,7 +27,7 @@ class AwsCliAcquisitionTest(unittest.TestCase):
             capture_output=True,
         )
 
-    def run_postcondition(self, aws_fixture):
+    def run_postcondition(self, aws_fixture, staged=AWS_CLI_VERSION):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory) / "home"
             aws = home / ".local/bin/aws"
@@ -36,8 +36,8 @@ class AwsCliAcquisitionTest(unittest.TestCase):
                 aws.write_text(aws_fixture)
                 aws.chmod(0o755)
             return self.run_shell(
-                "exit_zero_installer() { return 0; }\nexit_zero_installer\nverify_aws_cli_install",
-                {"HOME": str(home)},
+                'exit_zero_installer() { return 0; }\nexit_zero_installer\nverify_aws_cli_install "${STAGED}"',
+                {"HOME": str(home), "STAGED": staged},
             )
 
     def test_linux_urls_are_the_unversioned_current_archive_and_unknown_architecture_fails(self):
@@ -328,13 +328,19 @@ install_aws_cli
         result = self.run_postcondition("#!/bin/sh\nprintf 'not-aws 1.0\\n'\n")
         self.assertNotEqual(0, result.returncode)
 
-    def test_exit_zero_install_of_any_aws_cli_version_passes_and_reports_it(self):
-        # No version is pinned: whatever release AWS serves is accepted and reported.
+    def test_exit_zero_install_passes_only_when_the_staged_version_is_active(self):
+        # No version is pinned: whatever release AWS serves is accepted, but it must be the one now active.
         for version in (AWS_CLI_VERSION, "2.35.20"):
             with self.subTest(version=version):
-                result = self.run_postcondition(f"#!/bin/sh\nprintf 'aws-cli/{version} Python/3.13 Linux/6\\n'\n")
+                result = self.run_postcondition(
+                    f"#!/bin/sh\nprintf 'aws-cli/{version} Python/3.13 Linux/6\\n'\n", staged=version
+                )
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(f"Installed aws-cli/{version}.\n", result.stdout)
+        # An installer that skipped can leave an older CLI active: that is a failure, not an install.
+        result = self.run_postcondition("#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Linux/6\\n'\n")
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(f"aws-cli/2.35.20 is active, not the staged aws-cli/{AWS_CLI_VERSION}", result.stderr)
 
     def run_main(self, home, head_etag, recorded_etag=None, installed=True):
         """Run main with a fake HEAD response and install; returns the result and the install marker."""
@@ -379,29 +385,40 @@ main
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertTrue(marker.exists())
 
-    def test_main_repairs_a_broken_same_version_install_the_upstream_update_would_skip(self):
-        # aws/install --update exits 0 without copying when the version directory exists, so the
-        # repair must remove a broken same-version tree first; a GPG-verified archive comes first.
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            home = root / "home"
-            temp = root / "tmp"
-            key = root / "key.asc"
-            for path in (home, temp):
-                path.mkdir()
-            key.write_text("fixture\n")
-            version_dir = home / ".local/share/aws-cli/v2" / AWS_CLI_VERSION
-            (version_dir / "bin").mkdir(parents=True)
-            (version_dir / "bin/aws").write_text("#!/bin/sh\nexit 42\n")
-            (version_dir / "bin/aws").chmod(0o755)
-            (home / ".local/bin").mkdir(parents=True)
-            (home / ".local/bin/aws").symlink_to(version_dir / "bin/aws")
-            state = home / ".local/state/dotfiles/aws-cli-archive.etag"
-            state.parent.mkdir(parents=True)
-            state.write_text('"abc-1"\n')
+    def test_main_repairs_a_same_version_directory_the_upstream_update_would_skip(self):
+        # aws/install --update exits 0 without copying when the version directory exists, so the repair
+        # must remove that tree first, whether the active CLI is broken or an older one an interrupted
+        # update left behind; a GPG-verified archive comes first.
+        for case in ("broken active CLI", "older version active"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                home = root / "home"
+                temp = root / "tmp"
+                key = root / "key.asc"
+                for path in (home, temp):
+                    path.mkdir()
+                key.write_text("fixture\n")
+                version_dir = home / ".local/share/aws-cli/v2" / AWS_CLI_VERSION
+                (version_dir / "bin").mkdir(parents=True)
+                (version_dir / "bin/aws").write_text("#!/bin/sh\nexit 42\n")
+                (version_dir / "bin/aws").chmod(0o755)
+                (home / ".local/bin").mkdir(parents=True)
+                active = version_dir / "bin/aws"
+                if case == "older version active":
+                    # An interrupted update: the new version directory exists, an older CLI still works.
+                    active = home / ".local/share/aws-cli/v2/2.35.20/bin/aws"
+                    active.parent.mkdir(parents=True)
+                    active.write_text("#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Linux/6\\n'\n")
+                    active.chmod(0o755)
+                (home / ".local/bin/aws").symlink_to(active)
+                state = home / ".local/state/dotfiles/aws-cli-archive.etag"
+                state.parent.mkdir(parents=True)
+                # A broken CLI behind the current ETag; or the older install's ETag, which the stricter
+                # postcondition keeps, because the interrupted update never recorded the new one.
+                state.write_text('"abc-1"\n' if case == "broken active CLI" else '"abc-0"\n')
 
-            result = self.run_shell(
-                r"""
+                result = self.run_shell(
+                    r"""
 uname() { printf 'x86_64\n'; }
 curl() {
     local output="" head=""
@@ -452,15 +469,16 @@ EOF
 }
 main
 """.replace("@FINGERPRINT@", FINGERPRINT).replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
-                {"AWS_CLI_KEY_PATH": str(key), "HOME": str(home), "TMPDIR": str(temp), "XDG_STATE_HOME": ""},
-            )
+                    {"AWS_CLI_KEY_PATH": str(key), "HOME": str(home), "TMPDIR": str(temp), "XDG_STATE_HOME": ""},
+                )
 
-            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            self.assertIn(f"Installed aws-cli/{AWS_CLI_VERSION}.", result.stdout)
-            self.assertEqual(
-                f"aws-cli/{AWS_CLI_VERSION} Python/3.13 Linux/6\n",
-                subprocess.run([str(home / ".local/bin/aws")], text=True, capture_output=True, check=False).stdout,
-            )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"Installed aws-cli/{AWS_CLI_VERSION}.", result.stdout)
+                self.assertEqual(
+                    f"aws-cli/{AWS_CLI_VERSION} Python/3.13 Linux/6\n",
+                    subprocess.run([str(home / ".local/bin/aws")], text=True, capture_output=True, check=False).stdout,
+                )
+                self.assertEqual('"abc-1"\n', state.read_text())
 
     def test_main_installs_and_records_a_new_archive_etag(self):
         for recorded, installed in (('"abc-1"', True), (None, False)):

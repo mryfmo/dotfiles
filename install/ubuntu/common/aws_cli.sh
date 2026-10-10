@@ -63,11 +63,17 @@ function verify_aws_cli_version() {
 }
 
 #
-# @description Verify that the installer produced a working AWS CLI and report its version.
+# @description Verify that the installer left the staged release as the working AWS CLI and report it.
+# @arg $1 string The staged version, for example 2.37.6.
 #
 function verify_aws_cli_install() {
     local version
     version="$(verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI postcondition failed")" || return
+    # An installer that skipped (an existing version directory) can leave an older CLI active.
+    if [ "${version}" != "aws-cli/$1" ]; then
+        printf 'AWS CLI postcondition failed: %s is active, not the staged aws-cli/%s.\n' "${version}" "$1" >&2
+        return 1
+    fi
     printf 'Installed %s.\n' "${version}"
 }
 
@@ -119,11 +125,12 @@ function install_aws_cli() (
     staged_version="$(verify_aws_cli_version "${temporary_dir}/aws/dist/aws" "AWS CLI staged artifact verification failed")" || return
     staged_version="${staged_version#aws-cli/}"
     # The upstream installer's --update skips a version directory that already exists, so a broken
-    # install of the same version would never be repaired. Remove that directory first, after the
-    # signature and the staged CLI passed and only when the installed CLI no longer runs.
+    # install of the same version, or an interrupted update that left it beside an older active CLI,
+    # would never be repaired. Remove that directory first, after the signature and the staged CLI
+    # passed and only when the active CLI does not run as the staged release.
     same_version_dir="${AWS_CLI_INSTALL_DIR}/v2/${staged_version}"
     if [[ "${staged_version}" =~ ^[0-9]+(\.[0-9]+)*$ && -d "${same_version_dir}" ]] &&
-        ! verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1; then
+        [ "$(verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" 2> /dev/null)" != "aws-cli/${staged_version}" ]; then
         rm -rf "${same_version_dir}" || return
     fi
     mkdir -p "${AWS_CLI_BIN_DIR}" "$(dirname "${AWS_CLI_INSTALL_DIR}")" || return
@@ -131,7 +138,7 @@ function install_aws_cli() (
         --install-dir "${AWS_CLI_INSTALL_DIR}" \
         --bin-dir "${AWS_CLI_BIN_DIR}" \
         --update || return
-    verify_aws_cli_install
+    verify_aws_cli_install "${staged_version}"
 )
 
 #

@@ -16,6 +16,7 @@ readonly ZED_FAKES='
     }
     curl() {
         local output
+        [ -z "${DOWNLOAD_FAIL:-}" ] || return 22
         while [ "$#" -gt 0 ]; do
             if [ "$1" = -o ]; then output="$2"; shift 2; else shift; fi
         done
@@ -168,6 +169,24 @@ function install_fake_zed() {
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"zed not installed: could not resolve a zed-industries/zed release; the next make update retries"* ]]
     [ ! -e "${BATS_TEST_TMPDIR}/.local/bin/zed" ]
+}
+
+@test "[ubuntu-client] a failed archive download never fails the apply, with or without an installed zed" {
+    install_fake_zed 1.0.0
+
+    run env HOME="${BATS_TEST_TMPDIR}" DOWNLOAD_FAIL=1 bash -c "${ZED_FAKES}"'
+        main
+    '
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"warning: could not download Zed v1.22.0; Zed 1.0.0 stays."* ]]
+    "${BATS_TEST_TMPDIR}/.local/bin/zed" | grep -q 'Zed 1.0.0'
+
+    rm -rf "${BATS_TEST_TMPDIR}/.local/share/zed.app" "${BATS_TEST_TMPDIR}/.local/bin/zed"
+    run env HOME="${BATS_TEST_TMPDIR}" DOWNLOAD_FAIL=1 bash -c "${ZED_FAKES}"'
+        main
+    '
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"zed not installed: could not download Zed v1.22.0; the next make update retries."* ]]
 }
 
 @test "[ubuntu-client] the zed script runs on every apply, after mise installs gh" {

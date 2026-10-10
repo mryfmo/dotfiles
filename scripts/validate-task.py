@@ -204,7 +204,12 @@ def validate(path: Path) -> dict:
         return report
     root = main_checkout(path.resolve())
     files = tracked_files(root)
-    if path.resolve().parent == (root / ".orchestration/acceptance").resolve():
+    if path.is_symlink():
+        # A link would let a file be judged by where it points (a reset record) rather than where it is.
+        fail("the task file must be a regular file, not a symlink")
+        report["status"] = "invalid"
+        return report
+    if path.parent.resolve() == (root / ".orchestration/acceptance").resolve():
         return validate_reset(path, data, root, files, report)
     if "reset_of" in data:
         fail("reset_of: a design-reset record belongs in .orchestration/acceptance/<task id>-design-reset.md")
@@ -264,8 +269,8 @@ def validate(path: Path) -> dict:
     bad_ids = [key for key in invariants if not INVARIANT_ID.fullmatch(key)]
     if bad_ids:
         fail(f"invariants: ids must look like INV-n: {', '.join(bad_ids)}")
-    if security and not invariants:
-        fail("invariants: a security task needs at least one")
+    if not invariants:
+        fail("invariants: every task needs at least one `INV-n: sentence`")
 
     design_review = data.get("design_review")
     design = None

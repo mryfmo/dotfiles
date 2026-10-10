@@ -63,6 +63,13 @@ model_profiles:
       model_reasoning_effort: xhigh
       sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
+  redesign:
+    # Writes the superseding design after a design reset, never the orchestrator (T124 Amendments 2 and 7).
+    claude: { model: claude-fable-5-1, effort: xhigh }
+    codex:
+      model: gpt-5.6-sol
+      model_reasoning_effort: xhigh
+      notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
 interactive_profile: deep
 # Worker pane agent for herdr-agents: codex or claude. Renders into
 # ~/.agents/model-profiles.env as HERDR_AGENTS_WORKER_KIND; an explicit

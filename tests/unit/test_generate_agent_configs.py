@@ -692,6 +692,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         env = outputs[self.temp_dir / "home/dot_agents/model-profiles.env"]
         self.assertIn('MODEL_PROFILE_AUDIT_CODEX_ARGS="--profile audit"', env)
 
+    def test_the_repository_renders_the_redesign_profile(self) -> None:
+        # The process tier table names the redesign lane, so its launch args exist (T124 Amendment 7).
+        env = (ROOT / "home/dot_agents/model-profiles.env").read_text()
+        self.assertIn('MODEL_PROFILE_REDESIGN_CLAUDE_ARGS="--model claude-fable-5-1 --effort xhigh"', env)
+
     def test_model_profiles_reject_invalid_sandbox_mode(self) -> None:
         manifest = sample_manifest()
         manifest["model_profiles"]["standard"]["codex"]["sandbox_mode"] = "readonly"

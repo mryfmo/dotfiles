@@ -346,7 +346,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "claude": {"model": "claude-model", "effort": "high"},
                 "codex": {"model": "codex-model", "model_reasoning_effort": "high"},
             }
-            for name in ("express", "standard", "review", "deep", "security", "audit")
+            for name in ("express", "standard", "review", "deep", "security", "audit", "redesign")
         }
         profiles["security"]["codex"]["model"] = "gpt-6-astra"
         profiles["audit"]["codex"].update(model="gpt-6-astra", model_reasoning_effort="xhigh", sandbox_mode="read-only")
@@ -960,7 +960,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_agent_manifest()
-        self.assertIn("must define the six base profiles", stderr.getvalue())
+        self.assertIn("must define the seven base profiles", stderr.getvalue())
 
     def test_agent_manifest_rejects_the_retired_adh_profile(self) -> None:
         manifest = self.write_valid_agent_manifest()
@@ -969,7 +969,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_agent_manifest()
-        self.assertIn("must define the six base profiles and no others", stderr.getvalue())
+        self.assertIn("must define the seven base profiles and no others", stderr.getvalue())
 
     def test_agent_manifest_pins_the_audit_codex_profile(self) -> None:
         for key, wrong in (

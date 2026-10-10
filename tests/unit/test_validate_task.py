@@ -194,7 +194,9 @@ class ValidateTaskTest(unittest.TestCase):
                 }
                 fields[key] = None
                 self.assertFails(self.task(**fields), needle)
-        self.assertFails(self.security_task(invariants={}), "invariants: a security task needs at least one")
+        for task in (self.security_task(invariants={}), self.task(kind="docs", allowed_files=None, invariants={})):
+            with self.subTest(task=task.name):
+                self.assertFails(task, "invariants: every task needs at least one")
 
     def test_task_id_must_equal_the_file_stem(self) -> None:
         self.assertFails(self.task("t-a01", task_id="t-a02"), "is not the file stem")
@@ -539,6 +541,11 @@ class ValidateTaskTest(unittest.TestCase):
 
     def test_a_reset_record_outside_the_acceptance_directory_is_a_task_file(self) -> None:
         self.assertFails(self.task(reset_of="old-a01"), "belongs in .orchestration/acceptance")
+        # Gaming path: a task-path symlink to a reset record would be judged as the record.
+        record = self.reset_fixture()
+        link = self.tasks / "linked-a01.md"
+        link.symlink_to(record)
+        self.assertFails(link, "must be a regular file, not a symlink")
 
     def test_the_tier_is_derived_and_needs_a_process_tiers_entry(self) -> None:
         for fields, tier in (

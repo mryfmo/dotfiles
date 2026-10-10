@@ -793,9 +793,9 @@ def validate_agent_manifest() -> dict[str, Any]:
         fail(f"{manifest_path} must enable the Crit Codex plugin")
     claude = manifest.get("claude", {})
     profiles = manifest.get("model_profiles", {})
-    required_profiles = {"express", "standard", "review", "deep", "security", "audit"}
+    required_profiles = {"express", "standard", "review", "deep", "security", "audit", "redesign"}
     if set(profiles) != required_profiles:
-        fail(f"{manifest_path} must define the six base profiles and no others")
+        fail(f"{manifest_path} must define the seven base profiles and no others")
     # Operator decision (2026-09-29): security runs codex gpt-6-astra high under
     # ChatGPT login; gpt-daybreak-blue-latest needs API-key auth.
     security_codex = profiles["security"].get("codex", {})

@@ -2,8 +2,8 @@
 format: 2
 reset_of: dotfiles-T124-wave3b-audit-grammar-a01
 redesign_task: dotfiles-T128-regime-v3-a01
-redesign_seat: claude-deep-dot under DESIGN_RESET_WAIVED_BY=operator (decision 2026-10-11, answer "orchestrator drafts + fresh-context review required"); reviewed before dispatch by claude-review-dot-a001 on the review profile (AGMSG-TASK dotfiles-T128-design-review-a01 2026-10-10T21:04:16Z); this waiver covers the T128 design only, no further orchestrator-authored design under T128
-reason: T126 INV-6 (d) reached, reported by the worker itself at 2026-10-10T12:47:13Z (Bot P1 on two post-RESULT heads: 7a83cb66 thread 4237434169, 9fc521fe thread 4237652017); 5 amendments, one of them (Amendment 3) a redirect from a prose grammar to a schema while the PR was open
+redesign_seat: "claude-deep-dot under DESIGN_RESET_WAIVED_BY=operator (decision 2026-10-11, answer \"orchestrator drafts + fresh-context review required\"); reviewed before dispatch by claude-review-dot-a001 on the review profile (AGMSG-TASK dotfiles-T128-design-review-a01 2026-10-10T21:04:16Z); this waiver covers the T128 design only, no further orchestrator-authored design under T128"
+reason: "T126 INV-6 (d) reached, reported by the worker itself at 2026-10-10T12:47:13Z (Bot P1 on two post-RESULT heads: 7a83cb66 thread 4237434169, 9fc521fe thread 4237652017); 5 amendments, one of them (Amendment 3) a redirect from a prose grammar to a schema while the PR was open"
 ---
 
 # Design reset: dotfiles-T124-wave3b-audit-grammar-a01

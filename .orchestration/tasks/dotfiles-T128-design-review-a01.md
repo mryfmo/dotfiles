@@ -40,3 +40,11 @@ Round 1 accepted (verdict `revise`; every finding adopted). Review v2 of the sam
 ## Round 3 (orchestrator, 2026-10-11)
 
 Round 2 accepted (verdict `revise`; its five section-4 edits adopted as v3). Confirm each as a diff confirmation against v3 (whole-file sha256 in the AGMSG-TASK `design_sha256=`): the `implementing_tasks` map and the design-on-main precondition (INV-2), `revise.yaml` beside a byte-identical task.md (INV-3, INV-8, INV-12, V3c, V2b), the question threshold and the audit-JSON record match (INV-6), V3a as an operator PR with all hook counting and V3b/V3c routed by source, the legacy list excluded from the cap, the `workflow_dispatch` premise, the stage-3 sentence, the latest-TASK token in INV-1. Per invariant and `Design verdict:` as before. Receipt: `.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round3.md` with `round: 3` and `previous:` the round-2 receipt. RESULT with `round=3`. max_turns=6.
+
+## Round 4 (orchestrator, 2026-10-11)
+
+v4: V1 split into V1 (validation only) and V1c (CI check) on operator direction relayed by your PONG of 22:01Z; `implementing_tasks` gains `dotfiles-T128-v1c-regime-ci-check-a01: [INV-1]`; wave order V1, V1c, V1b, …; section 7 cap wording aligned with INV-2; receipt pointer round 4. Confirm those four edits as a diff check (whole-file sha256 in the AGMSG-TASK). Receipt `…-design-review-round4.md`, `round: 4`, `previous:` round 3. RESULT with `round=4`. max_turns=5.
+
+## Round 5 (orchestrator, 2026-10-11)
+
+v5 changes INV-3 only: `check=` is a test selector or `repro:<id>` with command and output in revise.yaml; the `ci:<job>` form is gone (Codex Bot thread 4239305441 on PR #316). Confirm as a diff check; receipt `…-design-review-round5.md`, `round: 5`, `previous:` round 4; RESULT with `round=5`. max_turns=4.

@@ -3,7 +3,7 @@ format: 2
 reset_of: dotfiles-T120-npm-provenance-and-claude-channel-a01
 redesign_task: dotfiles-T127-agent-cli-supply-chain-design-a01
 redesign_seat: claude-redesign-dot-a005
-reason: eight amendments before the first RESULT, two of them correcting premises of the task text (the orchestrator's mise probe, Anthropic's auto-updater being disabled on these hosts): the under-researched-task signal T126 INV-6 names; the task never had a reviewed design, invariant tests or an audit, so "the work is good" is unverified
+reason: "eight amendments before the first RESULT, two of them correcting premises of the task text (the orchestrator's mise probe, Anthropic's auto-updater being disabled on these hosts): the under-researched-task signal T126 INV-6 names; the task never had a reviewed design, invariant tests or an audit, so \"the work is good\" is unverified"
 ---
 
 # Design reset: dotfiles-T120-npm-provenance-and-claude-channel-a01

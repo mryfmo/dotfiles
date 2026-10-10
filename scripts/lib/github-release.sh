@@ -119,7 +119,9 @@ function github_attestation_ready() {
     local PATH="${HOME}/.local/share/mise/shims:${PATH}" version
     command -v gh > /dev/null 2>&1 || return 1
     version="$(gh --version 2> /dev/null | awk 'NR == 1 { print $3 }')"
-    if ! printf '%s\n%s\n' "${GITHUB_ATTESTATION_MIN_GH}" "${version}" | awk -F. '
+    # Only a stable X.Y.Z counts: a prerelease such as 2.93.0-rc.1 sorts below the 2.93.0 fix.
+    if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+        ! printf '%s\n%s\n' "${GITHUB_ATTESTATION_MIN_GH}" "${version}" | awk -F. '
         NR == 1 { split($0, minimum, ".") }
         NR == 2 {
             for (i = 1; i <= 3; i++) {
@@ -128,7 +130,7 @@ function github_attestation_ready() {
             }
             exit 0
         }'; then
-        printf 'gh %s predates %s (GHSA-8xvp-7hj6-mcj9), so it is not used for attestations.\n' \
+        printf 'gh %s is not a stable release at or after %s (GHSA-8xvp-7hj6-mcj9), so it is not used for attestations.\n' \
             "${version:-unknown}" "${GITHUB_ATTESTATION_MIN_GH}" >&2
         return 1
     fi

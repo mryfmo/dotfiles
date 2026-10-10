@@ -255,6 +255,8 @@ class GithubReleaseTest(unittest.TestCase):
             # gh 2.92.0 and earlier leak credentials to TUF mirrors (GHSA-8xvp-7hj6-mcj9): never used.
             ("gh too old", "2.92.0", 0, 0, 2),
             ("gh version unreadable", "", 0, 0, 2),
+            # A prerelease of the fixed version sorts below it (SemVer), so it is not used either.
+            ("gh prerelease of the fixed version", "2.93.0-rc.1", 0, 0, 2),
         ):
             with self.subTest(outcome=outcome):
                 self.log.unlink(missing_ok=True)
@@ -278,7 +280,7 @@ class GithubReleaseTest(unittest.TestCase):
                     )
                 else:
                     self.assertNotIn("verify-asset", self.log.read_text())
-                if outcome.startswith("gh version unreadable") or outcome == "gh too old":
+                if outcome in ("gh version unreadable", "gh too old", "gh prerelease of the fixed version"):
                     self.assertIn("GHSA-8xvp-7hj6-mcj9", result.stderr)
 
     def test_attestation_prefers_mise_gh_over_an_older_system_gh(self) -> None:

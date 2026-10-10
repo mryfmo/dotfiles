@@ -198,8 +198,8 @@ signed, attested publish, not that the installed tree is unmodified afterwards.
 `@openai/codex` and `ccusage` publish attestations; a package without one is
 listed as registry-signature-only and passes, an invalid or missing signature
 or attestation is a required failure that stops `make update`, names the
-package and uninstalls that version, and a tool that cannot be fetched for the
-check only warns. Codex,
+package and uninstalls that version, and a tool that cannot be fetched or
+checked (an HTTP or TLS error from the registry) only warns. Codex,
 outside the cooldown, stays installed only with a verified attestation, now or
 from an earlier run of the same version (recorded under
 `${XDG_STATE_HOME:-~/.local/state}/dotfiles/npm-provenance/`); any other
@@ -269,7 +269,11 @@ cleaned up the same way. Without gpg and gpgv (a fresh macOS before
 the native install verifies, the old `npm:@anthropic-ai/claude-code` mise
 install is removed, unless the asset manifest still records its
 `ensure_mise_npm_agent_cli:claude` repair step; then
-`remove-agent-asset ensure_mise_npm_agent_cli:claude --yes` retires both.
+`remove-agent-asset ensure_mise_npm_agent_cli:claude --yes && mise reshim`
+retires both (the reshim drops the old shim, which would shadow the native
+launcher). A launcher at `~/.local/bin/claude` that the native installer did not
+create is moved aside to `~/.local/bin/claude.before-native` before the install
+and put back if the install does not verify.
 `make doctor` reports the native version and channel.
 
 **Holding a tool back** uses the manager's own feature:

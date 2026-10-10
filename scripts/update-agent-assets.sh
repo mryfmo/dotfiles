@@ -301,6 +301,17 @@ function remove_claude_code_version() {
 }
 
 #
+# @description Put a launcher that was moved aside before the native install back, unless one is there.
+# @arg $1 path The moved launcher, or nothing.
+#
+function restore_claude_launcher() {
+    [ -n "$1" ] || return 0
+    if [ ! -e "${HOME}/.local/bin/claude" ] && [ ! -L "${HOME}/.local/bin/claude" ]; then
+        mv -f "$1" "${HOME}/.local/bin/claude"
+    fi
+}
+
+#
 # @description Remove the mise npm install Claude Code used to come from, once the native one verified.
 #   A host whose manifest still records that install's repair step keeps it, so the recorded path
 #   never vanishes under make doctor; remove-agent-asset retires both together.
@@ -314,7 +325,8 @@ function retire_mise_claude_code() {
     [ -d "${installs}/npm-anthropic-ai-claude-code" ] ||
         [ -n "$(mise ls --installed --no-header npm:@anthropic-ai/claude-code 2> /dev/null)" ] || return 0
     if jq -e '.steps["ensure_mise_npm_agent_cli:claude"]' "${HOME}/.agents/.installed-manifest.json" > /dev/null 2>&1; then
-        printf 'note: the old mise install of Claude Code stays; remove it with: remove-agent-asset ensure_mise_npm_agent_cli:claude --yes\n'
+        # remove-agent-asset deletes the install but not mise's shim, which would shadow ~/.local/bin/claude.
+        printf 'note: the old mise install of Claude Code stays; remove it with: remove-agent-asset ensure_mise_npm_agent_cli:claude --yes && mise reshim\n'
         return 0
     fi
     # Its shim would otherwise shadow ~/.local/bin/claude from mise's shims directory.
@@ -329,7 +341,7 @@ function retire_mise_claude_code() {
 # @exitcode 1 A signature or sha256 did not verify, or the install step failed; that version is removed.
 #
 function ensure_claude_code() {
-    local channel installed="" settings="${HOME}/.claude/settings.json" status=0 version
+    local aside="" channel installed="" launcher="${HOME}/.local/bin/claude" settings="${HOME}/.claude/settings.json" status=0 version
 
     section "Claude Code"
     version="$(claude_code_active_version)"
@@ -339,18 +351,29 @@ function ensure_claude_code() {
             printf 'warning: no autoUpdatesChannel (stable or latest) could be read from %s; Claude Code was not installed.\n' "${settings}" >&2
             return 0
         fi
+        # claude install can leave a launcher it did not create in place, so a non-native one moves aside
+        # first, is kept for rollback, and comes back when the install does not verify.
+        if [ -e "${launcher}" ] || [ -L "${launcher}" ]; then
+            aside="${launcher}.before-native"
+            mv -f "${launcher}" "${aside}" || return 1
+        fi
         installed="$(install_claude_code "${channel}")" || status=$?
         if [ "${status}" -eq 3 ]; then
+            restore_claude_launcher "${aside}"
             printf 'warning: Claude Code could not be downloaded or checked (it needs curl, gpg, gpgv, jq and shasum); nothing was installed.\n' >&2
             return 0
         fi
-        [ "${status}" -eq 0 ] || return 1
+        if [ "${status}" -ne 0 ]; then
+            restore_claude_launcher "${aside}"
+            return 1
+        fi
         version="$(claude_code_active_version)"
         if [ "${version}" != "${installed}" ]; then
             printf 'claude install %s left the launcher at %s, not at the verified version; both were removed.\n' "${installed}" "${version:-nothing}" >&2
             # The version the launcher points to was never checked, so it goes with the verified one.
             [ -z "${version}" ] || remove_claude_code_version "${version}"
             remove_claude_code_version "${installed}"
+            restore_claude_launcher "${aside}"
             return 1
         fi
     fi
@@ -362,8 +385,10 @@ function ensure_claude_code() {
         # Untrusted bytes must not stay runnable, whether this run installed them or the auto-updater did.
         printf 'Claude Code %s does not match its signed release manifest; its version and launcher were removed (make update installs a verified one).\n' "${version}" >&2
         remove_claude_code_version "${version}"
+        restore_claude_launcher "${aside}"
         return 1
     fi
+    [ -z "${aside}" ] || printf 'note: the previous, non-native launcher is kept at %s\n' "${aside}"
     retire_mise_claude_code
     printf 'Claude Code %s: native install, verified against its signed release manifest.\n' "${version}"
     manifest_record "ensure_claude_code" installer "${version}" "${HOME}/.local/bin/claude" "${HOME}/.local/share/claude" -- \

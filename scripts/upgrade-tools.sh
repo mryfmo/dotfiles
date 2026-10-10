@@ -441,14 +441,15 @@ function check_npm_tool_provenance() {
         ${window:+"${window}"} "${mise_tool#npm:}@${version}") > /dev/null 2>&1 || return 3
     output="$(cd "${dir}" && npm_config_cache="${dir%/*}/cache" \
         mise exec node -- npm audit signatures --include-attestations 2>&1)" || status=$?
-    if grep -qiE 'invalid|missing' <<< "${output}"; then
+    # Only npm's own verdict means a bad signature or attestation; any other failure (an HTTP or TLS error
+    # from the registry's key or attestation endpoint) only leaves the check unavailable.
+    if grep -qE 'packages? ha(s|ve) (an? )?(invalid|missing) (registry signatures?|attestations?)|EATTESTATIONVERIFY|tampered with this package' <<< "${output}"; then
         printf '%s\n' "${output}" >&2
         return 1
     fi
     if [ "${status}" -ne 0 ]; then
         printf '%s\n' "${output}" >&2
-        grep -qE 'npm (ERR!|error) (network|code (ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN))' <<< "${output}" && return 3
-        return 1
+        return 3
     fi
     # npm prints a count line only for a non-zero count.
     grep -qE '^[[:space:]]*[1-9][0-9]* packages? ha(s a|ve) verified registry signatures?$' <<< "${output}" || return 3

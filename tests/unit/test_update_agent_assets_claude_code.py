@@ -25,6 +25,8 @@ BINARY = textwrap.dedent(
     printf 'binary %s\\n' "$*" >> "$TEST_LOG"
     if [ "$1" = install ]; then
         mkdir -p "$HOME/.local/share/claude/versions" "$HOME/.local/bin"
+        # Like anthropics/claude-code#89520: a launcher it did not create stays as it is.
+        if [ -e "$HOME/.local/bin/claude" ] && [ ! -L "$HOME/.local/bin/claude" ]; then exit 0; fi
         cp "$0" "$HOME/.local/share/claude/versions/$2"
         [ -z "${TAMPER_ON_INSTALL:-}" ] || printf 'tampered\\n' >> "$HOME/.local/share/claude/versions/$2"
         ln -sfn "$HOME/.local/share/claude/versions/$2" "$HOME/.local/bin/claude"
@@ -259,6 +261,32 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         self.assertEqual([], sorted(path.name for path in versions.iterdir()))
         self.assertFalse(os.path.lexists(self.home / ".local/bin/claude"))
 
+    def test_a_non_native_launcher_moves_aside_and_comes_back_when_the_install_fails(self) -> None:
+        launcher = self.home / ".local/bin/claude"
+        launcher.parent.mkdir(parents=True)
+        launcher.write_text('#!/bin/sh\nexec old-claude "$@"\n')
+        aside = self.home / ".local/bin/claude.before-native"
+
+        result = self.run_ensure()
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertTrue(launcher.is_symlink())
+        self.assertEqual(f"{VERSION}", os.readlink(launcher).rsplit("/", 1)[1])
+        self.assertIn("exec old-claude", aside.read_text())
+        self.assertIn(f"the previous, non-native launcher is kept at {aside}", result.stdout)
+
+        # A failed check puts the previous launcher back where it was.
+        launcher.unlink()
+        aside.rename(launcher)
+        shutil.rmtree(self.home / ".local/share/claude")
+        self.write_manifest(VERSION, "0" * 64)
+        result = self.run_ensure()
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertFalse(launcher.is_symlink())
+        self.assertIn("exec old-claude", launcher.read_text())
+        self.assertFalse(aside.exists())
+
     def test_a_failed_install_step_leaves_no_launcher_or_version(self) -> None:
         result = self.run_ensure(FAIL_AFTER_LAUNCHER="1")
 
@@ -320,7 +348,7 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         result = self.run_ensure(OLD_MISE="1")
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("remove-agent-asset ensure_mise_npm_agent_cli:claude --yes", result.stdout)
+        self.assertIn("remove-agent-asset ensure_mise_npm_agent_cli:claude --yes && mise reshim", result.stdout)
         self.assertFalse([call for call in self.calls() if call.startswith("mise uninstall")])
 
     def test_without_a_channel_setting_nothing_is_installed(self) -> None:

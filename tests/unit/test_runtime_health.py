@@ -1518,6 +1518,10 @@ EOF
                     exit 1
                     ;;
                 audit:*_signature_only) printf 'audited 1 package in 1s\\n\\n1 package has a verified registry signature\\n' ;;
+                audit:*_registry_unavailable)
+                    printf 'npm error code E503\\nnpm error 503 Service Unavailable - GET https://registry.npmjs.org/-/npm/v1/keys\\n'
+                    exit 1
+                    ;;
                 audit:*_offline*)
                     printf 'npm error code ENOTFOUND\\nnpm error network request to https://registry.npmjs.org failed\\n'
                     exit 1
@@ -1923,6 +1927,12 @@ EOF
                 "required failures: 0; optional warnings: 1",
             ),
             "provenance_offline": (
+                0,
+                "optional warning: could not fetch npm:ccusage to check its provenance",
+                "required failures: 0; optional warnings: 1",
+            ),
+            # A registry or TLS error is the check being unavailable, never a verdict: nothing is removed.
+            "provenance_registry_unavailable": (
                 0,
                 "optional warning: could not fetch npm:ccusage to check its provenance",
                 "required failures: 0; optional warnings: 1",

@@ -598,6 +598,11 @@ class GithubReleaseTest(unittest.TestCase):
     def test_the_window_is_the_mise_cooldown(self) -> None:
         self.assertIn("GITHUB_RELEASE_MIN_AGE_HOURS=72\n", HELPER.read_text())
         self.assertIn('minimum_release_age = "72h"', (ROOT / "home/dot_mise/config.toml").read_text())
+        # CI installs the mise hosts get: every mise-action step takes the same window.
+        for workflow in sorted((ROOT / ".github/workflows").glob("*.y*ml")):
+            text = workflow.read_text()
+            steps = text.count("uses: jdx/mise-action@")
+            self.assertEqual(steps, text.count("minimum_release_age: 72h\n"), workflow.name)
 
 
 if __name__ == "__main__":

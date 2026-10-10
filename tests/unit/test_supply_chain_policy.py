@@ -25,6 +25,8 @@ curl() {
     printf payload > "${output}"
 }
 verify_mise_archive() { :; }
+# The fake downloads are not signed; a runner with gpg would otherwise take the signed-checksum path.
+verify_mise_shasums_signature() { :; }
 github_release_tag() { printf 'v2026.10.3\n'; }
 github_release_attestation() { return 2; }
 tar() {
@@ -63,8 +65,8 @@ mv() { command mv "$@"; }
 install_sheldon
 """,
             "install/ubuntu/server/starship.sh": r"""
-uname() { printf x86_64; }
-github_release_tag() { printf 'v1.26.0\n'; }
+# The fakes below hash every download to "checksum", so that is the reviewed sha256 here too.
+starship_artifact() { printf 'starship-x86_64-unknown-linux-musl.tar.gz checksum\n'; }
 curl() {
     local output
     while [ "$#" -gt 0 ]; do
@@ -143,69 +145,50 @@ install_starship
                 self.assertEqual([], list((root / "tmp").iterdir()))
 
     def test_every_apply_installers_skip_when_current_and_keep_the_tool_offline(self):
-        # starship and sheldon run on every chezmoi apply (run_after_*): they install only a newer release.
-        cases = {
-            "install/ubuntu/server/starship.sh": (
-                "starship",
-                "printf 'starship 1.26.0\\nbranch:\\n'",
-                'github_release_tag() { [ -z "${LOOKUP_FAIL:-}" ] || return 1; printf \'v%s\\n\' "${NEWEST}"; }',
-                'install_starship() { printf "%s\\n" "$*" > "${HOME}/install-ran"; }',
-            ),
-            "install/common/sheldon.sh": (
-                "sheldon",
-                "printf 'sheldon 0.8.5\\n'",
-                'sheldon_newest_version() { [ -z "${LOOKUP_FAIL:-}" ] || return 1; printf \'%s\\n\' "${NEWEST}"; }',
-                'install_sheldon() { touch "${HOME}/install-ran"; }',
-            ),
-        }
-        installed_version = {"starship": "1.26.0", "sheldon": "0.8.5"}
-        for relative, (tool, banner, lookup, install) in cases.items():
-            for name, newest, lookup_fail, installed, expect_install, expect_status in (
-                ("current", installed_version[tool], "", True, False, 0),
-                ("newer release", "9.9.9", "", True, True, 0),
-                ("not installed", installed_version[tool], "", False, True, 0),
-                ("lookup fails, installed", "", "1", True, False, 0),
-                # The current banner from a binary that exits non-zero: broken, so it is replaced.
-                ("current banner, exits 42", installed_version[tool], "", "exit 42", True, 0),
-            ):
-                with self.subTest(relative=relative, case=name), tempfile.TemporaryDirectory() as directory:
-                    home = Path(directory)
-                    if installed:
-                        binary = home / ".local/bin" / tool
-                        binary.parent.mkdir(parents=True)
-                        binary.write_text(f"#!/bin/sh\n{banner}\n{installed if installed is not True else ''}\n")
-                        binary.chmod(0o755)
-                    result = subprocess.run(
-                        ["bash", "-c", f'source "$1"\n{lookup}\n{install}\nmain', "_", str(ROOT / relative)],
-                        env={**os.environ, "HOME": str(home), "NEWEST": newest, "LOOKUP_FAIL": lookup_fail},
-                        check=False,
-                        text=True,
-                        capture_output=True,
-                    )
-                    self.assertEqual(expect_status, result.returncode, result.stderr)
-                    self.assertEqual(expect_install, (home / "install-ran").exists())
-                    if lookup_fail:
-                        self.assertIn("stays", result.stderr)
-        # starship installs the tag main resolved, without resolving it again.
-        with tempfile.TemporaryDirectory() as directory:
-            result = subprocess.run(
-                [
-                    "bash",
-                    "-c",
-                    'source "$1"\n'
-                    + cases["install/ubuntu/server/starship.sh"][2]
-                    + "\n"
-                    + cases["install/ubuntu/server/starship.sh"][3]
-                    + '\nmain\ncat "${HOME}/install-ran"',
-                    "_",
-                    str(ROOT / "install/ubuntu/server/starship.sh"),
-                ],
-                env={**os.environ, "HOME": directory, "NEWEST": "9.9.9", "LOOKUP_FAIL": ""},
-                check=False,
-                text=True,
-                capture_output=True,
-            )
-            self.assertEqual("v9.9.9\n", result.stdout, result.stderr)
+        # starship and sheldon run on every chezmoi apply (run_after_*) and install only when not current:
+        # starship against its pin (v1.26.0 in assets.starship), sheldon against the newest crate.
+        starship = (
+            "install/ubuntu/server/starship.sh",
+            "starship",
+            ":",
+            'install_starship() { touch "${HOME}/install-ran"; }',
+        )
+        sheldon = (
+            "install/common/sheldon.sh",
+            "sheldon",
+            'sheldon_newest_version() { [ -z "${LOOKUP_FAIL:-}" ] || return 1; printf \'%s\\n\' "${NEWEST}"; }',
+            'install_sheldon() { touch "${HOME}/install-ran"; }',
+        )
+        # The installed binary's script (None: not installed); a non-zero exit is broken whatever it printed.
+        for (relative, tool, lookup, install), name, binary_body, newest, lookup_fail, expect_install in (
+            (starship, "pinned release installed", "printf 'starship 1.26.0\\nbranch:\\n'", "", "", False),
+            (starship, "older release (a pin bump)", "printf 'starship 1.25.0\\n'", "", "", True),
+            (starship, "not installed", None, "", "", True),
+            (starship, "pinned banner, exits 42", "printf 'starship 1.26.0\\n'\nexit 42", "", "", True),
+            (sheldon, "current", "printf 'sheldon 0.8.5\\n'", "0.8.5", "", False),
+            (sheldon, "newer release", "printf 'sheldon 0.8.5\\n'", "9.9.9", "", True),
+            (sheldon, "not installed", None, "0.8.5", "", True),
+            (sheldon, "lookup fails, installed", "printf 'sheldon 0.8.5\\n'", "", "1", False),
+            (sheldon, "current banner, exits 42", "printf 'sheldon 0.8.5\\n'\nexit 42", "0.8.5", "", True),
+        ):
+            with self.subTest(relative=relative, case=name), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                if binary_body is not None:
+                    binary = home / ".local/bin" / tool
+                    binary.parent.mkdir(parents=True)
+                    binary.write_text(f"#!/bin/sh\n{binary_body}\n")
+                    binary.chmod(0o755)
+                result = subprocess.run(
+                    ["bash", "-c", f'source "$1"\n{lookup}\n{install}\nmain', "_", str(ROOT / relative)],
+                    env={**os.environ, "HOME": str(home), "NEWEST": newest, "LOOKUP_FAIL": lookup_fail},
+                    check=False,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(expect_install, (home / "install-ran").exists())
+                if lookup_fail:
+                    self.assertIn("stays", result.stderr)
         for wrapper in (
             "home/.chezmoiscripts/ubuntu/run_after_10-install-starship.sh.tmpl",
             "home/.chezmoiscripts/common/run_after_03-install-sheldon.sh.tmpl",
@@ -427,12 +410,6 @@ install_starship
                 "MISE",
             ),
             (
-                "install/ubuntu/server/starship.sh",
-                'readonly STARSHIP_RELEASE_REPO="starship/starship"',
-                'github_release_tag "${STARSHIP_RELEASE_REPO}"',
-                "STARSHIP",
-            ),
-            (
                 "install/ubuntu/client/zed.sh",
                 'readonly ZED_RELEASE_REPO="zed-industries/zed"',
                 'github_release_tag "${ZED_RELEASE_REPO}"',
@@ -443,12 +420,6 @@ install_starship
                 'readonly CHEZMOI_RELEASE_REPO="twpayne/chezmoi"',
                 'github_release_tag "${CHEZMOI_RELEASE_REPO}"',
                 "CHEZMOI",
-            ),
-            (
-                "scripts/update-agent-assets.sh",
-                'readonly CRIT_RELEASE_REPO="tomasz-tomczyk/crit"',
-                'github_release_tag "${CRIT_RELEASE_REPO}"',
-                "CRIT",
             ),
         ):
             with self.subTest(path=path):
@@ -462,8 +433,13 @@ install_starship
         config = tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())
         self.assertEqual("72h", config["settings"]["minimum_release_age"])
         installer_pins = (ROOT / "scripts/lib/installer-pins.sh").read_text()
-        for retired in ("CHEZMOI_BOOTSTRAP_PIN_VERSION", "CRIT_PIN_VERSION", "ZED_PIN_VERSION"):
+        for retired in ("CHEZMOI_BOOTSTRAP_PIN_VERSION", "ZED_PIN_VERSION"):
             self.assertNotIn(retired, installer_pins)
+        # Crit and starship have mutable releases with only same-release checksums: reviewed pins (Amendment 7).
+        self.assertRegex(installer_pins, r'(?m)^CRIT_PIN_VERSION="v[0-9]')
+        self.assertRegex(
+            (ROOT / "install/ubuntu/server/starship.sh").read_text(), r'(?m)^readonly STARSHIP_PIN_VERSION="v[0-9]'
+        )
 
     def test_sheldon_uses_locked_crates_io_source(self):
         script = (ROOT / "install/common/sheldon.sh").read_text()

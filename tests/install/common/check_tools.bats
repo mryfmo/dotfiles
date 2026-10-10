@@ -23,7 +23,7 @@ function setup() {
     [[ "${output}" == *"provision-machine-key"* ]]
 }
 
-@test "[common] check_crit_cli reports the version and its checksums.txt origin when installed" {
+@test "[common] check_crit_cli reports the pinned version and origin when installed" {
     local crit_path="${BATS_TEST_TMPDIR}/.local/bin/crit"
     mkdir -p "$(dirname "${crit_path}")"
     printf '#!/usr/bin/env bash\nprintf "crit 0.20.3\\n"\n' > "${crit_path}"
@@ -31,7 +31,7 @@ function setup() {
 
     run env HOME="${BATS_TEST_TMPDIR}" bash -c "source '${SCRIPT_PATH}'; check_crit_cli"
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"found:   crit ->"*"(GitHub release, checked against checksums.txt)"* ]]
+    [[ "${output}" == *"found:   crit ->"*"(pinned release)"* ]]
     [[ "${output}" == *"crit 0.20.3"* ]]
 }
 

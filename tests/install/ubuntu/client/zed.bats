@@ -86,6 +86,19 @@ function install_fake_zed() {
     [ "${status}" -eq 0 ]
 }
 
+@test "[ubuntu-client] main keeps an installed zed newer than the resolved release" {
+    # Zed auto-updates; the cooled-down v1.22.0 must not replace a self-updated 1.23.0.
+    install_fake_zed 1.23.0
+
+    run env HOME="${BATS_TEST_TMPDIR}" bash -c "${ZED_FAKES}"'
+        main
+        [ ! -e "${HOME}/calls.log" ]
+    '
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"zed 1.23.0 stays: it is newer than the cooled-down v1.22.0 (Zed updates itself)."* ]]
+    "${BATS_TEST_TMPDIR}/.local/bin/zed" | grep -q 'Zed 1.23.0'
+}
+
 @test "[ubuntu-client] main replaces an installed zed that cannot report its version" {
     install_fake_zed 1.0.0
     printf '#!/bin/sh\nexit 42\n' > "${BATS_TEST_TMPDIR}/.local/share/zed.app/bin/zed"

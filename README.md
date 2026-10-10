@@ -198,8 +198,9 @@ tests the latest safe versions rather than one recorded set. Because the
 applied file is mise's global config, it no longer turns on lockfile mode for
 other projects on the host; a project that keeps its own `mise.lock` sets
 `lockfile` in its own config. The release-asset installers follow the same
-policy: each takes the newest release its publisher can verify, and only the few
-whose publishers verify nothing keep a pin (see Asset manifest below).
+policy where they can: an asset takes the newest release when its publisher
+verifies it independently of the release page, and the others keep a reviewed
+pin (see Asset manifest below).
 
 **Holding a tool back** uses the manager's own feature:
 
@@ -321,11 +322,12 @@ Plugin 2.9.7 has two known coverage gaps: `merge-batch-graphs.py` drops
 `extract-structure.mjs` misses shell functions with a subshell body. A full
 rebuild therefore under-reports test coverage until upstream fixes land.
 
-Crit itself is installed on both Linux and macOS from the amd64/arm64 binary of
-the newest Crit GitHub release at least 72 hours old, checked against that
-release's `checksums.txt` (`assets.crit` in `home/dot_agents/agent-config.yaml`);
-`make update` moves it to a newer release, and keeps the installed one when the
-release cannot be resolved offline. Lifecycle
+Crit itself is installed on both Linux and macOS from the pinned amd64/arm64
+GitHub release binary for the matching OS, after SHA-256 verification against
+the reviewed checksum and, as a second check, the release's `checksums.txt`.
+All four checksums and the version are declared under `assets.crit` in
+`home/dot_agents/agent-config.yaml`, rendered into
+`scripts/lib/installer-pins.sh`, and changed with `generate-agent-configs.py --set-asset`. Lifecycle
 checks on both platforms inspect the authoritative `~/.local/bin/crit`
 directly, prepend `~/.local/bin` to `PATH`, and run `hash -r` so an older
 ambient Crit cannot shadow it. If that managed binary is missing, `REPAIR=1
@@ -1318,8 +1320,12 @@ Claude/Codex plugins and GitHub CLI extensions — has one declaration under
 `assets:` in `home/dot_agents/agent-config.yaml`, with its upstream, release or
 pin, verification method, install path, and installer step. mise tools are not
 listed there; `home/dot_mise/config.toml` is the mise manifest. A release asset
-installs the newest release at install time (`release: latest`) and verifies it
-with what its publisher provides (`verify`). A GitHub release is the newest
+installs the newest release at install time (`release: latest`) only when its
+publisher provides a verification independent of the release page it is
+fetched from: a GitHub release attestation, a signature with a key whose
+fingerprint the manifest pins, or an immutable registry with its own index
+checksums (`verify`). A checksum file from the same mutable release checks the
+download, not the publisher, so it is never the only check. A GitHub release is the newest
 non-draft, non-prerelease one at least 72 hours old, resolved by
 `scripts/lib/github-release.sh`; that is the same window as `minimum_release_age`,
 so a fresh bootstrap never installs a mise that `mise self-update` would refuse.
@@ -1328,8 +1334,8 @@ so a fresh bootstrap never installs a mise that `mise self-update` would refuse.
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | mise bootstrap    | `SHASUMS256.asc`, its GPG signature checked against the release key with the pinned fingerprint when `gpg` and `gpgv` are present (otherwise `SHASUMS256.txt`); then the GitHub release attestation (below)                             |
 | chezmoi bootstrap | `chezmoi_<version>_checksums.txt` (its cosign signature needs cosign, which a fresh host lacks); then the GitHub release attestation (below)                                                                                            |
-| starship          | the `.sha256` file published with each archive                                                                                                                                                                                          |
-| Crit              | the release's `checksums.txt`                                                                                                                                                                                                           |
+| starship          | pinned (below); the reviewed sha256, then the `.sha256` file published with the archive                                                                                                                                                 |
+| Crit              | pinned (below); the reviewed sha256 per platform, then the release's `checksums.txt`                                                                                                                                                    |
 | Zed               | the GitHub release attestation, through `gh release verify-asset`; without an authenticated `gh`, Zed is not installed and the notice says `run make gh-auth, then make update` (`run_after_05-client-install-zed` runs on every apply) |
 | sheldon           | `cargo install --locked`, checked against the crates.io index; cargo offers no age choice, so it takes the newest crate                                                                                                                 |
 | AWS CLI           | AWS's GPG signature, checked with the pinned key fingerprint; the unversioned archive is AWS's current release, with no age choice                                                                                                      |
@@ -1344,12 +1350,15 @@ then. When the attestation fails, `make update` stops before any mise phase
 with a required failure naming the tool and the archive: reinstall that tool
 (`mise self-update` or `setup.sh`), then delete its record.
 
-Only a component whose publisher verifies nothing keeps a `pin` with its
-checksum and says why in `reason`: the Homebrew installer and the
-Understand-Anything installer (unsigned scripts at a reviewed commit), tode and
-terminal-browser (unsigned `curl | bash` scripts; zenbu-labs publishes no
-checksum or attestation), and agmsg (skill releases without assets; its npm
-provenance covers only the bootstrapper). `scripts/generate-agent-configs.py`
+Any other component keeps a reviewed `pin` with its checksum and says why in
+`reason`: the Homebrew installer and the Understand-Anything installer
+(unsigned scripts at a reviewed commit), tode and terminal-browser (unsigned
+`curl | bash` scripts; zenbu-labs publishes no checksum or attestation), Crit
+and starship (mutable releases with only a checksum file from the same release,
+no signature or attestation; the checksum file stays as a second check, and
+their every-apply installers move to a new pin on the next `make update`), and
+agmsg (skill releases without assets; its npm provenance covers only the
+bootstrapper). `scripts/generate-agent-configs.py`
 renders each pinned value into the installer that uses it (`install/**/*.sh`,
 `scripts/lib/installer-pins.sh`, `scripts/update-agent-assets.sh`, and the Codex
 config template), and `scripts/validate-agent-assets.py` rejects incomplete

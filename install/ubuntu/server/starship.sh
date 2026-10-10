@@ -3,9 +3,10 @@
 # @file install/ubuntu/server/starship.sh
 # @brief Install the Starship prompt on Ubuntu servers.
 # @description
-#   Downloads the newest Starship release that is at least 72 hours old and
-#   verifies it against the .sha256 file published with it. Runs on every
-#   chezmoi apply and skips when that release is already installed.
+#   Downloads the pinned Starship release and verifies it against its reviewed
+#   sha256 and the .sha256 file published with it. Runs on every chezmoi apply
+#   and skips when the pinned release is already installed, so a pin bump
+#   applies on the next `make update`.
 
 set -Eeuo pipefail
 
@@ -15,18 +16,17 @@ fi
 
 readonly BIN_DIR="${HOME}/.local/bin"
 readonly STARSHIP_RELEASE_REPO="starship/starship"
+# Rendered from assets.starship in home/dot_agents/agent-config.yaml; change them there.
+# starship's releases are mutable and carry only .sha256 sidecars, so the reviewed sha256 is the check.
+readonly STARSHIP_PIN_VERSION="v1.26.0"
+readonly STARSHIP_X86_64_SHA256="b7c232b0e8249d8e55a40beb79c5c43a7d370f3f9408bd215deb0170daeaadf3"
+readonly STARSHIP_AARCH64_SHA256="dc30189378d2f2e287384e8a692d3f95ad1df64cf0e8c36aa9201516028aed6b"
 
-# The chezmoi script includes scripts/lib/github-release.sh before this file; a direct run sources it.
-if ! declare -F github_release_tag > /dev/null; then
-    # shellcheck source=scripts/lib/github-release.sh
-    source "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/github-release.sh"
-fi
-
-# @description Print the Starship Linux artifact name for the current architecture.
+# @description Print the Starship Linux artifact name and its reviewed sha256 for the current architecture.
 function starship_artifact() {
     case "$(uname -m)" in
-    x86_64) printf 'starship-x86_64-unknown-linux-musl.tar.gz\n' ;;
-    aarch64 | arm64) printf 'starship-aarch64-unknown-linux-musl.tar.gz\n' ;;
+    x86_64) printf 'starship-x86_64-unknown-linux-musl.tar.gz %s\n' "${STARSHIP_X86_64_SHA256}" ;;
+    aarch64 | arm64) printf 'starship-aarch64-unknown-linux-musl.tar.gz %s\n' "${STARSHIP_AARCH64_SHA256}" ;;
     *)
         printf 'Unsupported Starship architecture: %s\n' "$(uname -m)" >&2
         return 1
@@ -46,13 +46,13 @@ function starship_installed_version() {
 }
 
 #
-# @description Download one Starship release, verify it, and install the binary.
-# @arg $1 string The release tag.
+# @description Download the pinned Starship release, verify it, and install the binary.
 #
 function install_starship() (
-    local actual artifact base_url expected stage="" tag="${1:-}" tmpdir
-    artifact="$(starship_artifact)" || return
-    base_url="https://github.com/${STARSHIP_RELEASE_REPO}/releases/download/${tag}"
+    local actual artifact base_url expected line pinned stage="" tmpdir
+    line="$(starship_artifact)" || return
+    read -r artifact pinned <<< "${line}"
+    base_url="https://github.com/${STARSHIP_RELEASE_REPO}/releases/download/${STARSHIP_PIN_VERSION}"
     tmpdir="$(mktemp -d)" || return
     trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
     mkdir -p "${BIN_DIR}" || return
@@ -64,10 +64,11 @@ function install_starship() (
         return 1
     }
     actual="$(sha256sum "${tmpdir}/${artifact}" | awk '{ print $1 }')" || return
-    [ "${actual}" = "${expected}" ] || {
+    # The reviewed sha256 is the check; the release's own .sha256 only re-checks the download.
+    if [ "${actual}" != "${pinned}" ] || [ "${actual}" != "${expected}" ]; then
         printf 'Checksum mismatch for %s\n' "${artifact}" >&2
         return 1
-    }
+    fi
     tar -xzf "${tmpdir}/${artifact}" -C "${tmpdir}" || return
     install -m 0755 "${tmpdir}/starship" "${stage}" || return
     mv -f "${stage}" "${BIN_DIR}/starship"
@@ -81,21 +82,11 @@ function uninstall_starship() {
 }
 
 #
-# @description Install or update Starship to the newest cooled-down release.
+# @description Install or update Starship to the pinned release.
 #
 function main() {
-    local installed tag
-    installed="$(starship_installed_version)"
-    if ! tag="$(github_release_tag "${STARSHIP_RELEASE_REPO}")"; then
-        [ -n "${installed}" ] || {
-            printf 'Could not resolve a %s release.\n' "${STARSHIP_RELEASE_REPO}" >&2
-            return 1
-        }
-        printf 'warning: could not resolve a Starship release; Starship %s stays.\n' "${installed}" >&2
-        return 0
-    fi
-    [ "${installed}" != "${tag#v}" ] || return 0
-    install_starship "${tag}"
+    [ "$(starship_installed_version)" != "${STARSHIP_PIN_VERSION#v}" ] || return 0
+    install_starship
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

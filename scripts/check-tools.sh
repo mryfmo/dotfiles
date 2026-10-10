@@ -150,9 +150,9 @@ function check_machine_ssh_key() {
 }
 
 #
-# @description Report the managed Crit CLI's version and origin, when installed.
-#   Installed by ensure_crit_cli in scripts/update-agent-assets.sh from the newest
-#   cooled-down GitHub release on every OS; not required, so a missing binary is not a failure.
+# @description Report the managed Crit CLI's pinned version and origin, when installed.
+#   Installed by ensure_crit_cli in scripts/update-agent-assets.sh from the pinned
+#   GitHub release on every OS; not required, so a missing binary is not a failure.
 #
 function check_crit_cli() {
     local target="${HOME%/}/.local/bin/crit"
@@ -162,7 +162,7 @@ function check_crit_cli() {
         return 0
     fi
 
-    printf 'found:   crit -> %s (GitHub release, checked against checksums.txt)\n' "${target}"
+    printf 'found:   crit -> %s (pinned release)\n' "${target}"
     "${target}" --version || warn_optional "crit --version failed; the managed binary may be corrupt (try REPAIR=1 make doctor)"
 }
 

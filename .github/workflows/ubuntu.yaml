@@ -98,6 +98,8 @@ jobs:
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         with:
+          # The newest mise at least 72 hours old, as hosts get it (minimum_release_age).
+          minimum_release_age: 72h
           install: true
           cache: true
 

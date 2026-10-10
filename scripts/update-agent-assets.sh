@@ -44,8 +44,6 @@ if ! declare -F manifest_record > /dev/null 2>&1; then
 fi
 # shellcheck source=scripts/lib/installer-pins.sh
 source "${AGENT_ASSET_SCRIPT_DIR}/lib/installer-pins.sh"
-# shellcheck source=scripts/lib/github-release.sh
-source "${AGENT_ASSET_SCRIPT_DIR}/lib/github-release.sh"
 
 readonly CLAUDE_SUPERPOWERS_PLUGIN="superpowers@claude-plugins-official"
 readonly CLAUDE_SUPERPOWERS_MARKETPLACE="anthropics/claude-plugins-official"
@@ -215,16 +213,17 @@ function ensure_claude_superpowers_marketplace() {
 }
 
 #
-# @description Download one Crit release binary, verify it against the release's checksums.txt,
-#   and atomically install it.
+# @description Download the pinned Crit release binary, verify it against its reviewed sha256 and
+#   the release's checksums.txt, and atomically install it.
 # @arg $1 string Release artifact name.
-# @arg $2 string Release tag.
+# @arg $2 string The reviewed sha256 of that artifact (scripts/lib/installer-pins.sh).
 # @arg $3 path Destination executable path.
 #
 function install_crit_release() (
     local artifact="$1"
-    local tag="$2"
+    local pinned="$2"
     local target="$3"
+    local tag="${CRIT_PIN_VERSION}"
     local actual base_url checksums download expected staging=""
 
     base_url="https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}"
@@ -235,7 +234,8 @@ function install_crit_release() (
     curl -fsSL "${base_url}/checksums.txt" -o "${checksums}" || return
     expected="$(awk -v name="${artifact}" '$2 == name { print $1; exit }' "${checksums}")"
     actual="$(shasum -a 256 "${download}" | awk '{ print $1 }')"
-    if [ -z "${expected}" ] || [ "${actual}" != "${expected}" ]; then
+    # The release is mutable, so the reviewed sha256 is the check; checksums.txt only re-checks the download.
+    if [ -z "${pinned}" ] || [ "${actual}" != "${pinned}" ] || [ "${actual}" != "${expected}" ]; then
         printf 'Crit checksum mismatch for %s %s.\n' "${artifact}" "${tag}" >&2
         return 1
     fi
@@ -261,16 +261,16 @@ function crit_version() {
 }
 
 #
-# @description Ensure the Crit CLI is the newest cooled-down release for agent integrations.
+# @description Ensure the Crit CLI is the pinned release for agent integrations.
 #
 function ensure_crit_cli() {
-    local artifact installed tag target
+    local artifact checksum tag="${CRIT_PIN_VERSION}" target
 
     case "$(uname -s)/$(uname -m)" in
-    Linux/x86_64 | Linux/amd64) artifact="crit-linux-amd64" ;;
-    Linux/aarch64 | Linux/arm64) artifact="crit-linux-arm64" ;;
-    Darwin/x86_64 | Darwin/amd64) artifact="crit-darwin-amd64" ;;
-    Darwin/arm64 | Darwin/aarch64) artifact="crit-darwin-arm64" ;;
+    Linux/x86_64 | Linux/amd64) artifact="crit-linux-amd64" checksum="${CRIT_LINUX_AMD64_SHA256}" ;;
+    Linux/aarch64 | Linux/arm64) artifact="crit-linux-arm64" checksum="${CRIT_LINUX_ARM64_SHA256}" ;;
+    Darwin/x86_64 | Darwin/amd64) artifact="crit-darwin-amd64" checksum="${CRIT_DARWIN_AMD64_SHA256}" ;;
+    Darwin/arm64 | Darwin/aarch64) artifact="crit-darwin-arm64" checksum="${CRIT_DARWIN_ARM64_SHA256}" ;;
     *)
         printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
         return 1
@@ -278,21 +278,13 @@ function ensure_crit_cli() {
     esac
 
     target="${HOME}/.local/bin/crit"
-    installed="$(crit_version "${target}")"
-    if ! tag="$(github_release_tag "${CRIT_RELEASE_REPO}")"; then
-        [ -n "${installed}" ] || {
-            printf 'Could not resolve a %s release.\n' "${CRIT_RELEASE_REPO}" >&2
-            return 1
-        }
-        printf 'warning: could not resolve a Crit release; Crit %s stays.\n' "${installed}" >&2
-        tag="v${installed}"
-    elif [ "${installed}" != "${tag#v}" ]; then
+    if [ "$(crit_version "${target}")" != "${tag#v}" ]; then
         section "Crit CLI"
-        install_crit_release "${artifact}" "${tag}" "${target}" || return 1
+        install_crit_release "${artifact}" "${checksum}" "${target}" || return 1
     fi
     export PATH="${HOME}/.local/bin:${PATH}"
     hash -r
-    manifest_record "ensure_crit_cli" installer "${tag}" "${target}" -- "github_release_tag ${CRIT_RELEASE_REPO}" "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/${artifact}" "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/checksums.txt" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}"
+    manifest_record "ensure_crit_cli" installer "${tag}" "${target}" -- "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/${artifact}" "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/checksums.txt" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}"
 }
 
 #

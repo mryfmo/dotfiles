@@ -367,10 +367,20 @@ assets:
   starship:
     source: github-release
     upstream: starship/starship
-    release: latest
-    verify: release-sha256
+    pin: v1.26.0
+    verify: sha256
+    sha256:
+      linux-x86_64: b7c232b0e8249d8e55a40beb79c5c43a7d370f3f9408bd215deb0170daeaadf3
+      linux-aarch64: dc30189378d2f2e287384e8a692d3f95ad1df64cf0e8c36aa9201516028aed6b
+    reason: starship's releases are mutable and carry only .sha256 sidecars, with no signature or attestation (immutable=false, attestations API 404 at v1.26.0); a sidecar from the same release checks the download, not the publisher, so the reviewed sha256 is the check and the sidecar stays as a second one.
     install_path: ~/.local/bin/starship
     installer: install/ubuntu/server/starship.sh
+    render:
+      file: install/ubuntu/server/starship.sh
+      constants:
+        STARSHIP_PIN_VERSION: pin
+        STARSHIP_X86_64_SHA256: sha256.linux-x86_64
+        STARSHIP_AARCH64_SHA256: sha256.linux-aarch64
   aws-cli:
     source: https-download
     upstream: https://awscli.amazonaws.com
@@ -434,10 +444,24 @@ assets:
   crit:
     source: github-release
     upstream: tomasz-tomczyk/crit
-    release: latest
-    verify: release-shasums
+    pin: v0.22.0
+    verify: sha256
+    sha256:
+      linux-amd64: fecd40eea356020cd605dfca6a4be6ab3c9635134ca5e28ee99e6286ab62c31d
+      linux-arm64: 92311ddf4862179c655087d4703e7f2e3f4b4aacb0549c22e5dae999c0fb2b6e
+      darwin-amd64: 1f88b739234931a583097522bad29aa30566fa3ecb3227d753bb5ec01d4c369b
+      darwin-arm64: 60153a194b85ba85ad72225694a2ccd7f348bc08bece756f7b56a0444a33e93d
+    reason: Crit's releases are mutable and carry only a checksums.txt, with no signature or attestation (immutable=false, attestations API 404 at v0.22.0); a checksum file from the same release checks the download, not the publisher, so the reviewed sha256 is the check and checksums.txt stays as a second one.
     install_path: ~/.local/bin/crit
     installer: scripts/update-agent-assets.sh#ensure_crit_cli
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants:
+        CRIT_PIN_VERSION: pin
+        CRIT_LINUX_AMD64_SHA256: sha256.linux-amd64
+        CRIT_LINUX_ARM64_SHA256: sha256.linux-arm64
+        CRIT_DARWIN_AMD64_SHA256: sha256.darwin-amd64
+        CRIT_DARWIN_ARM64_SHA256: sha256.darwin-arm64
   zed:
     source: github-release
     upstream: zed-industries/zed

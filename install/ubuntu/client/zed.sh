@@ -109,7 +109,12 @@ function main() {
         fi
         return 0
     fi
-    [ "${installed}" != "${tag#v}" ] || return 0
+    # Zed updates itself, so an installed release at or past the cooled-down one stays.
+    if [ -n "${installed}" ] && [ "$(printf '%s\n%s\n' "${tag#v}" "${installed}" | sort -V | tail -n 1)" = "${installed}" ]; then
+        [ "${installed}" = "${tag#v}" ] ||
+            printf 'zed %s stays: it is newer than the cooled-down %s (Zed updates itself).\n' "${installed}" "${tag}" >&2
+        return 0
+    fi
     # Checked before the download: without an authenticated gh nothing can be verified.
     github_attestation_ready || status=2
     [ "${status}" -ne 0 ] || install_zed_release "${tag}" || status=$?

@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import datetime
 import json
 import os
 import re
@@ -352,6 +351,7 @@ EOF
         *,
         os_name: str = "Linux",
         arch: str = "x86_64",
+        payload_body: str = "printf 'crit v9.9.9 (fixture)\\n'\n",
     ) -> tuple[Path, Path, dict[str, str], str]:
         repo = self.temp_dir / "crit-repo"
         home = self.temp_dir / "crit-home"
@@ -366,24 +366,24 @@ EOF
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
         )
-        shutil.copy(
-            ROOT / "scripts/lib/installer-pins.sh",
-            repo / "scripts/lib/installer-pins.sh",
-        )
-        shutil.copy(
-            ROOT / "scripts/lib/github-release.sh",
-            repo / "scripts/lib/github-release.sh",
-        )
         (repo / "vendor/compactiondb").mkdir(parents=True)
         artifact_arch = "amd64" if arch in ("x86_64", "amd64") else "arm64"
         payload = repo / f"crit-{os_name.lower()}-{artifact_arch}"
-        self.executable(payload, "printf 'crit v9.9.9 (fixture)\\n'\n")
+        self.executable(payload, payload_body)
         checksum = subprocess.run(
             ["shasum", "-a", "256", str(payload)],
             text=True,
             capture_output=True,
             check=True,
         ).stdout.split()[0]
+        # The fixture release is the pin, reviewed at the payload's sha256 on every platform.
+        pins = (ROOT / "scripts/lib/installer-pins.sh").read_text()
+        pins = re.sub(r'(?m)^CRIT_PIN_VERSION=".*"$', 'CRIT_PIN_VERSION="v9.9.9"', pins)
+        pins = re.sub(r'(?m)^(CRIT_[A-Z0-9_]+_SHA256)=".*"$', rf'\1="{checksum}"', pins)
+        (repo / "scripts/lib/installer-pins.sh").write_text(pins)
+        # A replacement binary an attacker could publish in the same mutable release.
+        replaced = repo / "crit-replaced"
+        self.executable(replaced, "printf 'crit v9.9.9 (replaced)\\n'\n")
         self.executable(
             bin_dir / "uname",
             f"""
@@ -393,21 +393,6 @@ EOF
                 *) printf '{os_name}\\n' ;;
             esac
             """,
-        )
-        # The newest release is too young for the 72-hour window, so v9.9.9 is the one resolved.
-        young = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
-        releases = repo / "releases.json"
-        releases.write_text(
-            json.dumps(
-                [
-                    {"tag_name": "v10.0.0", "draft": False, "prerelease": False, "published_at": young},
-                    {"tag_name": "v9.9.9", "draft": False, "prerelease": False, "published_at": "2020-01-01T00:00:00Z"},
-                ],
-                indent=2,
-            )
-            + "\n"
         )
         self.executable(
             bin_dir / "curl",
@@ -422,15 +407,17 @@ EOF
                 esac
                 shift
             done
+            [ -z "${CRIT_DOWNLOAD_FAIL:-}" ] || exit 22
+            # CRIT_REPLACED serves another binary with a checksums.txt that matches it, as a replaced release would.
+            served="$CRIT_PAYLOAD"
+            [ -z "${CRIT_REPLACED:-}" ] || served="$CRIT_REPLACED_PAYLOAD"
             case "$url" in
-                https://api.github.com/*)
-                    [ -z "${CRIT_API_FAIL:-}" ] || exit 22
-                    cat "$CRIT_RELEASES" ;;
+                https://api.github.com/*) exit 22 ;;
                 */checksums.txt)
                     name="$(basename "$CRIT_PAYLOAD")"
-                    if [ -n "${CRIT_BAD_CHECKSUM:-}" ]; then sum="$(printf '0%.0s' $(seq 64))"; else sum="$(shasum -a 256 "$CRIT_PAYLOAD" | cut -d' ' -f1)"; fi
+                    if [ -n "${CRIT_BAD_CHECKSUM:-}" ]; then sum="$(printf '0%.0s' $(seq 64))"; else sum="$(shasum -a 256 "$served" | cut -d' ' -f1)"; fi
                     printf '%s  %s\\n' "$sum" "$name" > "$out" ;;
-                *) cp "$CRIT_PAYLOAD" "$out" ;;
+                *) cp "$served" "$out" ;;
             esac
             """,
         )
@@ -446,7 +433,7 @@ EOF
         env = {
             **os.environ,
             "CRIT_PAYLOAD": str(payload),
-            "CRIT_RELEASES": str(releases),
+            "CRIT_REPLACED_PAYLOAD": str(replaced),
             "GITHUB_TOKEN": "",
             "GH_TOKEN": "",
             "DOTFILES_SOURCE_DIR": str(repo),
@@ -456,7 +443,7 @@ EOF
         }
         return repo, home, env, checksum
 
-    def test_linux_crit_install_takes_the_cooled_down_release_atomically_and_records_it(self) -> None:
+    def test_linux_crit_install_is_pinned_atomic_and_recorded(self) -> None:
         repo, home, env, checksum = self.crit_fixture()
         result = self.run_test_command(
             [
@@ -473,10 +460,10 @@ EOF
         self.assertTrue(target.stat().st_mode & stat.S_IXUSR)
         self.assertIn("crit v9.9.9", self.run_test_command([str(target)]).stdout)
         log = (repo / "commands.log").read_text()
-        self.assertIn("api.github.com/repos/tomasz-tomczyk/crit/releases", log)
+        # The pin decides the release: no release lookup.
+        self.assertNotIn("api.github.com", log)
         self.assertIn("/v9.9.9/crit-linux-amd64", log)
         self.assertIn("/v9.9.9/checksums.txt", log)
-        self.assertNotIn("v10.0.0", log)
         manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
         self.assertEqual([str(target)], manifest["steps"]["ensure_crit_cli"]["paths"])
 
@@ -493,14 +480,15 @@ EOF
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertNotIn("/releases/download/", (repo / "commands.log").read_text())
+        # No download and no release lookup: nothing ran curl.
+        self.assertFalse((repo / "commands.log").exists())
         manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
         self.assertEqual(
             [str(home / ".local/bin/crit")],
             manifest["steps"]["ensure_crit_cli"]["paths"],
         )
 
-    def test_linux_crit_prefers_the_managed_target_over_older_path_binary(self) -> None:
+    def test_linux_crit_prefers_pinned_target_over_older_path_binary(self) -> None:
         repo, home, env, checksum = self.crit_fixture("9.9.9")
         self.executable(
             repo / "bin/crit",
@@ -517,7 +505,8 @@ EOF
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertNotIn("/releases/download/", (repo / "commands.log").read_text())
+        # No download and no release lookup: nothing ran curl.
+        self.assertFalse((repo / "commands.log").exists())
         self.assertIn("crit v9.9.9", result.stdout)
         self.assertNotIn("shadow", result.stdout)
 
@@ -553,7 +542,7 @@ EOF
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertNotIn("unbound variable", result.stderr)
 
-    def test_darwin_crit_install_takes_the_cooled_down_release_atomically_and_records_it(self) -> None:
+    def test_darwin_crit_install_is_pinned_atomic_and_recorded(self) -> None:
         repo, home, env, checksum = self.crit_fixture(os_name="Darwin", arch="arm64")
         result = self.run_test_command(
             [
@@ -595,21 +584,20 @@ EOF
         self.assertIn("checksum mismatch", result.stdout + result.stderr)
         self.assertEqual(previous, target.read_bytes())
 
-    def test_crit_keeps_an_installed_binary_when_the_release_cannot_be_resolved(self) -> None:
-        # Offline make update converges: an installed Crit stays, with a warning.
+    def test_crit_refuses_a_replaced_release_whose_checksums_txt_matches(self) -> None:
+        # A mutable release: whoever replaces the binary can replace checksums.txt too; the reviewed pin catches it.
         repo, home, env, _checksum = self.crit_fixture("1.0.0")
         target = home / ".local/bin/crit"
         previous = target.read_bytes()
         result = self.run_test_command(
             ["bash", "-c", "source scripts/update-agent-assets.sh; ensure_crit_cli"],
             cwd=repo,
-            env={**env, "CRIT_API_FAIL": "1"},
+            env={**env, "CRIT_REPLACED": "1"},
         )
 
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("could not resolve a Crit release; Crit 1.0.0 stays", result.stderr)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Crit checksum mismatch for crit-linux-amd64 v9.9.9.", result.stderr)
         self.assertEqual(previous, target.read_bytes())
-        self.assertNotIn("/releases/download/", (repo / "commands.log").read_text())
 
     def test_crit_replaces_an_installed_binary_that_cannot_report_its_version(self) -> None:
         repo, home, env, _checksum = self.crit_fixture()
@@ -638,9 +626,10 @@ EOF
         self.assertEqual(0, self.run_test_command([str(home / ".local/bin/crit"), "--version"]).returncode)
 
     def test_crit_never_promotes_a_staged_binary_that_prints_the_banner_but_fails(self) -> None:
-        repo, home, env, _checksum = self.crit_fixture("1.0.0")
-        # The release payload matches its checksums.txt, reports the right version, and exits 42.
-        self.executable(repo / "crit-linux-amd64", "printf 'crit v9.9.9 (fixture)\\n'\nexit 42\n")
+        # The release payload matches its pin and checksums.txt, reports the right version, and exits 42.
+        repo, home, env, _checksum = self.crit_fixture(
+            "1.0.0", payload_body="printf 'crit v9.9.9 (fixture)\\n'\nexit 42\n"
+        )
         target = home / ".local/bin/crit"
         previous = target.read_bytes()
         result = self.run_test_command(
@@ -653,16 +642,15 @@ EOF
         self.assertIn("/v9.9.9/crit-linux-amd64", (repo / "commands.log").read_text())
         self.assertEqual(previous, target.read_bytes())
 
-    def test_crit_fails_without_an_install_when_the_release_cannot_be_resolved(self) -> None:
+    def test_crit_fails_without_an_install_when_the_download_fails(self) -> None:
         repo, home, env, _checksum = self.crit_fixture()
         result = self.run_test_command(
             ["bash", "-c", "source scripts/update-agent-assets.sh; ensure_crit_cli"],
             cwd=repo,
-            env={**env, "CRIT_API_FAIL": "1"},
+            env={**env, "CRIT_DOWNLOAD_FAIL": "1"},
         )
 
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-        self.assertIn("Could not resolve a tomasz-tomczyk/crit release", result.stderr)
         self.assertFalse((home / ".local/bin/crit").exists())
 
     def agmsg_fixture(

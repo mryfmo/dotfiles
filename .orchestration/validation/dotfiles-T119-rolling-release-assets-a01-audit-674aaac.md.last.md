@@ -1,0 +1,10 @@
+- [P1] High specification `.github/workflows/test.yaml:169` — The newly rolling chezmoi installation checks only a checksum fetched from the same release, then executes the binary. `Dockerfile:42` does likewise. Neither verifies an attestation/signature nor records deferred verification, contrary to Amendment 7. Apply the independent verification requirement to both consumers.
+
+- [P2] High implementation `install/ubuntu/server/starship.sh:89` — With an older working starship installed, an offline download after a pin bump aborts every apply instead of warning and keeping it usable. AWS CLI (`install/ubuntu/common/aws_cli.sh:174`) and sheldon (`install/common/sheldon.sh:74`) similarly propagate acquisition failures after successful lookups. Read-only stub probes reproduced exits 6, 22, and 101. Distinguish acquisition failures from verification failures and test these paths.
+
+- [P2] High evidence `.orchestration/sandboxes/dotfiles-T119-rolling-release-assets-a01.md:6` — “Every edit, test and validation ran inside” contradicts line 26 and validation §13j, which explicitly records tests outside the sandbox. Line 24 also describes rerouting denied commands. These actions conflict with the worker playbook’s boundary rules; the supplied evidence contains no operator override. Correct the isolation claim and reconcile these actions before accepting conformance.
+
+The changed paths fit the amended scope, and the expected artifacts exist. Saved feedback for [PR #312](https://github.com/mryfmo/dotfiles/pull/312) records 16 successful check runs plus CodeRabbit’s successful skipped-review status; nine Bot threads are resolved and seven remain unresolved with fix dispositions. ShellCheck, shell/Python syntax, diff whitespace, and helper-copy checks passed.
+
+Not rerun: full suites or live downloads; live GitHub access failed. Verification gaps and failed offline applies remain.
+Verdict: incorrect

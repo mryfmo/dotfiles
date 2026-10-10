@@ -1,0 +1,10 @@
+# Learning triage: dotfiles-T124-wave3b-audit-grammar-a01
+
+These are candidates only; nothing is promoted.
+
+1. [memory:failure] A task that rewrites a generated prompt must list every test that pins the whole prompt string. `test_herdr_agents.py::test_audit_task_inlines_the_task_inputs_and_the_merge_base_diff` asserts equality on the full task-level prompt, so any wording change breaks it; ground `allowed_files` with `grep -n 'confidence dimension\|You are the auditor' tests/unit/*.py README.md` before dispatch (this task needed two amendments for the test and the README paragraph).
+2. [memory:failure] Locally, the global `commit.gpgsign=true` with an SSH signing key makes every test that runs `git commit` in a scratch repo fail inside the Claude sandbox (the key path is read-denied). The in-sandbox shim `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false` restores them; CI is unaffected.
+3. [memory:failure] On this host `git push` is rewritten to SSH by the global `url.git@github.com:.pushinsteadof https://github.com/`, and the SSH agent holds no identity. `-c url.git@github.com:.pushinsteadof=` does not undo it (checked with `git remote get-url --push origin`); the documented push form is `GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push https://github.com/mryfmo/dotfiles <branch>`. Verify a proposed git override offline with `git remote get-url --push` before proposing it.
+4. [memory:decision] A test module that subclasses another module's TestCase to reuse its fixture must load it by path under a private name and define `load_tests` returning only its own `test_*` names, or discovery runs the whole inherited suite again (`tests/unit/test_herdr_agents_audit.py`).
+5. [memory:failure] `unittest.main(argv=[..., "Class"])` on a subclass of a large TestCase runs every inherited test; name `Class.test_method`.
+6. [memory:failure] macOS `/bin/bash` is 3.2: no `mapfile`. Scratch scripts use a `while read` loop.

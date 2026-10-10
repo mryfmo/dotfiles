@@ -1,0 +1,124 @@
+[
+  {
+    "id": "t120-w1",
+    "scope": "review",
+    "body": "[P1] Independent review (advisor, before any code): stop on the refused probes (d1, d2) without a third form, and raise the Amendment 1 contradiction (install.sh executes the latest binary checked only against the unsigned manifest, so any use of it runs code before our GPG check) with option A as the default. addressed: blocked PONG at 09:39Z; Amendment 2 chose option A and took the live probes.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w2",
+    "scope": "file",
+    "file": "scripts/update-agent-assets.sh",
+    "line": 227,
+    "body": "[P2] Independent review (advisor, before writing): gpgv --keyring without --homedir also consults ~/.gnupg/trustedkeys.kbx, so another key on the host could validate. addressed: gpgv runs with --homedir of the private scratch gnupg directory; the test pins the argument order.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w3",
+    "scope": "file",
+    "file": "scripts/update-agent-assets.sh",
+    "line": 233,
+    "body": "[P2] Independent review (advisor, before writing): a validly signed manifest of another release served at this version's URL would pass gpgv. addressed: the checksum is read only when the signed manifest's version equals the requested one; test_a_signed_manifest_of_another_release_cannot_stand_in.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w4",
+    "scope": "file",
+    "file": "scripts/update-agent-assets.sh",
+    "line": 269,
+    "body": "[P2] Independent review (advisor, before writing): a hand-made launcher symlink is a custom launcher the auto-updater never moves (docs), and the channel argument could let the binary fetch another build. addressed: the verified binary runs its own install with the exact resolved version, then the active version and sha256 must equal the verified ones or the install is removed (Amendment 4 q7).",
+    "resolved": true
+  },
+  {
+    "id": "t120-w5",
+    "scope": "file",
+    "file": "home/dot_mise/config.toml",
+    "line": 29,
+    "body": "[P1] Self-review (q10): Amendment 4's probe saw install_env ignored on mise's embedded aube path, but this config sets package_manager = npm, where mise runs npm and ~/.npmrc's window applies. addressed: Amendment 5's re-probe confirmed it; Codex carries both minimum_release_age_excludes and install_env.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w6",
+    "scope": "file",
+    "file": "scripts/update-agent-assets.sh",
+    "line": 308,
+    "body": "[P2] Independent review (advisor, before the first push): retiring the old mise install depended on mise ls listing a tool its config no longer names, and its stale shim would shadow ~/.local/bin/claude. addressed in 41a94b75: the installs directory also decides, and mise reshim follows the uninstall; test_the_old_mise_install_is_found_by_its_directory_when_mise_does_not_list_it.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w7",
+    "scope": "file",
+    "file": "scripts/update-agent-assets.sh",
+    "line": 252,
+    "body": "[P3] Self-review: bare mktemp -d ignores TMPDIR on macOS, so the new functions failed in the sandbox. addressed: an explicit ${TMPDIR:-/tmp}/claude-code.XXXXXX template, as upgrade-tools.sh does.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w8",
+    "scope": "file",
+    "file": "README.md",
+    "line": 244,
+    "body": "[P3] Independent review (advisor, before the first push): the Claude Code paragraph sat in the README's regime area, where T124 wave 1 adds a paragraph. addressed in 41a94b75: moved under the Tool versions paragraph, where the task places it.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w9",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 506,
+    "body": "[P1] Codex Bot thread 4237349028 on 41a94b75: a cooldown-exempt Codex published without a provenance attestation passed as signature-only and stayed runnable. fixed: 8e83a502, a cooldown-exempt tool stays only with a verified attestation (missing or failed: required failure and that version uninstalled); test_upgrade_keeps_a_day_one_tool_only_with_verified_provenance.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w11",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 506,
+    "body": "[P1] Codex Bot thread 4237392848 on 8e83a502: a cooldown-exempt version whose check cannot run, with no earlier verification of it, stayed installed and runnable. fixed: cafeae18, any outcome but a verified attestation (now or from an earlier run of the same version) removes it; the day_one_offline case of test_upgrade_keeps_a_day_one_tool_only_with_verified_provenance.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w12",
+    "scope": "file",
+    "file": "home/dot_local/bin/common/executable_remove-agent-asset",
+    "line": 109,
+    "body": "[P2] Codex Bot thread 4237392853 on 8e83a502 (scripts/update-agent-assets.sh:353): remove-agent-asset ensure_claude_code always failed, because neither recorded path was a safe root. fixed: cafeae18 under Amendment 7, two narrow roots (the exact ~/.local/bin/claude, removed as a symlink and never followed, and the ~/.local/share/claude prefix); test_native_claude_code_install_is_removable_and_nothing_beside_it.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w13",
+    "scope": "file",
+    "file": "scripts/update-agent-assets.sh",
+    "line": 145,
+    "body": "[P1] Codex Bot thread 4237450996 on cafeae18 (home/dot_mise/config.toml:72): the Codex repair path (ensure_mise_npm_agent_cli, also run by REPAIR=1 make doctor) ran mise install --force on the bare tool, which takes the newest day-one release without a provenance check. fixed: cc9f9af2, a repair reinstalls only the version already in place and installs nothing when none is; test_agent_asset_update_repairs_broken_codex_with_npm_backend and test_agent_cli_repair_installs_nothing_without_a_version_in_place.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w14",
+    "scope": "file",
+    "file": "scripts/update-agent-assets.sh",
+    "line": 364,
+    "body": "[P1] Codex Bot thread 4237450999 on cafeae18: an already-active native binary that failed the signed-manifest check stayed runnable. fixed: cc9f9af2, it is removed with its launcher; test_a_tampered_active_binary_fails_and_cannot_run_again.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w15",
+    "scope": "file",
+    "file": "scripts/update-agent-assets.sh",
+    "line": 269,
+    "body": "[P2] Codex Bot thread 4237451004 on cafeae18: a failed install step could leave a partial launcher or a version that never reached the post-install check. fixed: cc9f9af2, the version and a launcher pointing to it are removed before the failure returns; test_a_failed_install_step_leaves_no_launcher_or_version.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w16",
+    "scope": "review",
+    "body": "[P2] Self-review after the cafeae18 round, same principle (nothing that failed verification stays runnable): an npm tool with an invalid or missing signature or attestation is uninstalled whatever its cooldown, and a launcher that claude install left at an unchecked version removes that version too. fixed: 1bc871b2; test_upgrade_npm_provenance_outcomes and test_a_launcher_left_at_another_version_removes_both.",
+    "resolved": true
+  },
+  {
+    "id": "t120-w10",
+    "scope": "review",
+    "body": "Review-scope approval of the final head after the records above were addressed: CI green, every Bot finding fixed at its root cause, every new or changed test passes, and the full unit suite's failing set equals origin/main's sandbox baseline.",
+    "resolved": true
+  }
+]

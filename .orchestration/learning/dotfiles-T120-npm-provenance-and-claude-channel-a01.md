@@ -1,0 +1,13 @@
+# Learning triage: dotfiles-T120-npm-provenance-and-claude-channel-a01
+
+These are candidates only; nothing is promoted.
+
+1. [memory:failure] A probe of mise's npm behaviour must use the repository's whole config. `[settings.npm] package_manager = "npm"` decides that mise runs npm as a subprocess, which reads `~/.npmrc` and honours a tool's `install_env`. Without that setting mise uses its embedded aube, which ignores both. The first q5 probe lacked the setting and reached the opposite conclusion (Amendments 4 and 5).
+2. [memory:failure] Anthropic's `install.sh` ignores its channel argument when it downloads. It always fetches `latest`, checks it only against the unsigned `manifest.json`, and then executes it. To run nothing unverified, check `manifest.json.sig` yourself, check the binary's sha256 against the signed manifest, and only then run that binary's own `install <version>`.
+3. [memory:failure] A `~/.local/bin/claude` symlink that the native installer did not create is a "custom launcher" that Claude Code's auto-updater never moves (Advanced setup docs). The launcher must come from the verified binary's own `install`.
+4. [memory:failure] `gpgv --keyring <file>` without `--homedir` also consults the user's `trustedkeys.kbx`. A pinned-key check passes `--homedir` with a fresh scratch directory, so only the pinned key can validate. `install/common/mise.sh` has the gap (follow-up T123).
+5. [memory:failure] A signature over a release manifest proves the manifest, not the release it is served for. Require the signed manifest's own `version` to equal the requested version, or a validly signed older manifest can be replayed at a newer URL.
+6. [memory:failure] `npm audit signatures` after `npm install --package-lock-only` audits nothing; it needs a real `--ignore-scripts` install. It verifies the registry integrity hash and attestation, not the files on disk (Amendment 3).
+7. [memory:failure] mise may not list a tool that its config no longer names. Detect an old install by its installs directory (`npm-<scope>-<name>`), and `mise reshim` after the uninstall. Otherwise the stale shim in `~/.local/share/mise/shims` shadows the replacement in `~/.local/bin`.
+8. [memory:failure] When the permission gate refuses a probe, report it and stop. A second attempt with a corrected command is still a rework of the refused outcome, and the sandbox record names it as one (d1).
+9. [memory:failure] On this macOS sandbox, `make unit-test` fails about 217 tests on `origin/main` itself, mostly because macOS `mktemp` without a template writes under `/var/folders`. Compare the failing test sets against a scratch `origin/main` worktree rather than reading the totals.

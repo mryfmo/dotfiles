@@ -1,0 +1,344 @@
+[
+  {
+    "id": "t119-w1",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 1,
+    "body": "[P2] Independent review (advisor, before the first push): ask the orchestrator before coding about (a) MISE_VERSION, read by four workflows outside allowed_files, and (b) the cooldown, since wave 1 set 72h. addressed: q1 and q2 answered by Amendment 1; the helper takes the newest non-draft, non-prerelease release at least 72h old.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w2",
+    "scope": "file",
+    "file": "install/ubuntu/client/zed.sh",
+    "line": 1,
+    "body": "[P2] Independent review (advisor, before the push): a zed script that runs on every apply must not fail an offline apply on a client that never installed Zed; the API-unreachable fresh case exits 0 with a notice. fixed:f688336c.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w3",
+    "scope": "file",
+    "file": "install/ubuntu/client/zed.sh",
+    "line": 1,
+    "body": "[P3] Self-review: the amendment-2 hint 'run make gh-auth, then make update' would be false for a run_once script that exits 0 (recorded as run, never retried). addressed: q6, Amendment 3, zed runs as run_after_05-client-install-zed.sh.tmpl.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w4",
+    "scope": "file",
+    "file": "scripts/update-agent-assets.sh",
+    "line": 238,
+    "body": "[P2] CI on f688336c: the runner's shellcheck 0.9.0 reports SC2015 for the Crit checksum check written as A && B || C. fixed:50afc9b5, the check is an if.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w5",
+    "scope": "file",
+    "file": "home/.chezmoiscripts/ubuntu/run_after_10-install-starship.sh.tmpl",
+    "line": 1,
+    "body": "[P2] Codex Bot thread 4234992747 on f688336c: the starship, sheldon and AWS CLI run_once wrappers render no changing pin, so they never rerun and make update never moves those tools. fixed:89d9b982: run_after_10/03/04 wrappers, and each installer skips when current (resolved tag, cargo search, recorded archive ETag) and keeps the tool offline (Amendment 6).",
+    "resolved": true
+  },
+  {
+    "id": "t119-w6",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 36,
+    "body": "[P2] Codex Bot thread 4234992752 on f688336c: the wget fallback dropped the credential. fixed:89d9b982: wget reads it from a private 0600 wgetrc that is removed afterwards, never the command line.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w7",
+    "scope": "file",
+    "file": "install/ubuntu/client/zed.sh",
+    "line": 98,
+    "body": "[P2] Codex Bot thread 4234992757 on f688336c: a Zed or Crit binary that exits nonzero on --version aborted the installer under set -euo pipefail. fixed:89d9b982: both probes treat such a binary as not installed, so it is replaced.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w8",
+    "scope": "file",
+    "file": "tests/unit/test_supply_chain_policy.py",
+    "line": 474,
+    "body": "[P3] CI on 89d9b982: ruff format check failed on a sed-edited assertion. fixed:7903de38.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w9",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 96,
+    "body": "[P1] Codex Bot thread 4235134105 on 7903de38: gh 2.92.0 and earlier forward credentials to TUF mirror hosts in gh release verify-asset (GHSA-8xvp-7hj6-mcj9, advisory read). fixed:3cbcf388: github_attestation_ready requires gh 2.93.0 or newer and says so when it declines an older gh.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w10",
+    "scope": "file",
+    "file": "install/ubuntu/common/aws_cli.sh",
+    "line": 151,
+    "body": "[P2] Codex Bot thread 4235134113 on 7903de38: the ETag cache hit trusted any executable aws. fixed:3cbcf388: a matching ETag skips only when verify_aws_cli_version passes.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w11",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 25,
+    "body": "[P1] Codex Bot thread 4235134122 on 7903de38: an unqualified gh auth token could send a GH_HOST or Enterprise credential to api.github.com. fixed:3cbcf388: gh auth token --hostname github.com, gh auth status --hostname github.com, and --repo github.com/<repo>.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w12",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 61,
+    "body": "[P2] Codex Bot thread 4235134133 on 7903de38: the parse pipeline relied on the caller's pipefail, so a truncated download could still yield a tag. fixed:3cbcf388: the list is fetched whole before parsing.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w13",
+    "scope": "review",
+    "body": "[P2] Independent review (advisor, before the RESULT): the report's descriptions predated 3cbcf388 (the --repo github.com/ form, the gh 2.93.0 floor, the github.com-bound token, test counts), the Bot review bodies were not read, and 'CI is the proof' for the workflow edits held only for test.yaml. addressed: the report describes 3cbcf388, validation section 10 reads each review body for P-badges, and the report names which edited workflow steps ran in this PR (test.yaml) and which first run after merge (docs.yml; the macos.yaml and ubuntu.yaml mise steps are skipped on pull requests).",
+    "resolved": true
+  },
+  {
+    "id": "t119-w14",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 23,
+    "body": "[P1] Codex Bot thread 4235444419 on fd4ff82d: with DOTFILES_DEBUG the callers run set -x, so the bearer assignment and the header printf wrote the credential to the trace. fixed:0d264db8: github_release_list turns a caller's xtrace off before the credential is read and restores it on every path (the request moved into github_release_fetch); setup.sh's copy follows; test_an_xtrace_never_shows_the_credential_and_is_restored fails against fd4ff82d.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w15",
+    "scope": "file",
+    "file": "install/ubuntu/common/aws_cli.sh",
+    "line": 156,
+    "body": "[P2] Codex Bot thread 4235444420 on fd4ff82d: aws/install --update skips an existing version directory, so a broken same-version install was never repaired. fixed:0d264db8: after GPG and the staged CLI pass, and only when the installed CLI no longer runs, the same-version directory is removed before the install; test_main_repairs_a_broken_same_version_install_the_upstream_update_would_skip fails against fd4ff82d.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w16",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 103,
+    "body": "[P1] Audit of 0d264db8: github_release_tag returned any API text, and make docker interpolated it into shell source (a tag v$(printf${IFS}X) ran). fixed:2453b1c9: only GITHUB_RELEASE_TAG_PATTERN tags are returned, otherwise `unexpected release tag <tag> for <repo>` and exit 1; test_tag_must_be_a_version_or_the_lookup_fails fails against 0d264db8.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w17",
+    "scope": "file",
+    "file": "Makefile",
+    "line": 22,
+    "body": "[P1] Audit of 0d264db8, second half: the docker recipe now resolves the tag in its own shell variable, never through Make interpolation. fixed:2453b1c9: test_make_docker_never_runs_the_fetched_tag (make -n fetches nothing; make docker with a touch-tag creates no marker) fails against 0d264db8, and the replay creates the marker there.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w18",
+    "scope": "file",
+    "file": "scripts/update-agent-assets.sh",
+    "line": 259,
+    "body": "[P2] Audit of 0d264db8: crit_version, zed_installed_version, sheldon_installed_version and starship_installed_version kept the banner of a binary that exited non-zero. fixed:2453b1c9: output and status are captured together; the exit-42 cases for Crit (replaced, never promoted), starship, sheldon and Zed fail against 0d264db8.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w19",
+    "scope": "file",
+    "file": "install/common/mise.sh",
+    "line": 77,
+    "body": "[P2] Audit of 0d264db8: bootstrap downgrade to checksum-only. fixed:2453b1c9: with gpg and gpgv present the checksums come from gpgv's signed text of SHASUMS256.asc, against the release key pinned in assets.mise (fail-closed); the GPG tests (good, bad signature, wrong fingerprint, expired, two keys) fail against 0d264db8.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w20",
+    "scope": "file",
+    "file": "scripts/upgrade-tools.sh",
+    "line": 182,
+    "body": "[P2] Audit of 0d264db8, part 3b: attestations that cannot be checked at bootstrap are deferred to pending-attestation/ and verified by a new phase before mise; a failed one stops make update. fixed:2453b1c9: the phase and main tests fail against 0d264db8; the live scratch-HOME run shows the deferral and the one warning.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w21",
+    "scope": "file",
+    "file": "tests/unit/test_supply_chain_policy.py",
+    "line": 29,
+    "body": "[P1] Codex Bot thread 4236226692 on 2453b1c9 (also the CI failure of 2453b1c9): the mise cleanup fixture faked SHASUMS256.asc while the runner has gpg. fixed:aa69c2a0: the fixture stubs verify_mise_shasums_signature. Lesson: the test sat in the local sandbox baseline.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w22",
+    "scope": "file",
+    "file": "scripts/lib/installer-pins.sh",
+    "line": 22,
+    "body": "[P1] Codex Bot thread 4236226700 on 2453b1c9: a same-release checksums.txt is no trust anchor for mutable Crit releases. Amendment 7 (q11) corrected the rule. fixed:aa69c2a0: Crit v0.22.0 and starship v1.26.0 are pinned with reviewed sha256 (API digest, checksum file and local hash agree), the release checksum kept second; the replaced-release test and replay fail against 2453b1c9.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w23",
+    "scope": "file",
+    "file": ".github/workflows/test.yaml",
+    "line": 213,
+    "body": "[P2] Codex Bot thread 4236226697 on 2453b1c9: mise-action installed the newest mise without the cooldown. Amendment 7 (q12) withdrew Amendment 1's exception. fixed:aa69c2a0: minimum_release_age: 72h on all four steps; test_the_window_is_the_mise_cooldown checks every workflow and fails against 2453b1c9.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w24",
+    "scope": "file",
+    "file": "install/ubuntu/client/zed.sh",
+    "line": 113,
+    "body": "[P2] Codex Bot thread 4236226689 on 2453b1c9: Zed downgraded a Zed that had updated itself. fixed:aa69c2a0: an installed release at or past the resolved one stays, with one notice; the new zed.bats case is replayed against 2453b1c9 (downgrades) and aa69c2a0 (keeps).",
+    "resolved": true
+  },
+  {
+    "id": "t119-w25",
+    "scope": "file",
+    "file": "install/common/mise.sh",
+    "line": 131,
+    "body": "[P3] Self-review before the round-3 RESULT (advisor pass): fail-closed GPG and the stop at a failed deferred attestation are deliberate decisions, named in the report; a committed mise key (AWS pattern) would remove the keyserver dependency but is a new file outside the allowed files, so it is reported, not added.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w26",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 116,
+    "body": "[P2] Codex Bot thread 4236314005 on aa69c2a0: with apt's pre-2.93 gh earlier on PATH than mise's shims, attestations were declined and Zed never installed. fixed:f3c155ee: github_attestation_ready and github_release_attestation put mise's shim directory first in a function-local PATH (the caller's PATH unchanged; setup.sh copy follows); test_attestation_prefers_mise_gh_over_an_older_system_gh fails against aa69c2a0's helper.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w27",
+    "scope": "file",
+    "file": "install/ubuntu/common/aws_cli.sh",
+    "line": 73,
+    "body": "[P2] Codex Bot thread 4236358716 on f3c155ee: an interrupted update left the new version directory beside an older working AWS CLI; --update skipped, the postcondition accepted the older CLI and the new ETag was recorded. fixed:674aaac0: the same-version directory is removed when the active CLI does not run as the staged release, and the postcondition requires the staged version; the repair test's older-CLI case fails against f3c155ee.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w28",
+    "scope": "file",
+    "file": "install/ubuntu/client/zed.sh",
+    "line": 69,
+    "body": "[P2] Codex Bot thread 4236358718 on f3c155ee: a failed archive download after a successful lookup failed every apply. fixed:674aaac0: install_zed_release returns 3 and main keeps an installed Zed with a warning or prints a retry notice (exit 0); tar's status pinned to 1; the replay exits 22 at f3c155ee, 0 at 674aaac0.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w29",
+    "scope": "file",
+    "file": ".github/workflows/test.yaml",
+    "line": 174,
+    "body": "[P1] Audit of 674aaac0: CI and make docker trusted chezmoi's same-release checksum file. fixed:19504fe5: CI verifies the release attestation fail-closed; make docker verifies checksum and attestation on the host (github_release_verified_sha256, hint run make gh-auth when gh is not ready) and passes the sha256 the Dockerfile checks alone; test_make_docker_verifies_chezmoi_on_the_host_and_passes_its_sha256 fails against 674aaac0.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w30",
+    "scope": "file",
+    "file": "install/common/sheldon.sh",
+    "line": 74,
+    "body": "[P2] Audit of 674aaac0: a failed download after the lookup aborted the apply over a working starship, AWS CLI or sheldon. fixed:19504fe5 and 16a64632: acquisition returns 3 and main keeps a working tool with one warning; no install fails; verification always fails; cargo's own status is kept otherwise. The three acquisition tests fail against 674aaac0 inside the sandbox.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w31",
+    "scope": "file",
+    "file": ".orchestration/sandboxes/dotfiles-T119-rolling-release-assets-a01.md",
+    "line": 1,
+    "body": "[P2] Audit of 674aaac0: the sandbox record's isolation claim was false. addressed: the record is rewritten from the transcript (129 out-of-sandbox commands by action and step-4 status, eight refusals, five reworked, what they wrote); validation 14e lists every command verbatim; from round 4 only gh, git push/fetch, agmsg-dispatch and the masked artifact copy ran outside, with one bundled local edit named.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w32",
+    "scope": "file",
+    "file": "Makefile",
+    "line": 30,
+    "body": "[P2] Codex Bot thread 4236634557 on e0fed47e: make docker reused an older unverified image. fixed:8cb8a1d1: an image is reused only when its chezmoi.sha256 label holds a verified sha256; the test's old-image case fails against e0fed47e.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w33",
+    "scope": "file",
+    "file": "scripts/validate-agent-assets.py",
+    "line": 683,
+    "body": "[P2] Codex Bot thread 4236634561 on e0fed47e: a rolling GitHub asset could roll on a same-release checksum file alone. fixed:8cb8a1d1: rolling requires an attestation, a pinned-key signature or an immutable registry; the two new validator cases fail against e0fed47e.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w34",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 66,
+    "body": "[P2] Codex Bot thread 4236634564 on e0fed47e: an interrupted wget could strand the credential wgetrc. fixed:8cb8a1d1: a subshell with an EXIT trap and signals turned into exits; test_an_interrupted_wget_never_strands_the_credential_file fails against e0fed47e.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w35",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 123,
+    "body": "[P2] Codex Bot thread 4236690491 on 8cb8a1d1: a prerelease gh such as 2.93.0-rc.1 passed the numeric version gate although SemVer places it below the GHSA-8xvp-7hj6-mcj9 fix. fixed:73034ae4: only a plain X.Y.Z at or after 2.93.0 is used; the prerelease test case fails at 8cb8a1d1 in the sandbox.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w36",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 155,
+    "body": "[P2] Audit of 73034ae4: gh release verify-asset prints its report on stdout, so github_release_verified_sha256 returned it with the digest and make docker passed it as CHEZMOI_SHA256. fixed:96253ea3: github_release_attestation sends gh stdout to stderr; the fake gh prints the real report; the helper stdout must be empty and the verified sha one 64-char line; both tests fail against 73034ae4 in the sandbox.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w37",
+    "scope": "file",
+    "file": ".orchestration/sandboxes/dotfiles-T119-rolling-release-assets-a01.md",
+    "line": 1,
+    "body": "[P2] Audit of 73034ae4: the record said no command wrote the repository except through git push. addressed: the record lists the out-of-sandbox commands that wrote tracked files or history (14g #20, #25, #30, #35, #83, #84, #85, #109, #111, #113), the files and the commits that carry them, with two inventory rows; round 5 ran only step 4's cases.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w38",
+    "scope": "file",
+    "file": "install/ubuntu/common/aws_cli.sh",
+    "line": 165,
+    "body": "[P2] Codex Bot thread 4236809940 on 96253ea3: offline, main accepted any executable aws. fixed:70361875: verify_aws_cli_version is required on that path too; the new offline-broken case fails before the fix in the sandbox.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w39",
+    "scope": "file",
+    "file": "setup.sh",
+    "line": 464,
+    "body": "[P1] Codex Bot thread 4236835114 on 70361875 (q13, Amendment 8): the bootstrap ran chezmoi (and mise without gpg) checked only against the same-release checksum file; the deferred attestation could not undo it. fixed:50759078: the newest release installs only when gh (or gpg for mise) verifies it before it runs, otherwise a reviewed fallback pin and sha256 from the manifest; the deferral and the upgrade-tools phase are retired; the validator requires the fallback; fallback, mismatch and rolling cases tested for mise and setup.sh.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w40",
+    "scope": "file",
+    "file": "scripts/lib/github-release.sh",
+    "line": 27,
+    "body": "[P1] Codex Bot thread 4236901115 on 50759078: in a GitHub Enterprise job the release lookup sent GITHUB_TOKEN or GH_TOKEN, which belong to that host, to api.github.com, and gh for github.com saw them. fixed:36d87f6c: github_enterprise_context detects GITHUB_SERVER_URL or GH_HOST off github.com; the lookup then ignores both variables and every gh call for github.com runs through github_dotcom_gh without them; setup.sh's copy follows; test_an_enterprise_host_token_never_reaches_github_com fails at 50759078.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w41",
+    "scope": "file",
+    "file": "install/common/mise.sh",
+    "line": 172,
+    "body": "[P2] Codex Bot thread 4236901122 on 50759078: the fallback path downgraded a mise that mise self-update had moved past the fallback. fixed:36d87f6c: an installed mise at or past the fallback stays with no download; an older or broken one is replaced; test_mise_bootstrap_keeps_a_newer_installed_mise_on_the_fallback_path fails at 50759078.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w42",
+    "scope": "file",
+    "file": "install/common/mise.sh",
+    "line": 192,
+    "body": "[P2] Codex Bot thread 4236901128 on 50759078: with gpg present, an unreachable release key or SHASUMS256.asc failed the bootstrap even with an authenticated gh. fixed:36d87f6c: those cases return 3 and the release attestation verifies instead, with a warning; without gh nothing installs; a bad signature still fails; test_mise_bootstrap_verifies_by_attestation_only_when_the_gpg_inputs_cannot_be_fetched fails at 50759078.",
+    "resolved": true
+  },
+  {
+    "id": "t119-w43",
+    "scope": "file",
+    "file": "home/dot_agents/agent-config.yaml",
+    "line": 355,
+    "body": "[P2] Task-level audit of 36d87f6c (Revise round 5): the report claimed all eight fallback sha256 values match GitHub's asset digests, but the validation held only the query, and the macOS x64 and Linux arm64 values of both tools appeared nowhere. Addressed with no tree change: validation §16 pastes, for each of the eight assets, GitHub's asset digest, the release checksum file's line and the manifest value side by side, with the rendered constants and a mismatch self-check; all eight agree, and the manifest is unchanged. [P2] conformance: the historical deviations stand as recorded; the sandbox record's round-6 line states that round 6 ran outside the sandbox only step 4's cases.",
+    "resolved": true
+  }
+]

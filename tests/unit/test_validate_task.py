@@ -167,6 +167,7 @@ class ValidateTaskTest(unittest.TestCase):
         for key, needle in cases.items():
             with self.subTest(key=key):
                 self.assertFails(self.task(**{key: None}), needle)
+        self.assertFails(self.task(kind="chore"), "kind: must be one of")
         # A review, docs or design task may omit allowed_files.
         self.assertValid(self.task(kind="docs", allowed_files=None))
         self.assertValid(self.task(kind="design", allowed_files=None))

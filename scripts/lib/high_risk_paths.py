@@ -119,9 +119,9 @@ def _glob_tokens(pattern: str) -> list[str]:
     tokens = []
     i = 0
     while i < len(pattern):
-        token = "**/" if pattern.startswith("**/", i) else "**" if pattern.startswith("**", i) else pattern[i]
-        tokens.append(token)
-        i += len(token)
+        piece = "**/" if pattern.startswith("**/", i) else "**" if pattern.startswith("**", i) else pattern[i]
+        tokens.append(piece)
+        i += len(piece)
     return tokens
 
 
@@ -140,16 +140,16 @@ def _glob_can_start_with(pattern: str, prefix: str) -> bool:
     for ch in prefix:
         step = set()
         for k, inside in states:
-            token = tokens[k] if k < len(tokens) else None
-            if token == "**/":  # `(?:.*/)?`: any characters, closed by a `/`
+            piece = tokens[k] if k < len(tokens) else None
+            if piece == "**/":  # `(?:.*/)?`: any characters, closed by a `/`
                 step.add((k, True))
                 if ch == "/":
                     step.add((k + 1, False))
             elif inside:
                 continue
-            elif token == "**" or (token == "*" and ch != "/"):
+            elif piece == "**" or (piece == "*" and ch != "/"):
                 step.add((k, False))
-            elif (token == "?" and ch != "/") or token == ch:
+            elif (piece == "?" and ch != "/") or piece == ch:
                 step.add((k + 1, False))
         states = closure(step)
         if not states:

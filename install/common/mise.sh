@@ -3,10 +3,12 @@
 # @file install/common/mise.sh
 # @brief Install and bootstrap `mise`.
 # @description
-#   Downloads the newest standalone `mise` release that is at least 72 hours old,
-#   verifies it, then runs `mise install` against the repository tool definitions.
-#   The checksums are GPG-verified when gpg and gpgv are present; the GitHub release
-#   attestation is checked now with an authenticated gh, or else at the next `make update`.
+#   Nothing runs before a check independent of the release page passes. With gpg and gpgv
+#   (the release key's signature on SHASUMS256.asc) or an authenticated gh (the GitHub release
+#   attestation), it downloads the newest standalone `mise` release that is at least 72 hours old
+#   and verifies it that way; without either, as on a fresh macOS, it installs the reviewed
+#   fallback release pinned in the manifest. Then it runs `mise install` against the repository
+#   tool definitions; `mise self-update` moves mise forward afterwards.
 
 # set -Eeuo pipefail
 
@@ -20,6 +22,13 @@ readonly MISE_RELEASE_REPO="jdx/mise"
 readonly MISE_GPG_FINGERPRINT="24853EC9F655CE80B48E6C3A8B81C9D17413A06D"
 # mise publishes its release key on this keyserver; only the pinned fingerprint makes it trusted.
 readonly MISE_GPG_KEY_URL="https://keys.openpgp.org/vks/v1/by-fingerprint/${MISE_GPG_FINGERPRINT}"
+# The reviewed release a host without gh or gpg bootstraps, rendered from assets.mise.fallback;
+# change them there. Assignments stay non-readonly so tests can override them after sourcing.
+MISE_FALLBACK_VERSION="v2026.10.3"
+MISE_FALLBACK_MACOS_X64_SHA256="791b92b446729c53e6501acd2b84ea207f541659ca9d0480c9c70c291919a321"
+MISE_FALLBACK_MACOS_ARM64_SHA256="28ecc8640b0a28dab52817766f37fecfd898f1dff82e03f36fcb072e971f9246"
+MISE_FALLBACK_LINUX_X64_SHA256="04147c68e946902f5226dfdcd54d19907aed3cf54d95b2f27d2b9c778bb26f9e"
+MISE_FALLBACK_LINUX_ARM64_SHA256="e79866e32624b346f6854d93ca8a24294516cd7c0b48ce0e80af508fb7c3d8b8"
 
 # The chezmoi script includes scripts/lib/github-release.sh before this file; a direct run sources it.
 if ! declare -F github_release_tag > /dev/null; then
@@ -94,16 +103,46 @@ function verify_mise_shasums_signature() {
 }
 
 #
-# @description Install the newest cooled-down standalone `mise` release, checked against its
-#   checksums (GPG-verified when gpg and gpgv are present) and its GitHub release attestation,
-#   which waits for `make update` when no authenticated gh is present yet.
+# @description Succeed when gpg and gpgv can check the release key's signature on SHASUMS256.asc.
+#
+function mise_gpg_ready() {
+    command -v gpg > /dev/null 2>&1 && command -v gpgv > /dev/null 2>&1
+}
+
+#
+# @description Print the reviewed fallback sha256 of a mise release artifact.
+# @arg $1 string The artifact name.
+#
+function mise_fallback_sha256() {
+    case "$1" in
+    *-macos-x64.tar.gz) printf '%s\n' "${MISE_FALLBACK_MACOS_X64_SHA256}" ;;
+    *-macos-arm64.tar.gz) printf '%s\n' "${MISE_FALLBACK_MACOS_ARM64_SHA256}" ;;
+    *-linux-x64.tar.gz) printf '%s\n' "${MISE_FALLBACK_LINUX_X64_SHA256}" ;;
+    *-linux-arm64.tar.gz) printf '%s\n' "${MISE_FALLBACK_LINUX_ARM64_SHA256}" ;;
+    *) return 1 ;;
+    esac
+}
+
+#
+# @description Install standalone `mise`, verified before it runs: the newest cooled-down release
+#   when gpg (the signed SHASUMS256.asc) or an authenticated gh (the release attestation) can
+#   check it, otherwise the reviewed fallback release and its pinned sha256. The release's own
+#   checksum file is checked on every path.
 #
 function _install_mise_binary() (
-    local artifact attestation=0 base_url mechanism stage="" tag tmpdir
-    tag="$(github_release_tag "${MISE_RELEASE_REPO}")" || {
-        printf 'Could not resolve a %s release.\n' "${MISE_RELEASE_REPO}" >&2
-        return 1
-    }
+    local artifact attestation=0 base_url fallback="" gpg_ready="" stage="" tag tmpdir
+    if mise_gpg_ready; then gpg_ready=1; fi
+    if [ -n "${gpg_ready}" ] || github_attestation_ready; then
+        tag="$(github_release_tag "${MISE_RELEASE_REPO}")" || {
+            printf 'Could not resolve a %s release.\n' "${MISE_RELEASE_REPO}" >&2
+            return 1
+        }
+    else
+        # Neither check can run before mise does, so the reviewed release installs instead.
+        fallback=1
+        tag="${MISE_FALLBACK_VERSION}"
+        printf 'No gpg and no authenticated gh 2.93.0 or newer: installing the reviewed mise %s (assets.mise.fallback).\n' "${tag}"
+    fi
     artifact="$(mise_artifact "${tag}")" || return
     base_url="https://github.com/${MISE_RELEASE_REPO}/releases/download/${tag}"
     tmpdir="$(mktemp -d)" || return
@@ -112,28 +151,32 @@ function _install_mise_binary() (
     stage="$(mktemp "${MISE_INSTALL_PATH}.tmp.XXXXXX")" || return
 
     curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}" || return
-    if command -v gpg > /dev/null 2>&1 && command -v gpgv > /dev/null 2>&1; then
+    if [ -n "${gpg_ready}" ]; then
         # The checksums come from the signed text itself, never from an unsigned SHASUMS256.txt.
         curl -fsSL "${base_url}/SHASUMS256.asc" -o "${tmpdir}/SHASUMS256.asc" || return
         verify_mise_shasums_signature "${tmpdir}/SHASUMS256.asc" "${tmpdir}" > "${tmpdir}/SHASUMS256.txt" || {
             printf 'GPG signature check failed for SHASUMS256.asc of mise %s.\n' "${tag}" >&2
             return 1
         }
-        mechanism="SHASUMS256.asc (GPG key ${MISE_GPG_FINGERPRINT})"
     else
         curl -fsSL "${base_url}/SHASUMS256.txt" -o "${tmpdir}/SHASUMS256.txt" || return
-        mechanism="SHASUMS256.txt (no gpg here)"
     fi
     verify_mise_archive "${tmpdir}/${artifact}" "${tmpdir}/SHASUMS256.txt" "${artifact}" || return
-    github_release_attestation "${MISE_RELEASE_REPO}" "${tag}" "${tmpdir}/${artifact}" || attestation=$?
-    case "${attestation}" in
-    0) ;;
-    2) github_release_defer_attestation mise "${MISE_RELEASE_REPO}" "${tag}" "${tmpdir}/${artifact}" "${mechanism}" || return ;;
-    *)
-        printf 'GitHub release attestation failed for %s.\n' "${artifact}" >&2
-        return 1
-        ;;
-    esac
+    if [ -n "${fallback}" ]; then
+        # The reviewed sha256 is the check here; SHASUMS256.txt above only re-checked the download.
+        printf '%s  ./%s\n' "$(mise_fallback_sha256 "${artifact}")" "${artifact}" > "${tmpdir}/reviewed.txt"
+        verify_mise_archive "${tmpdir}/${artifact}" "${tmpdir}/reviewed.txt" "${artifact}" || {
+            printf 'mise %s does not match its reviewed sha256; nothing was installed.\n' "${tag}" >&2
+            return 1
+        }
+    else
+        github_release_attestation "${MISE_RELEASE_REPO}" "${tag}" "${tmpdir}/${artifact}" || attestation=$?
+        # Status 2 (gh not ready) is enough only after the GPG signature verified the checksums.
+        if [ "${attestation}" -ne 0 ] && { [ "${attestation}" -ne 2 ] || [ -z "${gpg_ready}" ]; }; then
+            printf 'GitHub release attestation failed for %s; nothing was installed.\n' "${artifact}" >&2
+            return 1
+        fi
+    fi
     tar -xzf "${tmpdir}/${artifact}" -C "${tmpdir}" || return
     install -m 0755 "${tmpdir}/mise/bin/mise" "${stage}" || return
     mv -f "${stage}" "${MISE_INSTALL_PATH}"

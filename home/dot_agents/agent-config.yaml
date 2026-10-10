@@ -351,12 +351,26 @@ assets:
     verify: release-shasums
     attestation: when-gh-authenticated
     gpg_fingerprint: 24853EC9F655CE80B48E6C3A8B81C9D17413A06D
-    note: with gpg and gpgv present the checksums come from SHASUMS256.asc, verified against the release key with gpg_fingerprint (fetched from keys.openpgp.org, as mise documents); without an authenticated gh the attestation is checked at the next make update.
+    note: the newest cooled-down release installs only when gpg and gpgv (SHASUMS256.asc checked against the release key with gpg_fingerprint, fetched from keys.openpgp.org as mise documents) or an authenticated gh (the release attestation) can verify it before it runs; otherwise the fallback release does, and mise self-update moves it forward afterwards.
+    fallback:
+      pin: v2026.10.3
+      sha256:
+        macos-x64: 791b92b446729c53e6501acd2b84ea207f541659ca9d0480c9c70c291919a321
+        macos-arm64: 28ecc8640b0a28dab52817766f37fecfd898f1dff82e03f36fcb072e971f9246
+        linux-x64: 04147c68e946902f5226dfdcd54d19907aed3cf54d95b2f27d2b9c778bb26f9e
+        linux-arm64: e79866e32624b346f6854d93ca8a24294516cd7c0b48ce0e80af508fb7c3d8b8
+      reason: a host without gpg and without an authenticated gh (a fresh macOS) can check neither the release key's signature nor the release attestation before mise runs, and SHASUMS256.txt comes from the same release; so it bootstraps this reviewed release, SHASUMS256.txt kept as a second check.
     install_path: ~/.local/bin/mise
     installer: install/common/mise.sh
     render:
       file: install/common/mise.sh
-      constants: {MISE_GPG_FINGERPRINT: gpg_fingerprint}
+      constants:
+        MISE_GPG_FINGERPRINT: gpg_fingerprint
+        MISE_FALLBACK_VERSION: fallback.pin
+        MISE_FALLBACK_MACOS_X64_SHA256: fallback.sha256.macos-x64
+        MISE_FALLBACK_MACOS_ARM64_SHA256: fallback.sha256.macos-arm64
+        MISE_FALLBACK_LINUX_X64_SHA256: fallback.sha256.linux-x64
+        MISE_FALLBACK_LINUX_ARM64_SHA256: fallback.sha256.linux-arm64
   sheldon:
     source: crates
     upstream: sheldon
@@ -412,9 +426,25 @@ assets:
     release: latest
     verify: release-shasums
     attestation: when-gh-authenticated
-    note: chezmoi signs its checksums with cosign only, which a fresh host cannot run; without an authenticated gh the attestation is checked at the next make update.
+    note: chezmoi signs its checksums with cosign only, which a fresh host cannot run; the newest cooled-down release installs only when an authenticated gh can check its release attestation before it runs, otherwise the fallback release does, and mise's own chezmoi takes over after the bootstrap.
+    fallback:
+      pin: v2.73.0
+      sha256:
+        darwin-amd64: 55e7b0823b40966a239cb418b37201c5f0961bab1b797c933550c97b1ab08221
+        darwin-arm64: 246679a0b200e7e8be4a951be3b95d37c33ecb87eaab5af6f4949f7d0317bcc1
+        linux-amd64: b597729b687af4488a848240134cb633de8ca0f04e0d26d48f400ee2ac338ffa
+        linux-arm64: abcb840401d3c1f2356e0f53f5d52aa10d10f572654d9626db9ad0ca4dc03355
+      reason: setup.sh runs before gh is installed or logged in, so a fresh host cannot check chezmoi's release attestation before chezmoi runs, and its cosign signature needs cosign; it bootstraps this reviewed release, the release's checksums file kept as a second check.
     install_path: ~/.local/bin/chezmoi
     installer: setup.sh#run_chezmoi
+    render:
+      file: setup.sh
+      constants:
+        CHEZMOI_FALLBACK_VERSION: fallback.pin
+        CHEZMOI_FALLBACK_DARWIN_AMD64_SHA256: fallback.sha256.darwin-amd64
+        CHEZMOI_FALLBACK_DARWIN_ARM64_SHA256: fallback.sha256.darwin-arm64
+        CHEZMOI_FALLBACK_LINUX_AMD64_SHA256: fallback.sha256.linux-amd64
+        CHEZMOI_FALLBACK_LINUX_ARM64_SHA256: fallback.sha256.linux-arm64
   tode:
     source: installer-script
     upstream: https://tode.sh/install

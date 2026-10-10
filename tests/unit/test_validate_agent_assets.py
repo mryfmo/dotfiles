@@ -586,7 +586,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         mise = manifest["assets"]["mise"]
         for key in ("pin", "reason", "render"):
             mise.pop(key)
-        mise.update(release="latest", attestation="when-gh-authenticated")
+        mise.update(
+            release="latest",
+            attestation="when-gh-authenticated",
+            fallback={"pin": "v1", "sha256": {"linux-x64": "abc"}, "reason": "fixture: no gh on a fresh host"},
+        )
         aws = manifest["assets"]["aws"]
         for key in ("pin", "reason"):
             aws.pop(key)
@@ -624,6 +628,15 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ),
             "pinned release without a reason": (lambda a: a["brew"].pop("reason"), "must give the reason"),
             "unknown attestation": (lambda a: a["mise"].update(attestation="always"), "attestation must be"),
+            # An attestation-gated rolling asset needs a reviewed fallback for a host without gh (Amendment 8).
+            "attestation without a fallback": (lambda a: a["mise"].pop("fallback"), "must record fallback.pin"),
+            "fallback without a reason": (lambda a: a["mise"]["fallback"].pop("reason"), "must record fallback.pin"),
+            "fallback without sha256": (lambda a: a["mise"]["fallback"].update(sha256={}), "must record fallback.pin"),
+            "fallback on a pinned asset": (
+                lambda a: a["brew"].update(fallback={"pin": "v1", "sha256": {"x": "y"}, "reason": "r"}),
+                "fallback belongs only to",
+            ),
+            "float fallback pin": (lambda a: a["mise"]["fallback"].update(pin=1.1), "fallback.pin must be a string"),
             # A same-release checksum file alone is not an independent check (Amendment 7).
             "rolling on a same-release checksum only": (
                 lambda a: a["mise"].pop("attestation"),

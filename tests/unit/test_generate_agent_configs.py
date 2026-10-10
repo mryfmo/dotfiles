@@ -376,6 +376,17 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn("  # Pins live here.\n", text)
         self.assertIn("    pin: v0.0.2\n", text)
 
+    def test_set_asset_field_reaches_the_fallback_pin_and_its_checksums(self) -> None:
+        manifest = self.MANIFEST_TEXT + (
+            "  mise:\n    release: latest\n    fallback:\n      pin: v1\n      sha256:\n        linux-x64: old\n"
+        )
+        text = self.module.set_asset_field(manifest, "mise", "fallback.pin", "v2026.10.3")
+        text = self.module.set_asset_field(text, "mise", "fallback.sha256.linux-x64", "0414")
+
+        self.assertEqual(
+            text, manifest.replace("pin: v1\n", "pin: v2026.10.3\n").replace("linux-x64: old", "linux-x64: 0414")
+        )
+
     def test_set_asset_field_rejects_unknown_targets_and_unsafe_values(self) -> None:
         cases = (
             ("nosuch", "pin", "v1"),

@@ -4,7 +4,7 @@
 # @file scripts/lib/github-release.sh
 # @brief Resolve the newest GitHub release that has cooled down.
 # @description
-#   Sourced by the installers that take a GitHub release, scripts/upgrade-tools.sh and `make docker`.
+#   Sourced by the installers that take a GitHub release and by `make docker`.
 #   setup.sh runs before the repository exists, so it carries a copy of the
 #   functions below; tests/unit/test_github_release.py keeps the copies equal.
 #   Only curl or wget and awk are needed, so a fresh machine can run it.
@@ -187,20 +187,3 @@ function github_release_verified_sha256() (
     github_release_attestation "$1" "$2" "${dir}/$3" || return 1
     printf '%s\n' "${actual}"
 )
-
-#
-# @description Keep a bootstrap asset whose GitHub release attestation cannot be checked yet, so
-#   scripts/upgrade-tools.sh checks it at the first `make update` with an authenticated gh.
-# @arg $1 string The tool; the record is pending-attestation/<tool> under the dotfiles state directory.
-# @arg $2 string owner/repo
-# @arg $3 string The release tag.
-# @arg $4 path The asset, already verified by the mechanism in $5.
-# @arg $5 string What verified the asset.
-# @exitcode 1 When the record cannot be written, so the asset is never left unchecked silently.
-#
-function github_release_defer_attestation() {
-    local record="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/pending-attestation/${1:?}"
-    rm -rf "${record}" && mkdir -p "${record}" && cp "$4" "${record}/" || return 1
-    printf '%s %s %s\n' "$2" "$3" "${4##*/}" > "${record}/release" || return 1
-    printf '%s %s: attestation deferred: verified by %s only until gh is authenticated.\n' "$1" "$3" "$5"
-}

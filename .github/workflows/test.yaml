@@ -170,7 +170,7 @@ jobs:
             | grep "  ${artifact}$" \
             | (cd "${RUNNER_TEMP}" && "${sha256_check[@]}")
           # The checksum file comes from the same release; the attestation is the publisher's
-          # check. The runner's gh is authenticated (GITHUB_TOKEN), so nothing is deferred here.
+          # check, verified before chezmoi runs with the runner's authenticated gh (GITHUB_TOKEN).
           if ! github_release_attestation twpayne/chezmoi "v${chezmoi_version}" "${RUNNER_TEMP}/${artifact}"; then
             echo "chezmoi v${chezmoi_version}: the GitHub release attestation did not verify (gh 2.93.0 or newer, authenticated, is required)" >&2
             exit 1

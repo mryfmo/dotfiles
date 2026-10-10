@@ -32,6 +32,14 @@ declare -r BRANCH_NAME="${BRANCH_NAME:-main}"
 declare -r HOMEBREW_INSTALL_COMMIT="c7952e40b7957268f61643152f4db725379b292e"
 declare -r HOMEBREW_INSTALL_SHA256="99287f194a8b3c9e6b0203a11a5fa54518be57209343e6bb954dec4635796d9d"
 readonly CHEZMOI_RELEASE_REPO="twpayne/chezmoi"
+# The reviewed chezmoi a host without an authenticated gh bootstraps (its attestation cannot be
+# checked before it runs), rendered from assets.chezmoi-bootstrap.fallback; change them there.
+# Assignments stay non-readonly so tests can override them after sourcing.
+CHEZMOI_FALLBACK_VERSION="v2.73.0"
+CHEZMOI_FALLBACK_DARWIN_AMD64_SHA256="55e7b0823b40966a239cb418b37201c5f0961bab1b797c933550c97b1ab08221"
+CHEZMOI_FALLBACK_DARWIN_ARM64_SHA256="246679a0b200e7e8be4a951be3b95d37c33ecb87eaab5af6f4949f7d0317bcc1"
+CHEZMOI_FALLBACK_LINUX_AMD64_SHA256="b597729b687af4488a848240134cb633de8ca0f04e0d26d48f400ee2ac338ffa"
+CHEZMOI_FALLBACK_LINUX_ARM64_SHA256="abcb840401d3c1f2356e0f53f5d52aa10d10f572654d9626db9ad0ca4dc03355"
 
 # Copied from scripts/lib/github-release.sh, because setup.sh runs before the repository
 # exists; tests/unit/test_github_release.py keeps the copy equal to the original.
@@ -214,23 +222,6 @@ function github_release_verified_sha256() (
     github_release_attestation "$1" "$2" "${dir}/$3" || return 1
     printf '%s\n' "${actual}"
 )
-
-#
-# @description Keep a bootstrap asset whose GitHub release attestation cannot be checked yet, so
-#   scripts/upgrade-tools.sh checks it at the first `make update` with an authenticated gh.
-# @arg $1 string The tool; the record is pending-attestation/<tool> under the dotfiles state directory.
-# @arg $2 string owner/repo
-# @arg $3 string The release tag.
-# @arg $4 path The asset, already verified by the mechanism in $5.
-# @arg $5 string What verified the asset.
-# @exitcode 1 When the record cannot be written, so the asset is never left unchecked silently.
-#
-function github_release_defer_attestation() {
-    local record="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/pending-attestation/${1:?}"
-    rm -rf "${record}" && mkdir -p "${record}" && cp "$4" "${record}/" || return 1
-    printf '%s %s %s\n' "$2" "$3" "${4##*/}" > "${record}/release" || return 1
-    printf '%s %s: attestation deferred: verified by %s only until gh is authenticated.\n' "$1" "$3" "$5"
-}
 # --- github-release.sh end ---
 
 function is_ci() {
@@ -458,6 +449,8 @@ function run_chezmoi() {
     local chezmoi_tag
     local chezmoi_version
     local checksums
+    local fallback_sha256
+    local fallback=""
     local local_drift=false
     local no_tty_option
     local stage
@@ -466,17 +459,37 @@ function run_chezmoi() {
     local tmpdir
     export PATH="${PATH}:${bin_dir}"
 
-    chezmoi_tag="$(github_release_tag "${CHEZMOI_RELEASE_REPO}")" || {
-        printf 'Could not resolve a %s release.\n' "${CHEZMOI_RELEASE_REPO}" >&2
-        return 1
-    }
+    # Nothing runs before a check independent of the release page: the newest cooled-down release
+    # only when gh can verify its attestation first, otherwise the reviewed fallback release.
+    if github_attestation_ready; then
+        chezmoi_tag="$(github_release_tag "${CHEZMOI_RELEASE_REPO}")" || {
+            printf 'Could not resolve a %s release.\n' "${CHEZMOI_RELEASE_REPO}" >&2
+            return 1
+        }
+    else
+        fallback=1
+        chezmoi_tag="${CHEZMOI_FALLBACK_VERSION}"
+        printf 'No authenticated gh 2.93.0 or newer: installing the reviewed chezmoi %s (assets.chezmoi-bootstrap.fallback).\n' "${chezmoi_tag}"
+    fi
     chezmoi_version="${chezmoi_tag#v}"
     base_url="https://github.com/${CHEZMOI_RELEASE_REPO}/releases/download/${chezmoi_tag}"
     case "$(get_os_type)/$(uname -m)" in
-    Darwin/x86_64) artifact="chezmoi_${chezmoi_version}_darwin_amd64.tar.gz" ;;
-    Darwin/arm64) artifact="chezmoi_${chezmoi_version}_darwin_arm64.tar.gz" ;;
-    Linux/x86_64) artifact="chezmoi_${chezmoi_version}_linux_amd64.tar.gz" ;;
-    Linux/aarch64 | Linux/arm64) artifact="chezmoi_${chezmoi_version}_linux_arm64.tar.gz" ;;
+    Darwin/x86_64)
+        artifact="chezmoi_${chezmoi_version}_darwin_amd64.tar.gz"
+        fallback_sha256="${CHEZMOI_FALLBACK_DARWIN_AMD64_SHA256}"
+        ;;
+    Darwin/arm64)
+        artifact="chezmoi_${chezmoi_version}_darwin_arm64.tar.gz"
+        fallback_sha256="${CHEZMOI_FALLBACK_DARWIN_ARM64_SHA256}"
+        ;;
+    Linux/x86_64)
+        artifact="chezmoi_${chezmoi_version}_linux_amd64.tar.gz"
+        fallback_sha256="${CHEZMOI_FALLBACK_LINUX_AMD64_SHA256}"
+        ;;
+    Linux/aarch64 | Linux/arm64)
+        artifact="chezmoi_${chezmoi_version}_linux_arm64.tar.gz"
+        fallback_sha256="${CHEZMOI_FALLBACK_LINUX_ARM64_SHA256}"
+        ;;
     *)
         printf 'Unsupported chezmoi platform: %s/%s\n' "$(get_os_type)" "$(uname -m)" >&2
         return 1
@@ -489,16 +502,16 @@ function run_chezmoi() {
     fetch_file "${base_url}/${artifact}" "${archive}"
     fetch_file "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" "${checksums}"
     verify_checksum_manifest "${archive}" "${checksums}" "${artifact}"
-    github_release_attestation "${CHEZMOI_RELEASE_REPO}" "${chezmoi_tag}" "${archive}" || attestation=$?
-    case "${attestation}" in
-    0) ;;
-    # chezmoi signs its checksums with cosign only, which a fresh host cannot run.
-    2) github_release_defer_attestation chezmoi "${CHEZMOI_RELEASE_REPO}" "${chezmoi_tag}" "${archive}" "chezmoi_${chezmoi_version}_checksums.txt" ;;
-    *)
-        printf 'GitHub release attestation failed for %s.\n' "${artifact}" >&2
-        return 1
-        ;;
-    esac
+    if [ -n "${fallback}" ]; then
+        # The reviewed sha256 is the check; the release's checksum file above only re-checked the download.
+        verify_sha256 "${archive}" "${fallback_sha256}"
+    else
+        github_release_attestation "${CHEZMOI_RELEASE_REPO}" "${chezmoi_tag}" "${archive}" || attestation=$?
+        if [ "${attestation}" -ne 0 ]; then
+            printf 'GitHub release attestation failed for %s; nothing was installed.\n' "${artifact}" >&2
+            return 1
+        fi
+    fi
     tar -xzf "${archive}" -C "${tmpdir}" chezmoi
     mkdir -p "${bin_dir}"
     stage="$(mktemp "${bin_dir}/chezmoi.tmp.XXXXXX")"

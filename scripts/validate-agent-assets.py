@@ -595,6 +595,11 @@ def asset_pin_values(asset: dict[str, Any]) -> list[tuple[str, Any]]:
         values.append(("sha256", sha256))
     for plugin, config in asset.get("plugins", {}).items():
         values.append((f"plugins.{plugin}.pin", config.get("pin")))
+    fallback = asset.get("fallback")
+    if isinstance(fallback, dict):
+        values.append(("fallback.pin", fallback.get("pin")))
+        if isinstance(fallback.get("sha256"), dict):
+            values.extend((f"fallback.sha256.{arch}", value) for arch, value in fallback["sha256"].items())
     return values
 
 
@@ -692,6 +697,23 @@ def validate_assets(manifest: dict[str, Any]) -> None:
             asset["attestation"] != "when-gh-authenticated" or asset["source"] != "github-release"
         ):
             fail(f"assets.{name}.attestation must be 'when-gh-authenticated' on a github-release asset")
+        # Nothing runs before an independent check: a rolling asset whose attestation needs gh
+        # bootstraps a reviewed fallback release where gh cannot check it first.
+        fallback = asset.get("fallback")
+        if rolling and "attestation" in asset:
+            if (
+                not isinstance(fallback, dict)
+                or not fallback.get("pin")
+                or not isinstance(fallback.get("sha256"), dict)
+                or not fallback["sha256"]
+                or not fallback.get("reason")
+            ):
+                fail(
+                    f"assets.{name} has release: latest and attestation: when-gh-authenticated, so it must record "
+                    "fallback.pin, fallback.sha256 (per platform) and fallback.reason for a host without gh"
+                )
+        elif fallback is not None:
+            fail(f"assets.{name}.fallback belongs only to a release: latest asset with an attestation")
         allowed = ASSET_VERIFY_BY_SOURCE.get(asset["source"])
         if allowed is None:
             fail(f"assets.{name} has an unknown source: {asset['source']!r}")

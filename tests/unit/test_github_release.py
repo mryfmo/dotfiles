@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Verify scripts/lib/github-release.sh: the 72-hour release window, its fetch paths, gh attestation checks,
-the mise bootstrap's GPG and deferred-attestation paths, and the upgrade-tools phase that checks deferred ones."""
+"""Verify scripts/lib/github-release.sh: the 72-hour release window, its fetch paths and gh attestation checks;
+and the mise and chezmoi bootstraps, which verify the newest release before it runs or install a reviewed fallback."""
 
 from __future__ import annotations
 
@@ -468,11 +468,14 @@ class GithubReleaseTest(unittest.TestCase):
         # The downloads lived in a private directory that is gone afterwards.
         self.assertEqual([], list(self.temp_dir.glob("github-release.*")))
 
-    def mise_bootstrap(self, *, gpg: str | None, gh: str | None = None) -> subprocess.CompletedProcess[str]:
+    def mise_bootstrap(
+        self, *, gpg: str | None, gh: str | None = None, reviewed: bool = False
+    ) -> subprocess.CompletedProcess[str]:
         """Run _install_mise_binary against a fake jdx/mise release.
 
         gpg is None (gpg and gpgv absent), "good", "bad signature", "wrong fingerprint", "expired" or "two keys";
-        gh is None (absent), "verifies" or "fails".
+        gh is None (absent), "verifies" or "fails". The fallback pin is the fixture release; reviewed makes its
+        reviewed sha256 the fixture archive's, otherwise the manifest's real one stays (a mismatch).
         """
         home = self.temp_dir / "home"
         self.state = self.temp_dir / "state"
@@ -559,8 +562,17 @@ class GithubReleaseTest(unittest.TestCase):
                 exit 1
                 """,
             )
+        override = 'MISE_FALLBACK_VERSION="v2026.10.3"'
+        if reviewed:
+            override += f'; MISE_FALLBACK_LINUX_X64_SHA256="{digest}"'
         return subprocess.run(
-            ["/bin/bash", "-c", 'source "$1"; _install_mise_binary', "_", str(ROOT / "install/common/mise.sh")],
+            [
+                "/bin/bash",
+                "-c",
+                f'source "$1"; {override}; _install_mise_binary',
+                "_",
+                str(ROOT / "install/common/mise.sh"),
+            ],
             env={
                 "PATH": str(self.bin_dir),
                 "HOME": str(home),
@@ -572,34 +584,40 @@ class GithubReleaseTest(unittest.TestCase):
             check=False,
         )
 
-    def test_mise_bootstrap_without_gh_defers_the_attestation(self) -> None:
-        result = self.mise_bootstrap(gpg=None)
+    def test_mise_bootstrap_without_gh_or_gpg_installs_the_reviewed_fallback(self) -> None:
+        # Nothing runs before an independent check: no gpg and no gh means the reviewed release, no lookup.
+        result = self.mise_bootstrap(gpg=None, reviewed=True)
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue((self.temp_dir / "home/.local/bin/mise").exists())
-        self.assertIn(
-            "mise v2026.10.3: attestation deferred: verified by SHASUMS256.txt (no gpg here) only until gh is authenticated.",
-            result.stdout,
-        )
-        record = self.state / "dotfiles/pending-attestation/mise"
-        self.assertEqual(f"jdx/mise v2026.10.3 {MISE_ARTIFACT}\n", (record / "release").read_text())
-        self.assertEqual(self.archive.read_bytes(), (record / MISE_ARTIFACT).read_bytes())
-        self.assertIn("/v2026.10.3/SHASUMS256.txt", self.log.read_text())
-        self.assertNotIn("SHASUMS256.asc", self.log.read_text())
+        self.assertIn("installing the reviewed mise v2026.10.3 (assets.mise.fallback)", result.stdout)
+        log = self.log.read_text()
+        self.assertNotIn("api.github.com", log)
+        # SHASUMS256.txt is still checked, as the second check.
+        self.assertIn("/v2026.10.3/SHASUMS256.txt", log)
+        self.assertNotIn("SHASUMS256.asc", log)
 
-    def test_mise_bootstrap_verifies_the_gpg_signature_when_gpg_is_present(self) -> None:
+    def test_mise_bootstrap_refuses_a_fallback_archive_that_does_not_match_its_reviewed_sha256(self) -> None:
+        # The fixture archive matches its own SHASUMS256.txt but not the manifest's reviewed sha256.
+        result = self.mise_bootstrap(gpg=None)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("mise v2026.10.3 does not match its reviewed sha256; nothing was installed.", result.stderr)
+        self.assertFalse((self.temp_dir / "home/.local/bin/mise").exists())
+
+    def test_mise_bootstrap_with_gpg_takes_the_newest_release_verified_by_its_signature(self) -> None:
         result = self.mise_bootstrap(gpg="good")
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue((self.temp_dir / "home/.local/bin/mise").exists())
         log = self.log.read_text()
+        self.assertIn("api.github.com/repos/jdx/mise/releases", log)
         self.assertIn(f"https://keys.openpgp.org/vks/v1/by-fingerprint/{MISE_FINGERPRINT}", log)
         self.assertIn("/v2026.10.3/SHASUMS256.asc", log)
         self.assertIn("gpgv --keyring ", log)
         # The checksums come from the signed text, never from the unsigned SHASUMS256.txt.
         self.assertNotIn("SHASUMS256.txt", log)
-        self.assertIn(f"verified by SHASUMS256.asc (GPG key {MISE_FINGERPRINT}) only until", result.stdout)
-        self.assertTrue((self.state / "dotfiles/pending-attestation/mise/release").exists())
+        self.assertNotIn("reviewed", result.stdout)
 
     def test_mise_bootstrap_installs_nothing_when_the_signature_or_key_is_wrong(self) -> None:
         for gpg, message in (
@@ -617,129 +635,121 @@ class GithubReleaseTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode)
                 self.assertIn(message, result.stderr)
                 self.assertFalse((self.temp_dir / "home/.local/bin/mise").exists())
-                self.assertFalse((self.state / "dotfiles/pending-attestation").exists())
                 if gpg != "bad signature":
                     self.assertNotIn("gpgv ", self.log.read_text())
 
-    def test_mise_bootstrap_with_gh_verifies_the_attestation_now(self) -> None:
+    def test_mise_bootstrap_with_gh_takes_the_newest_release_verified_by_its_attestation(self) -> None:
         result = self.mise_bootstrap(gpg=None, gh="verifies")
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue((self.temp_dir / "home/.local/bin/mise").exists())
+        self.assertIn("api.github.com/repos/jdx/mise/releases", self.log.read_text())
         self.assertIn(f"/{MISE_ARTIFACT} --repo github.com/jdx/mise", self.log.read_text())
-        self.assertFalse((self.state / "dotfiles/pending-attestation").exists())
         self.tearDown()
         self.setUp()
 
         result = self.mise_bootstrap(gpg=None, gh="fails")
 
         self.assertNotEqual(0, result.returncode)
-        self.assertIn(f"GitHub release attestation failed for {MISE_ARTIFACT}.", result.stderr)
+        self.assertIn(f"GitHub release attestation failed for {MISE_ARTIFACT}; nothing was installed.", result.stderr)
         self.assertFalse((self.temp_dir / "home/.local/bin/mise").exists())
-        self.assertFalse((self.state / "dotfiles/pending-attestation").exists())
 
-    def test_a_deferral_that_cannot_be_recorded_fails(self) -> None:
-        # Never a silent downgrade: without the record the attestation would never be checked.
-        self.link("rm", "mkdir", "cp")
-        asset = self.temp_dir / "asset.tar.gz"
-        asset.write_text("payload\n")
-        blocker = self.temp_dir / "state"
-        blocker.write_text("a file where the state directory belongs\n")
-
-        result = self.run_helper(
-            f'github_release_defer_attestation tool owner/repo v1 "{asset}" checksums', XDG_STATE_HOME=str(blocker)
+    def chezmoi_bootstrap(self, *, gh: bool, reviewed: bool) -> tuple[subprocess.CompletedProcess[str], Path]:
+        """Run setup.sh's run_chezmoi against a fake twpayne/chezmoi with releases v9.9.9 (rolling) and v8.8.8 (the fallback)."""
+        home = self.temp_dir / "home"
+        assets = self.temp_dir / "release"
+        payload = self.temp_dir / "payload"
+        for path in (home, assets, payload, self.temp_dir / "tmp"):
+            path.mkdir(exist_ok=True)
+        (payload / "chezmoi").write_text(
+            f'#!/bin/sh\nprintf "chezmoi %s\\n" "$*" >> "{self.log}.chezmoi"\n'
+            '[ "$1" = source-path ] && { mkdir -p "$HOME/source"; printf "%s\\n" "$HOME/source"; }\nexit 0\n'
         )
-
-        self.assertEqual(1, result.returncode)
-        self.assertEqual("", result.stdout)
-
-    def pending(self, *tools: str) -> Path:
-        state = self.temp_dir / "state"
-        for tool in tools:
-            record = state / "dotfiles/pending-attestation" / tool
-            record.mkdir(parents=True)
-            (record / f"{tool}.tar.gz").write_text(f"{tool} archive\n")
-            (record / "release").write_text(f"owner/{tool} v1.2.3 {tool}.tar.gz\n")
-        return state
-
-    def run_upgrade(self, script: str, state: Path, *, gh: bool, fail: str = "") -> subprocess.CompletedProcess[str]:
-        self.link("dirname", "rm")
-        if gh:
-            self.executable(
-                "gh",
-                f"""
-                printf 'gh %s\\n' "$*" >> "{self.log}"
-                [ "$1" = --version ] && {{ printf 'gh version 2.93.0 (2026-10-01)\\n'; exit 0; }}
-                [ "$*" = "auth status --hostname github.com" ] && exit 0
-                [ "$1 $2" = "release verify-asset" ] && {{ [[ -n "{fail}" && "$4" == *"/{fail}.tar.gz" ]] && exit 1; exit 0; }}
-                exit 1
-                """,
+        (payload / "chezmoi").chmod(0o755)
+        digest = ""
+        for version in ("9.9.9", "8.8.8"):
+            archive = assets / f"chezmoi_{version}_linux_amd64.tar.gz"
+            with tarfile.open(archive, "w:gz") as tar:
+                tar.add(payload / "chezmoi", arcname="chezmoi")
+            digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+            (assets / f"chezmoi_{version}_checksums.txt").write_text(f"{digest}  {archive.name}\n")
+        (assets / "releases?per_page=30").write_text(json.dumps([release("v9.9.9", hours_ago(100))], indent=2) + "\n")
+        self.executable(
+            "curl",
+            f"""
+            out=""; url=""
+            while [ "$#" -gt 0 ]; do case "$1" in -o) out="$2"; shift ;; https://*) url="$1" ;; esac; shift; done
+            printf 'curl %s\\n' "$url" >> "{self.log}"
+            [ -e "{assets}/${{url##*/}}" ] || exit 22
+            if [ -n "$out" ]; then cp "{assets}/${{url##*/}}" "$out"; else cat "{assets}/${{url##*/}}"; fi
+            """,
+        )
+        self.executable("uname", '[ "$1" = -m ] && printf "x86_64\\n" || printf "Linux\\n"\n')
+        real_mktemp = shutil.which("mktemp")
+        # macOS mktemp -d ignores TMPDIR; keep every temporary file under the test directory, as on Linux.
+        self.executable(
+            "mktemp",
+            f'if [ "$*" = -d ]; then exec "{real_mktemp}" -d "$TMPDIR/tmp.XXXXXX"; fi\nexec "{real_mktemp}" "$@"\n',
+        )
+        gh_body = (
+            (
+                f'printf "gh %s\\n" "$*" >> "{self.log}"\n'
+                '[ "$1" = --version ] && { printf "gh version 2.93.0 (2026-10-01)\\n"; exit 0; }\n'
+                '[ "$*" = "auth status --hostname github.com" ] && exit 0\n'
+                '[ "$1 $2" = "release verify-asset" ] && { printf "✓ Verification succeeded!\\n"; exit 0; }\n'
+                "exit 1\n"
             )
-        return subprocess.run(
-            ["/bin/bash", "-c", f'source "$1"\n{script}', "_", str(ROOT / "scripts/upgrade-tools.sh")],
-            env={"PATH": str(self.bin_dir), "HOME": str(self.temp_dir), "XDG_STATE_HOME": str(state)},
+            if gh
+            else "exit 1\n"
+        )
+        self.executable("gh", gh_body)
+        override = 'CHEZMOI_FALLBACK_VERSION="v8.8.8"'
+        if reviewed:
+            override += f'; CHEZMOI_FALLBACK_LINUX_AMD64_SHA256="{digest}"'
+        result = subprocess.run(
+            ["/bin/bash", "-c", f'source "$1"; {override}; run_chezmoi', "_", str(ROOT / "setup.sh")],
+            env={
+                "PATH": f"{self.bin_dir}:/usr/bin:/bin",
+                "HOME": str(home),
+                "TMPDIR": str(self.temp_dir / "tmp"),
+                # setup.sh applies in CI only under RUNNER_TEMP.
+                "CI": "true",
+                "RUNNER_TEMP": str(self.temp_dir),
+            },
             text=True,
             capture_output=True,
             check=False,
         )
+        return result, Path(f"{self.log}.chezmoi")
 
-    def test_upgrade_tools_checks_deferred_attestations_once_gh_is_ready(self) -> None:
-        phase = (
-            'status=0\nverify_pending_attestations || status=$?\necho "status=${status} warnings=${optional_warnings}"'
-        )
-        pending = self.temp_dir / "state/dotfiles/pending-attestation"
+    def test_setup_sh_bootstraps_the_reviewed_chezmoi_without_gh(self) -> None:
+        result, ran = self.chezmoi_bootstrap(gh=False, reviewed=True)
 
-        result = self.run_upgrade(phase, self.temp_dir / "state", gh=False)
-        self.assertEqual(("status=0 warnings=0\n", ""), (result.stdout, result.stderr))
-
-        # gh not ready: one warning, and both records wait for the next make update.
-        state = self.pending("chezmoi", "mise")
-        result = self.run_upgrade(phase, state, gh=False)
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("status=0 warnings=1", result.stdout)
-        self.assertEqual(
-            "warning: the GitHub release attestation of chezmoi, mise is not verified yet: "
-            "run make gh-auth, then make update.\n",
-            result.stderr,
-        )
-        self.assertEqual(["chezmoi", "mise"], sorted(path.name for path in pending.iterdir()))
+        self.assertIn("installing the reviewed chezmoi v8.8.8 (assets.chezmoi-bootstrap.fallback)", result.stdout)
+        log = self.log.read_text()
+        self.assertNotIn("api.github.com", log)
+        self.assertIn("/v8.8.8/chezmoi_8.8.8_linux_amd64.tar.gz", log)
+        self.assertIn("/v8.8.8/chezmoi_8.8.8_checksums.txt", log)
+        self.assertIn("chezmoi init", ran.read_text())
 
-        # One fails: a required failure that names the tool and keeps its record; the verified one is removed.
-        result = self.run_upgrade(phase, state, gh=True, fail="mise")
-        self.assertIn("status=1 warnings=0", result.stdout)
-        self.assertIn("Verified the GitHub release attestation of chezmoi v1.2.3.", result.stdout)
-        self.assertIn(
-            f"required: mise v1.2.3 failed its GitHub release attestation ({pending}/mise/mise.tar.gz)", result.stderr
-        )
-        self.assertIn(
-            f"gh release verify-asset v1.2.3 {pending}/mise/mise.tar.gz --repo github.com/owner/mise",
-            self.log.read_text(),
-        )
-        self.assertEqual(["mise"], [path.name for path in pending.iterdir()])
+    def test_setup_sh_runs_no_chezmoi_whose_archive_misses_its_reviewed_sha256(self) -> None:
+        # The archive matches the release's own checksums file, not the manifest's reviewed sha256.
+        result, ran = self.chezmoi_bootstrap(gh=False, reviewed=False)
 
-        result = self.run_upgrade(phase, state, gh=True)
-        self.assertIn("status=0 warnings=0", result.stdout)
-        self.assertEqual([], list(pending.iterdir()))
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Checksum mismatch", result.stderr)
+        self.assertFalse(ran.exists())
 
-    def test_a_failed_deferred_attestation_stops_make_update_before_mise(self) -> None:
-        stubs = (
-            'upgrade_homebrew() { :; }\nupgrade_mise_self() { echo "mise self-update ran"; }\n'
-            "upgrade_mise_tools() { :; }\nupgrade_uv_tools() { :; }\nupgrade_gh_extensions() { :; }\n"
-            'upgrade_apt_packages() { :; }\nstatus=0\nmain || status=$?\necho "status=${status}"'
-        )
-        state = self.pending("mise")
+    def test_setup_sh_takes_the_newest_chezmoi_when_gh_verifies_it_first(self) -> None:
+        result, ran = self.chezmoi_bootstrap(gh=True, reviewed=False)
 
-        result = self.run_upgrade(stubs, state, gh=True, fail="mise")
-
-        self.assertIn("status=1", result.stdout)
-        self.assertNotIn("mise self-update ran", result.stdout)
-        self.assertIn("required failure: pending release attestations", result.stderr)
-        self.assertIn("stopped at the pending release attestations", result.stderr)
-
-        result = self.run_upgrade(stubs, state, gh=True)
-
-        self.assertIn("status=0", result.stdout)
-        self.assertIn("mise self-update ran", result.stdout)
+        self.assertEqual(0, result.returncode, result.stderr)
+        log = self.log.read_text()
+        self.assertIn("api.github.com/repos/twpayne/chezmoi/releases", log)
+        self.assertIn("gh release verify-asset v9.9.9 ", log)
+        self.assertNotIn("v8.8.8", log)
+        self.assertIn("chezmoi init", ran.read_text())
 
     def test_setup_sh_carries_an_exact_copy_of_the_helper(self) -> None:
         # setup.sh runs before the repository exists, so it cannot source the helper.

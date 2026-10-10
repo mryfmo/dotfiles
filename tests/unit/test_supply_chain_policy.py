@@ -26,7 +26,8 @@ curl() {
     printf payload > "${output}"
 }
 verify_mise_archive() { :; }
-# The fake downloads are not signed; a runner with gpg would otherwise take the signed-checksum path.
+# The fake downloads are not signed; the GPG path is taken on every host, its check stubbed.
+mise_gpg_ready() { return 0; }
 verify_mise_shasums_signature() { :; }
 github_release_tag() { printf 'v2026.10.3\n'; }
 github_release_attestation() { return 2; }
@@ -534,9 +535,9 @@ main
                 text = (ROOT / path).read_text()
                 self.assertIn(repo_line, text)
                 self.assertIn(call, text)
-                self.assertIsNone(
-                    re.search(rf'^(?:readonly |declare -r )?{prefix}[A-Z_]*_VERSION="v?[0-9]', text, re.MULTILINE)
-                )
+                # The only version a rolling installer carries is its reviewed fallback (Amendment 8), rendered.
+                versions = re.findall(rf'(?m)^(?:readonly |declare -r )?({prefix}[A-Z_]*_VERSION)="v?[0-9]', text)
+                self.assertEqual([f"{prefix}_FALLBACK_VERSION"] if prefix in ("MISE", "CHEZMOI") else [], versions)
         self.assertIn("GITHUB_RELEASE_MIN_AGE_HOURS=72\n", (ROOT / "scripts/lib/github-release.sh").read_text())
         config = tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())
         self.assertEqual("72h", config["settings"]["minimum_release_age"])

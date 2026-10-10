@@ -34,9 +34,16 @@ create_chezmoi_release_fixture() {
   }
 ]
 EOF
-    # An unauthenticated gh, so a runner's own gh never verifies the fixture.
+    # An authenticated gh 2.93.0 that verifies the fixture's attestation, so setup.sh takes the newest
+    # release; it also keeps a runner's own gh away from the fixture.
     mkdir -p "${1}/bin"
-    printf '#!/bin/sh\nexit 1\n' > "${1}/bin/gh"
+    cat > "${1}/bin/gh" << 'EOF'
+#!/bin/sh
+[ "$1" = --version ] && { printf 'gh version 2.93.0 (2026-10-01)\n'; exit 0; }
+[ "$*" = "auth status --hostname github.com" ] && exit 0
+[ "$1 $2" = "release verify-asset" ] && { printf 'verify-asset %s %s\n' "$3" "${4##*/}" >> "${HOME}/gh.log"; exit 0; }
+exit 1
+EOF
     chmod +x "${1}/bin/gh"
 }
 
@@ -378,13 +385,11 @@ EOF
 
         run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin" CI=true \
             RUNNER_TEMP="${tmpdir}" CHEZMOI_TEST_MODE="${mode}" \
-            CHEZMOI_FIXTURE_DIR="${tmpdir}/release" XDG_STATE_HOME="${tmpdir}/state" \
+            CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
             /bin/bash -c "$(cat setup.sh)"
 
-        # No authenticated gh: the checksum-verified archive waits for its attestation at make update.
-        [[ "${output}" == *"chezmoi v${version}: attestation deferred: verified by chezmoi_${version}_checksums.txt only until gh is authenticated."* ]]
-        grep -qx "twpayne/chezmoi v${version} chezmoi_${version}_linux_amd64.tar.gz" "${tmpdir}/state/dotfiles/pending-attestation/chezmoi/release"
-        cmp "${tmpdir}/release/chezmoi_${version}_linux_amd64.tar.gz" "${tmpdir}/state/dotfiles/pending-attestation/chezmoi/chezmoi_${version}_linux_amd64.tar.gz"
+        # The fixture's authenticated gh verified the newest release's attestation before chezmoi ran.
+        grep -qx "verify-asset v${version} chezmoi_${version}_linux_amd64.tar.gz" "${tmpdir}/home/gh.log"
         grep -qx "wget https://api.github.com/repos/twpayne/chezmoi/releases?per_page=30" "${tmpdir}/home/fetch.log"
         grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${version}/chezmoi_${version}_linux_amd64.tar.gz" "${tmpdir}/home/fetch.log"
         grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${version}/chezmoi_${version}_checksums.txt" "${tmpdir}/home/fetch.log"
@@ -418,6 +423,52 @@ EOF
             grep -qx 'managed-applied' "${tmpdir}/home/managed"
         fi
     done
+}
+
+@test "[common] setup.sh without an authenticated gh bootstraps only the reviewed chezmoi" {
+    local fallback
+    local tmpdir
+
+    # The reviewed release is the one setup.sh pins; the fixture archive is not it, so its sha256 differs.
+    fallback="$(sed -n 's/^CHEZMOI_FALLBACK_VERSION="v\(.*\)"$/\1/p' setup.sh)"
+    [ -n "${fallback}" ]
+    tmpdir="$(mktemp -d)"
+    mkdir -p "${tmpdir}/bin" "${tmpdir}/home" "${tmpdir}/release/payload"
+    printf '#!/bin/sh\nprintf "chezmoi %%s\\n" "$*" >> "${HOME}/log"\n' > "${tmpdir}/release/payload/chezmoi"
+    chmod +x "${tmpdir}/release/payload/chezmoi"
+    tar -czf "${tmpdir}/release/chezmoi_${fallback}_linux_amd64.tar.gz" -C "${tmpdir}/release/payload" chezmoi
+    printf '%s  %s\n' "$(/bin/bash -c 'source ./setup.sh; sha256_file "$1"' _ "${tmpdir}/release/chezmoi_${fallback}_linux_amd64.tar.gz")" \
+        "chezmoi_${fallback}_linux_amd64.tar.gz" > "${tmpdir}/release/chezmoi_${fallback}_checksums.txt"
+    for command_path in sh find rm mkdir chmod cat cp tar gzip install mv mktemp awk shasum date; do
+        ln -s "$(command -v "${command_path}")" "${tmpdir}/bin/${command_path}"
+    done
+    # No usable gh.
+    printf '#!/bin/sh\nexit 1\n' > "${tmpdir}/bin/gh"
+    cat > "${tmpdir}/bin/uname" << 'EOF'
+#!/bin/bash
+if [ "${1:-}" = -m ]; then printf 'x86_64\n'; else printf 'Linux\n'; fi
+EOF
+    cat > "${tmpdir}/bin/wget" << 'EOF'
+#!/bin/bash
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = -qO ]; then output="$2"; shift 2; else url="$1"; shift; fi
+done
+printf 'wget %s\n' "${url}" >> "${HOME}/fetch.log"
+if [ "${output}" = - ]; then cat "${CHEZMOI_FIXTURE_DIR}/${url##*/}"; else cp "${CHEZMOI_FIXTURE_DIR}/${url##*/}" "${output}"; fi
+EOF
+    chmod +x "${tmpdir}/bin/gh" "${tmpdir}/bin/uname" "${tmpdir}/bin/wget"
+
+    run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin" CI=true \
+        RUNNER_TEMP="${tmpdir}" CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
+        /bin/bash -c "$(cat setup.sh)"
+
+    [ "${status}" -ne 0 ]
+    [[ "${output}" == *"installing the reviewed chezmoi v${fallback} (assets.chezmoi-bootstrap.fallback)"* ]]
+    [[ "${output}" == *"Checksum mismatch"* ]]
+    grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${fallback}/chezmoi_${fallback}_linux_amd64.tar.gz" "${tmpdir}/home/fetch.log"
+    ! grep -q 'api.github.com' "${tmpdir}/home/fetch.log"
+    # Nothing ran: the archive did not match its reviewed sha256.
+    [ ! -e "${tmpdir}/home/log" ]
 }
 
 @test "[common] setup.sh resolves Homebrew fallback prefixes behaviorally" {

@@ -246,6 +246,7 @@ class GithubReleaseTest(unittest.TestCase):
     def test_attestation_needs_an_authenticated_gh_and_fails_hard_on_a_bad_attestation(self) -> None:
         asset = self.temp_dir / "asset.tar.gz"
         asset.write_text("payload\n")
+        self.link("basename")
         self.assertEqual(2, self.run_helper(f'github_release_attestation owner/repo v1 "{asset}"').returncode)
         for outcome, version, auth_status, verify_status, expected in (
             ("not authenticated", "2.93.0", 1, 0, 2),
@@ -266,7 +267,11 @@ class GithubReleaseTest(unittest.TestCase):
                     printf 'gh %s\\n' "$*" >> "{self.log}"
                     [ "$1" = --version ] && {{ [ -n "{version}" ] && printf 'gh version {version} (2026-10-01)\\n'; exit 0; }}
                     [ "$*" = "auth status --hostname github.com" ] && exit {auth_status}
-                    [ "$1 $2" = "release verify-asset" ] && exit {verify_status}
+                    if [ "$1 $2" = "release verify-asset" ]; then
+                        printf 'Calculated digest for %s: sha256:0000\\n' "$(basename "$4")"
+                        [ {verify_status} -ne 0 ] || printf '✓ Verification succeeded! %s is present in release %s\\n' "$(basename "$4")" "$3"
+                        exit {verify_status}
+                    fi
                     exit 3
                     """,
                 )
@@ -274,6 +279,8 @@ class GithubReleaseTest(unittest.TestCase):
                 result = self.run_helper(f'github_release_attestation owner/repo v1 "{asset}"')
 
                 self.assertEqual(expected, result.returncode, result.stderr)
+                # gh's report reaches stderr only, so a caller's stdout carries nothing but its own output.
+                self.assertEqual("", result.stdout)
                 if expected != 2:
                     self.assertIn(
                         f"gh release verify-asset v1 {asset} --repo github.com/owner/repo", self.log.read_text()
@@ -381,7 +388,12 @@ class GithubReleaseTest(unittest.TestCase):
             printf 'gh %s\\n' "$*" >> "{self.log}"
             [ "$1" = --version ] && {{ printf 'gh version 2.93.0 (2026-10-01)\\n'; exit 0; }}
             [ "$*" = "auth status --hostname github.com" ] && exit "${{GH_AUTH:-0}}"
-            [ "$1 $2" = "release verify-asset" ] && exit "${{GH_VERIFY:-0}}"
+            if [ "$1 $2" = "release verify-asset" ]; then
+                # gh's real report, on stdout as gh 2.93.0 prints it.
+                printf 'Calculated digest for %s: sha256:%s\\n' "$(basename "$4")" "{digest}"
+                [ "${{GH_VERIFY:-0}}" -ne 0 ] || printf '✓ Verification succeeded! %s is present in release %s\\n' "$(basename "$4")" "$3"
+                exit "${{GH_VERIFY:-0}}"
+            fi
             exit 1
             """,
         )
@@ -434,7 +446,17 @@ class GithubReleaseTest(unittest.TestCase):
                 if verified:
                     self.assertEqual(0, result.returncode, result.stderr)
                     self.assertIn(f"gh release verify-asset v2.73.0 {self.temp_dir}/github-release.", log)
-                    self.assertIn(f"--build-arg CHEZMOI_VERSION=2.73.0 --build-arg CHEZMOI_SHA256={digest}", log)
+                    # The build arg is the digest line alone, ending the docker command line.
+                    self.assertIn(f"--build-arg CHEZMOI_VERSION=2.73.0 --build-arg CHEZMOI_SHA256={digest}\n", log)
+                    self.link("mktemp", "rm", "cp", "sha256sum", "shasum", "basename")
+                    verified_sha = self.run_helper(
+                        "github_release_verified_sha256 twpayne/chezmoi v2.73.0 "
+                        f"{archive} chezmoi_2.73.0_checksums.txt",
+                        TMPDIR=str(self.temp_dir),
+                    )
+                    self.assertEqual(0, verified_sha.returncode, verified_sha.stderr)
+                    self.assertRegex(verified_sha.stdout, r"\A[0-9a-f]{64}\n\Z")
+                    self.assertEqual(f"{digest}\n", verified_sha.stdout)
                     continue
                 self.assertNotEqual(0, result.returncode)
                 self.assertNotIn("docker build", log)

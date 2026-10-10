@@ -151,7 +151,8 @@ function github_release_attestation() {
     # The same gh github_attestation_ready checked: mise's shim first.
     local PATH="${HOME}/.local/share/mise/shims:${PATH}"
     github_attestation_ready || return 2
-    gh release verify-asset "$2" "$3" --repo "github.com/$1" || return 1
+    # gh prints its verification report on stdout; it goes to stderr so callers get only the status.
+    gh release verify-asset "$2" "$3" --repo "github.com/$1" 1>&2 || return 1
 }
 
 #

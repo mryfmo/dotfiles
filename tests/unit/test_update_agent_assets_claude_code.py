@@ -27,6 +27,10 @@ BINARY = textwrap.dedent(
         mkdir -p "$HOME/.local/share/claude/versions" "$HOME/.local/bin"
         # Like anthropics/claude-code#89520: a launcher it did not create stays as it is.
         if [ -e "$HOME/.local/bin/claude" ] && [ ! -L "$HOME/.local/bin/claude" ]; then exit 0; fi
+        if [ -n "${LINK_THEN_FAIL:-}" ]; then
+            ln -sfn "$HOME/.local/share/claude/versions/$2" "$HOME/.local/bin/claude"
+            exit 1
+        fi
         cp "$0" "$HOME/.local/share/claude/versions/$2"
         [ -z "${TAMPER_ON_INSTALL:-}" ] || printf 'tampered\\n' >> "$HOME/.local/share/claude/versions/$2"
         ln -sfn "$HOME/.local/share/claude/versions/$2" "$HOME/.local/bin/claude"
@@ -265,19 +269,23 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         launcher = self.home / ".local/bin/claude"
         launcher.parent.mkdir(parents=True)
         launcher.write_text('#!/bin/sh\nexec old-claude "$@"\n')
-        aside = self.home / ".local/bin/claude.before-native"
+        earlier = self.home / ".local/bin/claude.before-native.EARLIER"
+        earlier.write_text("an earlier backup\n")
 
         result = self.run_ensure()
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertTrue(launcher.is_symlink())
         self.assertEqual(f"{VERSION}", os.readlink(launcher).rsplit("/", 1)[1])
-        self.assertIn("exec old-claude", aside.read_text())
-        self.assertIn(f"the previous, non-native launcher is kept at {aside}", result.stdout)
+        backups = sorted(set(launcher.parent.glob("claude.before-native.*")) - {earlier})
+        self.assertEqual(1, len(backups), backups)
+        self.assertIn("exec old-claude", backups[0].read_text())
+        self.assertIn(f"the previous, non-native launcher is kept at {backups[0]}", result.stdout)
+        self.assertEqual("an earlier backup\n", earlier.read_text())
 
         # A failed check puts the previous launcher back where it was.
         launcher.unlink()
-        aside.rename(launcher)
+        backups[0].rename(launcher)
         shutil.rmtree(self.home / ".local/share/claude")
         self.write_manifest(VERSION, "0" * 64)
         result = self.run_ensure()
@@ -285,7 +293,28 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertFalse(launcher.is_symlink())
         self.assertIn("exec old-claude", launcher.read_text())
-        self.assertFalse(aside.exists())
+        self.assertEqual([earlier], list(launcher.parent.glob("claude.before-native.*")))
+
+    def test_a_dangling_launcher_from_a_failed_install_step_is_removed_and_the_old_one_restored(self) -> None:
+        launcher = self.home / ".local/bin/claude"
+        launcher.parent.mkdir(parents=True)
+        launcher.write_text('#!/bin/sh\nexec old-claude "$@"\n')
+
+        result = self.run_ensure(LINK_THEN_FAIL="1")
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertFalse(launcher.is_symlink())
+        self.assertIn("exec old-claude", launcher.read_text())
+        self.assertEqual([], list(launcher.parent.glob("claude.before-native.*")))
+
+        # A native link left dangling by an earlier failure is a leftover: removed, never kept as a backup.
+        launcher.unlink()
+        launcher.symlink_to(self.home / f".local/share/claude/versions/{VERSION}")
+        result = self.run_ensure()
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual([], list(launcher.parent.glob("claude.before-native.*")))
+        self.assertTrue((self.home / f".local/share/claude/versions/{VERSION}").is_file())
 
     def test_a_failed_install_step_leaves_no_launcher_or_version(self) -> None:
         result = self.run_ensure(FAIL_AFTER_LAUNCHER="1")

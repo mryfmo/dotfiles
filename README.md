@@ -272,8 +272,8 @@ install is removed, unless the asset manifest still records its
 `remove-agent-asset ensure_mise_npm_agent_cli:claude --yes && mise reshim`
 retires both (the reshim drops the old shim, which would shadow the native
 launcher). A launcher at `~/.local/bin/claude` that the native installer did not
-create is moved aside to `~/.local/bin/claude.before-native` before the install
-and put back if the install does not verify.
+create is moved aside to a new `~/.local/bin/claude.before-native.*` file
+before the install and put back if the install does not verify.
 `make doctor` reports the native version and channel.
 
 **Holding a tool back** uses the manager's own feature:

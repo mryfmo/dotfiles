@@ -294,9 +294,10 @@ function verify_active_claude_code() (
 # @arg $1 string The version, already matched against CLAUDE_CODE_VERSION_PATTERN.
 #
 function remove_claude_code_version() {
-    if [ "$(claude_code_active_version)" = "$1" ]; then
-        rm -f "${HOME}/.local/bin/claude"
-    fi
+    # The launcher goes too when it is left dangling, its version file already gone.
+    case "$(readlink "${HOME}/.local/bin/claude" 2> /dev/null || true)" in
+    */claude/versions/"$1") rm -f "${HOME}/.local/bin/claude" ;;
+    esac
     rm -rf "${HOME}/.local/share/claude/versions/$1"
 }
 
@@ -353,8 +354,12 @@ function ensure_claude_code() {
         fi
         # claude install can leave a launcher it did not create in place, so a non-native one moves aside
         # first, is kept for rollback, and comes back when the install does not verify.
-        if [ -e "${launcher}" ] || [ -L "${launcher}" ]; then
-            aside="${launcher}.before-native"
+        if [ -L "${launcher}" ] && [[ "$(readlink "${launcher}")" == */claude/versions/* ]]; then
+            # A native link whose version is gone is a leftover, not someone's launcher.
+            rm -f "${launcher}" || return 1
+        elif [ -e "${launcher}" ] || [ -L "${launcher}" ]; then
+            # A unique name, so an earlier backup is never overwritten.
+            aside="$(mktemp "${launcher}.before-native.XXXXXX")" || return 1
             mv -f "${launcher}" "${aside}" || return 1
         fi
         installed="$(install_claude_code "${channel}")" || status=$?

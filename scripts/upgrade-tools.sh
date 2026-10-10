@@ -439,7 +439,8 @@ function check_npm_tool_provenance() {
     [ -z "${day_one}" ] || window="--min-release-age=0"
     (cd "${dir}" && npm_config_cache="${dir%/*}/cache" mise exec node -- npm install --ignore-scripts --no-audit --no-fund \
         ${window:+"${window}"} "${mise_tool#npm:}@${version}") > /dev/null 2>&1 || return 3
-    output="$(cd "${dir}" && npm_config_cache="${dir%/*}/cache" \
+    # Plain text: the verdict below matches npm's own wording (lib/utils/verify-signatures.js), uncoloured.
+    output="$(cd "${dir}" && npm_config_cache="${dir%/*}/cache" npm_config_color=false \
         mise exec node -- npm audit signatures --include-attestations 2>&1)" || status=$?
     # Only npm's own verdict means a bad signature or attestation; any other failure (an HTTP or TLS error
     # from the registry's key or attestation endpoint) only leaves the check unavailable.

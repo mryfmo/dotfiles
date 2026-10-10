@@ -66,3 +66,11 @@ Supersedes round 11 if still open. V0 carries INV-12 v12 and the two new sentenc
 ## Round 13 (orchestrator, 2026-10-11)
 
 V0 rewritten with R11-1 (main tests overlaid on a git-archive copy of the PR tree), R11-2 (declared modules from the task's tests/unit entries; undeclared mode runs every other main module), R11-3 (task.md read with PyYAML), step 1(c) promotion check and test (b3); the ROOT premise added (34/34). Other four files: pointer and INV sentence only. Full check of V0, diff for the rest; receipt `…-task-review-v1-v2-a01-round13.md`; RESULT with `round=13`. max_turns=5.
+
+## Round 14 (orchestrator, 2026-10-11)
+
+Codex Bot findings on boundary head 8be11e65 folded into V0 (ast-based decorator detection with alias cases, test b4) and V2 (inputs snapshotted and hashed before the model runs and re-checked after; premises keys must equal 1..N; join/send/leave serialized by a lock for pooled runs; tests). Design unchanged (15daca85). Diff check of V0 and V2; receipt `…-task-review-v1-v2-a01-round14.md`; RESULT with `round=14`. max_turns=4.
+
+## Round 15 (orchestrator, 2026-10-11)
+
+R14-1 (tier from the stamped `tier:` key, missing stamp treated as design; `scripts/lib/contract_markers.py` helper allowed) and the V2 notes (string keys; no line figure). Diff check of V0 and V2; receipt `…-task-review-v1-v2-a01-round15.md`; RESULT with `round=15`. max_turns=3.

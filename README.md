@@ -921,12 +921,15 @@ left open). Without `--task`, the prompt tells the auditor to audit only
 A task is audited once, on its PR's final head, with `--task ID`. The prompt then
 names `.orchestration/tasks/ID.md` (required; a missing file exits 2), the
 worker's `reports/ID.md`, `validation/ID.md` and `sandboxes/ID.md`, and
-`validation/ID-pr-feedback.json` with the CI check runs and the review threads
-(each named only when present; the worker artifacts may be `.txt` in older tasks). It also gives the full PR diff
+`validation/ID-pr-feedback.json` with the CI check runs and the review threads,
+the acceptance record `acceptance/ID.md` as it stands, and
+`validation/ID-permgate.jsonl` (each named only when present; the worker artifacts may be `.txt` in older tasks). It also gives the full PR diff
 `git diff <base> <sha>`, where `<base>` is `git merge-base origin/main <sha>`
-in DIR (exit 2 when there is none). The auditor judges specification
-conformance, implementation, and evidence reality, reports findings as
-`[P0-P3] confidence dimension file:line rationale`, and ends with the same
+in DIR (exit 2 when there is none). The auditor's scope covers the
+orchestrator's artifacts as well as the worker's; it reports findings in the
+fixed grammar and five categories of the AGENTS.md "Audit" section, adds the
+`INV-n:` lines and the `Orchestration findings:` line for a `format: 2` task
+(the helper warns when the last message lacks them), and ends with the same
 `Verdict:` line. PATH then defaults to
 `.orchestration/validation/ID-audit-<sha7>.md`. Per-commit audits remain
 available without `--task` but are no longer the default.

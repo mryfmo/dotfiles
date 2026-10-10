@@ -509,6 +509,18 @@ main
             result, marker, _state = self.run_main(Path(directory), "", installed=False)
             self.assertNotEqual(0, result.returncode)
             self.assertFalse(marker.exists())
+        # Offline with a CLI that no longer runs: a failure, never "the installed AWS CLI stays".
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            aws = home / ".local/bin/aws"
+            aws.parent.mkdir(parents=True)
+            aws.write_text("#!/bin/sh\nexit 42\n")
+            aws.chmod(0o755)
+            result, marker, _state = self.run_main(home, "", recorded_etag='"abc-1"', installed=False)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("no working AWS CLI is installed", result.stderr)
+            self.assertNotIn("stays", result.stderr)
+            self.assertFalse(marker.exists())
 
     def test_main_keeps_a_working_aws_cli_when_the_download_fails_and_never_on_a_bad_signature(self):
         # The archive changed (a new ETag) but cannot be downloaded: a working CLI stays and its old ETag

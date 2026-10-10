@@ -160,8 +160,9 @@ function aws_cli_archive_etag() {
 function main() {
     local etag status=0
     if ! etag="$(aws_cli_archive_etag)"; then
-        [ -x "${AWS_CLI_BIN_DIR}/aws" ] || {
-            printf 'Could not reach the AWS CLI archive.\n' >&2
+        # Only a CLI that still runs stays; a broken one fails the offline apply instead of passing.
+        verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1 || {
+            printf 'Could not reach the AWS CLI archive, and no working AWS CLI is installed.\n' >&2
             return 1
         }
         printf 'warning: could not reach the AWS CLI archive; the installed AWS CLI stays.\n' >&2

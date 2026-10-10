@@ -255,16 +255,25 @@ published copy at `downloads.claude.ai/keys/claude-code.asc` is a fallback
 trusted only through that fingerprint), requires the signed manifest to name
 that version, and checks the downloaded binary against its sha256. Only then
 does it run the binary's own `install <version>`, which creates the launcher
-Anthropic's auto-updater manages, and it requires the installed version and
-sha256 to match, removing the install otherwise. It never runs
-`claude.ai/install.sh`, which checks the binary only against the unsigned
-manifest before running it. Day-to-day updates are Anthropic's auto-updater on
-that channel; every `make update` re-verifies the active binary against the
-signed manifest of its version (two small downloads) and fails when the
-signature or sha256 does not match, removing that version and its launcher so
-the untrusted binary cannot run (the next `make update` installs a verified
-one), while offline it warns and keeps the binary. A failed install step is
-cleaned up the same way. Without gpg and gpgv (a fresh macOS before
+the native installer manages, and it requires the installed version and sha256
+to match, removing the install otherwise. It never runs `claude.ai/install.sh`,
+which checks the binary only against the unsigned manifest before running it.
+Anthropic's own updater stays off (`claude.autoUpdates: false` in the managed
+settings: nothing on the host updates outside `make update`), so Claude Code
+moves only through `make update`, on the configured channel, verified by us:
+every run re-verifies the active binary against the signed manifest of its
+version (two small downloads), and when the channel serves a newer version it
+installs that one through the same verified path, putting the previous version
+back if the update fails. A binary whose signature or sha256 does not match
+fails the run and is removed with its launcher, so it cannot run (the next
+`make update` installs a verified one); offline it warns and keeps the binary.
+A failed install step is cleaned up the same way. One gap remains: the apply
+that removes `npm:@anthropic-ai/claude-code` from the mise config takes the old
+`claude` off mise's PATH before `ensure_claude_code` runs later in the same
+`make update`, so a host where the native install cannot run yet (a first run
+offline, or a fresh macOS before gnupg is installed) has no `claude` until it
+can; `make update` then prints the remedy and exits 0, and `make doctor` gives
+the same hint. Without gpg and gpgv (a fresh macOS before
 `install/macos/common/dependencies.sh` installs them) nothing is installed. Once
 the native install verifies, the old `npm:@anthropic-ai/claude-code` mise
 install is removed, unless the asset manifest still records its

@@ -168,15 +168,15 @@ function check_crit_cli() {
 
 #
 # @description Report Claude Code's native install and its update channel. ensure_claude_code in
-#   scripts/update-agent-assets.sh installs it and re-verifies it against the signed release manifest;
-#   Anthropic's auto-updater moves it on the autoUpdatesChannel channel.
+#   scripts/update-agent-assets.sh installs it, moves it on the autoUpdatesChannel channel and
+#   re-verifies it against the signed release manifest; Anthropic's own updater is off.
 #
 function check_claude_code() {
     local launcher="${HOME%/}/.local/bin/claude" target channel
 
     target="$(readlink "${launcher}" 2> /dev/null || true)"
     if [ -z "${target}" ] || ! [ "${launcher}" -ef "${HOME%/}/.local/share/claude/versions/${target##*/}" ]; then
-        warn_optional "Claude Code is not the native install at ${launcher}; run make update"
+        warn_optional "Claude Code is not the native install at ${launcher}; run make update (online, with gnupg installed)"
         return 0
     fi
     channel="$(jq -r '.autoUpdatesChannel // "unset"' "${HOME%/}/.claude/settings.json" 2> /dev/null || printf 'unknown')"

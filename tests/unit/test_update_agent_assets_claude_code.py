@@ -133,12 +133,20 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
 
-    def write_manifest(self, version: str, checksum: str) -> None:
+    def write_manifest(self, version: str, checksum: str, at: str = VERSION) -> None:
         platforms = {platform: {"binary": "claude", "checksum": checksum, "size": 1} for platform in PLATFORMS}
         self.serve(
-            f"claude-code-releases/{VERSION}/manifest.json",
+            f"claude-code-releases/{at}/manifest.json",
             json.dumps({"version": version, "platforms": platforms}),
         )
+
+    def publish(self, version: str, checksum: str | None = None) -> None:
+        """Serve a newer release on the stable channel, signed like the first."""
+        self.serve("claude-code-releases/stable", f"{version}\n")
+        self.serve(f"claude-code-releases/{version}/manifest.json.sig", "GOOD\n")
+        for platform in PLATFORMS:
+            self.serve(f"claude-code-releases/{version}/{platform}/claude", BINARY)
+        self.write_manifest(version, checksum or hashlib.sha256(BINARY.encode()).hexdigest(), at=version)
 
     def install_active(self, content: str = BINARY) -> Path:
         binary = self.home / f".local/share/claude/versions/{VERSION}"
@@ -277,8 +285,43 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         calls = self.calls()
         self.assertIn(f"curl https://downloads.claude.ai/claude-code-releases/{VERSION}/manifest.json", calls)
         self.assertFalse([call for call in calls if call.endswith("/claude") or call.startswith("binary ")])
-        self.assertNotIn("curl https://downloads.claude.ai/claude-code-releases/stable", calls)
+        # The channel is still asked, because make update is the only thing that moves Claude Code.
+        self.assertIn("curl https://downloads.claude.ai/claude-code-releases/stable", calls)
         self.assertIn("ensure_claude_code", self.manifest_steps())
+
+    def test_a_newer_channel_release_installs_through_the_verified_path(self) -> None:
+        self.install_active()
+        self.publish("2.1.296")
+
+        result = self.run_ensure()
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"Claude Code {VERSION}: the stable channel has 2.1.296; updating", result.stdout)
+        calls = self.calls()
+        # The new release's signature is checked after its download and before its binary runs.
+        signature = calls.index("curl https://downloads.claude.ai/claude-code-releases/2.1.296/manifest.json.sig")
+        verify = next(index for index in range(signature, len(calls)) if calls[index].startswith("gpgv "))
+        self.assertLess(verify, calls.index("binary install 2.1.296"))
+        self.assertEqual("2.1.296", os.readlink(self.home / ".local/bin/claude").rsplit("/", 1)[1])
+        self.assertEqual("2.1.296", self.manifest_steps()["ensure_claude_code"]["source_version"])
+
+    def test_a_failed_update_puts_the_previous_version_back(self) -> None:
+        previous = self.install_active()
+        self.publish("2.1.296", checksum="0" * 64)
+
+        result = self.run_ensure()
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("binary install 2.1.296", self.calls())
+        self.assertTrue(previous.exists())
+        self.assertEqual(previous, Path(os.readlink(self.home / ".local/bin/claude")))
+
+        # Neither an older channel head nor the same one moves anything.
+        self.log.unlink()
+        self.serve("claude-code-releases/stable", "2.1.200\n")
+        result = self.run_ensure()
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertFalse([call for call in self.calls() if call.startswith("binary ")])
 
     def test_a_tampered_active_binary_fails_and_cannot_run_again(self) -> None:
         binary = self.install_active(BINARY + "# tampered\n")
@@ -362,7 +405,7 @@ class EnsureClaudeCodeTest(unittest.TestCase):
     def test_offline_keeps_what_is_there_and_installs_nothing(self) -> None:
         result = self.run_ensure(OFFLINE="1")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("nothing was installed", result.stderr)
+        self.assertIn("nothing was installed: run make update again once online", result.stderr)
         self.assertFalse((self.home / ".local/bin/claude").exists())
 
         binary = self.install_active()
@@ -384,7 +427,7 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         result = self.run_ensure(path=f"{self.bin}:{system}")
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("it needs curl, gpg, gpgv, jq and shasum", result.stderr)
+        self.assertIn("nothing was installed: install gnupg, then run make update again", result.stderr)
         self.assertFalse([call for call in self.calls() if call.startswith("binary ")])
 
     def test_the_old_mise_install_is_found_by_its_directory_when_mise_does_not_list_it(self) -> None:

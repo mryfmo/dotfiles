@@ -12,6 +12,7 @@ allowed_files:
   - tests/unit/test_regime_check.py
   - home/dot_agents/agent-config.yaml
   - scripts/validate-task.py
+  - tests/unit/test_validate_task.py
   - home/dot_agents/skills/agmsg-orchestration/SKILL.md
   - README.md
 invariants:
@@ -46,7 +47,7 @@ DRAFT; dispatched after V1 merges (it calls V1's validator). Implements the CI h
 3. `scripts/validate-task.py`: the `process_tiers.<tier>` lookup (PyYAML read of `home/dot_agents/agent-config.yaml` resolved from the script's own location, overridable by `--manifest <path>` for tests only; a missing table or entry is a failure).
 4. `home/dot_agents/agent-config.yaml`: `process_tiers` (the table salvaged from the reference branch with v3's stage names: docs = CI+Bot, orchestrator read, merge, 1 revise; review = worker checks, CI+Bot, one schema audit, gate, 2 revises then reset; design = design review, worker checks, CI+Bot, schema audit with invariant map, gate, reset rule, permgate check, 2 revises then reset; profiles per tier; `audit_budget_usd` per tier, 5 by default, INV-9's one field added early because V2's runner reads it, the other budgets are V5b's; no `redesign` profile). `make render-check` must pass.
 5. Prose, one paragraph each: SKILL Orchestrator Playbook step 3 (format-2 task files, the validator, the derived tier, the CI `regime` check and the task.md copy) and README (one sentence). No other SKILL section.
-6. `tests/unit/test_regime_check.py` (stdlib `unittest`; the script and V1's validator are driven as subprocesses on a scratch repository): the validator, run with `--manifest <scratch copy>`, fails on a task whose tier has no `process_tiers` entry and passes when the entry exists (the item-3 rule, tested here because `test_validate_task.py` is V1's file); a PR adding a valid task.md passes; a second task.md in the range is refused; an invalid one fails with the validator's message; a code change with no task.md in the range is refused while an `.orchestration/`-only diff passes; a changed path outside the task.md's `allowed_files` is refused; a workflow edit without a design-tier task.md is refused and with one is accepted; each fails when its rule is removed.
+6. `tests/unit/test_regime_check.py` (stdlib `unittest`; the script and V1's validator are driven as subprocesses on a scratch repository): the `process_tiers` rule (item 3) is tested in `tests/unit/test_validate_task.py` (the validator's own module, now in `allowed_files` under the per-script rule): with `--manifest <scratch copy>` it fails on a task whose tier has no entry and passes when the entry exists; a PR adding a valid task.md passes; a second task.md in the range is refused; an invalid one fails with the validator's message; a code change with no task.md in the range is refused while an `.orchestration/`-only diff passes; a changed path outside the task.md's `allowed_files` is refused; a workflow edit without a design-tier task.md is refused and with one is accepted; each fails when its rule is removed.
 
 ## Validation
 

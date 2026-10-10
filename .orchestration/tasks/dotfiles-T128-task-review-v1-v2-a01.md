@@ -82,3 +82,11 @@ Codex Bot findings on boundary head 3396d666: V0 runs main's copy of the harness
 ## Round 17 (orchestrator, 2026-10-11)
 
 R16-1: step (b0) now requires at least one declared `tests/unit/*.py` module when a design-tier task declares any non-data script path (data: *.txt, *.json, *.md, *.yaml); test (f) adjusted. V0 only; receipt `…-task-review-v1-v2-a01-round17.md`; RESULT with `round=17`. max_turns=3.
+
+## Round 18 (orchestrator, 2026-10-11)
+
+Codex Bot findings on boundary head 636e3b5f: V0 (per-script module by the repository's test_<name>.py convention; declared modules must exist in the PR tree), V1 (adds tests/unit/test_high_risk_paths.py so each script has its module), V2 (.claude range from the merge base; pool slots reserved under a lock for the whole run; exit trap leaves the identity and removes the worktree; HEAD must equal origin/main). Diff check of V0, V1, V2; receipt `…-task-review-v1-v2-a01-round18.md`; RESULT with `round=18`. max_turns=4.
+
+## Round 19 (orchestrator, 2026-10-11)
+
+R18-1: V0 adds tests/unit/test_contract_markers.py, V1b adds tests/unit/test_regime_check.py, V1c adds tests/unit/test_validate_task.py, each under the per-script module rule. Diff check of V0, V1b, V1c; receipt `…-task-review-v1-v2-a01-round19.md`; RESULT with `round=19`. max_turns=3.

@@ -27,7 +27,9 @@ sys.dont_write_bytecode = True
 from high_risk_paths import (  # noqa: E402
     FrontMatterError,
     canonical_design_hash,
+    LOW_RISK_SUFFIXES,
     glob_regex,
+    in_review_tier,
     may_touch_design_tier,
     parse_front_matter,
 )
@@ -39,6 +41,22 @@ INVARIANT_ID = re.compile(r"INV-[0-9]+")
 # The stop gate's rule: the orchestrator is the unsuffixed identity, every other seat carries -aNNN.
 NON_ORCHESTRATOR = re.compile(r".+-a[0-9]{3}")
 TASK_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+# The tier table travels with this script: main's validator reads main's manifest.
+MANIFEST = Path(__file__).resolve().parents[1] / "home/dot_agents/agent-config.yaml"
+
+
+def process_tiers(manifest: Path) -> dict | None:
+    """The `process_tiers:` map of the manifest, read as one front-matter block (the file itself needs PyYAML)."""
+    lines = manifest.read_text(encoding="utf-8").splitlines() if manifest.is_file() else []
+    if "process_tiers:" not in lines:
+        return None
+    start = lines.index("process_tiers:")
+    end = next(
+        (n for n in range(start + 1, len(lines)) if lines[n][:1] not in ("", " ", "#")),
+        len(lines),
+    )
+    block = parse_front_matter("---\n" + "\n".join(lines[start:end]) + "\n---\n") or {}
+    return block.get("process_tiers") if isinstance(block.get("process_tiers"), dict) else None
 
 
 def main_checkout(path: Path) -> Path:
@@ -80,11 +98,12 @@ def receipt_fields(path: Path) -> dict[str, list[str]]:
     """The receipt's top-level `reviewer:` and `design:` lines; its header may hold timestamps the parser refuses."""
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     header = lines[1 : lines.index("---", 1)] if lines[:1] == ["---"] and "---" in lines[1:] else []
-    fields = {"reviewer": [], "design": []}
+    fields = {"reviewer": [], "design": [], "verdict": []}
     for line in header:
         match = re.fullmatch(r"(reviewer|design):\s*(\S+)\s*", line)
         if match:
             fields[match.group(1)].append(match.group(2))
+    fields["verdict"] = [m.group(1) for m in (re.fullmatch(r"Design verdict:\s*(\S+)\s*", line) for line in lines) if m]
     return fields
 
 
@@ -169,8 +188,10 @@ def validate(path: Path) -> dict:
         return report
     root = main_checkout(path.resolve())
     files = tracked_files(root)
-    if "reset_of" in data:
+    if path.resolve().parent == (root / ".orchestration/acceptance").resolve():
         return validate_reset(path, data, root, files, report)
+    if "reset_of" in data:
+        fail("reset_of: a design-reset record belongs in .orchestration/acceptance/<task id>-design-reset.md")
 
     task_id = data.get("task_id")
     report["task_id"] = task_id
@@ -204,6 +225,20 @@ def validate(path: Path) -> dict:
         fail(f"security: declared false, but these allowed files are in the design tier: {', '.join(matching)}")
     security = bool(matching) or declared is True
     report["security"] = security
+    # The process tier (T126): design over review over docs; a path that is neither prose nor in a tier is review.
+    if security:
+        tier = "design"
+    elif any(
+        in_review_tier(e) or not e.endswith(LOW_RISK_SUFFIXES) or any(in_review_tier(n) for n in expand(e, files))
+        for e in allowed
+    ):
+        tier = "review"
+    else:
+        tier = "docs"
+    report["tier"] = tier
+    tiers = process_tiers(MANIFEST)
+    if tiers is None or not isinstance(tiers.get(tier), dict):
+        fail(f"tier: {MANIFEST.name} has no process_tiers entry for {tier!r}")
 
     invariants = data.get("invariants")
     if not isinstance(invariants, dict) or not is_text_map(invariants):
@@ -248,6 +283,16 @@ def validate(path: Path) -> dict:
                     report["design_hash"] = canonical_design_hash(design)
                 except KeyError as error:
                     fail(f"design_review.design: the design task lacks {error.args[0]}")
+                if not same_file:
+                    # One reviewed design authorizes only the tasks it names.
+                    if task_id not in (design.get("implementing_tasks") or []):
+                        fail(
+                            f"design_review.design: {design_review['design']} does not list {task_id} in implementing_tasks"
+                        )
+                    design_ids = set(design.get("invariants") or {})
+                    extra = sorted(set(invariants) - design_ids)
+                    if extra:
+                        fail(f"invariants: not in the design {design_review['design']}: {', '.join(extra)}")
             if inside["receipt"] and "design_hash" in report:
                 # The receipt binds a non-orchestrator review to the design as it is now (T124 Amendment 3).
                 fields = receipt_fields(root / design_review["receipt"])
@@ -258,11 +303,10 @@ def validate(path: Path) -> dict:
                     )
                 if len(fields["reviewer"]) != 1 or not NON_ORCHESTRATOR.fullmatch(fields["reviewer"][0]):
                     fail("design_review.receipt: its `reviewer:` must be one non-orchestrator identity (-aNNN)")
-                if not same_file:
-                    design_ids = set(design.get("invariants") or {})
-                    extra = sorted(set(invariants) - design_ids)
-                    if extra:
-                        fail(f"invariants: not in the design {design_review['design']}: {', '.join(extra)}")
+                if fields["verdict"] != ["accept"]:
+                    fail(
+                        f"design_review.receipt: it must carry one `Design verdict: accept` line, found {fields['verdict']}"
+                    )
     elif security:
         fail("design_review: a security task needs {receipt, design}")
 
@@ -276,7 +320,7 @@ def validate(path: Path) -> dict:
                     "threat_model: a security task needs a map of threats (or, for a code task, a design that has one)"
                 )
             if key == "trust_anchors" and not (
-                isinstance(value, list) and value and all(isinstance(v, str) for v in value)
+                isinstance(value, list) and value and all(isinstance(v, str) and v.strip() for v in value)
             ):
                 fail("trust_anchors: a security task needs a list (or, for a code task, a design that has one)")
 
@@ -292,13 +336,25 @@ def validate(path: Path) -> dict:
         ):
             fail("waves: must map each wave name to a list of files")
         else:
-            covered = set()
-            for entries in waves.values():
+            listed = {}
+            for name, entries in waves.items():
                 for entry in entries:
-                    covered |= expand(entry, files) | {entry}
-            missing = sorted((expanded - covered) | {e for e in allowed if not expand(e, files) and e not in covered})
+                    listed.setdefault(entry, []).append(name)
+            # A glob can name files created later, so only the glob itself, in exactly one wave, covers it.
+            missing = [
+                entry
+                for entry in allowed
+                if (
+                    len(listed.get(entry, [])) != 1
+                    if re.search(r"[*?]", entry)
+                    else entry not in listed and not any(glob_regex(w).match(entry) for w in listed)
+                )
+            ]
             if missing:
-                fail(f"waves: the union does not cover allowed_files: {', '.join(missing)}")
+                fail(
+                    "waves: each allowed glob must appear verbatim in exactly one wave and each path in some wave: "
+                    + ", ".join(missing)
+                )
             if len(waves) == 1:
                 warn("waves: a single wave covers everything; the gate admits a PR only within one wave")
     if len(expanded) > WAVE_FILE_LIMIT:
@@ -325,6 +381,9 @@ def main() -> int:
     parser.add_argument(
         "--print-design-hash", action="store_true", help="print the canonical hash of the design named in design_review"
     )
+    parser.add_argument(
+        "--print-tier", action="store_true", help="print the derived process tier (docs, review or design)"
+    )
     args = parser.parse_args()
     if not args.task_file.is_file():
         print(f"validate-task: {args.task_file}: no such file", file=sys.stderr)
@@ -339,6 +398,8 @@ def main() -> int:
             print(f"{args.task_file}: warning: {warning}")
         if args.print_design_hash and "design_hash" in report:
             print(report["design_hash"])
+        if args.print_tier and "tier" in report:
+            print(report["tier"])
         if not report["failures"]:
             print(f"{args.task_file}: {report['status']}")
     if args.print_design_hash and "design_hash" not in report and not report["failures"]:

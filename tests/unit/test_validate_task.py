@@ -46,7 +46,11 @@ def emit_scalar(value) -> str:
         return "[]"
     text = str(value)
     # Quote what YAML would read as something else, as a task author must.
-    return json.dumps(text) if text[:1] in "*&!|>%@`[{'\"" or ": " in text or " #" in text else text
+    return (
+        json.dumps(text)
+        if text[:1] in "*&!|>%@`[{'\"" or ": " in text or " #" in text or text != text.strip()
+        else text
+    )
 
 
 DESIGN = {
@@ -61,13 +65,15 @@ DESIGN = {
     "threat_model": {"T1": "a wrong principle reaches code"},
     "trust_anchors": ["agmsg history", "GitHub state"],
     "invariants": {"INV-1": "the gate validates the task file", "INV-2": "security derives from the design tier"},
+    "implementing_tasks": ["t-a01"],
 }
 
 
-def receipt(design: dict = DESIGN, reviewer: str = "claude-review-dot-a002") -> str:
+def receipt(design: dict = DESIGN, reviewer: str = "claude-review-dot-a002", verdict: str = "accept") -> str:
     """A review receipt: its header holds a timestamp, a reviewer and the design path with its canonical hash."""
     digest = high_risk_paths.canonical_design_hash(design)
-    return f"---\nreviewed_at: 2026-10-10T09:02:00Z\nreviewer: {reviewer}\ndesign: .orchestration/tasks/design-a01.md@{digest}\n---\n"
+    header = f"---\nreviewed_at: 2026-10-10T09:02:00Z\nreviewer: {reviewer}\ndesign: .orchestration/tasks/design-a01.md@{digest}\n---\n"
+    return header + ("" if verdict is None else f"\n# Design review\n\nDesign verdict: {verdict}\n")
 
 
 class ValidateTaskTest(unittest.TestCase):
@@ -248,18 +254,28 @@ class ValidateTaskTest(unittest.TestCase):
         )
 
     def test_waves_are_required_above_fifteen_files_and_must_cover_allowed_files(self) -> None:
-        self.assertValid(self.task(allowed_files=[f"many/f{n:02}.txt" for n in range(15)]))
+        sixteen = [f"many/f{n:02}.txt" for n in range(16)]
+        self.assertValid(self.task(allowed_files=sixteen[:15]))
         self.assertFails(self.task(allowed_files=["many/*.txt"]), "waves: required, allowed_files expands to 16")
-        partial = {"one": [f"many/f{n:02}.txt" for n in range(8)], "two": ["many/f08.txt"]}
-        self.assertFails(self.task(allowed_files=["many/*.txt"], waves=partial), "waves: the union does not cover")
-        # A file the task creates expands to nothing, so a wave must name it.
-        full = {"one": [f"many/f{n:02}.txt" for n in range(8)], "two": [f"many/f{n:02}.txt" for n in range(8, 16)]}
+        split = {"one": sixteen[:8], "two": sixteen[8:]}
         self.assertFails(
-            self.task(allowed_files=["many/*.txt", "new/file.py"], waves=full),
-            "union does not cover allowed_files: new/file.py",
+            self.task(allowed_files=sixteen, waves={"one": sixteen[:8]}), "and each path in some wave: many/f08.txt"
         )
-        report = self.assertValid(self.task(allowed_files=["many/*.txt"], waves=full))
+        report = self.assertValid(self.task(allowed_files=sixteen, waves=split))
         self.assertTrue(any("expands to 16 existing files" in w for w in report["warnings"]), report)
+        # Gaming path: waves that list today's matches of a glob leave the files it can create later uncovered.
+        self.assertFails(
+            self.task(allowed_files=["many/*.txt"], waves=split), "must appear verbatim in exactly one wave"
+        )
+        self.assertFails(
+            self.task(allowed_files=["many/*.txt"], waves={"one": ["many/*.txt"], "two": ["many/*.txt"]}),
+            "must appear verbatim in exactly one wave",
+        )
+        self.assertValid(
+            self.task(
+                allowed_files=["many/*.txt", "new/file.py"], waves={"one": ["many/*.txt"], "two": ["new/file.py"]}
+            )
+        )
 
     def test_a_single_all_encompassing_wave_passes_with_a_warning(self) -> None:
         report = self.assertValid(self.task(allowed_files=["many/*.txt"], waves={"all": ["many/*.txt"]}))
@@ -312,7 +328,7 @@ class ValidateTaskTest(unittest.TestCase):
 
     def test_the_front_matter_parser_refuses_what_it_cannot_read_exactly(self) -> None:
         for text in (
-            "---\nformat: 2\nlist: [a, b]\n---\n",
+            "---\nformat: 2\nlist: [a, [b]]\n---\n",
             "---\nformat: 2\nnote: a: b\n---\n",
             "---\nformat: 2\nnote: see PR #312\n---\n",
             "---\nformat: 2\nflag: yes\n---\n",
@@ -323,6 +339,12 @@ class ValidateTaskTest(unittest.TestCase):
             with self.subTest(text=text):
                 with self.assertRaises(high_risk_paths.FrontMatterError):
                     high_risk_paths.parse_front_matter(text)
+        self.assertEqual(
+            ["dotfiles-T125-a01", "scripts/x.py"],
+            high_risk_paths.parse_front_matter("---\nl: [dotfiles-T125-a01, scripts/x.py]\n---\n")["l"],
+        )
+        with self.assertRaises(high_risk_paths.FrontMatterError):
+            high_risk_paths.parse_front_matter("---\nl: [two words]\n---\n")
         self.assertEqual(
             {"a": "x: y", "b": "it's", "c": [1, True, None]},
             high_risk_paths.parse_front_matter("---\na: \"x: y\"\nb: 'it''s'\nc:\n  - 1\n  - true\n  - null\n---\n"),
@@ -451,12 +473,69 @@ class ValidateTaskTest(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertTrue(any("is not marked superseded_by" in w for w in report["warnings"]), report)
 
+    def test_the_receipt_must_accept_the_design(self) -> None:
+        path = self.tasks.parent / "validation/receipt.md"
+        for text in (receipt(verdict="revise"), receipt(verdict=None), receipt() + "Design verdict: accept\n"):
+            with self.subTest(text=text[-40:]):
+                path.write_text(text)
+                self.assertFails(self.security_task(), "must carry one `Design verdict: accept` line")
+
+    def test_a_security_task_must_be_named_by_its_design(self) -> None:
+        # Gaming path: one reviewed design reused to authorize an unrelated security task.
+        self.assertFails(self.security_task("u-a01"), "does not list u-a01 in implementing_tasks")
+
+    def test_trust_anchors_must_not_be_blank(self) -> None:
+        self.assertFails(
+            self.task(
+                kind="docs",
+                allowed_files=None,
+                security=True,
+                design_review=DESIGN["design_review"],
+                threat_model=DESIGN["threat_model"],
+                trust_anchors=["  "],
+            ),
+            "trust_anchors: a security task needs",
+        )
+
+    def test_a_reset_record_outside_the_acceptance_directory_is_a_task_file(self) -> None:
+        self.assertFails(self.task(reset_of="old-a01"), "belongs in .orchestration/acceptance")
+
+    def test_the_tier_is_derived_and_needs_a_process_tiers_entry(self) -> None:
+        for fields, tier in (
+            ({"allowed_files": ["README.md", "many/f00.txt"]}, "docs"),
+            ({"allowed_files": ["home/dot_config/claude/rules/rule.md"]}, "review"),  # prose in the review tier
+            ({"allowed_files": ["tests/unit/test_x.py"]}, "review"),  # neither prose nor in a tier
+            ({"allowed_files": ["install/common/tool.sh"], "design_review": DESIGN["design_review"]}, "design"),
+            ({"security": True, "design_review": DESIGN["design_review"]}, "design"),
+        ):
+            with self.subTest(tier=tier, fields=fields):
+                code, report = self.run_validator(self.task(**fields))
+                self.assertEqual((0, tier), (code, report.get("tier")), report)
+        printed = subprocess.run(
+            [sys.executable, str(VALIDATOR), str(self.task()), "--print-tier"], text=True, capture_output=True
+        )
+        self.assertEqual("docs", printed.stdout.splitlines()[0], printed.stdout)
+        # The table travels with the script: a copy whose manifest lacks the tier fails.
+        copy = self.temp_dir / "copy"
+        (copy / "scripts/lib").mkdir(parents=True)
+        shutil.copy(VALIDATOR, copy / "scripts")
+        shutil.copy(ROOT / "scripts/lib/high_risk_paths.py", copy / "scripts/lib")
+        (copy / "home/dot_agents").mkdir(parents=True)
+        (copy / "home/dot_agents/agent-config.yaml").write_text("process_tiers:\n  review:\n    limits: 2 revises\n")
+        result = subprocess.run(
+            [sys.executable, str(copy / "scripts/validate-task.py"), str(self.task()), "--json"],
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn("agent-config.yaml has no process_tiers entry for 'docs'", result.stdout)
+
     def test_the_module_review_tier_equals_the_gate_constants(self) -> None:
         # Until wave 2a switches the gate to the import, the copy must not drift.
         spec = importlib.util.spec_from_file_location("require_crit_review", GATE)
         gate = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(gate)
-        for name in ("HIGH_RISK_PREFIXES", "HIGH_RISK_FILES", "HIGH_RISK_TOKENS"):
+        for name in ("HIGH_RISK_PREFIXES", "HIGH_RISK_FILES", "HIGH_RISK_TOKENS", "LOW_RISK_SUFFIXES"):
             with self.subTest(name=name):
                 self.assertEqual(getattr(gate, name), getattr(high_risk_paths, name))
 
@@ -472,6 +551,7 @@ class ValidateTaskTest(unittest.TestCase):
             "home/dot_local/bin/common/executable_provision-machine-key",
             "home/dot_local/bin/common/executable_setup-gpg",
             "home/dot_local/bin/common/executable_agmsg-dispatch",
+            "home/.chezmoiscripts/common/run_once_before_01-decrypt-private-key.sh.tmpl",
         ):
             with self.subTest(path=path):
                 self.assertTrue(high_risk_paths.in_design_tier(path))

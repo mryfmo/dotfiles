@@ -332,6 +332,46 @@ plugins:
 # MCP servers are declared only when one is enabled for a target agent.
 mcp_servers: {}
 
+# The pipeline each task tier runs (T126 V1, its process tier table). scripts/validate-task.py derives a
+# task's tier (docs, review or design) and checks that it has an entry here; it enforces nothing from
+# the entry yet (T126 W5 and W7 do). The validator reads this block without PyYAML, so keep it to
+# nested maps, lists of plain scalars and no `: ` or ` #` inside a value.
+process_tiers:
+  docs:
+    stages:
+      - Bot + CI
+      - one orchestrator read
+      - merge
+    profiles:
+      worker: express
+      audit: none
+    limits: 1 revise, 2 h, budget per table
+  review:
+    stages:
+      - V3 worker discipline
+      - Bot + CI
+      - one schema audit
+      - gate
+    profiles:
+      worker: standard
+      audit: audit
+    limits: 2 revises, then reset
+  design:
+    stages:
+      - V2 design review
+      - V3
+      - Bot + CI
+      - schema audit with invariant map
+      - gate with V5 locks
+      - V6 reset rule
+      - V9 permgate check
+    profiles:
+      review: review
+      worker: standard
+      audit: audit
+      redesign: redesign
+    limits: 2 revises or 2 implementation-finding audits, then reset
+
 # Third-party assets: one declaration per component with its upstream,
 # release, verification, install path, and installer step. `release: latest`
 # installs the newest release at install time, verified by the publisher's own

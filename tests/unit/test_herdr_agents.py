@@ -2839,6 +2839,9 @@ exit {exit_code}
         (worktree / "scripts/lib").mkdir()
         shutil.copy(ROOT / "scripts/validate-task.py", worktree / "scripts")
         shutil.copy(ROOT / "scripts/lib/high_risk_paths.py", worktree / "scripts/lib")
+        # The validator reads its tier table from the manifest beside it.
+        (worktree / "home/dot_agents").mkdir(parents=True)
+        shutil.copy(ROOT / "home/dot_agents/agent-config.yaml", worktree / "home/dot_agents")
         tasks = main / ".orchestration/tasks"
         tasks.mkdir(parents=True)
         (tasks / "bad-a01.md").write_text(

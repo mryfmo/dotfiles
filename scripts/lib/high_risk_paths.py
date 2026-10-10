@@ -49,11 +49,18 @@ HIGH_RISK_TOKENS = (
     "superpowers",
 )
 
+# The gate's low-risk suffixes: a task whose allowed files all end in one is prose (the `docs` tier).
+LOW_RISK_SUFFIXES = (
+    ".md",
+    ".txt",
+)
+
 # Glob patterns (`**` crosses directories, `*` does not). The auth helpers are the files
 # that handle a credential or a key: git's credential helper, the two gh login scripts and
 # the machine SSH and GnuPG key setup. This module classifies tasks, so it is in the tier.
 DESIGN_TIER = (
     "install/**",
+    "home/.chezmoiscripts/**",
     "setup.sh",
     "scripts/lib/github-release.sh",
     "scripts/update-agent-assets.sh",
@@ -109,6 +116,13 @@ def glob_regex(pattern: str) -> re.Pattern[str]:
             out.append(re.escape(pattern[i]))
             i += 1
     return re.compile("".join(out) + r"\Z")
+
+
+def in_review_tier(path: str) -> bool:
+    """The gate's review requirement for one path (require-crit-review.py high_risk_reason)."""
+    if path in HIGH_RISK_FILES or path.startswith(HIGH_RISK_PREFIXES):
+        return True
+    return any(token in " ".join(path.split("/")).lower().replace("_", "-") for token in HIGH_RISK_TOKENS)
 
 
 def in_design_tier(path: str) -> bool:
@@ -178,6 +192,9 @@ class FrontMatterError(ValueError):
 def _scalar(text: str, line: int):
     if text in ("{}", "[]"):
         return {} if text == "{}" else []
+    # A flow list of ids or paths reads the same in PyYAML; anything richer must be a block list.
+    if re.fullmatch(r"\[\s*[A-Za-z0-9][A-Za-z0-9._/+-]*(?:\s*,\s*[A-Za-z0-9][A-Za-z0-9._/+-]*)*\s*\]", text):
+        return [_scalar(item.strip(), line) for item in text[1:-1].split(",")]
     if text[0] == '"':
         try:
             return json.loads(text)

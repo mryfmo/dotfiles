@@ -199,12 +199,16 @@ signed, attested publish, not that the installed tree is unmodified afterwards.
 listed as registry-signature-only and passes, an invalid or missing signature
 or attestation is a required failure that stops `make update` and names the
 package, and a tool that cannot be fetched for the check only warns. Codex,
-outside the cooldown, stays installed only with a verified attestation: a
-missing or failed one is a required failure that also uninstalls that version,
-and a check that cannot run passes only for the version an earlier run verified
-(recorded under `${XDG_STATE_HOME:-~/.local/state}/dotfiles/npm-provenance/`).
-The scratch install of a cooldown-excluded tool lifts npm's window the same way
-its install did. Provenance shows who built a release from which source; it does
+outside the cooldown, stays installed only with a verified attestation, now or
+from an earlier run of the same version (recorded under
+`${XDG_STATE_HOME:-~/.local/state}/dotfiles/npm-provenance/`); any other
+outcome, a check that cannot run included, is a required failure that also
+uninstalls that version.
+`npm audit signatures` itself no longer applies `min-release-age` when it
+re-resolves the installed versions (npm/cli#9277, fixed by npm/cli PR #9430,
+merged 2026-05-28, which npm 11.19.1 and 11.20.0 on this host carry), so only
+the scratch install of a cooldown-excluded tool lifts npm's window, the same
+way its own install did. Provenance shows who built a release from which source; it does
 not catch a malicious release published through a legitimate account, which is
 what the cooldown is for, so only Codex skips it.
 Claude Code is not a mise tool; it comes from Anthropic's signed native

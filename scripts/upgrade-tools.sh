@@ -460,8 +460,8 @@ function check_npm_tool_provenance() {
 #   tool behind the cooldown, a failed check is a required failure naming the package, a package
 #   without an attestation is listed as signature-only, and a tool that cannot be fetched only warns.
 #   A tool outside the cooldown (minimum_release_age_excludes) stays installed only with a verified
-#   attestation: a missing or failed one is a required failure and removes that version, and a check
-#   that cannot run passes only when an earlier run verified the same version.
+#   attestation, now or from an earlier run of the same version; any other outcome, a check that
+#   cannot run included, is a required failure that removes that version.
 #
 function verify_npm_provenance() {
     local day_one excludes failed=0 index=0 marker mise_tool mise_tools scratch signature_only="" status version
@@ -495,16 +495,17 @@ function verify_npm_provenance() {
                 printf 'optional warning: could not re-check %s %s; an earlier run verified its provenance\n' "${mise_tool}" "${version}" >&2
                 ((optional_warnings += 1))
                 continue
-            elif [ "${status}" -eq 3 ]; then
-                printf 'npm provenance check failed: %s %s skips the cooldown, and its provenance could not be verified\n' "${mise_tool}" "${version:-(not installed)}" >&2
-                failed=1
-                continue
             else
-                # A release that skipped the cooldown without verified provenance must not stay runnable.
-                printf 'npm provenance check failed: %s %s skips the cooldown without a verified provenance attestation; removing it\n' "${mise_tool}" "${version}" >&2
+                # A release that skipped the cooldown without verified provenance, now or in an earlier run,
+                # must not stay runnable, whether its check failed or could not run.
                 rm -f "${marker}"
-                run_mise_with_isolated_git_config uninstall "${mise_tool}@${version}" ||
-                    printf 'required: could not remove %s %s; remove it with mise uninstall %s@%s\n' "${mise_tool}" "${version}" "${mise_tool}" "${version}" >&2
+                if [ -z "${version}" ]; then
+                    printf 'npm provenance check failed: %s skips the cooldown and is not installed\n' "${mise_tool}" >&2
+                else
+                    printf 'npm provenance check failed: %s %s skips the cooldown without a verified provenance attestation; removing it\n' "${mise_tool}" "${version}" >&2
+                    run_mise_with_isolated_git_config uninstall "${mise_tool}@${version}" ||
+                        printf 'required: could not remove %s %s; remove it with mise uninstall %s@%s\n' "${mise_tool}" "${version}" "${mise_tool}" "${version}" >&2
+                fi
                 failed=1
                 continue
             fi

@@ -1931,11 +1931,8 @@ EOF
             "day_one_attested": (0, False, "verified: npm:ccusage (registry signature and provenance attestation)"),
             "day_one_signature_only": (1, True, removing),
             "day_one_attestation_fails": (1, True, removing),
-            "day_one_offline": (
-                1,
-                False,
-                "npm:ccusage 20.0.0 skips the cooldown, and its provenance could not be verified",
-            ),
+            # A check that cannot run is no verification: without an earlier one, the version goes too.
+            "day_one_offline": (1, True, removing),
         }
         for phase, (returncode, removed, message) in cases.items():
             with self.subTest(phase=phase):

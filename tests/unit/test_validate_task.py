@@ -547,12 +547,20 @@ class ValidateTaskTest(unittest.TestCase):
                 )
 
     def test_an_ordinary_task_lives_in_the_tasks_directory(self) -> None:
-        stray = self.write(
-            "t-a01",
-            {"format": 2, "task_id": "t-a01", "kind": "docs", "invariants": {"INV-1": "x"}},
-            where=self.main / ".orchestration/validation",
-        )
-        self.assertFails(stray, "the task file must live in .orchestration/tasks/")
+        fields = {"format": 2, "task_id": "t-a01", "kind": "docs", "invariants": {"INV-1": "x"}}
+        # Gaming paths: another directory, a nested .orchestration/tasks, and a file that is not .md.
+        stray = self.write("t-a01", fields, where=self.main / ".orchestration/validation")
+        nested = self.write("t-a01", fields, where=self.main / "nested/.orchestration/tasks")
+        not_md = self.tasks / "t-a01.txt"
+        not_md.write_text(self.write("t-a01", fields).read_text())
+        for path in (stray, nested, not_md):
+            with self.subTest(path=str(path.relative_to(self.main))):
+                self.assertFails(path, "the task file must be <checkout>/.orchestration/tasks/<task id>.md")
+
+    def test_a_malformed_design_invariant_map_is_a_failure_not_a_traceback(self) -> None:
+        self.write("design-a01", {**DESIGN, "invariants": ["INV-1"]})
+        report = self.assertFails(self.security_task(), "invariants must be a map of `INV-n: sentence`")
+        self.assertEqual("invalid", report["status"])
 
     def test_globs_intersect_by_their_possible_paths(self) -> None:
         for left, right, meet in (

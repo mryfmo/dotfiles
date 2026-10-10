@@ -74,6 +74,14 @@ def main_checkout(path: Path) -> Path:
     return Path(result.stdout.strip()).parent
 
 
+def checkout_top(path: Path) -> Path | None:
+    """The top level of the checkout (main or linked worktree) that holds `path`."""
+    result = subprocess.run(
+        ["git", "-C", str(path.parent), "rev-parse", "--show-toplevel"], check=False, text=True, capture_output=True
+    )
+    return Path(result.stdout.strip()).resolve() if result.returncode == 0 else None
+
+
 def tracked_files(root: Path) -> list[str]:
     result = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], check=False, capture_output=True)
     return [name for name in result.stdout.decode().split("\0") if name] if result.returncode == 0 else []
@@ -232,9 +240,10 @@ def validate(path: Path) -> dict:
         return validate_reset(path, data, root, files, report)
     if "reset_of" in data:
         fail("reset_of: a design-reset record belongs in .orchestration/acceptance/<task id>-design-reset.md")
-    if (path.parent.parent.name, path.parent.name) != (".orchestration", "tasks"):
-        # Only there does the boundary check scan it and the gate find it by its id.
-        fail("the task file must live in .orchestration/tasks/")
+    top = checkout_top(path)
+    if path.suffix != ".md" or top is None or path.parent.resolve() != top / ".orchestration/tasks":
+        # Only there, and only as .md, does the boundary check scan it and the gate find it by its id.
+        fail("the task file must be <checkout>/.orchestration/tasks/<task id>.md")
 
     task_id = data.get("task_id")
     report["task_id"] = task_id
@@ -354,13 +363,20 @@ def validate(path: Path) -> dict:
                         fail(
                             f"design_review.design: {design_review['design']} does not list {task_id} in implementing_tasks"
                         )
-                    design_ids = set(design.get("invariants") or {})
+                    design_invariants = design.get("invariants")
+                    if not is_text_map(design_invariants) or not all(
+                        INVARIANT_ID.fullmatch(k) for k in design_invariants
+                    ):
+                        # A malformed design is a validation failure, never a traceback.
+                        fail(
+                            f"design_review.design: {design_review['design']} invariants must be a map of `INV-n: sentence`"
+                        )
+                        design_invariants = {}
+                    design_ids = set(design_invariants)
                     extra = sorted(set(invariants) - design_ids)
                     if extra:
                         fail(f"invariants: not in the design {design_review['design']}: {', '.join(extra)}")
-                    changed = sorted(
-                        i for i in set(invariants) & design_ids if invariants[i] != design["invariants"][i]
-                    )
+                    changed = sorted(i for i in set(invariants) & design_ids if invariants[i] != design_invariants[i])
                     if changed:
                         fail(f"invariants: {', '.join(changed)} differ from the reviewed design's sentences")
             if inside["receipt"] and "design_hash" in report:

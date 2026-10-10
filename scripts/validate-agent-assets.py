@@ -539,7 +539,7 @@ def validate_claude_mcp_config() -> dict[str, Any]:
 GIT_COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 NPM_SHA512_INTEGRITY = re.compile(r"^sha512-[A-Za-z0-9+/]+=*$")
 ASSET_VERIFY_BY_SOURCE = {
-    "github-release": {"sha256", "release-shasums", "release-sha256", "gpg"},
+    "github-release": {"sha256", "release-shasums", "release-sha256", "gpg", "github-release-attestation"},
     "https-download": {"sha256", "gpg"},
     "crates": {"cargo-locked"},
     "git-commit": {"sha256"},
@@ -549,6 +549,23 @@ ASSET_VERIFY_BY_SOURCE = {
     "claude-plugin": {"none"},
     "codex-plugin": {"none"},
     "gh-extension": {"none"},
+}
+# `release: latest` resolves at install time; only these sources can do that.
+ROLLING_ASSET_SOURCES = {"github-release", "https-download", "crates"}
+# A rolling asset carries no version or checksum of its own.
+ROLLING_ASSET_FORBIDDEN_FIELDS = ("pin", "ref", "ref_commit", "sha256")
+# A rolling asset needs a check independent of the release page it comes from: a release attestation,
+# a signature with a pinned key, or an immutable registry. A checksum file from the same mutable
+# release only re-checks the download, so it rolls only with `attestation` beside it.
+ROLLING_INDEPENDENT_VERIFY = {"github-release-attestation", "gpg", "cargo-locked"}
+# A pinned asset from these sources must say why its publisher's verification cannot replace the pin.
+PINNED_RELEASE_SOURCES = {
+    "github-release",
+    "https-download",
+    "crates",
+    "git-commit",
+    "agmsg-installer",
+    "installer-script",
 }
 INSTALLING_ASSET_SOURCES = {
     "github-release",
@@ -570,7 +587,7 @@ LITERAL_VERSION_ASSIGNMENT = re.compile(
 
 def asset_pin_values(asset: dict[str, Any]) -> list[tuple[str, Any]]:
     """Return every pin and checksum value an asset declares, with its field path."""
-    values: list[tuple[str, Any]] = [("pin", asset.get("pin"))]
+    values: list[tuple[str, Any]] = [] if asset.get("release") == "latest" else [("pin", asset.get("pin"))]
     sha256 = asset.get("sha256")
     if isinstance(sha256, dict):
         values.extend((f"sha256.{arch}", value) for arch, value in sha256.items())
@@ -578,6 +595,11 @@ def asset_pin_values(asset: dict[str, Any]) -> list[tuple[str, Any]]:
         values.append(("sha256", sha256))
     for plugin, config in asset.get("plugins", {}).items():
         values.append((f"plugins.{plugin}.pin", config.get("pin")))
+    fallback = asset.get("fallback")
+    if isinstance(fallback, dict):
+        values.append(("fallback.pin", fallback.get("pin")))
+        if isinstance(fallback.get("sha256"), dict):
+            values.extend((f"fallback.sha256.{arch}", value) for arch, value in fallback["sha256"].items())
     return values
 
 
@@ -647,9 +669,51 @@ def validate_assets(manifest: dict[str, Any]) -> None:
     # Keyed on the resolved real path, so symlinked aliases of one file collide.
     render_claims: dict[tuple[Path, str], tuple[str, str, str]] = {}
     for name, asset in assets.items():
-        missing = [key for key in ("source", "upstream", "pin", "verify") if not asset.get(key)]
+        rolling = "release" in asset
+        required = ("source", "upstream", "verify") if rolling else ("source", "upstream", "pin", "verify")
+        missing = [key for key in required if not asset.get(key)]
         if missing:
             fail(f"assets.{name} is missing {missing}")
+        if rolling:
+            if asset["release"] != "latest" or asset["source"] not in ROLLING_ASSET_SOURCES:
+                fail(
+                    f"assets.{name}.release must be 'latest' on a {sorted(ROLLING_ASSET_SOURCES)} source, "
+                    f"not {asset['release']!r} on {asset.get('source')!r}"
+                )
+            present = [key for key in ROLLING_ASSET_FORBIDDEN_FIELDS if key in asset]
+            if present:
+                fail(f"assets.{name} has release: latest and must not record {present}")
+            if asset.get("reason"):
+                fail(f"assets.{name} has release: latest; a reason belongs only to a pinned asset")
+            if asset["verify"] not in ROLLING_INDEPENDENT_VERIFY and "attestation" not in asset:
+                fail(
+                    f"assets.{name} has release: latest, but verify {asset['verify']!r} checks only a file from the "
+                    "same release; roll only with an attestation, a pinned-key signature or an immutable registry, "
+                    "or pin it with a reason"
+                )
+        elif asset["source"] in PINNED_RELEASE_SOURCES and not asset.get("reason"):
+            fail(f"assets.{name} keeps a pin and must give the reason its publisher's verification cannot replace it")
+        if "attestation" in asset and (
+            asset["attestation"] != "when-gh-authenticated" or asset["source"] != "github-release"
+        ):
+            fail(f"assets.{name}.attestation must be 'when-gh-authenticated' on a github-release asset")
+        # Nothing runs before an independent check: a rolling asset whose attestation needs gh
+        # bootstraps a reviewed fallback release where gh cannot check it first.
+        fallback = asset.get("fallback")
+        if rolling and "attestation" in asset:
+            if (
+                not isinstance(fallback, dict)
+                or not fallback.get("pin")
+                or not isinstance(fallback.get("sha256"), dict)
+                or not fallback["sha256"]
+                or not fallback.get("reason")
+            ):
+                fail(
+                    f"assets.{name} has release: latest and attestation: when-gh-authenticated, so it must record "
+                    "fallback.pin, fallback.sha256 (per platform) and fallback.reason for a host without gh"
+                )
+        elif fallback is not None:
+            fail(f"assets.{name}.fallback belongs only to a release: latest asset with an attestation")
         allowed = ASSET_VERIFY_BY_SOURCE.get(asset["source"])
         if allowed is None:
             fail(f"assets.{name} has an unknown source: {asset['source']!r}")
@@ -689,6 +753,8 @@ def validate_assets(manifest: dict[str, Any]) -> None:
                 )
             real = (ROOT / entry["file"]).resolve()
             for constant, field in constants.items():
+                if rolling and field.split(".")[0] in ROLLING_ASSET_FORBIDDEN_FIELDS:
+                    fail(f"assets.{name} has release: latest and must not render {constant} from {field}")
                 rendered.add((entry["file"], constant))
                 # Two entries rendering one assignment would overwrite each other.
                 source = render_claims.setdefault((real, constant), (name, field, entry["file"]))

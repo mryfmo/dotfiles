@@ -197,9 +197,10 @@ exact pins and no committed lock, machines may differ in tool versions, and CI
 tests the latest safe versions rather than one recorded set. Because the
 applied file is mise's global config, it no longer turns on lockfile mode for
 other projects on the host; a project that keeps its own `mise.lock` sets
-`lockfile` in its own config. The release-asset installers (the mise bootstrap,
-aws-cli, tode, terminal-browser, Crit, Zed, the chezmoi bootstrap and agmsg)
-keep their manifest pins until T119 moves them to the same policy.
+`lockfile` in its own config. The release-asset installers follow the same
+policy where they can: an asset takes the newest release when its publisher
+verifies it independently of the release page, and the others keep a reviewed
+pin (see Asset manifest below).
 
 **Holding a tool back** uses the manager's own feature:
 
@@ -322,8 +323,9 @@ Plugin 2.9.7 has two known coverage gaps: `merge-batch-graphs.py` drops
 rebuild therefore under-reports test coverage until upstream fixes land.
 
 Crit itself is installed on both Linux and macOS from the pinned amd64/arm64
-GitHub release binary for the matching OS, after SHA-256 verification. All
-four checksums and the version are declared under `assets.crit` in
+GitHub release binary for the matching OS, after SHA-256 verification against
+the reviewed checksum and, as a second check, the release's `checksums.txt`.
+All four checksums and the version are declared under `assets.crit` in
 `home/dot_agents/agent-config.yaml`, rendered into
 `scripts/lib/installer-pins.sh`, and changed with `generate-agent-configs.py --set-asset`. Lifecycle
 checks on both platforms inspect the authoritative `~/.local/bin/crit`
@@ -332,9 +334,12 @@ ambient Crit cannot shadow it. If that managed binary is missing, `REPAIR=1
 make doctor` can restore it.
 
 The zenbu-labs terminal tools — terminal-code (`tode`) and `terminal-browser` —
-install through their sha256-verified upstream curl installers, pinned by
-version and installer checksum under `assets:` (rendered into
-`scripts/lib/installer-pins.sh`).
+install through their upstream curl installers, pinned by version and
+installer checksum under `assets:` (rendered into
+`scripts/lib/installer-pins.sh`). zenbu-labs publishes no checksum file or
+attestation and signs no script, so the committed script hash is the only
+integrity check; each script embeds the sha256 of its platform payload and
+verifies the download against it, so that hash pins the payload too.
 `make update` converges both tools to the pinned versions; a pin changes only
 in `assets:` (see Asset manifest below).
 terminal-browser links its bundled agent skills into `~/.agents/skills`
@@ -1310,22 +1315,70 @@ the npm backend before refreshing plugins.
 **Asset manifest.** Every third-party component the lifecycle installs outside
 mise — the mise binary itself, sheldon, starship, the AWS CLI, the Homebrew
 installer, Crit, Zed, tode, terminal-browser, the Understand-Anything
-installer, the vendored CompactionDB tree, the pinned upstream agmsg skill,
-and the Claude/Codex plugins and GitHub CLI extensions — has one declaration under `assets:` in
-`home/dot_agents/agent-config.yaml`, with its upstream, pin, verification
-method, install path, and installer step. mise tools are not listed there;
-`home/dot_mise/config.toml` is the mise manifest. `scripts/generate-agent-configs.py` renders each pinned value into
-the installer that uses it (`install/**/*.sh`, `scripts/lib/installer-pins.sh`,
-`scripts/update-agent-assets.sh`, and the Codex config template), and
-`scripts/validate-agent-assets.py` rejects incomplete declarations, rendered
-drift, and any hand-written `*_VERSION="..."` or `version="..."` literal left
-in `install/` or `scripts/`. Change a pin only in the manifest, then
-regenerate. For tode, terminal-browser, Crit, and Zed, write the reviewed pins
-and checksums into `assets:` with
-`generate-agent-configs.py --set-asset NAME.FIELD=VALUE`, which re-renders
-`scripts/lib/installer-pins.sh`. `pin: unknown` marks a component with no
-recorded upstream version, and plugin pins record the installed versions,
-which `make update` does not enforce yet.
+installer, the vendored CompactionDB tree, the upstream agmsg skill, and the
+Claude/Codex plugins and GitHub CLI extensions — has one declaration under
+`assets:` in `home/dot_agents/agent-config.yaml`, with its upstream, release or
+pin, verification method, install path, and installer step. mise tools are not
+listed there; `home/dot_mise/config.toml` is the mise manifest. A release asset
+installs the newest release at install time (`release: latest`) only when its
+publisher provides a verification independent of the release page it is
+fetched from: a GitHub release attestation, a signature with a key whose
+fingerprint the manifest pins, or an immutable registry with its own index
+checksums (`verify`). A checksum file from the same mutable release checks the
+download, not the publisher, so it is never the only check. A GitHub release is the newest
+non-draft, non-prerelease one at least 72 hours old, resolved by
+`scripts/lib/github-release.sh`; that is the same window as `minimum_release_age`,
+so a fresh bootstrap never installs a mise that `mise self-update` would refuse.
+
+| Asset             | Mechanism                                                                                                                                                                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| mise bootstrap    | the newest release only when it can be verified before it runs: `SHASUMS256.asc` with its GPG signature checked against the release key's pinned fingerprint (`gpg` and `gpgv`), or the GitHub release attestation (an authenticated `gh`); otherwise the reviewed fallback release (below) |
+| chezmoi bootstrap | the newest release only when an authenticated `gh` can check its GitHub release attestation before it runs (its cosign signature needs cosign); otherwise the reviewed fallback release (below); the checksums file is checked on both paths                                                |
+| starship          | pinned (below); the reviewed sha256, then the `.sha256` file published with the archive                                                                                                                                                                                                     |
+| Crit              | pinned (below); the reviewed sha256 per platform, then the release's `checksums.txt`                                                                                                                                                                                                        |
+| Zed               | the GitHub release attestation, through `gh release verify-asset`; without an authenticated `gh`, Zed is not installed and the notice says `run make gh-auth, then make update` (`run_after_05-client-install-zed` runs on every apply)                                                     |
+| sheldon           | `cargo install --locked`, checked against the crates.io index; cargo offers no age choice, so it takes the newest crate                                                                                                                                                                     |
+| AWS CLI           | AWS's GPG signature, checked with the pinned key fingerprint; the unversioned archive is AWS's current release, with no age choice                                                                                                                                                          |
+
+Nothing a bootstrap installs runs before a verification independent of its
+release page has passed. A fresh machine has no `gh` login yet, and a fresh
+macOS has no `gpg`, so mise and chezmoi then install a reviewed fallback
+release: `fallback.pin` and its per-platform `fallback.sha256` under
+`assets.mise` and `assets.chezmoi-bootstrap`, with the reason, rendered into
+`install/common/mise.sh` and `setup.sh`; the release's own checksum file is
+checked as well. A mise already at or past the fallback stays, so a rerun
+never downgrades what `mise self-update` installed, and when the release key or
+`SHASUMS256.asc` cannot be fetched, an authenticated `gh` verifies mise by its
+attestation instead; a bad signature still fails. This matters only for the
+first run of a fresh machine:
+`mise self-update` and mise's own `chezmoi` then move both forward under the
+cooldown with mise's verification. CI verifies the chezmoi it installs with
+the runner's authenticated `gh`, and `make docker` does so on the host before
+building (it needs `make gh-auth` first) and passes the verified archive's
+sha256 to the Dockerfile, which trusts only that. When a download fails after
+the release lookup, an every-apply installer keeps a working installed tool
+with one warning; a failed checksum, signature or attestation always fails and
+installs nothing.
+
+Any other component keeps a reviewed `pin` with its checksum and says why in
+`reason`: the Homebrew installer and the Understand-Anything installer
+(unsigned scripts at a reviewed commit), tode and terminal-browser (unsigned
+`curl | bash` scripts; zenbu-labs publishes no checksum or attestation), Crit
+and starship (mutable releases with only a checksum file from the same release,
+no signature or attestation; the checksum file stays as a second check, and
+their every-apply installers move to a new pin on the next `make update`), and
+agmsg (skill releases without assets; its npm provenance covers only the
+bootstrapper). `scripts/generate-agent-configs.py`
+renders each pinned value into the installer that uses it (`install/**/*.sh`,
+`scripts/lib/installer-pins.sh`, `scripts/update-agent-assets.sh`, and the Codex
+config template), and `scripts/validate-agent-assets.py` rejects incomplete
+declarations, a pin without a reason, a rolling asset that records a pin or
+checksum, rendered drift, and any hand-written `*_VERSION="..."` or
+`version="..."` literal left in `install/` or `scripts/`. Change a pin only in
+the manifest, with `generate-agent-configs.py --set-asset NAME.FIELD=VALUE`,
+then regenerate. `pin: unknown` marks a component with no recorded upstream
+version, and plugin pins record the installed versions, which `make update`
+does not enforce yet.
 
 ### 💡 Develop the Setup Scripts
 

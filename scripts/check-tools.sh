@@ -167,6 +167,25 @@ function check_crit_cli() {
 }
 
 #
+# @description Report Zed on Ubuntu clients. run_after_05-client-install-zed installs it only with an
+#   authenticated gh, because a GitHub release attestation is the only verification Zed publishes.
+#
+function check_zed() {
+    local target="${HOME%/}/.local/bin/zed" system
+    system="$(chezmoi execute-template '{{ .system }}' 2> /dev/null || true)"
+    if [ "$(uname -s)" != Linux ] || [ "${system}" != client ]; then
+        printf 'not applicable: Zed (installed on Ubuntu clients only)\n'
+        return 0
+    fi
+    if [ ! -x "${target}" ]; then
+        warn_optional "zed not installed: run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh"
+        return 0
+    fi
+    printf 'found:   zed -> %s\n' "${target}"
+    "${target}" --version || warn_optional "zed --version failed; the install may be corrupt"
+}
+
+#
 # @description Verify bwrap can create user namespaces when AppArmor restricts them.
 #   Sandboxed Codex runs exec /usr/bin/bwrap, which needs the bwrap-userns profile
 #   installed by install/ubuntu/common/apparmor_userns.sh. Loaded profiles are
@@ -284,6 +303,9 @@ function main() {
 
     section "Crit CLI"
     check_crit_cli
+
+    section "Zed"
+    check_zed
 
     section "SSH"
     check_machine_ssh_key

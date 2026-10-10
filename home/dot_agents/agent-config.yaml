@@ -332,61 +332,87 @@ plugins:
 # MCP servers are declared only when one is enabled for a target agent.
 mcp_servers: {}
 
-# Third-party assets: one declaration per component with its upstream, pin,
-# verification, install path, and installer step. generate-agent-configs.py
-# renders each `render.constants` entry into the named file by rewriting the
-# matching NAME="..." assignment, so installers carry no hand-written versions.
-# Change pins here only, through generate-agent-configs.py --set-asset (for
-# tode, terminal-browser, crit and zed too). `pin: unknown` marks a
-# component with no recorded upstream version.
+# Third-party assets: one declaration per component with its upstream,
+# release, verification, install path, and installer step. `release: latest`
+# installs the newest release at install time, verified by the publisher's own
+# mechanism (`verify`); a GitHub release is the newest non-draft, non-prerelease
+# one at least 72 hours old (scripts/lib/github-release.sh, the same window as
+# minimum_release_age in home/dot_mise/config.toml). Only a component whose
+# publisher offers no verification keeps a `pin` (with its sha256) and says why
+# in `reason`. generate-agent-configs.py renders each `render.constants` entry
+# into the named file by rewriting the matching NAME="..." assignment; change
+# pins here only, through generate-agent-configs.py --set-asset. `pin: unknown`
+# marks a component with no recorded upstream version.
 assets:
   mise:
     source: github-release
     upstream: jdx/mise
-    pin: v2026.9.17
+    release: latest
     verify: release-shasums
+    attestation: when-gh-authenticated
+    gpg_fingerprint: 24853EC9F655CE80B48E6C3A8B81C9D17413A06D
+    note: the newest cooled-down release installs only when gpg and gpgv (SHASUMS256.asc checked against the release key with gpg_fingerprint, fetched from keys.openpgp.org as mise documents) or an authenticated gh (the release attestation) can verify it before it runs; otherwise the fallback release does, and mise self-update moves it forward afterwards.
+    fallback:
+      pin: v2026.10.3
+      sha256:
+        macos-x64: 791b92b446729c53e6501acd2b84ea207f541659ca9d0480c9c70c291919a321
+        macos-arm64: 28ecc8640b0a28dab52817766f37fecfd898f1dff82e03f36fcb072e971f9246
+        linux-x64: 04147c68e946902f5226dfdcd54d19907aed3cf54d95b2f27d2b9c778bb26f9e
+        linux-arm64: e79866e32624b346f6854d93ca8a24294516cd7c0b48ce0e80af508fb7c3d8b8
+      reason: a host without gpg and without an authenticated gh (a fresh macOS) can check neither the release key's signature nor the release attestation before mise runs, and SHASUMS256.txt comes from the same release; so it bootstraps this reviewed release, SHASUMS256.txt kept as a second check.
     install_path: ~/.local/bin/mise
     installer: install/common/mise.sh
     render:
       file: install/common/mise.sh
-      constants: {MISE_VERSION: pin}
+      constants:
+        MISE_GPG_FINGERPRINT: gpg_fingerprint
+        MISE_FALLBACK_VERSION: fallback.pin
+        MISE_FALLBACK_MACOS_X64_SHA256: fallback.sha256.macos-x64
+        MISE_FALLBACK_MACOS_ARM64_SHA256: fallback.sha256.macos-arm64
+        MISE_FALLBACK_LINUX_X64_SHA256: fallback.sha256.linux-x64
+        MISE_FALLBACK_LINUX_ARM64_SHA256: fallback.sha256.linux-arm64
   sheldon:
     source: crates
     upstream: sheldon
-    pin: 0.8.5
+    release: latest
     verify: cargo-locked
     install_path: ~/.local/bin/sheldon
     installer: install/common/sheldon.sh
-    render:
-      file: install/common/sheldon.sh
-      constants: {SHELDON_VERSION: pin}
   starship:
     source: github-release
     upstream: starship/starship
     pin: v1.26.0
-    verify: release-sha256
+    verify: sha256
+    sha256:
+      linux-x86_64: b7c232b0e8249d8e55a40beb79c5c43a7d370f3f9408bd215deb0170daeaadf3
+      linux-aarch64: dc30189378d2f2e287384e8a692d3f95ad1df64cf0e8c36aa9201516028aed6b
+    reason: starship's releases are mutable and carry only .sha256 sidecars, with no signature or attestation (immutable=false, attestations API 404 at v1.26.0); a sidecar from the same release checks the download, not the publisher, so the reviewed sha256 is the check and the sidecar stays as a second one.
     install_path: ~/.local/bin/starship
     installer: install/ubuntu/server/starship.sh
     render:
       file: install/ubuntu/server/starship.sh
-      constants: {STARSHIP_VERSION: pin}
+      constants:
+        STARSHIP_PIN_VERSION: pin
+        STARSHIP_X86_64_SHA256: sha256.linux-x86_64
+        STARSHIP_AARCH64_SHA256: sha256.linux-aarch64
   aws-cli:
     source: https-download
     upstream: https://awscli.amazonaws.com
-    pin: 2.37.6
+    release: latest
     verify: gpg
     gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
     install_path: ~/.local/share/aws-cli
     installer: install/ubuntu/common/aws_cli.sh
     render:
       file: install/ubuntu/common/aws_cli.sh
-      constants: {AWS_CLI_VERSION: pin, AWS_CLI_FINGERPRINT: gpg_fingerprint}
+      constants: {AWS_CLI_FINGERPRINT: gpg_fingerprint}
   homebrew-installer:
     source: git-commit
     upstream: Homebrew/install
     pin: c7952e40b7957268f61643152f4db725379b292e
     verify: sha256
     sha256: 99287f194a8b3c9e6b0203a11a5fa54518be57209343e6bb954dec4635796d9d
+    reason: Homebrew publishes its install script without a signature, checksum or release; the commit and script hash are the only check (bootstrap only).
     install_path: Homebrew default prefix (/opt/homebrew or /usr/local)
     installer: install/macos/common/brew.sh
     render:
@@ -397,22 +423,36 @@ assets:
   chezmoi-bootstrap:
     source: github-release
     upstream: twpayne/chezmoi
-    pin: 2.73.0
+    release: latest
     verify: release-shasums
+    attestation: when-gh-authenticated
+    note: chezmoi signs its checksums with cosign only, which a fresh host cannot run; the newest cooled-down release installs only when an authenticated gh can check its release attestation before it runs, otherwise the fallback release does, and mise's own chezmoi takes over after the bootstrap.
+    fallback:
+      pin: v2.73.0
+      sha256:
+        darwin-amd64: 55e7b0823b40966a239cb418b37201c5f0961bab1b797c933550c97b1ab08221
+        darwin-arm64: 246679a0b200e7e8be4a951be3b95d37c33ecb87eaab5af6f4949f7d0317bcc1
+        linux-amd64: b597729b687af4488a848240134cb633de8ca0f04e0d26d48f400ee2ac338ffa
+        linux-arm64: abcb840401d3c1f2356e0f53f5d52aa10d10f572654d9626db9ad0ca4dc03355
+      reason: setup.sh runs before gh is installed or logged in, so a fresh host cannot check chezmoi's release attestation before chezmoi runs, and its cosign signature needs cosign; it bootstraps this reviewed release, the release's checksums file kept as a second check.
     install_path: ~/.local/bin/chezmoi
     installer: setup.sh#run_chezmoi
     render:
-      - file: setup.sh
-        constants: {CHEZMOI_VERSION: pin}
-      - file: scripts/lib/installer-pins.sh
-        constants: {CHEZMOI_BOOTSTRAP_PIN_VERSION: pin}
+      file: setup.sh
+      constants:
+        CHEZMOI_FALLBACK_VERSION: fallback.pin
+        CHEZMOI_FALLBACK_DARWIN_AMD64_SHA256: fallback.sha256.darwin-amd64
+        CHEZMOI_FALLBACK_DARWIN_ARM64_SHA256: fallback.sha256.darwin-arm64
+        CHEZMOI_FALLBACK_LINUX_AMD64_SHA256: fallback.sha256.linux-amd64
+        CHEZMOI_FALLBACK_LINUX_ARM64_SHA256: fallback.sha256.linux-arm64
   tode:
     source: installer-script
     upstream: https://tode.sh/install
     pin: v0.4.2
     verify: installer-sha256
     sha256: de7c1540305d516ded9734f7dca4ed2d7d308fcc9cdb27a52717c4d26054e933
-    note: payload-not-pinned-yet
+    note: the install script embeds the sha256 of each platform's payload and checks the download against it, so the script hash also pins the payload.
+    reason: zenbu-labs/tode publishes release tarballs with no checksum file or attestation, and the install script is unsigned; an unsigned curl | bash script leaves the committed hash as the only check.
     install_path: ~/.local/bin/tode
     installer: scripts/update-agent-assets.sh#update_terminal_code
     render:
@@ -424,7 +464,8 @@ assets:
     pin: v0.13.4
     verify: installer-sha256
     sha256: 11b3f157debcf9bb8e5d8c6a5efc16fb9385ccb97478ae8bdb0fb0ea9e1f23bc
-    note: payload-not-pinned-yet
+    note: the install script embeds the sha256 of each platform's payload and checks the download against it, so the script hash also pins the payload.
+    reason: zenbu-labs/terminal-browser publishes release tarballs with no checksum file or attestation, and the install script is unsigned; an unsigned curl | bash script leaves the committed hash as the only check.
     install_path: ~/.local/bin/terminal-browser
     installer: scripts/update-agent-assets.sh#update_terminal_browser
     render:
@@ -433,13 +474,14 @@ assets:
   crit:
     source: github-release
     upstream: tomasz-tomczyk/crit
-    pin: v0.21.1
+    pin: v0.22.0
     verify: sha256
     sha256:
-      linux-amd64: bbc7de53ebb29377c412d1737c658752efeaf44e8bd0f124278f6e41632ad670
-      linux-arm64: 875c03a0b75de7777a26294dc585f59f3e4f49fe2735f5043fb668f92e2dc258
-      darwin-amd64: 08f9f1a7e2f56f5d4dc5d9d86d0e06e92c165d2b885745d6ffed5ab3eda354dc
-      darwin-arm64: 40cc7014f0b6c7d604be0bfdf4c462e2366549c520b95b790b414aa221d2a9a0
+      linux-amd64: fecd40eea356020cd605dfca6a4be6ab3c9635134ca5e28ee99e6286ab62c31d
+      linux-arm64: 92311ddf4862179c655087d4703e7f2e3f4b4aacb0549c22e5dae999c0fb2b6e
+      darwin-amd64: 1f88b739234931a583097522bad29aa30566fa3ecb3227d753bb5ec01d4c369b
+      darwin-arm64: 60153a194b85ba85ad72225694a2ccd7f348bc08bece756f7b56a0444a33e93d
+    reason: Crit's releases are mutable and carry only a checksums.txt, with no signature or attestation (immutable=false, attestations API 404 at v0.22.0); a checksum file from the same release checks the download, not the publisher, so the reviewed sha256 is the check and checksums.txt stays as a second one.
     install_path: ~/.local/bin/crit
     installer: scripts/update-agent-assets.sh#ensure_crit_cli
     render:
@@ -453,25 +495,17 @@ assets:
   zed:
     source: github-release
     upstream: zed-industries/zed
-    pin: v1.22.0
-    verify: sha256
-    sha256:
-      linux-amd64: 5ce3991b34a8fad0a23625f5821cda601c7150a6cc69683c097b8d1b083abc50
-      linux-arm64: 8b3c5d6e506056a9456ed33072081fd64db84ce47cdf34d4936442cc4f08394a
+    release: latest
+    verify: github-release-attestation
     install_path: ~/.local/bin/zed
     installer: install/ubuntu/client/zed.sh
-    render:
-      file: scripts/lib/installer-pins.sh
-      constants:
-        ZED_PIN_VERSION: pin
-        ZED_LINUX_AMD64_SHA256: sha256.linux-amd64
-        ZED_LINUX_ARM64_SHA256: sha256.linux-arm64
   understand-anything-installer:
     source: git-commit
     upstream: Egonex-AI/Understand-Anything
     pin: 6df3065f1d8ddc2ce3615314d1d493f36d6b1c80
     verify: sha256
     sha256: cb84ca53ced03f41662c5c86edf11fa598a0403c347f1e815f987ccaae5bc464
+    reason: Understand-Anything serves its install script only as a raw repository file, with no signature or checksum (its releases ship a viewer bundle, not the script); the commit and script hash are the only check.
     install_path: ~/.understand-anything/repo
     installer: scripts/update-agent-assets.sh#update_codex_understand_anything
     render:
@@ -497,6 +531,7 @@ assets:
     verify: sha256
     sha256: 9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059
     bootstrap_integrity: sha512-n6057L93AE+tnItTkBnClv3QvgsOlI6AO1SwodvKFJvqqTJqITHg/2O6jjHZZfh0nKbq49VKQv6F3t2d/62gyg==
+    reason: fujibee/agmsg's skill releases (v1.5.x) carry no assets, checksums or attestations (its app-v* releases ship a separate app); the npm package's provenance covers only the npx bootstrapper, not the skill tree the installer uses.
     install_path: ~/.agents/skills/agmsg
     installer: scripts/update-agent-assets.sh#update_agmsg
     note: >-

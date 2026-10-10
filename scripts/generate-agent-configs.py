@@ -178,13 +178,13 @@ def asset_field(asset: dict[str, Any], path: str) -> str:
 
 
 PLAIN_PIN_VALUE = re.compile(r"[A-Za-z0-9._+-]+")
-SETTABLE_ASSET_FIELD = re.compile(r"pin|sha256|sha256\.[A-Za-z0-9-]+")
+SETTABLE_ASSET_FIELD = re.compile(r"(?:fallback\.)?(?:pin|sha256|sha256\.[A-Za-z0-9-]+)")
 
 
 def set_asset_field(text: str, name: str, path: str, value: str) -> str:
     """Rewrite one scalar under assets.<name> in the manifest text, keeping comments."""
     if not SETTABLE_ASSET_FIELD.fullmatch(path):
-        fail(f"--set-asset may change only pin, sha256, or sha256.<arch>: {name}.{path}")
+        fail(f"--set-asset may change only pin, sha256, or sha256.<arch>, optionally under fallback.: {name}.{path}")
     if not PLAIN_PIN_VALUE.fullmatch(value):
         fail(f"assets.{name}.{path} is not a plain pin value: {value!r}")
     lines = text.splitlines(keepends=True)

@@ -29,10 +29,48 @@ function teardown() {
     [ -x "$(command -v mise)" ]
 }
 
-@test "[common] mise pin includes the Linux arm64 aqua bin-path fix" {
-    # A floor, not a copy of the pin: v2026.9.12 is the first release with the fix (#160).
-    IFS=. read -r year month patch <<< "${MISE_VERSION#v}"
-    ((year > 2026 || (year == 2026 && (month > 9 || (month == 9 && patch >= 12)))))
+@test "[common] mise bootstrap resolves the newest cooled-down jdx/mise release" {
+    # With a check available before mise runs, the tag comes from github_release_tag.
+    function github_attestation_ready() { return 0; }
+    function github_release_tag() {
+        printf '%s\n' "$1" > "${BATS_TEST_TMPDIR}/repo"
+        printf 'v2026.10.3\n'
+    }
+    function curl() {
+        printf '%s\n' "$*" >> "${BATS_TEST_TMPDIR}/curl.log"
+        return 7
+    }
+    function uname() { [ "$1" = -s ] && printf 'Linux\n' || printf 'x86_64\n'; }
+
+    run _install_mise_binary
+
+    [ "${status}" -ne 0 ]
+    [ "$(cat "${BATS_TEST_TMPDIR}/repo")" = jdx/mise ]
+    grep -q 'https://github.com/jdx/mise/releases/download/v2026.10.3/mise-v2026.10.3-linux-x64.tar.gz' "${BATS_TEST_TMPDIR}/curl.log"
+    [ ! -e "${MISE_INSTALL_PATH}" ]
+}
+
+@test "[common] mise bootstrap without gpg or an authenticated gh takes the reviewed fallback release" {
+    # Nothing runs before an independent check, so no lookup: the reviewed release installs.
+    function mise_gpg_ready() { return 1; }
+    function github_attestation_ready() { return 1; }
+    function github_release_tag() {
+        touch "${BATS_TEST_TMPDIR}/looked-up"
+        printf 'v9.9.9\n'
+    }
+    function curl() {
+        printf '%s\n' "$*" >> "${BATS_TEST_TMPDIR}/curl.log"
+        return 7
+    }
+    function uname() { [ "$1" = -s ] && printf 'Linux\n' || printf 'x86_64\n'; }
+
+    run _install_mise_binary
+
+    [ "${status}" -ne 0 ]
+    [ ! -e "${BATS_TEST_TMPDIR}/looked-up" ]
+    [[ "${output}" == *"installing the reviewed mise ${MISE_FALLBACK_VERSION} (assets.mise.fallback)"* ]]
+    grep -q "https://github.com/jdx/mise/releases/download/${MISE_FALLBACK_VERSION}/mise-${MISE_FALLBACK_VERSION}-linux-x64.tar.gz" "${BATS_TEST_TMPDIR}/curl.log"
+    [ ! -e "${MISE_INSTALL_PATH}" ]
 }
 
 @test "[common] run_mise_install trusts the config and runs one bare install" {

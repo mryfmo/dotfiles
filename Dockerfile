@@ -29,17 +29,21 @@ RUN existing_group="$(getent group "$USER_GID" | cut -d: -f1)" \
 USER $USERNAME
 WORKDIR /home/$USERNAME/.local/share/chezmoi
 
-# The pinned release that setup.sh bootstraps; `make docker` passes the
-# version rendered from assets.chezmoi-bootstrap in agent-config.yaml.
+# The release setup.sh bootstraps: `make docker` passes the newest one at least
+# 72 hours old (scripts/lib/github-release.sh) with the sha256 it verified on the host
+# against the release's checksum file and GitHub release attestation. The build trusts
+# only that sha256, never the release page.
 ARG CHEZMOI_VERSION
-# make docker rebuilds the image when this label differs from setup.sh's pin.
-LABEL chezmoi.version=$CHEZMOI_VERSION
-RUN test -n "$CHEZMOI_VERSION" || { echo "build with --build-arg CHEZMOI_VERSION (make docker)" >&2; exit 1; } \
+ARG CHEZMOI_SHA256
+# make docker rebuilds the image when the version label differs from the resolved release, or
+# when the sha256 label of a host-verified archive is missing.
+LABEL chezmoi.version=$CHEZMOI_VERSION chezmoi.sha256=$CHEZMOI_SHA256
+RUN { test -n "$CHEZMOI_VERSION" && test -n "$CHEZMOI_SHA256"; } || { echo "build with --build-arg CHEZMOI_VERSION and CHEZMOI_SHA256 (make docker verifies both)" >&2; exit 1; } \
     && artifact="chezmoi_${CHEZMOI_VERSION}_linux_$(dpkg --print-architecture).tar.gz" \
     && base_url="https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}" \
     && cd /tmp \
     && curl -fsSLO "${base_url}/${artifact}" \
-    && curl -fsSL "${base_url}/chezmoi_${CHEZMOI_VERSION}_checksums.txt" | grep "  ${artifact}$" | sha256sum --check --strict \
+    && echo "${CHEZMOI_SHA256}  ${artifact}" | sha256sum --check --strict \
     && tar -xzf "${artifact}" chezmoi \
     && sudo install -m 0755 chezmoi /usr/local/bin/chezmoi \
     && rm -f chezmoi "${artifact}"

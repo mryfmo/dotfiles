@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 
 # @file install/ubuntu/client/zed.sh
-# @brief Install the Zed editor on Ubuntu client machines from a pinned GitHub release.
+# @brief Install the Zed editor on Ubuntu client machines from its newest cooled-down GitHub release.
 # @description
-#   Downloads and verifies a pinned Zed Linux release tarball for the current
-#   architecture, extracts it under ~/.local, and exposes ~/.local/bin/zed.
-#   Idempotent: skips the download when the pinned version is already
-#   installed. Requires ZED_PIN_VERSION and ZED_LINUX_{AMD64,ARM64}_SHA256
-#   from scripts/lib/installer-pins.sh.
+#   Resolves the newest Zed release that is at least 72 hours old, verifies the
+#   Linux tarball against the release's GitHub attestation with an authenticated
+#   gh, extracts it under ~/.local, and exposes ~/.local/bin/zed. Runs on every
+#   chezmoi apply: it skips when the resolved release is installed, installs
+#   nothing (and keeps any installed Zed) when the release cannot be resolved,
+#   and installs nothing without an authenticated gh, because Zed publishes no
+#   other verification. Only a failed attestation fails the apply.
 
 set -Eeuo pipefail
 
@@ -17,19 +19,21 @@ fi
 
 readonly ZED_APP_DIR="${HOME}/.local/share/zed.app"
 readonly ZED_BIN_LINK="${HOME}/.local/bin/zed"
+readonly ZED_RELEASE_REPO="zed-industries/zed"
+
+# The chezmoi script includes scripts/lib/github-release.sh before this file; a direct run sources it.
+if ! declare -F github_release_tag > /dev/null; then
+    # shellcheck source=scripts/lib/github-release.sh
+    source "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/github-release.sh"
+fi
 
 #
-# @description Print the Zed release artifact name and its expected SHA256 for this architecture.
-# @stdout Two lines: artifact name, then its expected SHA256.
+# @description Print the Zed release artifact name for this architecture.
 #
 function zed_artifact() {
     case "$(uname -m)" in
-    x86_64 | amd64)
-        printf 'zed-linux-x86_64.tar.gz\n%s\n' "${ZED_LINUX_AMD64_SHA256}"
-        ;;
-    aarch64 | arm64)
-        printf 'zed-linux-aarch64.tar.gz\n%s\n' "${ZED_LINUX_ARM64_SHA256}"
-        ;;
+    x86_64 | amd64) printf 'zed-linux-x86_64.tar.gz\n' ;;
+    aarch64 | arm64) printf 'zed-linux-aarch64.tar.gz\n' ;;
     *)
         printf 'Unsupported Zed architecture: %s\n' "$(uname -m)" >&2
         return 1
@@ -38,36 +42,43 @@ function zed_artifact() {
 }
 
 #
-# @description Report whether the installed Zed already matches the pinned version.
+# @description Print the installed Zed version, or nothing when Zed is not installed or cannot
+#   report one, so a broken install is replaced like a missing one.
 #
-function zed_up_to_date() {
-    [ -x "${ZED_BIN_LINK}" ] || return 1
-    "${ZED_BIN_LINK}" --version 2> /dev/null |
-        awk -v expected="${ZED_PIN_VERSION#v}" '$1 == "Zed" && $2 == expected { found = 1 } END { exit !found }'
+function zed_installed_version() {
+    local output
+    [ -x "${ZED_BIN_LINK}" ] || return 0
+    # A binary that exits non-zero is broken whatever it printed, so it reports no version.
+    output="$("${ZED_BIN_LINK}" --version 2> /dev/null)" || return 0
+    printf '%s\n' "${output}" | awk '$1 == "Zed" { print $2; exit }'
 }
 
 #
-# @description Download, verify, and atomically install the pinned Zed release.
+# @description Download a Zed release, verify it against the release attestation, and atomically install it.
+# @arg $1 string The release tag.
+# @exitcode 2 gh is absent or not authenticated, so nothing was installed.
+# @exitcode 3 The archive could not be downloaded, so nothing was installed.
 #
-function install_pinned_zed() (
-    local artifact checksum actual download tmpdir staging="${ZED_APP_DIR}.tmp"
-    {
-        read -r artifact
-        read -r checksum
-    } < <(zed_artifact) || return
-
-    download="$(mktemp)" || return
+function install_zed_release() (
+    local tag="$1" artifact download status=0 tmpdir staging="${ZED_APP_DIR}.tmp"
+    artifact="$(zed_artifact)" || return
     tmpdir="$(mktemp -d)" || return
-    trap 'rm -f "${download}"; rm -rf "${tmpdir}" "${staging}"' EXIT
+    trap 'rm -rf "${tmpdir}" "${staging}"' EXIT
+    download="${tmpdir}/${artifact}"
 
-    curl -fsSL "https://github.com/zed-industries/zed/releases/download/${ZED_PIN_VERSION}/${artifact}" -o "${download}" || return
-    actual="$(sha256sum "${download}" | awk '{ print $1 }')"
-    [ "${actual}" = "${checksum}" ] || {
-        printf 'Zed checksum mismatch for %s.\n' "${artifact}" >&2
+    curl -fsSL "https://github.com/${ZED_RELEASE_REPO}/releases/download/${tag}/${artifact}" -o "${download}" || return 3
+    github_release_attestation "${ZED_RELEASE_REPO}" "${tag}" "${download}" || status=$?
+    case "${status}" in
+    0) ;;
+    2) return 2 ;;
+    *)
+        printf 'Zed %s failed its GitHub release attestation; nothing was installed.\n' "${tag}" >&2
         return 1
-    }
+        ;;
+    esac
 
-    tar -xzf "${download}" -C "${tmpdir}" || return
+    # Exit 1, never tar's own 2, which main would read as "gh not ready".
+    tar -xzf "${download}" -C "${tmpdir}" || return 1
     mkdir -p "$(dirname "${ZED_APP_DIR}")" || return
     rm -rf "${staging}"
     mv "${tmpdir}/zed.app" "${staging}" || return
@@ -84,14 +95,53 @@ function link_zed_bin() {
 }
 
 #
-# @description Install Zed from a pinned GitHub release, skipping if already current.
+# @description Install or update Zed to the newest cooled-down release.
 #
 function main() {
-    if zed_up_to_date; then
+    local installed status=0 tag
+    # gh is a mise tool; its shim supplies the API token when no gh is on PATH yet. The attestation
+    # checks put the shim first themselves (scripts/lib/github-release.sh).
+    PATH="${PATH}:${HOME}/.local/share/mise/shims"
+    installed="$(zed_installed_version)"
+    if ! tag="$(github_release_tag "${ZED_RELEASE_REPO}")"; then
+        # Offline or rate-limited: never fail the apply over Zed; the next make update retries.
+        if [ -n "${installed}" ]; then
+            printf 'warning: could not resolve a Zed release; Zed %s stays.\n' "${installed}" >&2
+        else
+            printf 'zed not installed: could not resolve a %s release; the next make update retries.\n' "${ZED_RELEASE_REPO}" >&2
+        fi
         return 0
     fi
-    install_pinned_zed || return
-    link_zed_bin
+    # Zed updates itself, so an installed release at or past the cooled-down one stays.
+    if [ -n "${installed}" ] && [ "$(printf '%s\n%s\n' "${tag#v}" "${installed}" | sort -V | tail -n 1)" = "${installed}" ]; then
+        [ "${installed}" = "${tag#v}" ] ||
+            printf 'zed %s stays: it is newer than the cooled-down %s (Zed updates itself).\n' "${installed}" "${tag}" >&2
+        return 0
+    fi
+    # Checked before the download: without an authenticated gh nothing can be verified.
+    github_attestation_ready || status=2
+    [ "${status}" -ne 0 ] || install_zed_release "${tag}" || status=$?
+    case "${status}" in
+    0) link_zed_bin ;;
+    2)
+        if [ -n "${installed}" ]; then
+            printf 'zed %s stays (not updated to %s): run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh.\n' "${installed}" "${tag}" >&2
+        else
+            printf 'zed not installed: run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh.\n' >&2
+        fi
+        return 0
+        ;;
+    3)
+        # The API answered but the download did not: like offline, never fail the apply over Zed.
+        if [ -n "${installed}" ]; then
+            printf 'warning: could not download Zed %s; Zed %s stays.\n' "${tag}" "${installed}" >&2
+        else
+            printf 'zed not installed: could not download Zed %s; the next make update retries.\n' "${tag}" >&2
+        fi
+        return 0
+        ;;
+    *) return "${status}" ;;
+    esac
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -3,7 +3,9 @@
 # @file install/common/sheldon.sh
 # @brief Install the Sheldon shell plugin manager.
 # @description
-#   Builds the pinned crates.io release with its packaged Cargo.lock.
+#   Builds the newest crates.io release with its packaged Cargo.lock; cargo
+#   checks the crate against the registry index checksum. Runs on every chezmoi
+#   apply and skips when the newest crate is already installed.
 
 set -Eeuo pipefail
 
@@ -13,26 +15,51 @@ fi
 
 readonly BIN_DIR="${HOME}/.local/bin"
 readonly MISE_BIN="${HOME}/.local/bin/mise"
-# Rendered from assets.sheldon in home/dot_agents/agent-config.yaml; change it there.
-readonly SHELDON_VERSION="0.8.5"
-# crates.io API: https://crates.io/api/v1/crates/sheldon/0.8.5
-# Registry SHA-256: 43a2d8fc0be4474cfe2d603992c7e9765c9a0f87465aabcfc0603c1de4290b4d
 
 #
 # @description Build and install the crates.io Sheldon release with locked dependencies.
+# @exitcode 3 cargo could not download the crate or the index, so nothing was installed.
+# @exitcode * cargo's own status for any other failure, a checksum among them (a 3 becomes 1).
 #
 function install_sheldon() (
-    local stage="" tmpdir
+    local stage="" status=0 tmpdir
     tmpdir="$(mktemp -d)" || return
     trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
     mkdir -p "${BIN_DIR}" || return
     stage="$(mktemp "${BIN_DIR}/sheldon.tmp.XXXXXX")" || return
-    CARGO_INSTALL_ROOT="${tmpdir}" "${MISE_BIN}" exec -- cargo install \
-        --locked --features vendored --registry crates-io \
-        --version "=${SHELDON_VERSION}" sheldon || return
+    # cargo's errors still reach stderr; the copy tells a download failure from the rest.
+    { CARGO_INSTALL_ROOT="${tmpdir}" "${MISE_BIN}" exec -- cargo install \
+        --locked --features vendored --registry crates-io sheldon 2>&1 1>&3 | tee "${tmpdir}/cargo.log" >&2; } 3>&1 || status=$?
+    if [ "${status}" -ne 0 ]; then
+        # Keep cargo's own status (101 for every error), except that 3 means a download failure here.
+        [ "${status}" -ne 3 ] || status=1
+        # A checksum is verification, even inside a download error.
+        grep -qi 'checksum' "${tmpdir}/cargo.log" && return "${status}"
+        grep -qiE 'failed to download|resolve host|failed to update registry|spurious network|timed out' "${tmpdir}/cargo.log" && return 3
+        return "${status}"
+    fi
     install -m 0755 "${tmpdir}/bin/sheldon" "${stage}" || return
     mv -f "${stage}" "${BIN_DIR}/sheldon"
 )
+
+#
+# @description Print the installed Sheldon version, or nothing when it is absent or cannot report one.
+#
+function sheldon_installed_version() {
+    local output
+    [ -x "${BIN_DIR}/sheldon" ] || return 0
+    # A binary that exits non-zero is broken whatever it printed, so it reports no version.
+    output="$("${BIN_DIR}/sheldon" --version 2> /dev/null)" || return 0
+    printf '%s\n' "${output}" | awk '$1 == "sheldon" { print $2; exit }'
+}
+
+#
+# @description Print the newest Sheldon version on crates.io, as cargo's own index search reports it.
+#
+function sheldon_newest_version() {
+    "${MISE_BIN}" exec -- cargo search sheldon --limit 1 2> /dev/null |
+        awk -F'"' '$1 == "sheldon = " { print $2; found = 1; exit } END { exit !found }'
+}
 
 #
 # @description Remove the installed `sheldon` binary.
@@ -42,10 +69,26 @@ function uninstall_sheldon() {
 }
 
 #
-# @description Run the Sheldon installation flow.
+# @description Install Sheldon, or update it when crates.io has a newer release.
 #
 function main() {
-    install_sheldon
+    local installed newest status=0
+    installed="$(sheldon_installed_version)"
+    newest="$(sheldon_newest_version)" || newest=""
+    if [ -n "${installed}" ]; then
+        if [ -z "${newest}" ]; then
+            printf 'warning: could not look up the newest sheldon crate; sheldon %s stays.\n' "${installed}" >&2
+            return 0
+        fi
+        [ "${installed}" != "${newest}" ] || return 0
+    fi
+    install_sheldon || status=$?
+    # A failed download keeps a working sheldon; a failed check never does.
+    if [ "${status}" -eq 3 ] && [ -n "${installed}" ]; then
+        printf 'warning: could not download the sheldon %s crate; sheldon %s stays.\n' "${newest}" "${installed}" >&2
+        return 0
+    fi
+    return "${status}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

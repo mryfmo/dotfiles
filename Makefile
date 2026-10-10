@@ -206,9 +206,11 @@ render-check:
 # BASE=<ref> adds the committed <ref>...HEAD changes and requires PR_FEEDBACK_EVIDENCE,
 # plus AUDIT_EVIDENCE (and AUDIT_DISPOSITIONS for an incorrect verdict) when the change needs
 # review, for PR integration (home/dot_config/claude/rules/pr-integration.md; agmsg-orchestration
-# SKILL Orchestrator Playbook step 10).
+# SKILL Orchestrator Playbook step 10). REVIEW_TREE=<path> runs this checkout's gate with <path> as
+# its cwd, so `make -C <main> require-crit-review REVIEW_TREE=<review worktree>` judges the review
+# tree with main's script; relative evidence paths then resolve against <path>.
 require-crit-review:
-	@AGENT_REVIEWED="$(AGENT_REVIEWED)" CRIT_REVIEWED="$(CRIT_REVIEWED)" CRIT_REVIEW="$(CRIT_REVIEW)" REVIEW_EVIDENCE="$(REVIEW_EVIDENCE)" PR_FEEDBACK_EVIDENCE="$(PR_FEEDBACK_EVIDENCE)" ./scripts/require-crit-review.py $(if $(BASE),--base "$(BASE)",)
+	@$(if $(REVIEW_TREE),cd "$(REVIEW_TREE)" && ,)AGENT_REVIEWED="$(AGENT_REVIEWED)" CRIT_REVIEWED="$(CRIT_REVIEWED)" CRIT_REVIEW="$(CRIT_REVIEW)" REVIEW_EVIDENCE="$(REVIEW_EVIDENCE)" PR_FEEDBACK_EVIDENCE="$(PR_FEEDBACK_EVIDENCE)" $(if $(REVIEW_TREE),"$(CURDIR)/scripts/require-crit-review.py",./scripts/require-crit-review.py) $(if $(BASE),--base "$(BASE)",)
 
 #
 # Documentation

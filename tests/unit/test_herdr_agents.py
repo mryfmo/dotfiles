@@ -2834,6 +2834,33 @@ exit {exit_code}
             result.stdout.splitlines(),
         )
 
+    def test_regime_boundary_check_validates_format_2_task_files_and_skips_legacy(self) -> None:
+        main, worktree, other = self.boundary_repo()
+        (worktree / "scripts/lib").mkdir()
+        shutil.copy(ROOT / "scripts/validate-task.py", worktree / "scripts")
+        shutil.copy(ROOT / "scripts/lib/high_risk_paths.py", worktree / "scripts/lib")
+        tasks = main / ".orchestration/tasks"
+        tasks.mkdir(parents=True)
+        (tasks / "bad-a01.md").write_text(
+            "---\nformat: 2\ntask_id: other-a01\nkind: docs\ninvariants:\n  INV-1: x\n---\n# bad\n"
+        )
+        (tasks / "legacy-a01.md").write_text("# AGMSG-TASK legacy, no front matter\n")
+        (tasks / "good-a01.md").write_text(
+            "---\nformat: 2\ntask_id: good-a01\nkind: docs\ninvariants:\n  INV-1: x\n---\n# good\n"
+        )
+
+        result = self.run_boundary_check(worktree)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        lines = [line for line in result.stdout.splitlines() if "validate-task.py" in line]
+        self.assertEqual(
+            [
+                f"regime-boundary: task file fails scripts/validate-task.py: {tasks.resolve()}/bad-a01.md: "
+                "task_id: 'other-a01' is not the file stem 'bad-a01'"
+            ],
+            lines,
+        )
+
     def test_regime_boundary_check_flags_empty_seats_only(self) -> None:
         main, worktree, other = self.boundary_repo()
         scripts = self.home_dir / ".agents/skills/agmsg/scripts"

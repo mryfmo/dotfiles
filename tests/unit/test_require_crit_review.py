@@ -1163,5 +1163,32 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertNotIn("Task-level audit evidence is required", result.stdout)
 
 
+class ReviewTreeTest(unittest.TestCase):
+    """`make -C <main> require-crit-review REVIEW_TREE=<tree>` runs main's gate with <tree> as its cwd (T124)."""
+
+    def make(self, *args: str) -> subprocess.CompletedProcess[str]:
+        env = {k: v for k, v in os.environ.items() if k not in ("REVIEW_TREE", "BASE", "MAKEFLAGS", "MFLAGS")}
+        return subprocess.run(
+            ["make", "-s", "-C", str(ROOT), *args], env=env, check=False, text=True, capture_output=True
+        )
+
+    def test_review_tree_runs_this_checkouts_gate_in_that_tree(self) -> None:
+        plain = self.make("-n", "require-crit-review").stdout.strip()
+        self.assertTrue(plain.startswith('AGENT_REVIEWED="'), plain)
+        self.assertIn(" ./scripts/require-crit-review.py", plain)
+        self.assertNotIn("cd ", plain)
+
+        tree = Path(tempfile.mkdtemp(prefix="review-tree-"))
+        self.addCleanup(shutil.rmtree, tree, ignore_errors=True)
+        dry = self.make("-n", "require-crit-review", f"REVIEW_TREE={tree}", "BASE=origin/main").stdout.strip()
+        self.assertTrue(dry.startswith(f'cd "{tree}" && AGENT_REVIEWED="'), dry)
+        self.assertIn(f'"{ROOT}/scripts/require-crit-review.py" --base "origin/main"', dry)
+
+        # Run for real: the gate's git checks see the review tree (not a repository here), not this checkout.
+        result = self.make("require-crit-review", f"REVIEW_TREE={tree}")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("Review guard skipped: not inside a git repository.", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

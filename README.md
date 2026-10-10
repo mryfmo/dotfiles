@@ -373,6 +373,20 @@ answered under the ChatGPT login (probe 2026-10-05). Both xhigh settings
 answered on 2026-10-09: the Codex audit probe under the ChatGPT login, the
 Claude worker probe under the Anthropic login.
 
+Every task is a `.orchestration/tasks/<task id>.md` file whose `format: 2`
+front matter `scripts/validate-task.py <task file>` accepts (task id, kind,
+allowed files, invariants, and waves above 15 files); the worker runs it before
+any work and blocks on a failure, and `make check-regime-boundary` lists every
+failing `format: 2` file, while older task files are grandfathered. A task
+whose allowed files touch the design tier of `scripts/lib/high_risk_paths.py`
+(installers, release and gate scripts, the manifest, permgate, hooks, sandbox
+and permission settings, auth helpers) is a security task: it also names a
+threat model, trust anchors and a reviewed design, whose canonical hash
+`validate-task.py <design> --print-design-hash` prints. The PR gate runs from
+`main` against the review tree,
+`make -C <main checkout> require-crit-review REVIEW_TREE=<review worktree>`, so
+a PR never changes the gate that admits it.
+
 On Ubuntu 24.04 and later, `kernel.apparmor_restrict_unprivileged_userns=1`
 stops `/usr/bin/bwrap` from creating the user namespaces that sandboxed Codex
 runs need. Rather than relaxing that sysctl globally, `chezmoi apply` installs

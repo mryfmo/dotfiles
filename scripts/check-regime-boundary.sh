@@ -20,7 +20,9 @@
 #   workspaces and worker tabs in the managed workspace (only when `herdr`
 #   is reachable); and a bare-id orchestrator
 #   seat lock, through the one implementation in
-#   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`).
+#   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`); and
+#   every `format: 2` task file in the main checkout's `.orchestration/tasks/`
+#   that fails scripts/validate-task.py (older task files are grandfathered).
 #   Every probe is read-only, and a missing tool skips its check.
 # @option --report Print the same lines but always exit 0 (for validate-agent-assets).
 # @exitcode 0 If no violation was found, or with --report.
@@ -193,6 +195,19 @@ spec.loader.exec_module(module)
 print("\n".join(module.orchestrator_seat_lock_warnings(Path(sys.argv[2]))))
 PY
 )
+
+# Every `format: 2` task file in the main checkout must pass the task validator;
+# older task files are grandfathered (the validator reports them `legacy`).
+if [[ -f ${root}/scripts/validate-task.py ]] && command -v python3 > /dev/null 2>&1; then
+    for task in "${main}"/.orchestration/tasks/*.md; do
+        [[ -f ${task} ]] || continue
+        if ! output="$(python3 "${root}/scripts/validate-task.py" "${task}" 2>&1)"; then
+            while IFS= read -r line; do
+                [[ -n ${line} && ${line} != *": warning: "* ]] && violations+=("task file fails scripts/validate-task.py: ${line}")
+            done <<< "${output}"
+        fi
+    done
+fi
 
 for violation in ${violations[@]+"${violations[@]}"}; do
     printf 'regime-boundary: %s\n' "${violation}"

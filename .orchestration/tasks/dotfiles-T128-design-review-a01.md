@@ -48,3 +48,35 @@ v4: V1 split into V1 (validation only) and V1c (CI check) on operator direction 
 ## Round 5 (orchestrator, 2026-10-11)
 
 v5 changes INV-3 only: `check=` is a test selector or `repro:<id>` with command and output in revise.yaml; the `ci:<job>` form is gone (Codex Bot thread 4239305441 on PR #316). Confirm as a diff check; receipt `…-design-review-round5.md`, `round: 5`, `previous:` round 4; RESULT with `round=5`. max_turns=4.
+
+## Round 6 (orchestrator, 2026-10-11)
+
+v6 adopts the Codex Bot's ten findings on boundary head c1e2582b: INV-1 (literal first segment, wildcard tier by prefix, legacy ids only under .orchestration/tasks/ on main), INV-2 (sentences byte-for-byte), INV-3 (previous_head in ACCEPTANCE and revise.yaml, cross-checked by the host gate), INV-5 (instruction root and schema from main, worktree as --add-dir data), INV-7 (a Claude and a Codex review per design hash), INV-12 (five gaming paths), stage-0 row, section 10. Confirm the six changed invariants and the new INV-7 against the Bot threads 4239399740-4239399761 on PR #316. Receipt `…-design-review-round6.md`, `round: 6`, `previous:` round 5; RESULT with `round=6`. A Codex read-only review of the same hash runs in parallel as `…-design-review-round6-codex.md`. max_turns=5.
+
+## Round 7 (orchestrator, 2026-10-11)
+
+v7 changes INV-7 as round 6 asked (Codex review = codex exec read-only under a codex-review identity with its own receipt and RESULT; the Bot review is swept feedback), the enforcement row and V4 accordingly, and adds the bare-mode skills premise. Confirm INV-7 and that nothing else moved. Receipt `…-design-review-round7.md`, `round: 7`, `previous:` round 6; RESULT with `round=7`. max_turns=4.
+
+## Round 8 (orchestrator, 2026-10-11)
+
+v8 answers the first Codex review (round 7, reject): INV-1, 3, 4, 5, 6, 9, 10, 12 changed as section 10 lists; one Codex P2 (bare-mode skills) refuted from the headless page. Review the eight changed invariants and section 9's one-account residual; say whether the ask-rule waiver is the strongest friction the machine offers or whether a stronger anchor exists. Receipt `…-design-review-round8.md`, `round: 8`, `previous:` round 7; RESULT with `round=8`. max_turns=6.
+
+## Round 9 (orchestrator, 2026-10-11)
+
+Supersedes round 8 if still open. v9 answers the second Codex review: INV-2 (1000-line cap under tests/), INV-3 (exact selector run on both heads in a required `revise-check` job), INV-4 (every premise dispositioned by each reviewer and the auditor), INV-5 (`.claude/**` refusal inside the invariant), INV-10 (draft PR created_at; `after` prerequisites), INV-12 (`main-tests` required job, V5c), two enforcement rows. Review the six changed invariants and the new V5c; disposition every premise in your receipt (holds|fails|unverifiable) as INV-4 now asks. Receipt `…-design-review-round9.md`, `round: 9`; RESULT with `round=9`. max_turns=6.
+
+## Round 10 (orchestrator, 2026-10-11)
+
+Supersedes round 9 if still open. v10 folds your round 8 (INV-1 owner and row, INV-5 stale-manifest wording, your sandbox-write-roots anchor) and Codex round 9 (INV-5 refusal restored after a silently failed edit, INV-12 contract-first with V0 main-tests first, the 2026-11-02 pull_request_target policy). Review INV-1, 2, 5, 6, 12, the new V0 and the contract-first rule; disposition every premise (holds|fails|unverifiable). Receipt `…-design-review-round10.md`, `round: 10`; RESULT with `round=10`. max_turns=6.
+
+## Round 11 (orchestrator, 2026-10-11)
+
+Supersedes round 10 if still open. v11 changes INV-12 (the union of your round-9 rule and Codex round 10: main modules for undeclared scripts, dormant REGIME_CONTRACT=1 contracts for declared ones, contract PRs required for design-tier waves) and INV-1 (record location is the guard, ask rule second layer). Review those two, V0 as rewritten, and confirm the rest unchanged; disposition every premise. Receipt `…-design-review-round11.md`, `round: 11`; RESULT with `round=11`. max_turns=6.
+
+## Round 12 (orchestrator, 2026-10-11)
+
+v12 adds your two INV-12 clauses (promotion by removing the decorator; an empty contract fails a design-tier implementation PR) to INV-12 and V0. Confirmation only; receipt `…-design-review-round12.md`, `round: 12`; RESULT with `round=12`. max_turns=4.
+
+## Round 13 (orchestrator, 2026-10-11)
+
+v13 adds the Codex round-12 clause to INV-12 (main-tests fails an implementation PR whose declared test module still carries a contract marker). Confirmation; receipt `…-design-review-round13.md`, `round: 13`; RESULT with `round=13`. max_turns=4.

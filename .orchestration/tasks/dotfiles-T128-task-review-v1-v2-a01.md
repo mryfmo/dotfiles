@@ -26,3 +26,43 @@ After design v4: review `dotfiles-T128-v1-task-schema-a01` (now validation only,
 ## Round 4 (orchestrator, 2026-10-11)
 
 Diff check of V1c (V1c-1, V1c-2, and the Bot-driven steps (b) and (c): exactly one task.md per PR, every changed path outside .orchestration/ within allowed_files) and V2 (Bot-driven: mask before hashing, reused-worktree validation, fallback isolation with --bare or disableAllHooks, the overlap sentence). V1 and V1b unchanged. Receipt `…-task-review-v1-v2-a01-round4.md`; RESULT with `round=4`. max_turns=4.
+
+## Round 5 (orchestrator, 2026-10-11)
+
+R4-1 was already applied (all four pointers name round 5); R4-2: item 3 gains `--manifest <path>` for tests and item 6 uses it. One-line diff check of V1c; receipt `…-task-review-v1-v2-a01-round5.md`; RESULT with `round=5`. max_turns=3.
+
+## Round 6 (orchestrator, 2026-10-11)
+
+After design v6: diff check of V1 (legacy binding to .orchestration/tasks/, --no-grandfather, literal first segment, wildcard tier rule, tests), V1b (sentence comparison), V1c (--no-grandfather on branch copies), V2 (instruction root and schema from main, --add-dir worktree), all four pointing at the round-6 receipt with v6 sentences verbatim. Receipt `…-task-review-v1-v2-a01-round6.md`; RESULT with `round=6`. max_turns=4.
+
+## Round 7 (orchestrator, 2026-10-11)
+
+Supersedes round 6 if still open: the four files now point at the round-7 receipt with v7 sentences; V2 additionally refuses the claude fallback when the head changes .claude/skills/** (round-6 INV-5 note) with its premise and test. Diff check against the round-6 items plus that change. Receipt `…-task-review-v1-v2-a01-round7.md`; RESULT with `round=7`. max_turns=4.
+
+## Round 8 (orchestrator, 2026-10-11)
+
+After design v8: V1 and V1c carry INV-1 v8 verbatim, V2 INV-5 v8 verbatim plus the `inputs` manifest in the schema, V1b unchanged but pointer; all four point at round 8. Diff check. Receipt `…-task-review-v1-v2-a01-round8.md`; RESULT with `round=8`. max_turns=4.
+
+## Round 9 (orchestrator, 2026-10-11)
+
+Supersedes round 8 if still open. After design v9: V1 adds the `after` key; V1b adds the tests_added cap; V2 refuses any `.claude/**` change for the fallback and adds the `premises` map to the schema; V1c pointer only. Diff check; receipt `…-task-review-v1-v2-a01-round9.md`; RESULT with `round=9`. max_turns=4.
+
+## Round 10 (orchestrator, 2026-10-11)
+
+Supersedes round 9 if still open. After design v10: V1 and V1c carry INV-1 v10, V1b INV-2 v10 (contract-task mapping), V2 INV-5 v10 plus the runner-computed manifest; V1c names the Actions event policy action. Diff check; receipt `…-task-review-v1-v2-a01-round10.md`; RESULT with `round=10`. max_turns=4.
+
+## Round 10 addendum (orchestrator, 2026-10-11)
+
+A fifth file joins the review: `.orchestration/tasks/dotfiles-T128-v0-main-tests-a01.md` (wave V0, INV-12, the first implementing wave). Full six-question review for V0; include it in the round-10 receipt.
+
+## Round 11 (orchestrator, 2026-10-11)
+
+Supersedes round 10 if still open. Five files: V0 (two-mode main-tests, contract decorator, INV-12 v11), V1 and V1c (INV-1 v11), V1b and V2 (pointer only). Full review for V0, diff check for the rest; receipt `…-task-review-v1-v2-a01-round11.md`; RESULT with `round=11`. max_turns=5.
+
+## Round 12 (orchestrator, 2026-10-11)
+
+Supersedes round 11 if still open. V0 carries INV-12 v12 and the two new sentences (steps 1(b), 1b, 3(b2), 4); the other four files move pointer only. Diff check; receipt `…-task-review-v1-v2-a01-round12.md`; RESULT with `round=12`. max_turns=4.
+
+## Round 13 (orchestrator, 2026-10-11)
+
+V0 rewritten with R11-1 (main tests overlaid on a git-archive copy of the PR tree), R11-2 (declared modules from the task's tests/unit entries; undeclared mode runs every other main module), R11-3 (task.md read with PyYAML), step 1(c) promotion check and test (b3); the ROOT premise added (34/34). Other four files: pointer and INV sentence only. Full check of V0, diff for the rest; receipt `…-task-review-v1-v2-a01-round13.md`; RESULT with `round=13`. max_turns=5.

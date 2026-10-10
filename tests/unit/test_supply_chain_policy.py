@@ -491,7 +491,11 @@ main
         # The audit's scratch install lifts npm's window only for a tool mise's excludes list names.
         self.assertEqual(1, upgrade.count("--min-release-age=0"))
         check = upgrade.split("\nfunction check_npm_tool_provenance() {\n", 1)[1].split("\n}\n", 1)[0]
-        self.assertIn('*"\\"${mise_tool}\\""*) window="--min-release-age=0" ;;', check)
+        self.assertIn('[ -z "${day_one}" ] || window="--min-release-age=0"', check)
+        verify = upgrade.split("\nfunction verify_npm_provenance() {\n", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn('*"\\"${mise_tool}\\""*) day_one=1 ;;', verify)
+        # A cooldown-exempt release without verified provenance is removed, not reported as signature-only.
+        self.assertIn('uninstall "${mise_tool}@${version}"', verify)
 
     def test_mise_config_backends_and_http_tools(self):
         with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:

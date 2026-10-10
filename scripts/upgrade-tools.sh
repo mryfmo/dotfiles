@@ -417,29 +417,26 @@ function upgrade_mise_tools() {
 }
 
 #
-# @description Check one npm: tool at its installed version with npm audit signatures --include-attestations,
-#   in a scratch install with lifecycle scripts off. npm checks the registry signature, and a provenance
+# @description Check one npm: tool at a version with npm audit signatures --include-attestations, in a
+#   scratch install with lifecycle scripts off. npm checks the registry signature, and a provenance
 #   attestation where one is published, over the integrity hash it verified at download; it does not
 #   re-hash the files on disk, so this proves the version came from a signed, attested publish.
 # @arg $1 string mise tool name, for example npm:@openai/codex.
-# @arg $2 path A scratch directory for this tool.
-# @arg $3 string The minimum_release_age_excludes list as mise prints it.
+# @arg $2 string The installed version.
+# @arg $3 path A scratch directory for this tool.
+# @arg $4 string Non-empty for a tool outside the cooldown, whose install lifted npm's window.
 # @exitcode 0 The registry signature and the provenance attestation verified.
 # @exitcode 1 A signature or an attestation failed to verify.
 # @exitcode 3 The tool could not be fetched or checked, so nothing was verified.
 # @exitcode 4 The registry signature verified; the package publishes no attestation.
 #
 function check_npm_tool_provenance() {
-    local mise_tool="$1" dir="$2" excludes="$3" output status=0 version window=""
+    local mise_tool="$1" version="$2" dir="$3" day_one="$4" output status=0 window=""
 
-    version="$(run_mise_with_isolated_git_config current "${mise_tool}")" || return 3
-    [ -n "${version}" ] || return 3
     { mkdir -p "${dir}" && printf '{"private":true}\n' > "${dir}/package.json"; } || return 3
-    # A tool excluded from mise's cooldown installs with npm's window lifted (its install_env in the
-    # mise config), so its scratch copy is fetched the same way; every other tool keeps ~/.npmrc's window.
-    case "${excludes}" in
-    *"\"${mise_tool}\""*) window="--min-release-age=0" ;;
-    esac
+    # A tool outside mise's cooldown installs with npm's window lifted (its install_env in the mise
+    # config), so its scratch copy is fetched the same way; every other tool keeps ~/.npmrc's window.
+    [ -z "${day_one}" ] || window="--min-release-age=0"
     (cd "${dir}" && npm_config_cache="${dir%/*}/cache" mise exec node -- npm install --ignore-scripts --no-audit --no-fund \
         ${window:+"${window}"} "${mise_tool#npm:}@${version}") > /dev/null 2>&1 || return 3
     output="$(cd "${dir}" && npm_config_cache="${dir%/*}/cache" \
@@ -459,12 +456,16 @@ function check_npm_tool_provenance() {
 }
 
 #
-# @description Verify every current npm: tool's registry signature and provenance attestation. A failed
-#   check is a required failure naming the package, a package without an attestation is listed as
-#   signature-only, and a tool that cannot be fetched for the check only warns.
+# @description Verify every current npm: tool's registry signature and provenance attestation. For a
+#   tool behind the cooldown, a failed check is a required failure naming the package, a package
+#   without an attestation is listed as signature-only, and a tool that cannot be fetched only warns.
+#   A tool outside the cooldown (minimum_release_age_excludes) stays installed only with a verified
+#   attestation: a missing or failed one is a required failure and removes that version, and a check
+#   that cannot run passes only when an earlier run verified the same version.
 #
 function verify_npm_provenance() {
-    local excludes failed=0 index=0 mise_tool mise_tools scratch signature_only="" status
+    local day_one excludes failed=0 index=0 marker mise_tool mise_tools scratch signature_only="" status version
+    local state="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/npm-provenance"
 
     has_command mise || return 1
     mise_tools="$(current_mise_tools)" || return 1
@@ -475,8 +476,39 @@ function verify_npm_provenance() {
     while IFS= read -r mise_tool; do
         [[ "${mise_tool}" == npm:* ]] || continue
         index=$((index + 1))
-        status=0
-        check_npm_tool_provenance "${mise_tool}" "${scratch}/${index}" "${excludes}" || status=$?
+        day_one=""
+        case "${excludes}" in
+        *"\"${mise_tool}\""*) day_one=1 ;;
+        esac
+        version="$(run_mise_with_isolated_git_config current "${mise_tool}" 2> /dev/null)" || version=""
+        status=3
+        if [ -n "${version}" ]; then
+            status=0
+            check_npm_tool_provenance "${mise_tool}" "${version}" "${scratch}/${index}" "${day_one}" || status=$?
+        fi
+        if [ -n "${day_one}" ]; then
+            marker="${state}/${mise_tool//[^A-Za-z0-9._-]/_}"
+            if [ "${status}" -eq 0 ]; then
+                { mkdir -p "${state}" && printf '%s\n' "${version}" > "${marker}"; } ||
+                    printf 'warning: could not record the verified %s in %s\n' "${mise_tool}" "${marker}" >&2
+            elif [ "${status}" -eq 3 ] && [ -n "${version}" ] && [ "$(cat "${marker}" 2> /dev/null)" = "${version}" ]; then
+                printf 'optional warning: could not re-check %s %s; an earlier run verified its provenance\n' "${mise_tool}" "${version}" >&2
+                ((optional_warnings += 1))
+                continue
+            elif [ "${status}" -eq 3 ]; then
+                printf 'npm provenance check failed: %s %s skips the cooldown, and its provenance could not be verified\n' "${mise_tool}" "${version:-(not installed)}" >&2
+                failed=1
+                continue
+            else
+                # A release that skipped the cooldown without verified provenance must not stay runnable.
+                printf 'npm provenance check failed: %s %s skips the cooldown without a verified provenance attestation; removing it\n' "${mise_tool}" "${version}" >&2
+                rm -f "${marker}"
+                run_mise_with_isolated_git_config uninstall "${mise_tool}@${version}" ||
+                    printf 'required: could not remove %s %s; remove it with mise uninstall %s@%s\n' "${mise_tool}" "${version}" "${mise_tool}" "${version}" >&2
+                failed=1
+                continue
+            fi
+        fi
         case "${status}" in
         0) printf 'verified: %s (registry signature and provenance attestation)\n' "${mise_tool}" ;;
         4) signature_only+=" ${mise_tool}" ;;

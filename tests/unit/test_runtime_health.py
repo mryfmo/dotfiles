@@ -1465,7 +1465,7 @@ EOF
                 where) [[ "$2" != npm:ccusage ]] || { [ -d "$CCUSAGE_DIR" ] && printf '%s\n' "$CCUSAGE_DIR"; } ;;
                 settings)
                     [[ "$*" == "settings get minimum_release_age_excludes" ]] || exit 1
-                    [[ "$FAIL_PHASE" == provenance_excluded ]] && printf '["npm:ccusage"]\n' || printf '[]\n'
+                    [[ "$FAIL_PHASE" == provenance_excluded || "$FAIL_PHASE" == day_one* ]] && printf '["npm:ccusage"]\n' || printf '[]\n'
                     ;;
                 exec)
                     while [ "$#" -gt 0 ] && [ "$1" != -- ]; do shift; done
@@ -1483,15 +1483,15 @@ EOF
             printf 'npm %s cache=%s\n' "$*" "${npm_config_cache:-unset}" >> "$TEST_LOG"
             [ -f package.json ] || exit 1
             case "$1:$FAIL_PHASE" in
-                install:provenance_fetch) exit 1 ;;
+                install:*_fetch) exit 1 ;;
                 install:*) exit 0 ;;
-                audit:provenance_attestation_fails)
+                audit:*_attestation_fails)
                     printf 'audited 1 package in 1s\\n\\n1 package has a verified registry signature\\n\\n'
                     printf '1 package has an invalid attestation:\\n\\nccusage@20.0.0 (https://registry.npmjs.org/)\\n'
                     exit 1
                     ;;
-                audit:provenance_signature_only) printf 'audited 1 package in 1s\\n\\n1 package has a verified registry signature\\n' ;;
-                audit:provenance_offline)
+                audit:*_signature_only) printf 'audited 1 package in 1s\\n\\n1 package has a verified registry signature\\n' ;;
+                audit:*_offline*)
                     printf 'npm error code ENOTFOUND\\nnpm error network request to https://registry.npmjs.org failed\\n'
                     exit 1
                     ;;
@@ -1924,6 +1924,45 @@ EOF
                 install = next(line for line in log if line.startswith("npm install "))
                 self.assertEqual(lifted, "--min-release-age=0 ccusage@20.0.0" in install, install)
                 self.assertFalse([line for line in log if line.startswith("npm audit ") and "release-age" in line])
+
+    def test_upgrade_keeps_a_day_one_tool_only_with_verified_provenance(self) -> None:
+        removing = "npm:ccusage 20.0.0 skips the cooldown without a verified provenance attestation; removing it"
+        cases = {
+            "day_one_attested": (0, False, "verified: npm:ccusage (registry signature and provenance attestation)"),
+            "day_one_signature_only": (1, True, removing),
+            "day_one_attestation_fails": (1, True, removing),
+            "day_one_offline": (
+                1,
+                False,
+                "npm:ccusage 20.0.0 skips the cooldown, and its provenance could not be verified",
+            ),
+        }
+        for phase, (returncode, removed, message) in cases.items():
+            with self.subTest(phase=phase):
+                repo, env = self.upgrade_fixture(phase)
+                marker = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-provenance/npm_ccusage"
+
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                self.assertEqual(returncode, result.returncode, result.stdout + result.stderr)
+                self.assertIn(message, result.stdout + result.stderr)
+                log = (repo / "commands.log").read_text().splitlines()
+                self.assertEqual(removed, "mise uninstall npm:ccusage@20.0.0" in log)
+                self.assertNotIn("registry signature only", result.stdout)
+                self.assertEqual(phase == "day_one_attested", marker.is_file() and marker.read_text() == "20.0.0\n")
+
+        # Offline, the version an earlier run verified stays with a warning; nothing is removed.
+        repo, env = self.upgrade_fixture("day_one_offline_verified")
+        marker = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-provenance/npm_ccusage"
+        marker.parent.mkdir(parents=True)
+        marker.write_text("20.0.0\n")
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("could not re-check npm:ccusage 20.0.0; an earlier run verified its provenance", result.stderr)
+        self.assertIn("required failures: 0; optional warnings: 1", result.stdout)
+        self.assertNotIn("mise uninstall npm:ccusage@20.0.0", (repo / "commands.log").read_text().splitlines())
 
     def test_upgrade_uv_tools_prints_nothing_without_uv_tools(self) -> None:
         for phase, upgraded in (("uv_none", False), ("none", True)):

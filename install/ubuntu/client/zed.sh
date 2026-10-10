@@ -97,7 +97,8 @@ function link_zed_bin() {
 #
 function main() {
     local installed status=0 tag
-    # gh is a mise tool; its shim serves when no gh is on PATH yet.
+    # gh is a mise tool; its shim supplies the API token when no gh is on PATH yet. The attestation
+    # checks put the shim first themselves (scripts/lib/github-release.sh).
     PATH="${PATH}:${HOME}/.local/share/mise/shims"
     installed="$(zed_installed_version)"
     if ! tag="$(github_release_tag "${ZED_RELEASE_REPO}")"; then

@@ -136,10 +136,11 @@ function github_release_tag() {
 
 #
 # @description Succeed when a gh at least GITHUB_ATTESTATION_MIN_GH, authenticated to
-#   github.com, can verify GitHub release attestations.
+#   github.com, can verify GitHub release attestations. mise's gh shim comes first, so an
+#   older system gh earlier on PATH (Ubuntu's apt gh predates 2.93.0) never hides it.
 #
 function github_attestation_ready() {
-    local version
+    local PATH="${HOME}/.local/share/mise/shims:${PATH}" version
     command -v gh > /dev/null 2>&1 || return 1
     version="$(gh --version 2> /dev/null | awk 'NR == 1 { print $3 }')"
     if ! printf '%s\n%s\n' "${GITHUB_ATTESTATION_MIN_GH}" "${version}" | awk -F. '
@@ -169,6 +170,8 @@ function github_attestation_ready() {
 # @exitcode 2 gh is absent or not authenticated, so nothing was verified.
 #
 function github_release_attestation() {
+    # The same gh github_attestation_ready checked: mise's shim first.
+    local PATH="${HOME}/.local/share/mise/shims:${PATH}"
     github_attestation_ready || return 2
     gh release verify-asset "$2" "$3" --repo "github.com/$1" || return 1
 }

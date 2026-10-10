@@ -266,6 +266,29 @@ class GithubReleaseTest(unittest.TestCase):
                 if outcome.startswith("gh version unreadable") or outcome == "gh too old":
                     self.assertIn("GHSA-8xvp-7hj6-mcj9", result.stderr)
 
+    def test_attestation_prefers_mise_gh_over_an_older_system_gh(self) -> None:
+        # Ubuntu's apt gh predates 2.93.0; mise's current gh must win even when the old one comes first.
+        asset = self.temp_dir / "asset.tar.gz"
+        asset.write_text("payload\n")
+        self.executable(
+            "gh",
+            f'printf "system-gh %s\\n" "$*" >> "{self.log}"\n[ "$1" = --version ] && printf "gh version 2.45.0\\n"\nexit 0\n',
+        )
+        shim = self.temp_dir / ".local/share/mise/shims/gh"
+        shim.parent.mkdir(parents=True)
+        shim.write_text(
+            f'#!/bin/bash\nprintf "mise-gh %s\\n" "$*" >> "{self.log}"\n[ "$1" = --version ] && printf "gh version 2.93.0\\n"\nexit 0\n'
+        )
+        shim.chmod(0o755)
+
+        result = self.run_helper(f'github_release_attestation owner/repo v1 "{asset}"; echo "rc=$?"; command -v gh')
+
+        self.assertIn("rc=0", result.stdout, result.stderr)
+        self.assertIn(f"mise-gh release verify-asset v1 {asset} --repo github.com/owner/repo", self.log.read_text())
+        self.assertNotIn("system-gh", self.log.read_text())
+        # The caller's PATH is untouched afterwards.
+        self.assertTrue(result.stdout.rstrip().endswith(f"{self.bin_dir}/gh"), result.stdout)
+
     def test_tag_must_be_a_version_or_the_lookup_fails(self) -> None:
         # The tag reaches URLs, file names and command lines, so anything but a version is refused at the source.
         for tag, accepted in (

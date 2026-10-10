@@ -46,8 +46,11 @@ function zed_artifact() {
 #   report one, so a broken install is replaced like a missing one.
 #
 function zed_installed_version() {
+    local output
     [ -x "${ZED_BIN_LINK}" ] || return 0
-    { "${ZED_BIN_LINK}" --version 2> /dev/null || true; } | awk '$1 == "Zed" { print $2; exit }'
+    # A binary that exits non-zero is broken whatever it printed, so it reports no version.
+    output="$("${ZED_BIN_LINK}" --version 2> /dev/null)" || return 0
+    printf '%s\n' "${output}" | awk '$1 == "Zed" { print $2; exit }'
 }
 
 #

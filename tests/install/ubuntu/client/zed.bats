@@ -97,6 +97,18 @@ function install_fake_zed() {
     "${BATS_TEST_TMPDIR}/.local/bin/zed" | grep -q 'Zed 1.22.0'
 }
 
+@test "[ubuntu-client] main replaces an installed zed that prints the current banner but exits non-zero" {
+    install_fake_zed 1.0.0
+    printf '#!/bin/sh\necho "Zed 1.22.0 deadbeef"\nexit 42\n' > "${BATS_TEST_TMPDIR}/.local/share/zed.app/bin/zed"
+
+    run env HOME="${BATS_TEST_TMPDIR}" bash -c "${ZED_FAKES}"'
+        main
+        grep -qx curl "${HOME}/calls.log"
+    '
+    [ "${status}" -eq 0 ]
+    "${BATS_TEST_TMPDIR}/.local/bin/zed"
+}
+
 @test "[ubuntu-client] main installs nothing without an authenticated gh and says how to retry" {
     run env HOME="${BATS_TEST_TMPDIR}" GH_MODE=unauthenticated bash -c "${ZED_FAKES}"'
         main

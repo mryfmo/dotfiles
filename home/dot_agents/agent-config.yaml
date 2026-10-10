@@ -350,8 +350,13 @@ assets:
     release: latest
     verify: release-shasums
     attestation: when-gh-authenticated
+    gpg_fingerprint: 24853EC9F655CE80B48E6C3A8B81C9D17413A06D
+    note: with gpg and gpgv present the checksums come from SHASUMS256.asc, verified against the release key with gpg_fingerprint (fetched from keys.openpgp.org, as mise documents); without an authenticated gh the attestation is checked at the next make update.
     install_path: ~/.local/bin/mise
     installer: install/common/mise.sh
+    render:
+      file: install/common/mise.sh
+      constants: {MISE_GPG_FINGERPRINT: gpg_fingerprint}
   sheldon:
     source: crates
     upstream: sheldon
@@ -397,6 +402,7 @@ assets:
     release: latest
     verify: release-shasums
     attestation: when-gh-authenticated
+    note: chezmoi signs its checksums with cosign only, which a fresh host cannot run; without an authenticated gh the attestation is checked at the next make update.
     install_path: ~/.local/bin/chezmoi
     installer: setup.sh#run_chezmoi
   tode:

@@ -42,6 +42,9 @@ GITHUB_RELEASE_MIN_AGE_HOURS=72
 # gh releases before this forward credentials to TUF mirror hosts during attestation checks
 # (GHSA-8xvp-7hj6-mcj9), so an older gh is not used for them.
 GITHUB_ATTESTATION_MIN_GH="2.93.0"
+# A release tag is a version: the only shape installers, setup.sh and `make docker` accept, so an
+# API answer can never smuggle shell syntax or a path into a URL or a command line.
+GITHUB_RELEASE_TAG_PATTERN='^v?[0-9]+(\.[0-9]+)*([-.+][0-9A-Za-z.-]+)?$'
 
 #
 # @description Print the first page of a repository's releases as the GitHub API returns them.
@@ -99,17 +102,18 @@ function github_release_fetch() {
 #   a draft nor a prerelease and was published at least GITHUB_RELEASE_MIN_AGE_HOURS ago.
 # @arg $1 string owner/repo
 # @stdout The release tag.
-# @exitcode 1 When the release list cannot be fetched or no release qualifies.
+# @exitcode 1 When the release list cannot be fetched, no release qualifies, or the tag is not
+#   a version (GITHUB_RELEASE_TAG_PATTERN).
 #
 function github_release_tag() {
-    local cutoff list
+    local cutoff list tag
     cutoff=$(($(date -u +%s) - GITHUB_RELEASE_MIN_AGE_HOURS * 3600))
     cutoff="$(date -u -d "@${cutoff}" +%Y-%m-%dT%H:%M:%SZ 2> /dev/null ||
         date -u -r "${cutoff}" +%Y-%m-%dT%H:%M:%SZ)" || return 1
     # Fetched whole before parsing, so a failed or truncated download never yields a tag.
     list="$(github_release_list "$1")" || return 1
     # The API pretty-prints each release's own fields at four spaces; nested objects sit deeper.
-    printf '%s\n' "${list}" | awk -v cutoff="${cutoff}" '
+    tag="$(printf '%s\n' "${list}" | awk -v cutoff="${cutoff}" '
         /^  \{/ { tag = ""; draft = ""; prerelease = ""; published = "" }
         /^    "tag_name": "/ { tag = $0; sub(/^    "tag_name": "/, "", tag); sub(/",?$/, "", tag) }
         /^    "draft": / { draft = ($0 ~ /: false,?$/) ? "no" : "yes" }
@@ -122,7 +126,12 @@ function github_release_tag() {
             }
         }
         END { if (chosen == "") exit 1; print chosen }
-    '
+    ')" || return 1
+    if ! [[ "${tag}" =~ ${GITHUB_RELEASE_TAG_PATTERN} ]]; then
+        printf 'unexpected release tag %s for %s\n' "${tag}" "$1" >&2
+        return 1
+    fi
+    printf '%s\n' "${tag}"
 }
 
 #
@@ -162,6 +171,23 @@ function github_attestation_ready() {
 function github_release_attestation() {
     github_attestation_ready || return 2
     gh release verify-asset "$2" "$3" --repo "github.com/$1" || return 1
+}
+
+#
+# @description Keep a bootstrap asset whose GitHub release attestation cannot be checked yet, so
+#   scripts/upgrade-tools.sh checks it at the first `make update` with an authenticated gh.
+# @arg $1 string The tool; the record is pending-attestation/<tool> under the dotfiles state directory.
+# @arg $2 string owner/repo
+# @arg $3 string The release tag.
+# @arg $4 path The asset, already verified by the mechanism in $5.
+# @arg $5 string What verified the asset.
+# @exitcode 1 When the record cannot be written, so the asset is never left unchecked silently.
+#
+function github_release_defer_attestation() {
+    local record="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/pending-attestation/${1:?}"
+    rm -rf "${record}" && mkdir -p "${record}" && cp "$4" "${record}/" || return 1
+    printf '%s %s %s\n' "$2" "$3" "${4##*/}" > "${record}/release" || return 1
+    printf '%s %s: attestation deferred: verified by %s only until gh is authenticated.\n' "$1" "$3" "$5"
 }
 # --- github-release.sh end ---
 
@@ -424,7 +450,8 @@ function run_chezmoi() {
     github_release_attestation "${CHEZMOI_RELEASE_REPO}" "${chezmoi_tag}" "${archive}" || attestation=$?
     case "${attestation}" in
     0) ;;
-    2) printf 'gh is absent or not authenticated: chezmoi %s is verified by its checksums file only.\n' "${chezmoi_tag}" ;;
+    # chezmoi signs its checksums with cosign only, which a fresh host cannot run.
+    2) github_release_defer_attestation chezmoi "${CHEZMOI_RELEASE_REPO}" "${chezmoi_tag}" "${archive}" "chezmoi_${chezmoi_version}_checksums.txt" ;;
     *)
         printf 'GitHub release attestation failed for %s.\n' "${artifact}" >&2
         return 1

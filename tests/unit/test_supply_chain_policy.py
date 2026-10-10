@@ -165,13 +165,15 @@ install_starship
                 ("newer release", "9.9.9", "", True, True, 0),
                 ("not installed", installed_version[tool], "", False, True, 0),
                 ("lookup fails, installed", "", "1", True, False, 0),
+                # The current banner from a binary that exits non-zero: broken, so it is replaced.
+                ("current banner, exits 42", installed_version[tool], "", "exit 42", True, 0),
             ):
                 with self.subTest(relative=relative, case=name), tempfile.TemporaryDirectory() as directory:
                     home = Path(directory)
                     if installed:
                         binary = home / ".local/bin" / tool
                         binary.parent.mkdir(parents=True)
-                        binary.write_text(f"#!/bin/sh\n{banner}\n")
+                        binary.write_text(f"#!/bin/sh\n{banner}\n{installed if installed is not True else ''}\n")
                         binary.chmod(0o755)
                     result = subprocess.run(
                         ["bash", "-c", f'source "$1"\n{lookup}\n{install}\nmain', "_", str(ROOT / relative)],

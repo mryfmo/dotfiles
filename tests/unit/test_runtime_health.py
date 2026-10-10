@@ -623,6 +623,36 @@ EOF
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("/v9.9.9/crit-linux-amd64", (repo / "commands.log").read_text())
 
+    def test_crit_replaces_an_installed_binary_that_prints_the_banner_but_fails(self) -> None:
+        # The banner is right but the exit status says broken: replaced like a missing binary.
+        repo, home, env, _checksum = self.crit_fixture()
+        self.executable(home / ".local/bin/crit", "printf 'crit v9.9.9 (fixture)\\n'\nexit 42\n")
+        result = self.run_test_command(
+            ["bash", "-c", "source scripts/update-agent-assets.sh; ensure_crit_cli"],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("/v9.9.9/crit-linux-amd64", (repo / "commands.log").read_text())
+        self.assertEqual(0, self.run_test_command([str(home / ".local/bin/crit"), "--version"]).returncode)
+
+    def test_crit_never_promotes_a_staged_binary_that_prints_the_banner_but_fails(self) -> None:
+        repo, home, env, _checksum = self.crit_fixture("1.0.0")
+        # The release payload matches its checksums.txt, reports the right version, and exits 42.
+        self.executable(repo / "crit-linux-amd64", "printf 'crit v9.9.9 (fixture)\\n'\nexit 42\n")
+        target = home / ".local/bin/crit"
+        previous = target.read_bytes()
+        result = self.run_test_command(
+            ["bash", "-c", "source scripts/update-agent-assets.sh; ensure_crit_cli"],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("/v9.9.9/crit-linux-amd64", (repo / "commands.log").read_text())
+        self.assertEqual(previous, target.read_bytes())
+
     def test_crit_fails_without_an_install_when_the_release_cannot_be_resolved(self) -> None:
         repo, home, env, _checksum = self.crit_fixture()
         result = self.run_test_command(

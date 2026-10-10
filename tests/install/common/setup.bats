@@ -378,9 +378,13 @@ EOF
 
         run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin" CI=true \
             RUNNER_TEMP="${tmpdir}" CHEZMOI_TEST_MODE="${mode}" \
-            CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
+            CHEZMOI_FIXTURE_DIR="${tmpdir}/release" XDG_STATE_HOME="${tmpdir}/state" \
             /bin/bash -c "$(cat setup.sh)"
 
+        # No authenticated gh: the checksum-verified archive waits for its attestation at make update.
+        [[ "${output}" == *"chezmoi v${version}: attestation deferred: verified by chezmoi_${version}_checksums.txt only until gh is authenticated."* ]]
+        grep -qx "twpayne/chezmoi v${version} chezmoi_${version}_linux_amd64.tar.gz" "${tmpdir}/state/dotfiles/pending-attestation/chezmoi/release"
+        cmp "${tmpdir}/release/chezmoi_${version}_linux_amd64.tar.gz" "${tmpdir}/state/dotfiles/pending-attestation/chezmoi/chezmoi_${version}_linux_amd64.tar.gz"
         grep -qx "wget https://api.github.com/repos/twpayne/chezmoi/releases?per_page=30" "${tmpdir}/home/fetch.log"
         grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${version}/chezmoi_${version}_linux_amd64.tar.gz" "${tmpdir}/home/fetch.log"
         grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${version}/chezmoi_${version}_checksums.txt" "${tmpdir}/home/fetch.log"

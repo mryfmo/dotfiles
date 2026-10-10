@@ -253,8 +253,11 @@ function install_crit_release() (
 # @arg $1 path Crit executable.
 #
 function crit_version() {
+    local output
     [ -x "$1" ] || return 0
-    { "$1" --version 2> /dev/null || true; } | awk '$1 == "crit" { sub(/^v/, "", $2); print $2; exit }'
+    # A binary that exits non-zero is broken whatever it printed, so it reports no version.
+    output="$("$1" --version 2> /dev/null)" || return 0
+    printf '%s\n' "${output}" | awk '$1 == "crit" { sub(/^v/, "", $2); print $2; exit }'
 }
 
 #

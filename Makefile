@@ -16,10 +16,11 @@ MKDOCS_PYTHON = NO_MKDOCS_2_WARNING=true $(MKDOCS_UV) python
 #
 
 .PHONY: docker
-# The chezmoi release setup.sh bootstraps; expanded only by this recipe, so `make -n docker` shows it.
-docker: CHEZMOI_DOCKER_VERSION = $(patsubst v%,%,$(shell bash -c 'source scripts/lib/github-release.sh && github_release_tag twpayne/chezmoi'))
+# The chezmoi release setup.sh bootstraps. The tag stays in a shell variable: fetched text never
+# becomes Make or shell source.
 docker:
-	@chezmoi_version="$(CHEZMOI_DOCKER_VERSION)"; \
+	@chezmoi_version="$$(bash -c 'source scripts/lib/github-release.sh && github_release_tag twpayne/chezmoi')"; \
+	chezmoi_version="$${chezmoi_version#v}"; \
 	[ -n "$${chezmoi_version}" ] || { echo "could not resolve a twpayne/chezmoi release" >&2; exit 1; }; \
 	if [ "$$(docker inspect -f '{{ index .Config.Labels "chezmoi.version" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)" != "$${chezmoi_version}" ]; then \
 		docker build -t $(DOCKER_IMAGE_NAME) . --build-arg USERNAME="$$(whoami)" --build-arg CHEZMOI_VERSION="$${chezmoi_version}"; \

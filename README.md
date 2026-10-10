@@ -1324,14 +1324,25 @@ non-draft, non-prerelease one at least 72 hours old, resolved by
 `scripts/lib/github-release.sh`; that is the same window as `minimum_release_age`,
 so a fresh bootstrap never installs a mise that `mise self-update` would refuse.
 
-| Asset                             | Mechanism                                                                                                                                                                                                                               |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| mise bootstrap, chezmoi bootstrap | the release's checksum file; also the GitHub release attestation when an authenticated `gh` is present                                                                                                                                  |
-| starship                          | the `.sha256` file published with each archive                                                                                                                                                                                          |
-| Crit                              | the release's `checksums.txt`                                                                                                                                                                                                           |
-| Zed                               | the GitHub release attestation, through `gh release verify-asset`; without an authenticated `gh`, Zed is not installed and the notice says `run make gh-auth, then make update` (`run_after_05-client-install-zed` runs on every apply) |
-| sheldon                           | `cargo install --locked`, checked against the crates.io index; cargo offers no age choice, so it takes the newest crate                                                                                                                 |
-| AWS CLI                           | AWS's GPG signature, checked with the pinned key fingerprint; the unversioned archive is AWS's current release, with no age choice                                                                                                      |
+| Asset             | Mechanism                                                                                                                                                                                                                               |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| mise bootstrap    | `SHASUMS256.asc`, its GPG signature checked against the release key with the pinned fingerprint when `gpg` and `gpgv` are present (otherwise `SHASUMS256.txt`); then the GitHub release attestation (below)                             |
+| chezmoi bootstrap | `chezmoi_<version>_checksums.txt` (its cosign signature needs cosign, which a fresh host lacks); then the GitHub release attestation (below)                                                                                            |
+| starship          | the `.sha256` file published with each archive                                                                                                                                                                                          |
+| Crit              | the release's `checksums.txt`                                                                                                                                                                                                           |
+| Zed               | the GitHub release attestation, through `gh release verify-asset`; without an authenticated `gh`, Zed is not installed and the notice says `run make gh-auth, then make update` (`run_after_05-client-install-zed` runs on every apply) |
+| sheldon           | `cargo install --locked`, checked against the crates.io index; cargo offers no age choice, so it takes the newest crate                                                                                                                 |
+| AWS CLI           | AWS's GPG signature, checked with the pinned key fingerprint; the unversioned archive is AWS's current release, with no age choice                                                                                                      |
+
+The bootstrap verifies the GitHub release attestation of mise and chezmoi when
+an authenticated `gh` is present. A fresh machine has none, so the bootstrap
+keeps the checksum-verified archive under
+`~/.local/state/dotfiles/pending-attestation/` and prints
+`attestation deferred`. The first `make update` with an authenticated `gh`
+(after `make gh-auth`) verifies it and removes the record, and warns until
+then. When the attestation fails, `make update` stops before any mise phase
+with a required failure naming the tool and the archive: reinstall that tool
+(`mise self-update` or `setup.sh`), then delete its record.
 
 Only a component whose publisher verifies nothing keeps a `pin` with its
 checksum and says why in `reason`: the Homebrew installer and the

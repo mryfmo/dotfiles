@@ -38,8 +38,11 @@ function starship_artifact() {
 # @description Print the installed Starship version, or nothing when it is absent or cannot report one.
 #
 function starship_installed_version() {
+    local output
     [ -x "${BIN_DIR}/starship" ] || return 0
-    { "${BIN_DIR}/starship" --version 2> /dev/null || true; } | awk '$1 == "starship" { print $2; exit }'
+    # A binary that exits non-zero is broken whatever it printed, so it reports no version.
+    output="$("${BIN_DIR}/starship" --version 2> /dev/null)" || return 0
+    printf '%s\n' "${output}" | awk '$1 == "starship" { print $2; exit }'
 }
 
 #

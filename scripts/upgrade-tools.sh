@@ -175,6 +175,56 @@ function upgrade_homebrew() {
 }
 
 #
+# @description Check the GitHub release attestation of each bootstrap asset installed before gh
+#   could verify it (github_release_defer_attestation); a verified record is removed.
+# @exitcode 1 An attestation did not verify its asset, so that tool must be reinstalled.
+#
+function verify_pending_attestations() {
+    local pending="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/pending-attestation"
+    local asset names="" outcome record repo status=0 tag tool
+    compgen -G "${pending}/*/release" > /dev/null || return 0
+    # shellcheck source=scripts/lib/github-release.sh
+    source "${repo_root}/scripts/lib/github-release.sh" || return
+
+    section "Pending release attestations"
+    if ! github_attestation_ready; then
+        for record in "${pending}"/*/release; do
+            tool="${record%/release}"
+            names+="${names:+, }${tool##*/}"
+        done
+        printf 'warning: the GitHub release attestation of %s is not verified yet: run make gh-auth, then make update.\n' "${names}" >&2
+        ((optional_warnings += 1))
+        return 0
+    fi
+    for record in "${pending}"/*/release; do
+        tool="${record%/release}"
+        if ! read -r repo tag asset < "${record}" || [ -z "${asset:-}" ]; then
+            printf 'required: unreadable pending attestation record %s; reinstall that tool, then delete it.\n' "${record}" >&2
+            status=1
+            continue
+        fi
+        outcome=0
+        github_release_attestation "${repo}" "${tag}" "${tool}/${asset}" || outcome=$?
+        case "${outcome}" in
+        0)
+            printf 'Verified the GitHub release attestation of %s %s.\n' "${tool##*/}" "${tag}"
+            rm -rf "${tool}"
+            ;;
+        2)
+            printf 'warning: gh is no longer ready; %s %s stays pending.\n' "${tool##*/}" "${tag}" >&2
+            ((optional_warnings += 1))
+            ;;
+        *)
+            printf 'required: %s %s failed its GitHub release attestation (%s); reinstall it (mise self-update or setup.sh), then delete %s.\n' \
+                "${tool##*/}" "${tag}" "${tool}/${asset}" "${tool}" >&2
+            status=1
+            ;;
+        esac
+    done
+    return "${status}"
+}
+
+#
 # @description Upgrade standalone mise or skip package-manager-managed installations.
 # @stdout Skip message when an official package-manager marker is present.
 #
@@ -494,6 +544,12 @@ function main() {
 
     # Network-only phases warn and continue, so make update still converges offline.
     run_optional_phase "Homebrew" upgrade_homebrew
+    run_required_phase "pending release attestations" verify_pending_attestations
+    # A bootstrap tool that failed its attestation must not run again, so the update stops here.
+    if [ "${required_failures}" -ne 0 ]; then
+        printf '\nUpgrade summary: stopped at the pending release attestations; reinstall the tool named above.\n' >&2
+        return 1
+    fi
     run_optional_phase "mise self-update" upgrade_mise_self
     run_required_phase "mise inventory/install/upgrade" upgrade_mise_tools
     run_optional_phase "uv tool upgrade" upgrade_uv_tools

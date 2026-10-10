@@ -395,8 +395,13 @@ main
                 home = root / "home"
                 temp = root / "tmp"
                 key = root / "key.asc"
-                for path in (home, temp):
+                for path in (home, temp, root / "shim"):
                     path.mkdir()
+                # macOS mktemp -d ignores TMPDIR; the shim keeps every temporary directory under the test.
+                (root / "shim/mktemp").write_text(
+                    '#!/bin/sh\nif [ "$*" = -d ]; then exec /usr/bin/mktemp -d "$TMPDIR/tmp.XXXXXX"; fi\nexec /usr/bin/mktemp "$@"\n'
+                )
+                (root / "shim/mktemp").chmod(0o755)
                 key.write_text("fixture\n")
                 version_dir = home / ".local/share/aws-cli/v2" / AWS_CLI_VERSION
                 (version_dir / "bin").mkdir(parents=True)
@@ -469,7 +474,13 @@ EOF
 }
 main
 """.replace("@FINGERPRINT@", FINGERPRINT).replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
-                    {"AWS_CLI_KEY_PATH": str(key), "HOME": str(home), "TMPDIR": str(temp), "XDG_STATE_HOME": ""},
+                    {
+                        "AWS_CLI_KEY_PATH": str(key),
+                        "HOME": str(home),
+                        "TMPDIR": str(temp),
+                        "XDG_STATE_HOME": "",
+                        "PATH": f"{root / 'shim'}:{os.environ['PATH']}",
+                    },
                 )
 
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)
@@ -498,6 +509,86 @@ main
             result, marker, _state = self.run_main(Path(directory), "", installed=False)
             self.assertNotEqual(0, result.returncode)
             self.assertFalse(marker.exists())
+
+    def test_main_keeps_a_working_aws_cli_when_the_download_fails_and_never_on_a_bad_signature(self):
+        # The archive changed (a new ETag) but cannot be downloaded: a working CLI stays and its old ETag
+        # stays recorded, so the next apply retries; with no CLI it fails; a bad signature always fails.
+        for name, installed, env, expected_status, message in (
+            (
+                "download fails, working CLI",
+                True,
+                {"DOWNLOAD_FAIL": "1"},
+                0,
+                "could not download the AWS CLI archive; the installed AWS CLI stays",
+            ),
+            ("download fails, no CLI", False, {"DOWNLOAD_FAIL": "1"}, 3, ""),
+            ("bad signature, working CLI", True, {}, 1, ""),
+        ):
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                home = root / "home"
+                tmp = root / "tmp"
+                shim = root / "shim"
+                for path in (home / ".local/bin", tmp, shim):
+                    path.mkdir(parents=True)
+                # macOS mktemp -d ignores TMPDIR; the shim keeps every temporary directory under the test.
+                (shim / "mktemp").write_text(
+                    '#!/bin/sh\nif [ "$*" = -d ]; then exec /usr/bin/mktemp -d "$TMPDIR/tmp.XXXXXX"; fi\nexec /usr/bin/mktemp "$@"\n'
+                )
+                (shim / "mktemp").chmod(0o755)
+                aws = home / ".local/bin/aws"
+                if installed:
+                    aws.write_text("#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Linux/6\\n'\n")
+                    aws.chmod(0o755)
+                state = home / ".local/state/dotfiles/aws-cli-archive.etag"
+                state.parent.mkdir(parents=True)
+                state.write_text('"abc-1"\n')
+                key = root / "key.asc"
+                key.write_text("fixture\n")
+
+                result = self.run_shell(
+                    r"""
+uname() { printf 'x86_64\n'; }
+curl() {
+    local output="" head=""
+    while [ "$#" -gt 0 ]; do
+        case "$1" in --output) output="$2"; shift 2 ;; --head) head=1; shift ;; *) shift ;; esac
+    done
+    if [ -n "${head}" ]; then printf 'HTTP/2 200\r\nETag: "abc-2"\r\n\r\n'; return; fi
+    [ -z "${DOWNLOAD_FAIL:-}" ] || return 22
+    printf payload > "${output}"
+}
+gpg() {
+    case " $* " in
+        *" --with-colons "*)
+            printf 'pub:-:4096:1:A6310ACC4672475C:1568845749:1814472778::::::sc::::::23::0:\n'
+            printf 'fpr:::::::::@FINGERPRINT@:\n'
+            ;;
+        *" --dearmor "*)
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = --output ]; then printf keyring > "$2"; return; else shift; fi
+            done
+            ;;
+    esac
+}
+gpgv() { return 1; }
+unzip() { touch "${HOME}/unzip-ran"; }
+main
+""".replace("@FINGERPRINT@", FINGERPRINT),
+                    {
+                        "AWS_CLI_KEY_PATH": str(key),
+                        "HOME": str(home),
+                        "TMPDIR": str(tmp),
+                        "XDG_STATE_HOME": "",
+                        "PATH": f"{shim}:{os.environ['PATH']}",
+                        **env,
+                    },
+                )
+
+                self.assertEqual(expected_status, result.returncode, result.stdout + result.stderr)
+                self.assertIn(message, result.stderr)
+                self.assertEqual('"abc-1"\n', state.read_text())
+                self.assertFalse((home / "unzip-ran").exists())
 
     def test_repository_key_has_expected_current_fingerprint(self):
         key = ROOT / "home/dot_local/share/aws-cli-keys/aws-cli-public-key.asc"

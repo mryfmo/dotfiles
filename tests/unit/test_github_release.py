@@ -5,6 +5,7 @@ the mise bootstrap's GPG and deferred-attestation paths, and the upgrade-tools p
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
 import os
 import shutil
@@ -335,6 +336,85 @@ class GithubReleaseTest(unittest.TestCase):
         self.assertFalse(marker.exists())
         self.assertIn("unexpected release tag", real.stderr)
         self.assertFalse(Path(f"{self.log}.docker").exists())
+
+    def test_make_docker_verifies_chezmoi_on_the_host_and_passes_its_sha256(self) -> None:
+        # A build has no gh: make docker checks the checksum and the attestation, and the Dockerfile trusts only the sha.
+        archive = "chezmoi_2.73.0_linux_amd64.tar.gz"
+        payload = b"chezmoi archive\n"
+        digest = hashlib.sha256(payload).hexdigest()
+        page = self.temp_dir / "releases.json"
+        page.write_text(json.dumps([release("v2.73.0", hours_ago(100))], indent=2) + "\n")
+        (self.temp_dir / "payload").write_bytes(payload)
+        self.executable(
+            "curl",
+            f"""
+            printf 'curl %s\\n' "$*" >> "{self.log}"
+            out=""; url=""
+            while [ "$#" -gt 0 ]; do case "$1" in -o) out="$2"; shift ;; https://*) url="$1" ;; esac; shift; done
+            case "$url" in
+                https://api.github.com/*) cat "{page}" ;;
+                */{archive}) cp "{self.temp_dir}/payload" "$out" ;;
+                */chezmoi_2.73.0_checksums.txt) printf '%s  {archive}\\n' "${{CHECKSUM:-{digest}}}" > "$out" ;;
+                *) exit 22 ;;
+            esac
+            """,
+        )
+        self.executable(
+            "gh",
+            f"""
+            printf 'gh %s\\n' "$*" >> "{self.log}"
+            [ "$1" = --version ] && {{ printf 'gh version 2.93.0 (2026-10-01)\\n'; exit 0; }}
+            [ "$*" = "auth status --hostname github.com" ] && exit "${{GH_AUTH:-0}}"
+            [ "$1 $2" = "release verify-asset" ] && exit "${{GH_VERIFY:-0}}"
+            exit 1
+            """,
+        )
+        self.executable(
+            "docker",
+            f"""
+            printf 'docker %s\\n' "$*" >> "{self.log}"
+            case "$1" in inspect) exit 1 ;; version) printf 'amd64\\n' ;; esac
+            exit 0
+            """,
+        )
+        for case, extra, verified in (
+            ("verified", {}, True),
+            ("attestation refused", {"GH_VERIFY": "1"}, False),
+            ("checksum mismatch", {"CHECKSUM": "0" * 64}, False),
+            ("gh not ready", {"GH_AUTH": "1"}, False),
+        ):
+            with self.subTest(case=case):
+                self.log.unlink(missing_ok=True)
+
+                result = subprocess.run(
+                    ["make", "docker"],
+                    cwd=ROOT,
+                    env={
+                        "PATH": f"{self.bin_dir}:/usr/bin:/bin",
+                        "HOME": str(self.temp_dir),
+                        "TMPDIR": str(self.temp_dir),
+                        **extra,
+                    },
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+
+                log = self.log.read_text()
+                if verified:
+                    self.assertEqual(0, result.returncode, result.stderr)
+                    self.assertIn(f"gh release verify-asset v2.73.0 {self.temp_dir}/github-release.", log)
+                    self.assertIn(f"--build-arg CHEZMOI_VERSION=2.73.0 --build-arg CHEZMOI_SHA256={digest}", log)
+                    continue
+                self.assertNotEqual(0, result.returncode)
+                self.assertNotIn("docker build", log)
+                if case == "gh not ready":
+                    self.assertIn("run make gh-auth, then make docker", result.stderr)
+                    self.assertNotIn(f"/{archive}", log)
+                else:
+                    self.assertIn("failed its checksum or release attestation; nothing was built", result.stderr)
+        # The downloads lived in a private directory that is gone afterwards.
+        self.assertEqual([], list(self.temp_dir.glob("github-release.*")))
 
     def mise_bootstrap(self, *, gpg: str | None, gh: str | None = None) -> subprocess.CompletedProcess[str]:
         """Run _install_mise_binary against a fake jdx/mise release.

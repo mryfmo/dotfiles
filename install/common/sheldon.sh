@@ -18,15 +18,24 @@ readonly MISE_BIN="${HOME}/.local/bin/mise"
 
 #
 # @description Build and install the crates.io Sheldon release with locked dependencies.
+# @exitcode 1 cargo failed for any reason other than a download, a checksum among them; nothing was installed.
+# @exitcode 3 cargo could not download the crate or the index, so nothing was installed.
 #
 function install_sheldon() (
-    local stage="" tmpdir
+    local stage="" status=0 tmpdir
     tmpdir="$(mktemp -d)" || return
     trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
     mkdir -p "${BIN_DIR}" || return
     stage="$(mktemp "${BIN_DIR}/sheldon.tmp.XXXXXX")" || return
-    CARGO_INSTALL_ROOT="${tmpdir}" "${MISE_BIN}" exec -- cargo install \
-        --locked --features vendored --registry crates-io sheldon || return
+    # cargo's errors still reach stderr; the copy tells a download failure from the rest.
+    { CARGO_INSTALL_ROOT="${tmpdir}" "${MISE_BIN}" exec -- cargo install \
+        --locked --features vendored --registry crates-io sheldon 2>&1 1>&3 | tee "${tmpdir}/cargo.log" >&2; } 3>&1 || status=$?
+    if [ "${status}" -ne 0 ]; then
+        # cargo exits 101 for every error. A checksum is verification, even inside a download error.
+        grep -qi 'checksum' "${tmpdir}/cargo.log" && return 1
+        grep -qiE 'failed to download|resolve host|failed to update registry|spurious network|timed out' "${tmpdir}/cargo.log" && return 3
+        return 1
+    fi
     install -m 0755 "${tmpdir}/bin/sheldon" "${stage}" || return
     mv -f "${stage}" "${BIN_DIR}/sheldon"
 )
@@ -61,7 +70,7 @@ function uninstall_sheldon() {
 # @description Install Sheldon, or update it when crates.io has a newer release.
 #
 function main() {
-    local installed newest
+    local installed newest status=0
     installed="$(sheldon_installed_version)"
     newest="$(sheldon_newest_version)" || newest=""
     if [ -n "${installed}" ]; then
@@ -71,7 +80,13 @@ function main() {
         fi
         [ "${installed}" != "${newest}" ] || return 0
     fi
-    install_sheldon
+    install_sheldon || status=$?
+    # A failed download keeps a working sheldon; a failed check never does.
+    if [ "${status}" -eq 3 ] && [ -n "${installed}" ]; then
+        printf 'warning: could not download the sheldon %s crate; sheldon %s stays.\n' "${newest}" "${installed}" >&2
+        return 0
+    fi
+    return "${status}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -47,6 +47,8 @@ function starship_installed_version() {
 
 #
 # @description Download the pinned Starship release, verify it, and install the binary.
+# @exitcode 1 The checksum did not match, or the install failed; nothing was installed.
+# @exitcode 3 A download failed, so nothing was installed.
 #
 function install_starship() (
     local actual artifact base_url expected line pinned stage="" tmpdir
@@ -57,8 +59,8 @@ function install_starship() (
     trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
     mkdir -p "${BIN_DIR}" || return
     stage="$(mktemp "${BIN_DIR}/starship.tmp.XXXXXX")" || return
-    curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}" || return
-    expected="$(curl -fsSL "${base_url}/${artifact}.sha256")" || return
+    curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}" || return 3
+    expected="$(curl -fsSL "${base_url}/${artifact}.sha256")" || return 3
     [ -n "${expected}" ] || {
         printf 'Missing checksum for %s\n' "${artifact}" >&2
         return 1
@@ -85,8 +87,16 @@ function uninstall_starship() {
 # @description Install or update Starship to the pinned release.
 #
 function main() {
-    [ "$(starship_installed_version)" != "${STARSHIP_PIN_VERSION#v}" ] || return 0
-    install_starship
+    local installed status=0
+    installed="$(starship_installed_version)"
+    [ "${installed}" != "${STARSHIP_PIN_VERSION#v}" ] || return 0
+    install_starship || status=$?
+    # A failed download keeps a working Starship; a failed check never does.
+    if [ "${status}" -eq 3 ] && [ -n "${installed}" ]; then
+        printf 'warning: could not download Starship %s; Starship %s stays.\n' "${STARSHIP_PIN_VERSION}" "${installed}" >&2
+        return 0
+    fi
+    return "${status}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

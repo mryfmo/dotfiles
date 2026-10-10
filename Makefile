@@ -17,13 +17,23 @@ MKDOCS_PYTHON = NO_MKDOCS_2_WARNING=true $(MKDOCS_UV) python
 
 .PHONY: docker
 # The chezmoi release setup.sh bootstraps. The tag stays in a shell variable: fetched text never
-# becomes Make or shell source.
+# becomes Make or shell source. A build has no gh, so the archive's checksum and release attestation
+# are checked here on the host, and the Dockerfile checks its download against the verified sha256.
 docker:
 	@chezmoi_version="$$(bash -c 'source scripts/lib/github-release.sh && github_release_tag twpayne/chezmoi')"; \
 	chezmoi_version="$${chezmoi_version#v}"; \
 	[ -n "$${chezmoi_version}" ] || { echo "could not resolve a twpayne/chezmoi release" >&2; exit 1; }; \
 	if [ "$$(docker inspect -f '{{ index .Config.Labels "chezmoi.version" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)" != "$${chezmoi_version}" ]; then \
-		docker build -t $(DOCKER_IMAGE_NAME) . --build-arg USERNAME="$$(whoami)" --build-arg CHEZMOI_VERSION="$${chezmoi_version}"; \
+		arch="$$(docker version --format '{{ .Server.Arch }}')" || { echo "docker is not reachable" >&2; exit 1; }; \
+		artifact="chezmoi_$${chezmoi_version}_linux_$${arch}.tar.gz"; \
+		status=0; \
+		chezmoi_sha256="$$(bash -c 'source scripts/lib/github-release.sh && github_release_verified_sha256 twpayne/chezmoi "$$@"' _ "v$${chezmoi_version}" "$${artifact}" "chezmoi_$${chezmoi_version}_checksums.txt")" || status=$$?; \
+		case "$${status}" in \
+		0) ;; \
+		2) echo "chezmoi v$${chezmoi_version}: its release attestation needs gh 2.93.0 or newer logged in to github.com: run make gh-auth, then make docker" >&2; exit 1 ;; \
+		*) echo "chezmoi v$${chezmoi_version} failed its checksum or release attestation; nothing was built" >&2; exit 1 ;; \
+		esac; \
+		docker build -t $(DOCKER_IMAGE_NAME) . --build-arg USERNAME="$$(whoami)" --build-arg CHEZMOI_VERSION="$${chezmoi_version}" --build-arg CHEZMOI_SHA256="$${chezmoi_sha256}"; \
 	fi
 	docker run -it -v "$$(pwd):/home/$$(whoami)/.local/share/chezmoi" --hostname dotfiles-test dotfiles /bin/bash --login
 

@@ -79,6 +79,7 @@ function verify_aws_cli_install() {
 
 #
 # @description Verify and install the current AWS CLI without modifying a working install on verification failure.
+# @exitcode 3 A download failed, so nothing was installed.
 #
 function install_aws_cli() (
     local archive_url
@@ -104,8 +105,8 @@ function install_aws_cli() (
     inspection_home="${temporary_dir}/gnupg-inspection"
     keyring_path="${temporary_dir}/aws-cli-keyring.gpg"
 
-    curl --fail --location --silent --show-error "${archive_url}" --output "${archive_path}" || return
-    curl --fail --location --silent --show-error "${archive_url}.sig" --output "${signature_path}" || return
+    curl --fail --location --silent --show-error "${archive_url}" --output "${archive_path}" || return 3
+    curl --fail --location --silent --show-error "${archive_url}.sig" --output "${signature_path}" || return 3
 
     mkdir -m 700 "${inspection_home}" || return
     key_data="$(gpg --homedir "${inspection_home}" --batch --with-colons --import-options show-only --import "${AWS_CLI_KEY_PATH}")" || return
@@ -157,7 +158,7 @@ function aws_cli_archive_etag() {
 #   AWS CLI still runs.
 #
 function main() {
-    local etag
+    local etag status=0
     if ! etag="$(aws_cli_archive_etag)"; then
         [ -x "${AWS_CLI_BIN_DIR}/aws" ] || {
             printf 'Could not reach the AWS CLI archive.\n' >&2
@@ -171,7 +172,14 @@ function main() {
         verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1; then
         return 0
     fi
-    install_aws_cli || return
+    install_aws_cli || status=$?
+    # A failed download keeps a working AWS CLI (its ETag stays unrecorded, so the next apply retries);
+    # a failed signature or postcondition never does.
+    if [ "${status}" -eq 3 ] && verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1; then
+        printf 'warning: could not download the AWS CLI archive; the installed AWS CLI stays.\n' >&2
+        return 0
+    fi
+    [ "${status}" -eq 0 ] || return "${status}"
     mkdir -p "$(dirname "${AWS_CLI_ETAG_FILE}")" && printf '%s\n' "${etag}" > "${AWS_CLI_ETAG_FILE}" ||
         printf 'warning: could not record the AWS CLI archive ETag; the next apply reinstalls it.\n' >&2
 }

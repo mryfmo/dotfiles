@@ -384,6 +384,18 @@ EOF
         # A replacement binary an attacker could publish in the same mutable release.
         replaced = repo / "crit-replaced"
         self.executable(replaced, "printf 'crit v9.9.9 (replaced)\\n'\n")
+        # macOS mktemp ignores TMPDIR without a template; this one honours it, as Linux does, so the
+        # fixture also runs where /var/folders is not writable.
+        self.executable(
+            bin_dir / "mktemp",
+            """
+            case "$*" in
+                -d) exec /usr/bin/mktemp -d "${TMPDIR:-/tmp}/tmp.XXXXXX" ;;
+                "") exec /usr/bin/mktemp "${TMPDIR:-/tmp}/tmp.XXXXXX" ;;
+                *) exec /usr/bin/mktemp "$@" ;;
+            esac
+            """,
+        )
         self.executable(
             bin_dir / "uname",
             f"""

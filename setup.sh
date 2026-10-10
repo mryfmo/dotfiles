@@ -177,6 +177,39 @@ function github_release_attestation() {
 }
 
 #
+# @description Download a release asset and its checksum file, check the checksum and the asset's
+#   GitHub release attestation now (no deferral), and print the asset's sha256, so a build without
+#   gh can check the asset against it (`make docker` passes it to the Dockerfile). Needs curl.
+# @arg $1 string owner/repo
+# @arg $2 string The release tag.
+# @arg $3 string The asset name.
+# @arg $4 string The name of the release's checksum file.
+# @stdout The verified asset's sha256.
+# @exitcode 1 A download, the checksum or the attestation failed.
+# @exitcode 2 No gh 2.93.0 or newer is authenticated to github.com, so nothing was downloaded.
+#
+function github_release_verified_sha256() (
+    local actual base="https://github.com/$1/releases/download/$2" dir expected
+    github_attestation_ready || return 2
+    dir="$(mktemp -d "${TMPDIR:-/tmp}/github-release.XXXXXX")" || return 1
+    trap 'rm -rf "${dir}"' EXIT
+    curl -fsSL "${base}/$3" -o "${dir}/$3" || return 1
+    curl -fsSL "${base}/$4" -o "${dir}/$4" || return 1
+    expected="$(awk -v name="$3" '$2 == name { print $1; exit }' "${dir}/$4")"
+    if command -v sha256sum > /dev/null 2>&1; then
+        actual="$(sha256sum "${dir}/$3" | awk '{ print $1 }')"
+    else
+        actual="$(shasum -a 256 "${dir}/$3" | awk '{ print $1 }')"
+    fi
+    if [ -z "${expected}" ] || [ "${actual}" != "${expected}" ]; then
+        printf 'Checksum mismatch for %s\n' "$3" >&2
+        return 1
+    fi
+    github_release_attestation "$1" "$2" "${dir}/$3" || return 1
+    printf '%s\n' "${actual}"
+)
+
+#
 # @description Keep a bootstrap asset whose GitHub release attestation cannot be checked yet, so
 #   scripts/upgrade-tools.sh checks it at the first `make update` with an authenticated gh.
 # @arg $1 string The tool; the record is pending-attestation/<tool> under the dotfiles state directory.

@@ -1348,7 +1348,13 @@ keeps the checksum-verified archive under
 (after `make gh-auth`) verifies it and removes the record, and warns until
 then. When the attestation fails, `make update` stops before any mise phase
 with a required failure naming the tool and the archive: reinstall that tool
-(`mise self-update` or `setup.sh`), then delete its record.
+(`mise self-update` or `setup.sh`), then delete its record. CI verifies the
+chezmoi it installs the same way, with the runner's authenticated `gh`, and
+`make docker` does so on the host before building (it needs `make gh-auth`
+first) and passes the verified archive's sha256 to the Dockerfile, which trusts
+only that. When a download fails after the release lookup, an every-apply
+installer keeps a working installed tool with one warning; a failed checksum,
+signature or attestation always fails and installs nothing.
 
 Any other component keeps a reviewed `pin` with its checksum and says why in
 `reason`: the Homebrew installer and the Understand-Anything installer

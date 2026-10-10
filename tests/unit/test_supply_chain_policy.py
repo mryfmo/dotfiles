@@ -144,6 +144,109 @@ install_starship
                 self.assertEqual(0, result.returncode)
                 self.assertEqual([], list((root / "tmp").iterdir()))
 
+    def run_with_tmpdir(self, script, relative, home, **env):
+        """Run main of an installer with HOME and a mktemp that honours TMPDIR (macOS mktemp -d does not)."""
+        tmp = home / "tmp"
+        shim = home / "shim"
+        tmp.mkdir(parents=True, exist_ok=True)
+        shim.mkdir(parents=True, exist_ok=True)
+        (shim / "mktemp").write_text(
+            '#!/bin/sh\nif [ "$*" = -d ]; then exec /usr/bin/mktemp -d "$TMPDIR/tmp.XXXXXX"; fi\nexec /usr/bin/mktemp "$@"\n'
+        )
+        (shim / "mktemp").chmod(0o755)
+        return subprocess.run(
+            ["bash", "-c", f'source "$1"\n{script}', "_", str(ROOT / relative)],
+            env={**os.environ, "HOME": str(home), "TMPDIR": str(tmp), "PATH": f"{shim}:{os.environ['PATH']}", **env},
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+
+    def test_a_failed_download_keeps_a_working_tool_and_a_failed_check_never_does(self):
+        # The Zed rule: acquisition failure with a working install warns and exits 0; with none it fails;
+        # a verification failure always fails and installs nothing.
+        starship_curl = r"""
+uname() { printf 'x86_64\n'; }
+curl() {
+    local output=""
+    [ -z "${DOWNLOAD_FAIL:-}" ] || return 22
+    while [ "$#" -gt 0 ]; do if [ "$1" = -o ]; then output="$2"; shift 2; else shift; fi; done
+    if [ -n "${output}" ]; then printf archive > "${output}"; else printf '%064d\n' 0; fi
+}
+main
+"""
+        sheldon_lookup = 'sheldon_newest_version() { printf "9.9.9\\n"; }\nmain\n'
+        sheldon_mise = (
+            "#!/bin/sh\n"
+            '[ "$1 $2 $3 $4" = "exec -- cargo install" ] || exit 98\n'
+            'if [ -n "${CHECKSUM_FAIL:-}" ]; then\n'
+            "  printf 'error: failed to download replaced source registry `crates-io`\\n\\nCaused by:\\n  failed to verify the checksum of `sheldon v9.9.9`\\n' >&2\n"
+            "else\n"
+            "  printf 'error: failed to download from `https://static.crates.io/api/v1/crates/sheldon/9.9.9/download`\\n\\nCaused by:\\n  [6] Could not resolve host: static.crates.io\\n' >&2\n"
+            "fi\n"
+            "exit 101\n"
+        )
+        for tool, relative, script, banner, cases in (
+            (
+                "starship",
+                "install/ubuntu/server/starship.sh",
+                starship_curl,
+                "printf 'starship 1.25.0\\n'",
+                (
+                    (
+                        "download fails, older starship installed",
+                        True,
+                        {"DOWNLOAD_FAIL": "1"},
+                        0,
+                        "warning: could not download Starship v1.26.0; Starship 1.25.0 stays.",
+                    ),
+                    ("download fails, nothing installed", False, {"DOWNLOAD_FAIL": "1"}, 3, ""),
+                    ("checksum mismatch, older starship installed", True, {}, 1, "Checksum mismatch"),
+                ),
+            ),
+            (
+                "sheldon",
+                "install/common/sheldon.sh",
+                sheldon_lookup,
+                "printf 'sheldon 0.8.5\\n'",
+                (
+                    (
+                        "download fails, older sheldon installed",
+                        True,
+                        {},
+                        0,
+                        "warning: could not download the sheldon 9.9.9 crate; sheldon 0.8.5 stays.",
+                    ),
+                    ("download fails, nothing installed", False, {}, 3, ""),
+                    (
+                        "checksum fails, older sheldon installed",
+                        True,
+                        {"CHECKSUM_FAIL": "1"},
+                        1,
+                        "failed to verify the checksum",
+                    ),
+                ),
+            ),
+        ):
+            for name, installed, env, expected_status, message in cases:
+                with self.subTest(tool=tool, case=name), tempfile.TemporaryDirectory() as directory:
+                    home = Path(directory)
+                    (home / ".local/bin").mkdir(parents=True)
+                    if tool == "sheldon":
+                        (home / ".local/bin/mise").write_text(sheldon_mise)
+                        (home / ".local/bin/mise").chmod(0o755)
+                    binary = home / ".local/bin" / tool
+                    if installed:
+                        binary.write_text(f"#!/bin/sh\n{banner}\n")
+                        binary.chmod(0o755)
+                    before = binary.read_bytes() if installed else None
+
+                    result = self.run_with_tmpdir(script, relative, home, **env)
+
+                    self.assertEqual(expected_status, result.returncode, result.stderr)
+                    self.assertIn(message, result.stderr)
+                    self.assertEqual(before, binary.read_bytes() if binary.exists() else None)
+
     def test_every_apply_installers_skip_when_current_and_keep_the_tool_offline(self):
         # starship and sheldon run on every chezmoi apply (run_after_*) and install only when not current:
         # starship against its pin (v1.26.0 in assets.starship), sheldon against the newest crate.

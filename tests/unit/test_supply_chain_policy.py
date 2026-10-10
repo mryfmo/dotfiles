@@ -222,7 +222,7 @@ main
                         "checksum fails, older sheldon installed",
                         True,
                         {"CHECKSUM_FAIL": "1"},
-                        1,
+                        101,
                         "failed to verify the checksum",
                     ),
                 ),

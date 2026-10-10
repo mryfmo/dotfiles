@@ -18,8 +18,8 @@ readonly MISE_BIN="${HOME}/.local/bin/mise"
 
 #
 # @description Build and install the crates.io Sheldon release with locked dependencies.
-# @exitcode 1 cargo failed for any reason other than a download, a checksum among them; nothing was installed.
 # @exitcode 3 cargo could not download the crate or the index, so nothing was installed.
+# @exitcode * cargo's own status for any other failure, a checksum among them (a 3 becomes 1).
 #
 function install_sheldon() (
     local stage="" status=0 tmpdir
@@ -31,10 +31,12 @@ function install_sheldon() (
     { CARGO_INSTALL_ROOT="${tmpdir}" "${MISE_BIN}" exec -- cargo install \
         --locked --features vendored --registry crates-io sheldon 2>&1 1>&3 | tee "${tmpdir}/cargo.log" >&2; } 3>&1 || status=$?
     if [ "${status}" -ne 0 ]; then
-        # cargo exits 101 for every error. A checksum is verification, even inside a download error.
-        grep -qi 'checksum' "${tmpdir}/cargo.log" && return 1
+        # Keep cargo's own status (101 for every error), except that 3 means a download failure here.
+        [ "${status}" -ne 3 ] || status=1
+        # A checksum is verification, even inside a download error.
+        grep -qi 'checksum' "${tmpdir}/cargo.log" && return "${status}"
         grep -qiE 'failed to download|resolve host|failed to update registry|spurious network|timed out' "${tmpdir}/cargo.log" && return 3
-        return 1
+        return "${status}"
     fi
     install -m 0755 "${tmpdir}/bin/sheldon" "${stage}" || return
     mv -f "${stage}" "${BIN_DIR}/sheldon"

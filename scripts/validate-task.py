@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Validate an agmsg task file's `format: 2` front matter (T124 INV-1, INV-2, INV-8).
 
-Usage: validate-task.py <task file> [--json] [--print-design-hash]
+Usage: validate-task.py <task file or design-reset record> [--json] [--print-design-hash]
 Exit 0 when the file is valid, superseded or legacy (no `format: 2`, grandfathered);
 exit 1 with one line per failure. Paths named in the front matter resolve against the
 main checkout (`git rev-parse --git-common-dir`), never the caller's cwd.
+
+A design-reset record (`.orchestration/acceptance/<task id>-design-reset.md`, keyed by
+`reset_of`) is checked for its shape, its `kind: design` redesign task and the overlap with
+the abandoned task. That a `-redesign-` seat's RESULT precedes the implementing TASK in agmsg
+history is the gate's check from T124 wave 2b, not this script's.
 """
 
 from __future__ import annotations
@@ -23,7 +28,7 @@ from high_risk_paths import (  # noqa: E402
     FrontMatterError,
     canonical_design_hash,
     glob_regex,
-    in_design_tier,
+    may_touch_design_tier,
     parse_front_matter,
 )
 
@@ -31,6 +36,8 @@ KINDS = {"code", "review", "docs", "design"}
 NO_FILES_KINDS = {"review", "docs", "design"}
 WAVE_FILE_LIMIT = 15
 INVARIANT_ID = re.compile(r"INV-[0-9]+")
+# The stop gate's rule: the orchestrator is the unsuffixed identity, every other seat carries -aNNN.
+NON_ORCHESTRATOR = re.compile(r".+-a[0-9]{3}")
 TASK_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
@@ -69,6 +76,76 @@ def load(path: Path) -> dict | None:
     return parse_front_matter(path.read_text(encoding="utf-8"))
 
 
+def receipt_fields(path: Path) -> dict[str, list[str]]:
+    """The receipt's top-level `reviewer:` and `design:` lines; its header may hold timestamps the parser refuses."""
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    header = lines[1 : lines.index("---", 1)] if lines[:1] == ["---"] and "---" in lines[1:] else []
+    fields = {"reviewer": [], "design": []}
+    for line in header:
+        match = re.fullmatch(r"(reviewer|design):\s*(\S+)\s*", line)
+        if match:
+            fields[match.group(1)].append(match.group(2))
+    return fields
+
+
+def overlaps(left: list, right: list, files: list[str]) -> bool:
+    for a in left:
+        for b in right:
+            if a == b or glob_regex(a).match(b) or glob_regex(b).match(a) or expand(a, files) & expand(b, files):
+                return True
+    return False
+
+
+def validate_reset(path: Path, data: dict, root: Path, files: list[str], report: dict) -> dict:
+    fail, warn = report["failures"].append, report["warnings"].append
+    report["record"] = "design-reset"
+    fields = {key: data.get(key) for key in ("reset_of", "redesign_task", "redesign_seat", "reason")}
+    for key in ("reset_of", "redesign_task"):
+        if not isinstance(fields[key], str) or not TASK_ID.fullmatch(fields[key]):
+            fail(f"{key}: required, a task id")
+    if not isinstance(fields["redesign_seat"], str) or "-redesign-" not in fields["redesign_seat"]:
+        fail(f"redesign_seat: must be an identity containing -redesign-, got {fields['redesign_seat']!r}")
+    if not isinstance(fields["reason"], str) or not fields["reason"].strip():
+        fail("reason: required")
+    if isinstance(fields["reset_of"], str) and path.stem != f"{fields['reset_of']}-design-reset":
+        fail(f"the file must be named {fields['reset_of']}-design-reset.md")
+    tasks = root / ".orchestration/tasks"
+    loaded = {}
+    for key in ("reset_of", "redesign_task"):
+        name = fields[key]
+        if not isinstance(name, str) or not TASK_ID.fullmatch(name):
+            continue
+        try:
+            loaded[key] = load(tasks / f"{name}.md") if (tasks / f"{name}.md").is_file() else None
+        except (OSError, UnicodeDecodeError, FrontMatterError) as error:
+            loaded[key] = None
+            fail(f"{key}: {name}: {error}")
+        if loaded[key] is None:
+            fail(f"{key}: {tasks / name}.md is not a task file with front matter in the main checkout")
+    redesign, abandoned = loaded.get("redesign_task"), loaded.get("reset_of")
+    if redesign is not None and redesign.get("kind") != "design":
+        fail(f"redesign_task: {fields['redesign_task']} must be `kind: design`, got {redesign.get('kind')!r}")
+        redesign = None
+    if redesign is not None and abandoned is not None:
+        # The redesign must replace the abandoned work: its files, or its implementing tasks' files, overlap.
+        new_files = list(redesign.get("allowed_files") or [])
+        for task in redesign.get("implementing_tasks") or []:
+            implementing = (
+                load(tasks / f"{task}.md")
+                if TASK_ID.fullmatch(str(task)) and (tasks / f"{task}.md").is_file()
+                else None
+            )
+            new_files += list((implementing or {}).get("allowed_files") or [])
+        if not overlaps(list(abandoned.get("allowed_files") or []), new_files, files):
+            fail(f"redesign_task: {fields['redesign_task']} does not overlap the allowed files of {fields['reset_of']}")
+        elif abandoned.get("superseded_by") == fields["redesign_task"]:
+            report["abandoned_status"] = "superseded"
+        else:
+            warn(f"{fields['reset_of']} is not marked superseded_by: {fields['redesign_task']} yet")
+    report["status"] = "invalid" if report["failures"] else "valid"
+    return report
+
+
 def validate(path: Path) -> dict:
     report = {"task_file": str(path), "status": "valid", "failures": [], "warnings": []}
     fail, warn = report["failures"].append, report["warnings"].append
@@ -77,7 +154,7 @@ def validate(path: Path) -> dict:
     except (OSError, UnicodeDecodeError, FrontMatterError) as error:
         # An unparsable header that names any format fails; only a header without one is grandfathered.
         header = path.read_text(encoding="utf-8", errors="replace").split("\n---", 1)[0]
-        if not re.search(r"^\s*format\s*:", header, re.M):
+        if not re.search(r"""(?:^|[\s{,])["']?format["']?\s*:""", header):
             report["status"] = "legacy"
             return report
         fail(f"front matter: {error}")
@@ -92,6 +169,8 @@ def validate(path: Path) -> dict:
         return report
     root = main_checkout(path.resolve())
     files = tracked_files(root)
+    if "reset_of" in data:
+        return validate_reset(path, data, root, files, report)
 
     task_id = data.get("task_id")
     report["task_id"] = task_id
@@ -102,11 +181,11 @@ def validate(path: Path) -> dict:
     elif task_id != path.stem:
         fail(f"task_id: {task_id!r} is not the file stem {path.stem!r}")
     kind = data.get("kind")
-    if kind not in KINDS:
+    if not isinstance(kind, str) or kind not in KINDS:
         fail(f"kind: must be one of {', '.join(sorted(KINDS))}, got {kind!r}")
 
     allowed = data.get("allowed_files")
-    if allowed is None and kind in NO_FILES_KINDS:
+    if allowed is None and isinstance(kind, str) and kind in NO_FILES_KINDS:
         allowed = []
     if not isinstance(allowed, list) or not all(isinstance(entry, str) and entry for entry in allowed):
         fail("allowed_files: required, a list of paths or globs")
@@ -116,7 +195,8 @@ def validate(path: Path) -> dict:
         fail(f"allowed_files: not a canonical repository-relative path: {', '.join(unspelled)}")
 
     # security is derived from the design tier: declaring true ratchets up, declaring false on a match fails.
-    matching = [e for e in allowed if in_design_tier(e) or any(in_design_tier(n) for n in expand(e, files))]
+    # A glob counts when any path it can name, existing or created later, is in the design tier.
+    matching = [entry for entry in allowed if may_touch_design_tier(entry)]
     declared = data.get("security")
     if declared is not None and not isinstance(declared, bool):
         fail(f"security: must be true or false, got {declared!r}")
@@ -168,6 +248,16 @@ def validate(path: Path) -> dict:
                     report["design_hash"] = canonical_design_hash(design)
                 except KeyError as error:
                     fail(f"design_review.design: the design task lacks {error.args[0]}")
+            if inside["receipt"] and "design_hash" in report:
+                # The receipt binds a non-orchestrator review to the design as it is now (T124 Amendment 3).
+                fields = receipt_fields(root / design_review["receipt"])
+                if len(fields["design"]) != 1 or not fields["design"][0].endswith(report["design_hash"]):
+                    fail(
+                        f"design_review.receipt: its `design:` does not end in the design's canonical hash "
+                        f"{report['design_hash']} (re-review the design after any change to its keys)"
+                    )
+                if len(fields["reviewer"]) != 1 or not NON_ORCHESTRATOR.fullmatch(fields["reviewer"][0]):
+                    fail("design_review.receipt: its `reviewer:` must be one non-orchestrator identity (-aNNN)")
                 if not same_file:
                     design_ids = set(design.get("invariants") or {})
                     extra = sorted(set(invariants) - design_ids)
@@ -229,7 +319,7 @@ def validate(path: Path) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("task_file", type=Path)
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
     parser.add_argument(

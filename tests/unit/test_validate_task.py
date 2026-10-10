@@ -64,6 +64,12 @@ DESIGN = {
 }
 
 
+def receipt(design: dict = DESIGN, reviewer: str = "claude-review-dot-a002") -> str:
+    """A review receipt: its header holds a timestamp, a reviewer and the design path with its canonical hash."""
+    digest = high_risk_paths.canonical_design_hash(design)
+    return f"---\nreviewed_at: 2026-10-10T09:02:00Z\nreviewer: {reviewer}\ndesign: .orchestration/tasks/design-a01.md@{digest}\n---\n"
+
+
 class ValidateTaskTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="validate-task-test-"))
@@ -85,6 +91,7 @@ class ValidateTaskTest(unittest.TestCase):
         self.tasks = self.main / ".orchestration/tasks"
         self.tasks.mkdir(parents=True)
         self.write("design-a01", DESIGN)
+        (self.main / ".orchestration/validation/receipt.md").write_text(receipt())
         subprocess.run([*GIT, "-C", str(self.main), "add", "-A"], check=True)
         subprocess.run([*GIT, "-C", str(self.main), "commit", "-q", "-m", "c"], check=True)
 
@@ -162,6 +169,7 @@ class ValidateTaskTest(unittest.TestCase):
                 self.assertFails(self.task(**{key: None}), needle)
         # A review, docs or design task may omit allowed_files.
         self.assertValid(self.task(kind="docs", allowed_files=None))
+        self.assertValid(self.task(kind="design", allowed_files=None))
         security = {
             "design_review": "design_review: a security task needs",
             "threat_model": "threat_model: a security task needs",
@@ -194,6 +202,9 @@ class ValidateTaskTest(unittest.TestCase):
             "scripts/pr-feedback.py": False,  # review tier only
             "README.md": False,  # prose
             "home/dot_config/claude/rules/rule.md": False,  # prose in the review tier
+            ".claude/*/new.py": True,  # can create .claude/hooks/new.py although nothing matches yet
+            "*.md": False,
+            "many/f0*.txt": False,
         }
         for entry, security in cases.items():
             with self.subTest(entry=entry):
@@ -221,7 +232,7 @@ class ValidateTaskTest(unittest.TestCase):
         code, report = self.run_validator(path, cwd=worktree)
         self.assertEqual(1, code)
         self.assertTrue(any("is not a file inside the main checkout" in f for f in report["failures"]), report)
-        (self.main / receipt).write_text("x\n")
+        (self.main / receipt).write_text(globals()["receipt"]())
         self.assertEqual(0, self.run_validator(path, cwd=worktree)[0])
 
     def test_a_code_task_takes_threat_model_and_trust_anchors_from_its_design_only(self) -> None:
@@ -370,6 +381,74 @@ class ValidateTaskTest(unittest.TestCase):
         commented = self.tasks / "c-a01.md"
         commented.write_text("---\nformat: 2 # current schema\ntask_id: c-a01\n---\n")
         self.assertFails(commented, "front matter:")
+        commented.write_text('---\n"format": 2\ntask_id: c-a01\n---\n')
+        self.assertFails(commented, "front matter:")
+
+    def test_a_non_string_kind_is_a_failure_in_the_report(self) -> None:
+        self.assertFails(self.task(kind=[]), "kind: must be one of")
+
+    def test_the_receipt_binds_a_non_orchestrator_review_to_the_current_design(self) -> None:
+        path = self.tasks.parent / "validation/receipt.md"
+        self.assertValid(self.security_task())
+        for text, needle in (
+            (receipt(reviewer="claude-deep-dot"), "must be one non-orchestrator identity"),  # the orchestrator itself
+            ("---\nreviewer: claude-review-dot-a002\n---\n", "does not end in the design's canonical hash"),
+            ("x\n", "does not end in the design's canonical hash"),
+        ):
+            with self.subTest(text=text):
+                path.write_text(text)
+                self.assertFails(self.security_task(), needle)
+        # Gaming path: the design changes after its review, so the receipt's hash no longer matches.
+        path.write_text(receipt())
+        changed = {**DESIGN, "threat_model": {"T1": "a narrower threat, added after the review"}}
+        self.write("design-a01", changed)
+        self.assertFails(self.security_task(), "does not end in the design's canonical hash")
+
+    def reset_fixture(self, **fields) -> Path:
+        self.task("old-a01", allowed_files=["install/common/tool.sh"], superseded_by="redesign-a01")
+        redesign = {**DESIGN, "task_id": "redesign-a01", "allowed_files": ["install/**"]}
+        self.write("redesign-a01", redesign)
+        record = {
+            "format": 2,
+            "reset_of": "old-a01",
+            "redesign_task": "redesign-a01",
+            "redesign_seat": "claude-redesign-dot-a003",
+            "reason": "two revise rounds with implementation findings",
+        }
+        record.update(fields)
+        return self.write(
+            "old-a01-design-reset",
+            {k: v for k, v in record.items() if v is not None},
+            where=self.main / ".orchestration/acceptance",
+        )
+
+    def test_a_design_reset_record_names_a_redesign_seat_and_an_overlapping_design_task(self) -> None:
+        code, report = self.run_validator(self.reset_fixture())
+        self.assertEqual((0, "valid", "superseded"), (code, report["status"], report.get("abandoned_status")), report)
+        self.assertFails(
+            self.reset_fixture(redesign_seat="claude-deep-dot"), "must be an identity containing -redesign-"
+        )
+        self.assertFails(self.reset_fixture(redesign_task="missing-a01"), "is not a task file with front matter")
+        self.write("code-a01", {**DESIGN, "task_id": "code-a01", "kind": "code", "allowed_files": ["install/**"]})
+        self.assertFails(self.reset_fixture(redesign_task="code-a01"), "must be `kind: design`")
+        self.assertFails(self.reset_fixture(reason=None), "reason: required")
+
+    def test_a_design_reset_must_overlap_the_abandoned_task(self) -> None:
+        path = self.reset_fixture()
+        self.write("redesign-a01", {**DESIGN, "task_id": "redesign-a01", "allowed_files": ["README.md"]})
+        self.assertFails(path, "does not overlap the allowed files of old-a01")
+        # The implementing tasks a design names count toward the overlap.
+        self.task("impl-a01", allowed_files=["install/common/tool.sh"])
+        self.write(
+            "redesign-a01",
+            {**DESIGN, "task_id": "redesign-a01", "allowed_files": ["README.md"], "implementing_tasks": ["impl-a01"]},
+        )
+        self.assertEqual(0, self.run_validator(path)[0])
+        # Without superseded_by on the abandoned task the record is valid but says so.
+        self.task("old-a01", allowed_files=["install/common/tool.sh"])
+        code, report = self.run_validator(path)
+        self.assertEqual(0, code)
+        self.assertTrue(any("is not marked superseded_by" in w for w in report["warnings"]), report)
 
     def test_the_module_review_tier_equals_the_gate_constants(self) -> None:
         # Until wave 2a switches the gate to the import, the copy must not drift.
@@ -391,6 +470,7 @@ class ValidateTaskTest(unittest.TestCase):
             ".claude/contextdb/contextdb/store.py",
             "home/dot_local/bin/common/executable_provision-machine-key",
             "home/dot_local/bin/common/executable_setup-gpg",
+            "home/dot_local/bin/common/executable_agmsg-dispatch",
         ):
             with self.subTest(path=path):
                 self.assertTrue(high_risk_paths.in_design_tier(path))

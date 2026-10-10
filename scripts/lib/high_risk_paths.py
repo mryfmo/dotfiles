@@ -67,6 +67,8 @@ DESIGN_TIER = (
     "scripts/generate-agent-configs.py",
     "home/dot_local/bin/common/executable_herdr-agents",
     "home/dot_local/bin/common/executable_permgate",
+    # The one command the Claude sandbox excludes and the managed settings pre-allow.
+    "home/dot_local/bin/common/executable_agmsg-dispatch",
     "home/dot_codex/**",
     ".claude/hooks/**",
     ".claude/contextdb/**",
@@ -111,6 +113,62 @@ def glob_regex(pattern: str) -> re.Pattern[str]:
 
 def in_design_tier(path: str) -> bool:
     return any(glob_regex(pattern).match(path) for pattern in DESIGN_TIER)
+
+
+def _glob_tokens(pattern: str) -> list[str]:
+    tokens = []
+    i = 0
+    while i < len(pattern):
+        token = "**/" if pattern.startswith("**/", i) else "**" if pattern.startswith("**", i) else pattern[i]
+        tokens.append(token)
+        i += len(token)
+    return tokens
+
+
+def _glob_can_start_with(pattern: str, prefix: str) -> bool:
+    """Whether some path the glob matches starts with `prefix` (an NFA over the glob's tokens)."""
+    tokens = _glob_tokens(pattern)
+
+    def closure(states: set[tuple[int, bool]]) -> set[tuple[int, bool]]:
+        out = set(states)
+        for k, inside in states:
+            if not inside and k < len(tokens) and tokens[k] in ("*", "**", "**/"):
+                out |= closure({(k + 1, False)})  # each star may match nothing
+        return out
+
+    states = closure({(0, False)})
+    for ch in prefix:
+        step = set()
+        for k, inside in states:
+            token = tokens[k] if k < len(tokens) else None
+            if token == "**/":  # `(?:.*/)?`: any characters, closed by a `/`
+                step.add((k, True))
+                if ch == "/":
+                    step.add((k + 1, False))
+            elif inside:
+                continue
+            elif token == "**" or (token == "*" and ch != "/"):
+                step.add((k, False))
+            elif (token == "?" and ch != "/") or token == ch:
+                step.add((k + 1, False))
+        states = closure(step)
+        if not states:
+            return False
+    return True
+
+
+def may_touch_design_tier(entry: str) -> bool:
+    """Whether a path or glob in a task's allowed files can name a design-tier file, existing or not."""
+    for pattern in DESIGN_TIER:
+        if pattern.endswith("/**") and not re.search(r"[*?]", pattern[:-3]):
+            if _glob_can_start_with(entry, pattern[:-2]):
+                return True
+        elif not re.search(r"[*?]", pattern):
+            if glob_regex(entry).match(pattern):
+                return True
+        else:  # shortcut: only literal paths and `<dir>/**` are intersected exactly; refuse to guess otherwise
+            raise ValueError(f"unsupported design-tier pattern {pattern!r}")
+    return False
 
 
 class FrontMatterError(ValueError):

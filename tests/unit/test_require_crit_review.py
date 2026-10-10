@@ -1181,20 +1181,33 @@ class ReviewTreeTest(unittest.TestCase):
         tree = Path(tempfile.mkdtemp(prefix="review-tree-"))
         self.addCleanup(shutil.rmtree, tree, ignore_errors=True)
         dry = self.make("-n", "require-crit-review", f"REVIEW_TREE={tree}", "BASE=origin/main").stdout.strip()
-        self.assertTrue(dry.startswith(f'[ "$(git -C "{tree}" rev-parse --path-format=absolute --git-common-dir'), dry)
+        self.assertTrue(dry.startswith(f'{{ [ "$(git -C "{tree}" rev-parse --is-inside-work-tree'), dry)
         self.assertIn(f'; cd "{tree}" && AGENT_REVIEWED="', dry)
         self.assertIn(f'"{ROOT}/scripts/require-crit-review.py" --base "origin/main"', dry)
 
         # A tree that is not a worktree of this repository is refused before the gate can skip or misjudge it.
         result = self.make("require-crit-review", f"REVIEW_TREE={tree}")
         self.assertNotEqual(0, result.returncode, result.stdout)
-        self.assertIn(f"REVIEW_TREE={tree} is not a worktree of this repository", result.stderr)
+        self.assertIn(f"REVIEW_TREE={tree} is not the top level of a worktree of this repository", result.stderr)
         self.assertNotIn("Review guard", result.stdout)
         other = tree / "other"
         subprocess.run(["git", "init", "-q", str(other)], check=True)
         result = self.make("require-crit-review", f"REVIEW_TREE={other}")
         self.assertNotEqual(0, result.returncode, result.stdout)
-        self.assertIn("is not a worktree of this repository", result.stderr)
+        self.assertIn("is not the top level of a worktree of this repository", result.stderr)
+
+        # The repository's git directory and a subdirectory share its common dir but are not a worktree's top level.
+        common = subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout.strip()
+        for bad in (common, str(ROOT / "scripts")):
+            with self.subTest(tree=bad):
+                result = self.make("require-crit-review", f"REVIEW_TREE={bad}", "CRIT_REVIEW=off")
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("is not the top level of a worktree of this repository", result.stderr)
 
         # This repository's own tree passes the check and reaches the gate (disabled here, so it returns at once).
         result = self.make("require-crit-review", f"REVIEW_TREE={ROOT}", "CRIT_REVIEW=off")

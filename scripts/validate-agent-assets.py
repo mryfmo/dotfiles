@@ -554,6 +554,10 @@ ASSET_VERIFY_BY_SOURCE = {
 ROLLING_ASSET_SOURCES = {"github-release", "https-download", "crates"}
 # A rolling asset carries no version or checksum of its own.
 ROLLING_ASSET_FORBIDDEN_FIELDS = ("pin", "ref", "ref_commit", "sha256")
+# A rolling asset needs a check independent of the release page it comes from: a release attestation,
+# a signature with a pinned key, or an immutable registry. A checksum file from the same mutable
+# release only re-checks the download, so it rolls only with `attestation` beside it.
+ROLLING_INDEPENDENT_VERIFY = {"github-release-attestation", "gpg", "cargo-locked"}
 # A pinned asset from these sources must say why its publisher's verification cannot replace the pin.
 PINNED_RELEASE_SOURCES = {
     "github-release",
@@ -676,6 +680,12 @@ def validate_assets(manifest: dict[str, Any]) -> None:
                 fail(f"assets.{name} has release: latest and must not record {present}")
             if asset.get("reason"):
                 fail(f"assets.{name} has release: latest; a reason belongs only to a pinned asset")
+            if asset["verify"] not in ROLLING_INDEPENDENT_VERIFY and "attestation" not in asset:
+                fail(
+                    f"assets.{name} has release: latest, but verify {asset['verify']!r} checks only a file from the "
+                    "same release; roll only with an attestation, a pinned-key signature or an immutable registry, "
+                    "or pin it with a reason"
+                )
         elif asset["source"] in PINNED_RELEASE_SOURCES and not asset.get("reason"):
             fail(f"assets.{name} keeps a pin and must give the reason its publisher's verification cannot replace it")
         if "attestation" in asset and (

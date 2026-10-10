@@ -624,6 +624,15 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ),
             "pinned release without a reason": (lambda a: a["brew"].pop("reason"), "must give the reason"),
             "unknown attestation": (lambda a: a["mise"].update(attestation="always"), "attestation must be"),
+            # A same-release checksum file alone is not an independent check (Amendment 7).
+            "rolling on a same-release checksum only": (
+                lambda a: a["mise"].pop("attestation"),
+                "checks only a file from the same release",
+            ),
+            "rolling on a sha256 sidecar only": (
+                lambda a: a["mise"].pop("attestation") and a["mise"].update(verify="release-sha256"),
+                "checks only a file from the same release",
+            ),
             "attestation off GitHub": (
                 lambda a: a["aws"].update(attestation="when-gh-authenticated"),
                 "attestation must be",

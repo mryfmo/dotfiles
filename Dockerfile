@@ -35,8 +35,9 @@ WORKDIR /home/$USERNAME/.local/share/chezmoi
 # only that sha256, never the release page.
 ARG CHEZMOI_VERSION
 ARG CHEZMOI_SHA256
-# make docker rebuilds the image when this label differs from the resolved release.
-LABEL chezmoi.version=$CHEZMOI_VERSION
+# make docker rebuilds the image when the version label differs from the resolved release, or
+# when the sha256 label of a host-verified archive is missing.
+LABEL chezmoi.version=$CHEZMOI_VERSION chezmoi.sha256=$CHEZMOI_SHA256
 RUN { test -n "$CHEZMOI_VERSION" && test -n "$CHEZMOI_SHA256"; } || { echo "build with --build-arg CHEZMOI_VERSION and CHEZMOI_SHA256 (make docker verifies both)" >&2; exit 1; } \
     && artifact="chezmoi_${CHEZMOI_VERSION}_linux_$(dpkg --print-architecture).tar.gz" \
     && base_url="https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}" \

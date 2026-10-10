@@ -59,12 +59,15 @@ function github_release_fetch() {
         fi
     elif [ -n "${bearer}" ]; then
         # wget reads the credential from a private wgetrc (mktemp creates it 0600), never the command line.
-        local status=0 wgetrc
-        wgetrc="$(mktemp "${TMPDIR:-/tmp}/github-release.XXXXXX")" || return 1
-        printf 'header = Authorization: Bearer %s\n' "${bearer}" > "${wgetrc}" &&
-            wget --config="${wgetrc}" -qO - --header='Accept: application/vnd.github+json' "${url}" || status=$?
-        rm -f "${wgetrc}"
-        return "${status}"
+        # A subshell whose EXIT trap removes it, with signals turned into exits, so an interruption
+        # cannot strand the credential.
+        (
+            wgetrc="$(mktemp "${TMPDIR:-/tmp}/github-release.XXXXXX")" || exit 1
+            trap 'rm -f "${wgetrc}"' EXIT
+            trap 'exit 1' HUP INT TERM
+            printf 'header = Authorization: Bearer %s\n' "${bearer}" > "${wgetrc}" || exit 1
+            wget --config="${wgetrc}" -qO - --header='Accept: application/vnd.github+json' "${url}"
+        )
     else
         wget -qO - --header='Accept: application/vnd.github+json' "${url}"
     fi

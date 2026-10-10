@@ -19,11 +19,15 @@ MKDOCS_PYTHON = NO_MKDOCS_2_WARNING=true $(MKDOCS_UV) python
 # The chezmoi release setup.sh bootstraps. The tag stays in a shell variable: fetched text never
 # becomes Make or shell source. A build has no gh, so the archive's checksum and release attestation
 # are checked here on the host, and the Dockerfile checks its download against the verified sha256.
+# An existing image is reused only when this recipe built it: its chezmoi.sha256 label marks a
+# host-verified archive, and an older image without it is rebuilt.
 docker:
 	@chezmoi_version="$$(bash -c 'source scripts/lib/github-release.sh && github_release_tag twpayne/chezmoi')"; \
 	chezmoi_version="$${chezmoi_version#v}"; \
 	[ -n "$${chezmoi_version}" ] || { echo "could not resolve a twpayne/chezmoi release" >&2; exit 1; }; \
-	if [ "$$(docker inspect -f '{{ index .Config.Labels "chezmoi.version" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)" != "$${chezmoi_version}" ]; then \
+	image_version="$$(docker inspect -f '{{ index .Config.Labels "chezmoi.version" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)"; \
+	image_sha256="$$(docker inspect -f '{{ index .Config.Labels "chezmoi.sha256" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)"; \
+	if [ "$${image_version}" != "$${chezmoi_version}" ] || [ "$${#image_sha256}" -ne 64 ]; then \
 		arch="$$(docker version --format '{{ .Server.Arch }}')" || { echo "docker is not reachable" >&2; exit 1; }; \
 		artifact="chezmoi_$${chezmoi_version}_linux_$${arch}.tar.gz"; \
 		status=0; \

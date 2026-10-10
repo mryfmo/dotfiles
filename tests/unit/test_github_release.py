@@ -229,6 +229,20 @@ class GithubReleaseTest(unittest.TestCase):
         # The wgetrc is removed once wget returns.
         self.assertEqual([], list(self.temp_dir.glob("github-release.*")))
 
+    def test_an_interrupted_wget_never_strands_the_credential_file(self) -> None:
+        # wget is killed mid-download (its parent shell gets SIGTERM): the private wgetrc must still go.
+        for tool in ("mktemp", "rm", "sleep"):
+            (self.bin_dir / tool).symlink_to(shutil.which(tool))
+        self.executable("wget", 'kill -TERM "$PPID"\nsleep 2\n')
+
+        result = self.run_helper(
+            'github_release_list owner/repo; echo "status=$?"',
+            **{"GITHUB_TOKEN": "interrupted-credential", "TMPDIR": str(self.temp_dir)},
+        )
+
+        self.assertEqual([], list(self.temp_dir.glob("github-release.*")), result.stdout + result.stderr)
+        self.assertNotIn("status=0", result.stdout)
+
     def test_attestation_needs_an_authenticated_gh_and_fails_hard_on_a_bad_attestation(self) -> None:
         asset = self.temp_dir / "asset.tar.gz"
         asset.write_text("payload\n")
@@ -373,7 +387,11 @@ class GithubReleaseTest(unittest.TestCase):
             "docker",
             f"""
             printf 'docker %s\\n' "$*" >> "{self.log}"
-            case "$1" in inspect) exit 1 ;; version) printf 'amd64\\n' ;; esac
+            case "$1:$*" in
+                inspect:*chezmoi.version*) [ -n "${{IMAGE_VERSION:-}}" ] || exit 1; printf '%s\\n' "$IMAGE_VERSION" ;;
+                inspect:*chezmoi.sha256*) [ -n "${{IMAGE_VERSION:-}}" ] || exit 1; printf '%s\\n' "${{IMAGE_SHA256:-}}" ;;
+                version:*) printf 'amd64\\n' ;;
+            esac
             exit 0
             """,
         )
@@ -382,6 +400,9 @@ class GithubReleaseTest(unittest.TestCase):
             ("attestation refused", {"GH_VERIFY": "1"}, False),
             ("checksum mismatch", {"CHECKSUM": "0" * 64}, False),
             ("gh not ready", {"GH_AUTH": "1"}, False),
+            # An image the previous recipe built carries the version but no verified sha256: rebuilt.
+            ("old image without the sha256 label", {"IMAGE_VERSION": "2.73.0"}, True),
+            ("image this recipe built", {"IMAGE_VERSION": "2.73.0", "IMAGE_SHA256": digest}, "reused"),
         ):
             with self.subTest(case=case):
                 self.log.unlink(missing_ok=True)
@@ -401,6 +422,13 @@ class GithubReleaseTest(unittest.TestCase):
                 )
 
                 log = self.log.read_text()
+                if verified == "reused":
+                    # Nothing to verify or build: the image already holds a host-verified chezmoi.
+                    self.assertEqual(0, result.returncode, result.stderr)
+                    self.assertNotIn("docker build", log)
+                    self.assertNotIn("verify-asset", log)
+                    self.assertIn("docker run -it", log)
+                    continue
                 if verified:
                     self.assertEqual(0, result.returncode, result.stderr)
                     self.assertIn(f"gh release verify-asset v2.73.0 {self.temp_dir}/github-release.", log)

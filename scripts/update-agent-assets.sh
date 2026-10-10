@@ -105,17 +105,14 @@ function has_command() {
 }
 
 #
-# @description Remove node-global agent CLIs that shadow Codex's mise tool and Claude Code's native launcher.
+# @description Remove a node-global Codex that shadows its mise tool. Claude Code's global npm copy goes
+#   only once the native install verified (ensure_claude_code), so a host never loses its only claude.
 #
 function remove_node_global_agent_cli_shadows() {
-    local npm_package
-
     has_command npm || return 0
-    for npm_package in "@openai/codex" "@anthropic-ai/claude-code"; do
-        if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
-            npm uninstall -g "${npm_package}"
-        fi
-    done
+    if npm list -g @openai/codex --depth=0 > /dev/null 2>&1; then
+        npm uninstall -g @openai/codex
+    fi
 }
 
 #
@@ -182,8 +179,10 @@ function claude_code_active_version() {
     local target version
     target="$(readlink "${HOME}/.local/bin/claude" 2> /dev/null)" || return 0
     version="${target##*/}"
+    # A version file that lost its execute bit cannot run, so it is no active install.
     if [[ "${version}" =~ ${CLAUDE_CODE_VERSION_PATTERN} ]] &&
-        [ "${HOME}/.local/bin/claude" -ef "${HOME}/.local/share/claude/versions/${version}" ]; then
+        [ "${HOME}/.local/bin/claude" -ef "${HOME}/.local/share/claude/versions/${version}" ] &&
+        [ -x "${HOME}/.local/share/claude/versions/${version}" ]; then
         printf '%s\n' "${version}"
     fi
 }
@@ -342,7 +341,7 @@ function retire_mise_claude_code() {
 # @exitcode 1 A signature or sha256 did not verify, or the install step failed; that version is removed.
 #
 function ensure_claude_code() {
-    local aside="" channel installed="" launcher="${HOME}/.local/bin/claude" settings="${HOME}/.claude/settings.json" status=0 version
+    local aside="" channel installed="" launcher="${HOME}/.local/bin/claude" leftover settings="${HOME}/.claude/settings.json" status=0 version
 
     section "Claude Code"
     version="$(claude_code_active_version)"
@@ -355,7 +354,13 @@ function ensure_claude_code() {
         # claude install can leave a launcher it did not create in place, so a non-native one moves aside
         # first, is kept for rollback, and comes back when the install does not verify.
         if [ -L "${launcher}" ] && [[ "$(readlink "${launcher}")" == */claude/versions/* ]]; then
-            # A native link whose version is gone is a leftover, not someone's launcher.
+            # A native link whose version is gone or cannot run is a leftover, not someone's launcher; its
+            # stale version file goes too, so the install writes a fresh one.
+            leftover="$(readlink "${launcher}")"
+            leftover="${leftover##*/}"
+            if [[ "${leftover}" =~ ${CLAUDE_CODE_VERSION_PATTERN} ]]; then
+                remove_claude_code_version "${leftover}"
+            fi
             rm -f "${launcher}" || return 1
         elif [ -e "${launcher}" ] || [ -L "${launcher}" ]; then
             # A unique name, so an earlier backup is never overwritten.
@@ -394,6 +399,10 @@ function ensure_claude_code() {
         return 1
     fi
     [ -z "${aside}" ] || printf 'note: the previous, non-native launcher is kept at %s\n' "${aside}"
+    # Only now that the native install verified: a global npm copy would shadow its launcher.
+    if has_command npm && npm list -g @anthropic-ai/claude-code --depth=0 > /dev/null 2>&1; then
+        npm uninstall -g @anthropic-ai/claude-code || printf 'warning: could not remove the global npm Claude Code\n' >&2
+    fi
     retire_mise_claude_code
     printf 'Claude Code %s: native install, verified against its signed release manifest.\n' "${version}"
     manifest_record "ensure_claude_code" installer "${version}" "${HOME}/.local/bin/claude" "${HOME}/.local/share/claude" -- \

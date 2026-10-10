@@ -186,7 +186,8 @@ class RuntimeHealthTest(unittest.TestCase):
         calls = log.read_text().splitlines()
         first_agent_call = min(i for i, call in enumerate(calls) if call.startswith(("claude ", "codex ")))
         self.assertLess(calls.index("npm uninstall -g @openai/codex"), first_agent_call)
-        self.assertLess(calls.index("npm uninstall -g @anthropic-ai/claude-code"), first_agent_call)
+        # No native Claude Code verified here, so its global npm copy is the only claude and stays.
+        self.assertNotIn("npm uninstall -g @anthropic-ai/claude-code", calls)
 
     def test_agent_asset_update_repairs_broken_codex_with_npm_backend(self) -> None:
         repo = self.temp_dir / "agent-assets-repair-repo"
@@ -1530,6 +1531,10 @@ EOF
                     printf 'audited 1 package in 1s\\n\\n1 package has a verified registry signature\\n\\n'
                     printf '1 package has a verified attestation\\n'
                     ;;
+                # The tool's own release: only a dependency is attested, or the lookup fails.
+                view:*_dependency_attested | view:*_signature_only) ;;
+                view:*_view_fails) exit 1 ;;
+                view:*) printf 'https://registry.npmjs.org/-/npm/v1/attestations/ccusage@20.0.0\\n' ;;
             esac
             """,
         )
@@ -1538,6 +1543,7 @@ EOF
             """
             printf 'uv %s\n' "$*" >> "$TEST_LOG"
             if [ "$*" = "tool list" ]; then
+                [[ "$FAIL_PHASE" != uv_list_fails ]] || exit 2
                 [[ "$FAIL_PHASE" == uv_none ]] || printf 'ruff v0.15.0\\n- ruff\\n'
                 exit 0
             fi
@@ -1931,6 +1937,17 @@ EOF
                 "optional warning: could not fetch npm:ccusage to check its provenance",
                 "required failures: 0; optional warnings: 1",
             ),
+            # npm's attestation count covers the tree; the tool's own release carries none here.
+            "provenance_dependency_attested": (
+                0,
+                "registry signature only (the publisher attaches no provenance attestation): npm:ccusage",
+                "required failures: 0; optional warnings: 0",
+            ),
+            "provenance_view_fails": (
+                0,
+                "optional warning: could not fetch npm:ccusage to check its provenance",
+                "required failures: 0; optional warnings: 1",
+            ),
             # A registry or TLS error is the check being unavailable, never a verdict: nothing is removed.
             "provenance_registry_unavailable": (
                 0,
@@ -1970,6 +1987,8 @@ EOF
         cases = {
             "day_one_attested": (0, False, "verified: npm:ccusage (registry signature and provenance attestation)"),
             "day_one_signature_only": (1, True, removing),
+            # An attested dependency cannot stand in for the tool's own release.
+            "day_one_dependency_attested": (1, True, removing),
             "day_one_attestation_fails": (1, True, removing),
             # A check that cannot run is no verification: without an earlier one, the version goes too.
             "day_one_offline": (1, True, removing),
@@ -2000,6 +2019,15 @@ EOF
         self.assertIn("could not re-check npm:ccusage 20.0.0; an earlier run verified its provenance", result.stderr)
         self.assertIn("required failures: 0; optional warnings: 1", result.stdout)
         self.assertNotIn("mise uninstall npm:ccusage@20.0.0", (repo / "commands.log").read_text().splitlines())
+
+    def test_upgrade_uv_tools_warns_when_the_listing_fails(self) -> None:
+        repo, env = self.upgrade_fixture("uv_list_fails")
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("optional warning: uv tool upgrade failed", result.stderr)
+        self.assertNotIn("uv tool upgrade --all", (repo / "commands.log").read_text().splitlines())
 
     def test_upgrade_uv_tools_prints_nothing_without_uv_tools(self) -> None:
         for phase, upgraded in (("uv_none", False), ("none", True)):

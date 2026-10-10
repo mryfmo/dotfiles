@@ -293,9 +293,10 @@ herdr server reload-config" ]
 @test "[common] agent CLI lifecycle upgrades through mise and removes node-global shadows before asset commands" {
     local cleanup_line
 
-    grep -q 'for npm_package in "@openai/codex" "@anthropic-ai/claude-code"' scripts/update-agent-assets.sh
-    grep -q 'npm uninstall -g "${npm_package}"' scripts/update-agent-assets.sh
-    # Codex and Claude Code are ordinary mise tools now; no separate npm-latest phase.
+    grep -q 'npm uninstall -g @openai/codex' scripts/update-agent-assets.sh
+    # Claude Code's global npm copy goes only after the native install verified (ensure_claude_code).
+    grep -q 'npm uninstall -g @anthropic-ai/claude-code' scripts/update-agent-assets.sh
+    # Codex is an ordinary mise tool; no separate npm-latest phase.
     ! grep -q 'upgrade_mise_npm_agent_tool' scripts/upgrade-tools.sh
     cleanup_line="$(grep -n '^    remove_node_global_agent_cli_shadows$' scripts/update-agent-assets.sh | cut -d: -f1)"
 

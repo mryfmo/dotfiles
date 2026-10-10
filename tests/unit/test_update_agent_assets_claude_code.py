@@ -104,6 +104,13 @@ class EnsureClaudeCodeTest(unittest.TestCase):
             """,
         )
         self.fake(
+            "npm",
+            """
+            printf 'npm %s\\n' "$*" >> "$TEST_LOG"
+            [ "$1" != list ] || [ -n "${NPM_GLOBAL_CLAUDE:-}" ]
+            """,
+        )
+        self.fake(
             "mise",
             """
             printf 'mise %s\\n' "$*" >> "$TEST_LOG"
@@ -185,6 +192,33 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         step = self.manifest_steps()["ensure_claude_code"]
         self.assertEqual(VERSION, step["source_version"])
         self.assertEqual([str(launcher), str(self.home / ".local/share/claude")], step["paths"])
+
+    def test_a_global_npm_claude_code_goes_only_after_the_native_install_verified(self) -> None:
+        result = self.run_ensure(NPM_GLOBAL_CLAUDE="1")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        calls = self.calls()
+        self.assertLess(
+            calls.index(f"binary install {VERSION}"), calls.index("npm uninstall -g @anthropic-ai/claude-code")
+        )
+
+        # A failed check keeps the global copy, the host's only claude.
+        shutil.rmtree(self.home / ".local/share/claude")
+        (self.home / ".local/bin/claude").unlink()
+        self.log.unlink()
+        self.write_manifest(VERSION, "0" * 64)
+        result = self.run_ensure(NPM_GLOBAL_CLAUDE="1")
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("npm uninstall -g @anthropic-ai/claude-code", self.calls())
+
+    def test_a_non_executable_active_version_is_reinstalled(self) -> None:
+        binary = self.install_active()
+        binary.chmod(0o644)
+
+        result = self.run_ensure()
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"binary install {VERSION}", self.calls())
+        self.assertTrue(os.access(self.home / f".local/share/claude/versions/{VERSION}", os.X_OK))
 
     def test_a_bad_manifest_signature_installs_and_runs_nothing(self) -> None:
         self.serve(f"claude-code-releases/{VERSION}/manifest.json.sig", "FORGED\n")

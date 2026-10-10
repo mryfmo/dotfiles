@@ -425,13 +425,13 @@ function upgrade_mise_tools() {
 # @arg $2 string The installed version.
 # @arg $3 path A scratch directory for this tool.
 # @arg $4 string Non-empty for a tool outside the cooldown, whose install lifted npm's window.
-# @exitcode 0 The registry signature and the provenance attestation verified.
+# @exitcode 0 The registry signature and the release's own provenance attestation verified.
 # @exitcode 1 A signature or an attestation failed to verify.
 # @exitcode 3 The tool could not be fetched or checked, so nothing was verified.
-# @exitcode 4 The registry signature verified; the package publishes no attestation.
+# @exitcode 4 The registry signature verified; the release itself carries no attestation.
 #
 function check_npm_tool_provenance() {
-    local mise_tool="$1" version="$2" dir="$3" day_one="$4" output status=0 window=""
+    local mise_tool="$1" version="$2" dir="$3" day_one="$4" attestation output status=0 window=""
 
     { mkdir -p "${dir}" && printf '{"private":true}\n' > "${dir}/package.json"; } || return 3
     # A tool outside mise's cooldown installs with npm's window lifted (its install_env in the mise
@@ -455,6 +455,11 @@ function check_npm_tool_provenance() {
     # npm prints a count line only for a non-zero count.
     grep -qE '^[[:space:]]*[1-9][0-9]* packages? ha(s a|ve) verified registry signatures?$' <<< "${output}" || return 3
     grep -qE '^[[:space:]]*[1-9][0-9]* packages? ha(s a|ve) verified attestations?$' <<< "${output}" || return 4
+    # The counts cover the whole tree, so an attested dependency could stand in: the tool's own release must
+    # carry the attestation the audit just verified.
+    attestation="$(cd "${dir}" && npm_config_cache="${dir%/*}/cache" mise exec node -- npm view \
+        ${window:+"${window}"} "${mise_tool#npm:}@${version}" dist.attestations.url 2> /dev/null)" || return 3
+    [ -n "${attestation}" ] || return 4
 }
 
 #
@@ -541,8 +546,12 @@ function verify_npm_provenance() {
 #   pipx: (README), so this only moves uv tools a machine already has and prints nothing without any.
 #
 function upgrade_uv_tools() {
+    local tools
+
     has_command uv || return 1
-    case "$(uv tool list 2> /dev/null)" in
+    # A listing that fails is a warning, not "no tools".
+    tools="$(uv tool list 2> /dev/null)" || return 1
+    case "${tools}" in
     "" | "No tools installed"*) return 0 ;;
     esac
 

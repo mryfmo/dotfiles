@@ -55,6 +55,27 @@ GITHUB_ATTESTATION_MIN_GH="2.93.0"
 GITHUB_RELEASE_TAG_PATTERN='^v?[0-9]+(\.[0-9]+)*([-.+][0-9A-Za-z.-]+)?$'
 
 #
+# @description Succeed when GITHUB_SERVER_URL or GH_HOST names a GitHub host other than github.com,
+#   as in a GitHub Enterprise Server job: the environment's GITHUB_TOKEN and GH_TOKEN then belong
+#   to that host and must never reach github.com.
+#
+function github_enterprise_context() {
+    [ "${GITHUB_SERVER_URL:-https://github.com}" != https://github.com ] || [ "${GH_HOST:-github.com}" != github.com ]
+}
+
+#
+# @description Run gh for github.com, without an Enterprise host's environment tokens.
+# @arg $@ string gh's arguments.
+#
+function github_dotcom_gh() {
+    if github_enterprise_context; then
+        env -u GITHUB_TOKEN -u GH_TOKEN gh "$@"
+    else
+        gh "$@"
+    fi
+}
+
+#
 # @description Print the first page of a repository's releases as the GitHub API returns them.
 #   GITHUB_TOKEN, GH_TOKEN or gh's github.com token authenticate the request when one is available.
 #   An xtrace the caller turned on (DOTFILES_DEBUG) is off while the credential is handled, and
@@ -78,11 +99,12 @@ function github_release_list() {
 # @arg $1 string owner/repo
 #
 function github_release_fetch() {
-    local url="https://api.github.com/repos/$1/releases?per_page=30"
-    local bearer="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+    local url="https://api.github.com/repos/$1/releases?per_page=30" bearer=""
+    # An environment token counts only off an Enterprise host; there it belongs to that host.
+    github_enterprise_context || bearer="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
     if [ -z "${bearer}" ] && command -v gh > /dev/null 2>&1; then
         # github.com only: GH_HOST or an Enterprise default host must not send its credential here.
-        bearer="$(gh auth token --hostname github.com 2> /dev/null)" || bearer=""
+        bearer="$(github_dotcom_gh auth token --hostname github.com 2> /dev/null)" || bearer=""
     fi
     if command -v curl > /dev/null 2>&1; then
         if [ -n "${bearer}" ]; then
@@ -153,7 +175,7 @@ function github_release_tag() {
 function github_attestation_ready() {
     local PATH="${HOME}/.local/share/mise/shims:${PATH}" version
     command -v gh > /dev/null 2>&1 || return 1
-    version="$(gh --version 2> /dev/null | awk 'NR == 1 { print $3 }')"
+    version="$(github_dotcom_gh --version 2> /dev/null | awk 'NR == 1 { print $3 }')"
     # Only a stable X.Y.Z counts: a prerelease such as 2.93.0-rc.1 sorts below the 2.93.0 fix.
     if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
         ! printf '%s\n%s\n' "${GITHUB_ATTESTATION_MIN_GH}" "${version}" | awk -F. '
@@ -169,7 +191,7 @@ function github_attestation_ready() {
             "${version:-unknown}" "${GITHUB_ATTESTATION_MIN_GH}" >&2
         return 1
     fi
-    gh auth status --hostname github.com > /dev/null 2>&1
+    github_dotcom_gh auth status --hostname github.com > /dev/null 2>&1
 }
 
 #
@@ -187,7 +209,7 @@ function github_release_attestation() {
     local PATH="${HOME}/.local/share/mise/shims:${PATH}"
     github_attestation_ready || return 2
     # gh prints its verification report on stdout; it goes to stderr so callers get only the status.
-    gh release verify-asset "$2" "$3" --repo "github.com/$1" 1>&2 || return 1
+    github_dotcom_gh release verify-asset "$2" "$3" --repo "github.com/$1" 1>&2 || return 1
 }
 
 #

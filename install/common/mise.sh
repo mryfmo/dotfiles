@@ -82,10 +82,11 @@ function verify_mise_archive() {
 # @arg $1 path SHASUMS256.asc
 # @arg $2 path A private scratch directory.
 # @stdout The signed checksum lines.
+# @exitcode 3 The release key could not be downloaded, so nothing was checked.
 #
 function verify_mise_shasums_signature() {
     local key="$2/mise-release-key.asc" key_data fingerprint validity expiration
-    curl -fsSL "${MISE_GPG_KEY_URL}" -o "${key}" || return
+    curl -fsSL "${MISE_GPG_KEY_URL}" -o "${key}" || return 3
     mkdir -m 700 "$2/gnupg" || return
     key_data="$(gpg --homedir "$2/gnupg" --batch --with-colons --import-options show-only --import "${key}")" || return
     # Exactly one primary key, and the fingerprint line right after it is the primary's own.
@@ -110,6 +111,32 @@ function mise_gpg_ready() {
 }
 
 #
+# @description Print the version the installed mise reports, or nothing when it is absent or broken.
+#
+function mise_installed_version() {
+    local output
+    [ -x "${MISE_INSTALL_PATH}" ] || return 0
+    # A binary that exits non-zero is broken whatever it printed, so it reports no version.
+    output="$("${MISE_INSTALL_PATH}" --version 2> /dev/null)" || return 0
+    printf '%s\n' "${output}" | awk 'NR == 1 && $1 ~ /^[0-9]+\.[0-9]+\.[0-9]+$/ { print $1 }'
+}
+
+#
+# @description Succeed when version $1 is at or after version $2 (X.Y.Z, a leading v ignored).
+#
+function mise_version_at_least() {
+    printf '%s\n%s\n' "${2#v}" "${1#v}" | awk -F. '
+        NR == 1 { split($0, floor, ".") }
+        NR == 2 {
+            for (i = 1; i <= 3; i++) {
+                if ($i + 0 > floor[i] + 0) exit 0
+                if ($i + 0 < floor[i] + 0) exit 1
+            }
+            exit 0
+        }'
+}
+
+#
 # @description Print the reviewed fallback sha256 of a mise release artifact.
 # @arg $1 string The artifact name.
 #
@@ -130,7 +157,7 @@ function mise_fallback_sha256() {
 #   checksum file is checked on every path.
 #
 function _install_mise_binary() (
-    local artifact attestation=0 base_url fallback="" gpg_ready="" stage="" tag tmpdir
+    local artifact attestation=0 base_url fallback="" gpg_ready="" installed signature=0 stage="" tag tmpdir
     if mise_gpg_ready; then gpg_ready=1; fi
     if [ -n "${gpg_ready}" ] || github_attestation_ready; then
         tag="$(github_release_tag "${MISE_RELEASE_REPO}")" || {
@@ -138,9 +165,15 @@ function _install_mise_binary() (
             return 1
         }
     else
-        # Neither check can run before mise does, so the reviewed release installs instead.
+        # Neither check can run before mise does, so the reviewed release installs instead,
+        # unless a mise at or past it (moved forward by mise self-update) is already there.
         fallback=1
         tag="${MISE_FALLBACK_VERSION}"
+        installed="$(mise_installed_version)"
+        if [ -n "${installed}" ] && mise_version_at_least "${installed}" "${tag}"; then
+            printf 'mise %s stays: it is at or past the reviewed fallback %s.\n' "${installed}" "${tag}"
+            return 0
+        fi
         printf 'No gpg and no authenticated gh 2.93.0 or newer: installing the reviewed mise %s (assets.mise.fallback).\n' "${tag}"
     fi
     artifact="$(mise_artifact "${tag}")" || return
@@ -153,12 +186,24 @@ function _install_mise_binary() (
     curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}" || return
     if [ -n "${gpg_ready}" ]; then
         # The checksums come from the signed text itself, never from an unsigned SHASUMS256.txt.
-        curl -fsSL "${base_url}/SHASUMS256.asc" -o "${tmpdir}/SHASUMS256.asc" || return
-        verify_mise_shasums_signature "${tmpdir}/SHASUMS256.asc" "${tmpdir}" > "${tmpdir}/SHASUMS256.txt" || {
+        if curl -fsSL "${base_url}/SHASUMS256.asc" -o "${tmpdir}/SHASUMS256.asc"; then
+            verify_mise_shasums_signature "${tmpdir}/SHASUMS256.asc" "${tmpdir}" > "${tmpdir}/SHASUMS256.txt" || signature=$?
+        else
+            signature=3
+        fi
+        if [ "${signature}" -eq 3 ] && github_attestation_ready; then
+            # The signature's inputs are unavailable, not wrong: the attestation is the check instead.
+            printf 'warning: could not fetch the mise release key or SHASUMS256.asc; the release attestation verifies mise %s instead.\n' "${tag}" >&2
+            gpg_ready=""
+        elif [ "${signature}" -eq 3 ]; then
+            printf 'Could not fetch the mise release key or SHASUMS256.asc, and no authenticated gh can verify mise %s instead; nothing was installed.\n' "${tag}" >&2
+            return 1
+        elif [ "${signature}" -ne 0 ]; then
             printf 'GPG signature check failed for SHASUMS256.asc of mise %s.\n' "${tag}" >&2
             return 1
-        }
-    else
+        fi
+    fi
+    if [ -z "${gpg_ready}" ]; then
         curl -fsSL "${base_url}/SHASUMS256.txt" -o "${tmpdir}/SHASUMS256.txt" || return
     fi
     verify_mise_archive "${tmpdir}/${artifact}" "${tmpdir}/SHASUMS256.txt" "${artifact}" || return

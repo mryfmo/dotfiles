@@ -152,6 +152,43 @@ class GithubReleaseTest(unittest.TestCase):
                 )
         self.assertEqual("gh auth token --hostname github.com\n", Path(f"{self.log}.gh").read_text())
 
+    def test_an_enterprise_host_token_never_reaches_github_com(self) -> None:
+        # A GitHub Enterprise Server job exports its own GITHUB_TOKEN; neither curl nor gh may carry it to github.com.
+        self.serve([release("v1.0.0", hours_ago(500))])
+        asset = self.temp_dir / "asset.tar.gz"
+        asset.write_text("payload\n")
+        self.executable(
+            "gh",
+            f"""
+            printf 'gh %s tokens=%s\\n' "$*" "${{GITHUB_TOKEN:-}}${{GH_TOKEN:-}}" >> "{self.log}.gh"
+            [ "$1" = --version ] && {{ printf 'gh version 2.93.0 (2026-10-01)\\n'; exit 0; }}
+            [ "$*" = "auth token --hostname github.com" ] && {{ printf '%s\\n' "${{GH_TOKEN:-${{GITHUB_TOKEN:-dotcom-credential}}}}"; exit 0; }}
+            [ "$*" = "auth status --hostname github.com" ] && exit 0
+            [ "$1 $2" = "release verify-asset" ] && exit 0
+            exit 1
+            """,
+        )
+        for name, env in (
+            ("GHES job", {"GITHUB_SERVER_URL": "https://ghes.example.com", "GITHUB_TOKEN": "enterprise-credential"}),
+            ("GH_HOST", {"GH_HOST": "ghes.example.com", "GH_TOKEN": "enterprise-credential"}),
+        ):
+            with self.subTest(context=name):
+                for path in (self.log, Path(f"{self.log}.stdin"), Path(f"{self.log}.gh")):
+                    path.unlink(missing_ok=True)
+
+                result = self.run_helper(
+                    f'github_release_tag owner/repo && github_release_attestation owner/repo v1.0.0 "{asset}"', **env
+                )
+
+                self.assertEqual(0, result.returncode, result.stderr)
+                # The fallback is gh's own github.com login, never the Enterprise token.
+                self.assertEqual(
+                    'header = "Authorization: Bearer dotcom-credential"\n', Path(f"{self.log}.stdin").read_text()
+                )
+                gh_calls = Path(f"{self.log}.gh").read_text()
+                self.assertNotIn("enterprise-credential", gh_calls)
+                self.assertIn("release verify-asset v1.0.0", gh_calls)
+
     def test_an_xtrace_never_shows_the_credential_and_is_restored(self) -> None:
         # Installers run set -x under DOTFILES_DEBUG; the credential must stay out of the trace.
         page = self.temp_dir / "releases.json"
@@ -469,13 +506,20 @@ class GithubReleaseTest(unittest.TestCase):
         self.assertEqual([], list(self.temp_dir.glob("github-release.*")))
 
     def mise_bootstrap(
-        self, *, gpg: str | None, gh: str | None = None, reviewed: bool = False
+        self,
+        *,
+        gpg: str | None,
+        gh: str | None = None,
+        reviewed: bool = False,
+        key_fail: bool = False,
+        installed: str | None = None,
     ) -> subprocess.CompletedProcess[str]:
         """Run _install_mise_binary against a fake jdx/mise release.
 
         gpg is None (gpg and gpgv absent), "good", "bad signature", "wrong fingerprint", "expired" or "two keys";
         gh is None (absent), "verifies" or "fails". The fallback pin is the fixture release; reviewed makes its
-        reviewed sha256 the fixture archive's, otherwise the manifest's real one stays (a mismatch).
+        reviewed sha256 the fixture archive's, otherwise the manifest's real one stays (a mismatch). key_fail makes
+        the release key's download fail; installed puts a mise reporting that version at the install path.
         """
         home = self.temp_dir / "home"
         self.state = self.temp_dir / "state"
@@ -494,6 +538,7 @@ class GithubReleaseTest(unittest.TestCase):
         sums.write_text(f"{'0' * 64}  ./mise-v2026.10.3-linux-arm64.tar.gz\n{digest}  ./{MISE_ARTIFACT}\n")
         page = self.temp_dir / "releases.json"
         page.write_text(json.dumps([release("v2026.10.3", hours_ago(100))], indent=2) + "\n")
+        key_step = "exit 22" if key_fail else "printf 'armored key\\n' > \"$out\""
         self.executable(
             "curl",
             f"""
@@ -502,7 +547,7 @@ class GithubReleaseTest(unittest.TestCase):
             while [ "$#" -gt 0 ]; do case "$1" in -o) out="$2"; shift ;; https://*) url="$1" ;; esac; shift; done
             case "$url" in
                 https://api.github.com/*) cat "{page}" ;;
-                https://keys.openpgp.org/*) printf 'armored key\\n' > "$out" ;;
+                https://keys.openpgp.org/*) {key_step} ;;
                 */SHASUMS256.txt) cp "{sums}" "$out" ;;
                 */SHASUMS256.asc) printf 'clearsigned sums\\n' > "$out" ;;
                 */{MISE_ARTIFACT}) cp "{self.archive}" "$out" ;;
@@ -562,6 +607,11 @@ class GithubReleaseTest(unittest.TestCase):
                 exit 1
                 """,
             )
+        if installed is not None:
+            mise = home / ".local/bin/mise"
+            mise.parent.mkdir(parents=True, exist_ok=True)
+            mise.write_text(f"#!/bin/sh\nprintf '{installed} macos-arm64 (2026-10-01)\\n'\n")
+            mise.chmod(0o755)
         override = 'MISE_FALLBACK_VERSION="v2026.10.3"'
         if reviewed:
             override += f'; MISE_FALLBACK_LINUX_X64_SHA256="{digest}"'
@@ -603,6 +653,52 @@ class GithubReleaseTest(unittest.TestCase):
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("mise v2026.10.3 does not match its reviewed sha256; nothing was installed.", result.stderr)
+        self.assertFalse((self.temp_dir / "home/.local/bin/mise").exists())
+
+    def test_mise_bootstrap_keeps_a_newer_installed_mise_on_the_fallback_path(self) -> None:
+        # mise self-update moved it past the fallback; a rerun of the bootstrap must not downgrade it.
+        result = self.mise_bootstrap(gpg=None, installed="2026.11.0")
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("mise 2026.11.0 stays: it is at or past the reviewed fallback v2026.10.3.", result.stdout)
+        self.assertFalse(self.log.exists())
+        self.assertIn("2026.11.0", (self.temp_dir / "home/.local/bin/mise").read_text())
+        self.tearDown()
+        self.setUp()
+
+        # An older one is replaced by the reviewed fallback.
+        result = self.mise_bootstrap(gpg=None, installed="2026.9.1", reviewed=True)
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("installing the reviewed mise v2026.10.3", result.stdout)
+        self.assertNotIn("2026.9.1", (self.temp_dir / "home/.local/bin/mise").read_text())
+
+    def test_mise_bootstrap_verifies_by_attestation_only_when_the_gpg_inputs_cannot_be_fetched(self) -> None:
+        # keys.openpgp.org is down: an authenticated gh's attestation verifies instead.
+        result = self.mise_bootstrap(gpg="good", key_fail=True, gh="verifies")
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("the release attestation verifies mise v2026.10.3 instead", result.stderr)
+        log = self.log.read_text()
+        self.assertIn("/v2026.10.3/SHASUMS256.txt", log)
+        self.assertIn(f"/{MISE_ARTIFACT} --repo github.com/jdx/mise", log)
+        self.tearDown()
+        self.setUp()
+
+        # Without gh nothing can verify it, so nothing installs.
+        result = self.mise_bootstrap(gpg="good", key_fail=True)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Could not fetch the mise release key or SHASUMS256.asc", result.stderr)
+        self.assertFalse((self.temp_dir / "home/.local/bin/mise").exists())
+        self.tearDown()
+        self.setUp()
+
+        # A bad signature is a failed check, not a missing input: the attestation does not replace it.
+        result = self.mise_bootstrap(gpg="bad signature", gh="verifies")
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("GPG signature check failed", result.stderr)
         self.assertFalse((self.temp_dir / "home/.local/bin/mise").exists())
 
     def test_mise_bootstrap_with_gpg_takes_the_newest_release_verified_by_its_signature(self) -> None:

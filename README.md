@@ -1346,7 +1346,11 @@ macOS has no `gpg`, so mise and chezmoi then install a reviewed fallback
 release: `fallback.pin` and its per-platform `fallback.sha256` under
 `assets.mise` and `assets.chezmoi-bootstrap`, with the reason, rendered into
 `install/common/mise.sh` and `setup.sh`; the release's own checksum file is
-checked as well. This matters only for the first run of a fresh machine:
+checked as well. A mise already at or past the fallback stays, so a rerun
+never downgrades what `mise self-update` installed, and when the release key or
+`SHASUMS256.asc` cannot be fetched, an authenticated `gh` verifies mise by its
+attestation instead; a bad signature still fails. This matters only for the
+first run of a fresh machine:
 `mise self-update` and mise's own `chezmoi` then move both forward under the
 cooldown with mise's verification. CI verifies the chezmoi it installs with
 the runner's authenticated `gh`, and `make docker` does so on the host before

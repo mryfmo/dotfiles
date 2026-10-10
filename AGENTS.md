@@ -41,7 +41,7 @@
 - Agent evidence must contain at least one resolved record. For a finding-free review, add and resolve one review-scope approval record.
 - When the crit CLI or its data is unavailable, save the independent agent review in that same JSON shape (hand-written records are acceptable), mark each record `resolved: true` after addressing it, and reference it from the receipt exactly as crit-exported evidence; the guard validates shape, not provenance.
 - This local evidence is process evidence, not reviewer authentication. Human `CRIT_REVIEWED=1` receipts remain supported.
-- Before merging a pull request, follow the integration order in the agmsg-orchestration SKILL's Orchestrator Playbook step 10 and `home/dot_config/claude/rules/pr-integration.md`: the `scripts/pr-feedback.py` sweep, the task-level audit, the acceptance record, then the gate with `PR_FEEDBACK_EVIDENCE` and `AUDIT_EVIDENCE` (`AUDIT_DISPOSITIONS` for an `incorrect` verdict), run from `main` against the review tree: `make -C <main checkout> require-crit-review REVIEW_TREE=<review worktree> BASE=origin/main`.
+- Before merging a pull request, follow the integration order in the agmsg-orchestration SKILL's Orchestrator Playbook step 10 and `home/dot_config/claude/rules/pr-integration.md`: the `scripts/pr-feedback.py` sweep, the task-level audit, the acceptance record, then the gate with `PR_FEEDBACK_EVIDENCE` and `AUDIT_EVIDENCE` (`AUDIT_DISPOSITIONS` for an `incorrect` verdict), run from `main` against the review tree: `make require-crit-review -C <main checkout> REVIEW_TREE=<review worktree> BASE=origin/main`.
 
 ## Audit
 

@@ -384,7 +384,7 @@ and permission settings, auth helpers) is a security task: it also names a
 threat model, trust anchors and a reviewed design, whose canonical hash
 `validate-task.py <design> --print-design-hash` prints. The PR gate runs from
 `main` against the review tree,
-`make -C <main checkout> require-crit-review REVIEW_TREE=<review worktree>`, so
+`make require-crit-review -C <main checkout> REVIEW_TREE=<review worktree>`, so
 a PR never changes the gate that admits it.
 
 On Ubuntu 24.04 and later, `kernel.apparmor_restrict_unprivileged_userns=1`

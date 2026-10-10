@@ -119,25 +119,33 @@ function remove_node_global_agent_cli_shadows() {
 }
 
 #
-# @description Reinstall one broken mise-managed agent CLI through npm.
+# @description Reinstall one broken mise-managed agent CLI through npm, at the version already in place.
+#   Codex skips the cooldown, so a newer release comes only through scripts/upgrade-tools.sh, which
+#   verifies its provenance; a repair never installs one.
 # @arg $1 string CLI command name.
 # @arg $2 string mise npm tool name.
 #
 function ensure_mise_npm_agent_cli() {
     local cli="$1"
     local mise_tool="$2"
+    local version
 
     if has_command "${cli}" && "${cli}" --version > /dev/null 2>&1; then
         return 0
     fi
     has_command mise || return 0
+    version="$(mise current "${mise_tool}" 2> /dev/null || true)"
+    if ! [[ "${version}" =~ ^[0-9][0-9A-Za-z.+-]*$ ]]; then
+        printf 'warning: %s is not installed; make update installs it and checks its provenance.\n' "${mise_tool}" >&2
+        return 0
+    fi
 
-    printf 'Repairing %s through the mise npm backend.\n' "${cli}"
+    printf 'Repairing %s %s through the mise npm backend.\n' "${cli}" "${version}"
     MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 \
-        mise install --force "${mise_tool}"
+        mise install --force "${mise_tool}@${version}"
     hash -r
     "${cli}" --version > /dev/null
-    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force ${mise_tool}"
+    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force ${mise_tool}@${version}"
 }
 
 #
@@ -258,7 +266,11 @@ function install_claude_code() (
     fi
     chmod 0755 "${tmpdir}/claude" || return 1
     # The exact version, never the channel, so the binary cannot fetch another build to install.
-    "${tmpdir}/claude" install "${version}" >&2 || return 1
+    if ! "${tmpdir}/claude" install "${version}" >&2; then
+        # A failed install step never reaches the post-install check, so nothing it left may stay.
+        remove_claude_code_version "${version}"
+        return 1
+    fi
     printf '%s\n' "${version}"
 )
 
@@ -277,7 +289,8 @@ function verify_active_claude_code() (
 )
 
 #
-# @description Remove a just-installed Claude Code version, and the launcher when it points there.
+# @description Remove a Claude Code version that failed its check or its install step, and the launcher
+#   when it points there, so no unverified binary stays runnable.
 # @arg $1 string The version, already matched against CLAUDE_CODE_VERSION_PATTERN.
 #
 function remove_claude_code_version() {
@@ -313,7 +326,7 @@ function retire_mise_claude_code() {
 # @description Keep Claude Code on Anthropic's native distribution, checked against its signed release
 #   manifest: install it on the autoUpdatesChannel channel when the native launcher is missing, and
 #   re-verify the active binary on every run; Anthropic's auto-updater moves it in between.
-# @exitcode 1 A signature or sha256 did not verify, or the install step failed.
+# @exitcode 1 A signature or sha256 did not verify, or the install step failed; that version is removed.
 #
 function ensure_claude_code() {
     local channel installed="" settings="${HOME}/.claude/settings.json" status=0 version
@@ -344,8 +357,9 @@ function ensure_claude_code() {
         printf 'warning: could not re-verify Claude Code %s against its signed manifest (offline, or a tool is missing); it stays.\n' "${version}" >&2
         return 0
     elif [ "${status}" -ne 0 ]; then
-        printf 'Claude Code %s does not match its signed release manifest.\n' "${version}" >&2
-        [ -z "${installed}" ] || remove_claude_code_version "${installed}"
+        # Untrusted bytes must not stay runnable, whether this run installed them or the auto-updater did.
+        printf 'Claude Code %s does not match its signed release manifest; its version and launcher were removed (make update installs a verified one).\n' "${version}" >&2
+        remove_claude_code_version "${version}"
         return 1
     fi
     retire_mise_claude_code

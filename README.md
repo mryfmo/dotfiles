@@ -260,8 +260,10 @@ sha256 to match, removing the install otherwise. It never runs
 manifest before running it. Day-to-day updates are Anthropic's auto-updater on
 that channel; every `make update` re-verifies the active binary against the
 signed manifest of its version (two small downloads) and fails when the
-signature or sha256 does not match, while offline it warns and keeps the
-binary. Without gpg and gpgv (a fresh macOS before
+signature or sha256 does not match, removing that version and its launcher so
+the untrusted binary cannot run (the next `make update` installs a verified
+one), while offline it warns and keeps the binary. A failed install step is
+cleaned up the same way. Without gpg and gpgv (a fresh macOS before
 `install/macos/common/dependencies.sh` installs them) nothing is installed. Once
 the native install verifies, the old `npm:@anthropic-ai/claude-code` mise
 install is removed, unless the asset manifest still records its
@@ -1375,8 +1377,9 @@ directly with user-global `npm install -g`; a global copy can shadow the
 mise-managed Codex or the native Claude Code launcher, and
 `scripts/update-agent-assets.sh` removes one. Codex has no package lifecycle
 script and receives no build permission. If an older aube-backed Codex cannot
-run, `scripts/update-agent-assets.sh` force-reinstalls it through the npm
-backend before refreshing plugins.
+run, `scripts/update-agent-assets.sh` force-reinstalls the installed version
+through the npm backend before refreshing plugins; a repair never installs a
+newer release, which only the provenance-checked upgrade does.
 
 **Asset manifest.** Every third-party component the lifecycle installs outside
 mise — the mise binary itself, sheldon, starship, the AWS CLI, Claude Code, the Homebrew

@@ -242,7 +242,8 @@ class RuntimeHealthTest(unittest.TestCase):
                 "${MISE_NPM_PACKAGE_MANAGER:-}" \
                 "${npm_config_min_release_age:-}" \
                 "$*" >> "$TEST_LOG"
-            if [ "$*" = "install --force npm:@openai/codex" ]; then
+            [ "$*" != "current npm:@openai/codex" ] || printf '0.160.1\n'
+            if [ "$*" = "install --force npm:@openai/codex@0.160.1" ]; then
                 cat > "$BROKEN_CODEX" <<'EOF'
 #!/bin/bash
 printf 'codex %s\n' "$*" >> "$TEST_LOG"
@@ -267,11 +268,37 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         calls = log.read_text().splitlines()
-        repair = "mise npm 0 install --force npm:@openai/codex"
+        # The repair reinstalls the version in place; a newer, day-one release comes only through the upgrade.
+        repair = "mise npm 0 install --force npm:@openai/codex@0.160.1"
         self.assertIn(repair, calls)
+        self.assertFalse([call for call in calls if call.endswith("install --force npm:@openai/codex")])
         # Claude Code is no longer a mise tool: nothing repairs it through the npm backend.
         self.assertFalse(any("claude-code" in call and call.startswith("mise ") for call in calls))
         self.assertLess(calls.index(repair), calls.index("codex plugin marketplace list"))
+
+    def test_agent_cli_repair_installs_nothing_without_a_version_in_place(self) -> None:
+        bin_dir = self.temp_dir / "repair-bin"
+        log = self.temp_dir / "repair.log"
+        self.executable(bin_dir / "codex", "exit 99\n")
+        # Nothing is installed: mise current prints no version, so only the upgrade may install one.
+        self.executable(bin_dir / "mise", 'printf \'mise %s\\n\' "$*" >> "$TEST_LOG"\n')
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                'source "$1"; ensure_mise_npm_agent_cli codex npm:@openai/codex',
+                "_",
+                str(ROOT / "scripts/update-agent-assets.sh"),
+            ],
+            env={**os.environ, "HOME": str(self.temp_dir), "PATH": f"{bin_dir}:/usr/bin:/bin", "TEST_LOG": str(log)},
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(
+            "npm:@openai/codex is not installed; make update installs it and checks its provenance", result.stderr
+        )
+        self.assertEqual(["mise current npm:@openai/codex"], log.read_text().splitlines())
 
     def test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing(
         self,

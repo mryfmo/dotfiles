@@ -167,9 +167,12 @@ class AssetManifestTest(unittest.TestCase):
             case "$1" in
             install)
                 case "$*" in
-                *example-cli) touch "$TEST_STATE/example" ;;
-                *openai/codex) touch "$TEST_STATE/codex" ;;
+                *example-cli@1.0.0) touch "$TEST_STATE/example" ;;
+                *openai/codex@1.0.0) touch "$TEST_STATE/codex" ;;
                 esac
+                ;;
+            current)
+                printf '1.0.0\n'
                 ;;
             where)
                 printf '%s/install/%s\n' "$HOME" "$2"

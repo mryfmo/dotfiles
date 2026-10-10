@@ -28,6 +28,7 @@ BINARY = textwrap.dedent(
         cp "$0" "$HOME/.local/share/claude/versions/$2"
         [ -z "${TAMPER_ON_INSTALL:-}" ] || printf 'tampered\\n' >> "$HOME/.local/share/claude/versions/$2"
         ln -sfn "$HOME/.local/share/claude/versions/$2" "$HOME/.local/bin/claude"
+        [ -z "${FAIL_AFTER_LAUNCHER:-}" ] || exit 1
     fi
     """
 )
@@ -215,7 +216,10 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         result = self.run_ensure(TAMPER_ON_INSTALL="1")
 
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-        self.assertIn(f"Claude Code {VERSION} does not match its signed release manifest.", result.stderr)
+        self.assertIn(
+            f"Claude Code {VERSION} does not match its signed release manifest; its version and launcher were removed",
+            result.stderr,
+        )
         self.assertFalse((self.home / f".local/share/claude/versions/{VERSION}").exists())
         self.assertFalse((self.home / ".local/bin/claude").is_symlink())
         self.assertNotIn("ensure_claude_code", self.manifest_steps())
@@ -232,13 +236,24 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         self.assertNotIn("curl https://downloads.claude.ai/claude-code-releases/stable", calls)
         self.assertIn("ensure_claude_code", self.manifest_steps())
 
-    def test_a_tampered_active_binary_fails_and_stays(self) -> None:
+    def test_a_tampered_active_binary_fails_and_cannot_run_again(self) -> None:
         binary = self.install_active(BINARY + "# tampered\n")
 
         result = self.run_ensure()
 
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-        self.assertTrue(binary.exists())
+        self.assertIn(f"Claude Code {VERSION} does not match its signed release manifest", result.stderr)
+        self.assertFalse(binary.exists())
+        self.assertFalse(os.path.lexists(self.home / ".local/bin/claude"))
+
+    def test_a_failed_install_step_leaves_no_launcher_or_version(self) -> None:
+        result = self.run_ensure(FAIL_AFTER_LAUNCHER="1")
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"binary install {VERSION}", self.calls())
+        self.assertFalse((self.home / f".local/share/claude/versions/{VERSION}").exists())
+        self.assertFalse(os.path.lexists(self.home / ".local/bin/claude"))
+        self.assertNotIn("ensure_claude_code", self.manifest_steps())
 
     def test_offline_keeps_what_is_there_and_installs_nothing(self) -> None:
         result = self.run_ensure(OFFLINE="1")

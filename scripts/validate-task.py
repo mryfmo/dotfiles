@@ -56,6 +56,11 @@ def expand(entry: str, files: list[str]) -> set[str]:
     return {name for name in files if pattern.match(name)}
 
 
+def canonical(path: str) -> bool:
+    """A repository-relative path or glob in one spelling: no leading `/`, `./`, `..`, `//` or trailing `/`."""
+    return isinstance(path, str) and "\\" not in path and all(part not in ("", ".", "..") for part in path.split("/"))
+
+
 def is_text_map(value) -> bool:
     return isinstance(value, dict) and all(isinstance(v, str) and v.strip() for v in value.values())
 
@@ -70,16 +75,20 @@ def validate(path: Path) -> dict:
     try:
         data = load(path)
     except (OSError, UnicodeDecodeError, FrontMatterError) as error:
-        # An unparsable header is a failure only when it claims format 2; older headers stay grandfathered.
+        # An unparsable header that names any format fails; only a header without one is grandfathered.
         header = path.read_text(encoding="utf-8", errors="replace").split("\n---", 1)[0]
-        if not re.search(r"^format:\s*['\"]?2['\"]?\s*$", header, re.M):
+        if not re.search(r"^\s*format\s*:", header, re.M):
             report["status"] = "legacy"
             return report
         fail(f"front matter: {error}")
         report["status"] = "invalid"
         return report
-    if data is None or data.get("format") != 2:
+    if data is None or "format" not in data:
         report["status"] = "legacy"
+        return report
+    if data["format"] != 2 or isinstance(data["format"], bool):
+        fail(f"format: only 2 is supported, got {data['format']!r}")
+        report["status"] = "invalid"
         return report
     root = main_checkout(path.resolve())
     files = tracked_files(root)
@@ -88,6 +97,8 @@ def validate(path: Path) -> dict:
     report["task_id"] = task_id
     if not isinstance(task_id, str) or not task_id:
         fail("task_id: required")
+    elif not TASK_ID.fullmatch(task_id):
+        fail(f"task_id: {task_id!r} must be one path segment of letters, digits, `.`, `_` and `-`")
     elif task_id != path.stem:
         fail(f"task_id: {task_id!r} is not the file stem {path.stem!r}")
     kind = data.get("kind")
@@ -100,11 +111,14 @@ def validate(path: Path) -> dict:
     if not isinstance(allowed, list) or not all(isinstance(entry, str) and entry for entry in allowed):
         fail("allowed_files: required, a list of paths or globs")
         allowed = []
+    unspelled = [entry for entry in allowed if not canonical(entry)]
+    if unspelled:
+        fail(f"allowed_files: not a canonical repository-relative path: {', '.join(unspelled)}")
 
     # security is derived from the design tier: declaring true ratchets up, declaring false on a match fails.
     matching = [e for e in allowed if in_design_tier(e) or any(in_design_tier(n) for n in expand(e, files))]
     declared = data.get("security")
-    if declared not in (None, True, False):
+    if declared is not None and not isinstance(declared, bool):
         fail(f"security: must be true or false, got {declared!r}")
     if declared is False and matching:
         fail(f"security: declared false, but these allowed files are in the design tier: {', '.join(matching)}")
@@ -127,25 +141,34 @@ def validate(path: Path) -> dict:
         if not isinstance(design_review, dict) or set(design_review) != {"receipt", "design"}:
             fail("design_review: must be a map with exactly `receipt` and `design`")
         else:
+            inside = {}
             for key in ("receipt", "design"):
                 value = design_review[key]
-                if not isinstance(value, str) or not (root / value).is_file():
-                    fail(f"design_review.{key}: {value!r} does not exist in the main checkout {root}")
+                # Both must be files of the main checkout itself: no absolute path, `..` or symlink out of it.
+                target = (root / value).resolve() if canonical(value) else None
+                inside[key] = target is not None and target.is_relative_to(root.resolve()) and target.is_file()
+                if not inside[key]:
+                    fail(f"design_review.{key}: {value!r} is not a file inside the main checkout {root}")
             design_path = root / str(design_review["design"])
-            if design_path.is_file():
+            same_file = inside["design"] and design_path.resolve() == path.resolve()
+            if inside["design"]:
                 try:
                     design = load(design_path)
                 except (OSError, UnicodeDecodeError, FrontMatterError) as error:
                     fail(f"design_review.design: {error}")
-                if design is not None and design.get("format") != 2 and design_path.resolve() != path.resolve():
-                    fail("design_review.design: the design task has no `format: 2` front matter")
+                if same_file and kind != "design":
+                    # Only a design task may name itself; anything else would review its own threat model.
+                    fail("design_review.design: names this task itself; a non-design task needs a separate design task")
+                    design = None
+                elif design is None or design.get("format") != 2 or design.get("kind") != "design":
+                    fail("design_review.design: must be a `format: 2` task file of `kind: design`")
                     design = None
             if design is not None:
                 try:
                     report["design_hash"] = canonical_design_hash(design)
                 except KeyError as error:
                     fail(f"design_review.design: the design task lacks {error.args[0]}")
-                if design_path.resolve() != path.resolve():
+                if not same_file:
                     design_ids = set(design.get("invariants") or {})
                     extra = sorted(set(invariants) - design_ids)
                     if extra:

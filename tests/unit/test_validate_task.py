@@ -220,7 +220,7 @@ class ValidateTaskTest(unittest.TestCase):
         ).rename(worktree / ".orchestration/tasks/t-a01.md")
         code, report = self.run_validator(path, cwd=worktree)
         self.assertEqual(1, code)
-        self.assertTrue(any("does not exist in the main checkout" in f for f in report["failures"]), report)
+        self.assertTrue(any("is not a file inside the main checkout" in f for f in report["failures"]), report)
         (self.main / receipt).write_text("x\n")
         self.assertEqual(0, self.run_validator(path, cwd=worktree)[0])
 
@@ -306,6 +306,7 @@ class ValidateTaskTest(unittest.TestCase):
             "---\nformat: 2\nflag: yes\n---\n",
             "---\nformat: 2\nformat: 2\n---\n",
             "---\nformat: 2\n",
+            "---\nformat: 2\nnote: 'it's risky'\n---\n",
         ):
             with self.subTest(text=text):
                 with self.assertRaises(high_risk_paths.FrontMatterError):
@@ -320,6 +321,56 @@ class ValidateTaskTest(unittest.TestCase):
         self.assertEqual((0, "superseded"), (code, report["status"]))
         self.assertFails(self.task(superseded_by="not a task id"), "superseded_by: must be a task id")
 
+    def test_task_id_must_be_one_safe_path_segment(self) -> None:
+        self.assertFails(self.task("bad id", task_id="bad id"), "must be one path segment")
+
+    def test_allowed_files_must_be_canonical_repository_paths(self) -> None:
+        # `./install/...` would neither match the design tier nor expand, so a security task could hide.
+        for entry in ("./install/common/tool.sh", "install/", "/etc/passwd", "many/../install/common/tool.sh", "a//b"):
+            with self.subTest(entry=entry):
+                self.assertFails(self.task(allowed_files=[entry]), "not a canonical repository-relative path")
+
+    def test_design_review_paths_must_stay_inside_the_main_checkout(self) -> None:
+        outside = self.temp_dir / "outside.md"
+        outside.write_text("x\n")
+        (self.main / ".orchestration/validation/link.md").symlink_to(outside)
+        for receipt in (str(outside), "../outside.md", ".orchestration/validation/link.md"):
+            with self.subTest(receipt=receipt):
+                self.assertFails(
+                    self.security_task(design_review={**DESIGN["design_review"], "receipt": receipt}),
+                    "is not a file inside the main checkout",
+                )
+
+    def test_the_design_must_be_a_separate_design_task(self) -> None:
+        self.assertValid(self.tasks / "design-a01.md")  # a design task names itself
+        own = {
+            "design_review": {**DESIGN["design_review"], "design": ".orchestration/tasks/t-a01.md"},
+            "threat_model": DESIGN["threat_model"],
+            "trust_anchors": DESIGN["trust_anchors"],
+        }
+        self.assertFails(self.security_task(**own), "names this task itself")
+        self.write("code-a01", {**DESIGN, "task_id": "code-a01", "kind": "code", "allowed_files": ["README.md"]})
+        (self.tasks / "plain-a01.md").write_text("# no front matter\n")
+        for design in ("code-a01", "plain-a01"):
+            with self.subTest(design=design):
+                self.assertFails(
+                    self.security_task(
+                        design_review={**DESIGN["design_review"], "design": f".orchestration/tasks/{design}.md"}
+                    ),
+                    "must be a `format: 2` task file of `kind: design`",
+                )
+
+    def test_security_must_be_a_boolean(self) -> None:
+        # `security: 1` equals True in Python but must not pass as a declaration.
+        self.assertFails(self.task(security=1), "security: must be true or false")
+
+    def test_any_format_other_than_2_fails_closed(self) -> None:
+        self.assertFails(self.task(format="'2'"), "format: only 2 is supported")
+        self.assertFails(self.task(format=3), "format: only 2 is supported")
+        commented = self.tasks / "c-a01.md"
+        commented.write_text("---\nformat: 2 # current schema\ntask_id: c-a01\n---\n")
+        self.assertFails(commented, "front matter:")
+
     def test_the_module_review_tier_equals_the_gate_constants(self) -> None:
         # Until wave 2a switches the gate to the import, the copy must not drift.
         spec = importlib.util.spec_from_file_location("require_crit_review", GATE)
@@ -333,6 +384,16 @@ class ValidateTaskTest(unittest.TestCase):
         self.assertTrue(high_risk_paths.in_design_tier("install/ubuntu/common/aws_cli.sh"))
         self.assertTrue(high_risk_paths.in_design_tier("home/dot_codex/rules/x.toml"))
         self.assertTrue(high_risk_paths.in_design_tier("scripts/gh-auth.sh"))
+        for path in (
+            "scripts/lib/high_risk_paths.py",
+            "scripts/generate-agent-configs.py",
+            ".claude/settings.json",
+            ".claude/contextdb/contextdb/store.py",
+            "home/dot_local/bin/common/executable_provision-machine-key",
+            "home/dot_local/bin/common/executable_setup-gpg",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(high_risk_paths.in_design_tier(path))
         self.assertFalse(high_risk_paths.in_design_tier("scripts/pr-feedback.py"))
         self.assertFalse(high_risk_paths.in_design_tier("installer/x.sh"))
         self.assertFalse(high_risk_paths.in_design_tier("home/dot_claude/settings.json"))

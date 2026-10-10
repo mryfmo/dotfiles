@@ -50,7 +50,8 @@ HIGH_RISK_TOKENS = (
 )
 
 # Glob patterns (`**` crosses directories, `*` does not). The auth helpers are the files
-# that handle a credential: git's credential helper and the two gh login scripts.
+# that handle a credential or a key: git's credential helper, the two gh login scripts and
+# the machine SSH and GnuPG key setup. This module classifies tasks, so it is in the tier.
 DESIGN_TIER = (
     "install/**",
     "setup.sh",
@@ -62,10 +63,14 @@ DESIGN_TIER = (
     "scripts/require-crit-review.py",
     "scripts/agent-stop-gate.sh",
     "scripts/check-regime-boundary.sh",
+    "scripts/lib/high_risk_paths.py",
+    "scripts/generate-agent-configs.py",
     "home/dot_local/bin/common/executable_herdr-agents",
     "home/dot_local/bin/common/executable_permgate",
     "home/dot_codex/**",
     ".claude/hooks/**",
+    ".claude/contextdb/**",
+    ".claude/settings.json",
     "home/dot_claude/hooks/**",
     "home/.chezmoitemplates/claude-settings-managed.json",
     "home/.chezmoitemplates/codex-config-managed.toml",
@@ -74,6 +79,8 @@ DESIGN_TIER = (
     "home/dot_config/git/config.tmpl",
     "home/dot_local/bin/common/executable_setup-gh",
     "scripts/gh-auth.sh",
+    "home/dot_local/bin/common/executable_provision-machine-key",
+    "home/dot_local/bin/common/executable_setup-gpg",
 )
 
 DESIGN_HASH_KEYS = ("invariants", "threat_model", "trust_anchors")
@@ -119,8 +126,8 @@ def _scalar(text: str, line: int):
         except ValueError as error:
             raise FrontMatterError(f"line {line}: bad double-quoted string") from error
     if text[0] == "'":
-        if len(text) < 2 or text[-1] != "'":
-            raise FrontMatterError(f"line {line}: bad single-quoted string")
+        if len(text) < 2 or text[-1] != "'" or "'" in text[1:-1].replace("''", ""):
+            raise FrontMatterError(f"line {line}: bad single-quoted string (double an inner quote)")
         return text[1:-1].replace("''", "'")
     # Anything YAML would read as another type, a flow collection, an alias or a comment is refused.
     if text[0] in "[{&*!|>%@`" or ": " in text or " #" in text or text.endswith(":"):

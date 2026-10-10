@@ -1181,13 +1181,25 @@ class ReviewTreeTest(unittest.TestCase):
         tree = Path(tempfile.mkdtemp(prefix="review-tree-"))
         self.addCleanup(shutil.rmtree, tree, ignore_errors=True)
         dry = self.make("-n", "require-crit-review", f"REVIEW_TREE={tree}", "BASE=origin/main").stdout.strip()
-        self.assertTrue(dry.startswith(f'cd "{tree}" && AGENT_REVIEWED="'), dry)
+        self.assertTrue(dry.startswith(f'[ "$(git -C "{tree}" rev-parse --path-format=absolute --git-common-dir'), dry)
+        self.assertIn(f'; cd "{tree}" && AGENT_REVIEWED="', dry)
         self.assertIn(f'"{ROOT}/scripts/require-crit-review.py" --base "origin/main"', dry)
 
-        # Run for real: the gate's git checks see the review tree (not a repository here), not this checkout.
+        # A tree that is not a worktree of this repository is refused before the gate can skip or misjudge it.
         result = self.make("require-crit-review", f"REVIEW_TREE={tree}")
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn(f"REVIEW_TREE={tree} is not a worktree of this repository", result.stderr)
+        self.assertNotIn("Review guard", result.stdout)
+        other = tree / "other"
+        subprocess.run(["git", "init", "-q", str(other)], check=True)
+        result = self.make("require-crit-review", f"REVIEW_TREE={other}")
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("is not a worktree of this repository", result.stderr)
+
+        # This repository's own tree passes the check and reaches the gate (disabled here, so it returns at once).
+        result = self.make("require-crit-review", f"REVIEW_TREE={ROOT}", "CRIT_REVIEW=off")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("Review guard skipped: not inside a git repository.", result.stdout)
+        self.assertIn("Review guard disabled by CRIT_REVIEW=off.", result.stdout)
 
 
 if __name__ == "__main__":

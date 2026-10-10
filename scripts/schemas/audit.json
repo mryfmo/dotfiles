@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Task-level audit",
+  "description": "The auditor's verdict for one task on one head (AGENTS.md Audit). scripts/audit-head.sh replaces invariants with one required property per invariant id of the task front matter (none for a legacy task), so the schema the auditor gets has no open map.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "findings", "invariants", "orchestration_findings", "not_checked", "summary"],
+  "properties": {
+    "verdict": { "type": "string", "enum": ["correct", "incorrect", "blocked"] },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["priority", "confidence", "category", "path", "line", "rationale"],
+        "properties": {
+          "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "category": {
+            "type": "string",
+            "enum": ["specification", "implementation", "evidence", "orchestration", "conformance"]
+          },
+          "path": { "type": ["string", "null"] },
+          "line": { "type": ["integer", "null"] },
+          "rationale": { "type": "string" }
+        }
+      }
+    },
+    "invariants": { "type": "object", "additionalProperties": { "$ref": "#/$defs/invariant" } },
+    "orchestration_findings": { "type": "integer" },
+    "not_checked": { "type": "array", "items": { "type": "string" } },
+    "summary": { "type": "string" }
+  },
+  "$defs": {
+    "invariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "path", "line", "note"],
+      "properties": {
+        "status": { "type": "string", "enum": ["holds", "violated", "not_applicable"] },
+        "path": { "type": ["string", "null"] },
+        "line": { "type": ["integer", "null"] },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

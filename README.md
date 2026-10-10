@@ -926,13 +926,24 @@ the acceptance record `acceptance/ID.md` as it stands, and
 `validation/ID-permgate.jsonl` (each named only when present; the worker artifacts may be `.txt` in older tasks). It also gives the full PR diff
 `git diff <base> <sha>`, where `<base>` is `git merge-base origin/main <sha>`
 in DIR (exit 2 when there is none). The auditor's scope covers the
-orchestrator's artifacts as well as the worker's; it reports findings in the
-fixed grammar and five categories of the AGENTS.md "Audit" section, adds the
-`INV-n:` lines and the `Orchestration findings:` line for a `format: 2` task
-(the helper warns when the last message lacks them), and ends with the same
-`Verdict:` line. PATH then defaults to
+orchestrator's artifacts as well as the worker's; it writes its findings as the
+lines the AGENTS.md "Audit" section gives for a rendered `.last.md` (five
+categories), adds the `INV-n:` lines and the `Orchestration findings:` line for
+a `format: 2` task (the helper warns when the last message lacks them), and ends
+with the same `Verdict:` line. PATH then defaults to
 `.orchestration/validation/ID-audit-<sha7>.md`. Per-commit audits remain
 available without `--task` but are no longer the default.
+
+The headless form is `scripts/audit-head.sh` (the command is in the
+agmsg-orchestration SKILL's task-level audit bullet). It audits the head in its
+own detached worktree, `.claude/worktrees/audit-<sha7>`, with a lock per sha so
+two heads can be audited at once but one head only once at a time. The auditor
+(codex, or `claude -p` as the fallback) must answer with a JSON document that
+matches `scripts/schemas/audit.json` (its fields and categories are in the
+AGENTS.md "Audit" section). The script records the document's sha256 in agmsg
+history (`AGMSG-AUDIT v1`) before it renders the `.last.md` the gate reads, and
+exits 0, 1 or 2 for `correct`, `incorrect` or `blocked`, and 3 when no audit
+was recorded.
 
 The helper tees the transcript to PATH (default
 `.orchestration/validation/audit-<sha>.md` under DIR), waits up to SECONDS

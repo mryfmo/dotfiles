@@ -18,7 +18,7 @@ ALWAYS_LOADED_RULES = (
     "understand-anything.md",
 )
 PAIR_AUDIT = "herdr-agents --audit <head-sha> --task <id>"
-HEADLESS_AUDIT = "codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> exec --sandbox read-only -C <repo> -o <out>.last.md"
+HEADLESS_AUDIT = "scripts/audit-head.sh <head-sha> --task <id>"
 
 
 def words(path: Path) -> int:

@@ -52,6 +52,7 @@ UNDERSTAND_SKILL_ALLOWLIST = {
 # update_codex_crit, not rendered from the chezmoi source tree.
 CRIT_PLUGIN_SKILLS = {"crit", "crit-cli", "crit-story"}
 ASSET_STEP_FUNCTIONS = {
+    "ensure_claude_code",
     "ensure_crit_cli",
     "ensure_herdr_integrations",
     "ensure_mise_npm_agent_cli",
@@ -68,7 +69,6 @@ ASSET_STEP_FUNCTIONS = {
     "update_terminal_code",
 }
 MISE_STEP_IDENTITIES = {
-    "claude": "npm:@anthropic-ai/claude-code",
     "codex": "npm:@openai/codex",
 }
 UPDATER_SOURCE_COMMAND = 'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"'

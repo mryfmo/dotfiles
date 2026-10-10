@@ -94,6 +94,7 @@ class RuntimeHealthTest(unittest.TestCase):
                     """
                     source "$1"
                     remove_node_global_agent_cli_shadows() { :; }
+                    ensure_claude_code() { :; }
                     ensure_mise_npm_agent_cli() { :; }
                     update_claude_superpowers() { :; }
                     update_claude_crit() { :; }
@@ -187,7 +188,7 @@ class RuntimeHealthTest(unittest.TestCase):
         self.assertLess(calls.index("npm uninstall -g @openai/codex"), first_agent_call)
         self.assertLess(calls.index("npm uninstall -g @anthropic-ai/claude-code"), first_agent_call)
 
-    def test_agent_asset_update_repairs_broken_claude_with_npm_backend(self) -> None:
+    def test_agent_asset_update_repairs_broken_codex_with_npm_backend(self) -> None:
         repo = self.temp_dir / "agent-assets-repair-repo"
         home = self.temp_dir / "agent-assets-repair-home"
         bin_dir = home / ".local/bin"
@@ -224,14 +225,14 @@ class RuntimeHealthTest(unittest.TestCase):
         self.executable(
             shim_dir / "claude",
             """
-            printf 'broken-claude %s\n' "$*" >> "$TEST_LOG"
-            exit 99
+            printf 'claude %s\n' "$*" >> "$TEST_LOG"
             """,
         )
         self.executable(
             shim_dir / "codex",
             """
-            printf 'codex %s\n' "$*" >> "$TEST_LOG"
+            printf 'broken-codex %s\n' "$*" >> "$TEST_LOG"
+            exit 99
             """,
         )
         self.executable(
@@ -241,12 +242,12 @@ class RuntimeHealthTest(unittest.TestCase):
                 "${MISE_NPM_PACKAGE_MANAGER:-}" \
                 "${npm_config_min_release_age:-}" \
                 "$*" >> "$TEST_LOG"
-            if [ "$*" = "install --force npm:@anthropic-ai/claude-code" ]; then
-                cat > "$BROKEN_CLAUDE" <<'EOF'
+            if [ "$*" = "install --force npm:@openai/codex" ]; then
+                cat > "$BROKEN_CODEX" <<'EOF'
 #!/bin/bash
-printf 'claude %s\n' "$*" >> "$TEST_LOG"
+printf 'codex %s\n' "$*" >> "$TEST_LOG"
 EOF
-                chmod +x "$BROKEN_CLAUDE"
+                chmod +x "$BROKEN_CODEX"
             fi
             """,
         )
@@ -257,7 +258,7 @@ EOF
             cwd=repo,
             env={
                 **os.environ,
-                "BROKEN_CLAUDE": str(shim_dir / "claude"),
+                "BROKEN_CODEX": str(shim_dir / "codex"),
                 "HOME": str(home),
                 "PATH": f"{bin_dir}:/usr/bin:/bin",
                 "TEST_LOG": str(log),
@@ -266,10 +267,11 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         calls = log.read_text().splitlines()
-        repair = "mise npm 0 install --force npm:@anthropic-ai/claude-code"
+        repair = "mise npm 0 install --force npm:@openai/codex"
         self.assertIn(repair, calls)
-        self.assertFalse(any(call.endswith("npm:@openai/codex") and call.startswith("mise ") for call in calls))
-        self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list"))
+        # Claude Code is no longer a mise tool: nothing repairs it through the npm backend.
+        self.assertFalse(any("claude-code" in call and call.startswith("mise ") for call in calls))
+        self.assertLess(calls.index(repair), calls.index("codex plugin marketplace list"))
 
     def test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing(
         self,
@@ -1215,6 +1217,15 @@ EOF
         private_config.touch()
         (home / ".ssh").mkdir(parents=True, exist_ok=True)
         (home / ".ssh/id_ed25519.pub").touch()
+        # A native Claude Code: the launcher symlink into the versions directory, and its channel setting.
+        version = home / ".local/share/claude/versions/2.1.287"
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.touch()
+        (home / ".local/bin").mkdir(parents=True, exist_ok=True)
+        if not (home / ".local/bin/claude").is_symlink():
+            (home / ".local/bin/claude").symlink_to(version)
+        (home / ".claude").mkdir(exist_ok=True)
+        (home / ".claude/settings.json").write_text('{"autoUpdatesChannel": "stable"}\n')
         return {
             **os.environ,
             "HOME": str(home),
@@ -1247,6 +1258,29 @@ EOF
         )
         self.assertNotEqual(0, result.returncode)
         self.assertIn("required missing: brew", result.stderr)
+
+    def test_doctor_reports_the_native_claude_code_and_its_channel(self) -> None:
+        env = self.doctor_environment()
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq, "jq is required for the doctor's channel report")
+        (Path(env["PATH"].split(":", 1)[0]) / "jq").symlink_to(jq)
+        home = Path(env["HOME"])
+
+        result = self.run_test_command(["bash", str(ROOT / "scripts/check-tools.sh")], env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"found:   claude -> {home}/.local/bin/claude (native 2.1.287, channel stable)", result.stdout)
+
+        # A claude that is not the native launcher (an old mise or npm copy) is a warning naming the fix.
+        (home / ".local/bin/claude").unlink()
+        (home / ".local/bin/claude").write_text("#!/bin/sh\n")
+        result = self.run_test_command(["bash", str(ROOT / "scripts/check-tools.sh")], env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(
+            f"Claude Code is not the native install at {home}/.local/bin/claude; run make update", result.stderr
+        )
+        self.assertIn("optional warnings: 1", result.stdout)
 
     def test_doctor_has_no_github_role_check(self) -> None:
         # One GitHub login per machine: the tool check compares no identities; the runtime check reports the login.
@@ -1429,6 +1463,42 @@ EOF
                     ;;
                 # Like mise, where fails for a tool whose install is not in place.
                 where) [[ "$2" != npm:ccusage ]] || { [ -d "$CCUSAGE_DIR" ] && printf '%s\n' "$CCUSAGE_DIR"; } ;;
+                settings)
+                    [[ "$*" == "settings get minimum_release_age_excludes" ]] || exit 1
+                    [[ "$FAIL_PHASE" == provenance_excluded ]] && printf '["npm:ccusage"]\n' || printf '[]\n'
+                    ;;
+                exec)
+                    while [ "$#" -gt 0 ] && [ "$1" != -- ]; do shift; done
+                    [ "$#" -gt 1 ] || exit 1
+                    shift
+                    exec "$@"
+                    ;;
+            esac
+            """,
+        )
+        # npm audit signatures prints a count line per verified kind and names failures (npm 11).
+        self.executable(
+            bin_dir / "npm",
+            """
+            printf 'npm %s cache=%s\n' "$*" "${npm_config_cache:-unset}" >> "$TEST_LOG"
+            [ -f package.json ] || exit 1
+            case "$1:$FAIL_PHASE" in
+                install:provenance_fetch) exit 1 ;;
+                install:*) exit 0 ;;
+                audit:provenance_attestation_fails)
+                    printf 'audited 1 package in 1s\\n\\n1 package has a verified registry signature\\n\\n'
+                    printf '1 package has an invalid attestation:\\n\\nccusage@20.0.0 (https://registry.npmjs.org/)\\n'
+                    exit 1
+                    ;;
+                audit:provenance_signature_only) printf 'audited 1 package in 1s\\n\\n1 package has a verified registry signature\\n' ;;
+                audit:provenance_offline)
+                    printf 'npm error code ENOTFOUND\\nnpm error network request to https://registry.npmjs.org failed\\n'
+                    exit 1
+                    ;;
+                audit:*)
+                    printf 'audited 1 package in 1s\\n\\n1 package has a verified registry signature\\n\\n'
+                    printf '1 package has a verified attestation\\n'
+                    ;;
             esac
             """,
         )
@@ -1436,6 +1506,10 @@ EOF
             bin_dir / "uv",
             """
             printf 'uv %s\n' "$*" >> "$TEST_LOG"
+            if [ "$*" = "tool list" ]; then
+                [[ "$FAIL_PHASE" == uv_none ]] || printf 'ruff v0.15.0\\n- ruff\\n'
+                exit 0
+            fi
             [[ "$FAIL_PHASE" != uv ]]
             """,
         )
@@ -1785,6 +1859,83 @@ EOF
         self.assertIn("required failures: 0; optional warnings: 1", result.stdout)
         self.assertNotIn("required failure: mise inventory/install/upgrade", result.stderr)
         self.assertIn("mise install --yes", (repo / "commands.log").read_text().splitlines())
+
+    def test_upgrade_checks_npm_provenance_after_the_mise_phase(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("verified: npm:ccusage (registry signature and provenance attestation)", result.stdout)
+        self.assertIn("required failures: 0; optional warnings: 0", result.stdout)
+        log = (repo / "commands.log").read_text().splitlines()
+        install = next(line for line in log if line.startswith("npm install "))
+        # The installed version, lifecycle scripts off, with a scratch cache instead of the host's.
+        self.assertRegex(install, r"^npm install --ignore-scripts --no-audit --no-fund ccusage@20\.0\.0 cache=/")
+        self.assertNotIn("--min-release-age", install)
+        audit = next(line for line in log if line.startswith("npm audit "))
+        self.assertTrue(audit.startswith("npm audit signatures --include-attestations cache=/"), audit)
+        last_upgrade = max(index for index, line in enumerate(log) if line.startswith("mise upgrade "))
+        self.assertLess(last_upgrade, log.index(install))
+
+    def test_upgrade_npm_provenance_outcomes(self) -> None:
+        cases = {
+            "provenance_attestation_fails": (
+                1,
+                "npm provenance check failed: npm:ccusage",
+                "required failures: 1; optional warnings: 0",
+            ),
+            "provenance_signature_only": (
+                0,
+                "registry signature only (the publisher attaches no provenance attestation): npm:ccusage",
+                "required failures: 0; optional warnings: 0",
+            ),
+            "provenance_fetch": (
+                0,
+                "optional warning: could not fetch npm:ccusage to check its provenance",
+                "required failures: 0; optional warnings: 1",
+            ),
+            "provenance_offline": (
+                0,
+                "optional warning: could not fetch npm:ccusage to check its provenance",
+                "required failures: 0; optional warnings: 1",
+            ),
+        }
+        for phase, (returncode, message, summary) in cases.items():
+            with self.subTest(phase=phase):
+                repo, env = self.upgrade_fixture(phase)
+
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                self.assertEqual(returncode, result.returncode, result.stdout + result.stderr)
+                self.assertIn(message, result.stdout + result.stderr)
+                self.assertIn(summary, result.stdout)
+                self.assertEqual(returncode == 1, "required failure: npm provenance" in result.stderr)
+
+    def test_upgrade_lifts_the_npm_window_only_for_a_cooldown_excluded_tool(self) -> None:
+        for phase, lifted in (("none", False), ("provenance_excluded", True)):
+            with self.subTest(phase=phase):
+                repo, env = self.upgrade_fixture(phase)
+
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                log = (repo / "commands.log").read_text().splitlines()
+                install = next(line for line in log if line.startswith("npm install "))
+                self.assertEqual(lifted, "--min-release-age=0 ccusage@20.0.0" in install, install)
+                self.assertFalse([line for line in log if line.startswith("npm audit ") and "release-age" in line])
+
+    def test_upgrade_uv_tools_prints_nothing_without_uv_tools(self) -> None:
+        for phase, upgraded in (("uv_none", False), ("none", True)):
+            with self.subTest(phase=phase):
+                repo, env = self.upgrade_fixture(phase)
+
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(upgraded, "==> uv tools" in result.stdout)
+                log = (repo / "commands.log").read_text().splitlines()
+                self.assertEqual(upgraded, "uv tool upgrade --all" in log)
 
     def test_upgrade_self_updates_mise_to_its_latest_release(self) -> None:
         repo, env = self.upgrade_fixture("none")

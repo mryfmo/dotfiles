@@ -175,10 +175,36 @@ stays exact. Per the settings page the cooldown covers every backend this
 config uses except `http:` (`bats` and `gcloud`, which are exact anyway); a live
 probe on 2026-10-09 showed the setting acting on core `node` (26.11.1 without
 it, 26.10.0 with it). `mise self-update` waits the same 72 hours through
-`self_update.minimum_release_age = "72h"` (its own default is 24h), and Codex
-and Claude Code follow the same cooldown. The managed `~/.npmrc` sets npm's own
-`min-release-age=3`, the same 72 hours, so every npm install on the host agrees
-with the release mise chose. A `node` major bump can leave `npm:` tool installs
+`self_update.minimum_release_age = "72h"` (its own default is 24h). With
+`settings.npm.package_manager = "npm"` mise runs npm as a subprocess, so the
+managed `~/.npmrc`'s `min-release-age=3`, the same 72 hours, is the npm-side
+cooldown for mise's `npm:` tools and for direct `npm` alike. Codex alone takes
+releases on day one, through a pair of lines in `home/dot_mise/config.toml`:
+`minimum_release_age_excludes = ["npm:@openai/codex"]` lifts mise's window and
+the tool option `install_env = { npm_config_min_release_age = "0" }` lifts npm's
+for that install only (a probe on 2026-10-10 with this configuration: with the
+exclusion alone npm refused Codex 0.162.1 with `ETARGET … with a date before`;
+with both it installed). Codex is the exception because its provenance is
+checked after every install. After the mise phase, `make update` runs
+`npm audit signatures --include-attestations` on a scratch
+`npm install --ignore-scripts` of each `npm:` tool's installed version ("npm
+itself can validate registry signatures and provenance attestations",
+[Introducing npm package provenance](https://github.blog/security/supply-chain-security/introducing-npm-package-provenance/);
+[npm audit](https://docs.npmjs.com/cli/v11/commands/npm-audit)). npm checks the
+registry signature and, where the publisher attaches one, the provenance
+attestation over the integrity hash it verified at download; it does not re-hash
+the files on disk, so the check proves that the installed version came from a
+signed, attested publish, not that the installed tree is unmodified afterwards.
+`@openai/codex` and `ccusage` publish attestations; a package without one is
+listed as registry-signature-only and passes, an invalid or missing signature
+or attestation is a required failure that stops `make update` and names the
+package, and a tool that cannot be fetched for the check only warns. The
+scratch install of a cooldown-excluded tool lifts npm's window the same way its
+install did. Provenance shows who built a release from which source; it does
+not catch a malicious release published through a legitimate account, which is
+what the cooldown is for, so only Codex skips it.
+Claude Code is not a mise tool; it comes from Anthropic's signed native
+distribution (see Claude Code below). A `node` major bump can leave `npm:` tool installs
 invalid until `mise install` reruns, so `make update` records the `node` they
 were built on in `${XDG_STATE_HOME:-~/.local/state}/dotfiles/npm-tools-node`;
 when `node` differs from it (or it is missing), whatever moved `node`, it
@@ -192,7 +218,11 @@ run `mise plugins update` when you want one.
 Homebrew bottles are verified against
 their build attestations (`HOMEBREW_VERIFY_ATTESTATIONS=1`) when `gh` is
 present. Homebrew, `uv tool upgrade --all` and GitHub CLI extensions take their
-newest release, and apt (`SYSTEM=1`) the distribution's. The trade-off: with no
+newest release, and apt (`SYSTEM=1`) the distribution's. A Python CLI is added
+as a mise `pipx:` tool, never with `uv tool install`: the `pipx:` backend
+reports release dates, so the cooldown applies, and uv does not verify PyPI
+attestations; `make update` still upgrades the uv tools a machine already has
+and prints nothing when it has none. The trade-off: with no
 exact pins and no committed lock, machines may differ in tool versions, and CI
 tests the latest safe versions rather than one recorded set. Because the
 applied file is mise's global config, it no longer turns on lockfile mode for
@@ -202,12 +232,41 @@ policy where they can: an asset takes the newest release when its publisher
 verifies it independently of the release page, and the others keep a reviewed
 pin (see Asset manifest below).
 
+**Claude Code.** Claude Code is installed from Anthropic's native
+distribution, not npm
+([Advanced setup](https://code.claude.com/docs/en/getting-started/installation)).
+When `~/.local/bin/claude` is not the native launcher (a symlink into
+`~/.local/share/claude/versions/`), `ensure_claude_code` in
+`scripts/update-agent-assets.sh` resolves the version that the
+`claude.autoUpdatesChannel` channel (`stable`) serves, checks that release's
+`manifest.json` with `gpgv` against Anthropic's release key (committed at
+`home/dot_local/share/claude-code-keys/claude-code.asc`, fingerprint
+`31DD DE24 DDFA B679 F42D 7BD2 BAA9 29FF 1A7E CACE`, `assets.claude-code`; the
+published copy at `downloads.claude.ai/keys/claude-code.asc` is a fallback
+trusted only through that fingerprint), requires the signed manifest to name
+that version, and checks the downloaded binary against its sha256. Only then
+does it run the binary's own `install <version>`, which creates the launcher
+Anthropic's auto-updater manages, and it requires the installed version and
+sha256 to match, removing the install otherwise. It never runs
+`claude.ai/install.sh`, which checks the binary only against the unsigned
+manifest before running it. Day-to-day updates are Anthropic's auto-updater on
+that channel; every `make update` re-verifies the active binary against the
+signed manifest of its version (two small downloads) and fails when the
+signature or sha256 does not match, while offline it warns and keeps the
+binary. Without gpg and gpgv (a fresh macOS before
+`install/macos/common/dependencies.sh` installs them) nothing is installed. Once
+the native install verifies, the old `npm:@anthropic-ai/claude-code` mise
+install is removed, unless the asset manifest still records its
+`ensure_mise_npm_agent_cli:claude` repair step; then
+`remove-agent-asset ensure_mise_npm_agent_cli:claude --yes` retires both.
+`make doctor` reports the native version and channel.
+
 **Holding a tool back** uses the manager's own feature:
 
 - mise: an exact version in `home/dot_mise/config.toml` with a one-line reason
   (today `fd`, `npm:pnpm`, and the `http:` tools `bats` and `gcloud`);
 - Homebrew: `brew pin <formula>`;
-- uv: `uv tool install <package>==<version>`;
+- uv, for a uv tool a machine already has: `uv tool install <package>==<version>`;
 - apt: `sudo apt-mark hold <package>`.
 
 The **operator phase** is the interactive part, run once per machine:
@@ -1303,17 +1362,16 @@ Tool versions are not committed: `home/dot_mise/config.toml` requests `"latest"`
 A held tool keeps an exact version and its reason in that file, and `~/.config/mise` is its applied copy, not a live symlink into the source tree.
 Under the agmsg regime a worker task carries every repository change as a PR. The GitHub ruleset on `main` (see the ruleset payload above) is the boundary: `main` accepts only pull requests that pass the required checks, so no change, the `.orchestration` boundary commit included, is pushed to `main` directly.
 For `npm:` tools, mise owns the version and isolated install prefix, while the npm CLI performs installation through
-`settings.npm.package_manager = "npm"`. Do not install Claude Code or Codex
-directly with user-global `npm install -g`; duplicate global installs can
-shadow the mise-managed commands. Claude Code alone permits its reviewed
-package lifecycle script because its postinstall replaces `bin/claude.exe`
-with the platform-native binary. Codex has no package lifecycle script and
-does not receive that permission. If an older aube-backed agent CLI cannot run,
-`scripts/update-agent-assets.sh` force-reinstalls only that broken CLI through
-the npm backend before refreshing plugins.
+`settings.npm.package_manager = "npm"`. Do not install Codex or Claude Code
+directly with user-global `npm install -g`; a global copy can shadow the
+mise-managed Codex or the native Claude Code launcher, and
+`scripts/update-agent-assets.sh` removes one. Codex has no package lifecycle
+script and receives no build permission. If an older aube-backed Codex cannot
+run, `scripts/update-agent-assets.sh` force-reinstalls it through the npm
+backend before refreshing plugins.
 
 **Asset manifest.** Every third-party component the lifecycle installs outside
-mise — the mise binary itself, sheldon, starship, the AWS CLI, the Homebrew
+mise — the mise binary itself, sheldon, starship, the AWS CLI, Claude Code, the Homebrew
 installer, Crit, Zed, tode, terminal-browser, the Understand-Anything
 installer, the vendored CompactionDB tree, the upstream agmsg skill, and the
 Claude/Codex plugins and GitHub CLI extensions — has one declaration under

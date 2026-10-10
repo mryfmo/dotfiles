@@ -462,14 +462,36 @@ main
             config = tomllib.load(config_file)
 
         self.assertEqual("npm", config["settings"]["npm"]["package_manager"])
-        claude = config["tools"]["npm:@anthropic-ai/claude-code"]
-        self.assertEqual(
-            ["@anthropic-ai/claude-code"],
-            claude["allow_builds"],
-        )
+        # Claude Code comes from Anthropic's signed native distribution (ensure_claude_code), not npm.
+        self.assertNotIn("npm:@anthropic-ai/claude-code", config["tools"])
         codex = config["tools"]["npm:@openai/codex"]
-        if isinstance(codex, dict):
-            self.assertNotIn("allow_builds", codex)
+        self.assertNotIn("allow_builds", codex)
+
+    def test_codex_alone_takes_releases_on_day_one_and_npm_provenance_is_checked(self):
+        with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:
+            config = tomllib.load(config_file)
+        # Day one needs both cooldowns lifted for Codex only: mise's through the excludes list and npm's
+        # (~/.npmrc, which the npm package manager reads) through Codex's own install_env.
+        self.assertEqual(["npm:@openai/codex"], config["settings"]["minimum_release_age_excludes"])
+        overrides = {
+            name: request["install_env"]
+            for name, request in config["tools"].items()
+            if isinstance(request, dict) and "install_env" in request
+        }
+        self.assertEqual({"npm:@openai/codex": {"npm_config_min_release_age": "0"}}, overrides)
+
+        upgrade = (ROOT / "scripts/upgrade-tools.sh").read_text()
+        main = upgrade.split("\nfunction main() {\n", 1)[1]
+        self.assertLess(
+            main.index('run_required_phase "mise inventory/install/upgrade" upgrade_mise_tools'),
+            main.index('run_required_phase "npm provenance" verify_npm_provenance'),
+        )
+        self.assertIn("npm audit signatures --include-attestations", upgrade)
+        self.assertIn("npm install --ignore-scripts", upgrade)
+        # The audit's scratch install lifts npm's window only for a tool mise's excludes list names.
+        self.assertEqual(1, upgrade.count("--min-release-age=0"))
+        check = upgrade.split("\nfunction check_npm_tool_provenance() {\n", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn('*"\\"${mise_tool}\\""*) window="--min-release-age=0" ;;', check)
 
     def test_mise_config_backends_and_http_tools(self):
         with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:

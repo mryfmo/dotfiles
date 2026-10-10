@@ -2042,10 +2042,9 @@ require_command jq
 if [[ ${attach_mode} == false ]]; then
     require_command claude
 fi
-# Heal PATH shadowing left behind by the agent CLIs' own `npm install -g`
-# updaters so the mise-pinned versions are what the panes actually run.
+# Heal PATH shadowing left behind by Codex's own `npm install -g` updater so the
+# mise-managed version is what the panes actually run.
 remove_shadowing_node_global "npm:@openai/codex" "@openai/codex"
-remove_shadowing_node_global "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"
 
 if [[ ${attach_mode} == true ]]; then
     workdir="$PWD"

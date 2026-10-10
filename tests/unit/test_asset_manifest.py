@@ -150,7 +150,7 @@ class AssetManifestTest(unittest.TestCase):
         (bin_dir / "jq").symlink_to(jq)
         state = self.temp_dir / "state"
         state.mkdir()
-        for cli in ("claude", "codex"):
+        for cli in ("example", "codex"):
             self._executable(
                 bin_dir / cli,
                 f"""
@@ -167,7 +167,7 @@ class AssetManifestTest(unittest.TestCase):
             case "$1" in
             install)
                 case "$*" in
-                *claude-code) touch "$TEST_STATE/claude" ;;
+                *example-cli) touch "$TEST_STATE/example" ;;
                 *openai/codex) touch "$TEST_STATE/codex" ;;
                 esac
                 ;;
@@ -181,7 +181,7 @@ class AssetManifestTest(unittest.TestCase):
         result = self.run_bash(
             f"""
             source {UPDATER}
-            ensure_mise_npm_agent_cli claude npm:@anthropic-ai/claude-code
+            ensure_mise_npm_agent_cli example npm:example-cli
             ensure_mise_npm_agent_cli codex npm:@openai/codex
             """,
             env={
@@ -193,7 +193,7 @@ class AssetManifestTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual(
             {
-                "ensure_mise_npm_agent_cli:claude",
+                "ensure_mise_npm_agent_cli:example",
                 "ensure_mise_npm_agent_cli:codex",
             },
             set(self.manifest()["steps"]),
@@ -202,6 +202,7 @@ class AssetManifestTest(unittest.TestCase):
     def test_updater_has_one_recording_call_for_each_install_step(self) -> None:
         updater = UPDATER.read_text()
         steps = (
+            "ensure_claude_code",
             "ensure_crit_cli",
             "update_agmsg",
             "ensure_herdr_integrations",
@@ -218,7 +219,7 @@ class AssetManifestTest(unittest.TestCase):
             "update_compactiondb",
         )
 
-        self.assertEqual(15, updater.count('manifest_record "'))
+        self.assertEqual(16, updater.count('manifest_record "'))
         self.assertEqual(
             1,
             updater.count('manifest_record "ensure_mise_npm_agent_cli:${cli}"'),

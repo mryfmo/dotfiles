@@ -1938,6 +1938,9 @@ EOF
                 self.assertIn(message, result.stdout + result.stderr)
                 self.assertIn(summary, result.stdout)
                 self.assertEqual(returncode == 1, "required failure: npm provenance" in result.stderr)
+                # A failed attestation means tampering: that version is removed; nothing else is.
+                log = (repo / "commands.log").read_text().splitlines()
+                self.assertEqual(returncode == 1, "mise uninstall npm:ccusage@20.0.0" in log)
 
     def test_upgrade_lifts_the_npm_window_only_for_a_cooldown_excluded_tool(self) -> None:
         for phase, lifted in (("none", False), ("provenance_excluded", True)):

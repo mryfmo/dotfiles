@@ -457,8 +457,9 @@ function check_npm_tool_provenance() {
 
 #
 # @description Verify every current npm: tool's registry signature and provenance attestation. For a
-#   tool behind the cooldown, a failed check is a required failure naming the package, a package
-#   without an attestation is listed as signature-only, and a tool that cannot be fetched only warns.
+#   tool behind the cooldown, a failed check is a required failure that names the package and removes
+#   that version, a package without an attestation is listed as signature-only, and a tool that cannot
+#   be fetched only warns.
 #   A tool outside the cooldown (minimum_release_age_excludes) stays installed only with a verified
 #   attestation, now or from an earlier run of the same version; any other outcome, a check that
 #   cannot run included, is a required failure that removes that version.
@@ -518,7 +519,10 @@ function verify_npm_provenance() {
             ((optional_warnings += 1))
             ;;
         *)
-            printf 'npm provenance check failed: %s\n' "${mise_tool}" >&2
+            # An invalid signature or attestation means tampering, so that version must not stay runnable.
+            printf 'npm provenance check failed: %s %s has an invalid or missing registry signature or attestation; removing it\n' "${mise_tool}" "${version}" >&2
+            run_mise_with_isolated_git_config uninstall "${mise_tool}@${version}" ||
+                printf 'required: could not remove %s %s; remove it with mise uninstall %s@%s\n' "${mise_tool}" "${version}" "${mise_tool}" "${version}" >&2
             failed=1
             ;;
         esac

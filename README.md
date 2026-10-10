@@ -197,8 +197,9 @@ the files on disk, so the check proves that the installed version came from a
 signed, attested publish, not that the installed tree is unmodified afterwards.
 `@openai/codex` and `ccusage` publish attestations; a package without one is
 listed as registry-signature-only and passes, an invalid or missing signature
-or attestation is a required failure that stops `make update` and names the
-package, and a tool that cannot be fetched for the check only warns. Codex,
+or attestation is a required failure that stops `make update`, names the
+package and uninstalls that version, and a tool that cannot be fetched for the
+check only warns. Codex,
 outside the cooldown, stays installed only with a verified attestation, now or
 from an earlier run of the same version (recorded under
 `${XDG_STATE_HOME:-~/.local/state}/dotfiles/npm-provenance/`); any other

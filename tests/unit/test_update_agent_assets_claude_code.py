@@ -29,6 +29,10 @@ BINARY = textwrap.dedent(
         [ -z "${TAMPER_ON_INSTALL:-}" ] || printf 'tampered\\n' >> "$HOME/.local/share/claude/versions/$2"
         ln -sfn "$HOME/.local/share/claude/versions/$2" "$HOME/.local/bin/claude"
         [ -z "${FAIL_AFTER_LAUNCHER:-}" ] || exit 1
+        if [ -n "${OTHER_VERSION:-}" ]; then
+            cp "$0" "$HOME/.local/share/claude/versions/${OTHER_VERSION}"
+            ln -sfn "$HOME/.local/share/claude/versions/${OTHER_VERSION}" "$HOME/.local/bin/claude"
+        fi
     fi
     """
 )
@@ -244,6 +248,15 @@ class EnsureClaudeCodeTest(unittest.TestCase):
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn(f"Claude Code {VERSION} does not match its signed release manifest", result.stderr)
         self.assertFalse(binary.exists())
+        self.assertFalse(os.path.lexists(self.home / ".local/bin/claude"))
+
+    def test_a_launcher_left_at_another_version_removes_both(self) -> None:
+        result = self.run_ensure(OTHER_VERSION="2.1.296")
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"claude install {VERSION} left the launcher at 2.1.296", result.stderr)
+        versions = self.home / ".local/share/claude/versions"
+        self.assertEqual([], sorted(path.name for path in versions.iterdir()))
         self.assertFalse(os.path.lexists(self.home / ".local/bin/claude"))
 
     def test_a_failed_install_step_leaves_no_launcher_or_version(self) -> None:

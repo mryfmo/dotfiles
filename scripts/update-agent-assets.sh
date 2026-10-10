@@ -347,7 +347,9 @@ function ensure_claude_code() {
         [ "${status}" -eq 0 ] || return 1
         version="$(claude_code_active_version)"
         if [ "${version}" != "${installed}" ]; then
-            printf 'claude install %s left the launcher at %s, not at the verified version.\n' "${installed}" "${version:-nothing}" >&2
+            printf 'claude install %s left the launcher at %s, not at the verified version; both were removed.\n' "${installed}" "${version:-nothing}" >&2
+            # The version the launcher points to was never checked, so it goes with the verified one.
+            [ -z "${version}" ] || remove_claude_code_version "${version}"
             remove_claude_code_version "${installed}"
             return 1
         fi

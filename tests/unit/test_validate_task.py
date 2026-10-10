@@ -309,6 +309,11 @@ class ValidateTaskTest(unittest.TestCase):
         self.assertNotEqual(
             high_risk_paths.canonical_design_hash(DESIGN), high_risk_paths.canonical_design_hash(changed)
         )
+        # Gaming path: a task added to the design after its review changes the hash, so the receipt no longer matches.
+        widened = {**DESIGN, "implementing_tasks": [*DESIGN["implementing_tasks"], "u-a01"]}
+        self.assertNotEqual(
+            high_risk_paths.canonical_design_hash(DESIGN), high_risk_paths.canonical_design_hash(widened)
+        )
         with self.assertRaises(KeyError):
             high_risk_paths.canonical_design_hash({"invariants": {}})
 
@@ -360,7 +365,16 @@ class ValidateTaskTest(unittest.TestCase):
 
     def test_allowed_files_must_be_canonical_repository_paths(self) -> None:
         # `./install/...` would neither match the design tier nor expand, so a security task could hide.
-        for entry in ("./install/common/tool.sh", "install/", "/etc/passwd", "many/../install/common/tool.sh", "a//b"):
+        # `[i]nstall/**` is install/** to a shell but a literal to the tier, so bracket and brace globs are refused.
+        for entry in (
+            "./install/common/tool.sh",
+            "install/",
+            "/etc/passwd",
+            "many/../install/common/tool.sh",
+            "a//b",
+            "[i]nstall/**",
+            "install/{a,b}.sh",
+        ):
             with self.subTest(entry=entry):
                 self.assertFails(self.task(allowed_files=[entry]), "not a canonical repository-relative path")
 
@@ -455,6 +469,13 @@ class ValidateTaskTest(unittest.TestCase):
         self.write("code-a01", {**DESIGN, "task_id": "code-a01", "kind": "code", "allowed_files": ["install/**"]})
         self.assertFails(self.reset_fixture(redesign_task="code-a01"), "must be `kind: design`")
         self.assertFails(self.reset_fixture(reason=None), "reason: required")
+        # Gaming path: an abandoned design named as its own redesign.
+        self.write(
+            "old-a01", {**DESIGN, "task_id": "old-a01", "allowed_files": ["install/**"], "superseded_by": "old-a01"}
+        )
+        self.assertFails(
+            self.reset_fixture(redesign_task="old-a01"), "must be a new design task, not the abandoned one"
+        )
 
     def test_a_design_reset_must_overlap_the_abandoned_task(self) -> None:
         path = self.reset_fixture()
@@ -483,6 +504,25 @@ class ValidateTaskTest(unittest.TestCase):
     def test_a_security_task_must_be_named_by_its_design(self) -> None:
         # Gaming path: one reviewed design reused to authorize an unrelated security task.
         self.assertFails(self.security_task("u-a01"), "does not list u-a01 in implementing_tasks")
+
+    def test_implementing_tasks_must_be_a_list_of_task_ids(self) -> None:
+        # Gaming path: a scalar would match as a substring (`xt-a01x` contains `t-a01`).
+        self.write("design-a01", {**DESIGN, "implementing_tasks": "xt-a01x"})
+        self.assertFails(self.security_task(), "implementing_tasks must be a list of task ids")
+
+    def test_the_design_must_be_a_task_file_under_its_own_id(self) -> None:
+        elsewhere = self.write(
+            "design-x01", {**DESIGN, "task_id": "design-x01"}, where=self.main / ".orchestration/validation"
+        )
+        misnamed = self.write("design-c01", DESIGN)  # its task_id says design-a01
+        for path in (elsewhere, misnamed):
+            with self.subTest(path=path.name):
+                self.assertFails(
+                    self.security_task(
+                        design_review={**DESIGN["design_review"], "design": str(path.relative_to(self.main))}
+                    ),
+                    "must be .orchestration/tasks/<task id>.md with that task_id",
+                )
 
     def test_trust_anchors_must_not_be_blank(self) -> None:
         self.assertFails(

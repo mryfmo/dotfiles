@@ -82,8 +82,22 @@ def expand(entry: str, files: list[str]) -> set[str]:
 
 
 def canonical(path: str) -> bool:
-    """A repository-relative path or glob in one spelling: no leading `/`, `./`, `..`, `//` or trailing `/`."""
-    return isinstance(path, str) and "\\" not in path and all(part not in ("", ".", "..") for part in path.split("/"))
+    """A repository-relative path or glob in one spelling: no leading `/`, `./`, `..`, `//` or trailing `/`.
+
+    Only `*`, `**` and `?` are glob syntax here; `[...]` and `{...}`, which shells expand, are refused.
+    """
+    return (
+        isinstance(path, str)
+        and not re.search(r"[\\\[\]{}]", path)
+        and all(part not in ("", ".", "..") for part in path.split("/"))
+    )
+
+
+def task_ids(value) -> list[str] | None:
+    """A list of task ids, or None when the value is anything else (a scalar would match as a substring)."""
+    if isinstance(value, list) and all(isinstance(item, str) and TASK_ID.fullmatch(item) for item in value):
+        return value
+    return None
 
 
 def is_text_map(value) -> bool:
@@ -126,6 +140,8 @@ def validate_reset(path: Path, data: dict, root: Path, files: list[str], report:
         fail(f"redesign_seat: must be an identity containing -redesign-, got {fields['redesign_seat']!r}")
     if not isinstance(fields["reason"], str) or not fields["reason"].strip():
         fail("reason: required")
+    if fields["reset_of"] == fields["redesign_task"]:
+        fail("redesign_task: must be a new design task, not the abandoned one")
     if isinstance(fields["reset_of"], str) and path.stem != f"{fields['reset_of']}-design-reset":
         fail(f"the file must be named {fields['reset_of']}-design-reset.md")
     tasks = root / ".orchestration/tasks"
@@ -148,7 +164,7 @@ def validate_reset(path: Path, data: dict, root: Path, files: list[str], report:
     if redesign is not None and abandoned is not None:
         # The redesign must replace the abandoned work: its files, or its implementing tasks' files, overlap.
         new_files = list(redesign.get("allowed_files") or [])
-        for task in redesign.get("implementing_tasks") or []:
+        for task in task_ids(redesign.get("implementing_tasks")) or []:
             implementing = (
                 load(tasks / f"{task}.md")
                 if TASK_ID.fullmatch(str(task)) and (tasks / f"{task}.md").is_file()
@@ -278,6 +294,13 @@ def validate(path: Path) -> dict:
                 elif design is None or design.get("format") != 2 or design.get("kind") != "design":
                     fail("design_review.design: must be a `format: 2` task file of `kind: design`")
                     design = None
+                elif (
+                    design_path.resolve().parent != (root / ".orchestration/tasks").resolve()
+                    or design.get("task_id") != design_path.stem
+                ):
+                    # Only a task file the boundary check also scans, under its own id, can authorize anything.
+                    fail("design_review.design: must be .orchestration/tasks/<task id>.md with that task_id")
+                    design = None
             if design is not None:
                 try:
                     report["design_hash"] = canonical_design_hash(design)
@@ -285,7 +308,12 @@ def validate(path: Path) -> dict:
                     fail(f"design_review.design: the design task lacks {error.args[0]}")
                 if not same_file:
                     # One reviewed design authorizes only the tasks it names.
-                    if task_id not in (design.get("implementing_tasks") or []):
+                    listed = task_ids(design.get("implementing_tasks"))
+                    if listed is None:
+                        fail(
+                            f"design_review.design: {design_review['design']} implementing_tasks must be a list of task ids"
+                        )
+                    elif task_id not in listed:
                         fail(
                             f"design_review.design: {design_review['design']} does not list {task_id} in implementing_tasks"
                         )

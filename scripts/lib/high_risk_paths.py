@@ -92,7 +92,8 @@ DESIGN_TIER = (
     "home/dot_local/bin/common/executable_setup-gpg",
 )
 
-DESIGN_HASH_KEYS = ("invariants", "threat_model", "trust_anchors")
+# implementing_tasks decides which tasks a design authorizes, so it is reviewed and hashed too (T124 Amendment 6).
+DESIGN_HASH_KEYS = ("invariants", "threat_model", "trust_anchors", "implementing_tasks")
 
 
 def glob_regex(pattern: str) -> re.Pattern[str]:
@@ -289,7 +290,7 @@ def parse_front_matter(text: str) -> dict | None:
 
 
 def canonical_design_hash(design: dict) -> str:
-    """sha256 of the design task's invariants, threat_model and trust_anchors, key order and layout ignored."""
+    """sha256 of the design task's invariants, threat_model, trust_anchors and implementing_tasks, key order and layout ignored."""
     missing = [key for key in DESIGN_HASH_KEYS if key not in design]
     if missing:
         raise KeyError(", ".join(missing))

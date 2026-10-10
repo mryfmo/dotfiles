@@ -74,3 +74,11 @@ Codex Bot findings on boundary head 8be11e65 folded into V0 (ast-based decorator
 ## Round 15 (orchestrator, 2026-10-11)
 
 R14-1 (tier from the stamped `tier:` key, missing stamp treated as design; `scripts/lib/contract_markers.py` helper allowed) and the V2 notes (string keys; no line figure). Diff check of V0 and V2; receipt `…-task-review-v1-v2-a01-round15.md`; RESULT with `round=15`. max_turns=3.
+
+## Round 16 (orchestrator, 2026-10-11)
+
+Codex Bot findings on boundary head 3396d666: V0 runs main's copy of the harness (git show origin/main:…), triggers on every design-tier script path, and fails a design-tier task whose script has no declared test module; V1 classifies wildcards in both directions; V1b resolves a -contract-a01 id to its implementing entry. Design unchanged. Diff check of V0, V1, V1b; receipt `…-task-review-v1-v2-a01-round16.md`; RESULT with `round=16`. max_turns=4.
+
+## Round 17 (orchestrator, 2026-10-11)
+
+R16-1: step (b0) now requires at least one declared `tests/unit/*.py` module when a design-tier task declares any non-data script path (data: *.txt, *.json, *.md, *.yaml); test (f) adjusted. V0 only; receipt `…-task-review-v1-v2-a01-round17.md`; RESULT with `round=17`. max_turns=3.

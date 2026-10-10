@@ -19,7 +19,7 @@ Every Codex Bot finding and every CI failure on the PR is fixed at its root caus
 
 ## Repo / branch
 
-`.claude/worktrees/worker-c` after T120 merged: `git fetch origin`; `git switch -c feat/starship-through-mise --no-track origin/main`.
+`.claude/worktrees/worker-c` after T127 (T120's redesign) is accepted, or earlier if independent of T120: `git fetch origin`; `git switch -c feat/starship-through-mise --no-track origin/main`.
 
 ## Allowed files
 

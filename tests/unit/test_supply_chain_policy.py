@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import tomllib
@@ -154,6 +155,10 @@ install_starship
             '#!/bin/sh\nif [ "$*" = -d ]; then exec /usr/bin/mktemp -d "$TMPDIR/tmp.XXXXXX"; fi\nexec /usr/bin/mktemp "$@"\n'
         )
         (shim / "mktemp").chmod(0o755)
+        if shutil.which("sha256sum") is None:
+            # The Ubuntu installers call sha256sum; a macOS runner has only shasum.
+            (shim / "sha256sum").write_text('#!/bin/sh\nexec shasum -a 256 "$@"\n')
+            (shim / "sha256sum").chmod(0o755)
         return subprocess.run(
             ["bash", "-c", f'source "$1"\n{script}', "_", str(ROOT / relative)],
             env={**os.environ, "HOME": str(home), "TMPDIR": str(tmp), "PATH": f"{shim}:{os.environ['PATH']}", **env},

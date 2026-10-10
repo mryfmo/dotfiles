@@ -29,6 +29,7 @@ from high_risk_paths import (  # noqa: E402
     canonical_design_hash,
     LOW_RISK_SUFFIXES,
     glob_regex,
+    globs_intersect,
     in_review_tier,
     may_touch_design_tier,
     parse_front_matter,
@@ -41,6 +42,8 @@ INVARIANT_ID = re.compile(r"INV-[0-9]+")
 # The stop gate's rule: the orchestrator is the unsuffixed identity, every other seat carries -aNNN.
 NON_ORCHESTRATOR = re.compile(r".+-a[0-9]{3}")
 TASK_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+# The task ids that existed before format 2 (generated once, it only shrinks): only they are grandfathered.
+LEGACY_IDS_FILE = Path(__file__).resolve().parent / "legacy-task-ids.txt"
 # The tier table travels with this script: main's validator reads main's manifest.
 MANIFEST = Path(__file__).resolve().parents[1] / "home/dot_agents/agent-config.yaml"
 
@@ -121,12 +124,9 @@ def receipt_fields(path: Path) -> dict[str, list[str]]:
     return fields
 
 
-def overlaps(left: list, right: list, files: list[str]) -> bool:
-    for a in left:
-        for b in right:
-            if a == b or glob_regex(a).match(b) or glob_regex(b).match(a) or expand(a, files) & expand(b, files):
-                return True
-    return False
+def overlaps(left: list, right: list) -> bool:
+    """Whether any path, existing or not, is allowed by both lists."""
+    return any(globs_intersect(a, b) for a in left for b in right if isinstance(a, str) and isinstance(b, str))
 
 
 def validate_reset(path: Path, data: dict, root: Path, files: list[str], report: dict) -> dict:
@@ -161,6 +161,14 @@ def validate_reset(path: Path, data: dict, root: Path, files: list[str], report:
     if redesign is not None and redesign.get("kind") != "design":
         fail(f"redesign_task: {fields['redesign_task']} must be `kind: design`, got {redesign.get('kind')!r}")
         redesign = None
+    elif redesign is not None:
+        # The redesign must itself be a valid format 2 design task, not a legacy or broken file.
+        sub = validate(tasks / f"{fields['redesign_task']}.md")
+        if sub["status"] != "valid":
+            fail(
+                f"redesign_task: {fields['redesign_task']} is not a valid format 2 design task: {(sub['failures'] or [sub['status']])[0]}"
+            )
+            redesign = None
     if redesign is not None and abandoned is not None:
         # The redesign must replace the abandoned work: its files, or its implementing tasks' files, overlap.
         new_files = list(redesign.get("allowed_files") or [])
@@ -171,13 +179,26 @@ def validate_reset(path: Path, data: dict, root: Path, files: list[str], report:
                 else None
             )
             new_files += list((implementing or {}).get("allowed_files") or [])
-        if not overlaps(list(abandoned.get("allowed_files") or []), new_files, files):
+        if not overlaps(list(abandoned.get("allowed_files") or []), new_files):
             fail(f"redesign_task: {fields['redesign_task']} does not overlap the allowed files of {fields['reset_of']}")
         elif abandoned.get("superseded_by") == fields["redesign_task"]:
             report["abandoned_status"] = "superseded"
         else:
             warn(f"{fields['reset_of']} is not marked superseded_by: {fields['redesign_task']} yet")
     report["status"] = "invalid" if report["failures"] else "valid"
+    return report
+
+
+def legacy(path: Path, report: dict) -> dict:
+    """A formatless file is grandfathered only when its id is on the checked-in legacy list."""
+    ids = LEGACY_IDS_FILE.read_text(encoding="utf-8").split() if LEGACY_IDS_FILE.is_file() else []
+    if path.stem in ids:
+        report["status"] = "legacy"
+    else:
+        report["failures"].append(
+            f"format: no `format: 2` front matter, and {path.stem} is not a grandfathered task ({LEGACY_IDS_FILE.name})"
+        )
+        report["status"] = "invalid"
     return report
 
 
@@ -190,14 +211,12 @@ def validate(path: Path) -> dict:
         # An unparsable header that names any format fails; only a header without one is grandfathered.
         header = path.read_text(encoding="utf-8", errors="replace").split("\n---", 1)[0]
         if not re.search(r"""(?:^|[\s{,])["']?format["']?\s*:""", header):
-            report["status"] = "legacy"
-            return report
+            return legacy(path, report)
         fail(f"front matter: {error}")
         report["status"] = "invalid"
         return report
     if data is None or "format" not in data:
-        report["status"] = "legacy"
-        return report
+        return legacy(path, report)
     if data["format"] != 2 or isinstance(data["format"], bool):
         fail(f"format: only 2 is supported, got {data['format']!r}")
         report["status"] = "invalid"
@@ -213,6 +232,9 @@ def validate(path: Path) -> dict:
         return validate_reset(path, data, root, files, report)
     if "reset_of" in data:
         fail("reset_of: a design-reset record belongs in .orchestration/acceptance/<task id>-design-reset.md")
+    if (path.parent.parent.name, path.parent.name) != (".orchestration", "tasks"):
+        # Only there does the boundary check scan it and the gate find it by its id.
+        fail("the task file must live in .orchestration/tasks/")
 
     task_id = data.get("task_id")
     report["task_id"] = task_id
@@ -286,6 +308,15 @@ def validate(path: Path) -> dict:
                 inside[key] = target is not None and target.is_relative_to(root.resolve()) and target.is_file()
                 if not inside[key]:
                     fail(f"design_review.{key}: {value!r} is not a file inside the main checkout {root}")
+            receipt = str(design_review["receipt"])
+            if (
+                not receipt.startswith(".orchestration/validation/")
+                or receipt == design_review["design"]
+                or (inside["receipt"] and (root / receipt).resolve() == path.resolve())
+            ):
+                # A design or task file could carry its own reviewer: and verdict lines.
+                fail("design_review.receipt: must be a separate review file under .orchestration/validation/")
+                inside["receipt"] = False
             design_path = root / str(design_review["design"])
             same_file = inside["design"] and design_path.resolve() == path.resolve()
             if inside["design"]:
@@ -327,6 +358,11 @@ def validate(path: Path) -> dict:
                     extra = sorted(set(invariants) - design_ids)
                     if extra:
                         fail(f"invariants: not in the design {design_review['design']}: {', '.join(extra)}")
+                    changed = sorted(
+                        i for i in set(invariants) & design_ids if invariants[i] != design["invariants"][i]
+                    )
+                    if changed:
+                        fail(f"invariants: {', '.join(changed)} differ from the reviewed design's sentences")
             if inside["receipt"] and "design_hash" in report:
                 # The receipt binds a non-orchestrator review to the design as it is now (T124 Amendment 3).
                 fields = receipt_fields(root / design_review["receipt"])
@@ -347,6 +383,11 @@ def validate(path: Path) -> dict:
     if security:
         # A code task may take its threat model and trust anchors from the design it names.
         source = design if kind == "code" and design is not None else data
+        if source is design:
+            for key in ("threat_model", "trust_anchors"):
+                # The receipt authenticates the design's values only, so a task may not bring its own.
+                if key in data and data[key] != design.get(key):
+                    fail(f"{key}: a task that names a design must omit it or carry the design's value exactly")
         for key in ("threat_model", "trust_anchors"):
             value = data.get(key, source.get(key))
             if key == "threat_model" and not (isinstance(value, dict) and value and is_text_map(value)):

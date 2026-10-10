@@ -200,7 +200,9 @@ PY
 # Every `format: 2` task file and design-reset record in the main checkout must
 # pass the task validator; older task files are grandfathered (`legacy`).
 if [[ -f ${root}/scripts/validate-task.py ]] && command -v python3 > /dev/null 2>&1; then
-    for task in "${main}"/.orchestration/tasks/*.md "${main}"/.orchestration/acceptance/*-design-reset.md; do
+    # `.*.md` too: a dot-prefixed task file must not escape the check.
+    for task in "${main}"/.orchestration/tasks/*.md "${main}"/.orchestration/tasks/.*.md \
+        "${main}"/.orchestration/acceptance/*-design-reset.md "${main}"/.orchestration/acceptance/.*-design-reset.md; do
         [[ -f ${task} ]] || continue
         if ! output="$(python3 "${root}/scripts/validate-task.py" "${task}" 2>&1)"; then
             while IFS= read -r line; do

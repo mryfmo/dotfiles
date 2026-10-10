@@ -20,6 +20,7 @@ sys.dont_write_bytecode = True
 
 import high_risk_paths  # noqa: E402
 
+LEGACY_ID = (ROOT / "scripts/legacy-task-ids.txt").read_text().split()[0]
 GIT = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
 
 
@@ -320,14 +321,17 @@ class ValidateTaskTest(unittest.TestCase):
             high_risk_paths.canonical_design_hash({"invariants": {}})
 
     def test_legacy_files_are_grandfathered(self) -> None:
+        old = LEGACY_ID  # a task id on scripts/legacy-task-ids.txt
         for fields, body in (
             (None, "# AGMSG-TASK old\n"),
-            ({"task_id": "old", "created": "'2026-09-26'"}, "# old\n"),
+            ({"task_id": old, "created": "'2026-09-26'"}, "# old\n"),
         ):
             with self.subTest(fields=fields):
-                code, report = self.run_validator(self.write("old", fields, body))
+                code, report = self.run_validator(self.write(old, fields, body))
                 self.assertEqual((0, "legacy"), (code, report["status"]))
-        unparsable = self.tasks / "old.md"
+        # Gaming path: a new task that simply omits format 2 is not grandfathered.
+        self.assertFails(self.write("new-a01", None, "# AGMSG-TASK new\n"), "is not a grandfathered task")
+        unparsable = self.tasks / f"{old}.md"
         unparsable.write_text("---\ncreated: 2026-09-26T01:55:00Z\n---\n")
         self.assertEqual((0, "legacy"), (lambda r: (r[0], r[1]["status"]))(self.run_validator(unparsable)))
         unparsable.write_text("---\nformat: 2\ncreated: 2026-09-26T01:55:00Z\n---\n")
@@ -443,10 +447,23 @@ class ValidateTaskTest(unittest.TestCase):
         self.write("design-a01", changed)
         self.assertFails(self.security_task(), "does not end in the design's canonical hash")
 
-    def reset_fixture(self, **fields) -> Path:
-        self.task("old-a01", allowed_files=["install/common/tool.sh"], superseded_by="redesign-a01")
-        redesign = {**DESIGN, "task_id": "redesign-a01", "allowed_files": ["install/**"]}
-        self.write("redesign-a01", redesign)
+    def design_task(self, name: str, **fields) -> Path:
+        """A valid design task that names itself, with its own receipt carrying its canonical hash."""
+        design = {
+            **DESIGN,
+            "task_id": name,
+            "design_review": {
+                "receipt": f".orchestration/validation/{name}-receipt.md",
+                "design": f".orchestration/tasks/{name}.md",
+            },
+            **fields,
+        }
+        (self.main / f".orchestration/validation/{name}-receipt.md").write_text(receipt(design))
+        return self.write(name, design)
+
+    def reset_fixture(self, abandoned: list | None = None, redesign: list | None = None, **fields) -> Path:
+        self.task("old-a01", allowed_files=abandoned or ["install/common/tool.sh"], superseded_by="redesign-a01")
+        self.design_task("redesign-a01", allowed_files=redesign or ["install/**"])
         record = {
             "format": 2,
             "reset_of": "old-a01",
@@ -481,20 +498,73 @@ class ValidateTaskTest(unittest.TestCase):
 
     def test_a_design_reset_must_overlap_the_abandoned_task(self) -> None:
         path = self.reset_fixture()
-        self.write("redesign-a01", {**DESIGN, "task_id": "redesign-a01", "allowed_files": ["README.md"]})
+        self.design_task("redesign-a01", allowed_files=["README.md"])
         self.assertFails(path, "does not overlap the allowed files of old-a01")
         # The implementing tasks a design names count toward the overlap.
         self.task("impl-a01", allowed_files=["install/common/tool.sh"])
-        self.write(
-            "redesign-a01",
-            {**DESIGN, "task_id": "redesign-a01", "allowed_files": ["README.md"], "implementing_tasks": ["impl-a01"]},
-        )
+        self.design_task("redesign-a01", allowed_files=["README.md"], implementing_tasks=["t-a01", "impl-a01"])
         self.assertEqual(0, self.run_validator(path)[0])
         # Without superseded_by on the abandoned task the record is valid but says so.
         self.task("old-a01", allowed_files=["install/common/tool.sh"])
         code, report = self.run_validator(path)
         self.assertEqual(0, code)
         self.assertTrue(any("is not marked superseded_by" in w for w in report["warnings"]), report)
+        # Two globs that only meet in a file nobody has created yet still overlap.
+        self.assertEqual(0, self.run_validator(self.reset_fixture(abandoned=["new/*.sh"], redesign=["new/tool.*"]))[0])
+
+    def test_the_redesign_must_be_a_valid_format_2_design_task(self) -> None:
+        path = self.reset_fixture()
+        # Gaming path: a legacy-style file with kind: design but no format 2, or a design with no valid review.
+        (self.tasks / "redesign-a01.md").write_text("---\nkind: design\nallowed_files:\n  - install/**\n---\n")
+        self.assertFails(path, "is not a valid format 2 design task")
+        self.design_task("redesign-a01", allowed_files=["install/**"])
+        (self.main / ".orchestration/validation/redesign-a01-receipt.md").write_text("x\n")
+        self.assertFails(path, "is not a valid format 2 design task")
+
+    def test_a_code_task_may_not_bring_its_own_threat_model(self) -> None:
+        self.assertValid(self.security_task(threat_model=DESIGN["threat_model"], trust_anchors=DESIGN["trust_anchors"]))
+        self.assertFails(
+            self.security_task(threat_model={"T9": "a different threat"}),
+            "must omit it or carry the design's value exactly",
+        )
+        self.assertFails(
+            self.security_task(trust_anchors=["another source"]), "must omit it or carry the design's value exactly"
+        )
+
+    def test_referenced_invariants_keep_the_designs_sentences(self) -> None:
+        self.assertFails(
+            self.security_task(invariants={"INV-1": "something weaker"}),
+            "INV-1 differ from the reviewed design's sentences",
+        )
+
+    def test_the_receipt_is_a_separate_review_file(self) -> None:
+        # Gaming path: a design that is its own receipt (it can carry reviewer:, design: and the verdict line).
+        for receipt_path in (".orchestration/tasks/design-a01.md", ".orchestration/tasks/t-a01.md", "README.md"):
+            with self.subTest(receipt=receipt_path):
+                self.assertFails(
+                    self.security_task(design_review={**DESIGN["design_review"], "receipt": receipt_path}),
+                    "must be a separate review file under .orchestration/validation/",
+                )
+
+    def test_an_ordinary_task_lives_in_the_tasks_directory(self) -> None:
+        stray = self.write(
+            "t-a01",
+            {"format": 2, "task_id": "t-a01", "kind": "docs", "invariants": {"INV-1": "x"}},
+            where=self.main / ".orchestration/validation",
+        )
+        self.assertFails(stray, "the task file must live in .orchestration/tasks/")
+
+    def test_globs_intersect_by_their_possible_paths(self) -> None:
+        for left, right, meet in (
+            ("new/*.sh", "new/tool.*", True),
+            ("new/*.sh", "old/*.sh", False),
+            ("a/**/b", "a/b", True),
+            ("a/*/b", "a/b", False),
+            ("**", "x/y", True),
+            ("x?", "x/", False),
+        ):
+            with self.subTest(left=left, right=right):
+                self.assertEqual(meet, high_risk_paths.globs_intersect(left, right))
 
     def test_the_receipt_must_accept_the_design(self) -> None:
         path = self.tasks.parent / "validation/receipt.md"
@@ -602,6 +672,7 @@ class ValidateTaskTest(unittest.TestCase):
             "home/dot_local/bin/common/executable_setup-gpg",
             "home/dot_local/bin/common/executable_agmsg-dispatch",
             "home/.chezmoiscripts/common/run_once_before_01-decrypt-private-key.sh.tmpl",
+            "Makefile",
         ):
             with self.subTest(path=path):
                 self.assertTrue(high_risk_paths.in_design_tier(path))

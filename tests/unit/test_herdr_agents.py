@@ -2839,6 +2839,7 @@ exit {exit_code}
         (worktree / "scripts/lib").mkdir()
         shutil.copy(ROOT / "scripts/validate-task.py", worktree / "scripts")
         shutil.copy(ROOT / "scripts/lib/high_risk_paths.py", worktree / "scripts/lib")
+        shutil.copy(ROOT / "scripts/legacy-task-ids.txt", worktree / "scripts")
         # The validator reads its tier table from the manifest beside it.
         (worktree / "home/dot_agents").mkdir(parents=True)
         shutil.copy(ROOT / "home/dot_agents/agent-config.yaml", worktree / "home/dot_agents")
@@ -2847,7 +2848,12 @@ exit {exit_code}
         (tasks / "bad-a01.md").write_text(
             "---\nformat: 2\ntask_id: other-a01\nkind: docs\ninvariants:\n  INV-1: x\n---\n# bad\n"
         )
-        (tasks / "legacy-a01.md").write_text("# AGMSG-TASK legacy, no front matter\n")
+        legacy = (ROOT / "scripts/legacy-task-ids.txt").read_text().split()[0]
+        (tasks / f"{legacy}.md").write_text("# AGMSG-TASK legacy, no front matter\n")
+        # A dot-prefixed file is scanned too.
+        (tasks / ".hidden-a01.md").write_text(
+            "---\nformat: 2\ntask_id: other-a01\nkind: docs\ninvariants:\n  INV-1: x\n---\n"
+        )
         (tasks / "good-a01.md").write_text(
             "---\nformat: 2\ntask_id: good-a01\nkind: docs\ninvariants:\n  INV-1: x\n---\n# good\n"
         )
@@ -2875,7 +2881,8 @@ exit {exit_code}
             ),
             lines,
         )
-        self.assertEqual([], [line for line in lines if "legacy-a01" in line or "good-a01" in line])
+        self.assertTrue(any(".hidden-a01.md: task_id" in line for line in lines), lines)
+        self.assertEqual([], [line for line in lines if legacy in line or "good-a01" in line])
 
     def test_regime_boundary_check_flags_empty_seats_only(self) -> None:
         main, worktree, other = self.boundary_repo()

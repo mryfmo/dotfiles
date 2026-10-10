@@ -59,6 +59,7 @@ LOW_RISK_SUFFIXES = (
 # that handle a credential or a key: git's credential helper, the two gh login scripts and
 # the machine SSH and GnuPG key setup. This module classifies tasks, so it is in the tier.
 DESIGN_TIER = (
+    "Makefile",  # its require-crit-review recipe carries the gate's REVIEW_TREE checks
     "install/**",
     "home/.chezmoiscripts/**",
     "setup.sh",
@@ -140,50 +141,65 @@ def _glob_tokens(pattern: str) -> list[str]:
     return tokens
 
 
-def _glob_can_start_with(pattern: str, prefix: str) -> bool:
-    """Whether some path the glob matches starts with `prefix` (an NFA over the glob's tokens)."""
-    tokens = _glob_tokens(pattern)
+class _GlobNFA:
+    """An NFA over a glob's tokens; a state is (token index, inside the `.*` part of a `**/`)."""
 
-    def closure(states: set[tuple[int, bool]]) -> set[tuple[int, bool]]:
+    def __init__(self, pattern: str) -> None:
+        self.tokens = _glob_tokens(pattern)
+
+    def closure(self, states: frozenset) -> frozenset:
         out = set(states)
-        for k, inside in states:
-            if not inside and k < len(tokens) and tokens[k] in ("*", "**", "**/"):
-                out |= closure({(k + 1, False)})  # each star may match nothing
-        return out
+        todo = list(states)
+        while todo:
+            k, inside = todo.pop()
+            if not inside and k < len(self.tokens) and self.tokens[k] in ("*", "**", "**/"):
+                if (k + 1, False) not in out:  # each star may match nothing
+                    out.add((k + 1, False))
+                    todo.append((k + 1, False))
+        return frozenset(out)
 
-    states = closure({(0, False)})
-    for ch in prefix:
-        step = set()
+    def step(self, states: frozenset, ch: str) -> frozenset:
+        out = set()
         for k, inside in states:
-            piece = tokens[k] if k < len(tokens) else None
+            piece = self.tokens[k] if k < len(self.tokens) else None
             if piece == "**/":  # `(?:.*/)?`: any characters, closed by a `/`
-                step.add((k, True))
+                out.add((k, True))
                 if ch == "/":
-                    step.add((k + 1, False))
+                    out.add((k + 1, False))
             elif inside:
                 continue
             elif piece == "**" or (piece == "*" and ch != "/"):
-                step.add((k, False))
+                out.add((k, False))
             elif (piece == "?" and ch != "/") or piece == ch:
-                step.add((k + 1, False))
-        states = closure(step)
-        if not states:
-            return False
-    return True
+                out.add((k + 1, False))
+        return self.closure(frozenset(out))
+
+    def accepts(self, states: frozenset) -> bool:
+        return (len(self.tokens), False) in states
+
+
+def globs_intersect(left: str, right: str) -> bool:
+    """Whether some path matches both globs, whether or not it exists (a product of the two NFAs)."""
+    a, b = _GlobNFA(left), _GlobNFA(right)
+    # Every character the globs name, `/`, and one stand-in for any other character.
+    alphabet = {ch for ch in left + right if ch not in "*?"} | {"/", "\0"}
+    start = (a.closure(frozenset({(0, False)})), b.closure(frozenset({(0, False)})))
+    seen, todo = {start}, [start]
+    while todo:
+        sa, sb = todo.pop()
+        if a.accepts(sa) and b.accepts(sb):
+            return True
+        for ch in alphabet:
+            nxt = (a.step(sa, ch), b.step(sb, ch))
+            if nxt[0] and nxt[1] and nxt not in seen:
+                seen.add(nxt)
+                todo.append(nxt)
+    return False
 
 
 def may_touch_design_tier(entry: str) -> bool:
     """Whether a path or glob in a task's allowed files can name a design-tier file, existing or not."""
-    for pattern in DESIGN_TIER:
-        if pattern.endswith("/**") and not re.search(r"[*?]", pattern[:-3]):
-            if _glob_can_start_with(entry, pattern[:-2]):
-                return True
-        elif not re.search(r"[*?]", pattern):
-            if glob_regex(entry).match(pattern):
-                return True
-        else:  # shortcut: only literal paths and `<dir>/**` are intersected exactly; refuse to guess otherwise
-            raise ValueError(f"unsupported design-tier pattern {pattern!r}")
-    return False
+    return any(globs_intersect(entry, pattern) for pattern in DESIGN_TIER)
 
 
 class FrontMatterError(ValueError):

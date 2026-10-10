@@ -210,9 +210,9 @@ render-check:
 # its cwd, so `make require-crit-review -C <main> REVIEW_TREE=<review worktree>` judges the review
 # tree with main's script; relative evidence paths then resolve against <path>, which must be the
 # top level of a worktree of this repository (a typo, its .git or another repository would otherwise
-# be judged instead).
+# be judged instead) and not this checkout itself, whose gate would then judge its own tree.
 require-crit-review:
-	@$(if $(REVIEW_TREE),{ [ "$$(git -C "$(REVIEW_TREE)" rev-parse --is-inside-work-tree 2> /dev/null)" = true ] && [ "$$(git -C "$(REVIEW_TREE)" rev-parse --show-toplevel)" = "$$(cd "$(REVIEW_TREE)" && pwd -P)" ] && [ "$$(git -C "$(REVIEW_TREE)" rev-parse --path-format=absolute --git-common-dir)" = "$$(git -C "$(CURDIR)" rev-parse --path-format=absolute --git-common-dir)" ]; } || { echo "REVIEW_TREE=$(REVIEW_TREE) is not the top level of a worktree of this repository" >&2; exit 1; }; cd "$(REVIEW_TREE)" && ,)AGENT_REVIEWED="$(AGENT_REVIEWED)" CRIT_REVIEWED="$(CRIT_REVIEWED)" CRIT_REVIEW="$(CRIT_REVIEW)" REVIEW_EVIDENCE="$(REVIEW_EVIDENCE)" PR_FEEDBACK_EVIDENCE="$(PR_FEEDBACK_EVIDENCE)" $(if $(REVIEW_TREE),"$(CURDIR)/scripts/require-crit-review.py",./scripts/require-crit-review.py) $(if $(BASE),--base "$(BASE)",)
+	@$(if $(REVIEW_TREE),{ [ "$$(git -C "$(REVIEW_TREE)" rev-parse --is-inside-work-tree 2> /dev/null)" = true ] && [ "$$(git -C "$(REVIEW_TREE)" rev-parse --show-toplevel)" = "$$(cd "$(REVIEW_TREE)" && pwd -P)" ] && [ "$$(git -C "$(REVIEW_TREE)" rev-parse --path-format=absolute --git-common-dir)" = "$$(git -C "$(CURDIR)" rev-parse --path-format=absolute --git-common-dir)" ]; } || { echo "REVIEW_TREE=$(REVIEW_TREE) is not the top level of a worktree of this repository" >&2; exit 1; }; [ "$$(git -C "$(REVIEW_TREE)" rev-parse --show-toplevel)" != "$$(git -C "$(CURDIR)" rev-parse --show-toplevel)" ] || { echo "REVIEW_TREE=$(REVIEW_TREE) is the checkout running this gate; run main's gate against the review worktree" >&2; exit 1; }; cd "$(REVIEW_TREE)" && ,)AGENT_REVIEWED="$(AGENT_REVIEWED)" CRIT_REVIEWED="$(CRIT_REVIEWED)" CRIT_REVIEW="$(CRIT_REVIEW)" REVIEW_EVIDENCE="$(REVIEW_EVIDENCE)" PR_FEEDBACK_EVIDENCE="$(PR_FEEDBACK_EVIDENCE)" $(if $(REVIEW_TREE),"$(CURDIR)/scripts/require-crit-review.py",./scripts/require-crit-review.py) $(if $(BASE),--base "$(BASE)",)
 
 #
 # Documentation

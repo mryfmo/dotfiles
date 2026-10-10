@@ -377,7 +377,8 @@ Every task is a `.orchestration/tasks/<task id>.md` file whose `format: 2`
 front matter `scripts/validate-task.py <task file>` accepts (task id, kind,
 allowed files, invariants, and waves above 15 files); the worker runs it before
 any work and blocks on a failure, and `make check-regime-boundary` lists every
-failing `format: 2` file, while older task files are grandfathered. A task
+failing `format: 2` file, while the task files that predate format 2 (their ids
+are in `scripts/legacy-task-ids.txt`) are grandfathered. A task
 whose allowed files touch the design tier of `scripts/lib/high_risk_paths.py`
 (installers, release and gate scripts, the manifest, permgate, hooks, sandbox
 and permission settings, auth helpers) is a security task: it also names a

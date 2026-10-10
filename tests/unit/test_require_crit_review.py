@@ -1209,8 +1209,18 @@ class ReviewTreeTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("is not the top level of a worktree of this repository", result.stderr)
 
-        # This repository's own tree passes the check and reaches the gate (disabled here, so it returns at once).
+        # Gaming path: the checkout running the recipe named as its own review tree runs the PR's own gate.
         result = self.make("require-crit-review", f"REVIEW_TREE={ROOT}", "CRIT_REVIEW=off")
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("is the checkout running this gate", result.stderr)
+
+        # Another worktree of this repository passes the checks and reaches the gate (disabled, so it returns).
+        other_tree = tree / "review"
+        subprocess.run(["git", "-C", str(ROOT), "worktree", "add", "-q", "--detach", str(other_tree)], check=True)
+        self.addCleanup(
+            subprocess.run, ["git", "-C", str(ROOT), "worktree", "remove", "--force", str(other_tree)], check=False
+        )
+        result = self.make("require-crit-review", f"REVIEW_TREE={other_tree.resolve()}", "CRIT_REVIEW=off")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("Review guard disabled by CRIT_REVIEW=off.", result.stdout)
 

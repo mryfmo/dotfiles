@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../asset-manifest/">
+        <link rel="prev" href="../github-release/">
       
       
         <link rel="next" href="../../../../verification/acceptance/005/">
@@ -3318,6 +3318,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/github-release.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -3649,30 +3677,28 @@
 <span class="c1"># shellcheck disable=SC2034 # Variables are consumed by the scripts that source this file.</span>
 
 <span class="c1"># @file scripts/lib/installer-pins.sh</span>
-<span class="c1"># @brief Pinned upstream tool versions and artifact checksums.</span>
+<span class="c1"># @brief Pins for the assets whose publisher offers no verification independent of the release.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Holds reviewed versions and SHA256 values for upstream installers and</span>
-<span class="c1">#   release binaries. The file is rewritten</span>
-<span class="c1">#   wholesale by scripts/upgrade-tools.sh (bump_terminal_tool_pins) and</span>
-<span class="c1">#   consumed by scripts/update-agent-assets.sh. Review and commit the diff</span>
-<span class="c1">#   like a mise config/lock bump. Assignments stay non-readonly so the file</span>
-<span class="c1">#   can be sourced again after a rewrite within the same process.</span>
-<span class="c1">#   The values render from assets: in home/dot_agents/agent-config.yaml</span>
-<span class="c1">#   through scripts/generate-agent-configs.py.</span>
+<span class="c1">#   tode and terminal-browser install through a vendor `curl | bash` script</span>
+<span class="c1">#   whose publisher signs nothing and ships no checksum; the script embeds the</span>
+<span class="c1">#   sha256 of the payload it downloads, so the committed script hash is the</span>
+<span class="c1">#   only integrity check for both. Crit's releases are mutable and carry only a</span>
+<span class="c1">#   checksums.txt from the same release, so the reviewed sha256 per platform is</span>
+<span class="c1">#   the check. An asset with an attestation, a pinned-key signature or an</span>
+<span class="c1">#   immutable registry resolves its newest cooled-down release instead.</span>
+<span class="c1">#   Consumed by scripts/update-agent-assets.sh. Assignments stay non-readonly</span>
+<span class="c1">#   so tests can override them after sourcing. The values render from assets:</span>
+<span class="c1">#   in home/dot_agents/agent-config.yaml through scripts/generate-agent-configs.py.</span>
 
-<span class="nv">CHEZMOI_BOOTSTRAP_PIN_VERSION</span><span class="o">=</span><span class="s2">"2.73.0"</span>
 <span class="nv">TERMINAL_CODE_PIN_VERSION</span><span class="o">=</span><span class="s2">"v0.4.2"</span>
 <span class="nv">TERMINAL_CODE_INSTALLER_SHA256</span><span class="o">=</span><span class="s2">"de7c1540305d516ded9734f7dca4ed2d7d308fcc9cdb27a52717c4d26054e933"</span>
 <span class="nv">TERMINAL_BROWSER_PIN_VERSION</span><span class="o">=</span><span class="s2">"v0.13.4"</span>
 <span class="nv">TERMINAL_BROWSER_INSTALLER_SHA256</span><span class="o">=</span><span class="s2">"11b3f157debcf9bb8e5d8c6a5efc16fb9385ccb97478ae8bdb0fb0ea9e1f23bc"</span>
-<span class="nv">CRIT_PIN_VERSION</span><span class="o">=</span><span class="s2">"v0.21.1"</span>
-<span class="nv">CRIT_LINUX_AMD64_SHA256</span><span class="o">=</span><span class="s2">"bbc7de53ebb29377c412d1737c658752efeaf44e8bd0f124278f6e41632ad670"</span>
-<span class="nv">CRIT_LINUX_ARM64_SHA256</span><span class="o">=</span><span class="s2">"875c03a0b75de7777a26294dc585f59f3e4f49fe2735f5043fb668f92e2dc258"</span>
-<span class="nv">CRIT_DARWIN_AMD64_SHA256</span><span class="o">=</span><span class="s2">"08f9f1a7e2f56f5d4dc5d9d86d0e06e92c165d2b885745d6ffed5ab3eda354dc"</span>
-<span class="nv">CRIT_DARWIN_ARM64_SHA256</span><span class="o">=</span><span class="s2">"40cc7014f0b6c7d604be0bfdf4c462e2366549c520b95b790b414aa221d2a9a0"</span>
-<span class="nv">ZED_PIN_VERSION</span><span class="o">=</span><span class="s2">"v1.22.0"</span>
-<span class="nv">ZED_LINUX_AMD64_SHA256</span><span class="o">=</span><span class="s2">"5ce3991b34a8fad0a23625f5821cda601c7150a6cc69683c097b8d1b083abc50"</span>
-<span class="nv">ZED_LINUX_ARM64_SHA256</span><span class="o">=</span><span class="s2">"8b3c5d6e506056a9456ed33072081fd64db84ce47cdf34d4936442cc4f08394a"</span>
+<span class="nv">CRIT_PIN_VERSION</span><span class="o">=</span><span class="s2">"v0.22.0"</span>
+<span class="nv">CRIT_LINUX_AMD64_SHA256</span><span class="o">=</span><span class="s2">"fecd40eea356020cd605dfca6a4be6ab3c9635134ca5e28ee99e6286ab62c31d"</span>
+<span class="nv">CRIT_LINUX_ARM64_SHA256</span><span class="o">=</span><span class="s2">"92311ddf4862179c655087d4703e7f2e3f4b4aacb0549c22e5dae999c0fb2b6e"</span>
+<span class="nv">CRIT_DARWIN_AMD64_SHA256</span><span class="o">=</span><span class="s2">"1f88b739234931a583097522bad29aa30566fa3ecb3227d753bb5ec01d4c369b"</span>
+<span class="nv">CRIT_DARWIN_ARM64_SHA256</span><span class="o">=</span><span class="s2">"60153a194b85ba85ad72225694a2ccd7f348bc08bece756f7b56a0444a33e93d"</span>
 </code></pre></div>
 
 

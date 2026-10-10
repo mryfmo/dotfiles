@@ -3401,6 +3401,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../scripts/lib/github-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/github-release.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../scripts/lib/installer-pins/" class="md-nav__link">
         
   
@@ -3659,7 +3687,7 @@
 
 
 <h1 id="installcommonmisesh">install/common/mise.sh<a class="headerlink" href="#installcommonmisesh" title="Permanent link">&para;</a></h1>
-<p>Downloads and verifies a pinned standalone <code>mise</code> release, then runs <code>mise install</code> against the repository tool definitions.</p>
+<p>Nothing runs before a check independent of the release page passes. With gpg and gpgv (the release key's signature on SHASUMS256.asc) or an authenticated gh (the GitHub release attestation), it downloads the newest standalone <code>mise</code> release that is at least 72 hours old and verifies it that way; without either, as on a fresh macOS, it installs the reviewed fallback release pinned in the manifest. Then it runs <code>mise install</code> against the repository tool definitions; <code>mise self-update</code> moves mise forward afterwards.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/common/mise.sh</code></li>
@@ -3671,10 +3699,15 @@
 <li><code>install_mise</code></li>
 <li><code>main</code></li>
 <li><code>mise_artifact</code></li>
+<li><code>mise_fallback_sha256</code></li>
+<li><code>mise_gpg_ready</code></li>
+<li><code>mise_installed_version</code></li>
+<li><code>mise_version_at_least</code></li>
 <li><code>run_mise_install</code></li>
 <li><code>trust_mise_config</code></li>
 <li><code>uninstall_mise</code></li>
 <li><code>verify_mise_archive</code></li>
+<li><code>verify_mise_shasums_signature</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -3682,8 +3715,12 @@
 <span class="c1"># @file install/common/mise.sh</span>
 <span class="c1"># @brief Install and bootstrap `mise`.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Downloads and verifies a pinned standalone `mise` release, then runs `mise install`</span>
-<span class="c1">#   against the repository tool definitions.</span>
+<span class="c1">#   Nothing runs before a check independent of the release page passes. With gpg and gpgv</span>
+<span class="c1">#   (the release key's signature on SHASUMS256.asc) or an authenticated gh (the GitHub release</span>
+<span class="c1">#   attestation), it downloads the newest standalone `mise` release that is at least 72 hours old</span>
+<span class="c1">#   and verifies it that way; without either, as on a fresh macOS, it installs the reviewed</span>
+<span class="c1">#   fallback release pinned in the manifest. Then it runs `mise install` against the repository</span>
+<span class="c1">#   tool definitions; `mise self-update` moves mise forward afterwards.</span>
 
 <span class="c1"># set -Eeuo pipefail</span>
 
@@ -3692,19 +3729,36 @@
 <span class="k">fi</span>
 
 <span class="nb">export</span><span class="w"> </span><span class="nv">MISE_INSTALL_PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/mise"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_RELEASE_REPO</span><span class="o">=</span><span class="s2">"jdx/mise"</span>
 <span class="c1"># Rendered from assets.mise in home/dot_agents/agent-config.yaml; change it there.</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_VERSION</span><span class="o">=</span><span class="s2">"v2026.9.17"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_GPG_FINGERPRINT</span><span class="o">=</span><span class="s2">"24853EC9F655CE80B48E6C3A8B81C9D17413A06D"</span>
+<span class="c1"># mise publishes its release key on this keyserver; only the pinned fingerprint makes it trusted.</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_GPG_KEY_URL</span><span class="o">=</span><span class="s2">"https://keys.openpgp.org/vks/v1/by-fingerprint/</span><span class="si">${</span><span class="nv">MISE_GPG_FINGERPRINT</span><span class="si">}</span><span class="s2">"</span>
+<span class="c1"># The reviewed release a host without gh or gpg bootstraps, rendered from assets.mise.fallback;</span>
+<span class="c1"># change them there. Assignments stay non-readonly so tests can override them after sourcing.</span>
+<span class="nv">MISE_FALLBACK_VERSION</span><span class="o">=</span><span class="s2">"v2026.10.3"</span>
+<span class="nv">MISE_FALLBACK_MACOS_X64_SHA256</span><span class="o">=</span><span class="s2">"791b92b446729c53e6501acd2b84ea207f541659ca9d0480c9c70c291919a321"</span>
+<span class="nv">MISE_FALLBACK_MACOS_ARM64_SHA256</span><span class="o">=</span><span class="s2">"28ecc8640b0a28dab52817766f37fecfd898f1dff82e03f36fcb072e971f9246"</span>
+<span class="nv">MISE_FALLBACK_LINUX_X64_SHA256</span><span class="o">=</span><span class="s2">"04147c68e946902f5226dfdcd54d19907aed3cf54d95b2f27d2b9c778bb26f9e"</span>
+<span class="nv">MISE_FALLBACK_LINUX_ARM64_SHA256</span><span class="o">=</span><span class="s2">"e79866e32624b346f6854d93ca8a24294516cd7c0b48ce0e80af508fb7c3d8b8"</span>
+
+<span class="c1"># The chezmoi script includes scripts/lib/github-release.sh before this file; a direct run sources it.</span>
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">declare</span><span class="w"> </span>-F<span class="w"> </span>github_release_tag<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># shellcheck source=scripts/lib/github-release.sh</span>
+<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/../../scripts/lib/github-release.sh"</span>
+<span class="k">fi</span>
 
 <span class="c1"># @description Print the mise release artifact name for the current platform.</span>
+<span class="c1"># @arg $1 string The release tag.</span>
 <span class="k">function</span><span class="w"> </span>mise_artifact<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>os<span class="w"> </span>arch
 <span class="w">    </span><span class="nv">os</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">arch</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">arch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">    </span>Darwin/x86_64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise-%s-macos-x64.tar.gz\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">    </span>Darwin/arm64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise-%s-macos-arm64.tar.gz\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">    </span>Linux/x86_64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise-%s-linux-x64.tar.gz\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">    </span>Linux/aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>Linux/arm64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise-%s-linux-arm64.tar.gz\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>Darwin/x86_64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise-%s-macos-x64.tar.gz\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>Darwin/arm64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise-%s-macos-arm64.tar.gz\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>Linux/x86_64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise-%s-linux-x64.tar.gz\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>Linux/aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>Linux/arm64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise-%s-linux-arm64.tar.gz\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Unsupported mise platform: %s/%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">arch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
@@ -3735,27 +3789,158 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install the pinned standalone `mise` binary.</span>
+<span class="c1"># @description Print the checksums SHASUMS256.asc signs, once gpgv has checked the signature</span>
+<span class="c1">#   against mise's release key with the pinned fingerprint.</span>
+<span class="c1"># @arg $1 path SHASUMS256.asc</span>
+<span class="c1"># @arg $2 path A private scratch directory.</span>
+<span class="c1"># @stdout The signed checksum lines.</span>
+<span class="c1"># @exitcode 3 The release key could not be downloaded, so nothing was checked.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>verify_mise_shasums_signature<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">key</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">/mise-release-key.asc"</span><span class="w"> </span>key_data<span class="w"> </span>fingerprint<span class="w"> </span>validity<span class="w"> </span>expiration
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_GPG_KEY_URL</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>mkdir<span class="w"> </span>-m<span class="w"> </span><span class="m">700</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">/gnupg"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">key_data</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>gpg<span class="w"> </span>--homedir<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">/gnupg"</span><span class="w"> </span>--batch<span class="w"> </span>--with-colons<span class="w"> </span>--import-options<span class="w"> </span>show-only<span class="w"> </span>--import<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="c1"># Exactly one primary key, and the fingerprint line right after it is the primary's own.</span>
+<span class="w">    </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>fingerprint<span class="w"> </span>validity<span class="w"> </span>expiration<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span>-F:<span class="w"> </span><span class="s1">'</span>
+<span class="s1">        $1 == "pub" { keys++; validity = $2; expiration = $7; primary = 1; next }</span>
+<span class="s1">        $1 == "fpr" &amp;&amp; primary { fingerprint = $10; primary = 0 }</span>
+<span class="s1">        END { if (keys == 1) print fingerprint, validity, expiration }'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_data</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">fingerprint</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_GPG_FINGERPRINT</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">validity</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"-"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span><span class="o">{</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">expiration</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">expiration</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise release key validation failed.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>gpg<span class="w"> </span>--homedir<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">/gnupg"</span><span class="w"> </span>--batch<span class="w"> </span>--yes<span class="w"> </span>--dearmor<span class="w"> </span>--output<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">/mise-keyring.gpg"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>gpgv<span class="w"> </span>--keyring<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">/mise-keyring.gpg"</span><span class="w"> </span>--output<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Succeed when gpg and gpgv can check the release key's signature on SHASUMS256.asc.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>mise_gpg_ready<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>gpg<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>gpgv<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the version the installed mise reports, or nothing when it is absent or broken.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>mise_installed_version<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>output
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_INSTALL_PATH</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="c1"># A binary that exits non-zero is broken whatever it printed, so it reports no version.</span>
+<span class="w">    </span><span class="nv">output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_INSTALL_PATH</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'NR == 1 &amp;&amp; $1 ~ /^[0-9]+\.[0-9]+\.[0-9]+$/ { print $1 }'</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Succeed when version $1 is at or after version $2 (X.Y.Z, a leading v ignored).</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>mise_version_at_least<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">2</span><span class="p">#v</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="p">#v</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-F.<span class="w"> </span><span class="s1">'</span>
+<span class="s1">        NR == 1 { split($0, floor, ".") }</span>
+<span class="s1">        NR == 2 {</span>
+<span class="s1">            for (i = 1; i &lt;= 3; i++) {</span>
+<span class="s1">                if ($i + 0 &gt; floor[i] + 0) exit 0</span>
+<span class="s1">                if ($i + 0 &lt; floor[i] + 0) exit 1</span>
+<span class="s1">            }</span>
+<span class="s1">            exit 0</span>
+<span class="s1">        }'</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the reviewed fallback sha256 of a mise release artifact.</span>
+<span class="c1"># @arg $1 string The artifact name.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>mise_fallback_sha256<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>*-macos-x64.tar.gz<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_FALLBACK_MACOS_X64_SHA256</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*-macos-arm64.tar.gz<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_FALLBACK_MACOS_ARM64_SHA256</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*-linux-x64.tar.gz<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_FALLBACK_LINUX_X64_SHA256</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*-linux-arm64.tar.gz<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_FALLBACK_LINUX_ARM64_SHA256</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Install standalone `mise`, verified before it runs: the newest cooled-down release</span>
+<span class="c1">#   when gpg (the signed SHASUMS256.asc) or an authenticated gh (the release attestation) can</span>
+<span class="c1">#   check it, otherwise the reviewed fallback release and its pinned sha256. The release's own</span>
+<span class="c1">#   checksum file is checked on every path.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>_install_mise_binary<span class="o">()</span><span class="w"> </span><span class="o">(</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>artifact<span class="w"> </span>base_url<span class="w"> </span><span class="nv">stage</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>tmpdir
-<span class="w">    </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mise_artifact<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nv">base_url</span><span class="o">=</span><span class="s2">"https://github.com/jdx/mise/releases/download/</span><span class="si">${</span><span class="nv">MISE_VERSION</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>artifact<span class="w"> </span><span class="nv">attestation</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>base_url<span class="w"> </span><span class="nv">fallback</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">gpg_ready</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>installed<span class="w"> </span><span class="nv">signature</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">stage</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>tag<span class="w"> </span>tmpdir
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>mise_gpg_ready<span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="nv">gpg_ready</span><span class="o">=</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">gpg_ready</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>github_attestation_ready<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">tag</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>github_release_tag<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_RELEASE_REPO</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Could not resolve a %s release.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_RELEASE_REPO</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="c1"># Neither check can run before mise does, so the reviewed release installs instead,</span>
+<span class="w">        </span><span class="c1"># unless a mise at or past it (moved forward by mise self-update) is already there.</span>
+<span class="w">        </span><span class="nv">fallback</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="nv">tag</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_FALLBACK_VERSION</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">installed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mise_installed_version<span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mise_version_at_least<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise %s stays: it is at or past the reviewed fallback %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'No gpg and no authenticated gh 2.93.0 or newer: installing the reviewed mise %s (assets.mise.fallback).\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mise_artifact<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">base_url</span><span class="o">=</span><span class="s2">"https://github.com/</span><span class="si">${</span><span class="nv">MISE_RELEASE_REPO</span><span class="si">}</span><span class="s2">/releases/download/</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">tmpdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"'</span><span class="w"> </span>EXIT
 <span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_INSTALL_PATH</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nv">stage</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_INSTALL_PATH</span><span class="si">}</span><span class="s2">.tmp.XXXXXX"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 
 <span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">base_url</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">base_url</span><span class="si">}</span><span class="s2">/SHASUMS256.txt"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/SHASUMS256.txt"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">gpg_ready</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># The checksums come from the signed text itself, never from an unsigned SHASUMS256.txt.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">base_url</span><span class="si">}</span><span class="s2">/SHASUMS256.asc"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/SHASUMS256.asc"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>verify_mise_shasums_signature<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/SHASUMS256.asc"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/SHASUMS256.txt"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">signature</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nv">signature</span><span class="o">=</span><span class="m">3</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">signature</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>github_attestation_ready<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="c1"># The signature's inputs are unavailable, not wrong: the attestation is the check instead.</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: could not fetch the mise release key or SHASUMS256.asc; the release attestation verifies mise %s instead.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nv">gpg_ready</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">signature</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Could not fetch the mise release key or SHASUMS256.asc, and no authenticated gh can verify mise %s instead; nothing was installed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">signature</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'GPG signature check failed for SHASUMS256.asc of mise %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">gpg_ready</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">base_url</span><span class="si">}</span><span class="s2">/SHASUMS256.txt"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/SHASUMS256.txt"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>verify_mise_archive<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/SHASUMS256.txt"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">fallback</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># The reviewed sha256 is the check here; SHASUMS256.txt above only re-checked the download.</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s  ./%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>mise_fallback_sha256<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/reviewed.txt"</span>
+<span class="w">        </span>verify_mise_archive<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/reviewed.txt"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'mise %s does not match its reviewed sha256; nothing was installed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>github_release_attestation<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_RELEASE_REPO</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">attestation</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="c1"># Status 2 (gh not ready) is enough only after the GPG signature verified the checksums.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">attestation</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">attestation</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">gpg_ready</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'GitHub release attestation failed for %s; nothing was installed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>tar<span class="w"> </span>-xzf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0755</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/mise/bin/mise"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span>mv<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_INSTALL_PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">)</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install the pinned standalone `mise` binary and activate it for the caller.</span>
+<span class="c1"># @description Install the standalone `mise` binary and activate it for the caller.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_mise<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>activation

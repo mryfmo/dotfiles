@@ -3382,6 +3382,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/scripts/lib/github-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/github-release.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/scripts/lib/installer-pins/" class="md-nav__link">
         
   
@@ -3639,7 +3667,7 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">64</span>
+  <span class="landing-stat__value">65</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
@@ -3649,7 +3677,7 @@
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">12</span>
+  <span class="landing-stat__value">13</span>
   <span class="landing-stat__label">repo scripts</span>
   <span class="landing-stat__note">maintenance and checks</span>
 </div>
@@ -3714,7 +3742,7 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **64** source reference pages are generated from tracked shell assets
+- **65** source reference pages are generated from tracked shell assets
 - **26** chezmoi wrappers are mapped back to their source scripts
 
 </div>
@@ -3729,9 +3757,9 @@ Wrapper templates under `home/.chezmoiscripts` are linked back to the source scr
 _26 mapped wrappers_
 
 - [Open template mapping](reference/chezmoi-templates.md)
+- `home/.chezmoiscripts/common/run_after_03-install-sheldon.sh.tmpl` -> [`install/common/sheldon.sh`](reference/install/common/sheldon.md)
 - `home/.chezmoiscripts/common/run_once_after_01-setup-chezmoi-private.sh.tmpl` -> [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md)
 - `home/.chezmoiscripts/common/run_once_after_02-install-mise.sh.tmpl` -> [`install/common/mise.sh`](reference/install/common/mise.md)
-- `home/.chezmoiscripts/common/run_once_after_03-install-sheldon.sh.tmpl` -> [`install/common/sheldon.sh`](reference/install/common/sheldon.md)
 - `home/.chezmoiscripts/common/run_once_after_99-install-gh-extensions.sh.tmpl` -> [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md)
 - `home/.chezmoiscripts/macos/run_once_04-install-ghostty.sh.tmpl` -> [`install/macos/common/ghostty.sh`](reference/install/macos/common/ghostty.md)
 - `home/.chezmoiscripts/macos/run_once_10-install-docker.sh.tmpl` -> [`install/macos/common/docker.sh`](reference/install/macos/common/docker.md)
@@ -3756,8 +3784,8 @@ _28 documented entries_
 
 - [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md): Bootstraps `mryfmo/dotfiles-private` using the dedicated source and config paths under the current user's home direct...
 - [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md): Activates `mise` when available and installs the configured `gh` extensions only when GitHub CLI is already authentic...
-- [`install/common/mise.sh`](reference/install/common/mise.md): Downloads and verifies a pinned standalone `mise` release, then runs `mise install` against the repository tool defin...
-- [`install/common/sheldon.sh`](reference/install/common/sheldon.md): Builds the pinned crates.io release with its packaged Cargo.lock.
+- [`install/common/mise.sh`](reference/install/common/mise.md): Nothing runs before a check independent of the release page passes. With gpg and gpgv (the release key's signature on...
+- [`install/common/sheldon.sh`](reference/install/common/sheldon.md): Builds the newest crates.io release with its packaged Cargo.lock; cargo checks the crate against the registry index c...
 - [`install/macos/arm64/prepare_arm64_system.sh`](reference/install/macos/arm64/prepare_arm64_system.md): Installs Rosetta on arm64 macOS machines when it is not already present.
 - [`install/macos/common/brew.sh`](reference/install/macos/common/brew.md): Ensures Homebrew is installed on macOS, resolves untrusted runner-image taps on CI, and disables analytics for the lo...
 
@@ -3772,7 +3800,7 @@ _28 documented entries_
 
 Repository maintenance and verification helpers under `scripts/**`.
 
-_12 documented entries_
+_13 documented entries_
 
 - [`scripts/agent-stop-gate.sh`](reference/scripts/agent-stop-gate.md): Reads the Stop hook JSON on stdin and classifies the session's checkout: the main checkout is the orchestrator seat, ...
 - [`scripts/check-regime-boundary.sh`](reference/scripts/check-regime-boundary.md): Verifies the Stop list of the agmsg-orchestration skill for this repository and prints one line per violation: untrac...
@@ -3781,7 +3809,7 @@ _12 documented entries_
 - [`scripts/gh-auth.sh`](reference/scripts/gh-auth.md): Every seat on a machine acts as that machine's one GitHub account, stored in gh's default configuration directory. Wh...
 - [`scripts/lib/asset-manifest.sh`](reference/scripts/lib/asset-manifest.md)
 
-[6 more entries in the full catalog](catalog/)
+[7 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">

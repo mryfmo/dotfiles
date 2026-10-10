@@ -3403,6 +3403,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../scripts/lib/github-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/github-release.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../scripts/lib/installer-pins/" class="md-nav__link">
         
   
@@ -3661,7 +3689,7 @@
 
 
 <h1 id="installubuntuclientzedsh">install/ubuntu/client/zed.sh<a class="headerlink" href="#installubuntuclientzedsh" title="Permanent link">&para;</a></h1>
-<p>Downloads and verifies a pinned Zed Linux release tarball for the current architecture, extracts it under ~/.local, and exposes ~/.local/bin/zed. Idempotent: skips the download when the pinned version is already installed. Requires ZED_PIN_VERSION and ZED_LINUX_{AMD64,ARM64}_SHA256 from scripts/lib/installer-pins.sh.</p>
+<p>Resolves the newest Zed release that is at least 72 hours old, verifies the Linux tarball against the release's GitHub attestation with an authenticated gh, extracts it under ~/.local, and exposes ~/.local/bin/zed. Runs on every chezmoi apply: it skips when the resolved release is installed, installs nothing (and keeps any installed Zed) when the release cannot be resolved, and installs nothing without an authenticated gh, because Zed publishes no other verification. Only a failed attestation fails the apply.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/ubuntu/client/zed.sh</code></li>
@@ -3673,19 +3701,21 @@
 <li><code>link_zed_bin</code></li>
 <li><code>main</code></li>
 <li><code>zed_artifact</code></li>
-<li><code>zed_up_to_date</code></li>
+<li><code>zed_installed_version</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
 <span class="c1"># @file install/ubuntu/client/zed.sh</span>
-<span class="c1"># @brief Install the Zed editor on Ubuntu client machines from a pinned GitHub release.</span>
+<span class="c1"># @brief Install the Zed editor on Ubuntu client machines from its newest cooled-down GitHub release.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Downloads and verifies a pinned Zed Linux release tarball for the current</span>
-<span class="c1">#   architecture, extracts it under ~/.local, and exposes ~/.local/bin/zed.</span>
-<span class="c1">#   Idempotent: skips the download when the pinned version is already</span>
-<span class="c1">#   installed. Requires ZED_PIN_VERSION and ZED_LINUX_{AMD64,ARM64}_SHA256</span>
-<span class="c1">#   from scripts/lib/installer-pins.sh.</span>
+<span class="c1">#   Resolves the newest Zed release that is at least 72 hours old, verifies the</span>
+<span class="c1">#   Linux tarball against the release's GitHub attestation with an authenticated</span>
+<span class="c1">#   gh, extracts it under ~/.local, and exposes ~/.local/bin/zed. Runs on every</span>
+<span class="c1">#   chezmoi apply: it skips when the resolved release is installed, installs</span>
+<span class="c1">#   nothing (and keeps any installed Zed) when the release cannot be resolved,</span>
+<span class="c1">#   and installs nothing without an authenticated gh, because Zed publishes no</span>
+<span class="c1">#   other verification. Only a failed attestation fails the apply.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -3695,19 +3725,21 @@
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">ZED_APP_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/zed.app"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">ZED_BIN_LINK</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/zed"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">ZED_RELEASE_REPO</span><span class="o">=</span><span class="s2">"zed-industries/zed"</span>
+
+<span class="c1"># The chezmoi script includes scripts/lib/github-release.sh before this file; a direct run sources it.</span>
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">declare</span><span class="w"> </span>-F<span class="w"> </span>github_release_tag<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># shellcheck source=scripts/lib/github-release.sh</span>
+<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/../../../scripts/lib/github-release.sh"</span>
+<span class="k">fi</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Print the Zed release artifact name and its expected SHA256 for this architecture.</span>
-<span class="c1"># @stdout Two lines: artifact name, then its expected SHA256.</span>
+<span class="c1"># @description Print the Zed release artifact name for this architecture.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>zed_artifact<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">    </span>x86_64<span class="w"> </span><span class="p">|</span><span class="w"> </span>amd64<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'zed-linux-x86_64.tar.gz\n%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_LINUX_AMD64_SHA256</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="p">;;</span>
-<span class="w">    </span>aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>arm64<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'zed-linux-aarch64.tar.gz\n%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_LINUX_ARM64_SHA256</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>x86_64<span class="w"> </span><span class="p">|</span><span class="w"> </span>amd64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'zed-linux-x86_64.tar.gz\n'</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>arm64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'zed-linux-aarch64.tar.gz\n'</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Unsupported Zed architecture: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
@@ -3716,36 +3748,43 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Report whether the installed Zed already matches the pinned version.</span>
+<span class="c1"># @description Print the installed Zed version, or nothing when Zed is not installed or cannot</span>
+<span class="c1">#   report one, so a broken install is replaced like a missing one.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>zed_up_to_date<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_BIN_LINK</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_BIN_LINK</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span>
-<span class="w">        </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">expected</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_PIN_VERSION</span><span class="p">#v</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$1 == "Zed" &amp;&amp; $2 == expected { found = 1 } END { exit !found }'</span>
+<span class="k">function</span><span class="w"> </span>zed_installed_version<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>output
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_BIN_LINK</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="c1"># A binary that exits non-zero is broken whatever it printed, so it reports no version.</span>
+<span class="w">    </span><span class="nv">output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_BIN_LINK</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'$1 == "Zed" { print $2; exit }'</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Download, verify, and atomically install the pinned Zed release.</span>
+<span class="c1"># @description Download a Zed release, verify it against the release attestation, and atomically install it.</span>
+<span class="c1"># @arg $1 string The release tag.</span>
+<span class="c1"># @exitcode 2 gh is absent or not authenticated, so nothing was installed.</span>
+<span class="c1"># @exitcode 3 The archive could not be downloaded, so nothing was installed.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_pinned_zed<span class="o">()</span><span class="w"> </span><span class="o">(</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>artifact<span class="w"> </span>checksum<span class="w"> </span>actual<span class="w"> </span>download<span class="w"> </span>tmpdir<span class="w"> </span><span class="nv">staging</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_APP_DIR</span><span class="si">}</span><span class="s2">.tmp"</span>
-<span class="w">    </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>artifact
-<span class="w">        </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>checksum
-<span class="w">    </span><span class="o">}</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>zed_artifact<span class="o">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-
-<span class="w">    </span><span class="nv">download</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="k">function</span><span class="w"> </span>install_zed_release<span class="o">()</span><span class="w"> </span><span class="o">(</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">tag</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>artifact<span class="w"> </span>download<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>tmpdir<span class="w"> </span><span class="nv">staging</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_APP_DIR</span><span class="si">}</span><span class="s2">.tmp"</span>
+<span class="w">    </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>zed_artifact<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nv">tmpdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -f "${download}"; rm -rf "${tmpdir}" "${staging}"'</span><span class="w"> </span>EXIT
+<span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -rf "${tmpdir}" "${staging}"'</span><span class="w"> </span>EXIT
+<span class="w">    </span><span class="nv">download</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"https://github.com/zed-industries/zed/releases/download/</span><span class="si">${</span><span class="nv">ZED_PIN_VERSION</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">download</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nv">actual</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sha256sum<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">download</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{ print $1 }'</span><span class="k">)</span><span class="s2">"</span>
-<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">actual</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checksum</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Zed checksum mismatch for %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"https://github.com/</span><span class="si">${</span><span class="nv">ZED_RELEASE_REPO</span><span class="si">}</span><span class="s2">/releases/download/</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">download</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">3</span>
+<span class="w">    </span>github_release_attestation<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_RELEASE_REPO</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">download</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">2</span><span class="o">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Zed %s failed its GitHub release attestation; nothing was installed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="o">}</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
 
-<span class="w">    </span>tar<span class="w"> </span>-xzf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">download</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="c1"># Exit 1, never tar's own 2, which main would read as "gh not ready".</span>
+<span class="w">    </span>tar<span class="w"> </span>-xzf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">download</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_APP_DIR</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staging</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span>mv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/zed.app"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staging</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
@@ -3762,14 +3801,53 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install Zed from a pinned GitHub release, skipping if already current.</span>
+<span class="c1"># @description Install or update Zed to the newest cooled-down release.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>zed_up_to_date<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>installed<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>tag
+<span class="w">    </span><span class="c1"># gh is a mise tool; its shim supplies the API token when no gh is on PATH yet. The attestation</span>
+<span class="w">    </span><span class="c1"># checks put the shim first themselves (scripts/lib/github-release.sh).</span>
+<span class="w">    </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">PATH</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/mise/shims"</span>
+<span class="w">    </span><span class="nv">installed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>zed_installed_version<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">tag</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>github_release_tag<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_RELEASE_REPO</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># Offline or rate-limited: never fail the apply over Zed; the next make update retries.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: could not resolve a Zed release; Zed %s stays.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'zed not installed: could not resolve a %s release; the next make update retries.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZED_RELEASE_REPO</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>install_pinned_zed<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span>link_zed_bin
+<span class="w">    </span><span class="c1"># Zed updates itself, so an installed release at or past the cooled-down one stays.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="p">#v</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-V<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="p">#v</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'zed %s stays: it is newer than the cooled-down %s (Zed updates itself).\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># Checked before the download: without an authenticated gh nothing can be verified.</span>
+<span class="w">    </span>github_attestation_ready<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">2</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>install_zed_release<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span>link_zed_bin<span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">2</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'zed %s stays (not updated to %s): run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'zed not installed: run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">3</span><span class="o">)</span>
+<span class="w">        </span><span class="c1"># The API answered but the download did not: like offline, never fail the apply over Zed.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: could not download Zed %s; Zed %s stays.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'zed not installed: could not download Zed %s; the next make update retries.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

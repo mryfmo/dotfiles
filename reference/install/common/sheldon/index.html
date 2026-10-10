@@ -3401,6 +3401,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../scripts/lib/github-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/github-release.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../scripts/lib/installer-pins/" class="md-nav__link">
         
   
@@ -3659,7 +3687,7 @@
 
 
 <h1 id="installcommonsheldonsh">install/common/sheldon.sh<a class="headerlink" href="#installcommonsheldonsh" title="Permanent link">&para;</a></h1>
-<p>Builds the pinned crates.io release with its packaged Cargo.lock.</p>
+<p>Builds the newest crates.io release with its packaged Cargo.lock; cargo checks the crate against the registry index checksum. Runs on every chezmoi apply and skips when the newest crate is already installed.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/common/sheldon.sh</code></li>
@@ -3669,6 +3697,8 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>main</code></li>
+<li><code>sheldon_installed_version</code></li>
+<li><code>sheldon_newest_version</code></li>
 <li><code>uninstall_sheldon</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -3677,7 +3707,9 @@
 <span class="c1"># @file install/common/sheldon.sh</span>
 <span class="c1"># @brief Install the Sheldon shell plugin manager.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Builds the pinned crates.io release with its packaged Cargo.lock.</span>
+<span class="c1">#   Builds the newest crates.io release with its packaged Cargo.lock; cargo</span>
+<span class="c1">#   checks the crate against the registry index checksum. Runs on every chezmoi</span>
+<span class="c1">#   apply and skips when the newest crate is already installed.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -3687,26 +3719,51 @@
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">BIN_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_BIN</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/mise"</span>
-<span class="c1"># Rendered from assets.sheldon in home/dot_agents/agent-config.yaml; change it there.</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">SHELDON_VERSION</span><span class="o">=</span><span class="s2">"0.8.5"</span>
-<span class="c1"># crates.io API: https://crates.io/api/v1/crates/sheldon/0.8.5</span>
-<span class="c1"># Registry SHA-256: 43a2d8fc0be4474cfe2d603992c7e9765c9a0f87465aabcfc0603c1de4290b4d</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Build and install the crates.io Sheldon release with locked dependencies.</span>
+<span class="c1"># @exitcode 3 cargo could not download the crate or the index, so nothing was installed.</span>
+<span class="c1"># @exitcode * cargo's own status for any other failure, a checksum among them (a 3 becomes 1).</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_sheldon<span class="o">()</span><span class="w"> </span><span class="o">(</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">stage</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>tmpdir
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">stage</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>tmpdir
 <span class="w">    </span><span class="nv">tmpdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"'</span><span class="w"> </span>EXIT
 <span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nv">stage</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/sheldon.tmp.XXXXXX"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nv">CARGO_INSTALL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--<span class="w"> </span>cargo<span class="w"> </span>install<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--locked<span class="w"> </span>--features<span class="w"> </span>vendored<span class="w"> </span>--registry<span class="w"> </span>crates-io<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--version<span class="w"> </span><span class="s2">"=</span><span class="si">${</span><span class="nv">SHELDON_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>sheldon<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="c1"># cargo's errors still reach stderr; the copy tells a download failure from the rest.</span>
+<span class="w">    </span><span class="o">{</span><span class="w"> </span><span class="nv">CARGO_INSTALL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--<span class="w"> </span>cargo<span class="w"> </span>install<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--locked<span class="w"> </span>--features<span class="w"> </span>vendored<span class="w"> </span>--registry<span class="w"> </span>crates-io<span class="w"> </span>sheldon<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="m">1</span>&gt;<span class="p">&amp;</span><span class="m">3</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tee<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/cargo.log"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="w"> </span><span class="m">3</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># Keep cargo's own status (101 for every error), except that 3 means a download failure here.</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="c1"># A checksum is verification, even inside a download error.</span>
+<span class="w">        </span>grep<span class="w"> </span>-qi<span class="w"> </span><span class="s1">'checksum'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/cargo.log"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span>grep<span class="w"> </span>-qiE<span class="w"> </span><span class="s1">'failed to download|resolve host|failed to update registry|spurious network|timed out'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/cargo.log"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">3</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0755</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/bin/sheldon"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span>mv<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/sheldon"</span>
 <span class="o">)</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the installed Sheldon version, or nothing when it is absent or cannot report one.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>sheldon_installed_version<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>output
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/sheldon"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="c1"># A binary that exits non-zero is broken whatever it printed, so it reports no version.</span>
+<span class="w">    </span><span class="nv">output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/sheldon"</span><span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'$1 == "sheldon" { print $2; exit }'</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the newest Sheldon version on crates.io, as cargo's own index search reports it.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>sheldon_newest_version<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--<span class="w"> </span>cargo<span class="w"> </span>search<span class="w"> </span>sheldon<span class="w"> </span>--limit<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span>
+<span class="w">        </span>awk<span class="w"> </span>-F<span class="s1">'"'</span><span class="w"> </span><span class="s1">'$1 == "sheldon = " { print $2; found = 1; exit } END { exit !found }'</span>
+<span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Remove the installed `sheldon` binary.</span>
@@ -3716,10 +3773,26 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Run the Sheldon installation flow.</span>
+<span class="c1"># @description Install Sheldon, or update it when crates.io has a newer release.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>install_sheldon
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>installed<span class="w"> </span>newest<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nv">installed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sheldon_installed_version<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">newest</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sheldon_newest_version<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">newest</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">newest</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: could not look up the newest sheldon crate; sheldon %s stays.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">newest</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>install_sheldon<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="c1"># A failed download keeps a working sheldon; a failed check never does.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: could not download the sheldon %s crate; sheldon %s stays.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">newest</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

@@ -3399,6 +3399,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../lib/github-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/github-release.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../lib/installer-pins/" class="md-nav__link">
         
   
@@ -3675,6 +3703,7 @@
 <li><code>check_homebrew</code></li>
 <li><code>check_machine_ssh_key</code></li>
 <li><code>check_private_chezmoi</code></li>
+<li><code>check_zed</code></li>
 <li><code>main</code></li>
 <li><code>private_layer_enabled</code></li>
 <li><code>run_required_doctor</code></li>
@@ -3851,6 +3880,25 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Report Zed on Ubuntu clients. run_after_05-client-install-zed installs it only with an</span>
+<span class="c1">#   authenticated gh, because a GitHub release attestation is the only verification Zed publishes.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>check_zed<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.local/bin/zed"</span><span class="w"> </span>system
+<span class="w">    </span><span class="nv">system</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>chezmoi<span class="w"> </span>execute-template<span class="w"> </span><span class="s1">'{{ .system }}'</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>Linux<span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>client<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'not applicable: Zed (installed on Ubuntu clients only)\n'</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">"zed not installed: run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'found:   zed -&gt; %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="w"> </span><span class="o">||</span><span class="w"> </span>warn_optional<span class="w"> </span><span class="s2">"zed --version failed; the install may be corrupt"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Verify bwrap can create user namespaces when AppArmor restricts them.</span>
 <span class="c1">#   Sandboxed Codex runs exec /usr/bin/bwrap, which needs the bwrap-userns profile</span>
 <span class="c1">#   installed by install/ubuntu/common/apparmor_userns.sh. Loaded profiles are</span>
@@ -3968,6 +4016,9 @@
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"Crit CLI"</span>
 <span class="w">    </span>check_crit_cli
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">"Zed"</span>
+<span class="w">    </span>check_zed
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"SSH"</span>
 <span class="w">    </span>check_machine_ssh_key

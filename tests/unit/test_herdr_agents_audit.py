@@ -30,9 +30,7 @@ GRAMMAR = (
 )
 CATEGORIES = ("specification (", "implementation (", "evidence (", "orchestration (", "conformance (")
 FORMAT_2_TASK = "---\nformat: 2\ntask_id: T1\nkind: code\ninvariants:\n  INV-1: x\n---\n# T1\n"
-INVARIANT_RULE = (
-    "write one line per invariant id of the task front matter, `INV-n: holds|violated|not_applicable <path:line>`"
-)
+INVARIANT_RULE = "write one line per invariant id of the task front matter, `INV-n: holds|violated|not_applicable <path:line|-> <note>`"
 COUNT_RULE = "then the line `Orchestration findings: <count>`"
 INV_WARNING = "WARN: herdr-agents: format 2 task T1: the audit output has no INV-1: holds|violated|not_applicable line."
 COUNT_WARNING = "WARN: herdr-agents: format 2 task T1: the audit output has no Orchestration findings: line."
@@ -423,7 +421,7 @@ class AuditHeadTest(unittest.TestCase):
         claude = self.calls()[-1]
         self.assertEqual(claude["tool"], "claude")
         # Never inside the audited head or the checkout: an empty root, both added, no CLAUDE.md from them.
-        self.assertEqual((Path(claude["cwd"]).name, claude["cwd_entries"]), ("root", ["AGENTS.md"]))
+        self.assertEqual((Path(claude["cwd"]).name, sorted(claude["cwd_entries"])), ("root", ["AGENTS.md", "design"]))
         self.assertEqual(claude["rules"], "## Audit\n\nThe committed rules.\n")
         self.assertFalse(Path(claude["cwd"]).is_relative_to(self.repo))
         self.assertFalse(claude["claude_md_env"])
@@ -510,6 +508,48 @@ class AuditHeadTest(unittest.TestCase):
         self.assertIn("codex transcript ~/private-note", transcript)
         self.assertNotIn(str(self.home), transcript)
 
+    def test_the_design_review_files_are_copied_for_the_auditor_and_nothing_else(self) -> None:
+        self.write(".agents/worklog/review/receipt.md", "the receipt\n")
+        self.write(".orchestration/tasks/D1.md", "the design\n")
+        self.write(
+            ".orchestration/tasks/T1.md",
+            TASK_FILE.replace(
+                "invariants:",
+                "design_review:\n  receipt: .agents/worklog/review/receipt.md\n  design: ../outside.md\n"
+                "  extra: .orchestration/tasks/D1.md\ninvariants:",
+            ),
+        )
+        (self.temp / "outside.md").write_text("outside\n")
+        (self.temp / "codex-exit").write_text("1\n")
+
+        self.assertEqual(self.run_audit().returncode, 1)
+
+        claude = self.calls()[-1]
+        prompt = claude["args"][-1]
+        self.assertRegex(
+            prompt,
+            r"; the design_review receipt `[^`]+/root/design/receipt-receipt\.md` \(a copy of `\.agents/worklog/review/receipt\.md`\)",
+        )
+        self.assertNotIn("outside.md", prompt)
+        self.assertNotIn("D1.md", prompt, "only receipt and design are design_review inputs")
+        # A symlinked receipt is never followed.
+        (self.repo / ".agents/worklog/review/receipt.md").unlink()
+        (self.repo / ".agents/worklog/review/receipt.md").symlink_to(self.temp / "outside.md")
+
+        self.assertEqual(self.run_audit().returncode, 1)
+        self.assertNotIn("design_review receipt", self.calls()[-1]["args"][-1])
+        self.assertEqual(
+            [claude["args"][index + 1] for index, arg in enumerate(claude["args"]) if arg == "--add-dir"],
+            [str(self.repo / ".orchestration"), str(self.worktree)],
+        )
+
+    def test_an_out_path_without_the_md_suffix_is_refused(self) -> None:
+        result = self.run_audit("--out", "evidence/audit")
+
+        self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+        self.assertIn("--out must end in .md", result.stderr)
+        self.assertEqual(self.calls(), [])
+
     def test_stale_evidence_is_removed_before_the_worktree_is_checked(self) -> None:
         self.assertEqual(self.run_audit().returncode, 1)
         self.git("checkout", "-q", "--detach", "main", cwd=self.worktree)
@@ -560,12 +600,14 @@ class AuditHeadTest(unittest.TestCase):
         self.assertIs(invariants["additionalProperties"], False)
         self.assertNotIn("$defs", schema)
 
-        self.write(".orchestration/tasks/T1.md", "# legacy task, no front matter\n")
         self.codex_document({**GOOD_DOCUMENT, "invariants": {}})
+        for legacy in ("# legacy task, no front matter\n", "---\ntask_id: T1\ninvariants:\n  INV-4: x\n---\n"):
+            with self.subTest(legacy=legacy):
+                self.write(".orchestration/tasks/T1.md", legacy)
 
-        self.assertEqual(self.run_audit().returncode, 1)
-        invariants = json.loads((self.temp / "codex-schema.json").read_text())["properties"]["invariants"]
-        self.assertEqual((invariants["required"], invariants["properties"]), ([], {}))
+                self.assertEqual(self.run_audit().returncode, 1)
+                invariants = json.loads((self.temp / "codex-schema.json").read_text())["properties"]["invariants"]
+                self.assertEqual((invariants["required"], invariants["properties"]), ([], {}))
 
     def test_the_sha256_record_is_sent_before_the_verdict_is_rendered(self) -> None:
         result = self.run_audit()

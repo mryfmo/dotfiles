@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T102-add-worker-credential-notice-a01
 
 - **Decision:** ACCEPTED. PR #285 squash-merged to `main` as `0f18bce9`; head `015929c8`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main PR_FEEDBACK_EVIDENCE=… AUDIT_EVIDENCE=… AGENT_REVIEWED=1 REVIEW_EVIDENCE=… make require-crit-review` rc=0, 2026-10-05 17:29Z; `notice: GitHub role gate inactive: worker hosts.yml missing`). RESULT received 17:17Z; CI 12 successful checks, `mergeStateStatus=CLEAN`.
+- pr=285
 - **Worker:** `codex-standard-dot-a006` (worker-e, wT:pC, `standard` profile). task_rev verified at dispatch (17:04Z).
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping. **Deviation (disclosed in the task file up front):** the orchestrator opened PR #285 on the worker's SSH-pushed branch because the post-T90 seat has no provisioned worker gh credential (the very condition this change reports); the worker ran every local check and no `gh` call; the orchestrator runs `gh pr checks --watch`, the Bot wait and the sweep. Same handling as T101 (#283); ends when the operator provisions `~/.config/gh-worker/hosts.yml`.
 - **Plan reference:** follow-up noted at the a006 seating of 2026-10-05 11:25Z (first post-T90 seat learned of the missing credential only from its own `gh auth status`).

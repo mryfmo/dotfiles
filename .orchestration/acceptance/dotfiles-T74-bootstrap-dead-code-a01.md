@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T74-bootstrap-dead-code-a01
 
 - **Decision:** ACCEPTED (no revise round; one PONG decision). PR #247 squash-merged to `main` as `8922f13b` (final head `c0ea3e7f1b150f43e6841642038cc62b290653c6`; substantive commits 2487b05a, c0ea3e7f; base `138e6a72`, no update-branch merge). Merged without `--delete-branch`; worker-c holds `chore/bootstrap-dead-code`.
+- pr=247
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `66b87608…` → `35ec2cb2…` (addendum 1) → `ee21597b…` (PONG decision 1); all matched. Parallel wave with T88/T68 (a006) and T65 (a007); dispatched the moment a005's T91 RESULT arrived.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** Phase 4, dotfiles-T74 (principle 9: bootstrap dead code).

@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T109-claude-worker-merge-deny-a01
 
 - **Decision:** ACCEPTED. PR #295 squash-merged to `main` as `05ff683b` (2026-10-06 06:37Z) with `gh pr merge --squash --match-head-commit c856e512…`; head `c856e512`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 06:36Z). RESULT received 06:31Z.
+- pr=295
 - **Worker:** `codex-standard-dot-a006` (worker-e, wT:pE, `standard` profile; seated after the T108 deploy, so it carries this machine's gh login). task_rev verified at dispatch (05:44Z) and at PONG decision 1 (worklog write waived).
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping (artifact copies from worker-e).
 - **Design source:** `.orchestration/validation/github-auth-design-2026-10-05.md` §16, step 2 of decision A. Routed to a Codex seat because the change writes Claude's permission policy for worker seats.

@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T75-shell-dead-code-a01
 
 - **Decision:** ACCEPTED after one revise round. PR #244 squash-merged to `main` as `138e6a72` (final head `6ec1805319ba39892ae9bf0f4ac6e4c416137201`; substantive commits ef5742f9, 339c1496; base `40d9eb6c`, update-branch merges onto `57885db1`, `a5c30b6d`). Merged without `--delete-branch`; worker-c holds `chore/shell-dead-code`.
+- pr=244
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `d182a15e…` → `4a14d05c…` (revise round 1); both matched. Parallel wave with T88 (a006) and T65 (a007).
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** Phase 4, dotfiles-T75 (principle 9: dead shell code).

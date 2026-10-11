@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T69-protocol-docs-unification-a01
 
 - **Decision:** ACCEPTED. PR #253 squash-merged to `main` as `04bce61b`; final head `d9bbd800d2b87f4575fcd64d9791447cc84be35e`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, two dispositions below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 14:33Z).
+- pr=253
 - **Worker:** `claude-standard-dot-a006` (worker-d, wY:p2). task_rev verified at dispatch and at each revise round (the file grew by the round sections and addenda; the worker re-hashed it each time).
 - **Exemption declared:** acceptance and final integration (thread resolution after fix verification, sweep, evidence, audit invocation, gate, merge, ACCEPTANCE).
 - **Plan reference:** Phase 2, dotfiles-T69 (first principle of the program: the written protocol matches the practiced one). Depends on T64, T67, T68 (all merged) and carries the parallel-execution invariant text from T88.

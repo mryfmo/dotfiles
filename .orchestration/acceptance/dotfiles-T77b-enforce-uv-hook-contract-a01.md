@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T77b-enforce-uv-hook-contract-a01
 
 - **Decision:** ACCEPTED. PR #266 squash-merged to `main` as `8ba3c8bc`; final head `43d45ff43d4f67781866aab3dc2fc8cd506dc7c2`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, one evidence disposition below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 19:43Z).
+- pr=266
 - **Worker:** `codex-security-dot-a007` (worker-e, wT:p8). task_rev verified at dispatch and after the PONG-decision append.
 - **Exemption declared:** acceptance and final integration; evidence sync (seven worker artifacts copied from worker-e); the orchestrator's own `gh pr update-branch 266` onto `main` 36ffe6ca after the T80 merge.
 - **Plan reference:** item 5 of Phase 4 dotfiles-T77, routed to a Codex seat because the file is a Claude PreToolUse hook (seat-capability rule).

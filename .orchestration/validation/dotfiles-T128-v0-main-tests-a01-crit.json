@@ -1,0 +1,38 @@
+[
+  {
+    "id": "v0-review-1",
+    "scope": "review",
+    "resolved": true,
+    "body": "Orchestrator review of PR 317 head adcf783b (independent read of the diff, not the worker's or the auditor's): scripts/main-tests.sh and scripts/lib/contract_markers.py implement INV-12's two modes as the task specifies; the workflow runs main's copy of both files and falls back to the PR's copy only while main lacks them; the task.md copy is byte-identical (sha256 f16cbd9c); sizes 300/353/7 within the caps. Approved."
+  },
+  {
+    "id": "v0-review-2",
+    "scope": "file",
+    "file": "scripts/main-tests.sh",
+    "line": 119,
+    "resolved": true,
+    "body": "Checked: undeclared mode runs main's modules with -P and PYTHONPATH=tests/unit after the overlay replaced the PR's tests/unit, so a module or unittest.py the PR plants there cannot shadow main's; uv --no-config keeps a PR uv.toml out. A PR .python-version remains an input (worker's note); it can only fail the run, not pass it."
+  },
+  {
+    "id": "v0-review-3",
+    "scope": "file",
+    "file": ".github/workflows/test.yaml",
+    "line": 100,
+    "resolved": true,
+    "body": "Checked: the install step exports GITHUB_TOKEN (read-only default permissions) only for the attestation verification of chezmoi; no PR code runs before main's harness is fetched with git show origin/main:<path>. Nit, not blocking: the step duplicates the test job's chezmoi install; a shared step is V5a/V5b material."
+  },
+  {
+    "id": "v0-review-4",
+    "scope": "review",
+    "resolved": true,
+    "body": "Orchestrator review of round 1 (head 32fe9a36, diff adcf783b..32fe9a36): the six named selectors exist in tests/unit/test_main_tests.py and the report says they fail on adcf783b and pass here (validation \u00a7R); the workflow now fetches every file it runs from origin/main before the harness, with the fallback limited to the harness pair on this first PR; the interpreter is found from / with uv python find --no-config and passed explicitly (the worker showed --isolated still executes a planted .venv, so the task's suggested flag was wrong and the explicit interpreter is the right fix); run_unittest requires unittest's own summary and the exact contract count in declared mode; exemption is keyed on the declared script; --no-renames on both diffs; contract ids are test methods only. Approved for audit."
+  },
+  {
+    "id": "v0-review-5",
+    "scope": "file",
+    "file": "scripts/main-tests.sh",
+    "line": 130,
+    "resolved": true,
+    "body": "Stated residual, not a defect of this wave: code that main's tests import from the PR runs inside the unittest process and can forge the summary (right count, OK, exit 0). No in-process oracle can prevent that; INV-12's harness targets undeclared regressions and declared-contract drift, and adversarial forgery in a PR is the design-tier audit's domain (the audit reads the diff from a trusted root). Recorded in the acceptance record's pre-audit part as the orchestrator's position for the auditor to judge."
+  }
+]

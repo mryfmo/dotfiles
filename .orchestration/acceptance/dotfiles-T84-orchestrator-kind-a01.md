@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T84-orchestrator-kind-a01
 
 - **Decision:** ACCEPTED. PR #272 squash-merged to `main` as `51c57f19`; final head `26e748e2`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-05 02:19Z).
+- pr=272
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev matched at dispatch.
 - **Exemption declared:** acceptance and final integration.
 - **Plan reference:** Phase 7, dotfiles-T84 (principle 4). Depends on T80 (merged); serialized after T82 on the manifest; T85 and T86 (merged) consume the rendered variable.

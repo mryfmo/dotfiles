@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T81-compactiondb-vendor-a01
 
 - **Decision:** ACCEPTED. PR #268 squash-merged to `main` as `2527be54`; final head `a1c69c4e0c218eaa4956fc657c7812acbb96c2ad`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, one disposition below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 22:05Z).
+- pr=268
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev matched at dispatch.
 - **Exemption declared:** acceptance and final integration.
 - **Plan reference:** Phase 5, dotfiles-T81 (principle 7). Depends on T77 (merged); serialized after T79 on the manifest and validator.

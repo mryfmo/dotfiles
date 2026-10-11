@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T90-github-identity-separation-a01
 
 - **Decision:** ACCEPTED (objective revised; mechanical merge restriction → T90b). PR #262 squash-merged to `main` as `4c38dea0`; final head `e2d5c9a3fdae30f6137c5e5fb5cae785691a66fd`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 18:22Z).
+- pr=262
 - **Worker:** `codex-security-dot-a007` (worker-e, wT:p8, `security` profile). task_rev verified at dispatch and after each PONG-decision append.
 - **Exemption declared:** acceptance and final integration; evidence sync (seven worker artifacts copied from worker-e).
 - **Plan reference:** added task from the T64 audit P1 and the operator decision 「account を役で分ける」; trust-boundary work on the Codex `security` seat per the model-selection rule.

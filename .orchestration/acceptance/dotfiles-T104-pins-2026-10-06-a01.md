@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T104-pins-2026-10-06-a01
 
 - **Decision:** ACCEPTED. PR #290 squash-merged to `main` as `50741c4d` (2026-10-06 01:12Z); head `bd0327a0` (merge of main b3f0bc61 after boundary #289; diff commit `8c4a34e6`). Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, two artifact-only dispositions below), `AUDIT_DISPOSITIONS` and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 01:11Z; `notice: GitHub role gate inactive: worker hosts.yml missing`). RESULT received 01:05Z; the PR diff was checked byte-identical to the exported pin diff.
+- pr=290
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev verified at dispatch (00:39Z).
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping (the pin diff was exported from the canonical clone with `git diff` into `.orchestration/validation/pins-2026-10-06.diff`; the clone itself is not a repository mutation target of this task).
 - **Origin:** the canonical clone `~/.local/share/chezmoi` carried a pending `make upgrade` pin diff (7 files, +57/−57), surfaced as "Applied autostash" during the T103 deploy; per the regime rule it travels as one class-pure pin PR.

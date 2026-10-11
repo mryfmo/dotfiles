@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T62-claude-auto-deny-a01
 
 - **Decision:** ACCEPTED. PR #254 squash-merged to `main` as `c6b348ba` (head `de8b8b2e`, one commit on main 6de95167). Merged without `--delete-branch`; worker-e holds `chore/claude-auto-deny`.
+- pr=254
 - **Worker:** `codex-standard-dot-a007` (Codex seat in `.claude/worktrees/worker-e`, seated 2026-10-04 with `herdr-agents --add-worker --kind codex` after the Claude worker a007 was removed; re-seated once after its first pane disappeared). task_rev verified by the worker (stated in its PONG). Routed to a Codex seat because a Claude seat may not edit the source of its own permission policy (T88); the first Claude attempt (a006, 2026-10-03) was refused by the auto-mode classifier as Self-Modification.
 - **Exemption declared:** acceptance and final integration; evidence sync (the worker's artifacts moved from its worktree to the main checkout; the Codex sandbox cannot write the main checkout); control-plane hygiene (worktree reset to 3371cc81 after an interrupted `git switch` left a byte-identical copy of main's content staged).
 - **Plan reference:** Phase 1, dotfiles-T62 (principle 2: plan approval only; user-level `auto`).

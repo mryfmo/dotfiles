@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T128-task-review-v1-v2-a01
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T128-task-review-v1-v2-a01
 
 Drafted 2026-10-11 by the orchestrator seat. The T128 design (accepted round 3) requires each wave's task file to be read by a fresh context before dispatch. Review three task files against the accepted design `.orchestration/tasks/dotfiles-T128-regime-v3-a01.md` (sha256 b2bfad90…): `.orchestration/tasks/dotfiles-T128-v1-task-schema-a01.md`, `.orchestration/tasks/dotfiles-T128-v1b-pr-caps-a01.md`, `.orchestration/tasks/dotfiles-T128-v2-audit-schema-and-runner-a01.md`. Read-only; one receipt file; Claude seat on the review profile in worker-d; every path in the main checkout.

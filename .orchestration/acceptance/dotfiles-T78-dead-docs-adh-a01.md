@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T78-dead-docs-adh-a01
 
 - **Decision:** ACCEPTED. PR #261 squash-merged to `main` as `feab6452`; head `8d536a3860044eee629da063ca1ce08eae050c31`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 17:14Z).
+- pr=261
 - **Worker:** `claude-standard-dot-a006` (worker-d, wY:p2). task_rev matched at dispatch and after the PONG-decision append.
 - **Exemption declared:** acceptance and final integration.
 - **Plan reference:** Phase 4, dotfiles-T78 (principle 9; operator decision that ADH leaves dotfiles). Depends on T88 (merged); serialized after T69 and T97 on SKILL.md.

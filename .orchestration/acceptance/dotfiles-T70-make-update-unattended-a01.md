@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T70-make-update-unattended-a01
 
 - **Decision:** ACCEPTED after one revise round. PR #238 squash-merged to `main` as `523fda06` (final head `71f48b303a716b1f7026f682f96c5e423b4aebea`, substantive commits 229a2ec1 and 95acd5b6; base `c6de5156`, update-branch onto `a575b3cc`). Merged without `--delete-branch`; worker-d holds `fix/make-update-unattended`.
+- pr=238
 - **Worker:** `claude-standard-dot-a006` (worker-d). task_rev `360d8aa8…` → `bc0e79e9…` (PONG decision 1) → `a98960c7…` (revise round 1); all matched. Parallel wave 1 with T64 (a005) and T65 (a007); pulled forward from Phase 3 because it was independent of every in-flight task.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** Phase 3, dotfiles-T70 (principle 8: the lifecycle converges unattended).

@@ -391,6 +391,40 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, text)
 
+    def test_closed_selector_existence_is_checked_at_acceptance(self) -> None:
+        # Audit of b7ae2d54 and thread 4240646082: a closed row's test does not exist before implementation.
+        text = self.invariants()
+        for token in (
+            "a `closed` selector names a test present in the PR tree at acceptance and in the schema's validation of the PR",
+            "For a `closed` row it checks the selector's form only, since the test does not exist before implementation.",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_the_bot_wait_filters_the_codex_bot(self) -> None:
+        # Audit of b7ae2d54 and thread 4243369347: a CodeRabbit review matched `.user.type=="Bot"` and ended the wait.
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        for token in (
+            '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="<head-sha>")',
+            '.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="<head-sha>")',
+            "A human comment, a CodeRabbit review or an earlier head's review never ends the wait.",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, step)
+        self.assertNotIn('.user.type=="Bot"', step)
+
+    def test_shape_rules_and_the_decision_sentence_are_pinned(self) -> None:
+        # Audit of b7ae2d54: the S1/S2 decision and the three shape rules could each be removed unnoticed.
+        text = self.invariants()
+        for token in (
+            "S1 (the same finding class three times) and S2 (the INV-6 counts) are decided from that output.",
+            "a `closed` selector names a test present in the PR tree",
+            "an `out-of-scope` owner is a task id in the design's `implementing_tasks`",
+            "a `residual` payload is a sentence of at least 20 characters",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
     def test_workers_open_the_pr_as_a_draft(self) -> None:
         # Thread 4240566266: step 15's `gh pr ready` starts the Bot timer only on a draft PR.
         step = self.section(SKILL.read_text(), "\n2. Switch to the `repo`", "\n3. ")

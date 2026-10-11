@@ -44,3 +44,13 @@ The worker resolves no thread. The final head's CI and Bot wait are in the RESUL
 `memory add` printed `ae486f65-e10d-44bd-8680-8261d6fa4492` (validation §4).
 
 cost: n/a
+
+## Revise round 1 (ACCEPTANCE 2026-10-11T22:20:55Z, final audit of `b7ae2d54`: incorrect; `previous_head=b7ae2d54`)
+
+One commit on `docs/regime-pattern`, recorded in `revise.yaml` beside this report, after a fast-forward to `b7ae2d54` (the branch had taken two `update-branch` merges: PR 320's `0e522059` and PR 319's `52575497`). Each of the three worker-side findings gets a one-sentence rule fix, or pins, and the token test the ACCEPTANCE names:
+
+1. P2 `SKILL.md:71` (thread 4240646082's class): the shape clause now reads "a `closed` selector names a test present in the PR tree at acceptance and in the schema's validation of the PR". After "…checks the three shape rules by hand." it adds: "For a `closed` row it checks the selector's form only, since the test does not exist before implementation." → `test_closed_selector_existence_is_checked_at_acceptance`.
+2. P2 `SKILL.md:201` (thread 4243369347): Worker Playbook step 15 lists reviews and top-level comments with `.user.login=="chatgpt-codex-connector[bot]"`, not `.user.type=="Bot"`, and says "A human comment, a CodeRabbit review or an earlier head's review never ends the wait." → `test_the_bot_wait_filters_the_codex_bot`, which also asserts that `.user.type=="Bot"` is gone from step 15. My own Bot-wait script used the same any-Bot filter, so it now filters by the Codex login as well.
+3. P2 `tests/…:259`: four existing sentences pinned, with no prose change: "S1 (…) and S2 (…) are decided from that output.", and the three shape rules (closed selector, out-of-scope owner, residual minimum) → `test_shape_rules_and_the_decision_sentence_are_pinned`.
+
+The fourth finding (the sweep JSON) is the orchestrator's, as the ACCEPTANCE says. Every new or pinned sentence fails its test when removed, 9 of 9, the any-Bot filters and the old wait sentence pasted back among them (validation §7). The docs module runs 39 tests, OK. CompactionDB: `fa0f25f1-360c-463e-90f6-df466c8299c4`. The final head's CI and Bot wait are in the RESULT and the main-checkout copy of this report.

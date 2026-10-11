@@ -76,3 +76,69 @@ AssertionError: 'Mark the PR ready for review with `gh pr ready <n>` before the 
 FAILED (failures=1)
 == restored: OK
 ```
+
+## 7. Revise round 1 (the revise commit; `previous_head=b7ae2d54`; §6 is the main-checkout copy's final head of the first RESULT)
+
+```
+$ git log --oneline -1 origin/docs/regime-pattern; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; ruff check --config ruff.toml tests/unit/test_agmsg_orchestration_docs.py; prettier --check AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -1
+b7ae2d54 Merge branch 'main' into docs/regime-pattern
+Ran 39 tests in 0.007s
+
+OK
+1 file already formatted
+All checks passed!
+All matched files use Prettier code style!
+$ git diff --stat -- home/dot_agents/skills/agmsg-orchestration/SKILL.md tests/unit/test_agmsg_orchestration_docs.py
+ .../dot_agents/skills/agmsg-orchestration/SKILL.md |  4 +--
+ tests/unit/test_agmsg_orchestration_docs.py        | 34 ++++++++++++++++++++++
+ 2 files changed, 36 insertions(+), 2 deletions(-)
+```
+
+Removal proofs (`scratchpad/mutate-a03-r1.sh`: the working tree's three files in a `git archive HEAD` copy, each sentence removed alone or its old wording pasted back; output cut to three lines of at most 400 characters per rule):
+
+```
+== removed rule: closed-test-at-acceptance (SKILL, diff lines: 2) -> test_closed_selector_existence_is_checked_at_acceptance
+FAIL: test_closed_selector_existence_is_checked_at_acceptance (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_closed_selector_existence_is_checked_at_acceptance) (<redacted:secret-pattern>s validation of the PR")
+AssertionError: "a `closed` selector names a test present in the PR tree at acceptance and in the schema's validation of the PR" not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESUL
+FAILED (failures=1)
+== removed rule: closed-form-only-at-review (SKILL, diff lines: 2) -> test_closed_selector_existence_is_checked_at_acceptance
+FAIL: test_closed_selector_existence_is_checked_at_acceptance (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_closed_selector_existence_is_checked_at_acceptance) (<redacted:secret-pattern>s form only, since the test does not exist before implementation.")
+AssertionError: "For a `closed` row it checks the selector's form only, since the test does not exist before implementation." not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT r
+FAILED (failures=1)
+== removed rule: reviews-any-bot-pasted-back (SKILL, diff lines: 2) -> test_the_bot_wait_filters_the_codex_bot
+FAIL: test_the_bot_wait_filters_the_codex_bot (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_bot_wait_filters_the_codex_bot) (<redacted:secret-pattern>chatgpt-codex-connector[bot]" and .commit_id=="<head-sha>")')
+AssertionError: '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="<head-sha>")' not found in ', wait for CI and the Codex Bot before sending RESULT.\n    - Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft (`gh pr ready` exits non-zero on a PR that is already ready, so a later head\'s wait skips it): the Codex Bot reviews no
+FAIL: test_the_bot_wait_filters_the_codex_bot (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_bot_wait_filters_the_codex_bot)
+== removed rule: comments-any-bot-pasted-back (SKILL, diff lines: 2) -> test_the_bot_wait_filters_the_codex_bot
+FAIL: test_the_bot_wait_filters_the_codex_bot (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_bot_wait_filters_the_codex_bot) (<redacted:secret-pattern>chatgpt-codex-connector[bot]" and .original_commit_id=="<head-sha>")')
+AssertionError: '.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="<head-sha>")' not found in ', wait for CI and the Codex Bot before sending RESULT.\n    - Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft (`gh pr ready` exits non-zero on a PR that is already ready, so a later head\'s wai
+FAIL: test_the_bot_wait_filters_the_codex_bot (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_bot_wait_filters_the_codex_bot)
+== removed rule: coderabbit-clause (SKILL, diff lines: 2) -> test_the_bot_wait_filters_the_codex_bot
+FAIL: test_the_bot_wait_filters_the_codex_bot (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_bot_wait_filters_the_codex_bot) (<redacted:secret-pattern>s review never ends the wait.")
+AssertionError: "A human comment, a CodeRabbit review or an earlier head's review never ends the wait." not found in ', wait for CI and the Codex Bot before sending RESULT.\n    - Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft (`gh pr ready` exits non-zero on a PR that is already ready, so a later head\'s wait skips it): the Codex Bot reviews n
+FAILED (failures=1)
+== removed rule: s1-s2-decision (SKILL, diff lines: 2) -> test_shape_rules_and_the_decision_sentence_are_pinned
+FAIL: test_shape_rules_and_the_decision_sentence_are_pinned (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_shape_rules_and_the_decision_sentence_are_pinned) (<redacted:secret-pattern>)
+AssertionError: 'S1 (the same finding class three times) and S2 (the INV-6 counts) are decided from that output.' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and r
+FAILED (failures=1)
+== removed rule: closed-selector-in-tree (SKILL, diff lines: 2) -> test_shape_rules_and_the_decision_sentence_are_pinned
+FAIL: test_shape_rules_and_the_decision_sentence_are_pinned (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_shape_rules_and_the_decision_sentence_are_pinned) (<redacted:secret-pattern>)
+AssertionError: 'a `closed` selector names a test present in the PR tree' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work remain orchestrator-s
+FAILED (failures=1)
+== removed rule: out-of-scope-owner (SKILL, diff lines: 2) -> test_shape_rules_and_the_decision_sentence_are_pinned
+FAIL: test_shape_rules_and_the_decision_sentence_are_pinned (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_shape_rules_and_the_decision_sentence_are_pinned) (<redacted:secret-pattern>s `implementing_tasks`")
+AssertionError: "an `out-of-scope` owner is a task id in the design's `implementing_tasks`" not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work rem
+FAILED (failures=1)
+== removed rule: residual-minimum (SKILL, diff lines: 2) -> test_shape_rules_and_the_decision_sentence_are_pinned
+FAIL: test_shape_rules_and_the_decision_sentence_are_pinned (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_shape_rules_and_the_decision_sentence_are_pinned) (<redacted:secret-pattern>)
+AssertionError: 'a `residual` payload is a sentence of at least 20 characters' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work remain orchestra
+FAILED (failures=1)
+== restored: OK
+```
+
+CompactionDB (main checkout, outside the sandbox through the permission gate):
+
+```
+$ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-process-rules-a03 revise round 1 …'
+fa0f25f1-360c-463e-90f6-df466c8299c4
+```

@@ -301,7 +301,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "review them for secrets and home-directory paths only",
             "Judge from the diff, whatever the task's metadata says, whether a change touches a trust boundary",
             "report a missing table, a missing row",
-            "Do not re-raise a `residual` row",
+            "Do not re-raise a `residual` row whose named compensating control mitigates the risk",
+            "report a `residual` row whose control is missing, a placeholder such as `none`, or does not mitigate it",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, subsection)

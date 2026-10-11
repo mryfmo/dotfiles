@@ -209,7 +209,7 @@ PY
 # unmerged is reported without an anchored reset record. Skipped without the
 # counters script beside this one or a readable agmsg store.
 counters="${root}/scripts/regime-counters.sh"
-if [[ -x ${counters} ]] && task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
+if task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
     while read -r task _; do
         [[ -n ${task} && -f ${main}/.orchestration/tasks/${task}.md ]] || continue
         accepted="${main}/.orchestration/acceptance/${task}.md"

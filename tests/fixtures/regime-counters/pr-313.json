@@ -1,0 +1,678 @@
+{
+  "comments": [
+    {
+      "id": 4237190641,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "created_at": "2026-10-10T09:34:50Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Normalize allowed paths before tier matching**"
+    },
+    {
+      "id": 4237190645,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "created_at": "2026-10-10T09:34:50Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Keep design-review paths inside the main checkout**"
+    },
+    {
+      "id": 4237190646,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "created_at": "2026-10-10T09:34:50Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require a distinct design task for security review**"
+    },
+    {
+      "id": 4237190648,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "created_at": "2026-10-10T09:34:50Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject integer values for the security flag**"
+    },
+    {
+      "id": 4237190649,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "created_at": "2026-10-10T09:34:50Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Verify REVIEW_TREE before allowing the gate to run**"
+    },
+    {
+      "id": 4237190651,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "created_at": "2026-10-10T09:34:51Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Fail closed on malformed format-2 headers**"
+    },
+    {
+      "id": 4237190654,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T09:34:51Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject malformed single-quoted YAML scalars**"
+    },
+    {
+      "id": 4237190656,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T09:34:51Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Include policy and hook sources in the design tier**"
+    },
+    {
+      "id": 4237190658,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T09:34:51Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Enforce TASK_ID syntax on the primary task id**"
+    },
+    {
+      "id": 4237230621,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "created_at": "2026-10-10T09:51:54Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Fail closed for quoted format keys**"
+    },
+    {
+      "id": 4237230623,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T09:51:54Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Add the unsandboxed dispatcher to the design tier**"
+    },
+    {
+      "id": 4237230624,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T09:51:54Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind review receipts to the current design hash**"
+    },
+    {
+      "id": 4237230627,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T09:51:54Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Classify globs that can create design-tier files**"
+    },
+    {
+      "id": 4237230644,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "created_at": "2026-10-10T09:51:55Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Run task validation from the main checkout**"
+    },
+    {
+      "id": 4237230646,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "created_at": "2026-10-10T09:51:55Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject Git metadata directories as review trees**"
+    },
+    {
+      "id": 4237230650,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "commit_id": "5a17d633c39d9e49b9706444ef9c900d3ecc148e",
+      "created_at": "2026-10-10T09:51:55Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Type-check kind before set membership**"
+    },
+    {
+      "id": 4237298693,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "0d6d5aedcbea4c4d2a877520eff9cd9b9eb95d86",
+      "commit_id": "918a91b8e3697835e4633a558a11e2a9c9ce73e7",
+      "created_at": "2026-10-10T10:20:50Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Restrict design-reset records to the acceptance directory**"
+    },
+    {
+      "id": 4237298696,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "0d6d5aedcbea4c4d2a877520eff9cd9b9eb95d86",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T10:20:50Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Classify chezmoi executable wrappers as design-tier installers**"
+    },
+    {
+      "id": 4237298700,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "0d6d5aedcbea4c4d2a877520eff9cd9b9eb95d86",
+      "commit_id": "918a91b8e3697835e4633a558a11e2a9c9ce73e7",
+      "created_at": "2026-10-10T10:20:50Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Require waves to cover the full allowed glob**"
+    },
+    {
+      "id": 4237298702,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "0d6d5aedcbea4c4d2a877520eff9cd9b9eb95d86",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T10:20:50Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require an accepted outcome in design-review receipts**"
+    },
+    {
+      "id": 4237298704,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "0d6d5aedcbea4c4d2a877520eff9cd9b9eb95d86",
+      "commit_id": "918a91b8e3697835e4633a558a11e2a9c9ce73e7",
+      "created_at": "2026-10-10T10:20:50Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind security tasks to the reviewed design's scope**"
+    },
+    {
+      "id": 4237298706,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "0d6d5aedcbea4c4d2a877520eff9cd9b9eb95d86",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T10:20:50Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject blank trust anchors**"
+    },
+    {
+      "id": 4237326681,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "918a91b8e3697835e4633a558a11e2a9c9ce73e7",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T10:33:08Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Add the Makefile gate to the design tier**"
+    },
+    {
+      "id": 4237326686,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "918a91b8e3697835e4633a558a11e2a9c9ce73e7",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T10:33:08Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require format 2 for redesign tasks**"
+    },
+    {
+      "id": 4237326688,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "918a91b8e3697835e4633a558a11e2a9c9ce73e7",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T10:33:08Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject threat data that differs from the reviewed design**"
+    },
+    {
+      "id": 4237326692,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "918a91b8e3697835e4633a558a11e2a9c9ce73e7",
+      "commit_id": "a11e36176f7021df4160efb553a170bd680a5f30",
+      "created_at": "2026-10-10T10:33:08Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Compare reset globs by their possible path intersection**"
+    },
+    {
+      "id": 4237326697,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "918a91b8e3697835e4633a558a11e2a9c9ce73e7",
+      "commit_id": "4f9627ac316cacd879dfe08f0269f4205946dac0",
+      "created_at": "2026-10-10T10:33:08Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Include dot-prefixed task files in the boundary check**"
+    },
+    {
+      "id": 4237326701,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "918a91b8e3697835e4633a558a11e2a9c9ce73e7",
+      "commit_id": "a11e36176f7021df4160efb553a170bd680a5f30",
+      "created_at": "2026-10-10T10:33:08Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Grandfather only tasks that predate format 2**"
+    },
+    {
+      "id": 4237362484,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "2d2ae688ad1d11a98f9e2ed7c721d1e42c3e8dbe",
+      "commit_id": "2d2ae688ad1d11a98f9e2ed7c721d1e42c3e8dbe",
+      "created_at": "2026-10-10T10:46:37Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Include implementing tasks in the reviewed design hash**"
+    },
+    {
+      "id": 4237362485,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "2d2ae688ad1d11a98f9e2ed7c721d1e42c3e8dbe",
+      "commit_id": "2d2ae688ad1d11a98f9e2ed7c721d1e42c3e8dbe",
+      "created_at": "2026-10-10T10:46:37Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Require implementing_tasks to be a list of task IDs**"
+    },
+    {
+      "id": 4237362488,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "2d2ae688ad1d11a98f9e2ed7c721d1e42c3e8dbe",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T10:46:37Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject design resets that reuse the abandoned task**"
+    },
+    {
+      "id": 4237362491,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "2d2ae688ad1d11a98f9e2ed7c721d1e42c3e8dbe",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T10:46:37Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Require referenced designs to be canonical task files**"
+    },
+    {
+      "id": 4237362495,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "2d2ae688ad1d11a98f9e2ed7c721d1e42c3e8dbe",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T10:46:37Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject unsupported character-class globs**"
+    },
+    {
+      "id": 4237404235,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "4f9627ac316cacd879dfe08f0269f4205946dac0",
+      "commit_id": "4f9627ac316cacd879dfe08f0269f4205946dac0",
+      "created_at": "2026-10-10T11:03:28Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Classify globs that can create review-tier files**"
+    },
+    {
+      "id": 4237404237,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "4f9627ac316cacd879dfe08f0269f4205946dac0",
+      "commit_id": "4f9627ac316cacd879dfe08f0269f4205946dac0",
+      "created_at": "2026-10-10T11:03:28Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Validate design-reset records at the regime boundary**"
+    },
+    {
+      "id": 4237404238,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "4f9627ac316cacd879dfe08f0269f4205946dac0",
+      "commit_id": "4f9627ac316cacd879dfe08f0269f4205946dac0",
+      "created_at": "2026-10-10T11:03:28Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Stop workers when task validation reports superseded**"
+    },
+    {
+      "id": 4237437333,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ab0f81eb34f6aca5cc129487eefa8e0d5dca7162",
+      "commit_id": "ab0f81eb34f6aca5cc129487eefa8e0d5dca7162",
+      "created_at": "2026-10-10T11:18:04Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Classify reset records by their lexical directory**"
+    },
+    {
+      "id": 4237437337,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ab0f81eb34f6aca5cc129487eefa8e0d5dca7162",
+      "commit_id": "ab0f81eb34f6aca5cc129487eefa8e0d5dca7162",
+      "created_at": "2026-10-10T11:18:04Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Require at least one invariant for every task**"
+    },
+    {
+      "id": 4237437341,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "ab0f81eb34f6aca5cc129487eefa8e0d5dca7162",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T11:18:04Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Point the redesign lane at a defined model profile**"
+    },
+    {
+      "id": 4237495354,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "a11e36176f7021df4160efb553a170bd680a5f30",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T11:42:12Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject self-authored task files as review receipts**"
+    },
+    {
+      "id": 4237495358,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "a11e36176f7021df4160efb553a170bd680a5f30",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T11:42:12Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject normal tasks outside the canonical task directory**"
+    },
+    {
+      "id": 4237495360,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "a11e36176f7021df4160efb553a170bd680a5f30",
+      "commit_id": "a11e36176f7021df4160efb553a170bd680a5f30",
+      "created_at": "2026-10-10T11:42:12Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require the gate checkout itself to be main**"
+    },
+    {
+      "id": 4237495362,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "a11e36176f7021df4160efb553a170bd680a5f30",
+      "commit_id": "e6b30e9670569604666730bf1de042b51cf4f2b7",
+      "created_at": "2026-10-10T11:42:12Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Bind invariant sentences to the reviewed design**"
+    },
+    {
+      "id": 4237594826,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "e6b30e9670569604666730bf1de042b51cf4f2b7",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T12:22:53Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Put orchestration instructions in the design tier**"
+    },
+    {
+      "id": 4237594829,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "e6b30e9670569604666730bf1de042b51cf4f2b7",
+      "commit_id": "e6b30e9670569604666730bf1de042b51cf4f2b7",
+      "created_at": "2026-10-10T12:22:53Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Compare the full canonical task directory**"
+    },
+    {
+      "id": 4237594831,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "e6b30e9670569604666730bf1de042b51cf4f2b7",
+      "commit_id": "e6b30e9670569604666730bf1de042b51cf4f2b7",
+      "created_at": "2026-10-10T12:22:53Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Validate design invariants before indexing them**"
+    },
+    {
+      "id": 4237635295,
+      "user": {
+        "login": "moriya-fumio-thd",
+        "type": "User"
+      },
+      "in_reply_to_id": 4237594826,
+      "original_commit_id": "e6b30e9670569604666730bf1de042b51cf4f2b7",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T12:38:49Z",
+      "body": "not-applicable, by the reviewed design: T124 INV-2 (design review rounds 1 to 3 by claude-review-dot-a002, canonical receipt 4163ac9b) states \"Prose paths (home/dot_config/claude/rules/**, *.md) are not in the set; the gate's existing review requirement covers them\", for the reason the round-1 review gave: prose has no testable invariant, so a design review of a one-line rule edit would review nothing. The SKILL and the integration rules are procedure text that agents follow; the mechanical gates (validator, require-crit-review, stop gate, boundary check, all in the design tier) do not read them, so a prose edit cannot weaken a mechanical check. They stay in the review tier, which this PR keeps: every such edit still needs the gate and the Bot. Changing INV-2 would need a new design review and receipt; the design as reviewed stands."
+    },
+    {
+      "id": 4237672480,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T12:52:53Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Put the legacy allowlist in the design tier**"
+    },
+    {
+      "id": 4237672485,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T12:52:53Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Apply canonical-path checks before grandfathering**"
+    },
+    {
+      "id": 4237672490,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T12:52:53Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject superseded designs when authorizing implementations**"
+    },
+    {
+      "id": 4237672492,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T12:52:53Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind design allowed files to the review hash**"
+    },
+    {
+      "id": 4237672495,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T12:52:53Z",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Include the abandoned design's implementation scope**"
+    },
+    {
+      "id": 4237672496,
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "type": "Bot"
+      },
+      "in_reply_to_id": null,
+      "original_commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "commit_id": "52bb69fc0f2085e290f242e9145f74ba84f2a25c",
+      "created_at": "2026-10-10T12:52:53Z",
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Classify the sourced SSH agent helper as design-tier**"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "d680a607ab6c41efe46e43b90f8fe9f2a153f0b6"
+    },
+    {
+      "sha": "ce9d3dd24f83990c9052d7eb8eb1bb1598d1a2d2"
+    },
+    {
+      "sha": "f4f845fd2b04c3e5bd0a3befa66843b79c685798"
+    },
+    {
+      "sha": "5a17d633c39d9e49b9706444ef9c900d3ecc148e"
+    },
+    {
+      "sha": "0d6d5aedcbea4c4d2a877520eff9cd9b9eb95d86"
+    },
+    {
+      "sha": "918a91b8e3697835e4633a558a11e2a9c9ce73e7"
+    },
+    {
+      "sha": "2d2ae688ad1d11a98f9e2ed7c721d1e42c3e8dbe"
+    },
+    {
+      "sha": "4f9627ac316cacd879dfe08f0269f4205946dac0"
+    },
+    {
+      "sha": "ab0f81eb34f6aca5cc129487eefa8e0d5dca7162"
+    },
+    {
+      "sha": "a11e36176f7021df4160efb553a170bd680a5f30"
+    },
+    {
+      "sha": "e6b30e9670569604666730bf1de042b51cf4f2b7"
+    },
+    {
+      "sha": "52bb69fc0f2085e290f242e9145f74ba84f2a25c"
+    }
+  ]
+}

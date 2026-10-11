@@ -75,7 +75,7 @@ $ gh api --paginate repos/mryfmo/dotfiles/pulls/317/reviews --jq '.[0].submitted
 2026-10-11T02:37:13Z
 ```
 
-## 3. Each rule fails its test when its sentence is removed (`scratchpad/mutate-t128.sh` at `88150d33`: one sentence or bullet deleted at a time in a `git archive HEAD` copy, then the named test)
+## 3. Each rule fails its test when its sentence is removed (`scratchpad/mutate-t128.sh` at `77953979`: one sentence or bullet deleted at a time in a `git archive HEAD` copy, then the named test)
 
 ```
 == removed rule: paired-design-review (SKILL, diff lines: 1) -> test_design_review_runs_in_paired_rounds_with_a_cap
@@ -89,7 +89,7 @@ FAIL: test_design_review_runs_in_paired_rounds_with_a_cap (tests.unit.test_agmsg
 == removed rule: one-round-task-review (SKILL, diff lines: 1) -> test_task_file_review_is_one_round_with_a_fixed_stop_condition
 FAIL: test_task_file_review_is_one_round_with_a_fixed_stop_condition (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_task_file_review_is_one_round_with_a_fixe
 AssertionError: 'A task-file review is one round with a fixed stop condition' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and r
-FAILED (failures=1)
+FAIL: test_task_file_review_is_one_round_with_a_fixed_stop_condition (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_task_file_review_is_one_round_with_a_fixe
 == removed rule: boundary-pr (SKILL, diff lines: 1) -> test_a_boundary_pr_never_gates_a_dispatch
 FAIL: test_a_boundary_pr_never_gates_a_dispatch (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_a_boundary_pr_never_gates_a_dispatch)
 AssertionError: 'is never a prerequisite of a dispatch' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: tr
@@ -161,6 +161,14 @@ FAILED (failures=1)
 FAIL: test_code_review_rules_cover_orchestration_records_and_threat_tables (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_code_review_rules_cover_orchestrati
 AssertionError: 'report a `residual` row whose control is missing, a placeholder such as `none`, or does not mitigate it' not found in "\n\n- Files under `.orchestration/**` are th
 FAILED (failures=1)
+== removed rule: out-of-scope-validated (AGENTS, diff lines: 2) -> test_code_review_rules_cover_orchestration_records_and_threat_tables
+FAIL: test_code_review_rules_cover_orchestration_records_and_threat_tables (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_code_review_rules_cover_orchestrati
+AssertionError: 'an `out-of-scope` row whose owner is a placeholder or does not own the risk' not found in "\n\n- Files under `.orchestration/**` are the regime's records and task 
+FAILED (failures=1)
+== removed rule: task-review-stop-criteria (SKILL, diff lines: 2) -> test_task_file_review_is_one_round_with_a_fixed_stop_condition
+FAIL: test_task_file_review_is_one_round_with_a_fixed_stop_condition (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_task_file_review_is_one_round_with_a_fixe
+AssertionError: 'no contradiction with the design' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to 
+FAIL: test_task_file_review_is_one_round_with_a_fixed_stop_condition (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_task_file_review_is_one_round_with_a_fixe
 == restored: OK
 ```
 
@@ -336,6 +344,40 @@ All matched files use Prettier code style!
 rc=0
 $ uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3
 Ran 28 tests in 0.007s
+
+OK
+$ ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; echo "rc=$?"
+1 file already formatted
+rc=0
+```
+
+## 10. Revise round 1, Bot round 2 on `6635030f` (pushed 04:59:30Z; review 5481973749 at 05:03:05Z, so no `@codex review`)
+
+```
+poll 8 05:03:29Z head 6635030fa6c6077b52b35df772764ece10ed1a60 asked=no
+reviews: 5481973749	6635030fa6c6077b52b35df772764ece10ed1a60	2026-10-11T05:03:05Z	chatgpt-codex-connector[bot]
+comments: 4240334094	6635030fa6c6077b52b35df772764ece10ed1a60	AGENTS.md	chatgpt-codex-connector[bot]
+4240334098	6635030fa6c6077b52b35df772764ece10ed1a60	tests/unit/test_agmsg_orchestration_docs.py	chatgpt-codex-connector[bot]
+code-review-completed: | 📝 **Code Review** | ✅ **Completed** <relative-time datetime="2026-10-11T05:03:08.537337Z">2026-10-11T05:03:08.537337Z</relative-time> | `6635030` | New commits |
+```
+
+- 4240334094 (P1, AGENTS.md:78): an `out-of-scope` row with a placeholder owner or a wrong scope reason went unchallenged. Fixed in `77953979`: such a row is reported, as a placeholder `residual` row is. Test: `test_code_review_rules_cover_orchestration_records_and_threat_tables`.
+- 4240334098 (P2, the test file:233): the task-review test asserted only its first phrase. Fixed in `77953979`: each stop criterion is asserted. Test: `test_task_file_review_is_one_round_with_a_fixed_stop_condition`.
+
+Fix round 2 of the two A2 allows in this revise round; a third Bot round goes unfixed. T128 INV-6 count: Codex Bot P1 on two heads after the first RESULT (`ac3794f9`, `6635030f`), reported to the orchestrator by PONG at 05:04Z.
+
+Checks at `77953979`:
+
+```
+$ git log --oneline -1; git status --porcelain | wc -l
+77953979 docs(regime): out-of-scope rows validated like residual ones; task-review criteria tested
+       0
+$ prettier --check AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -2; echo "rc=${pipestatus[1]}"
+Checking formatting...
+All matched files use Prettier code style!
+rc=0
+$ uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3
+Ran 28 tests in 0.006s
 
 OK
 $ ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; echo "rc=$?"

@@ -66,3 +66,9 @@ One sandboxed command was refused by the permission gate: a previous-head check 
 ### Revise round 1, Bot round 1 (on `ac3794f9`)
 
 - 4240321113 (P1): `residual: none` passed the payload rule, and reviewers never re-raised a residual row. Fixed in `88150d33`: a residual row holds back a finding only when its named control mitigates the risk; a missing, placeholder or ineffective control is reported (`fixed:88150d33`). This is fix round 1 of 2 in this revise round, so T126 INV-6 (d) counts one head with a Bot P1 after the first RESULT.
+
+### Revise round 1, Bot round 2 (on `6635030f`)
+
+- 4240334094 (P1): an `out-of-scope` row with a placeholder or wrong owner is now reported, like a placeholder `residual` row (`fixed:77953979`).
+- 4240334098 (P2): the task-review test asserts each stop criterion (`fixed:77953979`).
+- **T128 INV-6 count reached:** Codex Bot P1 on two heads after the first RESULT (`ac3794f9`, `6635030f`). Under INV-6 the merge is refused until a reset record or a waiver exists. That is the orchestrator's S2 decision; I reported it by PONG at 05:04Z and continued under the revise note's A2 cap. This is fix round 2 of 2; a third Bot round goes unfixed into the RESULT.

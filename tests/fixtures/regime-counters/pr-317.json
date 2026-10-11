@@ -1,249 +1,34 @@
-{
-  "comments": [
-    {
-      "id": 4240003469,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "32fe9a36a6ca67670e54bbcb1c506ca391d9dd32",
-      "commit_id": "32fe9a36a6ca67670e54bbcb1c506ca391d9dd32",
-      "created_at": "2026-10-11T02:37:13Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Authenticate test completion outside the tested process**"
-    },
-    {
-      "id": 4240003472,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "32fe9a36a6ca67670e54bbcb1c506ca391d9dd32",
-      "commit_id": "4b4aa5a7a3ef60c335b23b3b881d95825bf98652",
-      "created_at": "2026-10-11T02:37:13Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Run the gate from a workflow the pull request cannot rewrite**"
-    },
-    {
-      "id": 4240003474,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "32fe9a36a6ca67670e54bbcb1c506ca391d9dd32",
-      "commit_id": "98f1d250424a16c59d7d9723520e50253da2482e",
-      "created_at": "2026-10-11T02:37:14Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject record separators in task metadata**"
-    },
-    {
-      "id": 4240011294,
-      "user": {
-        "login": "moriya-fumio-thd",
-        "type": "User"
-      },
-      "in_reply_to_id": 4240003472,
-      "original_commit_id": "32fe9a36a6ca67670e54bbcb1c506ca391d9dd32",
-      "commit_id": "4b4aa5a7a3ef60c335b23b3b881d95825bf98652",
-      "created_at": "2026-10-11T02:41:09Z",
-      "body": "not-applicable: this is the design's stated residual R8 (a pull_request workflow is PR-controlled). The accepted T128 design closes it in wave V1c (the main-pinned regime job refuses .github/workflows/** edits outside a design-tier task that lists the file) and by operator routing of the harness files and this job; this PR does not change that boundary. The disposition is recorded in the acceptance record of dotfiles-T128-v0-main-tests-a01. The other two findings are being fixed by the worker (threads 4240003469, 4240003474)."
-    },
-    {
-      "id": 4240035604,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "56ca6c6994a4c7199366a01c5ebc05942d01a01a",
-      "commit_id": "98f1d250424a16c59d7d9723520e50253da2482e",
-      "created_at": "2026-10-11T02:52:38Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject skipped contract tests**"
-    },
-    {
-      "id": 4240056946,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "de138f65e8289da6b3d847a659d432219dd4bac9",
-      "commit_id": "de138f65e8289da6b3d847a659d432219dd4bac9",
-      "created_at": "2026-10-11T03:03:00Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject skips in undeclared test runs**"
-    },
-    {
-      "id": 4240056951,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "de138f65e8289da6b3d847a659d432219dd4bac9",
-      "commit_id": "de138f65e8289da6b3d847a659d432219dd4bac9",
-      "created_at": "2026-10-11T03:03:00Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind exemptions to the actual changed script**"
-    },
-    {
-      "id": 4240056953,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "de138f65e8289da6b3d847a659d432219dd4bac9",
-      "commit_id": "4b4aa5a7a3ef60c335b23b3b881d95825bf98652",
-      "created_at": "2026-10-11T03:03:00Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Run the required job after dependency failures**"
-    },
-    {
-      "id": 4240071554,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "f6528bbafae9881213de72ad5378968fa81316f4",
-      "commit_id": "f6528bbafae9881213de72ad5378968fa81316f4",
-      "created_at": "2026-10-11T03:10:28Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Generate completion evidence outside the tested interpreter**"
-    },
-    {
-      "id": 4240071556,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "f6528bbafae9881213de72ad5378968fa81316f4",
-      "commit_id": "4b4aa5a7a3ef60c335b23b3b881d95825bf98652",
-      "created_at": "2026-10-11T03:10:28Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject undeclared scripts that have no main test module**"
-    },
-    {
-      "id": 4240100579,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "98f1d250424a16c59d7d9723520e50253da2482e",
-      "commit_id": "4b4aa5a7a3ef60c335b23b3b881d95825bf98652",
-      "created_at": "2026-10-11T03:24:15Z",
-      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Trigger the base harness for workflow-only edits**"
-    },
-    {
-      "id": 4240141360,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "2602f5750a3c06088c9673d4c8a12595a34d4183",
-      "commit_id": "4b4aa5a7a3ef60c335b23b3b881d95825bf98652",
-      "created_at": "2026-10-11T03:43:59Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Move the integrity check outside PR-controlled state**"
-    },
-    {
-      "id": 4240141362,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "2602f5750a3c06088c9673d4c8a12595a34d4183",
-      "commit_id": "4b4aa5a7a3ef60c335b23b3b881d95825bf98652",
-      "created_at": "2026-10-11T03:43:59Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Authenticate skipped tests without mutable test IDs**"
-    },
-    {
-      "id": 4240141364,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "2602f5750a3c06088c9673d4c8a12595a34d4183",
-      "commit_id": "2602f5750a3c06088c9673d4c8a12595a34d4183",
-      "created_at": "2026-10-11T03:43:59Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject script changes masquerading as contract-only waves**"
-    },
-    {
-      "id": 4240141366,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "2602f5750a3c06088c9673d4c8a12595a34d4183",
-      "commit_id": "2602f5750a3c06088c9673d4c8a12595a34d4183",
-      "created_at": "2026-10-11T03:43:59Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Use NUL-delimited changed paths**"
-    },
-    {
-      "id": 4240189651,
-      "user": {
-        "login": "chatgpt-codex-connector[bot]",
-        "type": "Bot"
-      },
-      "in_reply_to_id": null,
-      "original_commit_id": "e314c502595fadc7c5a9922978e45c5051b9c03a",
-      "commit_id": "4b4aa5a7a3ef60c335b23b3b881d95825bf98652",
-      "created_at": "2026-10-11T04:04:13Z",
-      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require an ordinary test for each undeclared script**"
-    }
-  ],
-  "commits": [
-    {
-      "sha": "efd8b66b45cd216a58b550990d7b69ace7ae4e5c"
-    },
-    {
-      "sha": "3e715ef5f841f243e54529f357783067cb8276b8"
-    },
-    {
-      "sha": "7a47b686867438c000e5c8c0524e6fabb9995237"
-    },
-    {
-      "sha": "9b8a62a23cb291169cd1ecf088bfe03f4af44c96"
-    },
-    {
-      "sha": "9e841365fe187be625d95eaaecb0103c4519fd4d"
-    },
-    {
-      "sha": "56d887dd6d225309c23f4362f4f5bcbcb453c662"
-    },
-    {
-      "sha": "adcf783b06d9081280991a3727f8a21c3c61ac85"
-    },
-    {
-      "sha": "c5b7802c18191cdf8d2901774fec535a662fc664"
-    },
-    {
-      "sha": "32fe9a36a6ca67670e54bbcb1c506ca391d9dd32"
-    },
-    {
-      "sha": "56ca6c6994a4c7199366a01c5ebc05942d01a01a"
-    },
-    {
-      "sha": "de138f65e8289da6b3d847a659d432219dd4bac9"
-    },
-    {
-      "sha": "f6528bbafae9881213de72ad5378968fa81316f4"
-    },
-    {
-      "sha": "98f1d250424a16c59d7d9723520e50253da2482e"
-    },
-    {
-      "sha": "2602f5750a3c06088c9673d4c8a12595a34d4183"
-    },
-    {
-      "sha": "e314c502595fadc7c5a9922978e45c5051b9c03a"
-    },
-    {
-      "sha": "f24ead0cb4dc5e2dabc0662b07e8ac4d8eec91ff"
-    },
-    {
-      "sha": "4b4aa5a7a3ef60c335b23b3b881d95825bf98652"
-    }
-  ]
-}
+{"comments": [
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"32fe9a36a6ca67670e54bbcb1c506ca391d9dd32","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Authenticate test completion outside the tested process**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"32fe9a36a6ca67670e54bbcb1c506ca391d9dd32","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Run the gate from a workflow the pull request cannot rewrite**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"32fe9a36a6ca67670e54bbcb1c506ca391d9dd32","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject record separators in task metadata**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"56ca6c6994a4c7199366a01c5ebc05942d01a01a","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject skipped contract tests**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"de138f65e8289da6b3d847a659d432219dd4bac9","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject skips in undeclared test runs**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"de138f65e8289da6b3d847a659d432219dd4bac9","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind exemptions to the actual changed script**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"de138f65e8289da6b3d847a659d432219dd4bac9","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Run the required job after dependency failures**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"f6528bbafae9881213de72ad5378968fa81316f4","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Generate completion evidence outside the tested interpreter**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"f6528bbafae9881213de72ad5378968fa81316f4","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject undeclared scripts that have no main test module**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"2602f5750a3c06088c9673d4c8a12595a34d4183","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Move the integrity check outside PR-controlled state**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"2602f5750a3c06088c9673d4c8a12595a34d4183","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Authenticate skipped tests without mutable test IDs**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"2602f5750a3c06088c9673d4c8a12595a34d4183","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject script changes masquerading as contract-only waves**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"2602f5750a3c06088c9673d4c8a12595a34d4183","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Use NUL-delimited changed paths**"},
+{"user":{"login":"chatgpt-codex-connector[bot]"},"in_reply_to_id":null,"original_commit_id":"e314c502595fadc7c5a9922978e45c5051b9c03a","body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require an ordinary test for each undeclared script**"}
+], "commits": [
+{"sha":"efd8b66b45cd216a58b550990d7b69ace7ae4e5c"},
+{"sha":"3e715ef5f841f243e54529f357783067cb8276b8"},
+{"sha":"7a47b686867438c000e5c8c0524e6fabb9995237"},
+{"sha":"9b8a62a23cb291169cd1ecf088bfe03f4af44c96"},
+{"sha":"9e841365fe187be625d95eaaecb0103c4519fd4d"},
+{"sha":"56d887dd6d225309c23f4362f4f5bcbcb453c662"},
+{"sha":"adcf783b06d9081280991a3727f8a21c3c61ac85"},
+{"sha":"c5b7802c18191cdf8d2901774fec535a662fc664"},
+{"sha":"32fe9a36a6ca67670e54bbcb1c506ca391d9dd32"},
+{"sha":"56ca6c6994a4c7199366a01c5ebc05942d01a01a"},
+{"sha":"de138f65e8289da6b3d847a659d432219dd4bac9"},
+{"sha":"f6528bbafae9881213de72ad5378968fa81316f4"},
+{"sha":"98f1d250424a16c59d7d9723520e50253da2482e"},
+{"sha":"2602f5750a3c06088c9673d4c8a12595a34d4183"},
+{"sha":"e314c502595fadc7c5a9922978e45c5051b9c03a"},
+{"sha":"f24ead0cb4dc5e2dabc0662b07e8ac4d8eec91ff"},
+{"sha":"4b4aa5a7a3ef60c335b23b3b881d95825bf98652"}
+]}

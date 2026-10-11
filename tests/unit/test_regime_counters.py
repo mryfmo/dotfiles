@@ -235,6 +235,24 @@ class RegimeCountersTest(unittest.TestCase):
         (self.home / "sqlite-rev").write_text("9\n")
         self.assertEqual("1", fields(self.run_counters("T1", "--history-only")[0])["tasks"])
 
+    def test_a_status_in_free_text_counts_nothing(self):
+        # Status and verdict are each body's first status= and verdict= token; later ones are notes.
+        design = "e" * 64
+        history = tsv(
+            ("orch", "AGMSG-TASK v1 task_id=T1"),
+            ("w", "AGMSG-PONG v1 task_id=T1 status=blocked note=asked status=question"),
+            ("orch", "AGMSG-ACCEPTANCE v1 task_id=T1 status=accepted note=not status=withdrawn"),
+            (
+                "rev",
+                f"AGMSG-RESULT v1 task_id=R status=ready_for_review verdict=revise note=was verdict=accept design_sha256={design}",
+            ),
+        )
+        lines = self.run_counters(
+            "T1", "--history-only", "--reset-hash", design, "--history-file", self.write("h.tsv", history)
+        )
+        self.assertEqual(("0", "0"), (fields(lines[0])["questions"], fields(lines[0])["withdrawn"]))
+        self.assertEqual(f"reset: design_sha256={design} accepted_by=none source=fixture", lines[-1])
+
     def test_every_result_counts_as_a_revise_whatever_its_status(self):
         lines = self.run_counters(
             "T1",

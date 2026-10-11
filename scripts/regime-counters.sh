@@ -5,11 +5,11 @@
 #   Plan 006 A3, the counting half of INV-6 (V3a wires it into the hook and the
 #   gate). History is the whole team history, read through agmsg's storage
 #   facade the way scripts/agent-stop-gate.sh read_history reads it; GitHub is
-#   `gh api --paginate` on this repository. A message belongs to the task named
-#   by its first `task_id=` token. Counts follow INV-6's sentence only:
-#   amendments = AGMSG-TASKs - 1; revises = AGMSG-RESULTs - 1, whatever their
-#   status; questions = `AGMSG-PONG ... status=question`; withdrawn =
-#   `AGMSG-ACCEPTANCE ... status=withdrawn`, informational, changing no count.
+#   `gh api --paginate` on this repository. A message's task, status and verdict
+#   are its first `task_id=`, `status=` and `verdict=` tokens (later ones are
+#   free text). Counts follow INV-6's sentence only: amendments = AGMSG-TASKs -
+#   1; revises = AGMSG-RESULTs - 1, whatever their status; questions = PONGs of
+#   status question; withdrawn = ACCEPTANCEs of status withdrawn, informational.
 #   Bot heads are the distinct `original_commit_id` of Codex Bot
 #   (`chatgpt-codex-connector[bot]`) review comments whose title line carries a
 #   P0 or P1 badge, counted only for commits after the first RESULT's `head=` in
@@ -106,15 +106,15 @@ if [[ ${list} == true ]]; then
     exit 0
 fi
 counts="$(jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" "${rows}"'[rows] as $all | [$all[] | select(.task == $t)] as $m
-  | def kind($k): [$m[] | select(.toks[0] == $k)]; def has($v): any(.toks[]; . == $v);
+  | def kind($k): [$m[] | select(.toks[0] == $k)];
   kind("AGMSG-TASK") as $tasks | kind("AGMSG-RESULT") as $results | ([$tasks[].from] | unique) as $authors
   | {tasks: [$tasks[].id], results: [$results[].id], authors: $authors,
-     questions: [kind("AGMSG-PONG")[] | select(has("status=question")) | .id],
-     withdrawn: [kind("AGMSG-ACCEPTANCE")[] | select(has("status=withdrawn")) | .id],
+     questions: [kind("AGMSG-PONG")[] | select(tok("status") == "question") | .id],
+     withdrawn: [kind("AGMSG-ACCEPTANCE")[] | select(tok("status") == "withdrawn") | .id],
      head: ($results[0] // null | if . then tok("head") else null end | if . and test("^[0-9a-f]{7,40}$") then . else null end),
      pr: (if $pr != "" then $pr else [$results[] | tok("pr") | select(.)][0] | if . == null or test("^[0-9]+$") then . else "invalid" end end),
      first: $tasks[0].at, last: $results[-1].at,
-     accepted_by: [$all[] | select($hash != "" and .toks[0] == "AGMSG-RESULT" and has("verdict=accept") and tok("design_sha256") == $hash)
+     accepted_by: [$all[] | select($hash != "" and .toks[0] == "AGMSG-RESULT" and tok("verdict") == "accept" and tok("design_sha256") == $hash)
        | .from | select(. as $f | any($authors[]; . == $f) | not)] | unique}' <<< "${history}")"
 
 github=null state=skipped

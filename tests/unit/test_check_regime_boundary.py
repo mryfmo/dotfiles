@@ -9,14 +9,18 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-# The redesign task file T1-redesign.md and the hash a reset record names for it.
-DESIGN_TEXT = "redesign\n"
+# The probe reads reset_of with `uv run --with pyyaml`; the fake HOME keeps the real uv cache.
+UV_CACHE = subprocess.run(["uv", "cache", "dir"], capture_output=True, text=True, check=True).stdout.strip()
+# The redesign task file T1-redesign.md (its reset_of names T1) and the hash a reset record names for it.
+DESIGN_TEXT = "---\nreset_of: [T1]\n---\nredesign\n"
 DESIGN = hashlib.sha256(DESIGN_TEXT.encode()).hexdigest()
+OTHER_TEXT = "---\nreset_of: [T9]\n---\nanother design\n"
 RESET = f"---\nformat: 2\nreset_of: T1\nredesign_task: T1-redesign\ndesign_sha256: {DESIGN}\n---\n"
 # Same fakes as tests/unit/test_regime_counters.py: the storage facade serves JSONL history and
 # refuses a --limit; gh serves $HOME/gh/<path after pulls/, / as _>.json through jq.
@@ -63,7 +67,9 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         self.env = {
             **os.environ,
             "HOME": str(self.home),
-            "PATH": os.pathsep.join([str(bin_dir), jq_dir, "/usr/bin", "/bin"]),
+            "PATH": os.pathsep.join([str(bin_dir), jq_dir, os.path.dirname(shutil.which("uv")), "/usr/bin", "/bin"]),
+            "UV_CACHE_DIR": UV_CACHE,
+            "UV_PYTHON": sys.executable,
         }
         self.main = self.temp / "dotfiles"
         (self.main / "scripts").mkdir(parents=True)
@@ -73,7 +79,7 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         (self.main / ".orchestration/acceptance").mkdir()
         (self.main / ".orchestration/tasks/T1.md").write_text("task\n")
         (self.main / ".orchestration/tasks/T1-redesign.md").write_text(DESIGN_TEXT)
-        (self.main / ".orchestration/tasks/T1-other.md").write_text("another design\n")
+        (self.main / ".orchestration/tasks/T1-other.md").write_text(OTHER_TEXT)
         git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "-C", str(self.main)]
         subprocess.run([*git, "init", "-q", "-b", "main"], check=True)
         subprocess.run([*git, "add", "."], check=True)
@@ -180,6 +186,25 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         ):
             self.record("T1-design-reset.md", text)
             self.assertEqual(reported, self.report(("reviewer", accept)), text)
+        # Nor does another accepted hash named for T1-redesign, whose reset_of names T1.
+        other = hashlib.sha256(OTHER_TEXT.encode()).hexdigest()
+        self.record("T1-design-reset.md", RESET.replace(DESIGN, other))
+        self.assertEqual(reported, self.report(("reviewer", accept.replace(DESIGN, other))))
+
+    def test_a_reset_record_naming_an_unrelated_accepted_design_anchors_nothing(self):
+        # T1-other is T9's redesign, accepted by a reviewer under its genuine hash.
+        def reset(text):
+            sha = hashlib.sha256(text.encode()).hexdigest()
+            (self.main / ".orchestration/tasks/T1-other.md").write_text(text)
+            self.record(
+                "T1-design-reset.md", f"---\nreset_of: T1\nredesign_task: T1-other\ndesign_sha256: {sha}\n---\n"
+            )
+            accept = f"AGMSG-RESULT v1 task_id=R status=ready_for_review verdict=accept design_sha256={sha}"
+            return self.report(("reviewer", accept))
+
+        self.assertEqual(["regime-boundary: T1 S2: revises 2 >= 2 source=live"], reset(OTHER_TEXT))
+        # The same design anchors once its reset_of (a block list here) names T1.
+        self.assertEqual([], reset("---\nreset_of:\n  - T9\n  - T1\n---\nanother design\n"))
 
     def test_a_waiver_line_silences_nothing(self):
         self.record("T1.md", "- **Decision:** ACCEPTED.\nDESIGN_RESET_WAIVED_BY=operator\n")

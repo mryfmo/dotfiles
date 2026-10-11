@@ -203,14 +203,35 @@ PY
 # the task's PR (the first `pr=` of its RESULTs) that GitHub shows merged, or
 # with a `pr=none` line when none of the task's RESULTs carries `pr=`; a
 # reset record `<id>-design-reset.md` only when its `design_sha256:` is the
-# sha256 of its `redesign_task:` task file and that design was accepted
-# (`AGMSG-RESULT ... verdict=accept design_sha256=<hash>`) by an identity other
-# than the task's TASK senders. No waiver silences anything before
+# sha256 of its `redesign_task:` task file, that file's `reset_of` names this
+# task, and that design was accepted (`AGMSG-RESULT ... verdict=accept
+# design_sha256=<hash>`, first `verdict=` token) by an identity other than the
+# task's TASK senders. No waiver silences anything before
 # scripts/regime-waive.sh (V3a): a `DESIGN_RESET_WAIVED_BY=` line in either
 # record is always reported as `waiver-unanchored`. A task PR closed
 # unmerged is reported without an anchored reset record. Skipped without the
 # counters script beside this one or a readable agmsg store.
 counters="${root}/scripts/regime-counters.sh"
+
+# @description Succeed when a task file's front matter lists a task under
+#   `reset_of`, read with PyYAML (no hand-written YAML parser). uv runs offline
+#   first (the cached wheel), then online only when uv itself fails (a cold
+#   cache); python prints yes or no, so any failure is a no.
+# @arg $1 path Redesign task file.
+# @arg $2 string Task id.
+reset_of_names() {
+    local script='import sys, yaml
+try:
+    text = open(sys.argv[1], encoding="utf-8").read()
+    data = yaml.safe_load(text.split("\n---\n", 1)[0][4:]) if text.startswith("---\n") else None
+except (OSError, UnicodeError, yaml.YAMLError):
+    data = None
+items = data.get("reset_of") if isinstance(data, dict) else None
+print("yes" if isinstance(items, list) and sys.argv[2] in items else "no")'
+    [[ "$(uv run --offline --no-project --quiet --with pyyaml python -c "${script}" "$1" "$2" < /dev/null 2> /dev/null ||
+        uv run --no-project --quiet --with pyyaml python -c "${script}" "$1" "$2" < /dev/null 2> /dev/null)" == yes ]]
+}
+
 if task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
     while read -r task _; do
         # Ids come from agent-written history and become paths: one plain file name only.
@@ -222,9 +243,11 @@ if task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
             hash="$(sed -n 's/^design_sha256: *\([0-9a-f]\{64\}\) *$/\1/p' "${reset}" | head -n 1)"
             redesign="$(sed -n 's/^redesign_task: *\([A-Za-z0-9][A-Za-z0-9._-]*\) *$/\1/p' "${reset}" | head -n 1)"
             design="${main}/.orchestration/tasks/${redesign}.md"
-            # The hash must be the named redesign task's own file: an accepted hash of another design anchors nothing.
+            # The hash must be the named redesign task's own file, and that file must
+            # name this task in reset_of: an unrelated accepted design anchors nothing.
             if [[ -n ${hash} && -n ${redesign} && -f ${design} ]] &&
-                [[ "$({ sha256sum "${design}" 2> /dev/null || shasum -a 256 "${design}"; } | cut -d ' ' -f 1)" == "${hash}" ]]; then
+                [[ "$({ sha256sum "${design}" 2> /dev/null || shasum -a 256 "${design}"; } | cut -d ' ' -f 1)" == "${hash}" ]] &&
+                reset_of_names "${design}" "${task}"; then
                 args+=(--reset-hash "${hash}")
             fi
         fi

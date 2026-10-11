@@ -1,5 +1,6 @@
 import importlib.util
 import io
+import json
 import shutil
 import subprocess
 import tempfile
@@ -131,6 +132,34 @@ class ContractMarkersTest(unittest.TestCase):
                     result = self.run_task(text)
                     self.assertNotEqual(0, result.returncode)
                     self.assertIn("main-tests: ", result.stderr)
+
+    def test_control_characters_in_task_metadata_are_rejected(self) -> None:
+        for front in (
+            'task_id: "x\\nexempt\\ttests/unit/test_foo.py"\nallowed_files: []\n',
+            'task_id: t\nallowed_files:\n  - "scripts/foo.sh\\texempt"\n',
+            'task_id: "t\\r"\nallowed_files: []\n',
+        ):
+            with self.subTest(front=front):
+                result = self.run_task(f"---\n{front}---\n")
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("main-tests: ", result.stderr)
+                self.assertNotIn("exempt\t", result.stdout)
+
+    def test_a_result_must_carry_the_nonce_and_the_counts(self) -> None:
+        good = {"nonce": "n1", "ran": 2, "failures": 0, "errors": 0}
+        cases = [
+            (good, 2, None),
+            (good, 0, None),
+            ({**good, "nonce": "n2"}, 2, "the result does not carry this run's nonce"),
+            ({**good, "ran": 1}, 2, "ran 1, expected 2"),
+            ({**good, "ran": 0}, 0, "ran 0, expected more than 0"),
+            ({**good, "failures": 1}, 2, "1 failures, 0 errors"),
+            ({**good, "errors": 1}, 2, "0 failures, 1 errors"),
+        ]
+        for data, expected, reason in cases:
+            with self.subTest(data=data, expected=expected):
+                self.assertEqual(reason, markers.check(self.write(json.dumps(data), "result.json"), "n1", expected))
+        self.assertEqual("no result file", markers.check(self.write("", "absent") + ".missing", "n1", 0))
 
     def test_scripts_filters_script_paths(self) -> None:
         paths = "scripts/a.sh\nhome/dot_local/bin/x\ninstall/y\nhome/.chezmoiscripts/z\nsetup.sh\nREADME.md\nhome/dot_zshrc\nsetup.sh.bak\n"

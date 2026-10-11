@@ -12,8 +12,8 @@
 #   declares, keep each declared module, and find a contract for each exempt
 #   one on the base. An implementation PR (a task id not ending in
 #   -contract-a01) must have removed the contract decorator from its own copy
-#   of each declared module. A unittest run counts only with its own summary
-#   (`Ran <n> tests`, then `OK`). The exit status combines every check.
+#   of each declared module. A unittest run counts only by the result file its
+#   runner writes with this run's nonce. The exit status combines every check.
 #   The `main-tests` job of .github/workflows/test.yaml runs the base's copy of
 #   this script and of lib/contract_markers.py, never the pull request's.
 # @arg $1 string Base ref, for example origin/main.
@@ -47,7 +47,7 @@ if [ -z "${scripts_changed}" ]; then
 fi
 
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/main-tests.XXXXXX")"
-trap 'rm -rf "${tmp}" "${tmp}.log"' EXIT
+trap 'rm -rf "${tmp}" "${tmp}.result"' EXIT
 # A complete tree, so each module's own-path ROOT lands on HEAD's files.
 git archive HEAD | tar -x -C "${tmp}"
 
@@ -119,22 +119,19 @@ while IFS= read -r module; do
     fi
 done <<< "${exempt}"
 
-# @description Run main's tests from the tree copy and require unittest's own summary, not just a
-#   zero exit: code the tests import can end the process early with status 0.
+# @description Run main's tests from the tree copy through lib/contract_markers.py's runner and count
+#   the run only by the result it writes with this run's nonce: output and exit status are the
+#   tested code's to forge. The nonce goes in on fd 3, never in argv or the environment.
 # @arg $1 int The expected test count; 0 accepts any count above zero.
-# @arg $@ string The unittest arguments.
+# @arg $@ string The unittest ids, after an optional -v.
 run_unittest() {
-    local expected="$1" ran
+    local expected="$1" nonce
     shift
+    nonce="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+    rm -f "${tmp}.result"
     # -P keeps the tree's root off sys.path; tests/unit comes only from PYTHONPATH.
-    PYTHONPATH=tests/unit uv run --no-config --no-project --python "${python}" python -P -m unittest "$@" 2>&1 |
-        tee "${tmp}.log" || return 1
-    ran="$(sed -n 's/^Ran \([0-9][0-9]*\) tests* in .*/\1/p' "${tmp}.log" | tail -n 1)"
-    if [ -z "${ran}" ] || [ "${ran}" -eq 0 ] || { [ "${expected}" -gt 0 ] && [ "${ran}" -ne "${expected}" ]; } ||
-        ! tail -n 1 "${tmp}.log" | grep -Eq '^OK( \(.*\))?$'; then
-        echo "main-tests: no complete unittest summary (ran ${ran:-nothing}; expected ${expected} tests, 0 meaning any)"
-        return 1
-    fi
+    PYTHONPATH=tests/unit uv run --no-config --no-project --python "${python}" python -P "${helper}" run "${tmp}.result" "$@" 3<<< "${nonce}" || return 1
+    markers result "${tmp}.result" "${nonce}" "${expected}"
 }
 
 cd "${tmp}"

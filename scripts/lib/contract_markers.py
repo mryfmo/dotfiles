@@ -6,11 +6,20 @@ task <task.md>       print the task id, its tier, its declared tests/unit module
 scripts              print the script paths among the paths read from stdin
 contracts <module>   print the unittest test-method ids that carry the contract decorator
 dormant <module>     exit 1 when any contract decorator remains
+run <result> [-v] <ids...>
+                     run the tests and write {nonce, ran, failures, errors} to <result>;
+                     the nonce arrives on fd 3, closed before any test module loads
+result <result> <nonce> <expected>
+                     exit 1 unless <result> carries the nonce, no failure or error, and
+                     <expected> tests run (0: any count above zero)
 """
 
 import ast
+import json
+import os
 import re
 import sys
+import unittest
 from pathlib import Path
 
 SCRIPT_PATH = re.compile(r"(scripts/|home/dot_local/bin/|install/|home/\.chezmoiscripts/|setup\.sh$)")
@@ -38,6 +47,10 @@ def task(path: str) -> list[str]:
     files = front.get("allowed_files")
     if not isinstance(files, list) or not all(isinstance(entry, str) for entry in files):
         raise SystemExit(f"main-tests: {path} has no allowed_files list")
+    # The output is tab- and line-delimited, so a value carrying either could forge a record.
+    for value in (front["task_id"], *files):
+        if re.search(r"[\t\n\r]", value):
+            raise SystemExit(f"main-tests: {path} has a tab or line break in {value!r}")
     # A missing or unknown stamp is design tier, the strictest.
     tier = front.get("tier") if front.get("tier") in ("docs", "review") else "design"
     modules = [entry for entry in files if MODULE_PATH.fullmatch(entry)]
@@ -98,6 +111,43 @@ def contracts(path: str) -> list[str]:
     return ids
 
 
+def run(result: str, ids: list[str]) -> None:
+    """Run main's tests in this process; only a result carrying the harness's nonce counts as a completed run."""
+    chunks = []
+    while chunk := os.read(3, 4096):
+        chunks.append(chunk)
+    os.close(3)  # before any test module loads
+    nonce = b"".join(chunks).decode().strip()
+    verbose = ids[:1] == ["-v"]
+    names = ids[1:] if verbose else ids
+    outcome = unittest.TextTestRunner(verbosity=2 if verbose else 1).run(
+        unittest.TestLoader().loadTestsFromNames(names)
+    )
+    failures = len(outcome.failures) + len(outcome.unexpectedSuccesses)
+    record = {"nonce": nonce, "ran": outcome.testsRun, "failures": failures, "errors": len(outcome.errors)}
+    Path(result).write_text(json.dumps(record))
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # os._exit: no atexit handler a test module registered may rewrite the result after this point.
+    os._exit(0 if outcome.wasSuccessful() else 1)
+
+
+def check(result: str, nonce: str, expected: int) -> str | None:
+    """The reason the run does not count, or None."""
+    try:
+        record = json.loads(Path(result).read_text())
+    except (OSError, ValueError):
+        return "no result file"
+    if not isinstance(record, dict) or record.get("nonce") != nonce:
+        return "the result does not carry this run's nonce"
+    ran = record.get("ran")
+    if type(ran) is not int or ran <= 0 or (expected and ran != expected):
+        return f"ran {ran}, expected {expected or 'more than 0'}"
+    if record.get("failures") != 0 or record.get("errors") != 0:
+        return f"{record.get('failures')} failures, {record.get('errors')} errors"
+    return None
+
+
 def main(argv: list[str]) -> int:
     match argv:
         case ["task", path]:
@@ -108,6 +158,12 @@ def main(argv: list[str]) -> int:
             print(*contracts(path), sep="\n")
         case ["dormant", path]:
             return 1 if marked(path)[1] else 0
+        case ["run", result, *ids]:
+            run(result, ids)
+        case ["result", result, nonce, expected]:
+            if reason := check(result, nonce, int(expected)):
+                print(f"main-tests: no complete unittest run ({reason})")
+                return 1
         case _:
             print(__doc__, file=sys.stderr)
             return 2

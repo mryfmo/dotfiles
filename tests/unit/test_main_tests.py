@@ -197,7 +197,30 @@ class MainTestsHarnessTest(unittest.TestCase):
         loads = "import runpy\nfrom pathlib import Path\n\nrunpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
         main = {**MAIN, "scripts/baz.py": "VALUE = 1\n", "tests/unit/test_baz.py": loads}
         result = self.harness({"scripts/baz.py": "import os\n\nos._exit(0)\n"}, main=main)
-        self.assertFails(result, "main-tests: no complete unittest summary")
+        self.assertFails(result, "main-tests: no complete unittest run (no result file)")
+
+    def test_a_forged_summary_without_the_runner_nonce_fails(self) -> None:
+        loads = "import runpy\nfrom pathlib import Path\n\nrunpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
+        main = {**MAIN, "scripts/baz.py": "VALUE = 1\n", "tests/unit/test_baz.py": loads}
+        summary = "import json\nimport os\nimport sys\n\nsys.stderr.write('Ran 3 tests in 0.010s\\n\\nOK\\n')\n"
+        write = "json.dump({'nonce': nonce, 'ran': 3, 'failures': 0, 'errors': 0}, open(sys.argv[2], 'w'))\n"
+        steal = "try:\n    nonce = os.read(3, 64).decode().strip()\nexcept OSError:\n    nonce = 'unreadable'\n"
+        for forger, reason in (
+            (summary, "no result file"),
+            (summary + "nonce = 'forged'\n" + write, "the result does not carry this run's nonce"),
+            (summary + steal + write, "the result does not carry this run's nonce"),
+        ):
+            with self.subTest(reason=reason, steals="os.read(3" in forger):
+                result = self.harness({"scripts/baz.py": forger + "os._exit(0)\n"}, main=main)
+                self.assertFails(result, f"main-tests: no complete unittest run ({reason})")
+        # An atexit hook that rewrites the genuine result (nonce and all) must never run: the runner leaves by os._exit.
+        rewrite = (
+            "import atexit\nimport json\nimport os\nimport sys\n\n\ndef forge():\n    record = json.load(open(sys.argv[2]))\n"
+            "    record.update(failures=0, errors=0)\n    json.dump(record, open(sys.argv[2], 'w'))\n    os._exit(0)\n\n\n"
+            "atexit.register(forge)\n"
+        )
+        result = self.harness({"scripts/baz.py": rewrite, "scripts/foo.sh": "changed contract\n"}, main=main)
+        self.assertFails(result, "FAIL: test_ordinary (test_foo.FooTest")
 
     def test_a_short_contract_summary_fails(self) -> None:
         # Two contracts selected; the PR's script prints a one-test summary and exits 0 at import.
@@ -211,7 +234,7 @@ class MainTestsHarnessTest(unittest.TestCase):
         forged = "import os\nimport sys\n\nsys.stderr.write('Ran 1 test in 0.001s\\n\\nOK\\n')\nos._exit(0)\n"
         files = ["scripts/qux.py", "tests/unit/test_qux.py"]
         pr = {"scripts/qux.py": forged, "tests/unit/test_qux.py": qux.replace("    @contract\n", ""), **task(files)}
-        self.assertFails(self.harness(pr, main=main), "main-tests: no complete unittest summary (ran 1; expected 2")
+        self.assertFails(self.harness(pr, main=main), "main-tests: no complete unittest run (no result file)")
 
     def test_a_declared_module_without_its_script_stays_undeclared(self) -> None:
         pr = {

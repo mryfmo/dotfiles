@@ -20,7 +20,9 @@
 #   workspaces and worker tabs in the managed workspace (only when `herdr`
 #   is reachable); and a bare-id orchestrator
 #   seat lock, through the one implementation in
-#   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`).
+#   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`); and
+#   each task over an INV-6 count (scripts/regime-counters.sh) without an
+#   anchored acceptance or reset record, or whose PR closed unmerged.
 #   Every probe is read-only, and a missing tool skips its check.
 # @option --report Print the same lines but always exit 0 (for validate-agent-assets).
 # @exitcode 0 If no violation was found, or with --report.
@@ -193,6 +195,109 @@ spec.loader.exec_module(module)
 print("\n".join(module.orchestrator_seat_lock_warnings(Path(sys.argv[2]))))
 PY
 )
+
+# INV-6 counts (plan 006 A3): each main-checkout task file whose id has an
+# AGMSG-TASK in history is counted live by scripts/regime-counters.sh, and a
+# reached threshold is reported unless an anchored record silences it. An
+# accepted acceptance record `<id>.md` silences only with a `pr=<n>` line naming
+# the task's PR (the first `pr=` of its RESULTs) that GitHub shows merged, or
+# with a `pr=none` line when none of the task's RESULTs carries `pr=` and the
+# task file's front matter is `format: 2` with `kind: review` or `kind: design`;
+# a reset record `<id>-design-reset.md` only when its `design_sha256:` is the
+# sha256 of its `redesign_task:` task file, that file's `reset_of` names this
+# task, and an identity other than the task's TASK senders accepted that design
+# in a RESULT of the record's `redesign_source:` task (`AGMSG-RESULT
+# task_id=<redesign_source> ... verdict=accept design_sha256=<hash>`). No waiver silences anything before
+# scripts/regime-waive.sh (V3a): a `DESIGN_RESET_WAIVED_BY=` line in either
+# record is always reported as `waiver-unanchored`. A task PR closed
+# unmerged is reported without an anchored reset record. Skipped without the
+# counters script beside this one or a readable agmsg store.
+counters="${root}/scripts/regime-counters.sh"
+
+# @description Answer one question about a task file's front matter, read with
+#   PyYAML (no hand-written YAML parser): `reset_of <id>` (its reset_of list
+#   names the task) or `pr_less` (`format: 2` and `kind` review or design). uv
+#   runs offline first (the cached wheel), then online only when uv itself fails
+#   (a cold cache); python prints yes or no, so any failure is a no.
+# @arg $1 path Task file.
+# @arg $2 string `reset_of` or `pr_less`.
+# @arg $3 string Task id, for `reset_of`.
+front_matter_says() {
+    local script='import sys, yaml
+try:
+    text = open(sys.argv[1], encoding="utf-8").read()
+    data = yaml.safe_load(text.split("\n---\n", 1)[0][4:]) if text.startswith("---\n") else None
+except (OSError, UnicodeError, yaml.YAMLError):
+    data = None
+data = data if isinstance(data, dict) else {}
+items = data.get("reset_of")
+if sys.argv[2] == "reset_of":
+    yes = isinstance(items, list) and sys.argv[3] in items
+else:
+    yes = data.get("format") == 2 and data.get("kind") in ("review", "design")
+print("yes" if yes else "no")'
+    [[ "$(uv run --offline --no-project --quiet --with pyyaml python -c "${script}" "$@" < /dev/null 2> /dev/null ||
+        uv run --no-project --quiet --with pyyaml python -c "${script}" "$@" < /dev/null 2> /dev/null)" == yes ]]
+}
+
+if task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
+    while read -r task _; do
+        # Ids come from agent-written history and become paths: one plain file name only.
+        [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && -f ${main}/.orchestration/tasks/${task}.md ]] || continue
+        accepted="${main}/.orchestration/acceptance/${task}.md"
+        reset="${main}/.orchestration/acceptance/${task}-design-reset.md"
+        args=("${task}")
+        if [[ -f ${reset} ]]; then
+            hash="$(sed -n 's/^design_sha256: *\([0-9a-f]\{64\}\) *$/\1/p' "${reset}" | head -n 1)"
+            redesign="$(sed -n 's/^redesign_task: *\([A-Za-z0-9][A-Za-z0-9._-]*\) *$/\1/p' "${reset}" | head -n 1)"
+            source_task="$(sed -n 's/^redesign_source: *\([A-Za-z0-9][A-Za-z0-9._-]*\) *$/\1/p' "${reset}" | head -n 1)"
+            design="${main}/.orchestration/tasks/${redesign}.md"
+            # The hash must be the named redesign task's own file, and that file must
+            # name this task in reset_of: an unrelated accepted design anchors nothing.
+            if [[ -n ${hash} && -n ${redesign} && -f ${design} ]] &&
+                [[ "$({ sha256sum "${design}" 2> /dev/null || shasum -a 256 "${design}"; } | cut -d ' ' -f 1)" == "${hash}" ]] &&
+                front_matter_says "${design}" reset_of "${task}"; then
+                args+=(--reset-hash "${hash}" --reset-source "${source_task}")
+            fi
+        fi
+        counts="$("${counters}" "${args[@]}" < /dev/null 2> /dev/null)" || continue
+        # The task's PR from its RESULTs: digits, `none` (no RESULT carries pr=) or `invalid`.
+        task_pr="$(sed -n 's/^detail: pr=\([^ ]*\) .*/\1/p' <<< "${counts}")"
+        pr=""
+        if [[ ${task_pr} =~ ^[0-9]+$ ]]; then
+            pr="${task_pr}"
+        fi
+        by="$(sed -n 's/^reset: .* accepted_by=\([^ ]*\) .*/\1/p' <<< "${counts}")"
+        state="" merged_at=""
+        if [[ -n ${pr} ]]; then
+            IFS=$'\t' read -r state merged_at < <(cd -- "${main}" && gh api "repos/{owner}/{repo}/pulls/${pr}" --jq '[.state, (.merged_at // "")] | @tsv' < /dev/null 2> /dev/null || true) || true
+        fi
+        record_pr=""
+        if [[ -f ${accepted} ]] && grep -Eiq '^(- )?\*\*decision:\*\* *accepted|^status: *accepted' "${accepted}"; then
+            record_pr="$(sed -nE 's/^(- )?pr=([0-9]+|none)([[:space:]].*)?$/\2/p' "${accepted}" | head -n 1)"
+        fi
+        reset_anchored=false silenced=false
+        if [[ -n ${by} && ${by} != none ]]; then
+            reset_anchored=true silenced=true
+        elif [[ -n ${pr} && -n ${merged_at} && ${record_pr} == "${pr}" ]]; then
+            silenced=true
+        elif [[ ${record_pr} == none && ${task_pr} == none ]] &&
+            front_matter_says "${main}/.orchestration/tasks/${task}.md" pr_less; then
+            silenced=true
+        fi
+        if [[ ${silenced} == false ]] && grep -q '^S2: ' <<< "${counts}"; then
+            while IFS= read -r line; do
+                violations+=("${task} ${line}")
+            done < <(grep '^S2: ' <<< "${counts}")
+        fi
+        if grep -qs 'DESIGN_RESET_WAIVED_BY=' "${accepted}" "${reset}"; then
+            violations+=("${task} waiver-unanchored")
+        fi
+        if [[ ${state} == closed && -z ${merged_at} && ${reset_anchored} == false ]]; then
+            violations+=("${task} PR #${pr} closed unmerged without an anchored reset record")
+        fi
+    done <<< "${task_ids}"
+fi
 
 for violation in ${violations[@]+"${violations[@]}"}; do
     printf 'regime-boundary: %s\n' "${violation}"

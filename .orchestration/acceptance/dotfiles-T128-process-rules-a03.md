@@ -1,0 +1,12 @@
+# Acceptance: dotfiles-T128-process-rules-a03 (second reset continuation of PR #318; plan 006 Phase A: A1, A2, A4)
+
+- **Decision:** pending (merge order: boundary PR #321, then PR #320, then this PR after `gh pr update-branch` and its final audit).
+- pr=318
+- **Worker:** `claude-standard-dot-a003`, `.claude/worktrees/worker-f`, branch `docs/regime-pattern`. a03 TASK 472 at 06:54:59Z (task file `867ea4ca…`, written by the review seat as the reset redesign of a02, anchored by RESULT 476), read 06:58:52Z; RESULT at 07:27:23Z on `b9a9da7d`: commits `798fa098` (Codex-seat push clause), `f4d45983` (a03 task.md), `c4300f47` (evidence), `7524e001` (Bot fix round 1: `gh pr ready` only while a draft), `b9a9da7d` (evidence); carried over from a02: items 1 to 5, the revise round's five checks (`108b43bd`, `052eea4c`), the three Bot P2s (`21c160c8`), the a02 amendment-1 copy (`e8d20aae`). CI 14 of 14, watcher joined. `bot_rounds=2`, one fix round; the final head drew no review (👍 07:19:56Z).
+- **Threads (replied and resolved by the orchestrator at 07:29Z, 1 kept open):** 4240566259 `fixed:f4d45983` (the a03 four-row threat table), 4240566263/66/68 `fixed:21c160c8`, 4240598179 `fixed:798fa098`, 4240646079 `fixed:7524e001`, 4240646082 `not-applicable` (a `closed` selector's existence is checked on the PR tree by V1's schema and by the task-file reviewer until then; the shape class the reset closed), 4240598178 `not-applicable` (ordering: PR #320 merges first, then this PR updates its base; the thread stays open until that has happened).
+- **Orchestrator review:** `…-a03-crit.json` and `…-a03-review-receipt.md` at `b9a9da7d`: approved subject to the merge order.
+- **Counters by hand (07:28Z, `history.sh --limit 1000` to a file, 494 rows):** a03: tasks=1 amendments=0 questions=0 results=1 revises=0; Bot P0/P1 heads after a03's first RESULT head `b9a9da7d`: 0. (a02 closed with tasks 2, amendments 1, questions 3, results 1; its revise ACCEPTANCEs 451 and 457 count as one round.) No threshold; no S1 class under a03.
+- **Three metrics for PR #318 so far (a01 + a02 + a03):** revision rounds 2 (a01 revise 1; a02 revise 1), resets 2, Bot rounds 3 + 3 + 2, one redesign RESULT per reset plus two anchor confirmations; wall TASK 419 at 04:16Z to the a03 RESULT at 07:27Z = 3 h 11 min (merge pending); cost `n/a` from the worker; seats: one standard worker, the review seat for 8 RESULTs, one Codex headless pair round, two audits so far.
+- **Exemption declared:** acceptance and evidence-sync bookkeeping; agmsg control plane.
+
+<!-- audit-input-boundary -->

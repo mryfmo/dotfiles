@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-process-rules-a03
 seat: claude-standard-dot-a003
-permission_gated_commands: 21
+permission_gated_commands: 25
 ---
 
 # Sandbox record: dotfiles-T128-process-rules-a03
@@ -30,7 +30,7 @@ permission_gated_commands: 21
 
 ## Revise round 1
 
-Calls #1–#13 ran for the first RESULT (main-checkout copy). The revise commit was made inside the sandbox with `git -c commit.gpgsign=false`; only the push leaves it. These eight are counted in advance from R3 on in this copy; the main-checkout copy states the final count.
+Calls #1–#13 ran for the first RESULT (main-checkout copy). The revise commit was made inside the sandbox with `git -c commit.gpgsign=false`; only the push leaves it. R3 to R6 ran for the revise head; R7 to R12 are counted in advance in this copy; the main-checkout copy states the final count.
 
 | # | Command | Step 4 case |
 |--:|---|---|
@@ -39,6 +39,10 @@ Calls #1–#13 ran for the first RESULT (main-checkout copy). The revise commit 
 | R3 | the authorized push (the revise commit) | `git push` |
 | R4 | `gh pr checks 318 … --watch` on the revise head (background, exit status joined) | `gh` |
 | R5 | Bot wait on the revise head, `scratchpad/bot-wait.sh` filtered by the Codex login, timed from the push | `gh` only |
-| R6 | final recheck of reviews, review comments and the connector summary right before the RESULT (`gh` only) | `gh` |
-| R7 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
-| R8 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a03 …` | `agmsg-dispatch` |
+| R6 | `gh api` threads 4243516879 and 4243516880 and review 5485303545 | `gh` |
+| R7 | the authorized push (Bot fix round 1 and this evidence) | `git push` |
+| R8 | `gh pr checks 318 … --watch` on the final head, started once a check is listed (background, exit status joined) | `gh` |
+| R9 | Bot wait on the final head, `scratchpad/bot-wait.sh` filtered by the Codex login | `gh` only |
+| R10 | final recheck of reviews, review comments and the connector summary right before the RESULT (`gh` only) | `gh` |
+| R11 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
+| R12 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a03 …` | `agmsg-dispatch` |

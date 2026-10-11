@@ -142,3 +142,35 @@ CompactionDB (main checkout, outside the sandbox through the permission gate):
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-process-rules-a03 revise round 1 …'
 fa0f25f1-360c-463e-90f6-df466c8299c4
 ```
+
+## 8. Bot fix round 1 of the revise at `114d5b91` (threads 4243516879, 4243516880)
+
+```
+$ git log --oneline -1; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; ruff check --config ruff.toml tests/unit/test_agmsg_orchestration_docs.py; prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -1
+114d5b91 docs(regime): count review-body findings beside the counter script; survive the no-checks race
+Ran 41 tests in 0.008s
+
+OK
+1 file already formatted
+All checks passed!
+All matched files use Prettier code style!
+$ grep -n "reviews" scripts/regime-counters.sh | head -3; sed -n 122,125p scripts/regime-counters.sh   # what the counter fetches
+    state=unknown
+    pr="$(jq -r '.pr // empty' <<< "${counts}")"
+    if [[ -n ${github_file} ]]; then
+        github="$(cat -- "${github_file}")" && state=ok
+```
+
+Removal proofs (`scratchpad/mutate-a03-r1b.sh`, the same harness with the two new sentences):
+
+```
+== removed rule: counters-review-bodies (SKILL, diff lines: 2) -> test_counters_add_review_body_findings
+FAIL: test_counters_add_review_body_findings (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_counters_add_review_body_findings)
+AssertionError: "The script reads inline review comments only, so the orchestrator also counts the P0/P1-badged Bot review bodies of `…/pulls/<n>/reviews`, grouped by `commit_id`, by hand and pastes that command and its output beside the script's, until the script reads review bodies too." not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reportin
+FAILED (failures=1)
+== removed rule: watcher-no-checks-race (SKILL, diff lines: 2) -> test_the_ci_watcher_survives_the_no_checks_race
+FAIL: test_the_ci_watcher_survives_the_no_checks_race (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_ci_watcher_survives_the_no_checks_race)
+AssertionError: 'Right after a push GitHub can report no checks yet, and the watcher then exits 1 with `no checks reported`: start it once a check is listed, and restart it on that message instead of reading it as a CI failure.' not found in ', wait for CI and the Codex Bot before sending RESULT.\n    - Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a 
+FAILED (failures=1)
+== restored: OK
+```

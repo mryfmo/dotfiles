@@ -75,7 +75,7 @@ $ gh api --paginate repos/mryfmo/dotfiles/pulls/317/reviews --jq '.[0].submitted
 2026-10-11T02:37:13Z
 ```
 
-## 3. Each rule fails its test when its sentence is removed (`scratchpad/mutate-t128.sh` at `962d268d`: one sentence or bullet deleted at a time in a `git archive HEAD` copy, then the named test)
+## 3. Each rule fails its test when its sentence is removed (`scratchpad/mutate-t128.sh` at `e115dbba`: one sentence or bullet deleted at a time in a `git archive HEAD` copy, then the named test)
 
 ```
 == removed rule: paired-design-review (SKILL, diff lines: 1) -> test_design_review_runs_in_paired_rounds_with_a_cap
@@ -124,8 +124,8 @@ AssertionError: "the PR's GitHub review comments" not found in '\n\n- Review eve
 FAILED (failures=1)
 == removed rule: open-label (SKILL, diff lines: 2) -> test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first
 FAIL: test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_bot_fix_rounds_are_capped_and_the_pr_is_ready_f
-AssertionError: 'listed as `open:<thread id>`, an escalated label' not found in ', wait for CI and the Codex Bot before sending RESULT.\n    - Mark the PR ready for review with `gh
-FAILED (failures=1)
+AssertionError: 'listed as `open:<thread id>`' not found in ', wait for CI and the Codex Bot before sending RESULT.\n    - Mark the PR ready for review with `gh pr ready <n>` befor
+FAIL: test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_bot_fix_rounds_are_capped_and_the_pr_is_ready_f
 == removed rule: check-selector (SKILL, diff lines: 2) -> test_a_revise_acceptance_names_the_previous_head_and_a_check
 FAIL: test_a_revise_acceptance_names_the_previous_head_and_a_check (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_a_revise_acceptance_names_the_previous_head
 AssertionError: 'one failing-test selector per finding (`check=tests/<file>::<name>`)' not found in '\n\nSend messages as single-line records so inbox/history output stays parseabl
@@ -137,6 +137,18 @@ FAILED (failures=1)
 == removed rule: missing-table (AGENTS, diff lines: 2) -> test_code_review_rules_cover_orchestration_records_and_threat_tables
 FAIL: test_code_review_rules_cover_orchestration_records_and_threat_tables (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_code_review_rules_cover_orchestrati
 AssertionError: 'report a missing table, a missing row' not found in "\n\n- Files under `.orchestration/**` are the regime's records and task specifications, which the regime's own
+FAILED (failures=1)
+== removed rule: review-body-open-id (SKILL, diff lines: 2) -> test_open_review_body_findings_have_an_identifier
+FAIL: test_open_review_body_findings_have_an_identifier (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_open_review_body_findings_have_an_identifier)
+AssertionError: '(`open:review-<review id>` for a review-body finding)' not found in ', wait for CI and the Codex Bot before sending RESULT.\n    - Mark the PR ready for review wit
+FAILED (failures=1)
+== removed rule: disposition-payload (SKILL, diff lines: 2) -> test_threat_table_dispositions_carry_a_payload
+FAIL: test_threat_table_dispositions_carry_a_payload (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_threat_table_dispositions_carry_a_payload)
+AssertionError: 'matching `^(closed|residual|out-of-scope): \\S`' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omi
+FAILED (failures=1)
+== removed rule: ci-watch-joined (SKILL, diff lines: 2) -> test_the_ci_watch_is_joined_before_the_result
+FAIL: test_the_ci_watch_is_joined_before_the_result (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_ci_watch_is_joined_before_the_result)
+AssertionError: "Wait for that watcher's exit status before the RESULT: a non-zero exit means no RESULT until CI passes." not found in ', wait for CI and the Codex Bot before sendi
 FAILED (failures=1)
 == removed rule: code-review-subsection (AGENTS, diff lines: 6) -> test_code_review_rules_cover_orchestration_records_and_threat_tables
 ERROR: test_code_review_rules_cover_orchestration_records_and_threat_tables (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_code_review_rules_cover_orchestrat
@@ -230,3 +242,69 @@ All four fixed in `962d268d`, fix round 2 of the two A2 allows; a third round is
 - 4240269218 (P1, SKILL.md:207): third-round threads listed as `open:<thread id>`. Test: `test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first`.
 - 4240269219 (P2, test file:275): the `check=` selector asserted. Test: `test_a_revise_acceptance_names_the_previous_head_and_a_check`.
 - 4240269222 (P1, SKILL.md:72): the manual counters read the PR's GitHub review comments. Test: `test_counters_run_before_every_acceptance_action`.
+## 7. The previous head `9a46c3c4`: CI and Bot round 3
+
+```
+$ gh pr checks 318 --repo mryfmo/dotfiles --watch --interval 30   (final state)
+validate	pass	1m36s
+CodeRabbit	pass	0
+GitGuardian Security Checks	pass	1s
+changes	pass	9s
+private-bootstrap (macos-14, client)	pass	12s
+private-bootstrap (ubuntu-24.04, client)	pass	12s
+private-bootstrap (ubuntu-24.04, server)	pass	11s
+public-bootstrap (macos-14, client)	pass	7m26s
+public-bootstrap (ubuntu-24.04, client)	pass	7m15s
+public-bootstrap (ubuntu-24.04, server)	pass	8m1s
+test (macos-14, client)	pass	5m36s
+test (ubuntu-24.04, client)	pass	7m43s
+test (ubuntu-24.04, server)	pass	5m1s
+test (ubuntu-26.04, client)	pass	8m33s
+[exited with code 0]
+$ (Bot wait, pushed 04:38:15Z)
+poll 12 04:44:22Z head 9a46c3c4c711e1bbe8507a32a25609c07266b024 asked=no
+reviews: 5481929671	9a46c3c4c711e1bbe8507a32a25609c07266b024	2026-10-11T04:44:10Z	chatgpt-codex-connector[bot]
+comments: 4240290382	9a46c3c4c711e1bbe8507a32a25609c07266b024	home/dot_agents/skills/agmsg-orchestration/SKILL.md	chatgpt-codex-connector[bot]
+4240290387	9a46c3c4c711e1bbe8507a32a25609c07266b024	home/dot_agents/skills/agmsg-orchestration/SKILL.md	chatgpt-codex-connector[bot]
+4240290391	9a46c3c4c711e1bbe8507a32a25609c07266b024	home/dot_agents/skills/agmsg-orchestration/SKILL.md	chatgpt-codex-connector[bot]
+code-review-completed: | 📝 **Code Review** | ✅ **Completed** <relative-time datetime="2026-10-11T04:44:13.443693Z">2026-10-11T04:44:13.443693Z</relative-time> | `9a46c3c` | New commits |
+```
+
+Bot round 3, all P2 and not fixed (A2): `open:4240290382` (a review-body finding has no `open:` id form), `open:4240290387` (the disposition pattern accepts an empty payload after the prefix), `open:4240290391` (nothing joins the background CI watch before the RESULT). In this task the CI watch was joined: the RESULT waited for `[exited with code 0]` above.
+
+## 8. Revise round 1 (ACCEPTANCE status=revise at 04:50:34Z, previous_head=9a46c3c4): the three round-3 threads fixed in `e115dbba`
+
+```
+$ git log --oneline -1; git status --porcelain | wc -l
+e115dbba docs(regime): open id for review-body findings, disposition payload, joined CI watch
+       0
+$ prettier --check AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -2; echo "rc=${pipestatus[1]}"
+Checking formatting...
+All matched files use Prettier code style!
+rc=0
+$ uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3
+Ran 28 tests in 0.008s
+
+OK
+$ ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; echo "rc=$?"
+1 file already formatted
+rc=0
+$ cat .orchestration/dotfiles-T128-process-rules-a01/revise.yaml
+round: 1
+previous_head: 9a46c3c4c711e1bbe8507a32a25609c07266b024
+checks:
+  - tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest::test_open_review_body_findings_have_an_identifier
+  - tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest::test_threat_table_dispositions_carry_a_payload
+  - tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest::test_the_ci_watch_is_joined_before_the_result
+```
+
+Each named check fails on the previous head (a `9a46c3c4` tree with this head's docs test) and passes on `e115dbba` (above):
+
+```
+$ (in a 9a46c3c4 tree with this head's docs test) uv run --no-project python -m unittest <the three revise.yaml checks>
+FAIL: test_open_review_body_findings_have_an_identifier (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_open_review_body_findings_have_an_
+FAIL: test_threat_table_dispositions_carry_a_payload (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_threat_table_dispositions_carry_a_pay
+FAIL: test_the_ci_watch_is_joined_before_the_result (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_ci_watch_is_joined_before_the_resu
+Ran 3 tests in 0.001s
+FAILED (failures=3)
+```

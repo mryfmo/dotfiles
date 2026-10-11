@@ -50,3 +50,15 @@ I told the orchestrator by PONG at 04:20Z and proceeded on that default.
 - A third Bot round, on the head that carries this report, is not fixed (A2). Its threads, CI on the final head and the round count are in the RESULT and in the main-checkout copy of this report.
 
 cost: n/a
+
+## Revise round 1 (ACCEPTANCE at 04:50:34Z, previous_head `9a46c3c4`)
+
+Round-0 final head `9a46c3c4`: CI 14 of 14 pass; Bot round 3 left three P2 threads, which A2 says are not fixed. The orchestrator ruled them real rule gaps and asked for root-cause fixes. All three are fixed in `e115dbba`, one sentence each, with the assertions under the selectors the ACCEPTANCE named. They are recorded in `.orchestration/dotfiles-T128-process-rules-a01/revise.yaml` (`round: 1`, `previous_head`, `checks`).
+
+- 4240290382: a review-body finding is listed as `open:review-<review id>` → `test_open_review_body_findings_have_an_identifier`.
+- 4240290387: dispositions match `^(closed|residual|out-of-scope): \S` → `test_threat_table_dispositions_carry_a_payload`. The bare-prefix token moved into this test from `test_a_trust_boundary_task_carries_a_threat_table`.
+- 4240290391: the worker waits for the background CI watcher's exit status before the RESULT; non-zero means no RESULT until CI passes → `test_the_ci_watch_is_joined_before_the_result`. `test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first` now splits its `open:` token, so the parenthetical can sit inside it.
+
+Each check fails on a `9a46c3c4` tree with this head's docs test and passes on `e115dbba`; all 21 sentence-removal proofs fail their test (validation §3, §8). A2's cap applies again in this round: at most two fix rounds, then the RESULT.
+
+One sandboxed command was refused by the permission gate: a previous-head check that started with `rm -rf "$P"`. I re-ran it in a fresh `mktemp -d` directory with no deletion. Sandbox record, deviations.

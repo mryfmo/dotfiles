@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-process-rules-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 26
+permission_gated_commands: 33
 ---
 
 # Sandbox record: dotfiles-T128-process-rules-a01
@@ -17,7 +17,7 @@ In-sandbox shims, stated as such: `prettier` and `ruff` ran from their mise inst
 
 ## Out-of-sandbox commands (permission gate, `dangerouslyDisableSandbox`)
 
-`permission_gated_commands` counts every Bash call that ran with `dangerouslyDisableSandbox`, one per call, prompt or not (`agmsg-dispatch` included; each Bot loop is one call). This copy was written before #20, so #20 to #26 are counted in advance; the RESULT names them.
+`permission_gated_commands` counts every Bash call that ran with `dangerouslyDisableSandbox`, one per call, prompt or not (`agmsg-dispatch` included; each Bot loop is one call). #1 to #26 cover round 0 up to its RESULT. This copy was written before #28, so #28 to #33 are counted in advance; the revise RESULT names them.
 
 |   # | Command                                                                                                                                                                               | Step 4 case                              |
 | --: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
@@ -47,5 +47,12 @@ In-sandbox shims, stated as such: `prettier` and `ruff` ran from their mise inst
 | 24 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
 | 25 | final recheck of reviews and review comments right before the RESULT (`gh api` only) | `gh` |
 | 26 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a01 … bot_rounds=3` | `agmsg-dispatch` |
+| 27 | `agmsg-dispatch … AGMSG-PONG … note=answer-received …` (reply to the 04:19Z answer PING) | `agmsg-dispatch` |
+| 28 | the authorized push (`e115dbba` and the evidence update) | `git push` |
+| 29 | `gh pr checks 318 … --watch` on the revise head (background, its exit status joined before the RESULT) | `gh` |
+| 30 | Bot wait on the revise head (background) | `gh` only |
+| 31 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout (overwrites round 0's copies) | artifact copy with the repository masker |
+| 32 | final recheck of reviews and review comments right before the RESULT (`gh api` only) | `gh` |
+| 33 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a01 … round=1` | `agmsg-dispatch` |
 
-Deviations: #8 bundled a `date` with `gh pr ready`, and #13 and #15 piped `gh` output through `grep`. No other local action ran outside the sandbox, and no refusal was reworked.
+Deviations: #8 bundled a `date` with `gh pr ready`, and #13 and #15 piped `gh` output through `grep`. No other local action ran outside the sandbox. In the revise round, one sandboxed command was refused by the permission gate: the previous-head check, which began with `rm -rf "$P"`. It was re-run in a fresh `mktemp -d` directory with no deletion, the same check, nothing removed.

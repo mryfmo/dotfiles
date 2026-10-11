@@ -226,6 +226,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "frozen at the hash the pair last accepted",
             # Thread 4243537279: a revision after the third pair would freeze an unreviewed hash.
             "any later change to a hashed key is a new pair (INV-7)",
+            # Thread 4243732324: a third pair that returns revise or reject has no accepted hash to freeze.
+            "on its revise or reject nothing is frozen",
             "becomes a residual list that is worker input",
             "never implementation detail",
         ):
@@ -331,6 +333,13 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             step,
         )
 
+    def test_question_pongs_are_in_the_contract(self) -> None:
+        # Thread 4243732330: INV-6 counts AGMSG-PONG status=question, so the contract must allow it.
+        contract = self.section(SKILL.read_text(), "## Message Contract v1")
+        for token in ("status=alive|blocked|question", "`question`: the worker holds and asks; INV-6 counts it."):
+            with self.subTest(token=token):
+                self.assertIn(token, contract)
+
     def test_a_revise_acceptance_names_the_previous_head_and_a_check(self) -> None:
         contract = self.section(SKILL.read_text(), "## Message Contract v1")
         self.assertIn("carries `previous_head=<the RESULT head being revised>`", contract)
@@ -359,6 +368,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         for token in (
             "in the pull-request review by the Codex Bot, review them for secrets and home-directory paths only",
             "The task-level audit keeps the full scope of the Audit section.",
+            # Thread 4243732326: the next bullet reviews the threat table inside task.md.
+            "except a trust-boundary task's `threat_table`",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, bullet)

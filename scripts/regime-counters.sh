@@ -48,17 +48,17 @@ threshold=2
 team=dotfiles-conformance task="" pr="" reset_hash="" history_only=false list=false history_file="" github_file=""
 while (($#)); do
     case $1 in
-        --history-only) history_only=true ;;
-        --list-tasks) list=true ;;
-        --team | --pr | --reset-hash | --history-file | --github-file)
-            (($# > 1)) || usage
-            name="${1#--}" && printf -v "${name//-/_}" '%s' "$2" && shift
-            ;;
-        -*) usage ;;
-        *)
-            [[ -z ${task} ]] || usage
-            task=$1
-            ;;
+    --history-only) history_only=true ;;
+    --list-tasks) list=true ;;
+    --team | --pr | --reset-hash | --history-file | --github-file)
+        (($# > 1)) || usage
+        name="${1#--}" && printf -v "${name//-/_}" '%s' "$2" && shift
+        ;;
+    -*) usage ;;
+    *)
+        [[ -z ${task} ]] || usage
+        task=$1
+        ;;
     esac
     shift
 done

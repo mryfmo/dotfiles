@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-ci-skip-orchestration-a02
 seat: claude-standard-dot-a003
-permission_gated_commands: 7
+permission_gated_commands: 13
 ---
 
 # Sandbox record: dotfiles-T128-ci-skip-orchestration-a02
@@ -19,3 +19,16 @@ permission_gated_commands: 7
 | 5 | final recheck of reviews, review comments and the connector summary right before the RESULT (`gh` only) | `gh` |
 | 6 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
 | 7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-ci-skip-orchestration-a02 …` | `agmsg-dispatch` |
+
+## Amendment 1
+
+Calls #1–#7 ran for the first RESULT (main-checkout copy). The task copy commit was made inside the sandbox; only the push leaves it. These six are counted in advance in this copy; the main-checkout copy states the final count.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| A1 | the authorized push (the Amendment 1 task copy and this evidence) | `git push` |
+| A2 | `gh pr checks 320 … --watch` on the pushed head (background, exit status joined) | `gh` |
+| A3 | Bot wait on the pushed head, `scratchpad/bot-wait.sh`, timed from the push | `gh` only |
+| A4 | final recheck of reviews, review comments and the connector summary right before the RESULT (`gh` only) | `gh` |
+| A5 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
+| A6 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-ci-skip-orchestration-a02 …` | `agmsg-dispatch` |

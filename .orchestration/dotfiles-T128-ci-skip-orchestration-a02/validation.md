@@ -187,3 +187,14 @@ The local failures are the sandbox's, as on a01 (test commits that inherit the g
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-ci-skip-orchestration-a02 …'
 c62781a9-a65b-4484-925c-383fddb9a114
 ```
+
+## 8. Amendment 1: the task copy
+
+```
+$ shasum -a 256 ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-ci-skip-orchestration-a02.md .orchestration/dotfiles-T128-ci-skip-orchestration-a02/task.md | cut -c1-64
+4de54fdec5db667e940365703ee5e16cd1d91f52794c79c75b48aad7eb0a8763
+4de54fdec5db667e940365703ee5e16cd1d91f52794c79c75b48aad7eb0a8763
+$ git diff --stat HEAD -- .orchestration/dotfiles-T128-ci-skip-orchestration-a02/task.md
+ .orchestration/dotfiles-T128-ci-skip-orchestration-a02/task.md | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+```

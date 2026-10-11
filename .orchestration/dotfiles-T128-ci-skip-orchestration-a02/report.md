@@ -38,3 +38,7 @@ The earlier proofs still fail against the new reader at `a35a751e`: 16 of 16 fro
 `memory add` printed `c62781a9-a65b-4484-925c-383fddb9a114` (validation §6).
 
 cost: n/a
+
+## Amendment 1 (TASK 09:41:42Z, sha256 `4de54fde…`)
+
+The boundary PR 321 merged at 09:40Z, so design `4520b8f0…` and this task id's `implementing_tasks` entry are on `main`; this is the TASK the worker acts on (INV-2), and the 07:35Z one is superseded. The task file changed only in `design_review.receipt` (round 18) and the design-on-main row of the threat table. The copy at `.orchestration/dotfiles-T128-ci-skip-orchestration-a02/task.md` is re-made byte-identical (validation §8). No content change; no `gh pr update-branch` here, as the orchestrator runs it after this RESULT.

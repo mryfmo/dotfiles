@@ -284,10 +284,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         self.assertNotIn("^(closed|residual|out-of-scope)", text)
         self.assertNotIn("`none`", text)
 
-    def test_manual_counts_read_the_whole_history(self) -> None:
-        # Thread 4240348412: history.sh prints 20 rows by default.
-        self.assertIn("with an explicit `--limit 1000`", self.invariants())
-
+    # Thread 4240348412 is closed by a05's counters bullet: the script reads the whole history (scripts/regime-counters.sh:85), no by-hand read remains.
     def test_open_third_round_threads_have_an_integration_outcome(self) -> None:
         # Thread 4240348414: an open: item needs a path through steps 10.1 and 10.5.
         playbook = self.section(SKILL.read_text(), "## Orchestrator Playbook")
@@ -304,11 +301,6 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         )
         # Thread 4240566268: the counts are evidence for the S1/S2 decision.
         self.assertIn("and pastes its output into the acceptance record", text)
-        # Until A3 lands the counts are taken by hand, so no acceptance waits for the script.
-        self.assertIn("until it is on `main`, the orchestrator counts the same things by hand", text)
-        self.assertIn("the PR's GitHub review comments and review bodies", text)
-        # Thread 4240382519: a Bot finding can live only in a review body.
-        self.assertIn("P0/P1-badged Bot review bodies grouped by `commit_id`", text)
 
     def test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first(self) -> None:
         step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
@@ -425,7 +417,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         # Audit of b7ae2d54: the S1/S2 decision and the three shape rules could each be removed unnoticed.
         text = self.invariants()
         for token in (
-            "S1 (the same finding class three times) and S2 (the INV-6 counts) are decided from that output.",
+            "S2 is decided from INV-6's counts",
             "a `closed` selector names a test present in the PR tree",
             "an `out-of-scope` owner is a task id in the design's `implementing_tasks`",
             "a `residual` payload is a sentence of at least 20 characters",
@@ -433,15 +425,18 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, text)
 
-    def test_counters_add_review_body_findings(self) -> None:
-        # Threads 4243516879 and 4243537278: review bodies feed S1 and the fix-round cap, never INV-6's head count.
-        text = self.invariants()
-        self.assertIn(
-            "The script reads inline review comments only, and that is INV-6's whole head count (`original_commit_id` on `review_comment` items); the orchestrator also lists the P0/P1-badged Bot review bodies of `…/pulls/<n>/reviews`, grouped by `commit_id`, by hand and pastes that command and its output beside the script's, for S1's finding classes and the worker's fix-round cap only, never as INV-6 heads.",
-            text,
-        )
-        self.assertNotIn("until the script reads review bodies too", text)
-        self.assertNotIn("which INV-6 and S1 count", text)
+    def test_counters_bullet_names_owners_not_sources(self) -> None:
+        # Plan 006 S1 on the counters bullet: it states its obligations by reference and names no source.
+        bullet = self.section(self.invariants(), "\n- Before every acceptance action", "\n- ")
+        for token in (
+            "for each component it prints as `unknown` the record pastes the command and output that read the source INV-6 names for that component",
+            "gives a class to every finding the PR-feedback sweep lists, whatever its disposition, and to every task-level audit finding",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, bullet)
+        for phrase in ("review bodies", "by hand", "gh api --paginate", "until it is on `main`"):
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, bullet)
 
     def test_the_ci_watcher_survives_the_no_checks_race(self) -> None:
         # Thread 4243516880: `gh pr checks --watch` exits 1 with "no checks reported" before the first check appears.

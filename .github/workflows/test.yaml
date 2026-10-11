@@ -79,8 +79,10 @@ jobs:
   main-tests:
     # main's tests/unit judge this change (T128 INV-12, scripts/main-tests.sh).
     # The harness is main's copy, never the PR's, so a change to it is judged
-    # by the copy already merged. No job-level `if`: it always reports.
+    # by the copy already merged. !cancelled(): it runs and reports even when
+    # `changes` fails, rather than being skipped.
     needs: changes
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
 
     steps:

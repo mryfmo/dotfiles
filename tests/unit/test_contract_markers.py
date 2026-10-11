@@ -76,13 +76,14 @@ class ContractMarkersTest(unittest.TestCase):
         self.assertEqual([], markers.contracts(path))
         self.assertEqual(1, markers.main(["dormant", path]))
 
-    def run_task(self, text: str) -> subprocess.CompletedProcess:
+    def run_task(self, text: str, changed: str = "") -> subprocess.CompletedProcess:
         # PyYAML comes from uv here, as in scripts/main-tests.sh; make unit-test does not provide it.
         command = ["uv", "run", "--no-project", "--quiet", "--with", "pyyaml", "python3", str(HELPER), "task"]
-        return subprocess.run([*command, self.write(text, "task.md")], capture_output=True, text=True, check=False)
+        path = self.write(text, "task.md")
+        return subprocess.run([*command, path], input=changed, capture_output=True, text=True, check=False)
 
-    def task(self, front: str) -> list[str]:
-        result = self.run_task(f"---\n{front}---\n\n# body\n")
+    def task(self, front: str, changed: str = "") -> list[str]:
+        result = self.run_task(f"---\n{front}---\n\n# body\n", changed)
         self.assertEqual(0, result.returncode, result.stderr)
         return result.stdout.splitlines()
 
@@ -99,6 +100,12 @@ class ContractMarkersTest(unittest.TestCase):
             "  - tests/unit/test_b.py\n  - scripts/c.txt\n  - tests/unit/test_c.py\n"
         )
         self.assertEqual(["exempt\ttests/unit/test_a.py"], [line for line in lines if line.startswith("exempt")])
+        # A changed script outside allowed_files that maps to the same module keeps it undeclared.
+        decoy = self.task(
+            "task_id: t\nallowed_files:\n  - scripts/x/a.sh\n  - tests/unit/test_a.py\n",
+            "scripts/a.sh\nscripts/x/a.sh\n",
+        )
+        self.assertEqual([], [line for line in decoy if line.startswith("exempt")])
 
     def test_a_missing_or_unknown_tier_is_design(self) -> None:
         for stamp in ("", "tier: Design\n", "tier: docs-ish\n"):
@@ -146,22 +153,25 @@ class ContractMarkersTest(unittest.TestCase):
                 self.assertNotIn("exempt\t", result.stdout)
 
     def test_a_result_must_carry_the_nonce_and_the_counts(self) -> None:
-        good = {"nonce": "n1", "ran": 2, "failures": 0, "errors": 0, "skipped": 0}
+        good = {"nonce": "n1", "ran": 2, "failures": 0, "errors": 0, "skipped": []}
         cases = [
-            (good, 2, None),
-            (good, 0, None),
-            ({**good, "nonce": "n2"}, 2, "the result does not carry this run's nonce"),
-            ({**good, "ran": 1}, 2, "ran 1, expected 2"),
-            ({**good, "ran": 0}, 0, "ran 0, expected more than 0"),
-            ({**good, "failures": 1}, 2, "1 failures, 0 errors"),
-            ({**good, "errors": 1}, 2, "0 failures, 1 errors"),
-            ({**good, "skipped": 1}, 2, "1 skipped"),
-            ({**good, "skipped": 1}, 0, None),
+            (good, 2, None, []),
+            (good, 0, None, []),
+            ({**good, "nonce": "n2"}, 2, "the result does not carry this run's nonce", []),
+            ({**good, "ran": 1}, 2, "ran 1, expected 2", []),
+            ({**good, "ran": 0}, 0, "ran 0, expected more than 0", []),
+            ({**good, "failures": 1}, 2, "1 failures, 0 errors", []),
+            ({**good, "errors": 1}, 2, "0 failures, 1 errors", []),
+            ({**good, "skipped": ["m.C.test_a"]}, 2, "1 skipped outside main's dormant contracts", []),
+            ({**good, "skipped": ["m.C.test_a"]}, 0, None, ["m.C.test_a"]),
+            ({**good, "skipped": ["m.C.test_b"]}, 0, "1 skipped outside main's dormant contracts", ["m.C.test_a"]),
+            ({**good, "skipped": 0}, 0, "skipped 0 is not a list of test ids", []),
         ]
-        for data, expected, reason in cases:
-            with self.subTest(data=data, expected=expected):
-                self.assertEqual(reason, markers.check(self.write(json.dumps(data), "result.json"), "n1", expected))
-        self.assertEqual("no result file", markers.check(self.write("", "absent") + ".missing", "n1", 0))
+        for data, expected, reason, allowed in cases:
+            with self.subTest(data=data, expected=expected, allowed=allowed):
+                path = self.write(json.dumps(data), "result.json")
+                self.assertEqual(reason, markers.check(path, "n1", expected, allowed))
+        self.assertEqual("no result file", markers.check(self.write("", "absent") + ".missing", "n1", 0, []))
 
     def test_scripts_filters_script_paths(self) -> None:
         paths = "scripts/a.sh\nhome/dot_local/bin/x\ninstall/y\nhome/.chezmoiscripts/z\nsetup.sh\nREADME.md\nhome/dot_zshrc\nsetup.sh.bak\n"

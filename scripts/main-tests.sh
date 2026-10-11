@@ -63,7 +63,7 @@ if [ "$(grep -c . <<< "${tasks}")" -gt 1 ]; then
     exit 1
 fi
 if [ -n "${tasks}" ]; then
-    parsed="$(markers task "${tmp}/${tasks}")"
+    parsed="$(markers task "${tmp}/${tasks}" <<< "${scripts_changed}")"
     while IFS=$'\t' read -r kind value module; do
         case "${kind}" in
         task_id) task_id="${value}" ;;
@@ -123,24 +123,29 @@ done <<< "${exempt}"
 #   the run only by the result it writes with this run's nonce: output and exit status are the
 #   tested code's to forge. The nonce goes in on fd 3, never in argv or the environment.
 # @arg $1 int The expected test count; 0 accepts any count above zero.
+# @arg $2 string The test ids allowed to skip, newline-separated (main's dormant contracts).
 # @arg $@ string The unittest ids, after an optional -v.
 run_unittest() {
-    local expected="$1" nonce
-    shift
+    local expected="$1" skips="$2" nonce
+    shift 2
     nonce="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
     rm -f "${tmp}.result"
     # -P keeps the tree's root off sys.path; tests/unit comes only from PYTHONPATH.
     PYTHONPATH=tests/unit uv run --no-config --no-project --python "${python}" python -P "${helper}" run "${tmp}.result" "$@" 3<<< "${nonce}" || return 1
-    markers result "${tmp}.result" "${nonce}" "${expected}"
+    markers result "${tmp}.result" "${nonce}" "${expected}" "${skips}"
 }
 
 cd "${tmp}"
 if [ "${#undeclared[@]}" -gt 0 ]; then
     echo "main-tests: undeclared mode, main's modules as they are: ${undeclared[*]}"
-    run_unittest 0 "${undeclared[@]}" || status=1
+    modules=()
+    for module in "${undeclared[@]}"; do modules+=("tests/unit/${module}.py"); done
+    # Only main's dormant contracts may skip here; any other skip could be the PR's code asking for one.
+    dormant="$(markers contracts "${modules[@]}")"
+    run_unittest 0 "${dormant}" "${undeclared[@]}" || status=1
 fi
 if [ "${#contract_ids[@]}" -gt 0 ]; then
     echo "main-tests: declared mode, main's contracts with REGIME_CONTRACT=1: ${contract_ids[*]}"
-    REGIME_CONTRACT=1 run_unittest "${#contract_ids[@]}" -v "${contract_ids[@]}" || status=1
+    REGIME_CONTRACT=1 run_unittest "${#contract_ids[@]}" "" -v "${contract_ids[@]}" || status=1
 fi
 exit "${status}"

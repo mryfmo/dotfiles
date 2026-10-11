@@ -233,7 +233,34 @@ class MainTestsHarnessTest(unittest.TestCase):
         skip = "import unittest\n\nraise unittest.SkipTest('not today')\n"
         files = ["scripts/qux.py", "tests/unit/test_qux.py"]
         pr = {"scripts/qux.py": skip, "tests/unit/test_qux.py": qux.replace("    @contract\n", ""), **task(files)}
-        self.assertFails(self.harness(pr, main=main), "main-tests: no complete unittest run (1 skipped)")
+        self.assertFails(
+            self.harness(pr, main=main),
+            "main-tests: no complete unittest run (1 skipped outside main's dormant contracts)",
+        )
+
+    def test_an_undeclared_skip_outside_mains_dormant_contracts_fails(self) -> None:
+        # main's test_foo keeps a dormant contract, which may skip; the PR's script skips an ordinary test.
+        calls = (
+            "import runpy\nimport unittest\nfrom pathlib import Path\n\n\nclass BazTest(unittest.TestCase):\n"
+            "    def test_baz(self):\n        runpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
+        )
+        main = {**MAIN, "scripts/baz.py": "VALUE = 1\n", "tests/unit/test_baz.py": calls}
+        skip = "import unittest\n\nraise unittest.SkipTest('not today')\n"
+        result = self.harness({"scripts/baz.py": skip}, main=main)
+        self.assertFails(result, "main-tests: no complete unittest run (1 skipped outside main's dormant contracts)")
+
+    def test_an_exemption_follows_the_changed_script(self) -> None:
+        # A decoy script with the same module name must not exempt the real, undeclared one.
+        files = ["scripts/other/foo.sh", "tests/unit/test_foo.py"]
+        pr = {"scripts/foo.sh": "changed contract\n", "scripts/other/foo.sh": "x\n", "tests/unit/test_foo.py": PROMOTED}
+        self.assertFails(self.harness({**pr, **task(files)}), "FAIL: test_ordinary (test_foo.FooTest")
+
+    def test_the_job_runs_when_changes_fails(self) -> None:
+        text = WORKFLOW.read_text()
+        job = text[text.index("\n  main-tests:\n") :]
+        job = job[: job.index("\n    steps:\n")]
+        self.assertIn("\n    needs: changes\n", job)
+        self.assertIn("\n    if: ${{ !cancelled() }}\n", job)
 
     def test_a_short_contract_summary_fails(self) -> None:
         # Two contracts selected; the PR's script prints a one-test summary and exits 0 at import.

@@ -1,17 +1,20 @@
 """Task-file and contract-decorator queries for scripts/main-tests.sh (T128 INV-12).
 
 task <task.md>       print the task id, its tier, its declared tests/unit modules,
-                     the declared modules whose script is declared too (exempt),
-                     and each declared design-tier script without its module
+                     the declared modules whose script is declared too and whose
+                     changed scripts (read from stdin) all are (exempt), and each
+                     declared design-tier script without its module
 scripts              print the script paths among the paths read from stdin
-contracts <module>   print the unittest test-method ids that carry the contract decorator
+contracts <module>...
+                     print the unittest test-method ids that carry the contract decorator
 dormant <module>     exit 1 when any contract decorator remains
 run <result> [-v] <ids...>
-                     run the tests and write {nonce, ran, failures, errors, skipped} to <result>;
+                     run the tests and write {nonce, ran, failures, errors, skipped ids} to <result>;
                      the nonce arrives on fd 3, closed before any test module loads
-result <result> <nonce> <expected>
-                     exit 1 unless <result> carries the nonce, no failure or error, and
-                     <expected> tests run with none skipped (0: any count above zero, skips allowed)
+result <result> <nonce> <expected> [<allowed skips>]
+                     exit 1 unless <result> carries the nonce, no failure or error,
+                     <expected> tests run (0: any count above zero), and no skip outside
+                     the newline-separated <allowed skips>
 """
 
 import ast
@@ -55,8 +58,10 @@ def task(path: str) -> list[str]:
     tier = front.get("tier") if front.get("tier") in ("docs", "review") else "design"
     modules = [entry for entry in files if MODULE_PATH.fullmatch(entry)]
     scripts = [entry for entry in files if SCRIPT_PATH.match(entry) and not entry.endswith(DATA_SUFFIXES)]
-    # Contract-only selection is keyed on the declared script; a module declared alone still runs as it is.
-    exempt = [module for module in modules if module in map(module_for, scripts)]
+    # Contract-only selection is keyed on the declared script; a module declared alone still runs as it is,
+    # and so does one that any undeclared changed script maps to (a declared decoy of the same name).
+    blocked = {module_for(changed) for changed in sys.stdin.read().splitlines() if changed and changed not in files}
+    exempt = [module for module in modules if module in map(module_for, scripts) and module not in blocked]
     lines = [f"task_id\t{front['task_id']}", f"tier\t{tier}", *(f"module\t{module}" for module in modules)]
     lines += [f"exempt\t{module}" for module in exempt]
     if tier == "design":
@@ -129,7 +134,7 @@ def run(result: str, ids: list[str]) -> None:
         "ran": outcome.testsRun,
         "failures": failures,
         "errors": len(outcome.errors),
-        "skipped": len(outcome.skipped),
+        "skipped": [test.id() for test, _ in outcome.skipped],
     }
     Path(result).write_text(json.dumps(record))
     sys.stdout.flush()
@@ -138,7 +143,7 @@ def run(result: str, ids: list[str]) -> None:
     os._exit(0 if outcome.wasSuccessful() else 1)
 
 
-def check(result: str, nonce: str, expected: int) -> str | None:
+def check(result: str, nonce: str, expected: int, allowed: list[str]) -> str | None:
     """The reason the run does not count, or None."""
     try:
         record = json.loads(Path(result).read_text())
@@ -151,9 +156,12 @@ def check(result: str, nonce: str, expected: int) -> str | None:
         return f"ran {ran}, expected {expected or 'more than 0'}"
     if record.get("failures") != 0 or record.get("errors") != 0:
         return f"{record.get('failures')} failures, {record.get('errors')} errors"
-    # A contract the PR's code skips never asserted anything; main's ordinary tests skip legitimately when a tool is absent.
-    if expected and record.get("skipped") != 0:
-        return f"{record.get('skipped')} skipped"
+    # A test the PR's code skips never asserted anything; only main's dormant contracts may skip.
+    skipped = record.get("skipped")
+    if not isinstance(skipped, list):
+        return f"skipped {skipped} is not a list of test ids"
+    if outside := [test for test in skipped if test not in allowed]:
+        return f"{len(outside)} skipped outside main's dormant contracts"
     return None
 
 
@@ -163,14 +171,14 @@ def main(argv: list[str]) -> int:
             print(*task(path), sep="\n")
         case ["scripts"]:
             print(*(line for line in sys.stdin.read().splitlines() if SCRIPT_PATH.match(line)), sep="\n")
-        case ["contracts", path]:
-            print(*contracts(path), sep="\n")
+        case ["contracts", *paths]:
+            print(*(test for path in paths for test in contracts(path)), sep="\n")
         case ["dormant", path]:
             return 1 if marked(path)[1] else 0
         case ["run", result, *ids]:
             run(result, ids)
-        case ["result", result, nonce, expected]:
-            if reason := check(result, nonce, int(expected)):
+        case ["result", result, nonce, expected, *allowed]:
+            if reason := check(result, nonce, int(expected), "\n".join(allowed).split()):
                 print(f"main-tests: no complete unittest run ({reason})")
                 return 1
         case _:

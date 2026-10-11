@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T92-stop-gate-sandbox-placeholders-a01
 
 - **Decision:** ACCEPTED after two revise rounds. PR #248 squash-merged to `main` as `f2b5c115`; final head `3371cc818276df49ceeae78c17f3f16d7661375e` (substantive commits cbbd26cd, 776cbfec, 5d4928fb, 68d8e142, bbd3d3fb, adca1e6b, 153a647d, 8535b3f3, a8a87bd9; update-branch merges onto 0ea5948b and 65915b93). Merged without `--delete-branch`; worker-e holds `fix/stop-gate-sandbox-placeholders`.
+- pr=248
 - **Worker:** `claude-standard-dot-a007` (worker-e). task_rev chain matched. Urgent follow-up to T65, dispatched the moment the live gate blocked the orchestrator's Stop.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** T65 follow-up (the gate must not block on Claude Code sandbox placeholders), outside the numbered phases.

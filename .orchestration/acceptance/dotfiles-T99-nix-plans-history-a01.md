@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T99-nix-plans-history-a01
 
 - **Decision:** ACCEPTED. PR #277 squash-merged to `main` as `64167825`; head `43eeb915`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-05 06:47Z).
+- pr=277
 - **Worker:** `codex-security-dot-a007` (worker-e, wT:p8). task_rev verified at dispatch (06:10Z); one commit, no revise round.
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping (seven artifact files copied from worker-e into the main checkout).
 - **Plan reference:** follow-up to T78/T83 (Nix plans kept in place during T83 because `tests/unit/test_aws_cli_acquisition.py` pins them by path).

@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T64-codex-worker-never-network-a01
 
 - **Decision:** ACCEPTED. PR #236 squash-merged to `main` as `a575b3cc` (final head `d950ac69ac77b7478dc506272889800695390eff`, base `c6de5156`). Merged without `--delete-branch` while worker-c holds `chore/codex-worker-never-network`.
+- pr=236
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `41d4fdf3…` matched. Parallel wave 1 with T65 (a007) and T70 (a006).
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** Phase 1, dotfiles-T64 (principle 1, Codex worker seat: never + in-sandbox network).

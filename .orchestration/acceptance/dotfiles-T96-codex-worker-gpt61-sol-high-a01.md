@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T96-codex-worker-gpt61-sol-high-a01
 
 - **Decision:** ACCEPTED. PR #259 squash-merged to `main` as `f6320f37`; head `3a060118500090ca7ddd42ade85446dcf1a42ed8`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, two dispositions below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 15:52Z).
+- pr=259
 - **Worker:** `claude-standard-dot-a006` (worker-d, wY:p2). task_rev matched at dispatch and after the two PONG-decision appends.
 - **Exemption declared:** acceptance and final integration.
 - **Plan reference:** operator directive 2026-10-04 (「指示役fable-5.1 high 監査役gpt-6 astra high 作業役 gpt-6.1 sol high/opus-5.5 high」), outside the numbered phases; routed to a Claude seat because model profiles are not an execution-boundary source.

@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T72-bootstrap-ci-pins-a01
 
 - **Decision:** ACCEPTED. PR #256 squash-merged to `main` as `2ad504e3`; final head `d5856e26fe3b2ae05dd86047550cae048cc634a9`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, six dispositions below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 13:45Z).
+- pr=256
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `sha256:6c432d04…688c` matched (the worker hashed it from the boundary branch 48a83e6c; the same bytes are on `main` since #255).
 - **Exemption declared:** acceptance and final integration (sweep, evidence, gate, merge, ACCEPTANCE).
 - **Plan reference:** Phase 3, dotfiles-T72 (principle 3: one pin location). Depends on T71 (merged 65915b93).

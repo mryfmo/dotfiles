@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T90b-ruleset-sole-merger-a01
 
 - **Decision:** ACCEPTED. PR #265 squash-merged to `main` as `b13132d0`; head `5db320019d4c63f31eed9bfc1cea88ddade0a7cb`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 19:03Z).
+- pr=265
 - **Worker:** `codex-security-dot-a007` (worker-e, wT:p8, `security` profile). task_rev verified at dispatch and after each of the four PONG-decision appends.
 - **Exemption declared:** acceptance and final integration; evidence sync (seven worker artifacts copied from worker-e).
 - **Plan reference:** follow-up from the T90 audit (P1/P2 on 507e9c15): the mechanical "only the orchestrator merges" guarantee and the boundary-PR path.

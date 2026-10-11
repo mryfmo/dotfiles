@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T88-parallel-execution-rule-a01
 
 - **Decision:** ACCEPTED after six revise rounds and four PONG decisions. PR #243 (`docs/parallel-execution-rule`, worker-d) squash-merged to `main` as `febd0cb7`; final head `62845ab9be1ae25469e06067410db636ee8ba80d`; substantive commits e50150df, e68eb6a7, c544c79f, 8978517d, c5706e2e, d609c768, 0aed931c, 0407fb07, d0f03418, 99f84926, 0189cfb3, fb4c9a9a, 62845ab9; base `57885db1`, update-branch merges through main `f2b5c115`. Merged without `--delete-branch`; worker-d holds the branch.
+- pr=243
 - **Worker:** `claude-standard-dot-a006` (worker-d). task_rev chain from `41cf14c6…` through round 6 matched. Paused for the T66 revise round and resumed; T68 ran on the same seat between rounds. Parallel wave with T75/T91/T74/T71/T94/T93/T95 (a005) and T65/T92 (a007).
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** 並列実行の規定 and the Claude seat Self-Modification constraint (operator 2026-10-04: 「今回のみではなく dotfiles の作業のやりかたとして規定化する」).

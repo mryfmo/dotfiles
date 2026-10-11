@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T66-permgate-dead-lanes-a01
 
 - **Decision:** ACCEPTED after one revise round. PR #240 squash-merged to `main` as `a5c30b6d` (final head `a31dcf868d06103564d9ff643dc928e20f8c62b2`; substantive commits 8ae3fdc9, a93fcb94, a31dcf86; base `523fda06`, update-branch merges onto `3a0816e6`, `40d9eb6c`, `57885db1`). Merged without `--delete-branch`; worker-d holds `chore/permgate-dead-lanes`.
+- pr=240
 - **Worker:** `claude-standard-dot-a006` (worker-d). task_rev `ee8185bc…` → `0b77e4e6…` (PONG decision 1) → `b7fa55fe…` (revise round 1); all matched. Parallel wave with T89/T73/T67 (a005) and T65 (a007).
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** Phase 1, dotfiles-T66 (principles 1 and 9: permgate deterministic-only).

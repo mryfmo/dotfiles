@@ -4,7 +4,7 @@ task_id: dotfiles-T128-v1b-pr-caps-a01
 kind: code
 security: true
 design_review:
-  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13.md
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round15.md
   design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
 allowed_files:
   - scripts/regime-check.sh
@@ -13,7 +13,7 @@ allowed_files:
   - tests/unit/test_regime_check.py
   - home/dot_agents/skills/agmsg-orchestration/SKILL.md
 invariants:
-  INV-2: "a PR is mergeable only within the caps the CI regime job enforces from main's workflow (at most 15 changed files outside .orchestration/, 500 added lines outside tests/, .orchestration/ and the data list scripts/legacy-task-ids.txt, and 1000 added lines under tests/), and its task.md invariants equal the design's as a set of ids and byte-for-byte as sentences (the design read from main, never from the PR; a task id ending in -contract-a01 is compared with its implementing task's entry); the design file must be on main (through a boundary PR) before the implementing TASK is dispatched and the regime job fails closed when the design named by task.md is absent from main; exceeding a cap is a split, never a finding to disposition (the cap changes the unit of work: T116 +529 and T118 +881 would have been split)"
+  INV-2: "a PR is mergeable only within the caps the CI regime job enforces from main's workflow (at most 15 changed files outside .orchestration/, 500 added lines outside tests/, .orchestration/ and the data list scripts/legacy-task-ids.txt, and 1000 added lines under tests/), and its task.md invariants equal the design's as a set of ids and byte-for-byte as sentences (the design read from main, never from the PR; a task id ending in -contract-a01 is compared with its implementing task's entry); the design file must be on main (through a boundary PR) before the implementing TASK is dispatched and the regime job fails closed when the design named by task.md is absent from main; an .orchestration-only PR runs no bootstrap or test matrix and every required check context still reports success (each required workflow decides inside its jobs, as test.yaml's changes job does), so a boundary PR merges in minutes; exceeding a cap is a split, never a finding to disposition (the cap changes the unit of work: T116 +529 and T118 +881 would have been split)"
 premises:
   - claim: the cap is computable from git alone on the base-branch checkout with the PR head fetched as data
     command: "git diff --numstat origin/main...origin/feat/task-validator | awk '$3 !~ /^(tests\\/|\\.orchestration\\/)/ {a+=$1} END {print a}'"

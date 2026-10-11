@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T89-add-worker-same-workspace-a01
 
 - **Decision:** ACCEPTED. PR #239 squash-merged to `main` as `3a0816e6` (final head `672f720e8238134000b205181830af445b82f982`; substantive commits 55d7e77c, 37cf5e47, 958468ba; base `a575b3cc`, update-branch onto `523fda06`). Merged without `--delete-branch`; worker-c holds `feat/add-worker-same-workspace`.
+- pr=239
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `ba6a86a4…` → `1cbabe95…` (PONG decision 1: q1=A own workspace without a pair; q2=a tab per worker inside the pair workspace); both matched.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Operator instruction carried:** 「並列化は同じ spaces 内で行うべき」 (2026-10-04).

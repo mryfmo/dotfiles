@@ -1,6 +1,7 @@
 # Acceptance: dot-main-push-guard-revert-T60-a01
 
 - **Decision:** ACCEPTED after one revise round. PR #231 squash-merged to `main` as `f8e22ba3` (final head `65f54c4629a500a6f1a8a0ba94d2992e3c055b1c`, base `0a812d30`). Merged without `--delete-branch` while worker-c holds `chore/revert-main-push-guard`.
+- pr=231
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `5ce094ad…` (initial), `36500453…` (revise round 1); both matched.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Precondition:** the operator applied the GitHub ruleset "main integration gate" on 2026-10-03 (verified: `deletion`, `non_fast_forward`, `pull_request` with thread resolution, `required_status_checks` with the seven contexts, strict); repository merge settings squash-only with auto-merge, `delete_branch_on_merge` off.

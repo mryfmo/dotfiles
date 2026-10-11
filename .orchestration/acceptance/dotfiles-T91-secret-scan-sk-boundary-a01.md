@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T91-secret-scan-sk-boundary-a01
 
 - **Decision:** ACCEPTED after three revise rounds. PR #245 squash-merged to `main` as `312fef3f` (final head `1af78d7900ef3c42af182bfcfb6ac7bd3371a9b8`; substantive commits 35d102b7, 0bdf99f7, 5fa6f090, 9544155f, 185edb2b, ffddc8a7, 2e26ca08; base 57885db1, update-branch merges onto a5c30b6d, 138e6a72, 8922f13b, 06875e4e). Merged without `--delete-branch`; worker-c holds `fix/secret-scan-sk-boundary`.
+- pr=245
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev chain (dispatch `9ac39529…`, revise 1 `765a7d18…`, revise 2, revise 3) matched. Parallel wave with T88/T68 (a006) and T65 (a007); a005 also ran T74 between rounds.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code. Bookkeeping edits: two lines of the T91 task file reworded and the orchestrator's own evidence masked so `.orchestration` scans clean.
 - **Plan reference:** boundary-commit blocker (secret-scan false positive on hyphenated slugs), outside the numbered phases.

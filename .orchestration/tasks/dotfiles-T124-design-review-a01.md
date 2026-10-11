@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T124-design-review-a01
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T124-design-review-a01
 
 Drafted 2026-10-10 by the orchestrator seat (`claude-deep-dot`, w4:p1). A design review on the `review` profile, in a separate context, of the T124 design document before any code is dispatched: the first application of the design gate T124 introduces. Read-only: no repository file changes, no branch, no PR. Kind: review; Claude seat on the `review` profile in `.claude/worktrees/worker-d` (detached at `origin/main`).

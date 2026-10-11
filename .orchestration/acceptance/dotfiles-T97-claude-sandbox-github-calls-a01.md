@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T97-claude-sandbox-github-calls-a01
 
 - **Decision:** ACCEPTED. PR #258 squash-merged to `main` as `6534df0f`; final head `391d2b4c39f68dc34f4fe131c6fda95b82101d56` (the orchestrator's `gh pr update-branch` of the diff head efe6735e onto `main` 67451fc6 after merging T77 first). Gate passed at 391d2b4c in the orchestrator-review worktree with the refreshed PR-feedback sweep, the 391d2b4c audit (`incorrect`, one evidence disposition below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 16:52Z).
+- pr=258
 - **Worker:** `codex-security-dot-a007` (worker-e, wT:p8, `security` profile gpt-6-astra). task_rev verified at each re-task and addendum.
 - **Exemption declared:** acceptance and final integration; evidence sync (the seven worker artifacts copied from worker-e into the main checkout, because the Codex seat's writable roots exclude it).
 - **Plan reference:** follow-up to T69 item (e) and T62/T64 (Claude-seat GitHub calls), outside the numbered phases; trust-boundary investigation routed to the Codex `security` seat per the model-selection rule.

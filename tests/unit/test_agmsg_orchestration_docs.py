@@ -221,6 +221,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         text = self.invariants()
         for token in (
             "get the same design hash at the same time",
+            "The orchestrator revises once per pair of results",
             "opens no round while one is still open",
             "After at most three revision rounds the design is frozen",
             "becomes a residual list that is worker input",
@@ -283,6 +284,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "`scripts/regime-counters.sh <task id>`",
             text,
         )
+        # Thread 4240566268: the counts are evidence for the S1/S2 decision.
+        self.assertIn("and pastes its output into the acceptance record", text)
         # Until A3 lands the counts are taken by hand, so no acceptance waits for the script.
         self.assertIn("until it is on `main`, the orchestrator counts the same things by hand", text)
         self.assertIn("the PR's GitHub review comments and review bodies", text)
@@ -375,6 +378,11 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
+
+    def test_workers_open_the_pr_as_a_draft(self) -> None:
+        # Thread 4240566266: step 15's `gh pr ready` starts the Bot timer only on a draft PR.
+        step = self.section(SKILL.read_text(), "\n2. Switch to the `repo`", "\n3. ")
+        self.assertIn("`gh pr create --draft --head <branch>`", step)
 
     def test_workers_commit_inside_the_sandbox(self) -> None:
         # Audit of 27ea99b2: only the push is a step 4 exemption, so the commit stays inside.

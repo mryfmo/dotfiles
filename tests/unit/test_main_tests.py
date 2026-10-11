@@ -283,6 +283,18 @@ class MainTestsHarnessTest(unittest.TestCase):
             **task(["tests/unit/test_foo.py"]),
         }
         self.assertFails(self.harness(pr), "FAIL: test_ordinary (test_foo.FooTest")
+        # main's test_foo checks scripts/feed.sh, whose own module name blocks nothing: only the script rule applies.
+        main = {
+            **MAIN,
+            "scripts/feed.sh": "ordinary contract\n",
+            "tests/unit/test_foo.py": DORMANT.replace("foo.sh", "feed.sh"),
+        }
+        pr = {
+            "scripts/feed.sh": "changed contract\n",
+            "tests/unit/test_foo.py": PROMOTED.replace("foo.sh", "feed.sh"),
+            **task(["tests/unit/test_foo.py"]),
+        }
+        self.assertFails(self.harness(pr, main=main), "FAIL: test_ordinary (test_foo.FooTest")
 
     def test_a_renamed_script_still_triggers(self) -> None:
         result = self.harness({"elsewhere/foo.sh": "ordinary contract\n"}, deleted=["scripts/foo.sh"])

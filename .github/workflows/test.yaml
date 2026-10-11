@@ -69,7 +69,9 @@ jobs:
           # a needed job failed reports Success even as a required check, so a
           # failed decision has to fail this job instead.
           if [ "${EVENT_NAME}" = "pull_request" ]; then
-            git fetch --no-tags --depth=1 origin "${BASE_REF}"
+            # A full fetch: a shallow one cuts the history of a base tip that
+            # moved after the checkout, and the diff then has no merge base.
+            git fetch --no-tags origin "${BASE_REF}"
             diff_range="origin/${BASE_REF}...${HEAD_SHA}"
           elif [ -n "${BEFORE_SHA}" ] && [ "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]; then
             diff_range="${BEFORE_SHA}...${HEAD_SHA}"

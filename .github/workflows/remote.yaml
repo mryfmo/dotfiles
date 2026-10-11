@@ -58,7 +58,9 @@ jobs:
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
-          git fetch --no-tags --depth=1 origin "${BASE_REF}"
+          # A full fetch: a shallow one cuts the history of a base tip that
+          # moved after the checkout, and the diff then has no merge base.
+          git fetch --no-tags origin "${BASE_REF}"
           # --no-renames lists both sides of a rename; core.quotePath off keeps
           # non-ASCII paths raw. An empty diff runs the bootstrap.
           changed="$(git -c core.quotePath=false diff --no-renames --name-only "origin/${BASE_REF}...${HEAD_SHA}")"
@@ -154,7 +156,9 @@ jobs:
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
-          git fetch --no-tags --depth=1 origin "${BASE_REF}"
+          # A full fetch: a shallow one cuts the history of a base tip that
+          # moved after the checkout, and the diff then has no merge base.
+          git fetch --no-tags origin "${BASE_REF}"
           # --no-renames lists both sides of a rename; core.quotePath off keeps
           # non-ASCII paths raw. An empty diff runs the bootstrap.
           changed="$(git -c core.quotePath=false diff --no-renames --name-only "origin/${BASE_REF}...${HEAD_SHA}")"

@@ -171,6 +171,16 @@ def pull_request_head(clone: Path, git, branch: str, writes=(), moves=()) -> str
     return git("rev-parse", "HEAD")
 
 
+def advance_origin(temp: Path, git) -> None:
+    """Another clone pushes to origin/main: main moved after the job's checkout."""
+    other = temp / "other"
+    git("clone", "-q", str(temp / "origin.git"), str(other), cwd=temp)
+    (other / "home/b").write_text("b\n")
+    git("add", "-A", cwd=other)
+    git("commit", "-q", "-m", "advance", cwd=other)
+    git("push", "-q", "origin", "HEAD:main", cwd=other)
+
+
 class RequiredContextsTest(unittest.TestCase):
     def test_the_required_contexts_are_the_workflows_jobs(self) -> None:
         actual = {"validate"} if "validate" in jobs(AGENT_ASSETS) else set()
@@ -279,6 +289,20 @@ class DecisionTest(unittest.TestCase):
                     head = pull_request_head(clone, git, f"t-{name}", writes)
                     env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
                     self.assertIn(f"should_test={expected}\n", run_decision(script, env, clone))
+
+    def test_the_decision_survives_a_base_that_moved_after_the_checkout(self) -> None:
+        # Thread 4240499289: a shallow fetch of the newer base tip cut its history, so the
+        # three-dot diff found no merge base and the required context failed.
+        for path, name, expected in (
+            (REMOTE, "public-bootstrap", "should_run=false\n"),
+            (TEST, "test", "should_test=false\n"),
+        ):
+            with self.subTest(job=name), tempfile.TemporaryDirectory() as temp:
+                clone, git = scratch_repository(Path(temp))
+                head = pull_request_head(clone, git, "pr", [(".orchestration/y.md", "y\n")])
+                advance_origin(Path(temp), git)
+                env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
+                self.assertIn(expected, run_decision(decide_script(path, name), env, clone))
 
 
 if __name__ == "__main__":

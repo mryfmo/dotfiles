@@ -21,7 +21,7 @@ UV_CACHE = subprocess.run(["uv", "cache", "dir"], capture_output=True, text=True
 DESIGN_TEXT = "---\nreset_of: [T1]\n---\nredesign\n"
 DESIGN = hashlib.sha256(DESIGN_TEXT.encode()).hexdigest()
 OTHER_TEXT = "---\nreset_of: [T9]\n---\nanother design\n"
-RESET = f"---\nformat: 2\nreset_of: T1\nredesign_task: T1-redesign\ndesign_sha256: {DESIGN}\n---\n"
+RESET = f"---\nformat: 2\nreset_of: T1\nredesign_task: T1-redesign\nredesign_source: T1-review\ndesign_sha256: {DESIGN}\n---\n"
 # Same fakes as tests/unit/test_regime_counters.py: the storage facade serves JSONL history and
 # refuses a --limit; gh serves $HOME/gh/<path after pulls/, / as _>.json through jq.
 STORAGE_SH = """
@@ -171,17 +171,19 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         self.assertEqual([], self.report())
 
     def test_a_reset_record_silences_only_when_another_identity_accepted_its_design(self):
-        # The accepting RESULT is the design review's, as on the bus: its task_id is not the redesign's.
+        # The accepting RESULT is the design review's (the record's redesign_source), not the redesign's.
         accept = f"AGMSG-RESULT v1 task_id=T1-review status=ready_for_review verdict=accept design_sha256={DESIGN}"
         reported = ["regime-boundary: T1 S2: revises 2 >= 2 source=live"]
         self.record("T1-design-reset.md", RESET)
         self.assertEqual(reported, self.report(("orch", accept)))
+        self.assertEqual(reported, self.report(("reviewer", accept.replace("T1-review", "T7-review"))))
         self.assertEqual([], self.report(("reviewer", accept)))
         # The same accepted hash anchors nothing for a record naming another redesign task, a
-        # missing one, or no hash at all.
+        # missing one, no source, or no hash at all.
         for text in (
             RESET.replace("T1-redesign", "T1-other"),
             RESET.replace("T1-redesign", "T1-missing"),
+            RESET.replace("redesign_source: T1-review\n", ""),
             RESET.replace(f"design_sha256: {DESIGN}\n", ""),
         ):
             self.record("T1-design-reset.md", text)
@@ -196,10 +198,8 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         def reset(text):
             sha = hashlib.sha256(text.encode()).hexdigest()
             (self.main / ".orchestration/tasks/T1-other.md").write_text(text)
-            self.record(
-                "T1-design-reset.md", f"---\nreset_of: T1\nredesign_task: T1-other\ndesign_sha256: {sha}\n---\n"
-            )
-            accept = f"AGMSG-RESULT v1 task_id=R status=ready_for_review verdict=accept design_sha256={sha}"
+            self.record("T1-design-reset.md", RESET.replace("T1-redesign", "T1-other").replace(DESIGN, sha))
+            accept = f"AGMSG-RESULT v1 task_id=T1-review status=ready_for_review verdict=accept design_sha256={sha}"
             return self.report(("reviewer", accept))
 
         self.assertEqual(["regime-boundary: T1 S2: revises 2 >= 2 source=live"], reset(OTHER_TEXT))
@@ -233,12 +233,13 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         self.pull(5, "closed")
         self.assertEqual(["regime-boundary: T1 PR #5 closed unmerged without an anchored reset record"], self.report())
         self.record("T1-design-reset.md", RESET)
-        accept = f"AGMSG-RESULT v1 task_id=R status=ready_for_review verdict=accept design_sha256={DESIGN}"
+        accept = f"AGMSG-RESULT v1 task_id=T1-review status=ready_for_review verdict=accept design_sha256={DESIGN}"
         self.assertEqual([], self.report(("reviewer", accept)))
 
     def test_a_pr_none_record_silences_only_a_task_whose_results_name_no_pr(self):
         # T3 is a PR-less review task over the revise count; T1's RESULTs name PR 5.
-        (self.main / ".orchestration/tasks/T3.md").write_text("task\n")
+        review = "---\nformat: 2\nkind: review\n---\n"
+        (self.main / ".orchestration/tasks/T3.md").write_text(review)
         self.messages += [("orch", "AGMSG-TASK v1 task_id=T3")]
         self.messages += [("w", "AGMSG-RESULT v1 task_id=T3 status=ready_for_review verdict=accept")] * 3
         t1 = "regime-boundary: T1 S2: revises 2 >= 2 source=live"
@@ -249,6 +250,12 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         for task in ("T1", "T3"):
             self.record(f"{task}.md", "- **Decision:** ACCEPTED.\npr=none\n")
         self.assertEqual([t1], self.report())
+        # Only a format-2 review or design task file qualifies: not a code task whose RESULTs
+        # omit pr=, not a file without front matter, not a kind without format 2.
+        for text in ("---\nformat: 2\nkind: code\n---\n", "task\n", "---\nkind: review\n---\n"):
+            (self.main / ".orchestration/tasks/T3.md").write_text(text)
+            self.assertEqual([t1, t3], self.report(), text)
+        (self.main / ".orchestration/tasks/T3.md").write_text(review)
         # Any pr= token on a RESULT, even a non-numeric one, makes pr=none a forgery.
         self.messages.append(("w", "AGMSG-RESULT v1 task_id=T3 status=ready_for_review pr=none"))
         self.assertEqual([t1, "regime-boundary: T3 S2: revises 3 >= 2 source=live"], self.report())

@@ -200,15 +200,22 @@ class RegimeCountersTest(unittest.TestCase):
             ("orch", f"AGMSG-RESULT v1 task_id=R1 status=ready_for_review verdict=accept design_sha256={design}"),
             ("rev-b", f"AGMSG-RESULT v1 task_id=R1 status=ready_for_review verdict=revise design_sha256={design}"),
             ("rev-c", f"AGMSG-RESULT v1 task_id=R1 status=ready_for_review verdict=accept design_sha256={other}"),
+            # Another task's accept of the same hash: not the record's redesign_source.
+            ("rev-d", f"AGMSG-RESULT v1 task_id=R2 status=ready_for_review verdict=accept design_sha256={design}"),
         ]
 
-        def reset(*rows):
+        def reset(*rows, src=("--reset-source", "R1")):
             history = self.write("h.tsv", tsv(*rows))
-            return self.run_counters("T1", "--history-only", "--reset-hash", design, "--history-file", history)[-1]
+            args = ("T1", "--history-only", "--reset-hash", design, *src, "--history-file", history)
+            return self.run_counters(*args)[-1]
 
-        self.assertEqual(f"reset: design_sha256={design} accepted_by=none source=fixture", reset(*messages))
+        none = f"reset: design_sha256={design} redesign_source=R1 accepted_by=none source=fixture"
+        self.assertEqual(none, reset(*messages))
         foreign = ("rev-a", f"AGMSG-RESULT v1 task_id=R1 status=ready_for_review verdict=accept design_sha256={design}")
-        self.assertEqual(f"reset: design_sha256={design} accepted_by=rev-a source=fixture", reset(*messages, foreign))
+        self.assertEqual(none.replace("none source", "rev-a source"), reset(*messages, foreign))
+        # Without a source nothing is accepted, not even a RESULT that carries no task_id at all.
+        bare = ("rev-e", f"AGMSG-RESULT v1 status=ready_for_review verdict=accept design_sha256={design}")
+        self.assertIn("redesign_source=none accepted_by=none", reset(*messages, foreign, bare, src=()))
 
     def test_a_600_row_history_counts_fully_through_the_storage_facade(self):
         filler = [("w", "AGMSG-PONG v1 task_id=OTHER status=alive")] * 595
@@ -247,11 +254,10 @@ class RegimeCountersTest(unittest.TestCase):
                 f"AGMSG-RESULT v1 task_id=R status=ready_for_review verdict=revise note=was verdict=accept design_sha256={design}",
             ),
         )
-        lines = self.run_counters(
-            "T1", "--history-only", "--reset-hash", design, "--history-file", self.write("h.tsv", history)
-        )
+        args = ("T1", "--history-only", "--reset-hash", design, "--reset-source", "R")
+        lines = self.run_counters(*args, "--history-file", self.write("h.tsv", history))
         self.assertEqual(("0", "0"), (fields(lines[0])["questions"], fields(lines[0])["withdrawn"]))
-        self.assertEqual(f"reset: design_sha256={design} accepted_by=none source=fixture", lines[-1])
+        self.assertEqual(f"reset: design_sha256={design} redesign_source=R accepted_by=none source=fixture", lines[-1])
 
     def test_every_result_counts_as_a_revise_whatever_its_status(self):
         lines = self.run_counters(

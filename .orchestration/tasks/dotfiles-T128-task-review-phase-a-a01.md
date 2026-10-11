@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T128-task-review-phase-a-a01
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T128-task-review-phase-a-a01
 
 Drafted 2026-10-11 by the orchestrator seat. The one-round task-file review of plan 006 Phase A, under the stop condition the pattern fixes: no contradiction with design v16 (whole-file sha256 in the AGMSG-TASK `design_sha256=`), premises hold (re-run each command; the `output` must be the raw output), `allowed_files` complete for the touch points `grep` finds, one invariant per task (a task without an `invariants` key is docs tier), and for a trust-boundary task a `threat_table` whose rows cover what the PR and the orchestrator control. Anything finer belongs to the worker and the implementation PR. Read-only; one receipt; Claude seat on the review profile.

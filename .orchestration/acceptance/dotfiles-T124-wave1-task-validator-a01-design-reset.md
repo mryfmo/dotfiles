@@ -2,6 +2,7 @@
 format: 2
 reset_of: dotfiles-T124-wave1-task-validator-a01
 redesign_task: dotfiles-T128-regime-v3-a01
+redesign_source: dotfiles-T128-design-review-a01
 design_sha256: 4520b8f0ac5663a0879acd4eb0fe5a5bc585bdca6c53aac6dae1d5de94bf07a8
 redesign_seat: "claude-deep-dot under DESIGN_RESET_WAIVED_BY=operator (decision 2026-10-11, answer \"orchestrator drafts + fresh-context review required\"); reviewed before dispatch by claude-review-dot-a001 on the review profile (AGMSG-TASK dotfiles-T128-design-review-a01 2026-10-10T21:04:16Z); this waiver covers the T128 design only, no further orchestrator-authored design under T128"
 reason: "T126 INV-6 reached on its own implementing PR: 8 amendments (limit 4), 2 revise rounds (limit 2), 6 PONG questions, 52 Bot threads on 10 heads (33 on a hand-written validator); the orchestrator was preparing a waiver instead of a reset"

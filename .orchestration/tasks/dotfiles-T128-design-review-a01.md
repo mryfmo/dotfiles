@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T128-design-review-a01
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T128-design-review-a01
 
 Drafted 2026-10-11 by the orchestrator seat (`claude-deep-dot`, w5:p1). A design review on the `review` profile, in a separate context, of the T128 regime-v3 design before any implementing task is dispatched. The design was drafted by the orchestrator under a recorded bootstrap exception (operator decision 2026-10-11), so this review is the only independent check it gets before dispatch: your findings against the orchestrator's reasoning, thresholds, scope or honesty are expected. Read-only: no repository file changes, no branch, no PR. Kind: review; Claude seat on the `review` profile in `.claude/worktrees/worker-d`.

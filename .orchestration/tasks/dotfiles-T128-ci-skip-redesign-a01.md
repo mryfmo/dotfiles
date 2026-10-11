@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T128-ci-skip-redesign-a01
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T128-ci-skip-redesign-a01 — the reset redesign of A5 (INV-6: the second round)
 
 Drafted 2026-10-11 07:2xZ by the orchestrator seat. `dotfiles-T128-ci-skip-orchestration-a01` (PR #320, worker `claude-standard-dot-a003`) has two RESULTs (456 at `d6343494`, 485 at `dc4e6c37`: revises=1) and one amendment; the second audit (`.orchestration/validation/dotfiles-T128-ci-skip-orchestration-a01-audit-dc4e6c3.md.last.md`) found the same class a second time (the hand-written workflow reader misses valid block-style YAML forms: `if : false`, `"\x69f": false`, `continue-on-error : true`, after the first audit's quoted keys) and re-raised the design-on-main finding (main at `b896d9bc` holds neither this task's `implementing_tasks` entry nor its INV-2 sentence). Any further round reaches an INV-6 threshold; the rule's path is a reset. You write the successor; this is read-only.

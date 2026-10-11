@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T128-task-review-a201-a01
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T128-task-review-a201-a01
 
 Drafted 2026-10-11 by the orchestrator seat. One round under plan 006's stop condition (no contradiction with design v15 `35721070…`, premises hold, `allowed_files` complete, one invariant; a `-contract-a01` id maps to its implementing entry). Read-only; one receipt; Claude seat on the review profile in worker-d; every path in the main checkout.

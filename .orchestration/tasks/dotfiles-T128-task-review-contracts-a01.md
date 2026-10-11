@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T128-task-review-contracts-a01
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T128-task-review-contracts-a01
 
 Drafted 2026-10-11 by the orchestrator seat. One review round, under the stop condition the operator froze the regime with: a task file is dispatchable when it does not contradict the accepted design (`.orchestration/tasks/dotfiles-T128-regime-v3-a01.md`, 15daca85), its premises hold, its `allowed_files` cover the touch points `git grep` finds, and it names one invariant (a `-contract-a01` id maps to its implementing task's entry). Everything finer is the worker's and the implementation PR's. Read-only; one receipt; Claude seat on the review profile in worker-d; every path in the main checkout.

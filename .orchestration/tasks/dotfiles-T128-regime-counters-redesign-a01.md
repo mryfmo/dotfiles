@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T128-regime-counters-redesign-a01
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T128-regime-counters-redesign-a01 — the reset redesign of A3 (INV-6: the second round)
 
 Drafted 2026-10-11 06:5xZ by the orchestrator seat. `dotfiles-T128-regime-counters-a01` (PR #319, worker `claude-standard-dot-a004`) has two RESULTs (the first at `324652e0`, amendment 1's at `72764f05`), so revises=1 and amendments=1 under INV-6; the audit of `72764f05` (`.orchestration/validation/dotfiles-T128-regime-counters-a01-audit-72764f0.md.last.md`) found two P1s and one P2, and any further round reaches a threshold. The rule's path is a reset: you write the successor task; this is read-only.

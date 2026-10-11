@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T128-process-rules-redesign-a02
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T128-process-rules-redesign-a02 — the reset redesign of the a02 task (INV-6: amendments threshold)
 
 Drafted 2026-10-11 06:5xZ by the orchestrator seat. `dotfiles-T128-process-rules-a02` (PR #318) reached INV-6's amendment threshold by the orchestrator's own under-specification: the relay task carried no `threat_table` (Bot P1 4240566259; amendment 1 added three rows) and the added table missed the row for the PR's control of its own oracle, `tests/unit/test_agmsg_orchestration_docs.py` (your round-4 item). A second amendment would be the second TASK after the first, the count INV-6 names, so the rule's path is a reset: a redesign written by a context other than the author. You are that context; this is read-only.

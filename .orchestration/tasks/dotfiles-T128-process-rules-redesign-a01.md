@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T128-process-rules-redesign-a01
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T128-process-rules-redesign-a01 — the reset redesign for PR #318's threat-table rule
 
 Drafted 2026-10-11 05:1xZ by the orchestrator seat. Plan 006 S1 and design INV-6 fired on `dotfiles-T128-process-rules-a01` (PR #318, worker `claude-standard-dot-a003`): the same finding class three times on one artifact (the Codex Bot: thread 4240290387 "the disposition regex accepts an empty payload" on `9a46c3c4`, 4240321113 "`residual: none`" on `ac3794f9`, 4240334094 "`out-of-scope: none` or a wrong owner" on `6635030f`), and Bot P1 on two heads after the first RESULT. INV-6 releases the stop only through a reset record naming a redesign whose design RESULT comes from an identity other than the task's author. You are that identity; this is read-only.

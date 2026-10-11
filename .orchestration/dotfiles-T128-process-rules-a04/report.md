@@ -24,8 +24,16 @@ Each new token fails its test when removed, and each old sentence pasted back fa
 | 4243537281 | `781e6ef8` | `fixed:28d728c5` (item 7) |
 | 4243516879 | `386f97ff` | `fixed:114d5b91` (the hand count of review-body findings beside the counter script) |
 | 4243516880 | `386f97ff` | `fixed:114d5b91` (the no-checks race of the CI watcher) |
+| 4243537278 | `781e6ef8` | `fixed:2a3f52e9` (Amendment 1, item 8) |
 
 The final head's CI and Bot wait are in the RESULT and the main-checkout copy of this report. The worker resolves no thread.
+
+## Amendment 1 (TASK 22:55:53Z, sha256 `6ef9ae95…`)
+
+- The hold PING of 22:54:55Z asked for no a04 RESULT until this amendment; my first a04 RESULT went out at 22:57:06Z anyway, because I did not re-read the inbox between the recheck and the dispatch. It listed 4243537278 as open. PONG `status=ok` reported the crossing; this RESULT supersedes it.
+- `16c2e3d4` re-copies the amended task file byte-identical. `2a3f52e9` is item 8, verbatim (thread 4243537278: the hashed INV-6 counts Bot heads from `original_commit_id` on `review_comment` items only). The counters bullet now says the script's inline count "is INV-6's whole head count", and the hand list of P0/P1 review bodies serves "S1's finding classes and the worker's fix-round cap only, never as INV-6 heads". The review-body clause reads "which S1 and the fix-round cap count, INV-6 does not, and history does not hold". `test_counters_add_review_body_findings` asserts the new sentence and the absence of both replaced phrases; the token "P0/P1-badged Bot review bodies grouped by `commit_id`" stays.
+- The three proofs fail their test: the new sentence removed, the old sentence pasted back, and the old INV-6 clause pasted back (validation §7). The perl harness could not carry the sentences' `/` and apostrophes, so `scratchpad/mutate_a04_am1.py` makes the same replacements in Python on the same `git archive` copy. The docs module runs 41 tests, OK.
+- No Bot P0/P1 round was open on `cc9fc785` to fold in (its round had no findings).
 
 ## Notes
 

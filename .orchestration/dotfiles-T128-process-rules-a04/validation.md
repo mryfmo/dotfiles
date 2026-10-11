@@ -99,3 +99,45 @@ All three equal the task's recorded output.
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-process-rules-a04 …'
 172a34d7-e9a7-4556-9874-cf55f2c7314d
 ```
+
+## 7. Amendment 1: item 8 at `2a3f52e9` (thread 4243537278; §6 is the main-checkout copy's final head of the first RESULT)
+
+```
+$ shasum -a 256 ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-process-rules-a04.md .orchestration/dotfiles-T128-process-rules-a04/task.md | cut -c1-64
+6ef9ae9572ecd90876ed7b706c4d2d739b082d39adec4b531ccef0789e410fa6
+6ef9ae9572ecd90876ed7b706c4d2d739b082d39adec4b531ccef0789e410fa6
+$ git log --oneline -2; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; ruff check --config ruff.toml tests/unit/test_agmsg_orchestration_docs.py; prettier --check AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -1
+2a3f52e9 docs(regime): review-body findings feed S1 and the fix-round cap, never INV-6's head count
+16c2e3d4 chore(orchestration): task file for dotfiles-T128-process-rules-a04, Amendment 1
+Ran 41 tests in 0.011s
+
+OK
+1 file already formatted
+All checks passed!
+All matched files use Prettier code style!
+```
+
+Removal proofs (`scratchpad/mutate_a04_am1.py`: the task's old and new sentences taken from the task file, replaced as plain strings in a `git archive HEAD` copy):
+
+```
+== removed rule: item8-new-sentence-removed (SKILL) -> test_counters_add_review_body_findings
+FAIL: test_counters_add_review_body_findings (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_counters_add_review_body_findings)
+AssertionError: "The script reads inline review comments only, and that is INV-6's whole head count (`original_commit_id` on `review_comment` items); the orchestrator also lists the P0/P1-badged Bot review bodies of `…/pulls/<n>/reviews`, grouped by `commit_id`, by hand and pastes that command and its output beside the script's, for S1's finding classes and the worker's fix-round cap only, never a
+FAILED (failures=1)
+== removed rule: item8-old-sentence-pasted-back (SKILL) -> test_counters_add_review_body_findings
+FAIL: test_counters_add_review_body_findings (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_counters_add_review_body_findings)
+AssertionError: "The script reads inline review comments only, and that is INV-6's whole head count (`original_commit_id` on `review_comment` items); the orchestrator also lists the P0/P1-badged Bot review bodies of `…/pulls/<n>/reviews`, grouped by `commit_id`, by hand and pastes that command and its output beside the script's, for S1's finding classes and the worker's fix-round cap only, never a
+FAILED (failures=1)
+== removed rule: item8-old-inv6-clause-pasted-back (SKILL) -> test_counters_add_review_body_findings
+FAIL: test_counters_add_review_body_findings (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_counters_add_review_body_findings)
+AssertionError: 'which INV-6 and S1 count' unexpectedly found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work remain orchestrator-side; never delegate th
+FAILED (failures=1)
+== restored: OK
+```
+
+CompactionDB (main checkout, outside the sandbox through the permission gate):
+
+```
+$ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-process-rules-a04 Amendment 1 item 8 …'
+f38272e9-e7e8-480f-bdca-f9a6c6dc5205
+```

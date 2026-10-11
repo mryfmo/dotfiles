@@ -230,7 +230,16 @@ class AgmsgRegimePatternTest(unittest.TestCase):
                 self.assertIn(token, text)
 
     def test_task_file_review_is_one_round_with_a_fixed_stop_condition(self) -> None:
-        self.assertIn("A task-file review is one round with a fixed stop condition", self.invariants())
+        text = self.invariants()
+        for token in (
+            "A task-file review is one round with a fixed stop condition",
+            "no contradiction with the design",
+            "the premises hold",
+            "`allowed_files` covers every touch point that grep finds",
+            "one invariant check (a `-contract-a01` id maps to its implementing entry)",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
 
     def test_a_boundary_pr_never_gates_a_dispatch(self) -> None:
         self.assertIn("is never a prerequisite of a dispatch", self.invariants())
@@ -303,6 +312,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "report a missing table, a missing row",
             "Do not re-raise a `residual` row whose named compensating control mitigates the risk",
             "report a `residual` row whose control is missing, a placeholder such as `none`, or does not mitigate it",
+            "an `out-of-scope` row whose owner is a placeholder or does not own the risk",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, subsection)

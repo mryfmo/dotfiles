@@ -247,11 +247,14 @@ class AgmsgRegimePatternTest(unittest.TestCase):
                 self.assertIn(token, text)
 
     def test_counters_run_before_every_acceptance_action(self) -> None:
+        text = self.invariants()
         self.assertIn(
             "Before every acceptance action (revise, accept, merge) the orchestrator runs "
             "`scripts/regime-counters.sh <task id>`",
-            self.invariants(),
+            text,
         )
+        # Until A3 lands the counts are taken by hand, so no acceptance waits for the script.
+        self.assertIn("until it is on `main`, the orchestrator counts the same things by hand", text)
 
     def test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first(self) -> None:
         step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
@@ -260,6 +263,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "within 10 minutes, post `@codex review`",
             "at most twice. The third Bot round is not fixed",
             "`AGMSG-RESULT … bot_rounds=3`",
+            "in the background and the Bot wait below at the same time",
+            "never from the end of CI",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, step)

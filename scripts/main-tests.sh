@@ -57,6 +57,7 @@ tier=""
 # Newline-separated: bash 3.2 (macOS) cannot expand an empty array under set -u.
 declared=""
 exempt=""
+orphans=""
 tasks="$(git -c core.quotePath=false diff --name-only --no-renames --diff-filter=d "${merge_base}" HEAD -- ':(glob).orchestration/*/task.md')"
 if [ "$(grep -c . <<< "${tasks}")" -gt 1 ]; then
     echo "main-tests: more than one task.md in the range: ${tasks//$'\n'/ }"
@@ -74,13 +75,7 @@ while IFS=$'\t' read -r kind value module; do
         echo "main-tests: design script ${value} has no declared contract module ${module}"
         status=1
         ;;
-    undeclared)
-        # main's tests judge an undeclared script only through its module; without one, nothing would.
-        if ! git cat-file -e "${base}:${module}" 2> /dev/null; then
-            echo "main-tests: undeclared script ${value} has no module on main (${module})"
-            status=1
-        fi
-        ;;
+    undeclared) orphans+="${value}"$'\t'"${module}"$'\n' ;;
     esac
 done <<< "${parsed}"
 # A contract wave ships dormant tests only, and this point is reached only when a script changed.
@@ -107,6 +102,19 @@ done <<< "${declared}"
 # Exactly main's tests/unit: a file the PR adds there (a unittest.py, say) must not shadow main's.
 rm -rf "${tmp}/tests/unit"
 git archive "${base}" tests/unit | tar -x -C "${tmp}"
+
+# main's tests judge an undeclared script only through ordinary tests in its module; dormant contracts skip.
+while IFS=$'\t' read -r script module; do
+    if [ -z "${script}" ]; then
+        continue
+    elif [ ! -f "${tmp}/${module}" ]; then
+        echo "main-tests: undeclared script ${script} has no module on main (${module})"
+        status=1
+    elif [ -z "$(markers ordinary "${tmp}/${module}")" ]; then
+        echo "main-tests: undeclared script ${script} has only dormant contracts on main (${module})"
+        status=1
+    fi
+done <<< "${orphans}"
 
 undeclared=()
 main_modules="$(git ls-tree --name-only "${base}" tests/unit/)"

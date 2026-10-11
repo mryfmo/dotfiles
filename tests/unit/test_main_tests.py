@@ -312,6 +312,16 @@ class MainTestsHarnessTest(unittest.TestCase):
             with self.subTest(task=bool(pr)):
                 self.assertFails(self.harness({"scripts/new.sh": "new\n", **pr}), message)
 
+    def test_an_undeclared_script_with_only_dormant_contracts_fails(self) -> None:
+        # A landed contract wave: main's module for qux holds only a dormant contract, which skips here.
+        qux = DORMANT.replace("foo.sh", "qux.sh").replace("FooTest", "QuxTest")
+        qux = qux[: qux.index("    def test_ordinary")] + qux[qux.index("    @contract") :]
+        main = {**MAIN, "scripts/qux.sh": "ordinary contract\n", "tests/unit/test_qux.py": qux}
+        message = (
+            "main-tests: undeclared script scripts/qux.sh has only dormant contracts on main (tests/unit/test_qux.py)"
+        )
+        self.assertFails(self.harness({"scripts/qux.sh": "broken\n"}, main=main), message)
+
     def test_a_short_contract_summary_fails(self) -> None:
         # Two contracts selected; the PR's script prints a one-test summary and exits 0 at import.
         body = "\n    @contract\n    def test_{n}(self):\n        pass\n"

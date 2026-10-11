@@ -10,6 +10,7 @@ scripts              print the script paths among the NUL-separated paths on std
 contracts <module>...
                      print the unittest test-method ids that carry the contract decorator
 dormant <module>     exit 1 when any contract decorator remains
+ordinary <module>    print the unittest test-method ids that carry no contract decorator
 run <result> [-v] <ids...>
                      run the tests and write {nonce, ran, failures, errors, skipped ids} to <result>;
                      the nonce arrives on fd 3, closed before any test module loads
@@ -119,15 +120,16 @@ def marked(path: str) -> tuple[ast.Module, list[ast.AST]]:
     return tree, found
 
 
-def contracts(path: str) -> list[str]:
-    """Test methods only: a decorated class contributes its own test methods, so an empty one contributes none."""
+def contracts(path: str, dormant: bool = True) -> list[str]:
+    """Test methods only: a decorated class contributes its own test methods, so an empty one contributes none.
+    With dormant=False, the test methods that carry no contract decorator instead."""
     tree, found = marked(path)
     stem = Path(path).stem
     ids = []
     for cls in (node for node in tree.body if isinstance(node, ast.ClassDef)):
         for item in cls.body:
             is_test = isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name.startswith("test")
-            if is_test and (cls in found or item in found):
+            if is_test and (cls in found or item in found) == dormant:
                 ids.append(f"{stem}.{cls.name}.{item.name}")
     return ids
 
@@ -210,6 +212,8 @@ def main(argv: list[str]) -> int:
             print(*changed_scripts(sys.stdin.buffer.read()), sep="\n")
         case ["contracts", *paths]:
             print(*(test for path in paths for test in contracts(path)), sep="\n")
+        case ["ordinary", path]:
+            print(*contracts(path, dormant=False), sep="\n")
         case ["dormant", path]:
             return 1 if marked(path)[1] else 0
         case ["run", result, *ids]:

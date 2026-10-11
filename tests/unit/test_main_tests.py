@@ -52,6 +52,8 @@ def simple(name: str, path: str) -> str:
     )
 
 
+# An ordinary test for a module that loads a PR script at import, so it is no dormant-only module.
+LOADED = "\n\nimport unittest\n\n\nclass LoadedTest(unittest.TestCase):\n    def test_loaded(self):\n        pass\n"
 MAIN = {
     "README.md": "readme\n",
     "install/x.sh": "x\n",
@@ -220,13 +222,19 @@ class MainTestsHarnessTest(unittest.TestCase):
         self.assertFalse(marker.exists(), "uv ran the PR's .venv interpreter")
 
     def test_a_zero_exit_without_a_summary_fails(self) -> None:
-        loads = "import runpy\nfrom pathlib import Path\n\nrunpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
+        loads = (
+            "import runpy\nfrom pathlib import Path\n\nrunpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
+            + LOADED
+        )
         main = {**MAIN, "scripts/baz.py": "VALUE = 1\n", "tests/unit/test_baz.py": loads}
         result = self.harness({"scripts/baz.py": "import os\n\nos._exit(0)\n"}, main=main)
         self.assertFails(result, "main-tests: no complete unittest run (no result file)")
 
     def test_a_forged_summary_without_the_runner_nonce_fails(self) -> None:
-        loads = "import runpy\nfrom pathlib import Path\n\nrunpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
+        loads = (
+            "import runpy\nfrom pathlib import Path\n\nrunpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
+            + LOADED
+        )
         main = {**MAIN, "scripts/baz.py": "VALUE = 1\n", "tests/unit/test_baz.py": loads}
         summary = "import json\nimport os\nimport sys\n\nsys.stderr.write('Ran 3 tests in 0.010s\\n\\nOK\\n')\n"
         write = "json.dump({'nonce': nonce, 'ran': 3, 'failures': 0, 'errors': 0}, open(sys.argv[2], 'w'))\n"
@@ -269,6 +277,7 @@ class MainTestsHarnessTest(unittest.TestCase):
         calls = (
             "import runpy\nimport unittest\nfrom pathlib import Path\n\n\nclass BazTest(unittest.TestCase):\n"
             "    def test_baz(self):\n        runpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
+            + LOADED
         )
         main = {**MAIN, "scripts/baz.py": "VALUE = 1\n", "tests/unit/test_baz.py": calls}
         skip = "import unittest\n\nraise unittest.SkipTest('not today')\n"
@@ -290,7 +299,10 @@ class MainTestsHarnessTest(unittest.TestCase):
 
     def test_unittest_internals_replaced_by_the_pr_fail(self) -> None:
         # main's test_baz loads the PR's script, which rewires the runner's machinery; foo.sh breaks main's test.
-        loads = "import runpy\nfrom pathlib import Path\n\nrunpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
+        loads = (
+            "import runpy\nfrom pathlib import Path\n\nrunpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
+            + LOADED
+        )
         main = {**MAIN, "scripts/baz.py": "VALUE = 1\n", "tests/unit/test_baz.py": loads}
         zero = (
             "import json\nimport unittest\n\nreal = json.dumps\n\n\ndef dumps(record, **kwargs):\n"

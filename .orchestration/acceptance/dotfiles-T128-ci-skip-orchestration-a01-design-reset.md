@@ -2,7 +2,7 @@
 format: 2
 reset_of: dotfiles-T128-ci-skip-orchestration-a01
 redesign_task: dotfiles-T128-ci-skip-orchestration-a02
-design_sha256: 2c3a5ee2439a4c8e0aa16e0013e9b8acfcbb82fc330b259f7748f34938d5d9bc
+design_sha256: 4de54fdec5db667e940365703ee5e16cd1d91f52794c79c75b48aad7eb0a8763
 redesign_source: dotfiles-T128-ci-skip-redesign-a01
 redesign_seat: claude-review-dot-a001 (review profile, a context other than the task's author)
 reason: "design INV-6 on PR 320: two RESULTs (456, 485: revises=1) and one amendment; the second audit (dc4e6c37) found the hand-written workflow reader's class a second time (spaced, escaped and flow-mapping keys after the first audit's quoted keys) and re-raised the design-on-main prerequisite (main at b896d9bc holds neither the task's implementing_tasks entry nor its INV-2 sentence); a further round reaches a threshold, so the rule's path is a reset with a redesign by another context"
@@ -16,3 +16,5 @@ reason: "design INV-6 on PR 320: two RESULTs (456, 485: revises=1) and one amend
 - **Counts carried:** A5 at the reset: tasks 2, amendments 1, questions 0, results 2, revises 1, Bot P0/P1 heads after the first RESULT 0, wall 05:42Z to 07:13Z (1 h 31 min).
 - **Waiver:** none.
 - **Anchor:** redesign RESULT 496 (`claude-review-dot-a001`, 07:33:43Z, receipt `c55e1585…`, `a02_expected_sha256=2c3a5ee2…`, matched on disk); the review seat's `verdict=accept design_sha256=2c3a5ee2…` is the anchor (confirmed: RESULT 502, 07:37:09Z, byte-for-byte). `after:` stays `[]` (V1 types it as task ids); the boundary dependency is the design-on-main row. The successor ids need `implementing_tasks` entries (v16 maps the a01 ids only): design v17 adds `dotfiles-T128-ci-skip-orchestration-a02: [INV-2]` and `dotfiles-T128-regime-counters-a02: [INV-6]`, reviewed as a pair (round 18) and carried by the next boundary PR.
+- **Anchor refresh (08:03Z):** the successor file changed (the design-on-main row now states INV-2's dispatch rule (Bot P1 4240758696 on PR #321)); its hash is now `6457b81f…`; the review seat's round-3 `verdict=accept design_sha256=6457b81f…` re-anchors it (confirmed: RESULT 519, 08:06:34Z).
+- **Anchor refresh 3 (08:32Z):** the successor's `design_review.receipt` now names round 18, the first receipt that reviews its map entry (Bot P2 4240827027 on PR #321); hash `4de54fde…`; the review seat's `verdict=accept` on it requested.

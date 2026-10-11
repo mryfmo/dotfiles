@@ -62,7 +62,7 @@ The order below replaces the earlier interleaving: no implementation wave is dis
 | A4 | `AGENTS.md` Code Review Rules | `.orchestration/**` are records and specifications: the Bot reviews them for secrets and home paths only; for trust-boundary code the Bot reviews against the task's threat table and reports missing entries; accepted residuals are not re-raised | the next `.orchestration`-only PR draws no design thread from the Bot | same PR as A1 |
 | A5 | `remote.yaml`, `test.yaml` | `.orchestration`-only diffs skip the heavy steps with step-level `if`s; every required context reports success; push and schedule always run | an `.orchestration`-only PR merges within 10 minutes with every required check reported | `gh pr checks` timings in the acceptance record (task `dotfiles-T128-ci-skip-orchestration-a01`) |
 | A6 | self-verification | A3's PR is accepted with the pattern: threat table in its task, one task-file review round, Bot cap, counters printed before acceptance, one audit | rounds ≤ 2, wall ≤ 2 h, Bot heads ≤ 2 on that PR | the three metrics in its acceptance record |
-| A7 | SKILL Worker Playbook step 15 + Orchestrator Playbook step 7 (`dotfiles-T128-worker-stop-and-watch-a01`, after a03 and regime-counters-a02) | worker-side stop: before each fix commit the worker counts Bot P0/P1 heads after its first RESULT head and Bot thread classes from its step-15 listing and stops at 2 heads (INV-6) or 3 of a class (S1) with `AGMSG-PONG status=blocked note=S1|INV-6 …`; before each push it runs `regime-counters.sh --history-only`; orchestrator-side watch: GitHub and history every 30 minutes after a TASK, PING at 45 minutes without a push, PONG or RESULT, despawn when the PING stays unread while pushes continue past a cap or count; hook-level enforcement stays V3a's | eight docs-test tokens, each failing when its sentence is removed; the worker rule exercised on A7's own PR | merged with its audit `correct` |
+| A7 | SKILL Worker Playbook step 15 + Orchestrator Playbook step 7 (`dotfiles-T128-worker-stop-and-watch-a01`, after a03 and regime-counters-a02) | worker-side stop: before each fix commit the worker counts Bot P0/P1 heads after its first RESULT head and Bot thread classes from its step-15 listing and stops at 2 heads (INV-6) or 3 of a class (S1) with `AGMSG-PONG status=blocked note=S1|INV-6;heads=…;classes=…;threads=…`; before each push it runs `regime-counters.sh --history-only`; orchestrator-side watch: GitHub and history every 30 minutes after a TASK, PING at 45 minutes without a push, PONG or RESULT, despawn when the PING stays unread while pushes continue past a cap or count; hook-level enforcement stays V3a's | eleven docs-test tokens, each failing when its sentence is removed; the worker rule exercised on A7's own PR | merged with its audit `correct` |
 
 **Correction (2026-10-11 07:25Z, from the audits of PR 320):** the Phase 0 rule that a boundary PR is never a dispatch prerequisite contradicts INV-2's hashed sentence (the design must be on `main` before the implementing TASK is dispatched, and the task's invariant sentence must equal `main`'s). INV-2 wins: a hashed design change lands on `main` through a boundary PR before any task that carries one of its sentences is dispatched; a boundary PR still carries no task draft under review. For the Phase A tasks already dispatched under the old rule, the boundary PR `orchestration/boundary-2026-10-11-2` carries design v16 before their final audits and merges, and each PR takes the new base with `gh pr update-branch`. The A1 bullet on `main` after PR #318 says the same (a follow-up docs item if its wording still carries the old sentence).
 
@@ -74,37 +74,27 @@ Notes carried into Phase B task files from the Phase A review (2026-10-11): V1's
 
 ### Phase 1: remove the loop sources (bottleneck 1: rounds)
 
-- **A101** `dotfiles-T128-process-rules-a01` (docs tier, Claude seat, after A301 merges): SKILL review protocol, task-file stop condition, Bot scope (`AGENTS.md` Code Review Rules: `.orchestration/**` drafts are reviewed only for secrets and home paths), boundary cadence, Worker Playbook step 15 `gh pr ready` before the Bot wait and `@codex review` as the explicit trigger when no review arrives in 10 minutes; lands this plan in `plans/006-regime-v3-execution.md` and `plans/README.md`.
-  - Verification condition: a boundary push with a changed task draft draws no Bot design thread; the next design review closes within 3 rounds.
-  - Verification content: PR #N's Bot threads listed by `scripts/pr-feedback.py`; the next design's review receipts counted.
-  - Completion: merged; `make validate-agent-assets` green; the two counts recorded in the acceptance record.
-  - Metric: rounds per artifact.
-- **A102** Plan amendment (design `implementing_tasks` gains the CI-skip task; one joint confirmation of the new hash, Claude and Codex at once).
-  - Verification: both receipts `accept` on the same hash within one round.
-  - Completion: receipts recorded; design hash updated in every task file.
+- **A101, A102**: executed in Phase A (A1/A2/A4 on PR #318 as `process-rules-a01` → a02 → a03; the map amendments as design rounds 16 to 19). No Phase B work remains here.
 
 ### Phase 2: remove the CI wait (bottleneck 2: boundary and PR wall time)
 
-- **A201** `dotfiles-T128-ci-skip-orchestration-a01` (design tier, Claude seat): `remote.yaml` and `test.yaml` skip the bootstrap and test matrices on an `.orchestration`-only diff with the jobs reporting success (the `changes`-job pattern).
-  - Verification condition: an `.orchestration`-only PR merges in ≤ 10 minutes with every required check reported.
-  - Verification content: `gh pr checks` timings on the next boundary PR pasted.
-  - Completion: merged; boundary merge time recorded.
-  - Metric: wall time per PR.
+- **A201**: executed in Phase A (A5 on PR #320 as `ci-skip-orchestration-a01` → a02, in-job fail-closed decision, no `changes` job, no `needs`). The ≤ 10-minute measurement is taken on the first `.orchestration`-only PR after its merge and pasted into its acceptance record.
 
 ### Phase 3: deterministic verification first (bottleneck 1 again: rounds come from model-judged review)
 
-- **A301** V0 `dotfiles-T128-v0-main-tests-a01` (in flight, PR #317, revise round 1 after an `incorrect` audit with 7 findings).
+- **B0** design amendment (one review pair, then a boundary PR before any Phase B dispatch, as INV-2 requires): INV-12 narrowed to the undeclared-change regression guard; the dormant-contract clause removed; `main-tests` decides inside its own job like A5's workflows (no `changes` job, no `needs`).
+- **A301** V0: re-specified under the pattern by a context other than its author as a new task id (PR #317 stays parked as input: its 14 Bot threads and the audit of `adcf783b`), with a threat table, the in-job decision A5 established, and the narrowed INV-12 from B0.
   - Verification condition: the six named test selectors fail on `adcf783b` and pass on the new head; the audit of the new head is `correct`; `main-tests` runs main's harness against the PR.
   - Verification content: validation file with both runs pasted; audit `.last.md`; CI log of `main-tests` on the new head.
   - Completion: merged with `--match-head-commit`; `main-tests` listed as a required check (S4: named in the acceptance record); acceptance record carries rounds, wall, audit count.
   - STOP: S1 if the next audit repeats a finding class of this audit (that would be the third time for "PR-controlled input before the trusted step").
-- **A302** V1-contract then V1 (`dotfiles-T128-v1-task-schema-a01`): schema, validator, tier derivation.
-  - Verification: `scripts/validate-task.py` rejects each gaming fixture (62 removal cases from PR #313 as the test idea source); `main-tests` green with the contracts promoted.
+- **A302** V1 (`dotfiles-T128-v1-task-schema-a01`; no contract PR, withdrawn by the Phase A correction): schema (with `threat_table`, `reset_of`, `after`), validator, tier derivation.
+  - Verification: `scripts/validate-task.py` rejects each gaming fixture (62 removal cases from PR #313 as the test idea source); `main-tests` green.
   - Completion: merged; audit `correct`; metrics recorded.
 
 ### Phase 4: the auditor off the critical path (bottleneck 3: audit serial queue)
 
-- **A401** V2-contract then V2 (`dotfiles-T128-v2-audit-schema-and-runner-a01`): schema-validated audit, trusted root, pool of two, `make audit-head` auto-start, `AGMSG-AUDIT` record.
+- **A401** V2 (`dotfiles-T128-v2-audit-schema-and-runner-a01`; no contract PR): schema-validated audit, trusted root, pool of two, `make audit-head` auto-start, `AGMSG-AUDIT` record, atomic reservation of a head so a second run of the same head is refused (INV-5).
   - Verification condition: two audits of two heads run concurrently from the orchestrator's checkout and each lands its record; a re-run of the same head is refused; an evidence-only head reuses the audit.
   - Verification content: two concurrent `make audit-head` runs pasted with their history records; the refusal; the reuse.
   - Completion: merged; the next PR's audit starts within 5 minutes of green CI without the orchestrator; audit wall ≤ 20 minutes.

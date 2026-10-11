@@ -153,12 +153,13 @@ class MainTestsHarnessTest(unittest.TestCase):
         self.assertIn("Ran 3 tests", result.stderr)
 
     def test_design_scripts_need_declared_modules_that_exist(self) -> None:
-        uncovered = self.harness(
-            {"scripts/baz.sh": "baz\n", **task(["scripts/foo.sh", "scripts/baz.sh", "tests/unit/test_foo.py"])}
-        )
+        # Promoted and passing otherwise, so the uncovered script is the only failure.
+        files = ["scripts/foo.sh", "scripts/baz.sh", "tests/unit/test_foo.py"]
+        uncovered = self.harness({"scripts/baz.sh": "baz\n", "tests/unit/test_foo.py": PROMOTED, **task(files)})
         self.assertFails(
             uncovered, "main-tests: design script scripts/baz.sh has no declared contract module tests/unit/test_baz.py"
         )
+        self.assertNotIn("contract still dormant", uncovered.stdout)
         self.assertPasses(
             self.harness({"scripts/legacy-task-ids.txt": "t2\n", **task(["scripts/legacy-task-ids.txt"])})
         )

@@ -425,6 +425,21 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, text)
 
+    def test_counters_add_review_body_findings(self) -> None:
+        # Thread 4243516879: regime-counters.sh reads inline comments only, and a Bot P0/P1 can live in a review body.
+        self.assertIn(
+            "The script reads inline review comments only, so the orchestrator also counts the P0/P1-badged Bot review bodies of `…/pulls/<n>/reviews`, grouped by `commit_id`, by hand and pastes that command and its output beside the script's, until the script reads review bodies too.",
+            self.invariants(),
+        )
+
+    def test_the_ci_watcher_survives_the_no_checks_race(self) -> None:
+        # Thread 4243516880: `gh pr checks --watch` exits 1 with "no checks reported" before the first check appears.
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        self.assertIn(
+            "Right after a push GitHub can report no checks yet, and the watcher then exits 1 with `no checks reported`: start it once a check is listed, and restart it on that message instead of reading it as a CI failure.",
+            step,
+        )
+
     def test_workers_open_the_pr_as_a_draft(self) -> None:
         # Thread 4240566266: step 15's `gh pr ready` starts the Bot timer only on a draft PR.
         step = self.section(SKILL.read_text(), "\n2. Switch to the `repo`", "\n3. ")

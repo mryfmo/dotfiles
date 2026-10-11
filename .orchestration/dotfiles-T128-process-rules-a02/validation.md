@@ -140,3 +140,73 @@ code-review-completed: | 📝 **Code Review** | ✅ **Completed** <relative-time
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128 process-rules a02 (reset of a01 after INV-6 and plan 006 S1 on the disposition-grammar class; …) …'
 05618498-52b4-4708-8262-8b762c5ce8e0
 ```
+
+## 7. Revise round 1 (the revise commit; `previous_head=27ea99b2`)
+
+```
+$ UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; ruff check --config ruff.toml tests/unit/test_agmsg_orchestration_docs.py; prettier --check AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -1
+Ran 34 tests in 0.008s
+
+OK
+1 file already formatted
+All checks passed!
+All matched files use Prettier code style!
+$ git diff --stat -- AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md tests/unit/test_agmsg_orchestration_docs.py
+ AGENTS.md                                          |  4 +-
+ .../dot_agents/skills/agmsg-orchestration/SKILL.md |  4 +-
+ tests/unit/test_agmsg_orchestration_docs.py        | 48 ++++++++++++++++++++++
+ 3 files changed, 52 insertions(+), 4 deletions(-)
+```
+
+Removal proofs (`scratchpad/mutate-a02-r1.sh`: the working tree's three files in a `git archive HEAD` copy, each sentence removed alone, the old first bullet pasted back; output cut to three lines of at most 400 characters per rule, and the masker replaces each `subTest` label, which it reads as a secret pattern):
+
+```
+== removed rule: bot-review-scope (AGENTS, diff lines: 2) -> test_orchestration_records_rule_binds_the_bot_review_only
+FAIL: test_orchestration_records_rule_binds_the_bot_review_only (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_orchestration_records_rule_binds_the_bot_review_only) (<redacted:secret-pattern>)
+AssertionError: 'in the pull-request review by the Codex Bot, review them for secrets and home-directory paths only' not found in "Files under `.orchestration/**` are the regime's records and task specifications, which the regime's own reviewers review; review them for secrets and home-directory paths only. The task-level audit keeps the full scope of the Audit section."
+FAILED (failures=1)
+== removed rule: audit-keeps-full-scope (AGENTS, diff lines: 2) -> test_orchestration_records_rule_binds_the_bot_review_only
+FAIL: test_orchestration_records_rule_binds_the_bot_review_only (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_orchestration_records_rule_binds_the_bot_review_only) (<redacted:secret-pattern>)
+AssertionError: 'The task-level audit keeps the full scope of the Audit section.' not found in "Files under `.orchestration/**` are the regime's records and task specifications, which the regime's own reviewers review; in the pull-request review by the Codex Bot, review them for secrets and home-directory paths only."
+FAILED (failures=1)
+== removed rule: old-first-bullet-pasted-back (AGENTS, diff lines: 2) -> test_orchestration_records_rule_binds_the_bot_review_only
+FAIL: test_orchestration_records_rule_binds_the_bot_review_only (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_orchestration_records_rule_binds_the_bot_review_only) (<redacted:secret-pattern>)
+AssertionError: 'in the pull-request review by the Codex Bot, review them for secrets and home-directory paths only' not found in "Files under `.orchestration/**` are the regime's records and task specifications, which the regime's own reviewers review; review them for secrets and home-directory paths only."
+FAIL: test_orchestration_records_rule_binds_the_bot_review_only (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_orchestration_records_rule_binds_the_bot_review_only) (<redacted:secret-pattern>)
+== removed rule: shape-by-hand-skill (SKILL, diff lines: 2) -> test_shape_is_checked_by_hand_until_the_schema_lands
+FAIL: test_shape_is_checked_by_hand_until_the_schema_lands (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_shape_is_checked_by_hand_until_the_schema_lands) (section='SKILL invariants')
+AssertionError: 'Until `schemas/task.json` lands in wave V1, the task-file review checks the three shape rules by hand.' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review
+FAILED (failures=1)
+== removed rule: shape-by-hand-agents (AGENTS, diff lines: 2) -> test_shape_is_checked_by_hand_until_the_schema_lands
+FAIL: test_shape_is_checked_by_hand_until_the_schema_lands (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_shape_is_checked_by_hand_until_the_schema_lands) (section='AGENTS.md')
+AssertionError: 'Until `schemas/task.json` lands in wave V1, the task-file review checks the three shape rules by hand.' not found in "\n\n- Files under `.orchestration/**` are the regime's records and task specifications, which the regime's own reviewers review; in the pull-request review by the Codex Bot, review them for secrets and home-directory paths only. The task-level audit keeps the full 
+FAILED (failures=1)
+== removed rule: closed-row-verification (AGENTS, diff lines: 2) -> test_pattern_rules_pin_their_safeguards
+FAIL: test_pattern_rules_pin_their_safeguards (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_pattern_rules_pin_their_safeguards)
+AssertionError: 'report a `closed` row whose test does not close it' not found in "\n\n- Files under `.orchestration/**` are the regime's records and task specifications, which the regime's own reviewers review; in the pull-request review by the Codex Bot, review them for secrets and home-directory paths only. The task-level audit keeps the full scope of the Audit section.\n- Judge from the diff, 
+FAILED (failures=1)
+== removed rule: threat-control-enumeration (SKILL, diff lines: 2) -> test_pattern_rules_pin_their_safeguards
+FAIL: test_pattern_rules_pin_their_safeguards (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_pattern_rules_pin_their_safeguards) (<redacted:secret-pattern>)
+AssertionError: '(the tree and its tests, task.md, workflow files,' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work remain orchestrator-side; n
+FAILED (failures=1)
+== removed rule: reviewer-independence (SKILL, diff lines: 2) -> test_pattern_rules_pin_their_safeguards
+FAIL: test_pattern_rules_pin_their_safeguards (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_pattern_rules_pin_their_safeguards) (<redacted:secret-pattern>)
+AssertionError: 'a fresh Claude context on the `review` profile and a Codex read-only run' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work rema
+FAILED (failures=1)
+== removed rule: design-on-main-precondition (SKILL, diff lines: 2) -> test_pattern_rules_pin_their_safeguards
+FAIL: test_pattern_rules_pin_their_safeguards (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_pattern_rules_pin_their_safeguards) (<redacted:secret-pattern>)
+AssertionError: 'meets the design-on-main precondition' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work remain orchestrator-side; never delegat
+FAILED (failures=1)
+== removed rule: commit-inside-the-sandbox (SKILL, diff lines: 2) -> test_workers_commit_inside_the_sandbox
+FAIL: test_workers_commit_inside_the_sandbox (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_workers_commit_inside_the_sandbox) (<redacted:secret-pattern>)
+AssertionError: 'Commit inside the sandbox, with `git -c commit.gpgsign=false` when the signing key is unreadable there' not found in " and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push o
+FAIL: test_workers_commit_inside_the_sandbox (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_workers_commit_inside_the_sandbox) (<redacted:secret-pattern>)
+== restored: OK
+```
+
+CompactionDB (main checkout, outside the sandbox through the permission gate):
+
+```
+$ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-process-rules-a02 revise round 1 …'
+aae4a1c4-c1c0-4bbb-bd54-71223252c0f4
+```

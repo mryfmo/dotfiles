@@ -338,6 +338,54 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, subsection)
 
+    def test_orchestration_records_rule_binds_the_bot_review_only(self) -> None:
+        # Audit of 27ea99b2: the secrets-only scope is plan 006 A4's for the Bot, never the auditor's.
+        rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
+        bullet = self.section(rules, "### Orchestration records and trust-boundary code", "\n### ").split("\n- ")[1]
+        for token in (
+            "in the pull-request review by the Codex Bot, review them for secrets and home-directory paths only",
+            "The task-level audit keeps the full scope of the Audit section.",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, bullet)
+
+    def test_shape_is_checked_by_hand_until_the_schema_lands(self) -> None:
+        # Audit of 27ea99b2: neither schemas/task.json nor its validator exists yet.
+        sentence = (
+            "Until `schemas/task.json` lands in wave V1, the task-file review checks the three shape rules by hand."
+        )
+        rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
+        for name, text in (
+            ("SKILL invariants", self.invariants()),
+            ("AGENTS.md", self.section(rules, "### Orchestration records and trust-boundary code", "\n### ")),
+        ):
+            with self.subTest(section=name):
+                self.assertIn(sentence, text)
+
+    def test_pattern_rules_pin_their_safeguards(self) -> None:
+        # Audit of 27ea99b2: each safeguard could be removed with every other test still passing.
+        rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
+        subsection = self.section(rules, "### Orchestration records and trust-boundary code", "\n### ")
+        self.assertIn("report a `closed` row whose test does not close it", subsection)
+        text = self.invariants()
+        for token in (
+            "(the tree and its tests, task.md, workflow files,",
+            "a fresh Claude context on the `review` profile and a Codex read-only run",
+            "meets the design-on-main precondition",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_workers_commit_inside_the_sandbox(self) -> None:
+        # Audit of 27ea99b2: only the push is a step 4 exemption, so the commit stays inside.
+        step = self.section(SKILL.read_text(), "\n2. Switch to the `repo`", "\n3. ")
+        for token in (
+            "Commit inside the sandbox, with `git -c commit.gpgsign=false` when the signing key is unreadable there",
+            "only the push leaves the sandbox",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, step)
+
 
 class AgmsgOrchestrationSingleSourceTest(unittest.TestCase):
     """The audit command appears once, in the SKILL's task-level audit bullet; everything else points there."""

@@ -33,3 +33,14 @@ Every replacement was checked verbatim against the task file (validation §2); a
 `memory add` printed `05618498-52b4-4708-8262-8b762c5ce8e0` (validation §6).
 
 cost: n/a
+
+## Revise round 1 (ACCEPTANCE 05:52:25Z, audit of `27ea99b2`: incorrect; `previous_head=27ea99b2`)
+
+One commit on `docs/regime-pattern`, recorded in `revise.yaml` beside this report. Each of the four worker-side findings gets a one-sentence rule fix and the token test the ACCEPTANCE names:
+
+1. P1 `AGENTS.md:77`: the secrets-and-home-paths-only rule now binds "the pull-request review by the Codex Bot", and "The task-level audit keeps the full scope of the Audit section." → `test_orchestration_records_rule_binds_the_bot_review_only`.
+2. P2 `AGENTS.md:78`: "Until `schemas/task.json` lands in wave V1, the task-file review checks the three shape rules by hand." ends both the SKILL `threat_table` bullet and the AGENTS.md second bullet → `test_shape_is_checked_by_hand_until_the_schema_lands`.
+3. P2 `tests/…:329`: four existing sentences pinned, no prose change: the `closed` row whose test does not close it (AGENTS.md), the control enumeration, reviewer independence in the design review, and the design-on-main precondition (SKILL invariants) → `test_pattern_rules_pin_their_safeguards`.
+4. P2 `sandboxes/…:29`: Worker Playbook step 2 now says "Commit inside the sandbox, with `git -c commit.gpgsign=false` when the signing key is unreadable there; only the push leaves the sandbox." → `test_workers_commit_inside_the_sandbox`. The deviation it names, my `git add` and `git commit` of `27ea99b2` in the same outside-sandbox call as its push, is now stated in this directory's `sandbox.md` too (it was only in the main-checkout copy); this round's commit ran inside the sandbox.
+
+The fifth finding (the PR-feedback JSON grammar) is the orchestrator's, as the ACCEPTANCE says. Every new or pinned sentence fails its test when removed: 10 of 10, the old first bullet pasted back among them (validation §7). The docs module runs 34 tests, OK. CompactionDB: `aae4a1c4-c1c0-4bbb-bd54-71223252c0f4`. The final head's CI and Bot wait are in the RESULT and the main-checkout copy of this report.

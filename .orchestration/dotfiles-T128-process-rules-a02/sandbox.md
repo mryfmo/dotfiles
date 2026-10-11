@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-process-rules-a02
 seat: claude-standard-dot-a003
-permission_gated_commands: 13
+permission_gated_commands: 19
 ---
 
 # Sandbox record: dotfiles-T128-process-rules-a02
@@ -25,3 +25,19 @@ permission_gated_commands: 13
 | 11 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
 | 12 | final recheck of reviews and review comments right before the RESULT (`gh api` only) | `gh` |
 | 13 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a02 …` | `agmsg-dispatch` |
+
+Deviation (audit of `27ea99b2`, finding 5): #7 ran `git add` and `git commit` of the `27ea99b2` evidence in the same outside-sandbox call as its push. Worker Playbook step 4 exempts only the push; the commit could have run inside the sandbox. #10 never ran (the final head had no threads), so 12 calls ran in the first round.
+
+## Revise round 1
+
+The revise commit (rules, tests, `revise.yaml`, this record) was made inside the sandbox with `git -c commit.gpgsign=false`; only the push leaves it. The count above is 12 from the first round plus these 7, counted in advance in this copy; the main-checkout copy states the final count.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| R1 | `cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add …` | main-checkout `memory add` |
+| R2 | the authorized push (the revise commit) | `git push` |
+| R3 | `gh pr checks 318 … --watch` on the revise head (background, exit status joined) | `gh` |
+| R4 | Bot wait on the revise head, `scratchpad/bot-wait.sh` (background) | `gh` only |
+| R5 | final recheck of reviews, review comments and the connector summary right before the RESULT (`gh` only) | `gh` |
+| R6 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
+| R7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a02 …` | `agmsg-dispatch` |

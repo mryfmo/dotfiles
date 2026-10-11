@@ -207,6 +207,80 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
                 self.assertIn(token, text)
 
 
+class AgmsgRegimePatternTest(unittest.TestCase):
+    """Plan 006 Phase A: the review and fix pattern, each rule in the section that owns it."""
+
+    @staticmethod
+    def section(text: str, start: str, end: str = "\n## ") -> str:
+        return text.split(start, 1)[1].split(end, 1)[0]
+
+    def invariants(self) -> str:
+        return self.section(SKILL.read_text(), "## Review and integration invariants")
+
+    def test_design_review_runs_in_paired_rounds_with_a_cap(self) -> None:
+        text = self.invariants()
+        for token in (
+            "get the same design hash at the same time",
+            "opens no round while one is still open",
+            "After at most three revision rounds the design is frozen",
+            "becomes a residual list that is worker input",
+            "never implementation detail",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_task_file_review_is_one_round_with_a_fixed_stop_condition(self) -> None:
+        self.assertIn("A task-file review is one round with a fixed stop condition", self.invariants())
+
+    def test_a_boundary_pr_never_gates_a_dispatch(self) -> None:
+        self.assertIn("is never a prerequisite of a dispatch", self.invariants())
+
+    def test_a_trust_boundary_task_carries_a_threat_table(self) -> None:
+        text = self.invariants()
+        for token in (
+            "carries a `threat_table` in its front matter",
+            "`^(closed|residual|out-of-scope): `",
+            "The table is the task's completion condition",
+            "a missing row is added once, counted as an amendment",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_counters_run_before_every_acceptance_action(self) -> None:
+        self.assertIn(
+            "Before every acceptance action (revise, accept, merge) the orchestrator runs "
+            "`scripts/regime-counters.sh <task id>`",
+            self.invariants(),
+        )
+
+    def test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first(self) -> None:
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        for token in (
+            "Mark the PR ready for review with `gh pr ready <n>` before the wait",
+            "within 10 minutes, post `@codex review`",
+            "at most twice. The third Bot round is not fixed",
+            "`AGMSG-RESULT … bot_rounds=3`",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, step)
+
+    def test_a_revise_acceptance_names_the_previous_head_and_a_check(self) -> None:
+        contract = self.section(SKILL.read_text(), "## Message Contract v1")
+        self.assertIn("carries `previous_head=<the RESULT head being revised>`", contract)
+        self.assertIn("`.orchestration/<task id>/revise.yaml`", contract)
+
+    def test_code_review_rules_cover_orchestration_records_and_threat_tables(self) -> None:
+        rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
+        subsection = self.section(rules, "### Orchestration records and trust-boundary code", "\n### ")
+        for token in (
+            "review them for secrets and home-directory paths only",
+            "review against the task's `threat_table`",
+            "Do not re-raise a `residual` row",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, subsection)
+
+
 class AgmsgOrchestrationSingleSourceTest(unittest.TestCase):
     """The audit command appears once, in the SKILL's task-level audit bullet; everything else points there."""
 

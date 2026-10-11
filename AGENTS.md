@@ -71,3 +71,9 @@ Standing review rules for the auditor (the task-level audit of a final head, run
 - Do not silently change shell startup behavior, PATH order, authentication helpers, agent hooks, or permission policy defaults without calling out the user-visible impact.
 - For security-sensitive files, check whether secrets, tokens, auth caches, local-only paths, or overly broad permissions could be exposed.
 - Leave formatting-only feedback to CI unless it affects behavior.
+
+### Orchestration records and trust-boundary code
+
+- Files under `.orchestration/**` are the regime's records and task specifications, which the regime's own reviewers review; review them for secrets and home-directory paths only.
+- For code the task marks as a trust boundary, review against the task's `threat_table`: report a row that is missing, or a `closed` row whose test does not close it. Do not re-raise a `residual` row; its compensating control is named there.
+- Keep lint and formatting to CI.

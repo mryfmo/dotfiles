@@ -245,6 +245,17 @@ class AgmsgRegimePatternTest(unittest.TestCase):
     def test_a_boundary_pr_never_gates_a_dispatch(self) -> None:
         self.assertIn("is never a prerequisite of a dispatch", self.invariants())
 
+    def test_boundary_merge_sentence_names_the_in_job_decision(self) -> None:
+        # PR 320 removes the changes job: a skipped required job reports Success, so each job decides itself.
+        text = self.invariants()
+        self.assertIn(
+            "each required job decides inside itself and reports success on an `.orchestration`-only diff; "
+            "a skipped required job would report Success (fail-open), so no required job carries a job-level "
+            "`if` or a `needs`.",
+            text,
+        )
+        self.assertNotIn("the ruleset accepts the resulting `skipped` required checks", text)
+
     def test_a_trust_boundary_task_carries_a_threat_table(self) -> None:
         text = self.invariants()
         for token in (

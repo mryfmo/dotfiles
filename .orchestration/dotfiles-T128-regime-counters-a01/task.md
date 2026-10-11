@@ -1,0 +1,84 @@
+---
+format: 2
+task_id: dotfiles-T128-regime-counters-a01
+kind: code
+security: true
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - scripts/regime-counters.sh
+  - scripts/check-regime-boundary.sh
+  - tests/unit/test_regime_counters.py
+  - tests/unit/test_check_regime_boundary.py
+  - tests/fixtures/regime-counters/**
+after: []
+invariants:
+  INV-6: "the reset rule's mandatory point is the merge backstop in scripts/require-crit-review.py, with the orchestrator's Stop hook (Claude Stop hook, Codex [hooks].Stop) as the early signal, soft on both runtimes by their documented caps; counts come from history for the hook and the gate (revises = RESULTs for the task_id minus one, threshold 2; amendments = AGMSG-TASKs after the first, threshold 2; AGMSG-PONG status=question, threshold 2) and from GitHub and main-checkout files for the gate and the boundary check only (Codex Bot P0 or P1 on two heads after the first RESULT, from original_commit_id on review_comment items recorded by pr-feedback.py; an audit implementation or specification finding at P0-P1 on two heads, from .orchestration/validation/<task>-audit-<sha7>.json in the main checkout, each counted only when its sha256 matches its AGMSG-AUDIT record); when a count is reached the gate refuses the merge until a reset record names a redesign task whose design RESULT comes from an identity other than the task's author, or a waiver written by scripts/regime-waive.sh under the INV-1 ask-rule discipline into the state directory outside the sandbox write roots (the only release path besides a redesign; the one-account residual of INV-1 applies); check-regime-boundary.sh reports a closed-unmerged PR whose task has no reset record and a task over any count with neither an accepted acceptance record nor a reset record"
+threat_table:
+  - control: the orchestrator edits .orchestration files
+    disposition: "closed: every count comes from agmsg history or GitHub only; .orchestration files select which task ids the boundary check reports and can never raise or lower a count; test: a forged acceptance record changes no count"
+  - control: the orchestrator writes the acceptance, reset or waiver record that would silence a boundary report
+    disposition: "closed: a record silences the report only through INV-6's anchor for it: an accepted acceptance record only when GitHub shows the task's PR merged (gh api pulls/<n>, merged_at non-null; the PR number comes from the record's pr= line); a reset record only when history holds an AGMSG-RESULT verdict=accept naming the redesign design hash the record names, sent by an identity other than the abandoned task's author (the TASK sender); a waiver only from the state directory outside the sandbox write roots that scripts/regime-waive.sh (V3a) writes, so before V3a no waiver silences anything and a DESIGN_RESET_WAIVED_BY= line is printed as regime-boundary: <id> waiver-unanchored (visible, not prevented: trust anchor 4); tests: a forged accepted record with an unmerged PR, a reset record whose hash has no foreign RESULT, and a waiver line in an acceptance record each leave the report in place"
+  - control: the PR authors scripts/regime-counters.sh, its tests and its fixtures (R8)
+    disposition: "residual: a PR-authored test cannot close its own author's undercount or a forged source= label; compensating controls: the design-tier audit of the final head from main as instruction root (INV-5 form, headless now), and the orchestrator's acceptance replay, which runs the branch's script live without any fixture flag on dotfiles-T119-rolling-release-assets-a01 and on dotfiles-T128-v0-main-tests-a01 --pr 317 and compares the output with the hand-computed figures in this task's premises (10 TASKs and 8 amendments for T119; the Bot-reviewed heads of PR 317 after the RESULT head) in the acceptance record; main-tests' undeclared-change guard applies after V0 lands; dormant contracts are withdrawn by plan 006"
+  - control: history.sh truncates to 20 rows by default
+    disposition: "closed: the script reads the whole team history through lib/storage.sh's storage_history, as scripts/agent-stop-gate.sh read_history does; test: a 600-row fixture counts fully"
+  - control: a worker sends extra RESULTs or PONGs
+    disposition: "closed: revises = RESULTs for the task_id minus one, exactly INV-6's sentence (the message contract has no withdrawn or superseded status; an ACCEPTANCE status=parked changes no count), every counted message id printed; questions = PONG status=question; tests per status the contract has (ready_for_review, blocked)"
+  - control: the Bot head count depends on live GitHub state
+    disposition: "closed: review_comment items carrying a P0 or P1 badge, grouped by original_commit_id (the field pr-feedback.py records, read live with gh api because the feedback JSON exists only at acceptance), counted only for heads after the first RESULT's head= taken from history; a gh failure, a first RESULT without a head= token, or review_comment items without original_commit_id print unknown, never 0; test with a recorded API fixture and one negative case each"
+  - control: the test seams --history-file and --github-file could feed forged inputs
+    disposition: "closed: the seams are flags, scripts/check-regime-boundary.sh never passes them, and every output line ends in source=live or source=fixture so a pasted output shows which was used; test asserts the marker"
+  - control: audit findings per head
+    disposition: "out-of-scope: V2 (INV-6 counts audit findings from .orchestration/validation/<task>-audit-<sha7>.json whose sha256 matches an AGMSG-AUDIT record; neither exists before V2); until then the script prints audits=unknown and the orchestrator counts audit classes by hand in the acceptance record"
+  - control: the thresholds could be edited in the script
+    disposition: "residual: the thresholds are INV-6's constants (revises 2, amendments 2, questions 2, Bot P0/P1 heads 2); changing them is a hashed design change under INV-7; compensating control: the design review, and V3a's gate reads the same constants"
+premises:
+  - claim: "the counts the plan needs are derivable from history (TASK, amendment=, PONG status=question, RESULT, ACCEPTANCE status=revise, timestamps) and GitHub (review_comment original_commit_id, P badge); the T119 and PR 313 baseline figures were computed by hand from the same sources"
+    command: "~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep -c 'AGMSG-TASK v1 task_id=dotfiles-T119-rolling-release-assets-a01'; gh api --paginate repos/mryfmo/dotfiles/pulls/313/comments --jq '[.[]|select(.in_reply_to_id==null)]|length'"
+    output: |-
+      10
+      52
+  - claim: "scripts/agent-stop-gate.sh already reads the whole team history through the storage facade; the counters reuse that read, not history.sh's 20-row default"
+    command: "grep -n 'storage_history\\|read_history\\|lib/storage' scripts/agent-stop-gate.sh | head -6"
+    output: |-
+      51:# shortens each wait on a contended store. storage_history runs storage_init, which writes unless
+      56:# SQLITE_BUSY; only a non-initializing storage_history upstream would close that.
+      57:read_history() {
+      60:    source "${scripts}/lib/storage.sh" && agmsg_storage_load || return 1
+      65:    storage_history "$1" | jq -r '[.from, .to, .body] | @tsv'
+      71:    read_history "$2"
+  - claim: "PR 317's Bot-reviewed heads, one per fix round, are the V0 fixture's expected Bot heads: those after the RESULT head 32fe9a36 (RESULT 02:19Z) count under INV-6"
+    command: "gh api --paginate repos/mryfmo/dotfiles/pulls/317/reviews --jq '.[]|select(.user.type==\"Bot\")|[.commit_id[0:8],.submitted_at]|@tsv'"
+    output: |-
+      32fe9a36	2026-10-11T02:37:13Z
+      56ca6c69	2026-10-11T02:52:38Z
+      de138f65	2026-10-11T03:03:00Z
+      f6528bba	2026-10-11T03:10:28Z
+      98f1d250	2026-10-11T03:24:14Z
+      2602f575	2026-10-11T03:43:58Z
+      e314c502	2026-10-11T04:04:13Z
+---
+
+# AGMSG-TASK dotfiles-T128-regime-counters-a01 — Phase A3: the counters S1 and S2 are decided from
+
+Plan 006 Phase A. Review tier by path, treated as design tier because its output decides stops: the threat table above is the completion condition, and a missing row is added once as an amendment, never fixed finding by finding. Claude seat, `.claude/worktrees/worker-c`, branch `feat/regime-counters` from `origin/main`. Implements the counting half of INV-6 (design wave A3); the hook and gate wiring stay in V3a.
+
+## What to build
+
+1. `scripts/regime-counters.sh <task id> [--team dotfiles-conformance] [--pr <n>] [--history-only] [--history-file <tsv>] [--github-file <json>]`. `--history-only` skips GitHub (prints `bot_p1_heads_after_result=skipped`) and returns within 3 seconds on the live store, for the Stop hook V3a wires it into (INV-6's budget); the gate and the boundary check always run the full form. Output, one line: `task=<id> tasks=<n> amendments=<n> questions=<n> results=<n> withdrawn=<n> revises=<n> first_result_head=<sha|none> bot_p1_heads_after_result=<n|unknown> audits=unknown wall=<first TASK ts>..<last RESULT ts> (<h:mm>) source=<live|fixture>`; then one line per threshold reached, `S2: revises <n> >= 2`, `S2: amendments <n> >= 2`, `S2: questions <n> >= 2`, `S2: bot_p1_heads <n> >= 2`; then `S1: candidate class=<first three words, lower-cased> count=<n>` for every Bot thread title class (the first line of a top-level review_comment, badge stripped) that appears three or more times on the PR. History comes from `lib/storage.sh` `storage_history` (the way `agent-stop-gate.sh` `read_history` sources it), GitHub from `gh api --paginate`, fixtures only through the two flags. Counts follow INV-6's sentence and nothing else: revises = RESULTs for the task_id minus one (no status is excluded; the contract has no withdrawn status); amendments = TASKs after the first; questions = `PONG status=question`; Bot heads = `original_commit_id` of P0/P1 review_comment items after the first RESULT's `head=`; `unknown` when the first RESULT has no `head=` or the items carry no `original_commit_id`. shdoc header; under 150 lines; `shellcheck` clean.
+2. `scripts/check-regime-boundary.sh`: for every `.orchestration/tasks/<id>.md` whose id has a TASK in history, run the counters (live, never a fixture) and print `regime-boundary: <id> <S2 line>` when a threshold is reached, unless an anchored record silences it as the threat table's second row states (merged PR for an accepted acceptance record; foreign design RESULT for a reset record; no waiver before V3a, a `DESIGN_RESET_WAIVED_BY=` line printed as `waiver-unanchored`). The probe skips, as the other probes skip on a missing tool, when `scripts/regime-counters.sh` is not beside the script or no agmsg store is readable, so `tests/unit/test_herdr_agents.py`'s scratch-worktree run (lines 2809-2815 copy the boundary script alone and run `--report`) stays green. Keep the existing probes untouched. `after: []`: A3 precedes V0; V0's Phase B re-specification takes A3's modules as given.
+3. `tests/unit/test_regime_counters.py`, with fixtures under `tests/fixtures/regime-counters/` exported from the real store (`history.sh dotfiles-conformance --limit 2000` filtered by task id, as TSV) and from `gh api` (JSON): T118 (`dotfiles-T118-*`, the 20-revise task), T119 (`dotfiles-T119-rolling-release-assets-a01`: 10 TASKs, 8 amendments), T124 W1 (PR 313: Bot P1 heads), V0 (`dotfiles-T128-v0-main-tests-a01`, PR 317: the Bot P1 heads after the RESULT head 32fe9a36; premise 3 lists the Bot-reviewed heads). Expected values come from the fixture; where the fixture disagrees with `baseline.md`, the report says so and the test follows the fixture. One test per threat-table `closed` row (the anchor row needs its three negative cases), each failing when its rule is removed; the boundary probe (violation, the three silenced-record negatives, the skip) is tested in `tests/unit/test_check_regime_boundary.py`, the declared module of `scripts/check-regime-boundary.sh` (the existing boundary tests in `tests/unit/test_herdr_agents.py` stay untouched). The fixtures carry message bodies: run `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets tests/fixtures/regime-counters/*` before committing them.
+
+## Validation
+
+`shellcheck scripts/regime-counters.sh scripts/check-regime-boundary.sh`; `make unit-test` (or the module runs the Makefile uses) with `tests/unit/test_regime_counters.py`, `tests/unit/test_check_regime_boundary.py` and `tests/unit/test_herdr_agents.py` green; `scripts/regime-counters.sh dotfiles-T128-v0-main-tests-a01 --pr 317` and `scripts/regime-counters.sh dotfiles-T119-rolling-release-assets-a01` pasted live; `make check-regime-boundary` pasted; `invariant: INV-6 → <file:line>` lines; every threat-table `closed` row names its test by `tests/unit/test_regime_counters.py::<name>`; the premises re-run and pasted.
+
+## First commit
+
+Copy this task file byte-identical to `.orchestration/dotfiles-T128-regime-counters-a01/task.md`; evidence beside it.
+
+## Completion
+
+Draft PR within 30 minutes; `gh pr ready <n>` before the Bot wait; CI; Bot wait with at most two P0/P1 fix rounds (a third round is reported in the RESULT as `bot_rounds=3` with the open threads, not fixed); artifacts; `memory add`; RESULT via `agmsg-dispatch dotfiles-conformance <you> claude-deep-dot w5:p1`. max_turns=10. Forbidden: `scripts/require-crit-review.py`, `scripts/agent-stop-gate.sh`, anything outside `allowed_files`; `make update`; resolving threads.

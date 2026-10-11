@@ -201,11 +201,12 @@ PY
 # reached threshold is reported unless an anchored record silences it. An
 # accepted acceptance record `<id>.md` silences only with a `pr=<n>` line naming
 # the task's PR (the first `pr=` of its RESULTs) that GitHub shows merged; a
-# reset record `<id>-design-reset.md` only when the design its `design_sha256:`
-# names was accepted (`AGMSG-RESULT ... verdict=accept design_sha256=<hash>`)
-# by an identity other than the task's TASK senders. No waiver silences
-# anything before scripts/regime-waive.sh (V3a): a `DESIGN_RESET_WAIVED_BY=`
-# line in either record is reported as `waiver-unanchored`. A task PR closed
+# reset record `<id>-design-reset.md` only when its `design_sha256:` is the
+# sha256 of its `redesign_task:` task file and that design was accepted
+# (`AGMSG-RESULT ... verdict=accept design_sha256=<hash>`) by an identity other
+# than the task's TASK senders. No waiver silences anything before
+# scripts/regime-waive.sh (V3a): a `DESIGN_RESET_WAIVED_BY=` line in either
+# record is always reported as `waiver-unanchored`. A task PR closed
 # unmerged is reported without an anchored reset record. Skipped without the
 # counters script beside this one or a readable agmsg store.
 counters="${root}/scripts/regime-counters.sh"
@@ -218,7 +219,13 @@ if task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
         args=("${task}")
         if [[ -f ${reset} ]]; then
             hash="$(sed -n 's/^design_sha256: *\([0-9a-f]\{64\}\) *$/\1/p' "${reset}" | head -n 1)"
-            [[ -z ${hash} ]] || args+=(--reset-hash "${hash}")
+            redesign="$(sed -n 's/^redesign_task: *\([A-Za-z0-9][A-Za-z0-9._-]*\) *$/\1/p' "${reset}" | head -n 1)"
+            design="${main}/.orchestration/tasks/${redesign}.md"
+            # The hash must be the named redesign task's own file: an accepted hash of another design anchors nothing.
+            if [[ -n ${hash} && -n ${redesign} && -f ${design} ]] &&
+                [[ "$({ sha256sum "${design}" 2> /dev/null || shasum -a 256 "${design}"; } | cut -d ' ' -f 1)" == "${hash}" ]]; then
+                args+=(--reset-hash "${hash}")
+            fi
         fi
         counts="$("${counters}" "${args[@]}" < /dev/null 2> /dev/null)" || continue
         pr="$(sed -n 's/^detail: pr=\([0-9][0-9]*\) .*/\1/p' <<< "${counts}")"
@@ -238,9 +245,9 @@ if task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
             while IFS= read -r line; do
                 violations+=("${task} ${line}")
             done < <(grep '^S2: ' <<< "${counts}")
-            if grep -qs 'DESIGN_RESET_WAIVED_BY=' "${accepted}" "${reset}"; then
-                violations+=("${task} waiver-unanchored")
-            fi
+        fi
+        if grep -qs 'DESIGN_RESET_WAIVED_BY=' "${accepted}" "${reset}"; then
+            violations+=("${task} waiver-unanchored")
         fi
         if [[ ${state} == closed && -z ${merged_at} && ${reset_anchored} == false ]]; then
             violations+=("${task} PR #${pr} closed unmerged without an anchored reset record")

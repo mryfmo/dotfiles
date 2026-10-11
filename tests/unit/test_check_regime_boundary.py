@@ -4,6 +4,7 @@ The other probes are tested in tests/unit/test_herdr_agents.py; these tests read
 INV-6 probe prints for their own task ids.
 """
 
+import hashlib
 import json
 import os
 import shutil
@@ -13,7 +14,10 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DESIGN = "d" * 64
+# The redesign task file T1-redesign.md and the hash a reset record names for it.
+DESIGN_TEXT = "redesign\n"
+DESIGN = hashlib.sha256(DESIGN_TEXT.encode()).hexdigest()
+RESET = f"---\nformat: 2\nreset_of: T1\nredesign_task: T1-redesign\ndesign_sha256: {DESIGN}\n---\n"
 # Same fakes as tests/unit/test_regime_counters.py: the storage facade serves JSONL history and
 # refuses a --limit; gh serves $HOME/gh/<path after pulls/, / as _>.json through jq.
 STORAGE_SH = """
@@ -68,6 +72,8 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         (self.main / ".orchestration/tasks").mkdir(parents=True)
         (self.main / ".orchestration/acceptance").mkdir()
         (self.main / ".orchestration/tasks/T1.md").write_text("task\n")
+        (self.main / ".orchestration/tasks/T1-redesign.md").write_text(DESIGN_TEXT)
+        (self.main / ".orchestration/tasks/T1-other.md").write_text("another design\n")
         git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "-C", str(self.main)]
         subprocess.run([*git, "init", "-q", "-b", "main"], check=True)
         subprocess.run([*git, "add", "."], check=True)
@@ -153,15 +159,21 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         self.assertEqual([], self.report())
 
     def test_a_reset_record_silences_only_when_another_identity_accepted_its_design(self):
-        accept = f"AGMSG-RESULT v1 task_id=T1-redesign status=ready_for_review verdict=accept design_sha256={DESIGN}"
-        self.record(
-            "T1-design-reset.md",
-            f"---\nformat: 2\nreset_of: T1\nredesign_task: T1-redesign\ndesign_sha256: {DESIGN}\n---\n",
-        )
-        self.assertEqual(["regime-boundary: T1 S2: revises 2 >= 2 source=live"], self.report(("orch", accept)))
+        # The accepting RESULT is the design review's, as on the bus: its task_id is not the redesign's.
+        accept = f"AGMSG-RESULT v1 task_id=T1-review status=ready_for_review verdict=accept design_sha256={DESIGN}"
+        reported = ["regime-boundary: T1 S2: revises 2 >= 2 source=live"]
+        self.record("T1-design-reset.md", RESET)
+        self.assertEqual(reported, self.report(("orch", accept)))
         self.assertEqual([], self.report(("reviewer", accept)))
-        self.record("T1-design-reset.md", "---\nformat: 2\nreset_of: T1\nredesign_task: T1-redesign\n---\n")
-        self.assertEqual(["regime-boundary: T1 S2: revises 2 >= 2 source=live"], self.report(("reviewer", accept)))
+        # The same accepted hash anchors nothing for a record naming another redesign task, a
+        # missing one, or no hash at all.
+        for text in (
+            RESET.replace("T1-redesign", "T1-other"),
+            RESET.replace("T1-redesign", "T1-missing"),
+            RESET.replace(f"design_sha256: {DESIGN}\n", ""),
+        ):
+            self.record("T1-design-reset.md", text)
+            self.assertEqual(reported, self.report(("reviewer", accept)), text)
 
     def test_a_waiver_line_silences_nothing(self):
         self.record("T1.md", "- **Decision:** ACCEPTED.\nDESIGN_RESET_WAIVED_BY=operator\n")
@@ -169,12 +181,27 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
             ["regime-boundary: T1 S2: revises 2 >= 2 source=live", "regime-boundary: T1 waiver-unanchored"],
             self.report(),
         )
+        # Below every count, or silenced by a merged PR, the waiver line is still reported.
+        self.pull(5, "closed", merged=True)
+        self.record("T1.md", "- **Decision:** ACCEPTED.\npr=5\nDESIGN_RESET_WAIVED_BY=operator\n")
+        self.assertEqual(["regime-boundary: T1 waiver-unanchored"], self.report())
+        self.messages = self.messages[:2]
+        self.pull(5, "closed")
+        self.record("T1.md", "x\n")
+        self.record("T1-design-reset.md", "redesign_seat: x under DESIGN_RESET_WAIVED_BY=operator\n")
+        self.assertEqual(
+            [
+                "regime-boundary: T1 waiver-unanchored",
+                "regime-boundary: T1 PR #5 closed unmerged without an anchored reset record",
+            ],
+            self.report(),
+        )
 
     def test_a_pr_closed_unmerged_is_reported_without_an_anchored_reset_record(self):
         self.messages = self.messages[:2]
         self.pull(5, "closed")
         self.assertEqual(["regime-boundary: T1 PR #5 closed unmerged without an anchored reset record"], self.report())
-        self.record("T1-design-reset.md", f"---\nreset_of: T1\ndesign_sha256: {DESIGN}\n---\n")
+        self.record("T1-design-reset.md", RESET)
         accept = f"AGMSG-RESULT v1 task_id=R status=ready_for_review verdict=accept design_sha256={DESIGN}"
         self.assertEqual([], self.report(("reviewer", accept)))
 

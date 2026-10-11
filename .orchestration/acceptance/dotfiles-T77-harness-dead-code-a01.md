@@ -1,7 +1,7 @@
 # Acceptance: dotfiles-T77-harness-dead-code-a01
 
 - **Decision:** ACCEPTED (gate passed 2026-10-04 16:27Z); merge held until PR #258 (T97) merges, as promised to its worker. PR #260 squash-merged to `main` as `67451fc6`; head `977bdf1f757fec64ebc732dead4f55a69ad745a3`.
-- pr=258
+- pr=260
 - **Worker:** `claude-standard-dot-a006` (worker-d, wY:p2). task_rev matched at dispatch and after the PONG-decision append.
 - **Exemption declared:** acceptance and final integration.
 - **Plan reference:** Phase 4, dotfiles-T77 (principle 9). Depends on T70 (merged); serialized after T72/T76/T96 on the shared validator and manifest.

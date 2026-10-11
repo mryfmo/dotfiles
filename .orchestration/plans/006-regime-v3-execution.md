@@ -9,7 +9,7 @@
 >
 > **Drift check**: `git rev-parse origin/main` is `b896d9bc` or a descendant; the
 > design `.orchestration/tasks/dotfiles-T128-regime-v3-a01.md` hashes to
-> `15957fbc…` (v16: v15 `35721070…` plus the A3 map entry; Claude round 16 and Codex round 17 accept); the Phase A
+> `1d5f4c07…` (v17: v16 `15957fbc…` plus the two reset-successor map entries; round 18 accepted by both reviewers); the Phase A
 > task files hash to process-rules `65fa3494…`, regime-counters `69fee495…`, ci-skip
 > `6dd3d682…` (after the one task-file review round, 04:13Z; dispatch hashes).
 

@@ -52,41 +52,65 @@ UNGATED_STEPS = frozenset(
 )
 
 
+PLAIN_KEY = re.compile(r"([a-z0-9_-]+):(?:[ \t](.*))?")
+
+
+def plain_key(text: str, line: str) -> tuple[str, str]:
+    """A `name: value` pair in the plain form, or ValueError: a form the reader does not parse must not read as absent."""
+    match = PLAIN_KEY.fullmatch(text)
+    if not match:
+        raise ValueError(f"unsupported key form inside jobs: {line!r}")
+    return match.group(1), (match.group(2) or "").strip()
+
+
 def jobs(path: Path) -> dict[str, dict]:
     """Each job's own keys (two-space job names, four-space keys) and its steps, read from the indentation after `jobs:`.
 
-    A quoted key reads like a bare one, as in YAML. shortcut: block-style mappings only (no flow mappings or
-    anchors), which is how every workflow here is written; switch to a YAML parser if the test env gains one.
+    Fails closed: a job name, job key or step key that is not the plain form `name:` (lower-case letters, digits,
+    `_` and `-`, the colon right after; no quotes, escapes or flow mappings) raises ValueError, so every structural
+    test fails instead of reading an unsupported form as "no `if`". The test environment has no YAML parser.
     """
     result: dict[str, dict] = {}
     job = step = block_key = None
+    in_steps = False
     for line in path.read_text().split("\njobs:\n", 1)[1].split("\n"):
-        name = re.fullmatch(r"  [\"']?([A-Za-z0-9_-]+)[\"']?:", line)
-        if name:
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip(" "))
+        if step is not None and block_key == "run" and step.get("run") == "|" and (not stripped or indent >= 10):
+            step["script"] = step.get("script", "") + line[10:] + "\n"
+            continue
+        if not stripped or stripped.startswith("#"):
+            continue
+        if indent == 0:
+            break
+        if indent == 2:
+            name, value = plain_key(stripped, line)
+            if value:
+                raise ValueError(f"unsupported job form inside jobs: {line!r}")
             job = {"keys": {}, "steps": []}
-            result[name.group(1)] = job
+            result[name] = job
             step = block_key = None
-            continue
-        if job is None:
-            continue
-        key = re.fullmatch(r"    [\"']?([A-Za-z_-]+)[\"']?:(.*)", line)
-        if key:
-            job["keys"][key.group(1)] = key.group(2).strip()
-            step = None
-            continue
-        item = re.fullmatch(r"      - (.*)", line)
-        if item:
+            in_steps = False
+        elif job is None:
+            raise ValueError(f"unsupported line before the first job: {line!r}")
+        elif not job["keys"] and indent != 4:
+            # Sibling keys share one indentation, so a body shifted off four spaces would hide all of them.
+            raise ValueError(f"unsupported job body indentation inside jobs: {line!r}")
+        elif indent == 4:
+            key, value = plain_key(stripped, line)
+            job["keys"][key] = value
+            in_steps = key == "steps"
+            step = block_key = None
+        elif in_steps and indent == 6:
+            if not stripped.startswith("- "):
+                raise ValueError(f"unsupported step form inside jobs: {line!r}")
             step = {}
             job["steps"].append(step)
-            line = "        " + item.group(1)
-        if step is None:
-            continue
-        field = re.fullmatch(r"        [\"']?([A-Za-z_-]+)[\"']?:(.*)", line)
-        if field:
-            block_key = field.group(1)
-            step[block_key] = field.group(2).strip()
-        elif block_key == "run" and step.get("run") == "|":
-            step["script"] = step.get("script", "") + line[10:] + "\n"
+            block_key, step[block_key] = plain_key(stripped[2:], line)
+        elif in_steps and indent == 8:
+            if step is None:
+                raise ValueError(f"unsupported step form inside jobs: {line!r}")
+            block_key, step[block_key] = plain_key(stripped, line)
     return result
 
 
@@ -205,21 +229,28 @@ class RequiredContextsTest(unittest.TestCase):
                 with self.subTest(job=name, key=key):
                     self.assertNotIn(key, jobs(path)[name]["keys"])
 
-    def test_structural_tests_see_quoted_keys(self) -> None:
-        # Audit of d6343494: YAML reads a quoted key like a bare one, so a quoted job-level if or a
-        # quoted continue-on-error on the decision step must not slip past the structural tests.
-        quoted = (
-            REMOTE.read_text()
-            .replace("\n  public-bootstrap:\n", "\n  'public-bootstrap':\n    \"if\": ${{ always() }}\n", 1)
-            .replace("        id: decide\n", "        \"id\": decide\n        'continue-on-error': true\n", 1)
-        )
-        with tempfile.TemporaryDirectory() as temp:
-            path = Path(temp) / "remote.yaml"
-            path.write_text(quoted)
-            job = jobs(path)["public-bootstrap"]
-        self.assertIn("if", job["keys"])
-        decide = next(step for step in job["steps"] if step.get("id") == "decide")
-        self.assertIn("continue-on-error", decide)
+    def test_the_reader_fails_closed_on_unsupported_key_forms(self) -> None:
+        # Audits of dc4e6c37 and d6343494: any key form the reader does not parse exactly must fail the
+        # structural tests, never read as "no if" (it replaces test_structural_tests_see_quoted_keys).
+        text = REMOTE.read_text()
+        job, decide, steps = "\n  public-bootstrap:\n", "        id: decide\n", "    steps:\n"
+        forms = {
+            "spaced job key": (job, job + "    if : false\n"),
+            "escaped job key": (job, job + '    "\\x69f": false\n'),
+            "spaced step key": (decide, decide + "        continue-on-error : true\n"),
+            "flow-mapping step": (steps, steps + "      - { if: false }\n"),
+            "quoted job name": (job, "\n  'public-bootstrap':\n"),
+            "quoted step key": (decide, "        'id': decide\n"),
+            # Plain keys at an unexpected indentation: a shifted job body, and a step item's keys moved right.
+            "shifted job body": ("\njobs:\n", "\njobs:\n  shifted:\n      if: false\n      runs-on: ubuntu-24.04\n"),
+            "shifted step item": ("      - name: Decide whether", "      -   name: Decide whether"),
+        }
+        for name, (old, new) in forms.items():
+            with self.subTest(form=name), tempfile.TemporaryDirectory() as temp:
+                path = Path(temp) / "remote.yaml"
+                path.write_text(text.replace(old, new, 1))
+                with self.assertRaises(ValueError):
+                    jobs(path)
 
     def test_no_job_is_left_for_a_required_job_to_need(self) -> None:
         self.assertNotIn("changes", jobs(TEST))

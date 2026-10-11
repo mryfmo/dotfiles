@@ -116,3 +116,49 @@ All three equal the task's recorded output.
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-process-rules-a05 item 9 …'
 546ec858-f8ac-4761-9189-3d288ba7c4e5
 ```
+
+
+## 6. Bot fix round 1 at `1fdebcb0` (threads 4243732324, 4243732326, 4243732330)
+
+```
+$ git log --oneline -1; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; ruff check --config ruff.toml tests/unit/test_agmsg_orchestration_docs.py; prettier --check AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -1
+1fdebcb0 docs(regime): the third pair freezes only on accept; records review covers the threat table; question PONGs
+Ran 41 tests in 0.008s
+
+OK
+1 file already formatted
+All checks passed!
+All matched files use Prettier code style!
+$ sed -n 137p home/dot_agents/skills/agmsg-orchestration/SKILL.md; sed -n 140p home/dot_agents/skills/agmsg-orchestration/SKILL.md; grep -n "question" scripts/regime-counters.sh | cut -c1-120 | head -3; grep -rnE "alive\|blocked" scripts/ | grep -v "\.md:" | head -3   # the contract line and sentence, the counter, any status-set validator
+AGMSG-PONG v1 task_id=<id> status=alive|blocked|question note=<short-note>
+`question`: the worker holds and asks; INV-6 counts it.
+11:#   1; revises = AGMSG-RESULTs - 1, whatever their status; questions = PONGs of
+12:#   status question; withdrawn = ACCEPTANCEs of status withdrawn, informational.
+112:     questions: [kind("AGMSG-PONG")[] | select(tok("status") == "question") | .id],
+```
+
+Removal proofs (`scratchpad/mutate_a05_fix1.py`: plain string edits in a `git archive HEAD` copy of the working tree):
+
+```
+== removed rule: freeze-revise-or-reject-clause-removed (home/dot_agents/skills/agmsg-orchestration/SKILL.md) -> test_design_review_runs_in_paired_rounds_with_a_cap
+FAIL: test_design_review_runs_in_paired_rounds_with_a_cap (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_design_review_runs_in_paired_rounds_with_a_cap) (<redacted:secret-pattern>)
+AssertionError: 'on its revise or reject nothing is frozen' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work remain orchestrator-side; never del
+FAILED (failures=1)
+== removed rule: freeze-old-sentence-pasted-back (home/dot_agents/skills/agmsg-orchestration/SKILL.md) -> test_design_review_runs_in_paired_rounds_with_a_cap
+FAIL: test_design_review_runs_in_paired_rounds_with_a_cap (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_design_review_runs_in_paired_rounds_with_a_cap) (<redacted:secret-pattern>)
+AssertionError: 'on its revise or reject nothing is frozen' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work remain orchestrator-side; never del
+FAILED (failures=1)
+== removed rule: records-threat-table-exception-removed (AGENTS.md) -> test_orchestration_records_rule_binds_the_bot_review_only
+FAIL: test_orchestration_records_rule_binds_the_bot_review_only (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_orchestration_records_rule_binds_the_bot_review_only) (<redacted:secret-pattern>s `threat_table`")
+AssertionError: "except a trust-boundary task's `threat_table`" not found in "Files under `.orchestration/**` are the regime's records and task specifications, which the regime's own reviewers review; in the pull-request review by the Codex Bot, review them for secrets and home-directory paths only. The task-level audit keeps the full scope of the Audit section."
+FAILED (failures=1)
+== removed rule: contract-question-status-removed (home/dot_agents/skills/agmsg-orchestration/SKILL.md) -> test_question_pongs_are_in_the_contract
+FAIL: test_question_pongs_are_in_the_contract (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_question_pongs_are_in_the_contract) (<redacted:secret-pattern>)
+AssertionError: 'status=alive|blocked|question' not found in '\n\nSend messages as single-line records so inbox/history output stays parseable.\n\n`AGMSG-TASK v1` fields:\n\n```text\nAGMSG-TASK v1 task_id=<id> repo=<absolute-repo-path> task_file=<path>\nallowed_files=<paths-or-see-task-file-section> forbidden_actions=<semicolon-list>\nexpected_result_file=<path> expected_validation_file=<path>\nex
+FAILED (failures=1)
+== removed rule: contract-question-sentence-removed (home/dot_agents/skills/agmsg-orchestration/SKILL.md) -> test_question_pongs_are_in_the_contract
+FAIL: test_question_pongs_are_in_the_contract (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_question_pongs_are_in_the_contract) (<redacted:secret-pattern>)
+AssertionError: '`question`: the worker holds and asks; INV-6 counts it.' not found in '\n\nSend messages as single-line records so inbox/history output stays parseable.\n\n`AGMSG-TASK v1` fields:\n\n```text\nAGMSG-TASK v1 task_id=<id> repo=<absolute-repo-path> task_file=<path>\nallowed_files=<paths-or-see-task-file-section> forbidden_actions=<semicolon-list>\nexpected_result_file=<path> expected_
+FAILED (failures=1)
+== restored: OK
+```

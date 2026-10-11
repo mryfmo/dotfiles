@@ -35,6 +35,18 @@ Proofs (validation §3): each new token removed fails the new test; each forbidd
 
 The final head's CI and Bot wait, and any thread opened on it, are in the RESULT and the main-checkout copy of this report. The worker resolves no thread, and makes no fix round on the counters bullet: a Bot finding there is reported with its class.
 
+## Bot round on `99203bf6` (review 5485540528, 23:41:18Z) and fix round 1 (`1fdebcb0`)
+
+I asked first (PONG `status=question`, default hold), because all three findings are on rule text the review seat or the orchestrator owns. The ACCEPTANCE of 23:45:04Z ordered fix round 1 on all three and gave the sentences. Its note writes spaces as hyphens and drops apostrophes. I restored "pair's" and "task's", and kept "trust-boundary", "INV-7" and "short-note" as hyphenated words.
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4243732324 | P1, SKILL.md:68: item 6's freeze rule has no accepted hash to freeze when the third pair returns revise or reject | `fixed:1fdebcb0`: "The third pair is the last: on its accept the design is frozen at the hash the pair last accepted, the third pair's own, …; on its revise or reject nothing is frozen and the design goes back to a context other than its author, never to a fourth pair; …". The old tokens survive, and `test_design_review_runs_in_paired_rounds_with_a_cap` adds "on its revise or reject nothing is frozen" |
+| 4243732326 | P1, AGENTS.md:78: the secrets-only records rule blocks the threat-table review of `task.md` | `fixed:1fdebcb0`: "…paths only, except a trust-boundary task's `threat_table` and the task metadata needed to judge it, which the next bullet covers.", pinned in `test_orchestration_records_rule_binds_the_bot_review_only` |
+| 4243732330 | P1, anchored at SKILL.md:72: S2 counts `AGMSG-PONG status=question`, but the contract allowed `alive\|blocked` only (verified at line 137) | `fixed:1fdebcb0` in the contract, not in the counters bullet: `status=alive\|blocked\|question` and "`question`: the worker holds and asks; INV-6 counts it." → `test_question_pongs_are_in_the_contract`. No script validates the PONG status set; `scripts/regime-counters.sh` already counts `status=question` (lines 11–12, 112) |
+
+All five proofs fail their tests (validation §6), the old freeze sentence pasted back among them. The docs module runs 41 tests, OK. This is fix round 1 of 2 under the A2 cap; a further P1 on the freeze sentence is reported with its class (class count 2), not fixed.
+
 ## Notes
 
 - Nothing here touches the threat-table rule's payload wording.

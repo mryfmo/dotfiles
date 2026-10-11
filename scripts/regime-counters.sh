@@ -10,14 +10,14 @@
 #   amendments = AGMSG-TASKs - 1; revises = AGMSG-RESULTs - 1, whatever their
 #   status; questions = `AGMSG-PONG ... status=question`; withdrawn =
 #   `AGMSG-ACCEPTANCE ... status=withdrawn`, informational, changing no count.
-#   Bot heads are the distinct `original_commit_id` of Bot review comments whose
-#   title line carries a P0 or P1 badge, counted only for commits after the
-#   first RESULT's `head=` in the PR's commit order. No PR, a gh failure, a first
-#   RESULT without `head=`, that head missing from the commits, or a counted
-#   comment on a commit outside them or without `original_commit_id` print
-#   `unknown`, never 0. S1 candidates are Bot thread title classes (first three
-#   words of the title line, badge stripped, lower-cased) seen three or more
-#   times on the PR.
+#   Bot heads are the distinct `original_commit_id` of Codex Bot
+#   (`chatgpt-codex-connector[bot]`) review comments whose title line carries a
+#   P0 or P1 badge, counted only for commits after the first RESULT's `head=` in
+#   the PR's commit order. No PR, a gh failure, a first RESULT without `head=`,
+#   that head missing from the commits, or a counted comment on a commit outside
+#   them or without `original_commit_id` print `unknown`, never 0. S1 candidates
+#   are Codex Bot thread title classes (first three words of the title line,
+#   badge stripped, lower-cased) seen three or more times on the PR.
 #
 #   Output: the count line; one `S2:` line per INV-6 threshold reached; one
 #   `S1:` line per candidate class; a `detail:` line (the PR: digits, `none` when
@@ -129,10 +129,10 @@ if [[ ${history_only} == false ]]; then
 fi
 
 jq -r --argjson c "${counts}" --arg state "${state}" --arg t "${task}" --arg s "${source}" --arg hash "${reset_hash}" --argjson limit "${threshold}" '. as $gh
-  | def title: (.body // "") | split("\n")[0];
+  | def title: (.body // "") | split("\n")[0]; def codex: .user.login == "chatgpt-codex-connector[bot]";
   def bot: if $state != "ok" then $state elif $c.head == null then "unknown" else
       [$gh.commits[].sha] as $shas | [range(0; $shas | length) | select($shas[.] | startswith($c.head))][0] as $i
-      | [$gh.comments[] | select(.user.type == "Bot" and (title | test("!\\[P[01] Badge\\]")))] as $p
+      | [$gh.comments[] | select(codex and (title | test("!\\[P[01] Badge\\]")))] as $p
       | if $i == null or any($p[]; .original_commit_id as $o | $o == null or (any($shas[]; . == $o) | not)) then "unknown"
         else [$p[].original_commit_id | select(. as $o | any($shas[$i + 1:][]; . == $o))] | unique end end;
   def hm: (. / 60 | floor) as $m | "\($m / 60 | floor):\($m % 60 | tostring | if length < 2 then "0" + . else . end)";
@@ -142,7 +142,7 @@ jq -r --argjson c "${counts}" --arg state "${state}" --arg t "${task}" --arg s "
   | "task=\($t) tasks=\($c.tasks | length) amendments=\($amendments) questions=\($c.questions | length) results=\($c.results | length) withdrawn=\($c.withdrawn | length) revises=\($revises) first_result_head=\($c.head // "none") bot_p1_heads_after_result=\($n) audits=unknown wall=\($c.first // "none")..\($c.last // "none") (\(if $c.first and $c.last then ($c.last | fromdateiso8601) - ($c.first | fromdateiso8601) | hm else "-" end)) source=\($s)",
     ([["revises", $revises], ["amendments", $amendments], ["questions", ($c.questions | length)], ["bot_p1_heads", $n]][]
       | select((.[1] | type) == "number" and .[1] >= $limit) | "S2: \(.[0]) \(.[1]) >= \($limit) source=\($s)"),
-    (if $state == "ok" then [$gh.comments[] | select(.user.type == "Bot" and .in_reply_to_id == null) | title
+    (if $state == "ok" then [$gh.comments[] | select(codex and .in_reply_to_id == null) | title
         | gsub("!\\[[^\\]]*\\]\\([^)]*\\)|</?sub>|\\*\\*"; "") | ascii_downcase | [splits("\\s+") | select(. != "")][0:3] | join(" ") | select(. != "")]
       | group_by(.)[] | select(length >= 3) | "S1: candidate class=\(.[0]) count=\(length) source=\($s)" else empty end),
     "detail: pr=\($c.pr // "none") authors=\($c.authors | list) tasks=\($c.tasks | list) results=\($c.results | list) questions=\($c.questions | list) withdrawn=\($c.withdrawn | list) bot_heads=\(if ($b | type) == "array" then $b | list else "-" end) source=\($s)",

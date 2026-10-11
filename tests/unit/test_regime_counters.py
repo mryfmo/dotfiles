@@ -65,9 +65,9 @@ def badge(level, title):
     )
 
 
-def comment(commit, title, level="P1", bot=True, reply=None):
+def comment(commit, title, level="P1", bot=True, reply=None, login="chatgpt-codex-connector[bot]"):
     return {
-        "user": {"type": "Bot" if bot else "User"},
+        "user": {"login": login if bot else "someone", "type": "Bot" if bot else "User"},
         "in_reply_to_id": reply,
         "original_commit_id": commit,
         "body": badge(level, title) + "\n\nDetails.",
@@ -321,6 +321,9 @@ class RegimeCountersTest(unittest.TestCase):
                 comment("ddddddd1", "a P2 only", "P2"),
                 comment("eeeeeee1", "human", bot=False),
                 comment("eeeeeee1", "reply", reply=1) | {"body": "no badge"},
+                # Another GitHub App using the same badge markup is not the Codex Bot.
+                comment("ddddddd1", "other app", "P0", login="other-reviewer[bot]"),
+                comment("eeeeeee1", "other app", login="other-reviewer[bot]"),
             ],
         )
         lines = self.run_counters("T1", "--history-file", history, "--github-file", gh)
@@ -416,6 +419,7 @@ class RegimeCountersTest(unittest.TestCase):
                 comment("aaaaaaa1", "Bind exemptions to paths"),
                 comment("aaaaaaa1", "Bind exemptions to x", bot=False),
                 comment("aaaaaaa1", "Bind exemptions to y", reply=7),
+                comment("aaaaaaa1", "Bind exemptions to z", login="other-reviewer[bot]"),
             ],
         )
         lines = self.run_counters("T1", "--history-file", history, "--github-file", gh)

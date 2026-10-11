@@ -1,0 +1,466 @@
+[
+  {
+    "id": "t124-w01",
+    "scope": "file",
+    "file": "scripts/lib/high_risk_paths.py",
+    "line": 1,
+    "body": "[self-review] PyYAML is unavailable under make unit-test and the gate's python3, and wave 2a's gate must import the hash. fixed:d680a607: a strict front-matter subset parser in the shared module that refuses anything PyYAML would read differently; it matches PyYAML on every accepted task file (validation §6).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w02",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 70,
+    "body": "[self-review] Six legacy task files start with `---` front matter, three with unquoted timestamps the subset parser refuses; an unparsable legacy header must not become a failure. fixed:d680a607: a parse error counts only when the header claims format 2; test_legacy_files_are_grandfathered covers both cases.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w03",
+    "scope": "file",
+    "file": "scripts/check-regime-boundary.sh",
+    "line": 201,
+    "body": "[self-review] The boundary check runs with /usr/bin on PATH in its tests, which is Python 3.9 on macOS. fixed:d680a607: the validator and module avoid 3.10+ APIs (no glob root_dir, no match), checked by running /usr/bin/python3 3.9.6 on the task file.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w04",
+    "scope": "file",
+    "file": "home/dot_config/claude/rules/agmsg-orchestration.md",
+    "line": 12,
+    "body": "[self-review] test_word_budgets caps the rule at 450 words (447 before). fixed:d680a607: the invariant is one clause in the Routing bullet, with three meaning-preserving cuts elsewhere, none in a phrase the test pins; 450 words.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w05",
+    "scope": "file",
+    "file": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+    "line": 161,
+    "body": "[self-review, full suite] test_pr_feedback.test_gate_command_appears_once_in_skill_step_10 pins `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review` in step 10, which the first wording broke. fixed:ce9d3dd2: every text writes `make require-crit-review -C <main checkout> REVIEW_TREE=<review worktree>` (GNU make takes -C after the target).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w06",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[scope] home/dot_config/codex/AGENTS.md mirrors pr-integration.md and is not in allowed_files; it points to SKILL step 10, which carries the new gate form, so it does not contradict the change. Reported in the report's scope notes for a docs task.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w07",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 105,
+    "body": "[P1] Codex Bot thread 4237190641 on ce9d3dd2: a `./install/...` alias evaded the design tier and the wave count; allowed_files entries must be canonical repository-relative paths. fixed:5a17d633, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w08",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 133,
+    "body": "[P1] Codex Bot thread 4237190645 on ce9d3dd2: absolute or `../` design_review paths reached outside the repository; both files must resolve inside the main checkout. fixed:5a17d633, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w09",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 141,
+    "body": "[P1] Codex Bot thread 4237190646 on ce9d3dd2: a security code task could name itself as its design; the design must be a separate kind: design task, and a front-matter-less design now fails. fixed:5a17d633, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w10",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 108,
+    "body": "[P2] Codex Bot thread 4237190648 on ce9d3dd2: `security: 1` passed as boolean-looking; security must be a bool. fixed:5a17d633, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w11",
+    "scope": "file",
+    "file": "Makefile",
+    "line": 213,
+    "body": "[P1] Codex Bot thread 4237190649 on ce9d3dd2: a REVIEW_TREE outside this repository skipped or misjudged the gate; the recipe refuses a tree whose git common dir differs. fixed:5a17d633, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w12",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 77,
+    "body": "[P1] Codex Bot thread 4237190651 on ce9d3dd2: `format: 2 # comment` passed as legacy; any header naming a format fails closed, and `format: \"2\"` or 3 now fails too. fixed:5a17d633, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w13",
+    "scope": "file",
+    "file": "scripts/lib/high_risk_paths.py",
+    "line": 124,
+    "body": "[P2] Codex Bot thread 4237190654 on ce9d3dd2: an undoubled inner single quote was accepted; it is now refused. fixed:5a17d633, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w14",
+    "scope": "file",
+    "file": "scripts/lib/high_risk_paths.py",
+    "line": 54,
+    "body": "[P1] Codex Bot thread 4237190656 on ce9d3dd2: the design tier missed the classifier itself, the settings renderer, .claude/settings.json, .claude/contextdb/** and the key setup scripts; added. fixed:5a17d633, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w15",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 92,
+    "body": "[P2] Codex Bot thread 4237190658 on ce9d3dd2: task_id now follows the audit path's one-segment pattern. fixed:5a17d633, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w16",
+    "scope": "file",
+    "file": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+    "line": 176,
+    "body": "[self-review, advisor] Worker Playbook step 1 said `from the task branch`, which step 2 creates. fixed:f4f845fd: it runs from the worktree's origin/main copy.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w17",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 80,
+    "body": "[P1] Codex Bot thread 4237230621 on 5a17d633: a quoted `\"format\"` key bypassed the fail-closed regex; it now finds the key quoted or not. fixed:0d6d5aed, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w18",
+    "scope": "file",
+    "file": "scripts/lib/high_risk_paths.py",
+    "line": 69,
+    "body": "[P1] Codex Bot thread 4237230623 on 5a17d633: executable_agmsg-dispatch, sandbox-excluded and pre-allowed, joins the design tier. fixed:0d6d5aed, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w19",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 151,
+    "body": "[P1] Codex Bot thread 4237230624 on 5a17d633: the receipt was not bound to the design; per Amendment 3 its design: must end in the canonical hash and its reviewer: be an -aNNN identity. fixed:0d6d5aed, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w20",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 120,
+    "body": "[P1] Codex Bot thread 4237230627 on 5a17d633: a glob that can create a design-tier file was not security; allowed globs are now intersected exactly with the tier. fixed:0d6d5aed, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w21",
+    "scope": "file",
+    "file": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+    "line": 175,
+    "body": "[P1] Codex Bot thread 4237230644 on 5a17d633: step 1 ran the worktree's possibly stale validator; it now runs the main checkout's. fixed:0d6d5aed, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w22",
+    "scope": "file",
+    "file": "Makefile",
+    "line": 214,
+    "body": "[P1] Codex Bot thread 4237230646 on 5a17d633: REVIEW_TREE=<repo>/.git passed; the tree must now be a work tree's top level. fixed:0d6d5aed, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w23",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 105,
+    "body": "[P2] Codex Bot thread 4237230650 on 5a17d633: kind: [] raised TypeError; kind is type-checked. fixed:0d6d5aed, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w24",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[conformance, self-reported] git add and git commit of 5a17d633 ran inside the unsandboxed push command; recorded as a deviation in the sandbox record; every later commit ran in the sandbox and its push alone.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w25",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[process, self-reported] Amendment 2 (09:27Z) was read only at 10:08Z because the inbox was not checked between questions; implemented in 0d6d5aed.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w26",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 173,
+    "body": "[P1] Codex Bot thread 4237298693 on 0d6d5aed: reset_of dispatched anywhere; reset records are read only in .orchestration/acceptance. fixed:2d2ae688, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w27",
+    "scope": "file",
+    "file": "scripts/lib/high_risk_paths.py",
+    "line": 56,
+    "body": "[P1] Codex Bot thread 4237298696 on 0d6d5aed: home/.chezmoiscripts/** joins the design tier. fixed:2d2ae688, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w28",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 301,
+    "body": "[P2] Codex Bot thread 4237298700 on 0d6d5aed: waves covered only a glob's current matches; a glob must appear verbatim in exactly one wave. fixed:2d2ae688, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w29",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 254,
+    "body": "[P1] Codex Bot thread 4237298702 on 0d6d5aed: the receipt's outcome was unchecked; one `Design verdict: accept` line is required. fixed:2d2ae688, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w30",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 265,
+    "body": "[P1] Codex Bot thread 4237298704 on 0d6d5aed: a security task was not bound to its design; it must be listed in the design's implementing_tasks. fixed:2d2ae688, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w31",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 281,
+    "body": "[P2] Codex Bot thread 4237298706 on 0d6d5aed: blank trust anchors are refused. fixed:2d2ae688, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w32",
+    "scope": "file",
+    "file": "scripts/lib/high_risk_paths.py",
+    "line": 122,
+    "body": "[CI] validate on 0d6d5aed: validate-agent-assets.py read `<redacted:secret-pattern>` as a committed secret. fixed:918a91b8: the variable is `piece`.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w33",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 261,
+    "body": "[self-review] since 0d6d5aed the subset rule sat inside the receipt check (skipped only when the receipt check already failed, so no bypass). fixed:2d2ae688.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w34",
+    "scope": "file",
+    "file": "scripts/lib/high_risk_paths.py",
+    "line": 95,
+    "body": "[P1] Codex Bot thread 4237362484 on 2d2ae688: implementing_tasks was not hashed; per Amendment 6 it joins the canonical hash keys. fixed:4f9627ac, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w35",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 288,
+    "body": "[P2] Codex Bot thread 4237362485 on 2d2ae688: a scalar implementing_tasks matched as a substring; it must be a list of task ids. fixed:4f9627ac, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w36",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 147,
+    "body": "[P2] Codex Bot thread 4237362488 on 2d2ae688: a reset could name the abandoned task as its redesign; redesign_task must differ from reset_of. fixed:4f9627ac, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w37",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 280,
+    "body": "[P2] Codex Bot thread 4237362491 on 2d2ae688: any kind: design file could authorize; the design must be .orchestration/tasks/<task id>.md with that task_id. fixed:4f9627ac, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w38",
+    "scope": "file",
+    "file": "scripts/lib/high_risk_paths.py",
+    "line": 117,
+    "body": "[P1] Codex Bot thread 4237362495 on 2d2ae688: bracket and brace globs evaded the tier; they are refused. fixed:4f9627ac, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w39",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 249,
+    "body": "[P2] Codex Bot thread 4237404235 on 4f9627ac: a glob that can create a review-tier name was docs; any glob is at least review. fixed:ab0f81eb, with a test and a mutation where code changed (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w40",
+    "scope": "file",
+    "file": "scripts/check-regime-boundary.sh",
+    "line": 204,
+    "body": "[P2] Codex Bot thread 4237404237 on 4f9627ac: design-reset records were not validated at the boundary; they are. fixed:ab0f81eb, with a test and a mutation where code changed (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w41",
+    "scope": "file",
+    "file": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+    "line": 175,
+    "body": "[P1] Codex Bot thread 4237404238 on 4f9627ac: a superseded task did not stop the worker; step 1 now stops on it. fixed:ab0f81eb, with a test and a mutation where code changed (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w42",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 207,
+    "body": "[P1] Codex Bot thread 4237437333 on ab0f81eb: a symlink in tasks/ to a reset record was judged as the record; task files must be regular files. fixed:a11e3617, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w43",
+    "scope": "file",
+    "file": "scripts/validate-task.py",
+    "line": 268,
+    "body": "[P2] Codex Bot thread 4237437337 on ab0f81eb: invariants: {} passed for non-security tasks; every task needs one. fixed:a11e3617, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w44",
+    "scope": "file",
+    "file": "home/dot_agents/agent-config.yaml",
+    "line": 372,
+    "body": "[P2] Codex Bot thread 4237437341 on ab0f81eb: process_tiers named an undefined redesign profile; per Amendments 7 and 8 the profile is defined, rendered and accepted by validate-agent-assets.py. fixed:a11e3617, with a test and a mutation (validation §5).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w45",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P1] Codex Bot thread 4237326681 on 918a91b8, open at the first RESULT, fixed:e6b30e96 in revise round 1 with a test and a mutation: Makefile carries the gate checks but is not in the design tier; proposed fix: add it.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w46",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P1] Codex Bot thread 4237326686 on 918a91b8, open at the first RESULT, fixed:e6b30e96 in revise round 1 with a test and a mutation: a reset can name a legacy kind: design file; proposed fix: require format 2.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w47",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P1] Codex Bot thread 4237326688 on 918a91b8, open at the first RESULT, fixed:e6b30e96 in revise round 1 with a test and a mutation: a code task's own threat_model or trust_anchors override the design's; proposed fix: omit or match exactly.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w48",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P2] Codex Bot thread 4237326692 on 918a91b8, open at the first RESULT, fixed:e6b30e96 in revise round 1 with a test and a mutation: reset overlap misses globs intersecting only in future files; proposed fix: glob-glob intersection.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w49",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P2] Codex Bot thread 4237326697 on 918a91b8, open at the first RESULT, fixed:e6b30e96 in revise round 1 with a test and a mutation: the boundary loop skips dot-prefixed task files; proposed fix: include dotfiles.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w50",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P1] Codex Bot thread 4237326701 on 918a91b8, open at the first RESULT, fixed:e6b30e96 in revise round 1 with a test and a mutation: any formatless file is grandfathered; proposed (design choice): grandfather only the pre-format-2 set.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w51",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P1] Codex Bot thread 4237495354 on a11e3617, open at the first RESULT, fixed:e6b30e96 in revise round 1 with a test and a mutation: a design can be its own receipt; proposed fix: the receipt is a different file under .orchestration/validation/.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w52",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P2] Codex Bot thread 4237495358 on a11e3617, open at the first RESULT, fixed:e6b30e96 in revise round 1 with a test and a mutation: an ordinary task outside .orchestration/tasks/ validates; proposed fix: require that parent.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w53",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P1] Codex Bot thread 4237495360 on a11e3617, open at the first RESULT, fixed:e6b30e96 in revise round 1 with a test and a mutation: REVIEW_TREE equal to the running checkout runs the PR's own gate; proposed fix: refuse it (the full main check is wave 2a's).",
+    "resolved": true
+  },
+  {
+    "id": "t124-w54",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P2] Codex Bot thread 4237495362 on a11e3617, open at the first RESULT, fixed:e6b30e96 in revise round 1 with a test and a mutation: a task can reuse an INV id with another sentence; proposed fix: sentences must equal the design's.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w55",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[process, self-reported] the Bot review of 918a91b8 (six findings) was missed: 2d2ae688 was pushed before it arrived, and later waits looked only at the newest head; found by the final recheck against all Bot threads.",
+    "resolved": true
+  },
+  {
+    "id": "t124-w56",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P1] Codex Bot thread 4237594826 on e6b30e96, open at RESULT round 2: SKILL.md and the integration rules into the design tier, against INV-2's prose exclusion; proposed: an orchestrator or operator decision (amend INV-2 with a new receipt, or keep it).",
+    "resolved": false
+  },
+  {
+    "id": "t124-w57",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P2] Codex Bot thread 4237594829 on e6b30e96, open at RESULT round 2: the task directory is compared by its last two names only; proposed fix: the resolved parent equals the file's checkout's .orchestration/tasks and the name ends in .md.",
+    "resolved": false
+  },
+  {
+    "id": "t124-w58",
+    "scope": "review",
+    "file": "",
+    "line": 0,
+    "body": "[P2] Codex Bot thread 4237594831 on e6b30e96, open at RESULT round 2: list-valued design invariants raise TypeError; proposed fix: require a text map first.",
+    "resolved": false
+  }
+]

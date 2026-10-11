@@ -23,6 +23,14 @@ Items 1 to 5 (`c31b8327`, `3ff0cade`), the a02 revise round's five checks (`108b
 | 4240598178 | `97288f6f` | P1: the boundary-merge sentence names the in-job decision, untrue on this tree until PR 320 merges | the orchestrator's ordering disposition (PING 06:59:22Z): PR 320 merges first and PR 318 takes the new base with `gh pr update-branch` before its audit; the sentence stays as it is |
 | 4240598179 | `97288f6f` | P2: the push-only exit conflicts with Codex seats | `fixed:798fa098` |
 
+
+## Bot round on `c4300f47` (review 5482300822, 07:15:16Z) and fix round 1
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4240646079 | P2, SKILL.md:201: after a fix push step 15 starts over, and `gh pr ready` exits non-zero on a PR that is already ready | `fixed:7524e001`: step 15 marks the PR ready "before the first wait, while it is still a draft"; `test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first` pins it, and the proof fails (validation §5) |
+| 4240646082 | P2, SKILL.md:71: a pre-dispatch review cannot check that a `closed:` selector names a test present in the PR tree | reported, not fixed: it is the threat-table rule's shape wording, the class the reset closed, which the task leaves to the orchestrator |
+
 The worker resolves no thread. The final head's CI and Bot wait are in the RESULT and the main-checkout copy of this report.
 
 ## Notes

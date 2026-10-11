@@ -53,3 +53,26 @@ FAIL: test_workers_commit_inside_the_sandbox (tests.unit.test_agmsg_orchestratio
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-process-rules-a03 …'
 ae486f65-e10d-44bd-8680-8261d6fa4492
 ```
+
+## 5. Bot fix round 1 at `7524e001` (thread 4240646079)
+
+```
+$ git log --oneline -1; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; ruff check --config ruff.toml tests/unit/test_agmsg_orchestration_docs.py; prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -1
+7524e001 docs(regime): gh pr ready runs only while the PR is a draft
+Ran 36 tests in 0.010s
+
+OK
+1 file already formatted
+All checks passed!
+All matched files use Prettier code style!
+```
+
+Removal proof (`scratchpad/mutate-a03-b1.sh`: the a02 wording of the step 15 bullet pasted back):
+
+```
+== removed rule: ready-only-while-draft (SKILL, diff lines: 2) -> test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first
+FAIL: test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first) (<redacted:secret-pattern>)
+AssertionError: 'Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft' not found in ', wait for CI and the Codex Bot before sending RESULT.\n    - Mark the PR ready for review with `gh pr ready <n>` before the wait: the Codex Bot reviews non-draft PRs, and a draft only on an explicit `@codex review` comment. When no Bot review of the final head arriv
+FAILED (failures=1)
+== restored: OK
+```

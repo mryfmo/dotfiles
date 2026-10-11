@@ -306,7 +306,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
     def test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first(self) -> None:
         step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
         for token in (
-            "Mark the PR ready for review with `gh pr ready <n>` before the wait",
+            # Thread 4240646079: after a fix push the PR is already ready, and `gh pr ready` fails there.
+            "Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft",
             "within 10 minutes, post `@codex review`",
             "at most twice. The third Bot round is not fixed",
             "`AGMSG-RESULT … bot_rounds=3`",

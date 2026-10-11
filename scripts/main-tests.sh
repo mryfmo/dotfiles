@@ -25,10 +25,11 @@ set -euo pipefail
 base="${1:?usage: main-tests.sh <base-ref>}"
 helper="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/contract_markers.py"
 
-# @description Run lib/contract_markers.py with PyYAML available.
+# @description Run lib/contract_markers.py with PyYAML available. --no-config keeps
+#   a uv.toml the PR adds from choosing the index or the interpreter.
 # @arg $@ string The helper's subcommand and arguments.
 markers() {
-    uv run --no-project --quiet --with pyyaml python3 "${helper}" "$@"
+    uv run --no-config --no-project --quiet --with pyyaml python3 "${helper}" "$@"
 }
 
 merge_base="$(git merge-base "${base}" HEAD)"
@@ -83,6 +84,8 @@ while IFS= read -r module; do
     fi
 done <<< "${declared}"
 
+# Exactly main's tests/unit: a file the PR adds there (a unittest.py, say) must not shadow main's.
+rm -rf "${tmp}/tests/unit"
 git archive "${base}" tests/unit | tar -x -C "${tmp}"
 
 undeclared=()
@@ -105,13 +108,14 @@ while IFS= read -r module; do
     fi
 done <<< "${declared}"
 
+# -P keeps the PR tree's root off sys.path; tests/unit comes only from PYTHONPATH.
 cd "${tmp}"
 if [ "${#undeclared[@]}" -gt 0 ]; then
     echo "main-tests: undeclared mode, main's modules as they are: ${undeclared[*]}"
-    PYTHONPATH=tests/unit uv run --no-project python -m unittest "${undeclared[@]}" || status=1
+    PYTHONPATH=tests/unit uv run --no-config --no-project python -P -m unittest "${undeclared[@]}" || status=1
 fi
 if [ "${#contract_ids[@]}" -gt 0 ]; then
     echo "main-tests: declared mode, main's contracts with REGIME_CONTRACT=1: ${contract_ids[*]}"
-    REGIME_CONTRACT=1 PYTHONPATH=tests/unit uv run --no-project python -m unittest -v "${contract_ids[@]}" || status=1
+    REGIME_CONTRACT=1 PYTHONPATH=tests/unit uv run --no-config --no-project python -P -m unittest -v "${contract_ids[@]}" || status=1
 fi
 exit "${status}"

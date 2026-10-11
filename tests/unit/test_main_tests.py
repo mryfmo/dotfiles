@@ -141,6 +141,17 @@ class MainTestsHarnessTest(unittest.TestCase):
         result = self.harness({"scripts/foo.sh": "changed contract\n"}, deleted=["tests/unit/test_foo.py"])
         self.assertFails(result, "FAIL: test_ordinary (test_foo.FooTest")
 
+    def test_files_the_pr_plants_cannot_replace_mains_runner(self) -> None:
+        for path in ("tests/unit/unittest.py", "unittest.py"):
+            with self.subTest(path=path):
+                result = self.harness({"scripts/foo.sh": "changed contract\n", path: "raise SystemExit(0)\n"})
+                self.assertFails(result, "FAIL: test_ordinary (test_foo.FooTest")
+
+    def test_a_uv_config_the_pr_plants_is_ignored(self) -> None:
+        # Honoured, this index would make uv fail to fetch PyYAML.
+        result = self.harness({"install/x.sh": "changed\n", "uv.toml": 'index-url = "http://127.0.0.1:9/simple"\n'})
+        self.assertPasses(result)
+
     def test_no_script_change_skips(self) -> None:
         result = self.harness({"README.md": "changed\n", "tests/unit/test_bar.py": "broken"})
         self.assertPasses(result)

@@ -200,7 +200,8 @@ PY
 # AGMSG-TASK in history is counted live by scripts/regime-counters.sh, and a
 # reached threshold is reported unless an anchored record silences it. An
 # accepted acceptance record `<id>.md` silences only with a `pr=<n>` line naming
-# the task's PR (the first `pr=` of its RESULTs) that GitHub shows merged; a
+# the task's PR (the first `pr=` of its RESULTs) that GitHub shows merged, or
+# with a `pr=none` line when none of the task's RESULTs carries `pr=`; a
 # reset record `<id>-design-reset.md` only when its `design_sha256:` is the
 # sha256 of its `redesign_task:` task file and that design was accepted
 # (`AGMSG-RESULT ... verdict=accept design_sha256=<hash>`) by an identity other
@@ -228,17 +229,27 @@ if task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
             fi
         fi
         counts="$("${counters}" "${args[@]}" < /dev/null 2> /dev/null)" || continue
-        pr="$(sed -n 's/^detail: pr=\([0-9][0-9]*\) .*/\1/p' <<< "${counts}")"
+        # The task's PR from its RESULTs: digits, `none` (no RESULT carries pr=) or `invalid`.
+        task_pr="$(sed -n 's/^detail: pr=\([^ ]*\) .*/\1/p' <<< "${counts}")"
+        pr=""
+        if [[ ${task_pr} =~ ^[0-9]+$ ]]; then
+            pr="${task_pr}"
+        fi
         by="$(sed -n 's/^reset: .* accepted_by=\([^ ]*\) .*/\1/p' <<< "${counts}")"
         state="" merged_at=""
         if [[ -n ${pr} ]]; then
             IFS=$'\t' read -r state merged_at < <(cd -- "${main}" && gh api "repos/{owner}/{repo}/pulls/${pr}" --jq '[.state, (.merged_at // "")] | @tsv' < /dev/null 2> /dev/null || true) || true
         fi
+        record_pr=""
+        if [[ -f ${accepted} ]] && grep -Eiq '^(- )?\*\*decision:\*\* *accepted|^status: *accepted' "${accepted}"; then
+            record_pr="$(sed -nE 's/^(- )?pr=([0-9]+|none)([[:space:]].*)?$/\2/p' "${accepted}" | head -n 1)"
+        fi
         reset_anchored=false silenced=false
         if [[ -n ${by} && ${by} != none ]]; then
             reset_anchored=true silenced=true
-        elif [[ -n ${merged_at} && -f ${accepted} ]] && grep -Eiq '^(- )?\*\*decision:\*\* *accepted|^status: *accepted' "${accepted}" &&
-            [[ "$(sed -n 's/^\(- \)\{0,1\}pr=\([0-9][0-9]*\).*/\2/p' "${accepted}" | head -n 1)" == "${pr}" ]]; then
+        elif [[ -n ${pr} && -n ${merged_at} && ${record_pr} == "${pr}" ]]; then
+            silenced=true
+        elif [[ ${record_pr} == none && ${task_pr} == none ]]; then
             silenced=true
         fi
         if [[ ${silenced} == false ]] && grep -q '^S2: ' <<< "${counts}"; then

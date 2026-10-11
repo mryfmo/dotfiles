@@ -381,6 +381,20 @@ class RegimeCountersTest(unittest.TestCase):
             s2(thrice),
         )
 
+    def test_the_pr_is_none_without_a_pr_token_and_invalid_for_a_non_numeric_one(self):
+        rows = [("orch", "AGMSG-TASK v1 task_id=T1"), ("w", "AGMSG-RESULT v1 task_id=T1 head=aaaaaaa")]
+        detail = lambda *more: fields(
+            self.run_counters("T1", "--history-file", self.write("h.tsv", tsv(*rows, *more)))[-1]
+        )
+        self.assertEqual("none", detail()["pr"])
+        self.assertEqual("invalid", detail(("w", "AGMSG-RESULT v1 task_id=T1 pr=none"))["pr"])
+        self.assertEqual("9", detail(("w", "AGMSG-RESULT v1 task_id=T1 pr=9"))["pr"])
+        # Only a numeric PR is fetched: the fake gh logs its single call, for pulls/9.
+        self.assertEqual(
+            ["api --paginate repos/{owner}/{repo}/pulls/9/comments --jq .[]"],
+            (self.home / "gh-calls").read_text().splitlines(),
+        )
+
     def test_history_only_never_calls_gh(self):
         self.store((FIXTURES / f"{V0}.tsv").read_text())
         lines = self.run_counters(V0, "--history-only", "--pr", "317")

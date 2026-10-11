@@ -118,7 +118,13 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
             line
             for line in result.stdout.splitlines()
             if line.startswith(
-                ("regime-boundary: T1 ", "regime-boundary: T2 ", "regime-boundary: T9 ", "regime-boundary: ../")
+                (
+                    "regime-boundary: T1 ",
+                    "regime-boundary: T2 ",
+                    "regime-boundary: T3 ",
+                    "regime-boundary: T9 ",
+                    "regime-boundary: ../",
+                )
             )
         ]
 
@@ -204,6 +210,23 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         self.record("T1-design-reset.md", RESET)
         accept = f"AGMSG-RESULT v1 task_id=R status=ready_for_review verdict=accept design_sha256={DESIGN}"
         self.assertEqual([], self.report(("reviewer", accept)))
+
+    def test_a_pr_none_record_silences_only_a_task_whose_results_name_no_pr(self):
+        # T3 is a PR-less review task over the revise count; T1's RESULTs name PR 5.
+        (self.main / ".orchestration/tasks/T3.md").write_text("task\n")
+        self.messages += [("orch", "AGMSG-TASK v1 task_id=T3")]
+        self.messages += [("w", "AGMSG-RESULT v1 task_id=T3 status=ready_for_review verdict=accept")] * 3
+        t1 = "regime-boundary: T1 S2: revises 2 >= 2 source=live"
+        t3 = "regime-boundary: T3 S2: revises 2 >= 2 source=live"
+        self.assertEqual([t1, t3], self.report())
+        self.record("T3.md", "- **Decision:** PENDING.\npr=none\n")
+        self.assertEqual([t1, t3], self.report())
+        for task in ("T1", "T3"):
+            self.record(f"{task}.md", "- **Decision:** ACCEPTED.\npr=none\n")
+        self.assertEqual([t1], self.report())
+        # Any pr= token on a RESULT, even a non-numeric one, makes pr=none a forgery.
+        self.messages.append(("w", "AGMSG-RESULT v1 task_id=T3 status=ready_for_review pr=none"))
+        self.assertEqual([t1, "regime-boundary: T3 S2: revises 3 >= 2 source=live"], self.report())
 
     def test_the_probe_skips_without_the_counters_script_or_a_readable_store(self):
         (self.main / "scripts/regime-counters.sh").unlink()

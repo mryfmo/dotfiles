@@ -20,8 +20,9 @@
 #   times on the PR.
 #
 #   Output: the count line; one `S2:` line per INV-6 threshold reached; one
-#   `S1:` line per candidate class; a `detail:` line (the PR, the TASK senders,
-#   every counted message id and Bot head); with --reset-hash, a `reset:` line.
+#   `S1:` line per candidate class; a `detail:` line (the PR: digits, `none` when
+#   no RESULT carries `pr=`, `invalid` for another value; the TASK senders, every
+#   counted message id and Bot head); with --reset-hash, a `reset:` line.
 #   Every line ends in `source=live`, or `source=fixture` when a test seam fed it.
 # @arg $1 string Task id.
 # @option --team <team> agmsg team (default dotfiles-conformance).
@@ -111,7 +112,7 @@ counts="$(jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" 
      questions: [kind("AGMSG-PONG")[] | select(has("status=question")) | .id],
      withdrawn: [kind("AGMSG-ACCEPTANCE")[] | select(has("status=withdrawn")) | .id],
      head: ($results[0] // null | if . then tok("head") else null end | if . and test("^[0-9a-f]{7,40}$") then . else null end),
-     pr: (if $pr != "" then $pr else [$results[] | tok("pr") | select(. and test("^[0-9]+$"))][0] end),
+     pr: (if $pr != "" then $pr else [$results[] | tok("pr") | select(.)][0] | if . == null or test("^[0-9]+$") then . else "invalid" end end),
      first: $tasks[0].at, last: $results[-1].at,
      accepted_by: [$all[] | select($hash != "" and .toks[0] == "AGMSG-RESULT" and has("verdict=accept") and tok("design_sha256") == $hash)
        | .from | select(. as $f | any($authors[]; . == $f) | not)] | unique}' <<< "${history}")"
@@ -122,7 +123,7 @@ if [[ ${history_only} == false ]]; then
     pr="$(jq -r '.pr // empty' <<< "${counts}")"
     if [[ -n ${github_file} ]]; then
         github="$(cat -- "${github_file}")" && state=ok
-    elif [[ -n ${pr} ]] && comments="$(gh_list "${pr}" comments)" && commits="$(gh_list "${pr}" commits)"; then
+    elif [[ ${pr} =~ ^[0-9]+$ ]] && comments="$(gh_list "${pr}" comments)" && commits="$(gh_list "${pr}" commits)"; then
         github="$(printf '{"comments":%s,"commits":%s}' "${comments}" "${commits}")" && state=ok
     fi
 fi

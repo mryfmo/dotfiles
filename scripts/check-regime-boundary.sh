@@ -20,7 +20,9 @@
 #   workspaces and worker tabs in the managed workspace (only when `herdr`
 #   is reachable); and a bare-id orchestrator
 #   seat lock, through the one implementation in
-#   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`).
+#   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`); and
+#   each task over an INV-6 count (scripts/regime-counters.sh) without an
+#   anchored acceptance or reset record, or whose PR closed unmerged.
 #   Every probe is read-only, and a missing tool skips its check.
 # @option --report Print the same lines but always exit 0 (for validate-agent-assets).
 # @exitcode 0 If no violation was found, or with --report.
@@ -193,6 +195,57 @@ spec.loader.exec_module(module)
 print("\n".join(module.orchestrator_seat_lock_warnings(Path(sys.argv[2]))))
 PY
 )
+
+# INV-6 counts (plan 006 A3): each main-checkout task file whose id has an
+# AGMSG-TASK in history is counted live by scripts/regime-counters.sh, and a
+# reached threshold is reported unless an anchored record silences it. An
+# accepted acceptance record `<id>.md` silences only with a `pr=<n>` line naming
+# the task's PR (the first `pr=` of its RESULTs) that GitHub shows merged; a
+# reset record `<id>-design-reset.md` only when the design its `design_sha256:`
+# names was accepted (`AGMSG-RESULT ... verdict=accept design_sha256=<hash>`)
+# by an identity other than the task's TASK senders. No waiver silences
+# anything before scripts/regime-waive.sh (V3a): a `DESIGN_RESET_WAIVED_BY=`
+# line in either record is reported as `waiver-unanchored`. A task PR closed
+# unmerged is reported without an anchored reset record. Skipped without the
+# counters script beside this one or a readable agmsg store.
+counters="${root}/scripts/regime-counters.sh"
+if [[ -x ${counters} ]] && task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
+    while read -r task _; do
+        [[ -n ${task} && -f ${main}/.orchestration/tasks/${task}.md ]] || continue
+        accepted="${main}/.orchestration/acceptance/${task}.md"
+        reset="${main}/.orchestration/acceptance/${task}-design-reset.md"
+        args=("${task}")
+        if [[ -f ${reset} ]]; then
+            hash="$(sed -n 's/^design_sha256: *\([0-9a-f]\{64\}\) *$/\1/p' "${reset}" | head -n 1)"
+            [[ -z ${hash} ]] || args+=(--reset-hash "${hash}")
+        fi
+        counts="$("${counters}" "${args[@]}" 2> /dev/null)" || continue
+        pr="$(sed -n 's/^detail: pr=\([0-9][0-9]*\) .*/\1/p' <<< "${counts}")"
+        by="$(sed -n 's/^reset: .* accepted_by=\([^ ]*\) .*/\1/p' <<< "${counts}")"
+        state="" merged_at=""
+        if [[ -n ${pr} ]]; then
+            IFS=$'\t' read -r state merged_at < <(cd -- "${main}" && gh api "repos/{owner}/{repo}/pulls/${pr}" --jq '[.state, (.merged_at // "")] | @tsv' 2> /dev/null || true) || true
+        fi
+        reset_anchored=false silenced=false
+        if [[ -n ${by} && ${by} != none ]]; then
+            reset_anchored=true silenced=true
+        elif [[ -n ${merged_at} && -f ${accepted} ]] && grep -Eiq '^(- )?\*\*decision:\*\* *accepted|^status: *accepted' "${accepted}" &&
+            [[ "$(sed -n 's/^\(- \)\{0,1\}pr=\([0-9][0-9]*\).*/\2/p' "${accepted}" | head -n 1)" == "${pr}" ]]; then
+            silenced=true
+        fi
+        if [[ ${silenced} == false ]] && grep -q '^S2: ' <<< "${counts}"; then
+            while IFS= read -r line; do
+                violations+=("${task} ${line}")
+            done < <(grep '^S2: ' <<< "${counts}")
+            if grep -qs 'DESIGN_RESET_WAIVED_BY=' "${accepted}" "${reset}"; then
+                violations+=("${task} waiver-unanchored")
+            fi
+        fi
+        if [[ ${state} == closed && -z ${merged_at} && ${reset_anchored} == false ]]; then
+            violations+=("${task} PR #${pr} closed unmerged without an anchored reset record")
+        fi
+    done <<< "${task_ids}"
+fi
 
 for violation in ${violations[@]+"${violations[@]}"}; do
     printf 'regime-boundary: %s\n' "${violation}"

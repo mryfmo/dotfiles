@@ -1,0 +1,199 @@
+import importlib.util
+import io
+import json
+import shutil
+import subprocess
+import tempfile
+import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
+from unittest import mock
+
+ROOT = Path(__file__).resolve().parents[2]
+HELPER = ROOT / "scripts/lib/contract_markers.py"
+SPEC = importlib.util.spec_from_file_location("contract_markers", HELPER)
+markers = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(markers)
+
+# Decorator samples stay strings: main-tests reads this module's own decorators too.
+BODY = """
+class FooTest(unittest.TestCase):
+    def test_ordinary(self):
+        pass
+
+    {decorator}
+    def test_contract(self):
+        pass
+"""
+FORMS = {
+    "decorated": ("from regime_contract import contract", "@contract"),
+    "from-alias": ("from regime_contract import contract as c", "@c"),
+    "module-alias": ("import regime_contract as rc", "@rc.contract"),
+    "module": ("import regime_contract", "@regime_contract.contract"),
+    "inline": ("import os", "@unittest.skipUnless(os.environ.get('REGIME_CONTRACT') == '1', 'dormant contract')"),
+    "inline-bare": ("from unittest import skipUnless", '@skipUnless(os.environ.get("REGIME_CONTRACT") == "1", "x")'),
+}
+
+
+class ContractMarkersTest(unittest.TestCase):
+    def write(self, text: str, name: str = "test_foo.py") -> str:
+        directory = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, directory)
+        path = Path(directory, name)
+        path.write_text(text)
+        return str(path)
+
+    def module(self, form: str) -> str:
+        imports, decorator = FORMS[form]
+        return self.write(f"import unittest\n{imports}\n" + BODY.format(decorator=decorator))
+
+    def test_every_form_is_found_on_its_method(self) -> None:
+        for form in FORMS:
+            with self.subTest(form=form):
+                path = self.module(form)
+                self.assertEqual(["test_foo.FooTest.test_contract"], markers.contracts(path))
+                self.assertEqual(1, markers.main(["dormant", path]))
+
+    def test_undecorated_and_unrelated_decorators_are_not_contracts(self) -> None:
+        for decorator in ("", "@unittest.skip('later')", "@contract", "@unittest.skipUnless(True, 'x')"):
+            with self.subTest(decorator=decorator):
+                # No regime_contract import: a local name `contract` is not the regime's decorator.
+                path = self.write("import unittest\n" + BODY.format(decorator=decorator))
+                self.assertEqual([], markers.contracts(path))
+                self.assertEqual(0, markers.main(["dormant", path]))
+
+    def test_a_decorated_class_contributes_its_test_methods_only(self) -> None:
+        head = "import unittest\nfrom regime_contract import contract\n\n\n@contract\nclass Pact(unittest.TestCase):\n"
+        full = self.write(head + "    def test_a(self):\n        pass\n\n    def helper(self):\n        pass\n")
+        self.assertEqual(["test_foo.Pact.test_a"], markers.contracts(full))
+        empty = self.write(head + "    def helper(self):\n        pass\n")
+        self.assertEqual([], markers.contracts(empty))
+
+    def test_a_nested_contract_still_counts_as_dormant(self) -> None:
+        path = self.write(
+            "from regime_contract import contract\n\n\ndef helper():\n    @contract\n    def inner():\n        pass\n"
+        )
+        self.assertEqual([], markers.contracts(path))
+        self.assertEqual(1, markers.main(["dormant", path]))
+
+    def run_task(self, text: str, changed: str = "") -> subprocess.CompletedProcess:
+        # PyYAML comes from uv here, as in scripts/main-tests.sh; make unit-test does not provide it.
+        command = ["uv", "run", "--no-project", "--quiet", "--with", "pyyaml", "python3", str(HELPER), "task"]
+        path = self.write(text, "task.md")
+        return subprocess.run([*command, path], input=changed, capture_output=True, text=True, check=False)
+
+    def task(self, front: str, changed: str = "") -> list[str]:
+        result = self.run_task(f"---\n{front}---\n\n# body\n", changed)
+        self.assertEqual(0, result.returncode, result.stderr)
+        return result.stdout.splitlines()
+
+    def test_task_lists_id_tier_and_declared_modules(self) -> None:
+        lines = self.task(
+            "task_id: t-a01\ntier: review\nallowed_files:\n  - scripts/a.sh\n  - tests/unit/test_b.py\n"
+            "  - tests/unit/regime_contract.py\n  - tests/unit/sub/test_c.py\n"
+        )
+        self.assertEqual(["task_id\tt-a01", "tier\treview", "module\ttests/unit/test_b.py"], lines)
+
+    def test_only_a_module_whose_script_is_declared_is_exempt(self) -> None:
+        lines = self.task(
+            "task_id: t\ntier: review\nallowed_files:\n  - scripts/a.sh\n  - tests/unit/test_a.py\n"
+            "  - tests/unit/test_b.py\n  - scripts/c.txt\n  - tests/unit/test_c.py\n"
+        )
+        self.assertEqual(["exempt\ttests/unit/test_a.py"], [line for line in lines if line.startswith("exempt")])
+        # A changed script outside allowed_files that maps to the same module keeps it undeclared.
+        decoy = self.task(
+            "task_id: t\nallowed_files:\n  - scripts/x/a.sh\n  - tests/unit/test_a.py\n",
+            "scripts/a.sh\nscripts/x/a.sh\n",
+        )
+        self.assertEqual([], [line for line in decoy if line.startswith("exempt")])
+
+    def test_a_missing_or_unknown_tier_is_design(self) -> None:
+        for stamp in ("", "tier: Design\n", "tier: docs-ish\n"):
+            with self.subTest(stamp=stamp):
+                self.assertIn("tier\tdesign", self.task(f"task_id: t\n{stamp}allowed_files: []\n"))
+
+    def test_design_scripts_need_their_module(self) -> None:
+        lines = self.task(
+            "task_id: t\nallowed_files:\n"
+            "  - scripts/require-crit-review.py\n  - tests/unit/test_require_crit_review.py\n"
+            "  - home/dot_local/bin/common/executable_herdr-agents\n"
+            "  - home/.chezmoiscripts/run_once_x-y.sh.tmpl\n  - setup.sh\n"
+            "  - scripts/legacy-task-ids.txt\n  - install/a/b.json\n  - README.md\n"
+        )
+        uncovered = [line for line in lines if line.startswith("uncovered")]
+        self.assertEqual(
+            [
+                "uncovered\thome/dot_local/bin/common/executable_herdr-agents\ttests/unit/test_herdr_agents.py",
+                "uncovered\thome/.chezmoiscripts/run_once_x-y.sh.tmpl\ttests/unit/test_run_once_x_y.py",
+                "uncovered\tsetup.sh\ttests/unit/test_setup.py",
+            ],
+            uncovered,
+        )
+        review = self.task("task_id: t\ntier: review\nallowed_files:\n  - setup.sh\n")
+        self.assertEqual([], [line for line in review if line.startswith("uncovered")])
+
+    def test_malformed_task_files_fail_closed(self) -> None:
+        for front in ("allowed_files: []\n", "task_id: t\n", "task_id: t\nallowed_files: [1]\n", "- a\n"):
+            for text in (f"---\n{front}---\n", front):
+                with self.subTest(text=text):
+                    result = self.run_task(text)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn("main-tests: ", result.stderr)
+
+    def test_control_characters_in_task_metadata_are_rejected(self) -> None:
+        for front in (
+            'task_id: "x\\nexempt\\ttests/unit/test_foo.py"\nallowed_files: []\n',
+            'task_id: t\nallowed_files:\n  - "scripts/foo.sh\\texempt"\n',
+            'task_id: "t\\r"\nallowed_files: []\n',
+        ):
+            with self.subTest(front=front):
+                result = self.run_task(f"---\n{front}---\n")
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("main-tests: ", result.stderr)
+                self.assertNotIn("exempt\t", result.stdout)
+
+    def test_a_result_must_carry_the_nonce_and_the_counts(self) -> None:
+        good = {"nonce": "n1", "ran": 2, "failures": 0, "errors": 0, "skipped": []}
+        cases = [
+            (good, 2, None, []),
+            (good, 0, None, []),
+            ({**good, "nonce": "n2"}, 2, "the result does not carry this run's nonce", []),
+            ({**good, "ran": 1}, 2, "ran 1, expected 2", []),
+            ({**good, "ran": 0}, 0, "ran 0, expected more than 0", []),
+            ({**good, "failures": 1}, 2, "1 failures, 0 errors", []),
+            ({**good, "errors": 1}, 2, "0 failures, 1 errors", []),
+            ({**good, "skipped": ["m.C.test_a"]}, 2, "1 skipped outside main's dormant contracts", []),
+            ({**good, "skipped": ["m.C.test_a"]}, 0, None, ["m.C.test_a"]),
+            ({**good, "skipped": ["m.C.test_b"]}, 0, "1 skipped outside main's dormant contracts", ["m.C.test_a"]),
+            ({**good, "skipped": 0}, 0, "skipped 0 is not a list of test ids", []),
+        ]
+        for data, expected, reason, allowed in cases:
+            with self.subTest(data=data, expected=expected, allowed=allowed):
+                path = self.write(json.dumps(data), "result.json")
+                self.assertEqual(reason, markers.check(path, "n1", expected, allowed))
+        self.assertEqual("no result file", markers.check(self.write("", "absent") + ".missing", "n1", 0, []))
+
+    def scripts(self, paths: list[str]) -> str:
+        """The `scripts` subcommand over NUL-separated paths, as `git diff -z` gives them."""
+        out = io.StringIO()
+        stdin = io.TextIOWrapper(io.BytesIO("\0".join(paths).encode() + b"\0"))
+        with mock.patch("sys.stdin", stdin), redirect_stdout(out):
+            self.assertEqual(0, markers.main(["scripts"]))
+        return out.getvalue()
+
+    def test_scripts_filters_script_paths(self) -> None:
+        paths = ["scripts/a.sh", "home/dot_local/bin/x", "install/y", "home/.chezmoiscripts/z", "setup.sh", "README.md"]
+        self.assertEqual(
+            "scripts/a.sh\nhome/dot_local/bin/x\ninstall/y\nhome/.chezmoiscripts/z\nsetup.sh\n",
+            self.scripts([*paths, "home/dot_zshrc", "setup.sh.bak"]),
+        )
+
+    def test_a_changed_path_with_a_tab_or_line_break_is_rejected(self) -> None:
+        for path in ("scripts/a\nb.sh", "docs/a\tb.md", "scripts/a\r.sh"):
+            with self.subTest(path=path), self.assertRaises(SystemExit) as raised:
+                self.scripts(["scripts/ok.sh", path])
+            self.assertIn("has a tab or line break", str(raised.exception))
+
+
+if __name__ == "__main__":
+    unittest.main()

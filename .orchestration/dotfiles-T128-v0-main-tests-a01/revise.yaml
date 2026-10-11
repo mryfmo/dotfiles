@@ -1,0 +1,15 @@
+round: 1
+previous_head: adcf783b06d9081280991a3727f8a21c3c61ac85
+checks:
+  - tests/unit/test_main_tests.py::test_nothing_from_the_pr_runs_before_mains_harness
+  - tests/unit/test_main_tests.py::test_a_planted_venv_is_not_used
+  - tests/unit/test_main_tests.py::test_a_zero_exit_without_a_summary_fails
+  - tests/unit/test_main_tests.py::test_a_declared_module_without_its_script_stays_undeclared
+  - tests/unit/test_main_tests.py::test_a_renamed_script_still_triggers
+  - tests/unit/test_main_tests.py::test_an_empty_contract_class_is_no_contract
+resubmits:
+  - resubmit: 1
+    previous_head: 32fe9a36a6ca67670e54bbcb1c506ca391d9dd32
+    checks:
+      - tests/unit/test_main_tests.py::test_a_forged_summary_without_the_runner_nonce_fails
+      - tests/unit/test_contract_markers.py::test_control_characters_in_task_metadata_are_rejected

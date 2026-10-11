@@ -76,6 +76,73 @@ jobs:
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
           fi
 
+  main-tests:
+    # main's tests/unit judge this change (T128 INV-12, scripts/main-tests.sh).
+    # The harness is main's copy, never the PR's, so a change to it is judged
+    # by the copy already merged. !cancelled(): it runs and reports even when
+    # `changes` fails, rather than being skipped.
+    needs: changes
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Configure Git defaults
+        run: git config --global init.defaultBranch main
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+
+      - name: Fetch main's harness and helpers
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          mkdir -p "${RUNNER_TEMP}/scripts/lib"
+          # Every file this job runs comes from main; nothing from the PR tree runs before the harness.
+          git show origin/main:scripts/lib/github-release.sh > "${RUNNER_TEMP}/scripts/lib/github-release.sh"
+          for path in scripts/main-tests.sh scripts/lib/contract_markers.py; do
+            if git cat-file -e "origin/main:${path}" 2> /dev/null; then
+              git show "origin/main:${path}" > "${RUNNER_TEMP}/${path}"
+            else
+              # Only this harness pair falls back, and only on the PR that adds it: main has no copy yet.
+              echo "main has no ${path}; running this PR's copy"
+              cp "${path}" "${RUNNER_TEMP}/${path}"
+            fi
+          done
+
+      - name: Install unit-test tools
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y jq zsh
+          # main's modules call chezmoi: the test job's verified install, without its fixture checks.
+          source "${RUNNER_TEMP}/scripts/lib/github-release.sh"
+          chezmoi_version="$(github_release_tag twpayne/chezmoi)"
+          chezmoi_version="${chezmoi_version#v}"
+          artifact="chezmoi_${chezmoi_version}_linux_amd64.tar.gz"
+          base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
+          curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
+          curl -fsSL "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \
+            | grep "  ${artifact}$" \
+            | (cd "${RUNNER_TEMP}" && sha256sum --check --strict)
+          if ! github_release_attestation twpayne/chezmoi "v${chezmoi_version}" "${RUNNER_TEMP}/${artifact}"; then
+            echo "chezmoi v${chezmoi_version}: the GitHub release attestation did not verify" >&2
+            exit 1
+          fi
+          tar -xzf "${RUNNER_TEMP}/${artifact}" -C "${RUNNER_TEMP}" chezmoi
+          sudo install -m 0755 "${RUNNER_TEMP}/chezmoi" /usr/local/bin/chezmoi
+
+      - name: Run main's unit tests against this change
+        run: bash "${RUNNER_TEMP}/scripts/main-tests.sh" origin/main
+
   test:
     needs: changes
     # Run the same test suite on each target OS/system pair.

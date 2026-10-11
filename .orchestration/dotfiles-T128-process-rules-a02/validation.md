@@ -210,3 +210,59 @@ CompactionDB (main checkout, outside the sandbox through the permission gate):
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-process-rules-a02 revise round 1 …'
 aae4a1c4-c1c0-4bbb-bd54-71223252c0f4
 ```
+
+## 8. The fifth item and Bot fix round 1 of the revise (`21c160c8`, `e8d20aae`, `052eea4c`)
+
+```
+$ gh pr checks 318 --repo mryfmo/dotfiles --watch --interval 30   # on 108b43bd, final table; exit 0
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/38118717869/job/114408828732	
+private-bootstrap (macos-14, client)	pass	12s	https://github.com/mryfmo/dotfiles/actions/runs/38118717854/job/114408829009	
+private-bootstrap (ubuntu-24.04, client)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/38118717854/job/114408828924	
+private-bootstrap (ubuntu-24.04, server)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/38118717854/job/114408828870	
+public-bootstrap (macos-14, client)	pass	8m31s	https://github.com/mryfmo/dotfiles/actions/runs/38118717854/job/114408828850	
+public-bootstrap (ubuntu-24.04, client)	pass	9m59s	https://github.com/mryfmo/dotfiles/actions/runs/38118717854/job/114408828757	
+public-bootstrap (ubuntu-24.04, server)	pass	7m27s	https://github.com/mryfmo/dotfiles/actions/runs/38118717854/job/114408828888	
+test (macos-14, client)	pass	5m51s	https://github.com/mryfmo/dotfiles/actions/runs/38118717869/job/114408854505	
+test (ubuntu-24.04, client)	pass	8m3s	https://github.com/mryfmo/dotfiles/actions/runs/38118717869/job/114408854570	
+test (ubuntu-24.04, server)	pass	5m7s	https://github.com/mryfmo/dotfiles/actions/runs/38118717869/job/114408854509	
+test (ubuntu-26.04, client)	pass	9m28s	https://github.com/mryfmo/dotfiles/actions/runs/38118717869/job/114408854446	
+validate	pass	1m35s	https://github.com/mryfmo/dotfiles/actions/runs/38118717865/job/114408828753	
+$ shasum -a 256 ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-process-rules-a02.md .orchestration/dotfiles-T128-process-rules-a02/task.md | cut -c1-64
+b6500dbfbd86d40ffc9227ef9533317060da4cdf9536a8517d96a8ef7ee6d421
+b6500dbfbd86d40ffc9227ef9533317060da4cdf9536a8517d96a8ef7ee6d421
+$ git log --oneline -4; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; ruff check --config ruff.toml tests/unit/test_agmsg_orchestration_docs.py; prettier --check AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -1
+052eea4c docs(regime): the boundary-merge sentence names the in-job decision
+e8d20aae chore(orchestration): task file for dotfiles-T128-process-rules-a02, Amendment 1
+21c160c8 docs(regime): open the worker PR as a draft; pin the paired-round and counter-record clauses
+108b43bd docs(regime): bind the records-only rule to the Bot, shape by hand until the schema, commit inside the sandbox
+Ran 36 tests in 0.007s
+
+OK
+1 file already formatted
+All checks passed!
+All matched files use Prettier code style!
+```
+
+Removal proofs (`scratchpad/mutate-a02-r1b.sh`, the same harness with the four new rules; output cut to three lines of at most 400 characters per rule):
+
+```
+== removed rule: draft-flag (SKILL, diff lines: 2) -> test_workers_open_the_pr_as_a_draft
+FAIL: test_workers_open_the_pr_as_a_draft (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_workers_open_the_pr_as_a_draft)
+AssertionError: '`gh pr create --draft --head <branch>`' not found in " and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR as a draft with `gh p
+FAILED (failures=1)
+== removed rule: revises-once-per-pair (SKILL, diff lines: 2) -> test_design_review_runs_in_paired_rounds_with_a_cap
+FAIL: test_design_review_runs_in_paired_rounds_with_a_cap (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_design_review_runs_in_paired_rounds_with_a_cap) (<redacted:secret-pattern>)
+AssertionError: 'The orchestrator revises once per pair of results' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work remain orchestrator-side; n
+FAILED (failures=1)
+== removed rule: counter-output-recorded (SKILL, diff lines: 2) -> test_counters_run_before_every_acceptance_action
+FAIL: test_counters_run_before_every_acceptance_action (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_counters_run_before_every_acceptance_action)
+AssertionError: 'and pastes its output into the acceptance record' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.\n- Acceptance review, adversarial RESULT review, and review-profile work remain orchestrator-side; ne
+FAILED (failures=1)
+== removed rule: old-boundary-clause-pasted-back (SKILL, diff lines: 2) -> test_boundary_merge_sentence_names_the_in_job_decision
+FAIL: test_boundary_merge_sentence_names_the_in_job_decision (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_boundary_merge_sentence_names_the_in_job_decision)
+AssertionError: 'each required job decides inside itself and reports success on an `.orchestration`-only diff; a skipped required job would report Success (fail-open), so no required job carries a job-level `if` or a `needs`.' not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings,
+FAILED (failures=1)
+== restored: OK
+```

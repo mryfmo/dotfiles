@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-process-rules-a02
 seat: claude-standard-dot-a003
-permission_gated_commands: 19
+permission_gated_commands: 25
 ---
 
 # Sandbox record: dotfiles-T128-process-rules-a02
@@ -30,14 +30,20 @@ Deviation (audit of `27ea99b2`, finding 5): #7 ran `git add` and `git commit` of
 
 ## Revise round 1
 
-The revise commit (rules, tests, `revise.yaml`, this record) was made inside the sandbox with `git -c commit.gpgsign=false`; only the push leaves it. The count above is 12 from the first round plus these 7, counted in advance in this copy; the main-checkout copy states the final count.
+The revise commits were made inside the sandbox with `git -c commit.gpgsign=false`; only the pushes leave it. The count above is 12 from the first round plus these 13, counted in advance from R8 on in this copy; the main-checkout copy states the final count.
 
 | # | Command | Step 4 case |
 |--:|---|---|
 | R1 | `cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add …` | main-checkout `memory add` |
-| R2 | the authorized push (the revise commit) | `git push` |
-| R3 | `gh pr checks 318 … --watch` on the revise head (background, exit status joined) | `gh` |
-| R4 | Bot wait on the revise head, `scratchpad/bot-wait.sh` (background) | `gh` only |
-| R5 | final recheck of reviews, review comments and the connector summary right before the RESULT (`gh` only) | `gh` |
-| R6 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
-| R7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a02 …` | `agmsg-dispatch` |
+| R2 | the authorized push (`108b43bd`) | `git push` |
+| R3 | `gh pr checks 318 … --watch` on `108b43bd` (background, exit status joined) | `gh` |
+| R4 | Bot wait on `108b43bd`, `scratchpad/bot-wait.sh` (background) | `gh` only |
+| R5 | `gh api` the four threads and the review of `108b43bd` (a `--jq` grouping error ended it, exit 1; R6 re-read them) | `gh` |
+| R6 | `gh api` the bodies of threads 4240566259, …263, …266, …268 and review 5482212241 | `gh` |
+| R7 | `agmsg-dispatch … AGMSG-PONG v1 … status=question …` (thread 4240566259 is the orchestrator's) | `agmsg-dispatch` |
+| R8 | the authorized push (`21c160c8`, `e8d20aae`, `052eea4c` and this evidence) | `git push` |
+| R9 | `gh pr checks 318 … --watch` on the final head (background, exit status joined) | `gh` |
+| R10 | Bot wait on the final head, `scratchpad/bot-wait.sh` (background) | `gh` only |
+| R11 | final recheck of reviews, review comments and the connector summary right before the RESULT (`gh` only) | `gh` |
+| R12 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
+| R13 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a02 …` | `agmsg-dispatch` |

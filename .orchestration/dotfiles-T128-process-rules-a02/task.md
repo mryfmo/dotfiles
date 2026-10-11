@@ -12,6 +12,13 @@ allowed_files:
   - AGENTS.md
   - tests/unit/test_agmsg_orchestration_docs.py
 after: []
+threat_table:
+  - control: the PR edits AGENTS.md "Code Review Rules", which the Codex Bot reads from the PR tree, so a PR can rewrite the Bot's rules for its own review
+    disposition: "residual: the Bot's review of a PR that edits its own rules is swept feedback with no gate authority (design R8, trust anchor 4); the task-level audit runs with main's AGENTS.md as its instruction root (INV-5) and the orchestrator's review reads the diff; a change to Code Review Rules is review tier with one schema audit (INV-1)"
+  - control: the PR edits the SKILL that Claude seats follow once it is applied
+    disposition: "residual: the applied copy changes only after the merge and the operator's make update; before the merge the orchestrator's diff review and the audit from main judge every sentence, and tests/unit/test_agmsg_orchestration_docs.py pins each rule sentence with a token that fails when the sentence is removed"
+  - control: the task-file copies on the branch (.orchestration/dotfiles-T128-process-rules-a01/task.md and -a02/task.md)
+    disposition: "residual: each copy is byte-identical to the dispatched task file (sha256 in the worker's validation file, compared by the orchestrator at acceptance); the reset record names the a02 file's hash and the review seat's verdict=accept on it"
 premises:
   - claim: "on PR 318 the Codex Bot raised the same finding class on three heads (4240290387 on 9a46c3c4: the disposition regex accepts an empty payload; 4240321113 on ac3794f9: residual none; 4240334094 on 6635030f: out-of-scope none or a wrong owner), which is plan 006 S1, and P1 on two heads after the first RESULT 9a46c3c4, which is INV-6; the other three ids in the output are the first revise round's P2s (fixed) and the stop-criteria P2"
     command: "gh api --paginate repos/mryfmo/dotfiles/pulls/318/comments --jq '.[]|select(.in_reply_to_id==null and (.original_commit_id[0:8]|IN(\"9a46c3c4\",\"ac3794f9\",\"6635030f\")) and (.body|test(\"P0 Badge|P1 Badge|P2 Badge\")))|[.id,.original_commit_id[0:8]]|@tsv'"
@@ -81,6 +88,10 @@ Written 2026-10-11 by the orchestrator seat as the relay of the review seat's re
 5. Thread 4240348414 (an `open:<id>` third-round P0/P1 has no path through Orchestrator Playbook step 10.1 and 10.5): append to step 10.1 the sentence "An `open:<thread id>` item from a worker's third Bot round is a sweep item like any other: it becomes `fixed:<sha>` through a revise round that carries its `check=` (a round that counts toward INV-6 like any other), or `not-applicable:<reason>` with a pasted refutation; until one of those exists the PR is not merged, never with the thread open." Test: `test_open_third_round_threads_have_an_integration_outcome` asserts the tokens "is a sweep item like any other" and "the PR is not merged, never with the thread open" in the Orchestrator Playbook section.
 
 The RESULT lists `4240348412-fixed:<sha>` and `4240348414-fixed:<sha>`.
+
+## Amendment 1 (orchestrator, 2026-10-11 06:52Z, after the Bot's P1 4240566259 on revise commit 108b43bd)
+
+The Bot read the new AGENTS.md rule against this PR and found no threat table in its task records. It is right in substance: the PR edits the rules the Bot reads from the PR tree. The three rows above are added once (the rule's own amendment clause); items 1 to 5 and the revise round's five checks are unchanged. The worker re-copies this file byte-identical to `.orchestration/dotfiles-T128-process-rules-a02/task.md` and pushes it with its local fix commit as fix round 1 of the revise round.
 
 ## Validation
 

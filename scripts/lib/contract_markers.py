@@ -1,9 +1,10 @@
 """Task-file and contract-decorator queries for scripts/main-tests.sh (T128 INV-12).
 
-task <task.md>       print the task id, its tier, its declared tests/unit modules,
+task [<task.md>]     print the task id, its tier, its declared tests/unit modules,
                      the declared modules whose script is declared too and whose
-                     changed scripts (read from stdin) all are (exempt), and each
-                     declared design-tier script without its module
+                     changed scripts (read from stdin) all are (exempt), each
+                     declared design-tier script without its module, and each
+                     undeclared changed script with its module (undeclared)
 scripts              print the script paths among the paths read from stdin
 contracts <module>...
                      print the unittest test-method ids that carry the contract decorator
@@ -38,37 +39,42 @@ def module_for(script: str) -> str:
     return f"tests/unit/test_{name.replace('-', '_')}.py"
 
 
-def task(path: str) -> list[str]:
-    import yaml
+def task(path: str | None) -> list[str]:
+    changed = [line for line in sys.stdin.read().splitlines() if line]
+    lines, files = [], []
+    if path:
+        import yaml
 
-    text = Path(path).read_text()
-    if not text.startswith("---\n") or "\n---\n" not in text[3:]:
-        raise SystemExit(f"main-tests: {path} has no front matter")
-    front = yaml.safe_load(text[4 : text.index("\n---\n", 3)])
-    if not isinstance(front, dict) or not isinstance(front.get("task_id"), str):
-        raise SystemExit(f"main-tests: {path} has no task_id")
-    files = front.get("allowed_files")
-    if not isinstance(files, list) or not all(isinstance(entry, str) for entry in files):
-        raise SystemExit(f"main-tests: {path} has no allowed_files list")
-    # The output is tab- and line-delimited, so a value carrying either could forge a record.
-    for value in (front["task_id"], *files):
-        if re.search(r"[\t\n\r]", value):
-            raise SystemExit(f"main-tests: {path} has a tab or line break in {value!r}")
-    # A missing or unknown stamp is design tier, the strictest.
-    tier = front.get("tier") if front.get("tier") in ("docs", "review") else "design"
-    modules = [entry for entry in files if MODULE_PATH.fullmatch(entry)]
-    scripts = [entry for entry in files if SCRIPT_PATH.match(entry) and not entry.endswith(DATA_SUFFIXES)]
-    # Contract-only selection is keyed on the declared script; a module declared alone still runs as it is,
-    # and so does one that any undeclared changed script maps to (a declared decoy of the same name).
-    blocked = {module_for(changed) for changed in sys.stdin.read().splitlines() if changed and changed not in files}
-    exempt = [module for module in modules if module in map(module_for, scripts) and module not in blocked]
-    lines = [f"task_id\t{front['task_id']}", f"tier\t{tier}", *(f"module\t{module}" for module in modules)]
-    lines += [f"exempt\t{module}" for module in exempt]
-    if tier == "design":
-        lines += [
-            f"uncovered\t{script}\t{module_for(script)}" for script in scripts if module_for(script) not in modules
-        ]
-    return lines
+        text = Path(path).read_text()
+        if not text.startswith("---\n") or "\n---\n" not in text[3:]:
+            raise SystemExit(f"main-tests: {path} has no front matter")
+        front = yaml.safe_load(text[4 : text.index("\n---\n", 3)])
+        if not isinstance(front, dict) or not isinstance(front.get("task_id"), str):
+            raise SystemExit(f"main-tests: {path} has no task_id")
+        files = front.get("allowed_files")
+        if not isinstance(files, list) or not all(isinstance(entry, str) for entry in files):
+            raise SystemExit(f"main-tests: {path} has no allowed_files list")
+        # The output is tab- and line-delimited, so a value carrying either could forge a record.
+        for value in (front["task_id"], *files):
+            if re.search(r"[\t\n\r]", value):
+                raise SystemExit(f"main-tests: {path} has a tab or line break in {value!r}")
+        # A missing or unknown stamp is design tier, the strictest.
+        tier = front.get("tier") if front.get("tier") in ("docs", "review") else "design"
+        modules = [entry for entry in files if MODULE_PATH.fullmatch(entry)]
+        scripts = [entry for entry in files if SCRIPT_PATH.match(entry) and not entry.endswith(DATA_SUFFIXES)]
+        # Contract-only selection is keyed on the declared script; a module declared alone still runs as it is,
+        # and so does one that any undeclared changed script maps to (a declared decoy of the same name).
+        blocked = {module_for(script) for script in changed if script not in files}
+        exempt = [module for module in modules if module in map(module_for, scripts) and module not in blocked]
+        lines = [f"task_id\t{front['task_id']}", f"tier\t{tier}", *(f"module\t{module}" for module in modules)]
+        lines += [f"exempt\t{module}" for module in exempt]
+        if tier == "design":
+            lines += [
+                f"uncovered\t{script}\t{module_for(script)}" for script in scripts if module_for(script) not in modules
+            ]
+    # Every undeclared changed script, for the harness to check that main has a module that tests it.
+    undeclared = [script for script in changed if not script.endswith(DATA_SUFFIXES) and script not in files]
+    return lines + [f"undeclared\t{script}\t{module_for(script)}" for script in undeclared]
 
 
 def is_contract(decorator: ast.expr, names: set[str], modules: set[str]) -> bool:
@@ -116,6 +122,19 @@ def contracts(path: str) -> list[str]:
     return ids
 
 
+def guarded() -> dict:
+    """What the runner relies on after the tests: unittest's machinery, json.dumps and the os calls it writes with."""
+    modules = (unittest.case, unittest.result, unittest.runner, unittest.suite, unittest.loader)
+    classes = (unittest.TestCase, unittest.TestResult, unittest.TextTestResult, unittest.TextTestRunner)
+    state = {(module, name): value for module in modules for name, value in vars(module).items() if callable(value)}
+    state |= {
+        (cls, name): value
+        for cls in (*classes, unittest.TestSuite, unittest.TestLoader)
+        for name, value in vars(cls).items()
+    }
+    return state | {"dumps": json.dumps, "open": os.open, "write": os.write, "exit": os._exit}
+
+
 def run(result: str, ids: list[str]) -> None:
     """Run main's tests in this process; only a result carrying the harness's nonce counts as a completed run."""
     chunks = []
@@ -123,11 +142,21 @@ def run(result: str, ids: list[str]) -> None:
         chunks.append(chunk)
     os.close(3)  # before any test module loads
     nonce = b"".join(chunks).decode().strip()
+    # Bound before any test module loads, so a test that replaces them does not reach the record.
+    before, dumps, write, leave = guarded(), json.dumps, os.write, os._exit
+    fd = os.open(result, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     verbose = ids[:1] == ["-v"]
     names = ids[1:] if verbose else ids
     outcome = unittest.TextTestRunner(verbosity=2 if verbose else 1).run(
         unittest.TestLoader().loadTestsFromNames(names)
     )
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # Replaced, not added: unittest imports some names lazily during a run (get_theme in 3.14+).
+    now = guarded()
+    if any(now.get(key) is not value for key, value in before.items()):
+        write(2, b"main-tests: unittest internals were replaced during the run\n")
+        leave(1)
     failures = len(outcome.failures) + len(outcome.unexpectedSuccesses)
     record = {
         "nonce": nonce,
@@ -136,11 +165,9 @@ def run(result: str, ids: list[str]) -> None:
         "errors": len(outcome.errors),
         "skipped": [test.id() for test, _ in outcome.skipped],
     }
-    Path(result).write_text(json.dumps(record))
-    sys.stdout.flush()
-    sys.stderr.flush()
-    # os._exit: no atexit handler a test module registered may rewrite the result after this point.
-    os._exit(0 if outcome.wasSuccessful() else 1)
+    write(fd, dumps(record).encode())
+    # The counts, not wasSuccessful(), decide; leave (os._exit) skips any atexit hook a test module registered.
+    leave(0 if not (failures or record["errors"]) else 1)
 
 
 def check(result: str, nonce: str, expected: int, allowed: list[str]) -> str | None:
@@ -167,8 +194,8 @@ def check(result: str, nonce: str, expected: int, allowed: list[str]) -> str | N
 
 def main(argv: list[str]) -> int:
     match argv:
-        case ["task", path]:
-            print(*task(path), sep="\n")
+        case ["task", *path] if len(path) <= 1:
+            print(*task(path[0] if path else None), sep="\n")
         case ["scripts"]:
             print(*(line for line in sys.stdin.read().splitlines() if SCRIPT_PATH.match(line)), sep="\n")
         case ["contracts", *paths]:

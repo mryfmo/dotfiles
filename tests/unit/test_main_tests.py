@@ -41,6 +41,17 @@ class BarTest(unittest.TestCase):
     def test_ordinary(self):
         self.assertEqual("bar\\n", (ROOT / "scripts/bar.sh").read_text())
 """
+
+
+def simple(name: str, path: str) -> str:
+    """A main module with one ordinary test that the file at path exists."""
+    return (
+        BAR.replace("BarTest", f"{name}Test")
+        .replace("scripts/bar.sh", path)
+        .replace('assertEqual("bar\\n", ', "assertTrue(")
+    )
+
+
 MAIN = {
     "README.md": "readme\n",
     "install/x.sh": "x\n",
@@ -50,6 +61,7 @@ MAIN = {
     "tests/unit/regime_contract.py": (ROOT / "tests/unit/regime_contract.py").read_text(),
     "tests/unit/test_foo.py": DORMANT,
     "tests/unit/test_bar.py": BAR,
+    "tests/unit/test_x.py": simple("X", "install/x.sh"),
 }
 FOO_FILES = ("scripts/foo.sh", "tests/unit/test_foo.py")
 
@@ -262,6 +274,30 @@ class MainTestsHarnessTest(unittest.TestCase):
         self.assertIn("\n    needs: changes\n", job)
         self.assertIn("\n    if: ${{ !cancelled() }}\n", job)
 
+    def test_unittest_internals_replaced_by_the_pr_fail(self) -> None:
+        # main's test_baz loads the PR's script, which rewires the runner's machinery; foo.sh breaks main's test.
+        loads = "import runpy\nfrom pathlib import Path\n\nrunpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/baz.py'))\n"
+        main = {**MAIN, "scripts/baz.py": "VALUE = 1\n", "tests/unit/test_baz.py": loads}
+        zero = (
+            "import json\nimport unittest\n\nreal = json.dumps\n\n\ndef dumps(record, **kwargs):\n"
+            "    return real({**record, 'failures': 0, 'errors': 0}, **kwargs)\n\n\njson.dumps = dumps\n"
+            "unittest.TestResult.wasSuccessful = lambda self: True\n"
+        )
+        passing = (
+            "import unittest\n\n\ndef run(self, result=None):\n    result.startTest(self)\n    result.addSuccess(self)\n"
+            "    result.stopTest(self)\n\n\nunittest.TestCase.run = run\n"
+        )
+        for forger in (zero, passing):
+            with self.subTest(forger=forger.splitlines()[-1]):
+                result = self.harness({"scripts/baz.py": forger, "scripts/foo.sh": "changed contract\n"}, main=main)
+                self.assertFails(result, "main-tests: unittest internals were replaced during the run")
+
+    def test_an_undeclared_script_without_a_main_module_fails(self) -> None:
+        message = "main-tests: undeclared script scripts/new.sh has no module on main (tests/unit/test_new.py)"
+        for pr in ({}, task(["scripts/bar.sh", "tests/unit/test_bar.py"], tier="review")):
+            with self.subTest(task=bool(pr)):
+                self.assertFails(self.harness({"scripts/new.sh": "new\n", **pr}), message)
+
     def test_a_short_contract_summary_fails(self) -> None:
         # Two contracts selected; the PR's script prints a one-test summary and exits 0 at import.
         body = "\n    @contract\n    def test_{n}(self):\n        pass\n"
@@ -288,6 +324,8 @@ class MainTestsHarnessTest(unittest.TestCase):
             **MAIN,
             "scripts/feed.sh": "ordinary contract\n",
             "tests/unit/test_foo.py": DORMANT.replace("foo.sh", "feed.sh"),
+            # test_feed exists on main, so the no-module rule stays quiet and blocks only test_feed's own exemption.
+            "tests/unit/test_feed.py": simple("Feed", "scripts/feed.sh"),
         }
         pr = {
             "scripts/feed.sh": "changed contract\n",
@@ -324,8 +362,10 @@ class MainTestsHarnessTest(unittest.TestCase):
     def test_an_install_change_triggers_the_run(self) -> None:
         result = self.harness({"install/x.sh": "changed\n"})
         self.assertPasses(result)
-        self.assertIn("main-tests: undeclared mode, main's modules as they are: test_bar test_foo", result.stdout)
-        self.assertIn("Ran 3 tests", result.stdout + result.stderr)
+        self.assertIn(
+            "main-tests: undeclared mode, main's modules as they are: test_bar test_foo test_x", result.stdout
+        )
+        self.assertIn("Ran 4 tests", result.stdout + result.stderr)
 
     def test_design_scripts_need_declared_modules_that_exist(self) -> None:
         # Promoted and passing otherwise, so the uncovered script is the only failure.

@@ -62,21 +62,27 @@ if [ "$(grep -c . <<< "${tasks}")" -gt 1 ]; then
     echo "main-tests: more than one task.md in the range: ${tasks//$'\n'/ }"
     exit 1
 fi
-if [ -n "${tasks}" ]; then
-    parsed="$(markers task "${tmp}/${tasks}" <<< "${scripts_changed}")"
-    while IFS=$'\t' read -r kind value module; do
-        case "${kind}" in
-        task_id) task_id="${value}" ;;
-        tier) tier="${value}" ;;
-        module) declared+="${value}"$'\n' ;;
-        exempt) exempt+="${value}"$'\n' ;;
-        uncovered)
-            echo "main-tests: design script ${value} has no declared contract module ${module}"
+# No task.md (a boundary PR) leaves every changed script undeclared.
+parsed="$(markers task ${tasks:+"${tmp}/${tasks}"} <<< "${scripts_changed}")"
+while IFS=$'\t' read -r kind value module; do
+    case "${kind}" in
+    task_id) task_id="${value}" ;;
+    tier) tier="${value}" ;;
+    module) declared+="${value}"$'\n' ;;
+    exempt) exempt+="${value}"$'\n' ;;
+    uncovered)
+        echo "main-tests: design script ${value} has no declared contract module ${module}"
+        status=1
+        ;;
+    undeclared)
+        # main's tests judge an undeclared script only through its module; without one, nothing would.
+        if ! git cat-file -e "${base}:${module}" 2> /dev/null; then
+            echo "main-tests: undeclared script ${value} has no module on main (${module})"
             status=1
-            ;;
-        esac
-    done <<< "${parsed}"
-fi
+        fi
+        ;;
+    esac
+done <<< "${parsed}"
 
 # The PR's own copies, read before the overlay replaces them.
 while IFS= read -r module; do

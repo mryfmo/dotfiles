@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-process-rules-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 21
+permission_gated_commands: 26
 ---
 
 # Sandbox record: dotfiles-T128-process-rules-a01
@@ -17,7 +17,7 @@ In-sandbox shims, stated as such: `prettier` and `ruff` ran from their mise inst
 
 ## Out-of-sandbox commands (permission gate, `dangerouslyDisableSandbox`)
 
-`permission_gated_commands` counts every Bash call that ran with `dangerouslyDisableSandbox`, one per call, prompt or not (`agmsg-dispatch` included; each Bot loop is one call). This copy was written before #16, so #16 to #21 are counted in advance; the RESULT names them.
+`permission_gated_commands` counts every Bash call that ran with `dangerouslyDisableSandbox`, one per call, prompt or not (`agmsg-dispatch` included; each Bot loop is one call). This copy was written before #20, so #20 to #26 are counted in advance; the RESULT names them.
 
 |   # | Command                                                                                                                                                                               | Step 4 case                              |
 | --: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
@@ -36,11 +36,16 @@ In-sandbox shims, stated as such: `prettier` and `ruff` ran from their mise inst
 |  13 | `gh api repos/mryfmo/dotfiles/issues/comments/6105387884 --jq .body \| grep …; gh api …/issues/318/reactions`                                                                         | `gh`                                     |
 |  14 | Bot wait loop 2 (the Code Review row, a review object or 👍; same bounds) (background)                                                                                                | `gh` only                                |
 |  15 | `gh api …/pulls/318/comments …; gh api …/pulls/318/reviews/5481888792 --jq .body \| grep`                                                                                             | `gh`                                     |
-|  16 | the authorized push (`e9ae8b65` and the evidence commit)                                                                                                                              | `git push`                               |
-|  17 | `gh pr checks 318 … --watch` on the final head (background)                                                                                                                           | `gh`                                     |
-|  18 | Bot wait on the final head (background)                                                                                                                                               | `gh` only                                |
-|  19 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout, `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets` | artifact copy with the repository masker |
-|  20 | final recheck of reviews and review comments right before the RESULT (`gh api` only)                                                                                                  | `gh`                                     |
-|  21 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a01 …`                                                                                                          | `agmsg-dispatch`                         |
+| 16 | the authorized push (`e9ae8b65` and the evidence commit `ddadd5c9`) | `git push` |
+| 17 | `gh pr checks 318 … --watch` on `ddadd5c9` (background) | `gh` |
+| 18 | Bot wait on `ddadd5c9`, timed from the push (background) | `gh` only |
+| 19 | `gh api --paginate …/pulls/318/comments …` (round-2 findings) | `gh` |
+| 20 | the authorized push (`962d268d` and the evidence update) | `git push` |
+| 21 | `gh pr checks 318 … --watch` on the final head (background) | `gh` |
+| 22 | Bot wait on the final head (background) | `gh` only |
+| 23 | `gh api …/pulls/318/comments …` (round-3 threads, listed unfixed) | `gh` |
+| 24 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
+| 25 | final recheck of reviews and review comments right before the RESULT (`gh api` only) | `gh` |
+| 26 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a01 … bot_rounds=3` | `agmsg-dispatch` |
 
 Deviations: #8 bundled a `date` with `gh pr ready`, and #13 and #15 piped `gh` output through `grep`. No other local action ran outside the sandbox, and no refusal was reworked.

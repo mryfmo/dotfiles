@@ -42,6 +42,11 @@ I told the orchestrator by PONG at 04:20Z and proceeded on that default.
 - Bot round 1, on `f7c229ff` (review 5481888792 at 04:26:14Z, 5 minutes after `gh pr ready`, so no `@codex review` was needed): two findings, both fixed in `e9ae8b65` (fix round 1 of 2).
   - 4240250137 (P1): `scripts/regime-counters.sh` does not exist yet → the rule now counts by hand until A3 lands: `fixed:e9ae8b65`.
   - 4240250141 (P2): the CI watch blocked the Bot timer → both run together, timed from ready: `fixed:e9ae8b65`.
-- The evidence commit after `e9ae8b65` carries this report. CI and the Bot round on the final head are named in the RESULT and in the main-checkout copy of this report.
+- Bot round 2, on `ddadd5c9` (review 5481907744 at 04:34:46Z, 5 minutes after the push): four findings, all fixed in `962d268d` (fix round 2 of 2).
+  - 4240269216 (P1): trust boundary judged from the diff, missing table reported: `fixed:962d268d`.
+  - 4240269218 (P1): `open:<thread id>` label for third-round threads: `fixed:962d268d`.
+  - 4240269219 (P2): the `check=` selector asserted: `fixed:962d268d`.
+  - 4240269222 (P1): manual counters read the PR's GitHub review comments: `fixed:962d268d`.
+- A third Bot round, on the head that carries this report, is not fixed (A2). Its threads, CI on the final head and the round count are in the RESULT and in the main-checkout copy of this report.
 
 cost: n/a

@@ -75,7 +75,7 @@ $ gh api --paginate repos/mryfmo/dotfiles/pulls/317/reviews --jq '.[0].submitted
 2026-10-11T02:37:13Z
 ```
 
-## 3. Each rule fails its test when its sentence is removed (`scratchpad/mutate-t128.sh` at `e9ae8b65`: one sentence or bullet deleted at a time in a `git archive HEAD` copy, then the named test)
+## 3. Each rule fails its test when its sentence is removed (`scratchpad/mutate-t128.sh` at `962d268d`: one sentence or bullet deleted at a time in a `git archive HEAD` copy, then the named test)
 
 ```
 == removed rule: paired-design-review (SKILL, diff lines: 1) -> test_design_review_runs_in_paired_rounds_with_a_cap
@@ -118,6 +118,26 @@ FAILED (failures=1)
 FAIL: test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_bot_fix_rounds_are_capped_and_the_pr_is_ready_f
 AssertionError: 'in the background and the Bot wait below at the same time' not found in ', wait for CI and the Codex Bot before sending RESULT.\n    - Mark the PR ready for review
 FAIL: test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_bot_fix_rounds_are_capped_and_the_pr_is_ready_f
+== removed rule: manual-counters-read-github (SKILL, diff lines: 2) -> test_counters_run_before_every_acceptance_action
+FAIL: test_counters_run_before_every_acceptance_action (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_counters_run_before_every_acceptance_action)
+AssertionError: "the PR's GitHub review comments" not found in '\n\n- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to r
+FAILED (failures=1)
+== removed rule: open-label (SKILL, diff lines: 2) -> test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first
+FAIL: test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_bot_fix_rounds_are_capped_and_the_pr_is_ready_f
+AssertionError: 'listed as `open:<thread id>`, an escalated label' not found in ', wait for CI and the Codex Bot before sending RESULT.\n    - Mark the PR ready for review with `gh
+FAILED (failures=1)
+== removed rule: check-selector (SKILL, diff lines: 2) -> test_a_revise_acceptance_names_the_previous_head_and_a_check
+FAIL: test_a_revise_acceptance_names_the_previous_head_and_a_check (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_a_revise_acceptance_names_the_previous_head
+AssertionError: 'one failing-test selector per finding (`check=tests/<file>::<name>`)' not found in '\n\nSend messages as single-line records so inbox/history output stays parseabl
+FAILED (failures=1)
+== removed rule: diff-judged-trust-boundary (AGENTS, diff lines: 2) -> test_code_review_rules_cover_orchestration_records_and_threat_tables
+FAIL: test_code_review_rules_cover_orchestration_records_and_threat_tables (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_code_review_rules_cover_orchestrati
+AssertionError: "Judge from the diff, whatever the task's metadata says, whether a change touches a trust boundary" not found in "\n\n- Files under `.orchestration/**` are the regi
+FAILED (failures=1)
+== removed rule: missing-table (AGENTS, diff lines: 2) -> test_code_review_rules_cover_orchestration_records_and_threat_tables
+FAIL: test_code_review_rules_cover_orchestration_records_and_threat_tables (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_code_review_rules_cover_orchestrati
+AssertionError: 'report a missing table, a missing row' not found in "\n\n- Files under `.orchestration/**` are the regime's records and task specifications, which the regime's own
+FAILED (failures=1)
 == removed rule: code-review-subsection (AGENTS, diff lines: 6) -> test_code_review_rules_cover_orchestration_records_and_threat_tables
 ERROR: test_code_review_rules_cover_orchestration_records_and_threat_tables (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_code_review_rules_cover_orchestrat
 FAILED (errors=1)
@@ -172,3 +192,41 @@ This is Bot fix round 1 of the two A2 allows.
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128 plan 006 Phase A (worker claude-standard-dot-a003, 2026-10-11, PR 318): the regime review and fix pattern lives in the agmsg-orchestration SKILL. … AGENTS.md Code Review Rules: .orchestration reviewed for secrets and home paths only, trust-boundary code against its threat_table.'
 70b799fb-e5e6-41be-b4d4-f82208c715d9
 ```
+
+## 1c. The same checks at the round-2 fix commit `962d268d`
+
+```
+$ git log --oneline -1; git status --porcelain | wc -l
+962d268d docs(regime): open label for the third Bot round; trust boundary judged from the diff
+       0
+$ prettier --check AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -2; echo "rc=${pipestatus[1]}"
+Checking formatting...
+All matched files use Prettier code style!
+rc=0
+$ uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3
+Ran 25 tests in 0.006s
+
+OK
+$ ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; echo "rc=$?"
+1 file already formatted
+rc=0
+```
+
+## 6. Bot round 2 on `ddadd5c9` (pushed 04:29:58Z; review 5481907744 at 04:34:46Z, so no `@codex review`)
+
+```
+poll 10 04:35:01Z head ddadd5c9370aee1bab30f107593f1c2d4d14b360 asked=no
+reviews: 5481907744	ddadd5c9370aee1bab30f107593f1c2d4d14b360	2026-10-11T04:34:46Z	chatgpt-codex-connector[bot]
+comments: 4240269216	ddadd5c9370aee1bab30f107593f1c2d4d14b360	AGENTS.md	chatgpt-codex-connector[bot]
+4240269218	ddadd5c9370aee1bab30f107593f1c2d4d14b360	home/dot_agents/skills/agmsg-orchestration/SKILL.md	chatgpt-codex-connector[bot]
+4240269219	ddadd5c9370aee1bab30f107593f1c2d4d14b360	tests/unit/test_agmsg_orchestration_docs.py	chatgpt-codex-connector[bot]
+4240269222	ddadd5c9370aee1bab30f107593f1c2d4d14b360	home/dot_agents/skills/agmsg-orchestration/SKILL.md	chatgpt-codex-connector[bot]
+code-review-completed: | 📝 **Code Review** | ✅ **Completed** <relative-time datetime="2026-10-11T04:34:50.060335Z">2026-10-11T04:34:50.060335Z</relative-time> | `ddadd5c` | New commits |
+```
+
+All four fixed in `962d268d`, fix round 2 of the two A2 allows; a third round is reported unfixed.
+
+- 4240269216 (P1, AGENTS.md:78): trust boundary judged from the diff, missing table reported. Test: `test_code_review_rules_cover_orchestration_records_and_threat_tables`.
+- 4240269218 (P1, SKILL.md:207): third-round threads listed as `open:<thread id>`. Test: `test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first`.
+- 4240269219 (P2, test file:275): the `check=` selector asserted. Test: `test_a_revise_acceptance_names_the_previous_head_and_a_check`.
+- 4240269222 (P1, SKILL.md:72): the manual counters read the PR's GitHub review comments. Test: `test_counters_run_before_every_acceptance_action`.

@@ -63,7 +63,7 @@ class MainTestsHarnessTest(unittest.TestCase):
         identity = ("-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false")
         subprocess.run(["git", *identity, *args], cwd=root, env=GIT_ENV, check=True, capture_output=True)
 
-    def harness(self, pr: dict[str, str], deleted=(), main=None) -> subprocess.CompletedProcess:
+    def harness(self, pr: dict[str, str], deleted=(), main=None, env=None) -> subprocess.CompletedProcess:
         root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, root)
         self.git(root, "init", "-q", "-b", "main")
@@ -78,7 +78,12 @@ class MainTestsHarnessTest(unittest.TestCase):
             self.git(root, "add", "-A")
             self.git(root, "commit", "-q", "--allow-empty", "-m", message)
         return subprocess.run(
-            ["bash", str(HARNESS), "main"], cwd=root, env=GIT_ENV, capture_output=True, text=True, check=False
+            ["bash", str(HARNESS), "main"],
+            cwd=root,
+            env={**GIT_ENV, **(env or {})},
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
     def assertFails(self, result, message: str) -> None:
@@ -151,6 +156,12 @@ class MainTestsHarnessTest(unittest.TestCase):
         # Honoured, this index would make uv fail to fetch PyYAML.
         result = self.harness({"install/x.sh": "changed\n", "uv.toml": 'index-url = "http://127.0.0.1:9/simple"\n'})
         self.assertPasses(result)
+
+    def test_a_helper_failure_fails_the_run(self) -> None:
+        # uv cannot fetch PyYAML from a dead index; that must not read as "no script change".
+        result = self.harness({"install/x.sh": "changed\n"}, env={"UV_INDEX_URL": "http://127.0.0.1:9/simple"})
+        self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("main-tests: no script change", result.stdout)
 
     def test_no_script_change_skips(self) -> None:
         result = self.harness({"README.md": "changed\n", "tests/unit/test_bar.py": "broken"})

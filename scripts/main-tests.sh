@@ -34,7 +34,9 @@ markers() {
 
 merge_base="$(git merge-base "${base}" HEAD)"
 changed="$(git -c core.quotePath=false diff --name-only "${merge_base}" HEAD)"
-if [ -z "$(markers scripts <<< "${changed}")" ]; then
+# Assigned first, so a failing helper stops the run instead of reading as "no script change".
+scripts_changed="$(markers scripts <<< "${changed}")"
+if [ -z "${scripts_changed}" ]; then
     echo "main-tests: no script change"
     exit 0
 fi
@@ -89,9 +91,11 @@ rm -rf "${tmp}/tests/unit"
 git archive "${base}" tests/unit | tar -x -C "${tmp}"
 
 undeclared=()
+main_modules="$(git ls-tree --name-only "${base}" tests/unit/)"
 while IFS= read -r module; do
+    [[ "${module}" =~ ^tests/unit/test_[^/]+\.py$ ]] || continue
     grep -qxF "${module}" <<< "${declared}" || undeclared+=("$(basename "${module}" .py)")
-done < <(git ls-tree --name-only "${base}" tests/unit/ | grep -E '^tests/unit/test_[^/]+\.py$')
+done <<< "${main_modules}"
 
 contract_ids=()
 while IFS= read -r module; do

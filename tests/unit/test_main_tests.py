@@ -199,6 +199,20 @@ class MainTestsHarnessTest(unittest.TestCase):
         result = self.harness({"scripts/baz.py": "import os\n\nos._exit(0)\n"}, main=main)
         self.assertFails(result, "main-tests: no complete unittest summary")
 
+    def test_a_short_contract_summary_fails(self) -> None:
+        # Two contracts selected; the PR's script prints a one-test summary and exits 0 at import.
+        body = "\n    @contract\n    def test_{n}(self):\n        pass\n"
+        qux = (
+            "import runpy\nimport unittest\nfrom pathlib import Path\n\nfrom regime_contract import contract\n\n"
+            "runpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/qux.py'))\n\n\n"
+            "class QuxTest(unittest.TestCase):" + body.format(n="a") + body.format(n="b")
+        )
+        main = {**MAIN, "scripts/qux.py": "VALUE = 1\n", "tests/unit/test_qux.py": qux}
+        forged = "import os\nimport sys\n\nsys.stderr.write('Ran 1 test in 0.001s\\n\\nOK\\n')\nos._exit(0)\n"
+        files = ["scripts/qux.py", "tests/unit/test_qux.py"]
+        pr = {"scripts/qux.py": forged, "tests/unit/test_qux.py": qux.replace("    @contract\n", ""), **task(files)}
+        self.assertFails(self.harness(pr, main=main), "main-tests: no complete unittest summary (ran 1; expected 2")
+
     def test_a_declared_module_without_its_script_stays_undeclared(self) -> None:
         pr = {
             "scripts/foo.sh": "changed contract\n",

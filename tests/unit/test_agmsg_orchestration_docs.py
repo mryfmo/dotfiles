@@ -401,6 +401,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         for token in (
             "Commit inside the sandbox, with `git -c commit.gpgsign=false` when the signing key is unreadable there",
             "only the push leaves the sandbox",
+            # Thread 4240598179: a Codex seat never leaves its sandbox, push included.
+            "a Codex seat pushes from inside it (step 4)",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, step)

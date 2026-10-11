@@ -1,6 +1,7 @@
 # Acceptance: dot-ccstatusline-ubuntu26-hang-T59-a01
 
 - **Decision:** ACCEPTED. PR #230 squash-merged to `main` as `07442713` (head `cc19dd4c84e500ec617b95752032e3b3c86c424a`, base `750cc4a9`). Merged without `--delete-branch` while worker-c holds `fix/ccstatusline-ubuntu26-hang`.
+- pr=230
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `7e090867…`, then `be02c71f…` after PONG decision 1 (both matched by the worker).
 - **Exemption declared:** acceptance and final integration (gate, merge, records); orchestrator mutated no repository code.
 

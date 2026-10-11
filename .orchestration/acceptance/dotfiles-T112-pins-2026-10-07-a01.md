@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T112-pins-2026-10-07-a01
 
 - **Decision:** ACCEPTED. PR #301 head `f6789995` (one commit on main 7d3a45ee). Gate passed at that head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0). Squash-merged to `main` as `a5edf2b7` (2026-10-07 03:49Z) with `gh pr merge 301 --squash --match-head-commit f6789995…`. RESULT received 2026-10-07 03:45Z.
+- pr=301
 - **Worker:** `claude-standard-dot-a005` (worker-c, w1A:p2). PONG `alive` at 01:01Z before dispatch (cleanup of T111).
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping (the pins-only patch extracted read-only from the canonical clone into `.orchestration/validation/dotfiles-T112-pins-2026-10-07-a01-pins.patch`, sha256 `dda01202…`, `git apply --check` on 7d3a45ee before dispatch).
 - **Origin:** the operator's `make upgrade` in the canonical clone `~/.local/share/chezmoi` left a pending pin diff mixed with an unrelated, rejected project-map draft; the regime rule says the pin diff travels as one class-pure worker PR and never stays dirty across sessions (T37 #209, T104). The operator asked on 2026-10-07 that the orchestrator carry all of this out, including the clone's clean-up, without operator steps.

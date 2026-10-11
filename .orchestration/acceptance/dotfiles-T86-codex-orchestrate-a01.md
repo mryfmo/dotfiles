@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T86-codex-orchestrate-a01
 
 - **Decision:** ACCEPTED. PR #271 squash-merged to `main` as `ddf14036`; final head `63a9b107` (diff head 0f43e161). Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, one evidence disposition below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-05 01:26Z).
+- pr=271
 - **Worker:** `codex-security-dot-a007` (worker-e, wT:p8). task_rev verified at dispatch and after each PONG-decision/scope-note append.
 - **Exemption declared:** acceptance and final integration; evidence sync (seven worker artifacts copied from worker-e).
 - **Plan reference:** Phase 7, dotfiles-T86 (principles 4 and 5). Dispatched in parallel with T85 (soft dependency on `--directive`, now on `main`) and T82.

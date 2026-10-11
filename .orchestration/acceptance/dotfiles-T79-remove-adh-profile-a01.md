@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T79-remove-adh-profile-a01
 
 - **Decision:** ACCEPTED. PR #267 squash-merged to `main` as `62d0771f`; final head `123bf10476c85911e55eabc7f1795fa597f13195`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, one process disposition below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 20:05Z).
+- pr=267
 - **Worker:** `claude-standard-dot-a006` (worker-d, wY:p2). task_rev matched at dispatch.
 - **Exemption declared:** acceptance and final integration.
 - **Plan reference:** Phase 4, dotfiles-T79 (operator decision: ADH leaves dotfiles). Depends on T78 (merged); serialized after T80 on the generator and validator.

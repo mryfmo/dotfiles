@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T95-sandbox-placeholder-files-on-disk-a01
 
 - **Decision:** ACCEPTED. PR #252 squash-merged to `main` as `6de95167`; final head `b9beca207c2674b73dbd5f8a5633b2fc4cbc3bc5` (substantive commits d0515ddd, 5cac2493; update-branch merge b9beca20 onto febd0cb7). Merged without `--delete-branch`; worker-c holds `fix/sandbox-placeholder-ignores`.
+- pr=252
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev matched. Dispatched after its T93 RESULT; T93 round 1 ran on the same seat afterwards.
 - **Exemption declared:** acceptance and final integration; the orchestrator's `.git/info/exclude` entries and the deletion of the 19 host-persisted placeholder files in the main checkout were control-plane hygiene recorded in the T65 and T92 records.
 - **Plan reference:** T92 follow-up (stop gate and the Claude Code sandbox), outside the numbered phases.

@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T98c-claude-seat-artifact-write-exception-a01
 
 - **Decision:** ACCEPTED. PR #281 squash-merged to `main` as `b277a45c`; head `d1751647`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, two evidence-only dispositions below) and crit evidence (`BASE=origin/main … AUDIT_DISPOSITIONS=… make require-crit-review` rc=0, 2026-10-05 10:10Z). Deployed with `make update` (rc=0).
+- pr=281
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev verified at dispatch (09:53Z).
 - **Exemption declared:** acceptance and final integration.
 - **Plan reference:** T98b audit finding 1 (a Claude seat's gated main-checkout artifact write was undocumented in the SKILL).

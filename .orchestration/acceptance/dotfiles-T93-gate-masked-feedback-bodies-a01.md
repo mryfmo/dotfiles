@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T93-gate-masked-feedback-bodies-a01
 
 - **Decision:** ACCEPTED after two revise rounds. PR #251 squash-merged to `main` as `2e2e1e09`; final head `254d9ebf86e7d986b418aa74098ae546b4bdd843` (substantive commits 7d7a9777, 935399c0, 4db6083a, 63e8fd90, dd155f2b, 56546541, 62cf4aa9, 09784303, 254d9ebf; update-branch merges 10c03df2, c70878d4, ba920163, aa5b061e onto main c6b348ba). Merged without `--delete-branch`; worker-c holds `fix/gate-masked-feedback-bodies`.
+- pr=251
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev chain matched. Dispatched after T71 merged; T95 ran on the same seat between rounds.
 - **Exemption declared:** acceptance and final integration; evidence masking of the orchestrator's own sweep JSON with the PR head's `--mask-secrets`.
 - **Plan reference:** T68/T91 follow-up (gate and secret scan agree on masked evidence), outside the numbered phases.

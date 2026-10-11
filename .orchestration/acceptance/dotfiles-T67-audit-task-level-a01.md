@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T67-audit-task-level-a01
 
 - **Decision:** ACCEPTED. PR #242 squash-merged to `main` as `57885db1` (final head `9476141f9d0d5405a0bf0d53f8a8c261e9ddf385`; substantive commits 28373e27 and 9476141f; update-branch merge 58f5677a; base `3a0816e6`). Merged without `--delete-branch`; worker-c holds `feat/audit-task-level`.
+- pr=242
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `df653369…` matched.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** Phase 2, dotfiles-T67 (principle 10 / §2b: task-level auditor, one run per final head). Operator's parallel-execution decision names this as the main efficiency lever.

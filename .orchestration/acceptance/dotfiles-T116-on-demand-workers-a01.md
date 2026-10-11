@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T116-on-demand-workers-a01
 
 - **Decision:** ACCEPTED. PR #306 squash-merged to `main` as `b37937ca` (2026-10-09 03:2xZ) with `gh pr merge 306 --squash --match-head-commit ff4ffa0f…`; gate passed at that head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main AUDIT_EVIDENCE=… AGENT_REVIEWED=1 REVIEW_EVIDENCE=… PR_FEEDBACK_EVIDENCE=… make require-crit-review` rc=0; evidence copies removed). PR #306 `feat/on-demand-workers`, final head `ff4ffa0f55a09c36db2467f2568914608aaec4d4` (six commits on main `02d65ca7`: 93ec0b0e launcher, 04c37440 boundary check, 60d49593 prose, dfdbb8c5 Bot P1 fix, bb2edb38 runtime-health assertion, ff4ffa0f stale-site cleanup). Earlier: blocked PONG 01:28Z (one runtime-health assertion outside the allowed files) → Amendment 1; RESULT 02:15Z head bb2edb38; REVISE round 1 (three stale `--restart-worker` prescriptions) → RESULT 02:45Z head ff4ffa0f.
+- pr=306
 - **Worker:** `claude-standard-dot-a001` (worker-c, w4:p2), dispatched at T114's acceptance on a fresh branch from `02d65ca7`.
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping; Bot thread replies and resolution; live verification with the branch launcher (control plane).
 - **Origin:** operator directive 2026-10-09 (chat): at Claude Code startup only the orchestrator starts; workers are seated and removed on demand like the auditor; `--restart-worker` goes; the worker cap stays at three (orchestrator decision, noted to the operator).

@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T98-evidence-home-path-masking-a01
 
 - **Decision:** ACCEPTED. PR #276 squash-merged to `main` as `ee0fd641`; final head `aa556845` (round 2). Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, two evidence-only dispositions below) and crit evidence (`BASE=origin/main … AUDIT_DISPOSITIONS=… make require-crit-review` rc=0, 2026-10-05 08:46Z). Three replays of the re-mask (aceb1b14, 6ce4e3b3, aa556845) reproduced the 749 files byte for byte. After the merge the orchestrator ran the new masker over every pending `.orchestration` file in the main checkout (18 files rewritten) and `make validate-agent-assets` passes (rc=0).
+- pr=276
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev `29846e3f…` matched at dispatch (04:26Z).
 - **Exemption declared:** acceptance and final integration (thread replies/resolutions, sweep, audit, gate, merge).
 - **Plan reference:** added task (Codex Bot finding on boundary PR #273: local home paths in committed evidence); items 1–5 incl. the T83 follow-up (validator skips gitignored local state).

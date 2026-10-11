@@ -62,3 +62,7 @@ Round-0 final head `9a46c3c4`: CI 14 of 14 pass; Bot round 3 left three P2 threa
 Each check fails on a `9a46c3c4` tree with this head's docs test and passes on `e115dbba`; all 21 sentence-removal proofs fail their test (validation §3, §8). A2's cap applies again in this round: at most two fix rounds, then the RESULT.
 
 One sandboxed command was refused by the permission gate: a previous-head check that started with `rm -rf "$P"`. I re-ran it in a fresh `mktemp -d` directory with no deletion. Sandbox record, deviations.
+
+### Revise round 1, Bot round 1 (on `ac3794f9`)
+
+- 4240321113 (P1): `residual: none` passed the payload rule, and reviewers never re-raised a residual row. Fixed in `88150d33`: a residual row holds back a finding only when its named control mitigates the risk; a missing, placeholder or ineffective control is reported (`fixed:88150d33`). This is fix round 1 of 2 in this revise round, so T126 INV-6 (d) counts one head with a Bot P1 after the first RESULT.

@@ -75,7 +75,7 @@ $ gh api --paginate repos/mryfmo/dotfiles/pulls/317/reviews --jq '.[0].submitted
 2026-10-11T02:37:13Z
 ```
 
-## 3. Each rule fails its test when its sentence is removed (`scratchpad/mutate-t128.sh` at `e115dbba`: one sentence or bullet deleted at a time in a `git archive HEAD` copy, then the named test)
+## 3. Each rule fails its test when its sentence is removed (`scratchpad/mutate-t128.sh` at `88150d33`: one sentence or bullet deleted at a time in a `git archive HEAD` copy, then the named test)
 
 ```
 == removed rule: paired-design-review (SKILL, diff lines: 1) -> test_design_review_runs_in_paired_rounds_with_a_cap
@@ -155,7 +155,11 @@ ERROR: test_code_review_rules_cover_orchestration_records_and_threat_tables (tes
 FAILED (errors=1)
 == removed rule: residual-not-reraised (AGENTS, diff lines: 2) -> test_code_review_rules_cover_orchestration_records_and_threat_tables
 FAIL: test_code_review_rules_cover_orchestration_records_and_threat_tables (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_code_review_rules_cover_orchestrati
-AssertionError: 'Do not re-raise a `residual` row' not found in "\n\n- Files under `.orchestration/**` are the regime's records and task specifications, which the regime's own revi
+AssertionError: 'Do not re-raise a `residual` row whose named compensating control mitigates the risk' not found in "\n\n- Files under `.orchestration/**` are the regime's records 
+FAILED (failures=1)
+== removed rule: residual-must-mitigate (AGENTS, diff lines: 2) -> test_code_review_rules_cover_orchestration_records_and_threat_tables
+FAIL: test_code_review_rules_cover_orchestration_records_and_threat_tables (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_code_review_rules_cover_orchestrati
+AssertionError: 'report a `residual` row whose control is missing, a placeholder such as `none`, or does not mitigate it' not found in "\n\n- Files under `.orchestration/**` are th
 FAILED (failures=1)
 == restored: OK
 ```
@@ -307,4 +311,34 @@ FAIL: test_threat_table_dispositions_carry_a_payload (tests.unit.test_agmsg_orch
 FAIL: test_the_ci_watch_is_joined_before_the_result (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_ci_watch_is_joined_before_the_resu
 Ran 3 tests in 0.001s
 FAILED (failures=3)
+```
+
+## 9. Revise round 1, Bot round 1 on `ac3794f9` (pushed 04:54:02Z; review 5481961168 at 04:56:57Z, so no `@codex review`)
+
+```
+poll 7 04:57:29Z head ac3794f98f0d05570bbbcdaf17560b21d18756b6 asked=no
+reviews: 5481961168	ac3794f98f0d05570bbbcdaf17560b21d18756b6	2026-10-11T04:56:57Z	chatgpt-codex-connector[bot]
+comments: 4240321113	ac3794f98f0d05570bbbcdaf17560b21d18756b6	AGENTS.md	chatgpt-codex-connector[bot]
+code-review-completed: | 📝 **Code Review** | ✅ **Completed** <relative-time datetime="2026-10-11T04:57:00.079180Z">2026-10-11T04:57:00.079180Z</relative-time> | `ac3794f` | New commits |
+```
+
+- 4240321113 (P1, AGENTS.md:78): `residual: none` passed the `\S` payload rule while reviewers never re-raised a residual row. Fixed in `88150d33`: a residual row holds a finding back only when its named control mitigates the risk; a missing, placeholder or ineffective control is reported. Test: `test_code_review_rules_cover_orchestration_records_and_threat_tables`. Fix round 1 of the two A2 allows in this revise round.
+
+Checks at `88150d33`:
+
+```
+$ git log --oneline -1; git status --porcelain | wc -l
+88150d33 docs(regime): a residual row suppresses a finding only when its control mitigates
+       0
+$ prettier --check AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md 2>&1 | tail -2; echo "rc=${pipestatus[1]}"
+Checking formatting...
+All matched files use Prettier code style!
+rc=0
+$ uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3
+Ran 28 tests in 0.007s
+
+OK
+$ ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; echo "rc=$?"
+1 file already formatted
+rc=0
 ```

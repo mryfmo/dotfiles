@@ -4,7 +4,7 @@ task_id: dotfiles-T128-regime-v3-a01
 kind: design
 security: true
 design_review:
-  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round15.md
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round18.md
   design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
 implementing_tasks:
   dotfiles-T128-v0-main-tests-a01: [INV-12]

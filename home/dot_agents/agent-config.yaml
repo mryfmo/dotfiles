@@ -406,6 +406,18 @@ assets:
     render:
       file: install/ubuntu/common/aws_cli.sh
       constants: {AWS_CLI_FINGERPRINT: gpg_fingerprint}
+  claude-code:
+    source: https-download
+    upstream: https://downloads.claude.ai/claude-code-releases
+    release: latest
+    verify: gpg
+    gpg_fingerprint: 31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
+    note: the version comes from the claude.autoUpdatesChannel channel; the release's manifest.json must verify with gpgv against the key committed at home/dot_local/share/claude-code-keys/claude-code.asc (Anthropic's published copy as a fallback, trusted only through gpg_fingerprint) and the binary must match its signed sha256 before it runs; Anthropic's updater stays off (claude.autoUpdates is false), so make update re-verifies the active binary on every run and installs a newer channel version through the same verified path.
+    install_path: ~/.local/share/claude
+    installer: scripts/update-agent-assets.sh
+    render:
+      file: scripts/update-agent-assets.sh
+      constants: {CLAUDE_CODE_GPG_FINGERPRINT: gpg_fingerprint}
   homebrew-installer:
     source: git-commit
     upstream: Homebrew/install

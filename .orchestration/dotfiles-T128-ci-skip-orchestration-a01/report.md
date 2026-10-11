@@ -1,7 +1,7 @@
 # Report: dotfiles-T128-ci-skip-orchestration-a01
 
 - Seat: `claude-standard-dot-a003` in `.claude/worktrees/worker-f`, branch `feat/ci-skip-orchestration` from `origin/main` `b896d9bc`, PR #320. Plan 006 Phase A5 (INV-2's CI clause), with Amendment 1.
-- Task file sha256 `6dd3d682…` checked against the TASK and copied byte-identical in `be935742`; Amendment 1's sha256 `8e9c23da…` checked and re-copied byte-identical in `f7393ee1`. Content commit `9fcd2b04`.
+- Task file sha256 `6dd3d682…` checked against the TASK and copied byte-identical in `be935742`; Amendment 1's sha256 `8e9c23da…` checked and re-copied byte-identical in `f7393ee1`. Content commit `9fcd2b04`; evidence `b3f88beb`; Bot fix round 1 `e872f69f`.
 
 ## What changed (`9fcd2b04`)
 
@@ -16,16 +16,22 @@
 | The PR edits the workflow files themselves | residual, as the task states | `tests/unit/test_workflow_security.py` passes unchanged (validation §1) |
 | The decision step misclassifies a diff | closed | `DecisionTest.test_a_pull_request_skips_the_bootstrap_only_for_an_orchestration_only_diff` (mixed, pure, renamed, deleted in and out, empty), `DecisionTest.test_the_unit_test_decision_skips_an_orchestration_only_diff` |
 | A required job is skipped (job-level `if`, or `needs`) | closed | `RequiredContextsTest.test_no_required_contexts_job_has_a_job_level_if_or_needs`, `…test_no_job_is_left_for_a_required_job_to_need`, `…test_the_required_contexts_are_the_workflows_jobs` |
-| The decision step itself fails | closed | `DecisionStepTest.test_each_deciding_job_decides_after_its_checkout_and_fails_closed`, `…test_every_heavy_step_carries_its_jobs_decision` |
+| The decision step itself fails | closed | `DecisionStepTest.test_each_deciding_job_decides_after_its_checkout_and_fails_closed`, `…test_every_heavy_step_carries_its_jobs_decision`; since `e872f69f` a base that moved after the checkout no longer fails it: `DecisionTest.test_the_decision_survives_a_base_that_moved_after_the_checkout` |
 | Push and schedule have no PR range | closed | `DecisionTest.test_every_event_but_pull_request_bootstraps` |
 
-Each closing test fails when its rule is broken: 14 of 14 mutations in a `git archive HEAD` copy (validation §3).
+Each closing test fails when its rule is broken: 16 of 16 mutations in a `git archive HEAD` copy at `e872f69f` (validation §8; 14 of 14 at `9fcd2b04`, §3).
 
 ## CI and Bot (head `9fcd2b04`)
 
 - CI: 13 of 13 pass, the seven required contexts among them; on this mixed diff the decision steps succeeded and the bootstrap and unit-test steps ran (validation §5). `private-bootstrap`'s deploy-key and bootstrap steps were skipped by their existing secret gate, as on PR 316 (≈12 s per leg there too).
 - Bot round 1: the connector summary shows Code Review ✅ Completed at 05:52:35Z and Security Review ✅ Completed at 05:55:43Z on `9fcd2b0`, with 👍 at 05:55Z; no review object and no review comment. No fix round.
-- The evidence head's CI and Bot wait are in the RESULT and the main-checkout copy of this report.
+
+## Bot fix round 1 (`e872f69f`)
+
+- Bot round 2, on the evidence head `b3f88beb` (review 5482144676, 06:15:10Z): thread 4240499289 (P2, `remote.yaml` line 61): when `main` moves after the job's checkout, `git fetch --depth=1` makes the new base tip a shallow boundary, the three-dot diff finds no merge base, and the fail-closed step fails all three required contexts → `fixed:e872f69f`.
+- Reproduced before the fix in a scratch repository (validation §8): `fatal: origin/main...<head>: no merge base`, rc 128, with `.git/shallow` written; a full fetch gives the PR's own path. Root cause shared by three fetches: both remote.yaml decision steps and the test.yaml step, which inherited `--depth=1` from main's `changes` job, where a failure skipped the tests (fail-open) instead of failing them. All three now fetch the base in full; the checkout already holds the full history, so the fetch transfers only the new base commits.
+- The new test moves `origin/main` after the pull request head is built and runs both workflows' decision scripts; putting `--depth=1` back fails it in either file (validation §8).
+- The final head's CI and Bot wait are in the RESULT and the main-checkout copy of this report.
 
 ## Notes for the orchestrator
 

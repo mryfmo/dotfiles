@@ -1,6 +1,6 @@
 # Validation: dotfiles-T128-ci-skip-orchestration-a01
 
-Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `feat/ci-skip-orchestration` (PR #320). This branch copy covers head `9fcd2b04`; the main-checkout copy adds the evidence head (design INV-8).
+Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `feat/ci-skip-orchestration` (PR #320). This branch copy covers heads through `e872f69f` (§1–§7 at `9fcd2b04`, §8 the Bot fix round); the main-checkout copy adds the final head (design INV-8).
 
 ## 1. Checks at `9fcd2b04` (task validation: the YAML parse, the module under `make unit-test`; plus formatting)
 
@@ -250,3 +250,106 @@ DONE
 ```
 
 No review object and no comment: the connector's own rows record both reviews of this head as completed, and it reacts 👍 "once all reviews finish with no findings" (`reactions=+1` above, its 👀 gone). A 👍 alone is not evidence of a review (Worker Playbook step 15); here the summary rows are. No fix round ran.
+
+## 8. Bot fix round 1 at `e872f69f` (thread 4240499289)
+
+```
+$ bash scratchpad/repro-shallow.sh   # main moves after the checkout; the base fetched shallow, then in full
+== fetch --depth=1
+fatal: origin/main...<head>: no merge base
+rc=128 shallow=written
+== fetch in full
+.orchestration/y.md
+rc=0 shallow=none
+$ git log --oneline -1; git show --stat --format= HEAD
+e872f69f fix(ci): fetch the PR base in full so a moved base keeps its merge base
+ .github/workflows/remote.yaml                  |  8 ++++++--
+ .github/workflows/test.yaml                    |  4 +++-
+ tests/unit/test_workflow_orchestration_skip.py | 24 ++++++++++++++++++++++++
+ 3 files changed, 33 insertions(+), 3 deletions(-)
+$ grep -nE "git fetch" .github/workflows/remote.yaml .github/workflows/test.yaml
+.github/workflows/remote.yaml:63:          git fetch --no-tags origin "${BASE_REF}"
+.github/workflows/remote.yaml:161:          git fetch --no-tags origin "${BASE_REF}"
+.github/workflows/test.yaml:74:            git fetch --no-tags origin "${BASE_REF}"
+$ UV_OFFLINE=1 uv run python -m unittest tests.unit.test_workflow_orchestration_skip tests.unit.test_workflow_security 2>&1 | tail -3
+Ran 19 tests in 4.148s
+
+OK
+$ ruff format --config ruff.toml --check tests/unit/test_workflow_orchestration_skip.py; ruff check --config ruff.toml tests/unit/test_workflow_orchestration_skip.py; prettier --check .github/workflows/remote.yaml .github/workflows/test.yaml 2>&1 | tail -1
+1 file already formatted
+All checks passed!
+All matched files use Prettier code style!
+$ UV_OFFLINE=1 uv run --no-project --with pyyaml python -I -c "import sys, yaml; [print(p, sorted(yaml.safe_load(open(p))[\"jobs\"])) for p in sys.argv[1:]]" .github/workflows/remote.yaml .github/workflows/test.yaml
+.github/workflows/remote.yaml ['private-bootstrap', 'public-bootstrap']
+.github/workflows/test.yaml ['test']
+```
+
+Removal proofs at `e872f69f` (`scratchpad/mutate-a5.sh` with two new rules, `--depth=1` put back in each file; output cut to three lines per rule, so a rule with several failing subtests shows its `FAIL:` lines without the summary):
+
+```
+== broken rule: public-bootstrap-step-ungated (remote.yaml, diff lines: 1) -> DecisionStepTest.test_every_heavy_step_carries_its_jobs_decision
+FAIL: test_every_heavy_step_carries_its_jobs_decision (tests.unit.test_workflow_orchestration_skip.DecisionStepTest.test_every_heavy_step_carries_its_jobs_decision) (job='public-bo
+AssertionError: "steps.decide.outputs.should_run == 'true'" not found in ''
+FAILED (failures=1)
+== broken rule: private-deploy-key-ungated (remote.yaml, diff lines: 2) -> DecisionStepTest.test_every_heavy_step_carries_its_jobs_decision
+FAIL: test_every_heavy_step_carries_its_jobs_decision (tests.unit.test_workflow_orchestration_skip.DecisionStepTest.test_every_heavy_step_carries_its_jobs_decision) (job='private-b
+AssertionError: "steps.decide.outputs.should_run == 'true'" not found in "${{ !contains(github.actor, '[bot]') && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_PRIVATE_DEPLOY_KEY == '
+FAILED (failures=1)
+== broken rule: unit-test-step-ungated (test.yaml, diff lines: 2) -> DecisionStepTest.test_every_heavy_step_carries_its_jobs_decision
+FAIL: test_every_heavy_step_carries_its_jobs_decision (tests.unit.test_workflow_orchestration_skip.DecisionStepTest.test_every_heavy_step_carries_its_jobs_decision) (job='test', st
+AssertionError: "steps.decide.outputs.should_test == 'true'" not found in '${{ true }}'
+FAILED (failures=1)
+== broken rule: needs-on-a-required-job (remote.yaml, diff lines: 1) -> RequiredContextsTest.test_no_required_contexts_job_has_a_job_level_if_or_needs
+FAIL: test_no_required_contexts_job_has_a_job_level_if_or_needs (tests.unit.test_workflow_orchestration_skip.RequiredContextsTest.test_no_required_contexts_job_has_a_job_level_if_o
+AssertionError: 'needs' unexpectedly found in {'needs': 'validate', 'strategy': '', 'runs-on': '${{ matrix.os }}', 'env': '', 'steps': ''}
+FAILED (failures=1)
+== broken rule: job-level-if-on-a-required-job (test.yaml, diff lines: 1) -> RequiredContextsTest.test_no_required_contexts_job_has_a_job_level_if_or_needs
+FAIL: test_no_required_contexts_job_has_a_job_level_if_or_needs (tests.unit.test_workflow_orchestration_skip.RequiredContextsTest.test_no_required_contexts_job_has_a_job_level_if_o
+AssertionError: 'if' unexpectedly found in {'if': '${{ always() }}', 'strategy': '', 'runs-on': '${{ matrix.os }}', 'continue-on-error': "${{ matrix.os == 'ubuntu-26.04' }}", 'env'
+FAILED (failures=1)
+== broken rule: changes-job-back (test.yaml, diff lines: 5) -> RequiredContextsTest.test_no_job_is_left_for_a_required_job_to_need
+FAIL: test_no_job_is_left_for_a_required_job_to_need (tests.unit.test_workflow_orchestration_skip.RequiredContextsTest.test_no_job_is_left_for_a_required_job_to_need)
+AssertionError: 'changes' unexpectedly found in {'changes': {'keys': {'runs-on': 'ubuntu-24.04', 'steps': ''}, 'steps': [{'run': 'true'}]}, 'test': {'keys': {'strategy': '', 'runs-
+FAILED (failures=1)
+== broken rule: decision-continue-on-error (remote.yaml, diff lines: 1) -> DecisionStepTest.test_each_deciding_job_decides_after_its_checkout_and_fails_closed
+FAIL: test_each_deciding_job_decides_after_its_checkout_and_fails_closed (tests.unit.test_workflow_orchestration_skip.DecisionStepTest.test_each_deciding_job_decides_after_its_chec
+AssertionError: 'continue-on-error' unexpectedly found in {'name': 'Decide whether the diff needs a bootstrap', 'id': 'decide', 'continue-on-error': 'true', 'env': '', 'shell': 'ba
+FAILED (failures=1)
+== broken rule: decision-before-checkout-history (test.yaml, diff lines: 1) -> DecisionStepTest.test_each_deciding_job_decides_after_its_checkout_and_fails_closed
+FAIL: test_each_deciding_job_decides_after_its_checkout_and_fails_closed (tests.unit.test_workflow_orchestration_skip.DecisionStepTest.test_each_deciding_job_decides_after_its_chec
+AssertionError: 'fetch-depth: 0' not found in "    # Run the same test suite on each target OS/system pair.\n    # We intentionally keep macOS as `client` only because this reposit
+FAILED (failures=1)
+== broken rule: private-script-drift (remote.yaml, diff lines: 2) -> DecisionStepTest.test_both_bootstrap_jobs_decide_with_the_same_script
+FAIL: test_both_bootstrap_jobs_decide_with_the_same_script (tests.unit.test_workflow_orchestration_skip.DecisionStepTest.test_both_bootstrap_jobs_decide_with_the_same_script)
+AssertionError: 'set [851 chars]rep -qv \'^\\.orchestration/\' <<< "${changed}[114 chars]\n\n' != 'set [851 chars]rep -v -q \'^\\.orchestration/\' <<< "${change[116 chars]\n\n'
+FAILED (failures=1)
+== broken rule: non-pr-events-judged (remote.yaml, diff lines: 4) -> DecisionTest.test_every_event_but_pull_request_bootstraps
+FAIL: test_every_event_but_pull_request_bootstraps (tests.unit.test_workflow_orchestration_skip.DecisionTest.test_every_event_but_pull_request_bootstraps) (event='push')
+AssertionError: bash: line 8: BASE_REF: unbound variable
+FAIL: test_every_event_but_pull_request_bootstraps (tests.unit.test_workflow_orchestration_skip.DecisionTest.test_every_event_but_pull_request_bootstraps) (event='schedule')
+== broken rule: renames-collapsed (remote.yaml, diff lines: 2) -> DecisionTest.test_a_pull_request_skips_the_bootstrap_only_for_an_orchestration_only_diff
+FAIL: test_a_pull_request_skips_the_bootstrap_only_for_an_orchestration_only_diff (tests.unit.test_workflow_orchestration_skip.DecisionTest.test_a_pull_request_skips_the_bootstrap_
+AssertionError: 'should_run=false\n' != 'should_run=true\n'
+FAILED (failures=1)
+== broken rule: classification-inverted (remote.yaml, diff lines: 2) -> DecisionTest.test_a_pull_request_skips_the_bootstrap_only_for_an_orchestration_only_diff
+FAIL: test_a_pull_request_skips_the_bootstrap_only_for_an_orchestration_only_diff (tests.unit.test_workflow_orchestration_skip.DecisionTest.test_a_pull_request_skips_the_bootstrap_
+AssertionError: 'should_run=true\n' != 'should_run=false\n'
+FAIL: test_a_pull_request_skips_the_bootstrap_only_for_an_orchestration_only_diff (tests.unit.test_workflow_orchestration_skip.DecisionTest.test_a_pull_request_skips_the_bootstrap_
+== broken rule: unit-test-decision-ignores-orchestration (test.yaml, diff lines: 3) -> DecisionTest.test_the_unit_test_decision_skips_an_orchestration_only_diff
+FAIL: test_the_unit_test_decision_skips_an_orchestration_only_diff (tests.unit.test_workflow_orchestration_skip.DecisionTest.test_the_unit_test_decision_skips_an_orchestration_only
+AssertionError: 'should_test=false\n' not found in 'diff_range=origin/main...e105c5c0fcb30f9f61c57c9f1442ba590fa8c2ce\nshould_test=true\n'
+FAILED (failures=1)
+== broken rule: required-leg-dropped (remote.yaml, diff lines: 2) -> RequiredContextsTest.test_the_required_contexts_are_the_workflows_jobs
+FAIL: test_the_required_contexts_are_the_workflows_jobs (tests.unit.test_workflow_orchestration_skip.RequiredContextsTest.test_the_required_contexts_are_the_workflows_jobs)
+AssertionError: {'test (ubuntu-24.04, client)', 'test (ma[141 chars]ate'} != frozenset({'test (ubuntu-24.04, client)',[191 chars]te'})
+FAILED (failures=1)
+== broken rule: shallow-base-fetch-remote (remote.yaml, diff lines: 4) -> DecisionTest.test_the_decision_survives_a_base_that_moved_after_the_checkout
+FAIL: test_the_decision_survives_a_base_that_moved_after_the_checkout (tests.unit.test_workflow_orchestration_skip.DecisionTest.test_the_decision_survives_a_base_that_moved_after_t
+AssertionError: From /tmp/claude-501/tmph268b2tq/origin
+FAILED (failures=1)
+== broken rule: shallow-base-fetch-test (test.yaml, diff lines: 2) -> DecisionTest.test_the_decision_survives_a_base_that_moved_after_the_checkout
+FAIL: test_the_decision_survives_a_base_that_moved_after_the_checkout (tests.unit.test_workflow_orchestration_skip.DecisionTest.test_the_decision_survives_a_base_that_moved_after_t
+AssertionError: From /tmp/claude-501/tmp92ypcmg1/origin
+FAILED (failures=1)
+== restored: OK
+```

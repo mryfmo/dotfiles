@@ -285,7 +285,9 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         )
         # Until A3 lands the counts are taken by hand, so no acceptance waits for the script.
         self.assertIn("until it is on `main`, the orchestrator counts the same things by hand", text)
-        self.assertIn("the PR's GitHub review comments", text)
+        self.assertIn("the PR's GitHub review comments and review bodies", text)
+        # Thread 4240382519: a Bot finding can live only in a review body.
+        self.assertIn("P0/P1-badged Bot review bodies grouped by `commit_id`", text)
 
     def test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first(self) -> None:
         step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")

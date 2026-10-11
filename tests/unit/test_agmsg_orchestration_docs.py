@@ -255,6 +255,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         )
         # Until A3 lands the counts are taken by hand, so no acceptance waits for the script.
         self.assertIn("until it is on `main`, the orchestrator counts the same things by hand", text)
+        self.assertIn("the PR's GitHub review comments", text)
 
     def test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first(self) -> None:
         step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
@@ -264,6 +265,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "at most twice. The third Bot round is not fixed",
             "`AGMSG-RESULT … bot_rounds=3`",
             "in the background and the Bot wait below at the same time",
+            "listed as `open:<thread id>`, an escalated label",
             "never from the end of CI",
         ):
             with self.subTest(token=token):
@@ -272,6 +274,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
     def test_a_revise_acceptance_names_the_previous_head_and_a_check(self) -> None:
         contract = self.section(SKILL.read_text(), "## Message Contract v1")
         self.assertIn("carries `previous_head=<the RESULT head being revised>`", contract)
+        self.assertIn("one failing-test selector per finding (`check=tests/<file>::<name>`)", contract)
         self.assertIn("`.orchestration/<task id>/revise.yaml`", contract)
 
     def test_code_review_rules_cover_orchestration_records_and_threat_tables(self) -> None:
@@ -279,7 +282,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         subsection = self.section(rules, "### Orchestration records and trust-boundary code", "\n### ")
         for token in (
             "review them for secrets and home-directory paths only",
-            "review against the task's `threat_table`",
+            "Judge from the diff, whatever the task's metadata says, whether a change touches a trust boundary",
+            "report a missing table, a missing row",
             "Do not re-raise a `residual` row",
         ):
             with self.subTest(token=token):

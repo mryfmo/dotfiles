@@ -248,15 +248,33 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         text = self.invariants()
         for token in (
             "carries a `threat_table` in its front matter",
+            "`closed: tests/<file>::<name>`",
+            "`residual: <sentence>`",
+            "`out-of-scope: <task id>`",
+            "Shape is `schemas/task.json`'s",
+            "Substance is the reviewers'",
             "The table is the task's completion condition",
             "a missing row is added once, counted as an amendment",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
 
-    def test_threat_table_dispositions_carry_a_payload(self) -> None:
-        # Thread 4240290387: the prefix alone must not satisfy the disposition pattern.
-        self.assertIn("matching `^(closed|residual|out-of-scope): \\S`", self.invariants())
+    def test_threat_table_rule_carries_no_grammar(self) -> None:
+        # The reset of PR 318: shape lives in schemas/task.json, never as a pattern in prose.
+        text = self.invariants()
+        self.assertNotIn("^(closed|residual|out-of-scope)", text)
+        self.assertNotIn("`none`", text)
+
+    def test_manual_counts_read_the_whole_history(self) -> None:
+        # Thread 4240348412: history.sh prints 20 rows by default.
+        self.assertIn("with an explicit `--limit 1000`", self.invariants())
+
+    def test_open_third_round_threads_have_an_integration_outcome(self) -> None:
+        # Thread 4240348414: an open: item needs a path through steps 10.1 and 10.5.
+        playbook = self.section(SKILL.read_text(), "## Orchestrator Playbook")
+        for token in ("is a sweep item like any other", "the PR is not merged, never with the thread open"):
+            with self.subTest(token=token):
+                self.assertIn(token, playbook)
 
     def test_counters_run_before_every_acceptance_action(self) -> None:
         text = self.invariants()
@@ -309,10 +327,11 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         for token in (
             "review them for secrets and home-directory paths only",
             "Judge from the diff, whatever the task's metadata says, whether a change touches a trust boundary",
-            "report a missing table, a missing row",
-            "Do not re-raise a `residual` row whose named compensating control mitigates the risk",
-            "report a `residual` row whose control is missing, a placeholder such as `none`, or does not mitigate it",
-            "an `out-of-scope` row whose owner is a placeholder or does not own the risk",
+            "report a missing table or a missing row",
+            "a `residual` row whose control does not mitigate the risk",
+            "an `out-of-scope` row whose owner does not own it",
+            "Do not re-raise a `residual` row whose control mitigates the risk",
+            "Shape (the test selector, the sentence, the owning task id) is the schema's to check, not the review's",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, subsection)

@@ -1,6 +1,6 @@
 # Validation: dotfiles-T128-ci-skip-orchestration-a01
 
-Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `feat/ci-skip-orchestration` (PR #320). This branch copy covers heads through `e872f69f` (§1–§7 at `9fcd2b04`, §8 the Bot fix round); the main-checkout copy adds the final head (design INV-8).
+Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `feat/ci-skip-orchestration` (PR #320). This branch copy covers heads through the revise commit (§1–§7 at `9fcd2b04`, §8 the Bot fix round at `e872f69f`, §9 revise round 1); the main-checkout copy adds the final heads (design INV-8).
 
 ## 1. Checks at `9fcd2b04` (task validation: the YAML parse, the module under `make unit-test`; plus formatting)
 
@@ -352,4 +352,50 @@ FAIL: test_the_decision_survives_a_base_that_moved_after_the_checkout (tests.uni
 AssertionError: From /tmp/claude-501/tmp92ypcmg1/origin
 FAILED (failures=1)
 == restored: OK
+```
+
+## 9. Revise round 1 (the revise commit; `previous_head=d6343494`)
+
+```
+$ UV_OFFLINE=1 uv run python -m unittest tests.unit.test_workflow_orchestration_skip tests.unit.test_workflow_security 2>&1 | tail -3; ruff format --config ruff.toml --check tests/unit/test_workflow_orchestration_skip.py; ruff check --config ruff.toml tests/unit/test_workflow_orchestration_skip.py; prettier --check .github/workflows/test.yaml 2>&1 | tail -1
+Ran 21 tests in 4.838s
+
+OK
+1 file already formatted
+All checks passed!
+All matched files use Prettier code style!
+$ UV_OFFLINE=1 uv run --no-project --with pyyaml python -I -c "import sys, yaml; [print(p, sorted(yaml.safe_load(open(p))[\"jobs\"])) for p in sys.argv[1:]]" .github/workflows/remote.yaml .github/workflows/test.yaml; git diff --stat HEAD~1 -- .github tests
+.github/workflows/remote.yaml ['private-bootstrap', 'public-bootstrap']
+.github/workflows/test.yaml ['test']
+ .github/workflows/test.yaml                    |  4 ++-
+ tests/unit/test_workflow_orchestration_skip.py | 40 ++++++++++++++++++++++----
+ 2 files changed, 38 insertions(+), 6 deletions(-)
+```
+
+Removal proofs (`scratchpad/mutate-a5-r1.sh`: the working tree's three files in a `git archive HEAD` copy, one rule broken at a time; the two quoted-key rows are the audit's own mutations):
+
+```
+== broken rule: unit-test-diff-detects-renames (test, diff lines: 2) -> DecisionTest.test_the_unit_test_decision_ignores_renames
+FAIL: test_the_unit_test_decision_ignores_renames (tests.unit.test_workflow_orchestration_skip.DecisionTest.test_the_unit_test_decision_ignores_renames)
+AssertionError: 'should_test=true\n' not found in 'diff_range=origin/main...ed8f40ea8214a6a9baaeb93e24cb8bcc8e94e1fb\nshould_test=false\n'
+FAILED (failures=1)
+== broken rule: quoted-job-level-if (remote, diff lines: 1) -> RequiredContextsTest.test_no_required_contexts_job_has_a_job_level_if_or_needs
+FAIL: test_no_required_contexts_job_has_a_job_level_if_or_needs (tests.unit.test_workflow_orchestration_skip.RequiredContextsTest.test_no_required_contexts_job_has_a_job_level_if_or_needs) (job='public-bootstrap', key='if')
+AssertionError: 'if' unexpectedly found in {'if': '${{ always() }}', 'strategy': '', 'runs-on': '${{ matrix.os }}', 'env': '', 'steps': ''}
+FAILED (failures=1)
+== broken rule: quoted-continue-on-error-on-decide (test, diff lines: 1) -> DecisionStepTest.test_each_deciding_job_decides_after_its_checkout_and_fails_closed
+FAIL: test_each_deciding_job_decides_after_its_checkout_and_fails_closed (tests.unit.test_workflow_orchestration_skip.DecisionStepTest.test_each_deciding_job_decides_after_its_checkout_and_fails_closed) (job='test')
+AssertionError: 'continue-on-error' unexpectedly found in {'name': 'Decide whether the diff needs the unit tests', 'id': 'decide', 'continue-on-error': 'true', 'env': '', 'run': '|', 'script': 'set -euo pipefail\n\n# Decided in this job, never in a job it needs: a job skipped because\n# a needed job
+FAILED (failures=1)
+== broken rule: reader-sees-bare-keys-only (reader, diff lines: 6) -> RequiredContextsTest.test_structural_tests_see_quoted_keys
+ERROR: test_structural_tests_see_quoted_keys (tests.unit.test_workflow_orchestration_skip.RequiredContextsTest.test_structural_tests_see_quoted_keys)
+FAILED (errors=1)
+== restored: OK
+```
+
+CompactionDB (main checkout, outside the sandbox through the permission gate):
+
+```
+$ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-ci-skip-orchestration-a01 revise round 1 …'
+f6fe6ff0-f80d-4938-b15c-a66e1efd5d53
 ```

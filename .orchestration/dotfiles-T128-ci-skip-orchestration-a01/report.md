@@ -14,9 +14,9 @@
 | Row | Disposition | Where |
 |---|---|---|
 | The PR edits the workflow files themselves | residual, as the task states | `tests/unit/test_workflow_security.py` passes unchanged (validation §1) |
-| The decision step misclassifies a diff | closed | `DecisionTest.test_a_pull_request_skips_the_bootstrap_only_for_an_orchestration_only_diff` (mixed, pure, renamed, deleted in and out, empty), `DecisionTest.test_the_unit_test_decision_skips_an_orchestration_only_diff` |
-| A required job is skipped (job-level `if`, or `needs`) | closed | `RequiredContextsTest.test_no_required_contexts_job_has_a_job_level_if_or_needs`, `…test_no_job_is_left_for_a_required_job_to_need`, `…test_the_required_contexts_are_the_workflows_jobs` |
-| The decision step itself fails | closed | `DecisionStepTest.test_each_deciding_job_decides_after_its_checkout_and_fails_closed`, `…test_every_heavy_step_carries_its_jobs_decision`; since `e872f69f` a base that moved after the checkout no longer fails it: `DecisionTest.test_the_decision_survives_a_base_that_moved_after_the_checkout` |
+| The decision step misclassifies a diff | closed | `DecisionTest.test_a_pull_request_skips_the_bootstrap_only_for_an_orchestration_only_diff` (mixed, pure, renamed, deleted in and out, empty), `DecisionTest.test_the_unit_test_decision_skips_an_orchestration_only_diff`; since the revise, `DecisionTest.test_the_unit_test_decision_ignores_renames` |
+| A required job is skipped (job-level `if`, or `needs`) | closed | `RequiredContextsTest.test_no_required_contexts_job_has_a_job_level_if_or_needs`, `…test_no_job_is_left_for_a_required_job_to_need`, `…test_the_required_contexts_are_the_workflows_jobs`; since the revise, `RequiredContextsTest.test_structural_tests_see_quoted_keys` (a quoted key no longer hides a job-level `if`) |
+| The decision step itself fails | closed | `DecisionStepTest.test_each_deciding_job_decides_after_its_checkout_and_fails_closed`, `…test_every_heavy_step_carries_its_jobs_decision`; since `e872f69f` a base that moved after the checkout no longer fails it: `DecisionTest.test_the_decision_survives_a_base_that_moved_after_the_checkout`; since the revise, `RequiredContextsTest.test_structural_tests_see_quoted_keys` (a quoted `continue-on-error` no longer hides) |
 | Push and schedule have no PR range | closed | `DecisionTest.test_every_event_but_pull_request_bootstraps` |
 
 Each closing test fails when its rule is broken: 16 of 16 mutations in a `git archive HEAD` copy at `e872f69f` (validation §8; 14 of 14 at `9fcd2b04`, §3).
@@ -45,3 +45,12 @@ Each closing test fails when its rule is broken: 16 of 16 mutations in a `git ar
 `memory add` printed `a48481dc-7c94-40a9-9300-b01cafb77a48` (validation §6).
 
 cost: n/a
+
+## Revise round 1 (ACCEPTANCE 06:44:36Z, audit of `d6343494`: incorrect; `previous_head=d6343494`)
+
+One commit, recorded in `revise.yaml` beside this report; the module has no `WorkflowOrchestrationSkipTest` class, so the two checks live in the classes that own their rule:
+
+1. P2 `test.yaml:98`: the unit-test decision kept rename detection, so moving `home/a` to `.orchestration/a` listed only the destination and gave `should_test=false`. Its diff now runs with `--no-renames`, as the bootstrap decision's does → `DecisionTest.test_the_unit_test_decision_ignores_renames` moves `home/a` into `.orchestration/` and expects `should_test=true`.
+2. P2 `tests/…:67`: the hand-written reader matched bare keys only, so a quoted `'if'` or `'continue-on-error'` slipped past every structural test. It now reads a quoted key, or a quoted job name, like a bare one, as YAML does (no PyYAML in the unit-test environment; the docstring names the block-style-only limit) → `RequiredContextsTest.test_structural_tests_see_quoted_keys` parses `remote.yaml` with a quoted job name, a quoted job-level `"if"` and a quoted `'continue-on-error'` on the decision step.
+
+The two orchestration findings (the design-on-main deviation, the sweep's freshness) are the orchestrator's, as the ACCEPTANCE says. Each fix fails its test when broken, and the quoted-key mutations the audit describes now fail the existing structural tests: 4 of 4 (validation §9). The module runs 21 tests with `test_workflow_security`, OK. Threat-table rows 2 to 4 now name these tests beside the earlier ones. CompactionDB: `f6fe6ff0-f80d-4938-b15c-a66e1efd5d53`. The final head's CI and Bot wait are in the RESULT and the main-checkout copy of this report.

@@ -95,7 +95,9 @@ jobs:
           # No pipe into grep -q: under pipefail its early exit could SIGPIPE
           # the writer and turn a match into a false negative. core.quotePath
           # off keeps non-ASCII paths raw instead of "\343..."-quoted.
-          changed="$(git -c core.quotePath=false diff --name-only "${diff_range}")"
+          # --no-renames lists both sides of a rename, so a file moved out of
+          # home/ into .orchestration/ still runs the tests.
+          changed="$(git -c core.quotePath=false diff --no-renames --name-only "${diff_range}")"
           relevant="$(grep -v '^\.orchestration/' <<< "${changed}" || true)"
           if grep -Eq '^(\.github/workflows/|home/|install/|scripts/|tests/|plans/|docs/|setup\.sh$|Makefile$|ruff\.toml$|\.prettierignore$)|(^|/)[^/]+\.(py|md)$' <<< "${relevant}"; then
             echo "should_test=true" >> "${GITHUB_OUTPUT}"

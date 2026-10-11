@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-ci-skip-orchestration-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 24
+permission_gated_commands: 34
 ---
 
 # Sandbox record: dotfiles-T128-ci-skip-orchestration-a01
@@ -37,3 +37,17 @@ permission_gated_commands: 24
 | 22 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
 | 23 | final recheck of reviews, review comments and the connector summary right before the RESULT (`gh api` only) | `gh` |
 | 24 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-ci-skip-orchestration-a01 …` | `agmsg-dispatch` |
+
+## Revise round 1
+
+Calls #1–#27 are the first round's final count (main-checkout copy of the first RESULT). The revise commit was made inside the sandbox with `git -c commit.gpgsign=false`; only the push leaves it. The count above is 27 plus these 7, counted in advance from R2 on in this copy; the main-checkout copy states the final count.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| R1 | `cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add …` | main-checkout `memory add` |
+| R2 | the authorized push (the revise commit) | `git push` |
+| R3 | `gh pr checks 320 … --watch` on the revise head (background, exit status joined) | `gh` |
+| R4 | Bot wait on the revise head, `scratchpad/bot-wait.sh` (background) | `gh` only |
+| R5 | final recheck of reviews, review comments and the connector summary right before the RESULT (`gh` only) | `gh` |
+| R6 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
+| R7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-ci-skip-orchestration-a01 …` | `agmsg-dispatch` |

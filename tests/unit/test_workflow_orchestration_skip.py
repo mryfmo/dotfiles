@@ -53,18 +53,23 @@ UNGATED_STEPS = frozenset(
 
 
 def jobs(path: Path) -> dict[str, dict]:
-    """Each job's own keys (two-space job names, four-space keys) and its steps, read from the indentation after `jobs:`."""
+    """Each job's own keys (two-space job names, four-space keys) and its steps, read from the indentation after `jobs:`.
+
+    A quoted key reads like a bare one, as in YAML. shortcut: block-style mappings only (no flow mappings or
+    anchors), which is how every workflow here is written; switch to a YAML parser if the test env gains one.
+    """
     result: dict[str, dict] = {}
     job = step = block_key = None
     for line in path.read_text().split("\njobs:\n", 1)[1].split("\n"):
-        if re.fullmatch(r"  ([A-Za-z0-9_-]+):", line):
+        name = re.fullmatch(r"  [\"']?([A-Za-z0-9_-]+)[\"']?:", line)
+        if name:
             job = {"keys": {}, "steps": []}
-            result[line.strip()[:-1]] = job
+            result[name.group(1)] = job
             step = block_key = None
             continue
         if job is None:
             continue
-        key = re.fullmatch(r"    ([A-Za-z_-]+):(.*)", line)
+        key = re.fullmatch(r"    [\"']?([A-Za-z_-]+)[\"']?:(.*)", line)
         if key:
             job["keys"][key.group(1)] = key.group(2).strip()
             step = None
@@ -76,7 +81,7 @@ def jobs(path: Path) -> dict[str, dict]:
             line = "        " + item.group(1)
         if step is None:
             continue
-        field = re.fullmatch(r"        ([A-Za-z_-]+):(.*)", line)
+        field = re.fullmatch(r"        [\"']?([A-Za-z_-]+)[\"']?:(.*)", line)
         if field:
             block_key = field.group(1)
             step[block_key] = field.group(2).strip()
@@ -200,6 +205,22 @@ class RequiredContextsTest(unittest.TestCase):
                 with self.subTest(job=name, key=key):
                     self.assertNotIn(key, jobs(path)[name]["keys"])
 
+    def test_structural_tests_see_quoted_keys(self) -> None:
+        # Audit of d6343494: YAML reads a quoted key like a bare one, so a quoted job-level if or a
+        # quoted continue-on-error on the decision step must not slip past the structural tests.
+        quoted = (
+            REMOTE.read_text()
+            .replace("\n  public-bootstrap:\n", "\n  'public-bootstrap':\n    \"if\": ${{ always() }}\n", 1)
+            .replace("        id: decide\n", "        \"id\": decide\n        'continue-on-error': true\n", 1)
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "remote.yaml"
+            path.write_text(quoted)
+            job = jobs(path)["public-bootstrap"]
+        self.assertIn("if", job["keys"])
+        decide = next(step for step in job["steps"] if step.get("id") == "decide")
+        self.assertIn("continue-on-error", decide)
+
     def test_no_job_is_left_for_a_required_job_to_need(self) -> None:
         self.assertNotIn("changes", jobs(TEST))
         self.assertNotIn("changes", jobs(REMOTE))
@@ -289,6 +310,15 @@ class DecisionTest(unittest.TestCase):
                     head = pull_request_head(clone, git, f"t-{name}", writes)
                     env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
                     self.assertIn(f"should_test={expected}\n", run_decision(script, env, clone))
+
+    def test_the_unit_test_decision_ignores_renames(self) -> None:
+        # Audit of d6343494: rename detection listed only the .orchestration/ side of home/a's move.
+        script = decide_script(TEST, "test")
+        with tempfile.TemporaryDirectory() as temp:
+            clone, git = scratch_repository(Path(temp))
+            head = pull_request_head(clone, git, "t-renamed", moves=[("mv", "home/a", ".orchestration/a")])
+            env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
+            self.assertIn("should_test=true\n", run_decision(script, env, clone))
 
     def test_the_decision_survives_a_base_that_moved_after_the_checkout(self) -> None:
         # Thread 4240499289: a shallow fetch of the newer base tip cut its history, so the

@@ -434,11 +434,14 @@ class AgmsgRegimePatternTest(unittest.TestCase):
                 self.assertIn(token, text)
 
     def test_counters_add_review_body_findings(self) -> None:
-        # Thread 4243516879: regime-counters.sh reads inline comments only, and a Bot P0/P1 can live in a review body.
+        # Threads 4243516879 and 4243537278: review bodies feed S1 and the fix-round cap, never INV-6's head count.
+        text = self.invariants()
         self.assertIn(
-            "The script reads inline review comments only, so the orchestrator also counts the P0/P1-badged Bot review bodies of `…/pulls/<n>/reviews`, grouped by `commit_id`, by hand and pastes that command and its output beside the script's, until the script reads review bodies too.",
-            self.invariants(),
+            "The script reads inline review comments only, and that is INV-6's whole head count (`original_commit_id` on `review_comment` items); the orchestrator also lists the P0/P1-badged Bot review bodies of `…/pulls/<n>/reviews`, grouped by `commit_id`, by hand and pastes that command and its output beside the script's, for S1's finding classes and the worker's fix-round cap only, never as INV-6 heads.",
+            text,
         )
+        self.assertNotIn("until the script reads review bodies too", text)
+        self.assertNotIn("which INV-6 and S1 count", text)
 
     def test_the_ci_watcher_survives_the_no_checks_race(self) -> None:
         # Thread 4243516880: `gh pr checks --watch` exits 1 with "no checks reported" before the first check appears.

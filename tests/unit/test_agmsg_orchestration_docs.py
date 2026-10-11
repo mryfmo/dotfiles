@@ -223,7 +223,9 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "get the same design hash at the same time",
             "The orchestrator revises once per pair of results",
             "opens no round while one is still open",
-            "After at most three revision rounds the design is frozen",
+            "frozen at the hash the pair last accepted",
+            # Thread 4243537279: a revision after the third pair would freeze an unreviewed hash.
+            "any later change to a hashed key is a new pair (INV-7)",
             "becomes a residual list that is worker input",
             "never implementation detail",
         ):
@@ -242,8 +244,13 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, text)
 
-    def test_a_boundary_pr_never_gates_a_dispatch(self) -> None:
-        self.assertIn("is never a prerequisite of a dispatch", self.invariants())
+    def test_a_design_lands_on_main_before_its_task(self) -> None:
+        # Thread 4243537281: a boundary PR carrying the design is INV-2's dispatch prerequisite.
+        text = self.invariants()
+        for token in ("carries no task draft under review", "before its implementing TASK is dispatched (INV-2)"):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+        self.assertNotIn("is never a prerequisite of a dispatch", text)
 
     def test_boundary_merge_sentence_names_the_in_job_decision(self) -> None:
         # PR 320 removes the changes job: a skipped required job reports Success, so each job decides itself.
@@ -386,7 +393,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         for token in (
             "(the tree and its tests, task.md, workflow files,",
             "a fresh Claude context on the `review` profile and a Codex read-only run",
-            "meets the design-on-main precondition",
+            # Item 7 of a04 reworded the clause; the safeguard is the same sentence.
+            "any merged boundary that carries the design meets that precondition",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)

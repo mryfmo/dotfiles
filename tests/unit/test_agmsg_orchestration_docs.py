@@ -239,12 +239,15 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         text = self.invariants()
         for token in (
             "carries a `threat_table` in its front matter",
-            "`^(closed|residual|out-of-scope): `",
             "The table is the task's completion condition",
             "a missing row is added once, counted as an amendment",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
+
+    def test_threat_table_dispositions_carry_a_payload(self) -> None:
+        # Thread 4240290387: the prefix alone must not satisfy the disposition pattern.
+        self.assertIn("matching `^(closed|residual|out-of-scope): \\S`", self.invariants())
 
     def test_counters_run_before_every_acceptance_action(self) -> None:
         text = self.invariants()
@@ -265,11 +268,25 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "at most twice. The third Bot round is not fixed",
             "`AGMSG-RESULT … bot_rounds=3`",
             "in the background and the Bot wait below at the same time",
-            "listed as `open:<thread id>`, an escalated label",
+            "listed as `open:<thread id>`",
+            "an escalated label that the next bullet's",
             "never from the end of CI",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, step)
+
+    def test_open_review_body_findings_have_an_identifier(self) -> None:
+        # Thread 4240290382: a review-body finding has no thread id.
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        self.assertIn("(`open:review-<review id>` for a review-body finding)", step)
+
+    def test_the_ci_watch_is_joined_before_the_result(self) -> None:
+        # Thread 4240290391: the background CI watcher's exit status gates the RESULT.
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        self.assertIn(
+            "Wait for that watcher's exit status before the RESULT: a non-zero exit means no RESULT until CI passes.",
+            step,
+        )
 
     def test_a_revise_acceptance_names_the_previous_head_and_a_check(self) -> None:
         contract = self.section(SKILL.read_text(), "## Message Contract v1")

@@ -173,14 +173,26 @@ class ContractMarkersTest(unittest.TestCase):
                 self.assertEqual(reason, markers.check(path, "n1", expected, allowed))
         self.assertEqual("no result file", markers.check(self.write("", "absent") + ".missing", "n1", 0, []))
 
-    def test_scripts_filters_script_paths(self) -> None:
-        paths = "scripts/a.sh\nhome/dot_local/bin/x\ninstall/y\nhome/.chezmoiscripts/z\nsetup.sh\nREADME.md\nhome/dot_zshrc\nsetup.sh.bak\n"
+    def scripts(self, paths: list[str]) -> str:
+        """The `scripts` subcommand over NUL-separated paths, as `git diff -z` gives them."""
         out = io.StringIO()
-        with mock.patch("sys.stdin", io.StringIO(paths)), redirect_stdout(out):
+        stdin = io.TextIOWrapper(io.BytesIO("\0".join(paths).encode() + b"\0"))
+        with mock.patch("sys.stdin", stdin), redirect_stdout(out):
             self.assertEqual(0, markers.main(["scripts"]))
+        return out.getvalue()
+
+    def test_scripts_filters_script_paths(self) -> None:
+        paths = ["scripts/a.sh", "home/dot_local/bin/x", "install/y", "home/.chezmoiscripts/z", "setup.sh", "README.md"]
         self.assertEqual(
-            "scripts/a.sh\nhome/dot_local/bin/x\ninstall/y\nhome/.chezmoiscripts/z\nsetup.sh\n", out.getvalue()
+            "scripts/a.sh\nhome/dot_local/bin/x\ninstall/y\nhome/.chezmoiscripts/z\nsetup.sh\n",
+            self.scripts([*paths, "home/dot_zshrc", "setup.sh.bak"]),
         )
+
+    def test_a_changed_path_with_a_tab_or_line_break_is_rejected(self) -> None:
+        for path in ("scripts/a\nb.sh", "docs/a\tb.md", "scripts/a\r.sh"):
+            with self.subTest(path=path), self.assertRaises(SystemExit) as raised:
+                self.scripts(["scripts/ok.sh", path])
+            self.assertIn("has a tab or line break", str(raised.exception))
 
 
 if __name__ == "__main__":

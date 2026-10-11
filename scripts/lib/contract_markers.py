@@ -5,7 +5,8 @@ task [<task.md>]     print the task id, its tier, its declared tests/unit module
                      changed scripts (read from stdin) all are (exempt), each
                      declared design-tier script without its module, and each
                      undeclared changed script with its module (undeclared)
-scripts              print the script paths among the paths read from stdin
+scripts              print the script paths among the NUL-separated paths on stdin;
+                     exit 1 when any path carries a tab or line break
 contracts <module>...
                      print the unittest test-method ids that carry the contract decorator
 dormant <module>     exit 1 when any contract decorator remains
@@ -37,6 +38,15 @@ def module_for(script: str) -> str:
     for suffix in (".tmpl", ".sh", ".py"):
         name = name.removesuffix(suffix)
     return f"tests/unit/test_{name.replace('-', '_')}.py"
+
+
+def changed_scripts(raw: bytes) -> list[str]:
+    """The script paths among `git diff -z` output; this helper's own output is line-delimited."""
+    paths = [path.decode(errors="surrogateescape") for path in raw.split(b"\0") if path]
+    for path in paths:
+        if re.search(r"[\t\n\r]", path):
+            raise SystemExit(f"main-tests: changed path {path!r} has a tab or line break")
+    return [path for path in paths if SCRIPT_PATH.match(path)]
 
 
 def task(path: str | None) -> list[str]:
@@ -197,7 +207,7 @@ def main(argv: list[str]) -> int:
         case ["task", *path] if len(path) <= 1:
             print(*task(path[0] if path else None), sep="\n")
         case ["scripts"]:
-            print(*(line for line in sys.stdin.read().splitlines() if SCRIPT_PATH.match(line)), sep="\n")
+            print(*changed_scripts(sys.stdin.buffer.read()), sep="\n")
         case ["contracts", *paths]:
             print(*(test for path in paths for test in contracts(path)), sep="\n")
         case ["dormant", path]:

@@ -137,7 +137,21 @@ class MainTestsHarnessTest(unittest.TestCase):
         foo = {"scripts/foo.sh": "changed contract\n"}
         dormant = self.harness({**foo, "tests/unit/test_foo.py": DORMANT + "\n", **task(FOO_FILES)})
         self.assertFails(dormant, "main-tests: contract still dormant in tests/unit/test_foo.py")
-        self.assertPasses(self.harness({**foo, **task(FOO_FILES, task_id="dotfiles-T999-demo-contract-a01")}))
+
+    def test_a_contract_wave_cannot_change_scripts(self) -> None:
+        # A contract wave ships dormant tests only; its id does not lift the promotion check for a script change.
+        contract = "dotfiles-T999-demo-contract-a01"
+        result = self.harness({"scripts/foo.sh": "changed contract\n", **task(FOO_FILES, task_id=contract)})
+        self.assertFails(result, f"main-tests: {contract} is a contract wave but changes scripts: scripts/foo.sh")
+        result = self.harness(
+            {"tests/unit/test_foo.py": DORMANT + "\n", **task(["tests/unit/test_foo.py"], task_id=contract)}
+        )
+        self.assertEqual("main-tests: no script change\n", result.stdout)
+
+    def test_a_changed_path_with_a_line_break_fails(self) -> None:
+        # git C-quotes such a name in line mode, which would hide the script; -z passes it raw.
+        result = self.harness({"scripts/a\nb.sh": "x\n"})
+        self.assertFails(result, "has a tab or line break")
 
     def test_aliased_and_inline_contracts_are_still_dormant(self) -> None:
         inline = "@unittest.skipUnless(os.environ.get('REGIME_CONTRACT') == '1', 'dormant contract')"

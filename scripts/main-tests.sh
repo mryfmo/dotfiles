@@ -10,9 +10,9 @@
 #   declares both it and its script. A design-tier task.md (a missing `tier:`
 #   stamp counts as design) must also declare a module for each script it
 #   declares, keep each declared module, and find a contract for each exempt
-#   one on the base. An implementation PR (a task id not ending in
-#   -contract-a01) must have removed the contract decorator from its own copy
-#   of each declared module. A unittest run counts only by the result file its
+#   one on the base. The PR's own copy of each declared module must carry no
+#   contract decorator, and a contract wave (a task id ending in -contract-a01)
+#   may change no script. A unittest run counts only by the result file its
 #   runner writes with this run's nonce. The exit status combines every check.
 #   The `main-tests` job of .github/workflows/test.yaml runs the base's copy of
 #   this script and of lib/contract_markers.py, never the pull request's.
@@ -37,10 +37,10 @@ markers() {
 }
 
 merge_base="$(git merge-base "${base}" HEAD)"
-# --no-renames: a script moved away still shows its old path.
-changed="$(git -c core.quotePath=false diff --name-only --no-renames "${merge_base}" HEAD)"
+# --no-renames: a script moved away still shows its old path. -z: git C-quotes a name with a line
+# break in line mode, which would hide the script; the helper rejects such a name instead.
 # Assigned first, so a failing helper stops the run instead of reading as "no script change".
-scripts_changed="$(markers scripts <<< "${changed}")"
+scripts_changed="$(git -c core.quotePath=false diff --name-only -z --no-renames "${merge_base}" HEAD | markers scripts)"
 if [ -z "${scripts_changed}" ]; then
     echo "main-tests: no script change"
     exit 0
@@ -83,6 +83,11 @@ while IFS=$'\t' read -r kind value module; do
         ;;
     esac
 done <<< "${parsed}"
+# A contract wave ships dormant tests only, and this point is reached only when a script changed.
+if [[ "${task_id}" == *-contract-a01 ]]; then
+    echo "main-tests: ${task_id} is a contract wave but changes scripts: ${scripts_changed//$'\n'/ }"
+    status=1
+fi
 
 # The PR's own copies, read before the overlay replaces them.
 while IFS= read -r module; do
@@ -93,7 +98,7 @@ while IFS= read -r module; do
             echo "main-tests: declared module ${module} deleted"
             status=1
         fi
-    elif [[ "${task_id}" != *-contract-a01 ]] && ! markers dormant "${tmp}/${module}"; then
+    elif ! markers dormant "${tmp}/${module}"; then
         echo "main-tests: contract still dormant in ${module}"
         status=1
     fi

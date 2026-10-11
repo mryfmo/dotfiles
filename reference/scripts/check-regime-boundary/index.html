@@ -3184,6 +3184,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../regime-counters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/regime-counters.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../run_benchmark/" class="md-nav__link">
         
   
@@ -3332,10 +3360,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4_12" >
         
           
-          <label class="md-nav__link" for="__nav_4_4_11" id="__nav_4_4_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_4_12" id="__nav_4_4_12_label" tabindex="0">
             
   
   
@@ -3353,8 +3381,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_4_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_4_11">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3685,7 +3713,7 @@
 
 
 <h1 id="scriptscheck-regime-boundarysh">scripts/check-regime-boundary.sh<a class="headerlink" href="#scriptscheck-regime-boundarysh" title="Permanent link">&para;</a></h1>
-<p>Verifies the Stop list of the agmsg-orchestration skill for this repository and prints one line per violation: untracked <code>.orchestration</code> files in every registered checkout (<code>git worktree list</code>); exactly one agmsg identity name across claude-code and codex at the only active seat, the main checkout (an empty seat is reported too); any identity at a linked worktree under <code>.claude/worktrees/</code> (a worker still seated: <code>herdr-agents --remove-worker &lt;worktree&gt;</code>), and more than one name per type at any other checkout; a seated main checkout whose HEAD is not the <code>main</code> branch (a detached HEAD or another branch; a checkout with no identity, such as a CI checkout, is never flagged); running <code>crit _serve</code> review servers; a canonical clone (<code>chezmoi source-path</code>, when it is not this working clone) with unmerged entries, a stash, or a tracked or untracked difference from <code>origin/main</code> (else <code>HEAD</code>) under <code>home/</code>, <code>install/</code> or <code>scripts/</code>, or uncommitted changes there that already match <code>origin/main</code> while <code>HEAD</code> is behind it; leftover <code>&lt;repo&gt; worker &lt;name&gt;</code> Herdr workspaces and worker tabs in the managed workspace (only when <code>herdr</code> is reachable); and a bare-id orchestrator seat lock, through the one implementation in scripts/check-agent-runtime.py (<code>orchestrator_seat_lock_warnings</code>). Every probe is read-only, and a missing tool skips its check.</p>
+<p>Verifies the Stop list of the agmsg-orchestration skill for this repository and prints one line per violation: untracked <code>.orchestration</code> files in every registered checkout (<code>git worktree list</code>); exactly one agmsg identity name across claude-code and codex at the only active seat, the main checkout (an empty seat is reported too); any identity at a linked worktree under <code>.claude/worktrees/</code> (a worker still seated: <code>herdr-agents --remove-worker &lt;worktree&gt;</code>), and more than one name per type at any other checkout; a seated main checkout whose HEAD is not the <code>main</code> branch (a detached HEAD or another branch; a checkout with no identity, such as a CI checkout, is never flagged); running <code>crit _serve</code> review servers; a canonical clone (<code>chezmoi source-path</code>, when it is not this working clone) with unmerged entries, a stash, or a tracked or untracked difference from <code>origin/main</code> (else <code>HEAD</code>) under <code>home/</code>, <code>install/</code> or <code>scripts/</code>, or uncommitted changes there that already match <code>origin/main</code> while <code>HEAD</code> is behind it; leftover <code>&lt;repo&gt; worker &lt;name&gt;</code> Herdr workspaces and worker tabs in the managed workspace (only when <code>herdr</code> is reachable); and a bare-id orchestrator seat lock, through the one implementation in scripts/check-agent-runtime.py (<code>orchestrator_seat_lock_warnings</code>); and each task over an INV-6 count (scripts/regime-counters.sh) without an anchored acceptance or reset record, or whose PR closed unmerged. Every probe is read-only, and a missing tool skips its check.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/check-regime-boundary.sh</code></li>
@@ -3695,6 +3723,7 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>count_names</code></li>
+<li><code>front_matter_says</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -3719,7 +3748,9 @@
 <span class="c1">#   workspaces and worker tabs in the managed workspace (only when `herdr`</span>
 <span class="c1">#   is reachable); and a bare-id orchestrator</span>
 <span class="c1">#   seat lock, through the one implementation in</span>
-<span class="c1">#   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`).</span>
+<span class="c1">#   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`); and</span>
+<span class="c1">#   each task over an INV-6 count (scripts/regime-counters.sh) without an</span>
+<span class="c1">#   anchored acceptance or reset record, or whose PR closed unmerged.</span>
 <span class="c1">#   Every probe is read-only, and a missing tool skips its check.</span>
 <span class="c1"># @option --report Print the same lines but always exit 0 (for validate-agent-assets).</span>
 <span class="c1"># @exitcode 0 If no violation was found, or with --report.</span>
@@ -3892,6 +3923,109 @@ count_names<span class="o">()</span><span class="w"> </span><span class="o">{</s
 <span class="s">print("\n".join(module.orchestrator_seat_lock_warnings(Path(sys.argv[2]))))</span>
 <span class="s">PY</span>
 <span class="o">)</span>
+
+<span class="c1"># INV-6 counts (plan 006 A3): each main-checkout task file whose id has an</span>
+<span class="c1"># AGMSG-TASK in history is counted live by scripts/regime-counters.sh, and a</span>
+<span class="c1"># reached threshold is reported unless an anchored record silences it. An</span>
+<span class="c1"># accepted acceptance record `&lt;id&gt;.md` silences only with a `pr=&lt;n&gt;` line naming</span>
+<span class="c1"># the task's PR (the first `pr=` of its RESULTs) that GitHub shows merged, or</span>
+<span class="c1"># with a `pr=none` line when none of the task's RESULTs carries `pr=` and the</span>
+<span class="c1"># task file's front matter is `format: 2` with `kind: review` or `kind: design`;</span>
+<span class="c1"># a reset record `&lt;id&gt;-design-reset.md` only when its `design_sha256:` is the</span>
+<span class="c1"># sha256 of its `redesign_task:` task file, that file's `reset_of` names this</span>
+<span class="c1"># task, and an identity other than the task's TASK senders accepted that design</span>
+<span class="c1"># in a RESULT of the record's `redesign_source:` task (`AGMSG-RESULT</span>
+<span class="c1"># task_id=&lt;redesign_source&gt; ... verdict=accept design_sha256=&lt;hash&gt;`). No waiver silences anything before</span>
+<span class="c1"># scripts/regime-waive.sh (V3a): a `DESIGN_RESET_WAIVED_BY=` line in either</span>
+<span class="c1"># record is always reported as `waiver-unanchored`. A task PR closed</span>
+<span class="c1"># unmerged is reported without an anchored reset record. Skipped without the</span>
+<span class="c1"># counters script beside this one or a readable agmsg store.</span>
+<span class="nv">counters</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/scripts/regime-counters.sh"</span>
+
+<span class="c1"># @description Answer one question about a task file's front matter, read with</span>
+<span class="c1">#   PyYAML (no hand-written YAML parser): `reset_of &lt;id&gt;` (its reset_of list</span>
+<span class="c1">#   names the task) or `pr_less` (`format: 2` and `kind` review or design). uv</span>
+<span class="c1">#   runs offline first (the cached wheel), then online only when uv itself fails</span>
+<span class="c1">#   (a cold cache); python prints yes or no, so any failure is a no.</span>
+<span class="c1"># @arg $1 path Task file.</span>
+<span class="c1"># @arg $2 string `reset_of` or `pr_less`.</span>
+<span class="c1"># @arg $3 string Task id, for `reset_of`.</span>
+front_matter_says<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">script</span><span class="o">=</span><span class="s1">'import sys, yaml</span>
+<span class="s1">try:</span>
+<span class="s1">    text = open(sys.argv[1], encoding="utf-8").read()</span>
+<span class="s1">    data = yaml.safe_load(text.split("\n---\n", 1)[0][4:]) if text.startswith("---\n") else None</span>
+<span class="s1">except (OSError, UnicodeError, yaml.YAMLError):</span>
+<span class="s1">    data = None</span>
+<span class="s1">data = data if isinstance(data, dict) else {}</span>
+<span class="s1">items = data.get("reset_of")</span>
+<span class="s1">if sys.argv[2] == "reset_of":</span>
+<span class="s1">    yes = isinstance(items, list) and sys.argv[3] in items</span>
+<span class="s1">else:</span>
+<span class="s1">    yes = data.get("format") == 2 and data.get("kind") in ("review", "design")</span>
+<span class="s1">print("yes" if yes else "no")'</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uv<span class="w"> </span>run<span class="w"> </span>--offline<span class="w"> </span>--no-project<span class="w"> </span>--quiet<span class="w"> </span>--with<span class="w"> </span>pyyaml<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">script</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>uv<span class="w"> </span>run<span class="w"> </span>--no-project<span class="w"> </span>--quiet<span class="w"> </span>--with<span class="w"> </span>pyyaml<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">script</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>yes<span class="w"> </span><span class="o">]]</span>
+<span class="o">}</span>
+
+<span class="k">if</span><span class="w"> </span><span class="nv">task_ids</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">counters</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--list-tasks<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>task<span class="w"> </span>_<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="c1"># Ids come from agent-written history and become paths: one plain file name only.</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span>A-Za-z0-9<span class="o">][</span>A-Za-z0-9._-<span class="o">]</span>*$<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">main</span><span class="si">}</span>/.orchestration/tasks/<span class="si">${</span><span class="nv">task</span><span class="si">}</span>.md<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">accepted</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">/.orchestration/acceptance/</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2">.md"</span>
+<span class="w">        </span><span class="nv">reset</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">/.orchestration/acceptance/</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2">-design-reset.md"</span>
+<span class="w">        </span><span class="nv">args</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">reset</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">hash</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^design_sha256: *\([0-9a-f]\{64\}\) *$/\1/p'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reset</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">            </span><span class="nv">redesign</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^redesign_task: *\([A-Za-z0-9][A-Za-z0-9._-]*\) *$/\1/p'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reset</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">            </span><span class="nv">source_task</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^redesign_source: *\([A-Za-z0-9][A-Za-z0-9._-]*\) *$/\1/p'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reset</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">            </span><span class="nv">design</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">/.orchestration/tasks/</span><span class="si">${</span><span class="nv">redesign</span><span class="si">}</span><span class="s2">.md"</span>
+<span class="w">            </span><span class="c1"># The hash must be the named redesign task's own file, and that file must</span>
+<span class="w">            </span><span class="c1"># name this task in reset_of: an unrelated accepted design anchors nothing.</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">hash</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">redesign</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">design</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">                </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="o">{</span><span class="w"> </span>sha256sum<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">design</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">design</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d<span class="w"> </span><span class="s1">' '</span><span class="w"> </span>-f<span class="w"> </span><span class="m">1</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hash</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">                </span>front_matter_says<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">design</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>reset_of<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nv">args</span><span class="o">+=(</span>--reset-hash<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hash</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--reset-source<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_task</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">            </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">counts</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">counters</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="c1"># The task's PR from its RESULTs: digits, `none` (no RESULT carries pr=) or `invalid`.</span>
+<span class="w">        </span><span class="nv">task_pr</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^detail: pr=\([^ ]*\) .*/\1/p'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">counts</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">pr</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">task_pr</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+$<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">pr</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">task_pr</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">by</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^reset: .* accepted_by=\([^ ]*\) .*/\1/p'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">counts</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">state</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">merged_at</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>state<span class="w"> </span>merged_at<span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>gh<span class="w"> </span>api<span class="w"> </span><span class="s2">"repos/{owner}/{repo}/pulls/</span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--jq<span class="w"> </span><span class="s1">'[.state, (.merged_at // "")] | @tsv'</span><span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="o">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">record_pr</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">accepted</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>grep<span class="w"> </span>-Eiq<span class="w"> </span><span class="s1">'^(- )?\*\*decision:\*\* *accepted|^status: *accepted'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">accepted</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">record_pr</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-nE<span class="w"> </span><span class="s1">'s/^(- )?pr=([0-9]+|none)([[:space:]].*)?$/\2/p'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">accepted</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">reset_anchored</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="nv">silenced</span><span class="o">=</span><span class="nb">false</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">by</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">by</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>none<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">reset_anchored</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="nv">silenced</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">merged_at</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">record_pr</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">silenced</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">record_pr</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>none<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">task_pr</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>none<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">            </span>front_matter_says<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">/.orchestration/tasks/</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2">.md"</span><span class="w"> </span>pr_less<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">silenced</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">silenced</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s1">'^S2: '</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">counts</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>line<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">                </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">            </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>grep<span class="w"> </span><span class="s1">'^S2: '</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">counts</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>grep<span class="w"> </span>-qs<span class="w"> </span><span class="s1">'DESIGN_RESET_WAIVED_BY='</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">accepted</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reset</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2"> waiver-unanchored"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>closed<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">merged_at</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">reset_anchored</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2"> PR #</span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2"> closed unmerged without an anchored reset record"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">task_ids</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">fi</span>
 
 <span class="k">for</span><span class="w"> </span>violation<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">violations</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">violations</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'regime-boundary: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">violation</span><span class="si">}</span><span class="s2">"</span>

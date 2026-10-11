@@ -1,9 +1,10 @@
 """Task-file and contract-decorator queries for scripts/main-tests.sh (T128 INV-12).
 
 task <task.md>       print the task id, its tier, its declared tests/unit modules,
+                     the declared modules whose script is declared too (exempt),
                      and each declared design-tier script without its module
 scripts              print the script paths among the paths read from stdin
-contracts <module>   print the unittest ids that carry the contract decorator
+contracts <module>   print the unittest test-method ids that carry the contract decorator
 dormant <module>     exit 1 when any contract decorator remains
 """
 
@@ -40,11 +41,15 @@ def task(path: str) -> list[str]:
     # A missing or unknown stamp is design tier, the strictest.
     tier = front.get("tier") if front.get("tier") in ("docs", "review") else "design"
     modules = [entry for entry in files if MODULE_PATH.fullmatch(entry)]
+    scripts = [entry for entry in files if SCRIPT_PATH.match(entry) and not entry.endswith(DATA_SUFFIXES)]
+    # Contract-only selection is keyed on the declared script; a module declared alone still runs as it is.
+    exempt = [module for module in modules if module in map(module_for, scripts)]
     lines = [f"task_id\t{front['task_id']}", f"tier\t{tier}", *(f"module\t{module}" for module in modules)]
+    lines += [f"exempt\t{module}" for module in exempt]
     if tier == "design":
-        for entry in files:
-            if SCRIPT_PATH.match(entry) and not entry.endswith(DATA_SUFFIXES) and module_for(entry) not in modules:
-                lines.append(f"uncovered\t{entry}\t{module_for(entry)}")
+        lines += [
+            f"uncovered\t{script}\t{module_for(script)}" for script in scripts if module_for(script) not in modules
+        ]
     return lines
 
 
@@ -81,14 +86,15 @@ def marked(path: str) -> tuple[ast.Module, list[ast.AST]]:
 
 
 def contracts(path: str) -> list[str]:
+    """Test methods only: a decorated class contributes its own test methods, so an empty one contributes none."""
     tree, found = marked(path)
     stem = Path(path).stem
     ids = []
     for cls in (node for node in tree.body if isinstance(node, ast.ClassDef)):
-        if cls in found:
-            ids.append(f"{stem}.{cls.name}")
-        else:
-            ids += [f"{stem}.{cls.name}.{item.name}" for item in cls.body if item in found]
+        for item in cls.body:
+            is_test = isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name.startswith("test")
+            if is_test and (cls in found or item in found):
+                ids.append(f"{stem}.{cls.name}.{item.name}")
     return ids
 
 

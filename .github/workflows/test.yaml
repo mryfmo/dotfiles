@@ -98,6 +98,23 @@ jobs:
         with:
           enable-cache: false
 
+      - name: Fetch main's harness and helpers
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          mkdir -p "${RUNNER_TEMP}/scripts/lib"
+          # Every file this job runs comes from main; nothing from the PR tree runs before the harness.
+          git show origin/main:scripts/lib/github-release.sh > "${RUNNER_TEMP}/scripts/lib/github-release.sh"
+          for path in scripts/main-tests.sh scripts/lib/contract_markers.py; do
+            if git cat-file -e "origin/main:${path}" 2> /dev/null; then
+              git show "origin/main:${path}" > "${RUNNER_TEMP}/${path}"
+            else
+              # Only this harness pair falls back, and only on the PR that adds it: main has no copy yet.
+              echo "main has no ${path}; running this PR's copy"
+              cp "${path}" "${RUNNER_TEMP}/${path}"
+            fi
+          done
+
       - name: Install unit-test tools
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -105,7 +122,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update && sudo apt-get install -y jq zsh
           # main's modules call chezmoi: the test job's verified install, without its fixture checks.
-          source scripts/lib/github-release.sh
+          source "${RUNNER_TEMP}/scripts/lib/github-release.sh"
           chezmoi_version="$(github_release_tag twpayne/chezmoi)"
           chezmoi_version="${chezmoi_version#v}"
           artifact="chezmoi_${chezmoi_version}_linux_amd64.tar.gz"
@@ -122,20 +139,7 @@ jobs:
           sudo install -m 0755 "${RUNNER_TEMP}/chezmoi" /usr/local/bin/chezmoi
 
       - name: Run main's unit tests against this change
-        run: |
-          set -euo pipefail
-          git fetch --no-tags origin main
-          mkdir -p "${RUNNER_TEMP}/scripts/lib"
-          for path in scripts/main-tests.sh scripts/lib/contract_markers.py; do
-            if git cat-file -e "origin/main:${path}" 2> /dev/null; then
-              git show "origin/main:${path}" > "${RUNNER_TEMP}/${path}"
-            else
-              # Only the PR that adds the harness lands here: main has no copy yet.
-              echo "main has no ${path}; running this PR's copy"
-              cp "${path}" "${RUNNER_TEMP}/${path}"
-            fi
-          done
-          bash "${RUNNER_TEMP}/scripts/main-tests.sh" origin/main
+        run: bash "${RUNNER_TEMP}/scripts/main-tests.sh" origin/main
 
   test:
     needs: changes

@@ -51,3 +51,17 @@ Copy this task file byte-identical to `.orchestration/dotfiles-T128-v0-main-test
 ## Completion
 
 Draft PR within 30 minutes (`feat(ci): run main's unit tests against a pull request's scripts`), CI, Bot wait, artifacts, `memory add`, RESULT via `agmsg-dispatch … claude-deep-dot w5:p1`. max_turns=10. Forbidden: anything else; `make update`; thread resolution.
+
+## Revise round 1 (orchestrator, 2026-10-11) — audit of adcf783b: `Verdict: incorrect`, seven findings
+
+Audit `.orchestration/validation/dotfiles-T128-v0-main-tests-a01-audit-adcf783.md.last.md`. Each item below is one finding, one test that fails on adcf783b and passes after the fix (INV-3: the ACCEPTANCE names the selectors; record them in `.orchestration/dotfiles-T128-v0-main-tests-a01/revise.yaml` with `previous_head: adcf783b06d9081280991a3727f8a21c3c61ac85`), then recommit this task file byte-identical to the branch copy (its new sha256 is in the ACCEPTANCE).
+
+1. (P1, `test.yaml:108`) Nothing from the PR tree executes before main's harness: the install step sources `scripts/lib/github-release.sh` from `origin/main` (`git show origin/main:scripts/lib/github-release.sh`), or moves the chezmoi install after the harness fetch and reads every file it runs from main; while main lacks a file, the fallback to the PR's copy is allowed only for the harness pair, and the job says so.
+2. (P1, `main-tests.sh:32`) The interpreter is selected outside the untrusted tree: run uv with `--isolated` (or `UV_PROJECT_ENVIRONMENT` pointing outside `${tmp}`) so a PR-planted `.venv` is never used; test: a PR adds `.venv/bin/python` that prints and exits 0, and the run still uses uv's interpreter.
+3. (P1, `main-tests.sh:119`) A zero exit is not completion: parse unittest's summary (`Ran <n> tests` with `n` equal to the number of selected tests in declared mode, `n > 0` in undeclared mode, followed by `OK`) and fail without it; test: `os._exit(0)` planted in the PR's helper import makes the run fail.
+4. (P1, orchestration, this task's step 1(a)/(b)) Declared mode is keyed on declared scripts, not declared test paths: a main module is exempt from undeclared mode only when the script it belongs to (`module_for(script)`) is in the PR's `allowed_files`; a test module declared without its script keeps running as it is; test: a task.md declaring `tests/unit/test_foo.py` but not `scripts/foo.sh` makes main's `test_foo.py` run in undeclared mode and fail on a broken `foo.sh`.
+5. (P2, `main-tests.sh:36`) `git diff --name-only --no-renames` (and the same for the task.md search), so a renamed script's source path is seen; test: `git mv scripts/foo.sh elsewhere/foo.sh` still triggers the run.
+6. (P2, `contract_markers.py:88`) An empty contract is not a pass: contract ids are test methods (a `@contract` class contributes its test methods; a class with none contributes nothing), and declared mode requires `Ran <n>` with `n` equal to the id count; test: an empty `@contract` class on main fails the design-tier run with `no contract on main`.
+7. (P2, evidence) The orchestrator filled the seven dispositions in the pr-feedback JSON (done; no worker action).
+
+Validation: the seven selectors above pasted failing on `adcf783b` (run them against a checkout of that head) and passing on the new head; the full module runs; `scripts/main-tests.sh origin/main` on the branch (still red on the two by-design lines); `invariant: INV-12 → …` lines updated. Push, CI, Bot wait (15 minutes, `bot: none` if silent), `AGMSG-RESULT … round=1`.

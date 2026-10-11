@@ -4,14 +4,16 @@
 # @description
 #   When the diff from the merge base touches a script path, copies HEAD's tree
 #   to a temporary directory, overlays the base's tests/unit on it and runs:
-#   every base module the task.md does not declare, as it is (undeclared mode),
-#   and the base's `@contract` tests of each declared module with
-#   REGIME_CONTRACT=1 (declared mode). A design-tier task.md (a missing `tier:`
+#   every base module the task.md does not exempt, as it is (undeclared mode),
+#   and the base's `@contract` tests of each exempt module with
+#   REGIME_CONTRACT=1 (declared mode). A module is exempt only when the task.md
+#   declares both it and its script. A design-tier task.md (a missing `tier:`
 #   stamp counts as design) must also declare a module for each script it
-#   declares, keep each declared module, and find a contract for it on the
-#   base. An implementation PR (a task id not ending in -contract-a01) must
-#   have removed the contract decorator from its own copy of each declared
-#   module. The exit status combines every check.
+#   declares, keep each declared module, and find a contract for each exempt
+#   one on the base. An implementation PR (a task id not ending in
+#   -contract-a01) must have removed the contract decorator from its own copy
+#   of each declared module. A unittest run counts only with its own summary
+#   (`Ran <n> tests`, then `OK`). The exit status combines every check.
 #   The `main-tests` job of .github/workflows/test.yaml runs the base's copy of
 #   this script and of lib/contract_markers.py, never the pull request's.
 # @arg $1 string Base ref, for example origin/main.
@@ -24,16 +26,19 @@ set -euo pipefail
 
 base="${1:?usage: main-tests.sh <base-ref>}"
 helper="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/contract_markers.py"
+# Found from / and passed explicitly: uv's own discovery executes a .venv interpreter the PR plants.
+python="$(cd / && uv python find --no-config)"
 
 # @description Run lib/contract_markers.py with PyYAML available. --no-config keeps
-#   a uv.toml the PR adds from choosing the index or the interpreter.
+#   a uv.toml the PR adds from choosing the index.
 # @arg $@ string The helper's subcommand and arguments.
 markers() {
-    uv run --no-config --no-project --quiet --with pyyaml python3 "${helper}" "$@"
+    uv run --no-config --no-project --python "${python}" --quiet --with pyyaml python3 "${helper}" "$@"
 }
 
 merge_base="$(git merge-base "${base}" HEAD)"
-changed="$(git -c core.quotePath=false diff --name-only "${merge_base}" HEAD)"
+# --no-renames: a script moved away still shows its old path.
+changed="$(git -c core.quotePath=false diff --name-only --no-renames "${merge_base}" HEAD)"
 # Assigned first, so a failing helper stops the run instead of reading as "no script change".
 scripts_changed="$(markers scripts <<< "${changed}")"
 if [ -z "${scripts_changed}" ]; then
@@ -42,7 +47,7 @@ if [ -z "${scripts_changed}" ]; then
 fi
 
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/main-tests.XXXXXX")"
-trap 'rm -rf "${tmp}"' EXIT
+trap 'rm -rf "${tmp}" "${tmp}.log"' EXIT
 # A complete tree, so each module's own-path ROOT lands on HEAD's files.
 git archive HEAD | tar -x -C "${tmp}"
 
@@ -51,7 +56,8 @@ task_id=""
 tier=""
 # Newline-separated: bash 3.2 (macOS) cannot expand an empty array under set -u.
 declared=""
-tasks="$(git -c core.quotePath=false diff --name-only --diff-filter=d "${merge_base}" HEAD -- ':(glob).orchestration/*/task.md')"
+exempt=""
+tasks="$(git -c core.quotePath=false diff --name-only --no-renames --diff-filter=d "${merge_base}" HEAD -- ':(glob).orchestration/*/task.md')"
 if [ "$(grep -c . <<< "${tasks}")" -gt 1 ]; then
     echo "main-tests: more than one task.md in the range: ${tasks//$'\n'/ }"
     exit 1
@@ -63,6 +69,7 @@ if [ -n "${tasks}" ]; then
         task_id) task_id="${value}" ;;
         tier) tier="${value}" ;;
         module) declared+="${value}"$'\n' ;;
+        exempt) exempt+="${value}"$'\n' ;;
         uncovered)
             echo "main-tests: design script ${value} has no declared contract module ${module}"
             status=1
@@ -94,7 +101,7 @@ undeclared=()
 main_modules="$(git ls-tree --name-only "${base}" tests/unit/)"
 while IFS= read -r module; do
     [[ "${module}" =~ ^tests/unit/test_[^/]+\.py$ ]] || continue
-    grep -qxF "${module}" <<< "${declared}" || undeclared+=("$(basename "${module}" .py)")
+    grep -qxF "${module}" <<< "${exempt}" || undeclared+=("$(basename "${module}" .py)")
 done <<< "${main_modules}"
 
 contract_ids=()
@@ -110,16 +117,33 @@ while IFS= read -r module; do
         echo "main-tests: no contract on main for ${module}"
         status=1
     fi
-done <<< "${declared}"
+done <<< "${exempt}"
 
-# -P keeps the PR tree's root off sys.path; tests/unit comes only from PYTHONPATH.
+# @description Run main's tests from the tree copy and require unittest's own summary, not just a
+#   zero exit: code the tests import can end the process early with status 0.
+# @arg $1 int The expected test count; 0 accepts any count above zero.
+# @arg $@ string The unittest arguments.
+run_unittest() {
+    local expected="$1" ran
+    shift
+    # -P keeps the tree's root off sys.path; tests/unit comes only from PYTHONPATH.
+    PYTHONPATH=tests/unit uv run --no-config --no-project --python "${python}" python -P -m unittest "$@" 2>&1 |
+        tee "${tmp}.log" || return 1
+    ran="$(sed -n 's/^Ran \([0-9][0-9]*\) tests* in .*/\1/p' "${tmp}.log" | tail -n 1)"
+    if [ -z "${ran}" ] || [ "${ran}" -eq 0 ] || { [ "${expected}" -gt 0 ] && [ "${ran}" -ne "${expected}" ]; } ||
+        ! tail -n 1 "${tmp}.log" | grep -Eq '^OK( \(.*\))?$'; then
+        echo "main-tests: no complete unittest summary (ran ${ran:-nothing}; expected ${expected} tests, 0 meaning any)"
+        return 1
+    fi
+}
+
 cd "${tmp}"
 if [ "${#undeclared[@]}" -gt 0 ]; then
     echo "main-tests: undeclared mode, main's modules as they are: ${undeclared[*]}"
-    PYTHONPATH=tests/unit uv run --no-config --no-project python -P -m unittest "${undeclared[@]}" || status=1
+    run_unittest 0 "${undeclared[@]}" || status=1
 fi
 if [ "${#contract_ids[@]}" -gt 0 ]; then
     echo "main-tests: declared mode, main's contracts with REGIME_CONTRACT=1: ${contract_ids[*]}"
-    REGIME_CONTRACT=1 PYTHONPATH=tests/unit uv run --no-config --no-project python -P -m unittest -v "${contract_ids[@]}" || status=1
+    REGIME_CONTRACT=1 run_unittest "${#contract_ids[@]}" -v "${contract_ids[@]}" || status=1
 fi
 exit "${status}"

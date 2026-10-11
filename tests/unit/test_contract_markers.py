@@ -61,12 +61,12 @@ class ContractMarkersTest(unittest.TestCase):
                 self.assertEqual([], markers.contracts(path))
                 self.assertEqual(0, markers.main(["dormant", path]))
 
-    def test_a_decorated_class_is_one_id(self) -> None:
-        path = self.write(
-            "import unittest\nfrom regime_contract import contract\n\n\n@contract\nclass Pact(unittest.TestCase):\n"
-            "    def test_a(self):\n        pass\n"
-        )
-        self.assertEqual(["test_foo.Pact"], markers.contracts(path))
+    def test_a_decorated_class_contributes_its_test_methods_only(self) -> None:
+        head = "import unittest\nfrom regime_contract import contract\n\n\n@contract\nclass Pact(unittest.TestCase):\n"
+        full = self.write(head + "    def test_a(self):\n        pass\n\n    def helper(self):\n        pass\n")
+        self.assertEqual(["test_foo.Pact.test_a"], markers.contracts(full))
+        empty = self.write(head + "    def helper(self):\n        pass\n")
+        self.assertEqual([], markers.contracts(empty))
 
     def test_a_nested_contract_still_counts_as_dormant(self) -> None:
         path = self.write(
@@ -91,6 +91,13 @@ class ContractMarkersTest(unittest.TestCase):
             "  - tests/unit/regime_contract.py\n  - tests/unit/sub/test_c.py\n"
         )
         self.assertEqual(["task_id\tt-a01", "tier\treview", "module\ttests/unit/test_b.py"], lines)
+
+    def test_only_a_module_whose_script_is_declared_is_exempt(self) -> None:
+        lines = self.task(
+            "task_id: t\ntier: review\nallowed_files:\n  - scripts/a.sh\n  - tests/unit/test_a.py\n"
+            "  - tests/unit/test_b.py\n  - scripts/c.txt\n  - tests/unit/test_c.py\n"
+        )
+        self.assertEqual(["exempt\ttests/unit/test_a.py"], [line for line in lines if line.startswith("exempt")])
 
     def test_a_missing_or_unknown_tier_is_design(self) -> None:
         for stamp in ("", "tier: Design\n", "tier: docs-ish\n"):

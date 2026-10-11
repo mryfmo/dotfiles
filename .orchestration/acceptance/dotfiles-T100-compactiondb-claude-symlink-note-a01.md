@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T100-compactiondb-claude-symlink-note-a01
 
 - **Decision:** ACCEPTED. PR #278 squash-merged to `main` as `94409ec4`; head `bc001fc7`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-05 07:24Z).
+- pr=278
 - **Worker:** `codex-security-dot-a007` (worker-e, wT:p8). task_rev verified at dispatch (06:48Z).
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping (artifact copies from worker-e).
 - **Plan reference:** follow-up to T81b (orchestrator review observation: `ensure()` refuses a symlinked `.claude` and the hooks then fail silently).

@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T103-gh-auth-stores-a01
 
 - **Decision:** ACCEPTED. PR #288 squash-merged to `main` as `ca5d28ec` (2026-10-06 00:36Z); head `c4fa1c14` (round 2). Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main PR_FEEDBACK_EVIDENCE=… AUDIT_EVIDENCE=…-audit-c4fa1c1.md AGENT_REVIEWED=1 REVIEW_EVIDENCE=… make require-crit-review` rc=0, 00:35Z; `notice: GitHub role gate inactive: worker hosts.yml missing`). Earlier: REVISE ROUND 2 dispatched 2026-10-06 00:00Z (round-1 audit: swallowed chmod failure; negative-test transcript exit status). Earlier: REVISE ROUND 1 dispatched 2026-10-05 23:30Z (round-0 audit: bootstrap PATH misses mise-installed `gh`; `~` not expanded in the duplicate-store check; hint and two artifact corrections). RESULT received 23:21Z (head `0a28eb74`, PR #288).
+- pr=288
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev verified at dispatch (21:54Z) and at both PONG decisions.
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping; the orchestrator replied to and resolved the one Bot thread (thread resolution is orchestrator-side by the task rules).
 - **Design source:** `.orchestration/validation/github-auth-design-2026-10-05.md` §10–§12 (operator decisions of 2026-10-05: one credential store per account, file storage for all three, prompts only in the interactive operator phase, `make update` never prompts, the keyring alternative not to be reopened).

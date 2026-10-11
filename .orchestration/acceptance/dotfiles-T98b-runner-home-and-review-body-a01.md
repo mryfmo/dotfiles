@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T98b-runner-home-and-review-body-a01
 
 - **Decision:** ACCEPTED. PR #280 squash-merged to `main` as `7f5b9b9d`; head `70f060e7`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, two procedural dispositions below) and crit evidence (`BASE=origin/main … AUDIT_DISPOSITIONS=… make require-crit-review` rc=0, 2026-10-05 09:53Z). Bot coverage: none (Codex quota notice at PR open); the audit is the independent review.
+- pr=280
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev verified at dispatch (09:11Z).
 - **Exemption declared:** acceptance and final integration.
 - **Plan reference:** lessons of 2026-10-05 (boundary PR #279 first push failed CI on a glued runner-home literal; T98 round-1 audit found a Bot review-body finding the sweep had dismissed).

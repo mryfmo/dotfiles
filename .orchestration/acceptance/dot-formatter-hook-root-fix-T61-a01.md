@@ -1,6 +1,7 @@
 # Acceptance: dot-formatter-hook-root-fix-T61-a01
 
 - **Decision:** ACCEPTED after three revise rounds. PR #233 squash-merged to `main` as `70090067` (final head `7dff3a5c`, base `3915e327`). Merged without `--delete-branch` while worker-c holds `chore/formatter-root-fix`.
+- pr=233
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `f93ae279…` → `c4c2fb43…` (round 1) → `47e7df20…` (round 2) → `d0836233…` (round 3); all matched.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Operator decision carried:** D3 "後者" (format once, keep formatted in CI) rather than deleting the hook.

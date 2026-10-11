@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T65-agent-stop-gate-a01
 
 - **Decision:** ACCEPTED after six revise rounds. PR #237 squash-merged to `main` as `06875e4e` (final head `fd8aa360d0b1b5f942603f4a1588b5a02fcc361f`; substantive commits e11659ac, 13340185, 5a9f35f5, 775a527a, 8433a01b, a62fce9d, ea112e2e, a9a85ecf, 4dfceb6e, cb3ded43, bc636cb7, 1845139e, 3568b7e2, 8262be37, 92cad328, fd8aa360; base c6de5156, update-branch merges through `8922f13b`). Merged without `--delete-branch`; worker-e holds `feat/agent-stop-gate`.
+- pr=237
 - **Worker:** `claude-standard-dot-a007` (worker-e). task_rev chain from the dispatch through round 6 (`88744dc8…` round 5, `d5844f02…` round-4 addendum, `051ac01e…` round 4, round 6 revision) all matched. Parallel wave with T88/T68 (a006) and T75/T91/T74 (a005).
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** Phase 1, dotfiles-T65 (principle 2: a seat cannot idle with work pending).

@@ -1,3 +1,10 @@
+---
+format: 2
+task_id: dotfiles-T128-design-review-a01
+kind: review
+security: false
+---
+
 # AGMSG-TASK dotfiles-T128-design-review-a01
 
 Drafted 2026-10-11 by the orchestrator seat (`claude-deep-dot`, w5:p1). A design review on the `review` profile, in a separate context, of the T128 regime-v3 design before any implementing task is dispatched. The design was drafted by the orchestrator under a recorded bootstrap exception (operator decision 2026-10-11), so this review is the only independent check it gets before dispatch: your findings against the orchestrator's reasoning, thresholds, scope or honesty are expected. Read-only: no repository file changes, no branch, no PR. Kind: review; Claude seat on the `review` profile in `.claude/worktrees/worker-d`.
@@ -80,3 +87,23 @@ v12 adds your two INV-12 clauses (promotion by removing the decorator; an empty 
 ## Round 13 (orchestrator, 2026-10-11)
 
 v13 adds the Codex round-12 clause to INV-12 (main-tests fails an implementation PR whose declared test module still carries a contract marker). Confirmation; receipt `…-design-review-round13.md`, `round: 13`; RESULT with `round=13`. max_turns=4.
+
+## Round 14 (orchestrator, 2026-10-11) — plan 006 A102
+
+Two hashed keys change: INV-12 (authenticated completion by a nonce runner and the stated frame-introspection residual) and INV-2 (.orchestration-only PRs run no bootstrap or test matrix) with the map entry `dotfiles-T128-ci-skip-orchestration-a01: [INV-2]`. Judge those two; confirm the rest unchanged; disposition the premises. Receipt `…-design-review-round14.md`, `round: 14`; RESULT with `round=14`. The Codex review runs at the same time on the same hash; one revision follows the pair of results. max_turns=5.
+
+## Round 15 (orchestrator, 2026-10-11) — A102, second pair
+
+v15: INV-12 states the residual as you put it (the nonce authenticates the writer, not the counts; in-process patching forges counts) and adds the runner pinning unittest classes before importing tests; INV-2 covers every required check context. Confirm both; the Codex review runs on the same hash now. Receipt `…-design-review-round15.md`, `round: 15`; RESULT with `round=15`. max_turns=4.
+
+## Round 16 (orchestrator, 2026-10-11) — plan 006 Phase A, one pair
+
+One hashed change: the map entry `dotfiles-T128-regime-counters-a01: [INV-6]` (plan 006 A3: `scripts/regime-counters.sh` computes the INV-6 counts and prints the thresholds; V3a keeps the hook and gate wiring) and one body bullet **A3** before V3a. Judge only that delta (is the split consistent with INV-6's enforcement point, INV-7 and the trust anchors; does the entry change any other wave's scope); confirm INV-1..INV-12 and the premises unchanged against your round-15 receipt. No findings outside the delta. Receipt `…-design-review-round16.md`, `round: 16`; RESULT with `round=16`. The Codex review runs on the same hash at the same time. max_turns=3.
+
+## Round 18 (orchestrator, 2026-10-11 07:37Z) — the reset successors' map entries
+
+Two hashed map entries: `dotfiles-T128-ci-skip-orchestration-a02: [INV-2]` beside the a01 entry and `dotfiles-T128-regime-counters-a02: [INV-6]` beside the a01 entry; nothing else changes (whole-file sha256 `1d5f4c07…`, from v16 `15957fbc…`). The successors are the INV-6 reset continuations of their a01 tasks (reset records under `.orchestration/acceptance/`); INV-2 compares a task's invariant ids with the map by task id and remaps only `-contract-a01` ids, so without these entries the successors' task.md cannot satisfy INV-2 on `main`. Judge only the delta (do the entries name the same invariants as the tasks they succeed; does anything else need to change for a reset successor under INV-2 or INV-6); confirm INV-1..INV-12 and the premises unchanged against round 16. Receipt `…-design-review-round18.md`, `round: 18`; RESULT with `round=18`. The Codex review runs on the same hash at the same time. max_turns=3.
+
+## Round 19 (orchestrator, 2026-10-11 07:58Z) — the design's own receipt pointer
+
+One unhashed-key change that moves the whole-file hash: `design_review.receipt` now names the round-18 receipt instead of round 15 (Bot P2 4240758690 on boundary PR #321: a validator following the field could not establish the review of the current bytes). Whole-file sha256 `4520b8f0…`, from v17 `1d5f4c07…`; the hashed keys are byte-identical to v17. Confirm that (a one-line diff) and reply `round=19 verdict=accept design_sha256=4520b8f0…`; no receipt file needed beyond your RESULT. max_turns=2.

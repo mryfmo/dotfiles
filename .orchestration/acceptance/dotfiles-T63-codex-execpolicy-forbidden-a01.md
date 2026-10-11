@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T63-codex-execpolicy-forbidden-a01
 
 - **Decision:** ACCEPTED after PONG decision 1 and two revise rounds. PR #235 squash-merged to `main` as `c6de5156` (final head `ddb7bf16785644e83a7f5cf49b93ea55846d6e73`, base `910ba6f5`). Merged without `--delete-branch` while worker-c holds `chore/codex-execpolicy-forbidden`.
+- pr=235
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `012c39f6…` → `28393b19…` (PONG 1) → `4258ed09…` (round 1) → `7f7a1751…` (round 2); all matched.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** correction plan Phase 1, dotfiles-T63 (principle 1: denial in the native layer, Codex side).

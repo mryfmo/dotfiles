@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T94-upgrade-pins-a01
 
 - **Decision:** ACCEPTED. PR #250 squash-merged to `main` as `0ea5948b` (head `6f5c776cf04615b0a2162fd64ca6ab675be2b82a`, one commit on main f32f33a0). Merged without `--delete-branch`; worker-c holds `chore/upgrade-pins-2026-10-04`.
+- pr=250
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev matched. Dispatched right after its T71 RESULT; disjoint from T71/T88/T92.
 - **Exemption declared:** acceptance and final integration. The orchestrator captured the operator's `make upgrade` diff from the canonical clone (`~/.local/share/chezmoi`, dirty since c6de5156) as `.orchestration/tasks/dotfiles-T94-pending-pins.patch` (evidence-sync bookkeeping) and fast-forwarded that clone to f32f33a0 with the diff preserved; it mutated no repository code.
 - **Plan reference:** regime rule (pending pin diff travels as one class-pure PR), outside the numbered phases.

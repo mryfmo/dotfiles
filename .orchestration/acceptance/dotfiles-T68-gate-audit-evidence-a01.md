@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T68-gate-audit-evidence-a01
 
 - **Decision:** ACCEPTED after two revise rounds (one code, one artifacts-only). PR #246 squash-merged to `main` as `f32f33a0`; final head `4fe3427f293897fdd17b9cbde940713ae310dec5` (substantive commits abf9933f, 83074eea, 22efc32c, 46f14681, 5168613a; base 138e6a72; update-branch merges 3ba270d6 onto 8922f13b and 4fe3427f onto 312fef3f). Merged without `--delete-branch`; worker-d holds `feat/gate-audit-evidence`.
+- pr=246
 - **Worker:** `claude-standard-dot-a006` (worker-d). task_rev chain (`3959867c…`, `fcbe596a…`, `7d991601…` unhashed at the time and stated so, round-1 and round-2 revs `de14890f…`) verified in the validation file. Parallel wave with T88 (same worker, sequential), T65/T92 (a007), T75/T91/T74/T71 (a005).
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** Phase 2, dotfiles-T68 (principle 10 / §2b-6: acceptance without a task-level audit is stopped mechanically).

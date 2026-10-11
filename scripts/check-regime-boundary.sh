@@ -211,7 +211,8 @@ PY
 counters="${root}/scripts/regime-counters.sh"
 if task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
     while read -r task _; do
-        [[ -n ${task} && -f ${main}/.orchestration/tasks/${task}.md ]] || continue
+        # Ids come from agent-written history and become paths: one plain file name only.
+        [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && -f ${main}/.orchestration/tasks/${task}.md ]] || continue
         accepted="${main}/.orchestration/acceptance/${task}.md"
         reset="${main}/.orchestration/acceptance/${task}-design-reset.md"
         args=("${task}")
@@ -219,12 +220,12 @@ if task_ids="$("${counters}" --list-tasks 2> /dev/null)"; then
             hash="$(sed -n 's/^design_sha256: *\([0-9a-f]\{64\}\) *$/\1/p' "${reset}" | head -n 1)"
             [[ -z ${hash} ]] || args+=(--reset-hash "${hash}")
         fi
-        counts="$("${counters}" "${args[@]}" 2> /dev/null)" || continue
+        counts="$("${counters}" "${args[@]}" < /dev/null 2> /dev/null)" || continue
         pr="$(sed -n 's/^detail: pr=\([0-9][0-9]*\) .*/\1/p' <<< "${counts}")"
         by="$(sed -n 's/^reset: .* accepted_by=\([^ ]*\) .*/\1/p' <<< "${counts}")"
         state="" merged_at=""
         if [[ -n ${pr} ]]; then
-            IFS=$'\t' read -r state merged_at < <(cd -- "${main}" && gh api "repos/{owner}/{repo}/pulls/${pr}" --jq '[.state, (.merged_at // "")] | @tsv' 2> /dev/null || true) || true
+            IFS=$'\t' read -r state merged_at < <(cd -- "${main}" && gh api "repos/{owner}/{repo}/pulls/${pr}" --jq '[.state, (.merged_at // "")] | @tsv' < /dev/null 2> /dev/null || true) || true
         fi
         reset_anchored=false silenced=false
         if [[ -n ${by} && ${by} != none ]]; then

@@ -25,6 +25,7 @@ storage_history() {
 }
 """
 GH = """#!/usr/bin/env bash
+cat > /dev/null # drains whatever stdin it inherits, as a reading command would
 path="" filter=. paginate=false
 while (($#)); do
     case $1 in
@@ -100,6 +101,7 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
             ["bash", str(self.main / "scripts/check-regime-boundary.sh"), "--report"],
             cwd=self.main,
             env=self.env,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             timeout=60,
@@ -109,8 +111,26 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         return [
             line
             for line in result.stdout.splitlines()
-            if line.startswith(("regime-boundary: T1 ", "regime-boundary: T9 "))
+            if line.startswith(
+                ("regime-boundary: T1 ", "regime-boundary: T2 ", "regime-boundary: T9 ", "regime-boundary: ../")
+            )
         ]
+
+    def test_each_listed_task_is_counted_and_an_unsafe_id_is_skipped(self):
+        # The fake gh drains its stdin: T2 is still counted after T1's gh calls. A history id
+        # that is a path (../acceptance/T7 resolves to an existing .md) is never counted.
+        (self.main / ".orchestration/tasks/T2.md").write_text("task\n")
+        self.record("T7.md", "x\n")
+        self.messages += [("orch", "AGMSG-TASK v1 task_id=T2")] * 3 + [
+            ("orch", "AGMSG-TASK v1 task_id=../acceptance/T7")
+        ] * 3
+        self.assertEqual(
+            [
+                "regime-boundary: T1 S2: revises 2 >= 2 source=live",
+                "regime-boundary: T2 S2: amendments 2 >= 2 source=live",
+            ],
+            self.report(),
+        )
 
     def test_a_task_over_a_count_is_reported(self):
         # T9 is over the amendment count but has no task file in the main checkout: not counted.

@@ -7,11 +7,11 @@ scripts              print the script paths among the paths read from stdin
 contracts <module>   print the unittest test-method ids that carry the contract decorator
 dormant <module>     exit 1 when any contract decorator remains
 run <result> [-v] <ids...>
-                     run the tests and write {nonce, ran, failures, errors} to <result>;
+                     run the tests and write {nonce, ran, failures, errors, skipped} to <result>;
                      the nonce arrives on fd 3, closed before any test module loads
 result <result> <nonce> <expected>
                      exit 1 unless <result> carries the nonce, no failure or error, and
-                     <expected> tests run (0: any count above zero)
+                     <expected> tests run with none skipped (0: any count above zero, skips allowed)
 """
 
 import ast
@@ -124,7 +124,13 @@ def run(result: str, ids: list[str]) -> None:
         unittest.TestLoader().loadTestsFromNames(names)
     )
     failures = len(outcome.failures) + len(outcome.unexpectedSuccesses)
-    record = {"nonce": nonce, "ran": outcome.testsRun, "failures": failures, "errors": len(outcome.errors)}
+    record = {
+        "nonce": nonce,
+        "ran": outcome.testsRun,
+        "failures": failures,
+        "errors": len(outcome.errors),
+        "skipped": len(outcome.skipped),
+    }
     Path(result).write_text(json.dumps(record))
     sys.stdout.flush()
     sys.stderr.flush()
@@ -145,6 +151,9 @@ def check(result: str, nonce: str, expected: int) -> str | None:
         return f"ran {ran}, expected {expected or 'more than 0'}"
     if record.get("failures") != 0 or record.get("errors") != 0:
         return f"{record.get('failures')} failures, {record.get('errors')} errors"
+    # A contract the PR's code skips never asserted anything; main's ordinary tests skip legitimately when a tool is absent.
+    if expected and record.get("skipped") != 0:
+        return f"{record.get('skipped')} skipped"
     return None
 
 

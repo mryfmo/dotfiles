@@ -146,7 +146,7 @@ class ContractMarkersTest(unittest.TestCase):
                 self.assertNotIn("exempt\t", result.stdout)
 
     def test_a_result_must_carry_the_nonce_and_the_counts(self) -> None:
-        good = {"nonce": "n1", "ran": 2, "failures": 0, "errors": 0}
+        good = {"nonce": "n1", "ran": 2, "failures": 0, "errors": 0, "skipped": 0}
         cases = [
             (good, 2, None),
             (good, 0, None),
@@ -155,6 +155,8 @@ class ContractMarkersTest(unittest.TestCase):
             ({**good, "ran": 0}, 0, "ran 0, expected more than 0"),
             ({**good, "failures": 1}, 2, "1 failures, 0 errors"),
             ({**good, "errors": 1}, 2, "0 failures, 1 errors"),
+            ({**good, "skipped": 1}, 2, "1 skipped"),
+            ({**good, "skipped": 1}, 0, None),
         ]
         for data, expected, reason in cases:
             with self.subTest(data=data, expected=expected):

@@ -222,6 +222,19 @@ class MainTestsHarnessTest(unittest.TestCase):
         result = self.harness({"scripts/baz.py": rewrite, "scripts/foo.sh": "changed contract\n"}, main=main)
         self.assertFails(result, "FAIL: test_ordinary (test_foo.FooTest")
 
+    def test_a_skipped_contract_fails(self) -> None:
+        # The contract calls the PR's script, which asks unittest to skip it.
+        qux = (
+            "import runpy\nimport unittest\nfrom pathlib import Path\n\nfrom regime_contract import contract\n\n\n"
+            "class QuxTest(unittest.TestCase):\n    @contract\n    def test_qux(self):\n"
+            "        runpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/qux.py'))\n"
+        )
+        main = {**MAIN, "scripts/qux.py": "VALUE = 1\n", "tests/unit/test_qux.py": qux}
+        skip = "import unittest\n\nraise unittest.SkipTest('not today')\n"
+        files = ["scripts/qux.py", "tests/unit/test_qux.py"]
+        pr = {"scripts/qux.py": skip, "tests/unit/test_qux.py": qux.replace("    @contract\n", ""), **task(files)}
+        self.assertFails(self.harness(pr, main=main), "main-tests: no complete unittest run (1 skipped)")
+
     def test_a_short_contract_summary_fails(self) -> None:
         # Two contracts selected; the PR's script prints a one-test summary and exits 0 at import.
         body = "\n    @contract\n    def test_{n}(self):\n        pass\n"

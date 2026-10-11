@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T82-codex-compaction-hooks-a01
 
 - **Decision:** ACCEPTED. PR #269 squash-merged to `main` as `2e65742c`; final head `9ff2ad52` (round 3). Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, one disposition below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-05 00:48Z). **Operator sequencing:** do not trust the three new Codex hooks in `/hooks` until T81b (vendor 2.0.0+dotfiles.9, no-follow storage binding) is merged and deployed.
+- pr=269
 - **Worker:** `claude-standard-dot-a006` (worker-d, wY:p2). task_rev matched at dispatch and after the PONG-decision append.
 - **Exemption declared:** acceptance and final integration.
 - **Plan reference:** Phase 5, dotfiles-T82 (principle 7). Depends on T80 and T81 (merged).

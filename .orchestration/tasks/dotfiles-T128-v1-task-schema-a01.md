@@ -4,7 +4,7 @@ task_id: dotfiles-T128-v1-task-schema-a01
 kind: code
 security: true
 design_review:
-  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13.md
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round15.md
   design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
 allowed_files:
   - schemas/task.json

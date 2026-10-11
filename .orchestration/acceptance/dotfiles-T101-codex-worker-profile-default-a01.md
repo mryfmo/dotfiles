@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T101-codex-worker-profile-default-a01
 
 - **Decision:** ACCEPTED. PR #283 squash-merged to `main` as `aeb025e8`; head `462bbb1d`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, one evidence-only disposition below) and crit evidence (`BASE=origin/main … AUDIT_DISPOSITIONS=… make require-crit-review` rc=0, 2026-10-05 12:05Z).
+- pr=283
 - **Worker:** `codex-standard-dot-a006` (worker-e, wT:pC, `standard` profile). task_rev verified at dispatch (11:40Z, after a re-seat: the first seat answered the linkage PING but accepted no later wake).
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping. **Deviation:** the orchestrator opened PR #283 on the worker's pushed branch because the post-T90 seat has no provisioned worker gh credential (`GH_CONFIG_DIR=~/.config/gh-worker`, `hosts.yml` missing); the worker pushed over SSH and ran every local check; the orchestrator ran `gh pr checks --watch`, the Bot wait and the sweep for it. The gate's author-vs-merger role check is inactive until provisioning, so the orchestrator-authored PR is accepted this once; after provisioning, workers open their own PRs again.
 - **Plan reference:** lesson of the 2026-10-05 usage review (worker tokens on the `security` profile).

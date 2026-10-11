@@ -80,3 +80,15 @@ v12 adds your two INV-12 clauses (promotion by removing the decorator; an empty 
 ## Round 13 (orchestrator, 2026-10-11)
 
 v13 adds the Codex round-12 clause to INV-12 (main-tests fails an implementation PR whose declared test module still carries a contract marker). Confirmation; receipt `…-design-review-round13.md`, `round: 13`; RESULT with `round=13`. max_turns=4.
+
+## Round 14 (orchestrator, 2026-10-11) — plan 006 A102
+
+Two hashed keys change: INV-12 (authenticated completion by a nonce runner and the stated frame-introspection residual) and INV-2 (.orchestration-only PRs run no bootstrap or test matrix) with the map entry `dotfiles-T128-ci-skip-orchestration-a01: [INV-2]`. Judge those two; confirm the rest unchanged; disposition the premises. Receipt `…-design-review-round14.md`, `round: 14`; RESULT with `round=14`. The Codex review runs at the same time on the same hash; one revision follows the pair of results. max_turns=5.
+
+## Round 15 (orchestrator, 2026-10-11) — A102, second pair
+
+v15: INV-12 states the residual as you put it (the nonce authenticates the writer, not the counts; in-process patching forges counts) and adds the runner pinning unittest classes before importing tests; INV-2 covers every required check context. Confirm both; the Codex review runs on the same hash now. Receipt `…-design-review-round15.md`, `round: 15`; RESULT with `round=15`. max_turns=4.
+
+## Round 16 (orchestrator, 2026-10-11) — plan 006 Phase A, one pair
+
+One hashed change: the map entry `dotfiles-T128-regime-counters-a01: [INV-6]` (plan 006 A3: `scripts/regime-counters.sh` computes the INV-6 counts and prints the thresholds; V3a keeps the hook and gate wiring) and one body bullet **A3** before V3a. Judge only that delta (is the split consistent with INV-6's enforcement point, INV-7 and the trust anchors; does the entry change any other wave's scope); confirm INV-1..INV-12 and the premises unchanged against your round-15 receipt. No findings outside the delta. Receipt `…-design-review-round16.md`, `round: 16`; RESULT with `round=16`. The Codex review runs on the same hash at the same time. max_turns=3.

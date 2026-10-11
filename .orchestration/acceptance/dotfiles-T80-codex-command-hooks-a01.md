@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T80-codex-command-hooks-a01
 
 - **Decision:** ACCEPTED. PR #264 squash-merged to `main` as `36ffe6ca`; final head `8a4cf1285cfca453bdfcf3a4602301140cc9d9da`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, three dispositions below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 19:32Z).
+- pr=264
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev matched at dispatch.
 - **Exemption declared:** acceptance and final integration.
 - **Plan reference:** Phase 5, dotfiles-T80 (principle 7). Depends on T71 (merged); serialized after T90 on the generator.

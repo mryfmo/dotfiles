@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T81b-compactiondb-vendor-hygiene-a01
 
 - **Decision:** ACCEPTED. PR #275 squash-merged to `main` as `794a80db`; final head `a536af5b` (round 2). Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-05 06:08Z). Round 1 (03:30Z) came from the audit's P2 on installer hook ordering; round 2 (05:17Z) carried the docstring correction (PONG decision 6) that arrived after the round-1 RESULT, and absorbed one Bot P2 (decision 7). **Operator:** after `make update` deploys 2.0.0+dotfiles.9, trust the three Codex CompactionDB hooks and the permgate hook in Codex `/hooks` (T82 sequencing satisfied).
+- pr=275
 - **Worker:** `codex-security-dot-a007` (worker-e, wT:p8). task_rev matched at dispatch and after each of the three PONG-decision appends (final `5297e736…`).
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping (seven artifact files copied from worker-e into the main checkout).
 - **Plan reference:** Phase 5 follow-up to T81/T82 (vendor 2.0.0+dotfiles.9); unblocks the operator's Codex `/hooks` trust step sequenced in the T82 record.

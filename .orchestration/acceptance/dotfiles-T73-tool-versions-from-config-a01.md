@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T73-tool-versions-from-config-a01
 
 - **Decision:** ACCEPTED. PR #241 squash-merged to `main` as `40d9eb6c` (final head `b63c6b7d30dbe067c0c04afe6bd89497915c75bb`; substantive commit 60688d49; base `523fda06`, update-branch onto `3a0816e6`). Merged without `--delete-branch`; worker-c holds `chore/tool-versions-from-config`.
+- pr=241
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev `e4368247…` matched. Pulled forward from Phase 3 as the only dispatchable task disjoint from the in-flight set.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** Phase 3, dotfiles-T73 (principle 3: one pin declaration).

@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T76-ineffective-settings-a01
 
 - **Decision:** ACCEPTED. PR #257 squash-merged to `main` as `40993f20`; final head `26a882ac73b1c31f4e26664f310ea68bc332595b`. Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, one disposition below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-04 15:17Z).
+- pr=257
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev matched at dispatch and after the revise-round append.
 - **Exemption declared:** acceptance and final integration (thread replies after fix verification, sweep, evidence, audit invocation, gate, merge, ACCEPTANCE).
 - **Plan reference:** Phase 4, dotfiles-T76 (principle 9: configuration with no effect is deleted). Depends on T71 (merged 65915b93); serialized after T72 (shared `agent-config.yaml`/validator).

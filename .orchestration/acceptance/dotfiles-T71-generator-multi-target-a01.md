@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T71-generator-multi-target-a01
 
 - **Decision:** ACCEPTED after two revise rounds. PR #249 squash-merged to `main` as `65915b93`; final head `ef4324d03bb451fe9fde60e1643714ac065bdbf5` (substantive commits 1ea56252, 383ebbae, 3ecb4876, f03505f3, ef4324d0; base 312fef3f; update-branch merges 001affb1 onto f32f33a0 and c7b5fb3d onto 0ea5948b). Merged without `--delete-branch`; worker-c holds `feat/generator-multi-target`.
+- pr=249
 - **Worker:** `claude-standard-dot-a005` (worker-c). task_rev chain matched. Parallel wave with T88 (a006) and T92 (a007); the worker also ran T94 between rounds.
 - **Exemption declared:** acceptance and final integration; the orchestrator mutated no repository code.
 - **Plan reference:** Phase 3, dotfiles-T71 (principle 3: one pin, several render targets).

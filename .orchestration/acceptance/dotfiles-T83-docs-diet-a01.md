@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T83-docs-diet-a01
 
 - **Decision:** ACCEPTED. PR #274 squash-merged to `main` as `61806f56`; final head `914c765c` (round 1). Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`incorrect`, two dispositions below) and crit evidence (`BASE=origin/main … make require-crit-review` rc=0, 2026-10-05 04:27Z). Round 1 was dispatched 03:39Z because the Codex Bot reviewed the update-branch head d61b7c94 at 03:35:10Z, after the worker's diff-head wait, with two valid P2 findings; two lessons were folded in. Round-0 content had no defect of its own.
+- pr=274
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev `b9933a4e…` matched at dispatch.
 - **Exemption declared:** acceptance and final integration (thread replies/resolutions, sweep, audit, gate, merge).
 - **Plan reference:** Phase 6, dotfiles-T83 (principle 6). Depends on T69, T77, T78, T81, T82, T86 (all merged).

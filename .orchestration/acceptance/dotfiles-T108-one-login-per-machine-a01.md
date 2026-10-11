@@ -1,6 +1,7 @@
 # Acceptance: dotfiles-T108-one-login-per-machine-a01
 
 - **Decision:** ACCEPTED. PR #293 squash-merged to `main` as `c467314e` (2026-10-06 05:34Z) with `gh pr merge --squash --match-head-commit f0a5407a…`; head `f0a5407a` (round 1). Gate passed at the head in the orchestrator-review worktree with the PR-feedback, audit (`correct`) and crit evidence (`BASE=origin/main PR_FEEDBACK_EVIDENCE=… AUDIT_EVIDENCE=…-audit-f0a5407.md AGENT_REVIEWED=1 REVIEW_EVIDENCE=… make require-crit-review` rc=0, 05:33Z; the role-gate notice is gone with the role gate). Earlier: REVISE ROUND 1 dispatched 05:05Z (round-0 audit: merge procedure needs `--match-head-commit`; sandbox record wording). RESULT received 04:58Z (head `b66f4297`).
+- pr=293
 - **Worker:** `claude-standard-dot-a005` (worker-c, wT:p2). task_rev verified at dispatch (03:57Z) and at PONG decision 1.
 - **Exemption declared:** acceptance and final integration; evidence-sync bookkeeping.
 - **Design source:** `.orchestration/validation/github-auth-design-2026-10-05.md` §14–§16 (operator decision A, 2026-10-06: every seat on a machine acts as that machine's single GitHub account; the T90/T102/T103 role separation is removed; `main` is protected by actor-independent rulesets, native denial of merge commands in worker seats, and the integration gate). Supersedes T107 (cancelled, PR #292 closed unmerged).

@@ -510,6 +510,9 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "an early stop",
             "never widens the worker's input beyond the Codex Bot's items",
             "When a stop (heads=2 or three of a class) coincides with the third Bot round",
+            # Thread 4244248694: the worker's reviews and commits lookups page through every result.
+            "`gh api --paginate …/pulls/<n>/reviews`",
+            "`gh api --paginate …/pulls/<n>/commits`",
             "a Bot title never (only its reduced class)",
             "instead of a blocked PONG, and then waits for the ACCEPTANCE: one handoff",
             "pastes its complete output (the count line, the `detail:` line and any `S2:` line)",
@@ -533,6 +536,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "as soon as it first sees a task past the A2 cap or an INV-6 count",
             # Thread 4244203607: a PING the worker reads and ignores still leads to removal.
             "read or unread",
+            # Thread 4244248710: the watch reads INV-6's audit-head source, which the counter leaves unknown.
+            "for INV-6's audit-head component",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, playbook)

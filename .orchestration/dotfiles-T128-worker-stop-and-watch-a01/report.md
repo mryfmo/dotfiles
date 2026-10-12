@@ -68,6 +68,20 @@ Both fixtures are regenerated in this commit, a declared change (INV-12). The fo
 
 Per the ACCEPTANCE, a Bot P0/P1 on the revise head is an INV-6 head. A finding that the worker's count is narrower than S1's scope is reported with its class (pre-declared `not-applicable`); a genuinely new class gets one fix round.
 
+## Bot round on the revise head `3ba70625` and its one fix round
+
+Review 5486080610 (02:31:28Z) raised five P2 threads. None is P0/P1, so there are still 0 INV-6 heads after the first RESULT `040b32f9`. Every title is a new class at 1. Per the ACCEPTANCE, a genuinely new class gets one fix round, and a class-count scope finding is reported:
+
+| Thread | Class (A7-1) | Disposition |
+|---|---|---|
+| 4244248694 (P2) | paginate the worker's | `fixed:` this commit: step 15's lookups read `gh api --paginate …/pulls/<n>/reviews` and `gh api --paginate …/pulls/<n>/commits` |
+| 4244248710 (P2) | watch the audit-head | `fixed:` this commit: step 7's watch also reads, "for INV-6's audit-head component" (`audits=unknown` in the counter), the task's audit documents under `.orchestration/validation/`, each counted only when its sha256 matches its `AGMSG-AUDIT` record, as INV-6 names them |
+| 4244248703 (P2) | include lower-priority review | open, reported: the listing selects P0/P1 review bodies while (A) counts "any priority". This is the class-count scope class the S1 stop closed, so it is the orchestrator's |
+| 4244248706 (P2) | require the first | open, reported: making `head=<sha>` mandatory in a RESULT is a Message Contract change, and its pinned fixture `tests/fixtures/regime/message-contract.md` is outside this task's `allowed_files` |
+| 4244248692 (P2) | add a control | open, reported: a threat-table row for the forced removal's binding and revalidation belongs to the task record |
+
+Both fixtures are regenerated in this commit. The three new tokens fail their test and the pin when removed (validation §11). The docs module runs 44 tests, OK. A finding on this fix head is reported, not fixed.
+
 ## Notes
 
 - Understand-Anything hook: did not fire. plan-mode-used: no.

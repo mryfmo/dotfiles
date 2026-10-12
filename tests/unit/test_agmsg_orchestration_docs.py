@@ -531,10 +531,12 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         self.assertNotIn("expected duration", step)
 
     def test_rule_changes_travel_as_task_amendments(self) -> None:
-        # Plan 007 Phase 0: a rule sentence changed through a PONG answer bypasses the hash and C1 to C6.
+        # Plan 007 Phase 0: a rule sentence changed through a PONG answer bypasses the hash and C1 to C6;
+        # plan 009 option A: the checker is not on main yet, so the sentence names its landing condition.
         self.assertIn(
             "A change to a rule sentence requested of a worker travels as a task amendment (hashed, checked by "
-            "task-consistency-check C1 to C6, confirmed by the review seat), never as a PONG answer.",
+            "the task-consistency check C1 to C6 once plan 007 T704 lands it and by hand until then, confirmed by "
+            "the review seat), never as a PONG answer.",
             self.invariants(),
         )
 
@@ -552,12 +554,18 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "A matching correction with `status: landed` is applied as written; a `pending` one lands first; no "
             "match means a new mistake record carrying the class and a new correction are researched from official "
             "sources and recorded before any dispatch.",
-            "The gate refuses the action without the paste (`dotfiles-T128-gate-evidence-a01`), and every "
-            "`not-applicable` disposition carries `; evidence=<command>` with the output pasted in the record.",
+            # Thread 4248711363: the gate does not read the paste yet, so the sentence names its landing condition.
+            "Once `dotfiles-T128-gate-evidence-a02` lands, the gate refuses the action without the paste; until "
+            "then the orchestrator refuses it by rule.",
+            "Every `not-applicable` disposition carries `; evidence=<command>` with the output pasted in the record.",
         ):
             with self.subTest(token=token[:40]):
                 self.assertIn(token, bullet)
-        for stale in ("`grep -rl <class slug> .orchestration/learning/corrections/`", "`grep -l 'classes:"):
+        for stale in (
+            "`grep -rl <class slug> .orchestration/learning/corrections/`",
+            "`grep -l 'classes:",
+            "gate-evidence-a01",
+        ):
             with self.subTest(stale=stale):
                 self.assertNotIn(stale, bullet)
 
@@ -569,9 +577,12 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "that is not a path (task metadata, workflow and interpreter or environment inputs, in-process effects, "
             "new or renamed scripts, metadata separators), carried by the declared test module's row where that is "
             "where the control acts, and one row per orchestrator effect from the fixed list (forced removal, merge, "
-            "update-branch); task-consistency-check C4 verifies the path half before dispatch.",
+            # Thread 4248711371: C4 is not on main yet, so the sentence names its landing condition.
+            "update-branch); C4 of the task-consistency check (plan 007 T704) verifies the path half once it lands, "
+            "and the task-file review checks it by hand until then.",
             bullet,
         )
+        self.assertNotIn("C4 verifies the path half before dispatch", bullet)
         rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
         subsection = self.section(rules, "### Orchestration records and trust-boundary code", "\n### ")
         self.assertIn(
@@ -582,7 +593,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         )
 
     def test_the_gate_reads_the_acceptance_record(self) -> None:
-        # Plan 007 T703 item 6: the gate reads the record's ledger and `search:` line once gate-evidence-a01 lands.
+        # Plan 007 T703 item 6: the gate reads the record's ledger and `search:` line once gate-evidence-a02 lands.
         step = self.section(self.section(SKILL.read_text(), "## Orchestrator Playbook"), "\n10. ", "\n11. ")
         self.assertIn(
             "REVIEW_EVIDENCE=<receipt> ACCEPTANCE_EVIDENCE=<acceptance record> BASE=origin/main "

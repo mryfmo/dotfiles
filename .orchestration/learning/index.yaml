@@ -45,6 +45,27 @@ mistakes:
   - id: M-20261012-13
     corrections: [C-15]
     status: open
+  - id: M-20261012-14
+    corrections: [C-16]
+    status: open
+  - id: M-20261012-15
+    corrections: [C-17]
+    status: open
+  - id: M-20261012-16
+    corrections: [C-18]
+    status: open
+  - id: M-20261012-17
+    corrections: [C-19]
+    status: open
+  - id: M-20261012-18
+    corrections: [C-20]
+    status: open
+  - id: M-20261012-19
+    corrections: [C-21]
+    status: open
+  - id: M-20261012-20
+    corrections: [C-22]
+    status: open
 corrections:
   - id: C-1
     closes: [M-20261012-1]
@@ -52,8 +73,8 @@ corrections:
     status: "pending (scratchpad script; T704 lands it)"
   - id: C-2
     closes: [M-20261012-2, M-20261011-1]
-    mechanism: ['fixture:tests/fixtures/regime/*.md (landed e83e923d)', 'validator:task-consistency-check C4 (T704/T705)', 'rule:AGENTS.md#code-review-rules (T701)']
-    status: "landed for fixtures and the bullet; pending for C4 and T701"
+    mechanism: ['fixture:tests/fixtures/regime/*.md (landed e83e923d)', 'validator:task-consistency-check C4 (T704/T705)', 'rule:AGENTS.md#code-review-rules (T703)']
+    status: "landed for fixtures and the bullet; pending for C4 and T703"
   - id: C-3
     closes: [M-20261012-2, M-20261012-4]
     mechanism: ['validator:task-consistency-check (T704)', 'validator:validate-task (T705)']
@@ -105,4 +126,32 @@ corrections:
   - id: C-15
     closes: [M-20261012-13]
     mechanism: ['script:scripts/orchestrator/design-keydiff.py (T718, proposed)']
+    status: "pending"
+  - id: C-16
+    closes: [M-20261012-14]
+    mechanism: ['validator:task-consistency-check#C7 (T704)']
+    status: "pending"
+  - id: C-17
+    closes: [M-20261012-15]
+    mechanism: ['rule:plan-007#three-repeat-procedure', 'rule:SKILL#three-repeat (T703, dotfiles-T128-playbook-rules-a02)', 'validator:require-crit-review#s6-search-grammar (T702 amendment 1)']
+    status: "pending"
+  - id: C-18
+    closes: [M-20261012-16]
+    mechanism: ['rule:plan-007#verified-figures', 'script:scripts/orchestrator/replay.sh (T718)']
+    status: "pending"
+  - id: C-19
+    closes: [M-20261012-17]
+    mechanism: ['validator:task-consistency-check#C8 (T704, proposed)']
+    status: "pending"
+  - id: C-20
+    closes: [M-20261012-18]
+    mechanism: ['script:scripts/orchestrator/dispatch.sh (T718, proposed)']
+    status: "pending"
+  - id: C-21
+    closes: [M-20261012-19]
+    mechanism: ['validator:task-consistency-check#C9 (T704, proposed)', 'rule:plan-007#dependency-rationale']
+    status: "pending"
+  - id: C-22
+    closes: [M-20261012-20]
+    mechanism: ['validator:require-crit-review#s6-recompute (T702 a02 amendment 1)']
     status: "pending"

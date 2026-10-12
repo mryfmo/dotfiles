@@ -514,21 +514,31 @@ class AgmsgRegimePatternTest(unittest.TestCase):
                 self.assertIn(token, step)
 
     def test_dispatches_are_recorded_from_the_bus(self) -> None:
-        # Plan 007 T703 item 1 (C-12): a seat's status comes from a bus line, never from memory.
+        # Plan 007 T703 item 1 (C-12): a seat's status comes from a bus line, never from memory; plan 010 option D:
+        # the obligation stays here, and the commands move to plan 007 T718's scripts.
         step = self.section(self.section(SKILL.read_text(), "## Orchestrator Playbook"), "\n6. ", "\n7. ")
         for token in (
             "Every dispatch (TASK, ACCEPTANCE, PING) is recorded in the current acceptance record under a "
-            "`dispatch:` key as the bus line `history.sh <team>` prints, with its read marker; a seat is reported "
-            "as working only from such a line, and after a context compaction the open TASK list is re-derived "
-            "from the bus before any status is reported.",
-            # Thread 4248319936: "the task's expected duration" had no computable threshold; INV-10's clock does.
-            "Thirty minutes after a TASK, an amendment or a revise enters the bus history with no bus event from its "
-            "seat since (the clock and the figure of INV-10's first-push rule) trigger a bus read, then a PING; a "
-            "longer silent wait is never the answer.",
+            "`dispatch:` key as the bus line with its read marker; a seat is reported as working only from such a "
+            "line, and after a context compaction the open TASK list is re-derived from a complete bus read, never "
+            "from a default-limited one.",
+            # Threads 4248319936 and 4249303426: the clock runs from the seat's latest event for the task.
+            "A seat silent for thirty minutes since its latest bus event for the task (INV-10's figure) gets a bus "
+            "read, then a PING; a longer silent wait is never the answer.",
+            # Thread 4249303413: history.sh shows the latest 20 rows unless given a limit.
+            "Once plan 007 T718 lands, `scripts/orchestrator/dispatch.sh` writes the line and "
+            "`scripts/orchestrator/bus-read.sh` performs the complete read and the silence check; until then the "
+            "orchestrator runs `history.sh <team> --limit 1000` and pastes.",
         ):
             with self.subTest(token=token[:40]):
                 self.assertIn(token, step)
-        self.assertNotIn("expected duration", step)
+        for stale in (
+            "expected duration",
+            "the bus line `history.sh <team>` prints",
+            "no bus event from its seat since",
+        ):
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, step)
 
     def test_rule_changes_travel_as_task_amendments(self) -> None:
         # Plan 007 Phase 0: a rule sentence changed through a PONG answer bypasses the hash and C1 to C6;
@@ -541,22 +551,24 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         )
 
     def test_three_repeats_start_with_a_pasted_correction_search(self) -> None:
-        # Plan 007 S6: the third repeat of a class is answered by a recorded correction, never by another fix round.
+        # Plan 007 S6: the third repeat of a class is answered by a recorded correction, never by another fix round;
+        # plan 010 option D: the obligation stays here, and the commands move to plan 007 T718's three-repeat.sh.
         bullet = self.section(self.invariants(), "\n- When a finding class reaches three on one artifact", "\n- ")
         for token in (
-            # Thread 4247933574: a grep of the corrections misses a class they never name, so the search keys on
-            # the mistake records' classes field; -r because plain grep exits 2 on a directory argument.
+            # Threads 4247933574 and 4249303398: the records search, and a correction applied mechanism by mechanism.
             " (the record's ledger) or `scripts/regime-counters.sh` prints an S1 candidate, the next acceptance "
-            "action is a search pasted into the record under a `search:` line naming the class: "
-            "`grep -rl 'classes:.*<class slug>' .orchestration/learning/mistakes/` (each mistake record names its "
-            "ledger classes; its `corrections:` ids lead through `.orchestration/learning/index.yaml` to the "
-            "corrections) and `uv run --no-project .claude/hooks/contextdb_cli.py memory search <class slug>`.",
-            "A matching correction with `status: landed` is applied as written; a `pending` one lands first; no "
-            "match means a new mistake record carrying the class and a new correction are researched from official "
-            "sources and recorded before any dispatch.",
-            # Thread 4248711363: the gate does not read the paste yet, so the sentence names its landing condition.
-            "Once `dotfiles-T128-gate-evidence-a02` lands, the gate refuses the action without the paste; until "
-            "then the orchestrator refuses it by rule.",
+            "action is the records search for that class, pasted into the record as the line "
+            "`search: <class> -> <the matching mistake records or none>`, and the matching correction is applied "
+            "when its mechanism is landed, or landed first when it is pending, mechanism by mechanism, before any "
+            "dispatch; a class is a slug of `[a-z0-9-]` assigned at disposition time, never text taken from a review "
+            "title.",
+            # Thread 4249303433: review-derived text never reaches a shell.
+            "Once plan 007 T718 lands, `scripts/orchestrator/three-repeat.sh <class>` validates the slug, runs the "
+            "records search and the CompactionDB search without a shell and prints the line; until then the "
+            "orchestrator runs them by hand with a validated slug.",
+            # Thread 4248711363: the gate does not read the line yet, so the sentence names its landing condition.
+            "Once `dotfiles-T128-gate-evidence-a02` lands, the gate refuses the action without the line; until then "
+            "the orchestrator refuses it by rule.",
             "Every `not-applicable` disposition carries `; evidence=<command>` with the output pasted in the record.",
         ):
             with self.subTest(token=token[:40]):
@@ -565,6 +577,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "`grep -rl <class slug> .orchestration/learning/corrections/`",
             "`grep -l 'classes:",
             "gate-evidence-a01",
+            "memory search <class slug>",
         ):
             with self.subTest(stale=stale):
                 self.assertNotIn(stale, bullet)

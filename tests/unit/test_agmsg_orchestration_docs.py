@@ -491,6 +491,37 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             step,
         )
 
+    def test_the_worker_stops_itself_on_repeated_findings(self) -> None:
+        # Plan 006 A7-1: PR 317's V0 worker kept fixing through seven Bot-reviewed heads and never read its halt.
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        for token in (
+            "fixes nothing more",
+            # The task lists this token and the --history-only one in backticks; in the prose both sit inside longer code spans.
+            "status=blocked note=S1|INV-6",
+            "whichever limit comes first ends the fixing",
+            "never a disposition",
+            "never for a fourth round of the same class",
+            "not only the current head's",
+            "and the review bodies whose `commit_id`, is at or after the task's first commit on the PR",
+            "counted toward the fix cap and the classes, never INV-6's heads",
+            "--history-only",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, step)
+
+    def test_the_orchestrator_watches_from_github_and_history(self) -> None:
+        # Plan 006 A7-2: a worker that ignores its PING is seen from GitHub and history, never from panes.
+        playbook = self.section(SKILL.read_text(), "## Orchestrator Playbook")
+        for token in (
+            "at least every 30 minutes after a TASK",
+            "`…/pulls/<n>/comments`",
+            "never detects completion, which stays the RESULT's arrival",
+            "45 minutes without a push, a PONG or a RESULT is a stall",
+            "`herdr-agents --remove-worker <worktree> --force`",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, playbook)
+
     def test_workers_open_the_pr_as_a_draft(self) -> None:
         # Thread 4240566266: step 15's `gh pr ready` starts the Bot timer only on a draft PR.
         step = self.section(SKILL.read_text(), "\n2. Switch to the `repo`", "\n3. ")

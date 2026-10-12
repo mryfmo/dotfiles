@@ -33,14 +33,9 @@ FAILURE_REASON_MIN_CHARS = 20
 # An acceptance record's finding-class ledger row: <thread id or audit:<sha7>:<n>>\t<class>.
 LEDGER_ROW = re.compile(r"(?P<id>\d{10,}|audit:[0-9a-f]{7}:\d+)\t(?P<cls>\S+)")
 SEARCH_PREFIX = "search:"
-# Mistake records name their ledger classes in `classes:`; the search covers them and CompactionDB memories.
-# `grep -l` given the bare directory exits 2 ("Is a directory") without reading a record: recurse or glob.
-SEARCH_GREP = re.compile(
-    r"grep -rl 'classes:[^']*' \.orchestration/learning/mistakes/"
-    r"|grep -l 'classes:[^']*' \.orchestration/learning/mistakes/\*\.md"
-)
-SEARCH_MEMORY = "contextdb_cli.py memory search"
 S6_CLASS_LIMIT = 3
+# A record line may be a Markdown list item (`- audit-finding: …`, `1. audit-finding: …`).
+RECORD_AUDIT_FINDING = re.compile(r"\s*(?:(?:[-*+]|\d+[.)])\s+)?audit-finding:")
 # herdr-agents --audit names and concludes the task-level audit this way.
 AUDIT_NAME = re.compile(r"(?P<task>.+)-audit-(?P<sha>[0-9a-f]{7,40})\.md")
 AUDIT_VERDICT = re.compile(r"\s*Verdict: (correct|incorrect|blocked)\s*")
@@ -766,7 +761,7 @@ def acceptance_errors(root: Path, required: bool, task: str | None) -> list[str]
     # INV-6: every not-applicable the record carries names its evidence, whatever the audit verdict.
     for line in map(str.strip, lines):
         if (
-            line.startswith(AUDIT_FINDING_DISPOSITION_PREFIX)
+            RECORD_AUDIT_FINDING.match(line)
             and "not-applicable:" in line
             and not PR_FEEDBACK_DISPOSITION.match(line, line.index("not-applicable:"))
         ):
@@ -774,13 +769,22 @@ def acceptance_errors(root: Path, required: bool, task: str | None) -> list[str]
     classes = Counter(match.group("cls") for line in lines if (match := LEDGER_ROW.fullmatch(line)))
     searches = [line for line in map(str.strip, lines) if line.startswith(SEARCH_PREFIX)]
     for cls, count in classes.items():
-        if count < S6_CLASS_LIMIT:
-            continue
-        # The slug as a whole token: `scope` is not named by a line about `class-count-scope`.
-        slug = re.compile(rf"(?<![\w-]){re.escape(cls)}(?![\w-])")
-        if not any(slug.search(line) and SEARCH_GREP.search(line) and SEARCH_MEMORY in line for line in searches):
+        if count >= S6_CLASS_LIMIT and not any(searches_class(line, cls) for line in searches):
             errors.append(f"S6: class {cls} at {count} without a pasted search")
     return errors
+
+
+def searches_class(line: str, cls: str) -> bool:
+    """Whether a search: line greps the mistake records' `classes:` for cls and searches CompactionDB for it."""
+    # The slug as a whole token: `scope` is not named by a query for `class-count-scope`.
+    slug = rf"(?<![\w-]){re.escape(cls)}(?![\w-])"
+    # `grep -l` given the bare directory exits 2 ("Is a directory") without reading a record: recurse or glob.
+    grep = (
+        rf"grep -rl 'classes:[^']*{slug}[^']*' \.orchestration/learning/mistakes/"
+        rf"|grep -l 'classes:[^']*{slug}[^']*' \.orchestration/learning/mistakes/\*\.md"
+    )
+    memory = rf"contextdb_cli\.py memory search [^;`'\n]*{slug}"
+    return bool(re.search(grep, line) and re.search(memory, line))
 
 
 def evidence_field(text: str, field: str) -> str | None:

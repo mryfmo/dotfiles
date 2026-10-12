@@ -1296,21 +1296,33 @@ class ReviewGuardTest(unittest.TestCase):
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
         rows = "".join(f"42441288{index:02d}\tscope\n" for index in range(2)) + "audit:3a54d34:1\tscope\n"
-        grep = "grep -l 'classes:.*x' .orchestration/learning/mistakes/*.md"
-        both = f"{grep}; uv run --no-project .claude/hooks/contextdb_cli.py memory search x"
+        grep = "grep -l 'classes:.*scope' .orchestration/learning/mistakes/*.md"
+        both = f"{grep}; uv run --no-project .claude/hooks/contextdb_cli.py memory search scope"
         for label, search in (
-            ("another class's slug", f"search: class-count-scope: {both}\n"),
+            ("another class's slug", f"search: class-count-scope: {both.replace('scope', 'class-count-scope')}\n"),
             ("one command only", f"search: scope: {grep}\n"),
             ("grep outside the mistake records", f"search: scope: {both.replace('learning/mistakes', 'acceptance')}\n"),
             ("grep given the bare directory", f"search: scope: {both.replace('mistakes/*.md', 'mistakes/')}\n"),
-            ("pre-amendment grep -rl", "search: scope: grep -rl x .orchestration; contextdb_cli.py memory search x\n"),
+            (
+                "pre-amendment grep -rl",
+                "search: scope: grep -rl scope .orchestration; contextdb_cli.py memory search scope\n",
+            ),
+            ("grep for another class", f"search: scope: {both.replace('classes:.*scope', 'classes:.*x')}\n"),
+            (
+                "memory search for another class",
+                f"search: scope: {both.replace('memory search scope', 'memory search x')}\n",
+            ),
             ("not at the line start", f"note search: scope: {both}\n"),
+            ("accepted", f"search: scope: {both}\n"),
         ):
             with self.subTest(label):
                 record = self.write_review_file(".orchestration/acceptance/test.md", rows + search)
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": str(record)})
-                self.assertEqual(result.returncode, 1, result.stdout)
-                self.assertIn("S6: class scope at 3 without a pasted search", result.stdout)
+                if label == "accepted":
+                    self.assertEqual(result.returncode, 0, result.stdout)
+                else:
+                    self.assertEqual(result.returncode, 1, result.stdout)
+                    self.assertIn("S6: class scope at 3 without a pasted search", result.stdout)
 
     def test_base_requires_an_acceptance_record_under_acceptance(self) -> None:
         # The threat row for the ACCEPTANCE_EVIDENCE input: its path, then its content.
@@ -1334,6 +1346,11 @@ class ReviewGuardTest(unittest.TestCase):
             (own, None, "ACCEPTANCE_EVIDENCE file does not exist"),
             (own, missing_search, "S6: class class-count-scope at 3 without a pasted search"),
             (own, bare_not_applicable, "ACCEPTANCE_EVIDENCE line needs `not-applicable:<reason>; evidence=<command>`"),
+            (
+                own,
+                f"- {bare_not_applicable}",
+                "ACCEPTANCE_EVIDENCE line needs `not-applicable:<reason>; evidence=<command>`",
+            ),
         ):
             with self.subTest(value=value, content=(content or "")[:30]):
                 if content is not None:
@@ -1349,7 +1366,10 @@ class ReviewGuardTest(unittest.TestCase):
         reason = "not-applicable:the flagged path is generated output outside this task"
         for label, line, message in (
             ("no evidence clause", f"audit-finding: 1 {reason}\n", "ACCEPTANCE_EVIDENCE line needs"),
+            ("bullet list item", f"- audit-finding: 1 {reason}\n", "ACCEPTANCE_EVIDENCE line needs"),
+            ("numbered list item", f"  1. audit-finding: 1 {reason}\n", "ACCEPTANCE_EVIDENCE line needs"),
             ("evidence clause", f"audit-finding: 1 {reason}; evidence=gh pr checks 1\n", None),
+            ("list item with evidence clause", f"* audit-finding: 1 {reason}; evidence=gh pr checks 1\n", None),
             ("a fixed finding in prose", "audit-finding: 2 (P2, a:1) → fixed in the revise round\n", None),
         ):
             with self.subTest(label):

@@ -64,3 +64,10 @@ cost: rounds 13 (Claude) + 7 (Codex headless) + 1 Codex premise map; amendments 
 - **Claude seat round 24:** `accept` (`…-design-review-round24.md`, sha256 verified `1abad098…`): the diff against `7a067b19…` is the one map entry plus the v21 paragraph; INV-1 to INV-12 accepted.
 - **Codex headless round 24:** `accept` (`…-design-review-round24-codex.md`, 13:11:03Z): four protected keys equal to main; `implementing_tasks` differs by the one entry; the a02 task's INV-6 byte-equal (its line 19).
 - **Decision:** v21 lands on `main` at the reviewed hash `9c9d42cb…` through the next boundary PR. The unhashed `design_review.receipt` stays at round 22: round 24 reviewed the map only, and moving the pointer would re-hash the two anchored successors (`7929fe7a…`, `930f570b…`) for no review value; the canonical-hash tool of V1 (C-3) removes this coupling. C6 holds for every task file against round 22.
+
+## Round 25 (2026-10-12 15:28Z): v22 (`20d0937b…`), the gate-evidence-a03 map entry
+
+- **Change:** `implementing_tasks` + `dotfiles-T128-gate-evidence-a03: [INV-6]` (the INV-6 successor of a02, plan 011 option F); key diff against `main` `{'implementing_tasks': ['dotfiles-T128-gate-evidence-a03']}` pasted in the round-25 request.
+- **Codex headless round 25:** `accept` (`…-design-review-round25-codex.md`, 15:29:48Z): threat_model, trust_anchors, invariants equal to main; the one map entry.
+- **Claude seat round 25:** dispatched after its redesign RESULT (the seat was writing a03).
+- **Claude seat round 25:** `accept` (`…-design-review-round25.md`, sha256 verified `4ff7cc58…`, 15:33:44Z): the diff against `9c9d42cb…` is the one map entry plus the v22 paragraph; INV-1 to INV-12 accepted. ACCEPTANCE accepted 15:34Z. v22 lands through boundary PR (9) at the reviewed hash `20d0937b…`; the receipt pointer stays at round 22 (as at round 24).

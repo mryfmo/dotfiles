@@ -11,9 +11,9 @@ allowed_files:
   - scripts/orchestrator/*
   - tests/unit/test_orchestrator_tools.py
   - .orchestration/dotfiles-T128-orchestrator-tools-a01/**
-after: [dotfiles-T128-playbook-rules-a02]
+after: [dotfiles-T128-playbook-rules-a04]
 threat_table:
-  - control: the PR adds scripts/orchestrator/* (boundary.sh, ff-main.sh, orch-audit.sh, orch-gate.sh, fill_sweep.py, codex-review.sh, design-keydiff.py, replay.sh, dispatch.sh), scripts the orchestrator runs on the host against records, PR feedback and the gate
+  - control: the PR adds scripts/orchestrator/* (boundary.sh, ff-main.sh, orch-audit.sh, orch-gate.sh, fill_sweep.py, codex-review.sh, design-keydiff.py, replay.sh, dispatch.sh, three-repeat.sh, bus-read.sh), scripts the orchestrator runs on the host against records, PR feedback and the gate
     disposition: "closed: tests/unit/test_orchestrator_tools.py::test_boundary_stops_before_commit_when_the_validator_fails"
   - control: orch-gate.sh and orch-audit.sh wrap the merge gate and the task-level audit, so a wrapper could pass inputs the gate would refuse
     disposition: "residual: the wrappers only assemble environment variables and paths and call make require-crit-review and the audit runner as they are; they add no bypass flag, and the gate's own refusals (require-crit-review.py) remain the mandatory point; the audit from main reads each wrapper line"
@@ -69,7 +69,7 @@ premises:
 
 # AGMSG-TASK dotfiles-T128-orchestrator-tools-a01 — promote the orchestrator's scratchpad tooling to `scripts/orchestrator/` with the discipline built in (plan 007 T718; C-13, C-14, C-15)
 
-Written 2026-10-12 by the orchestrator seat under plan 007 (Phase 5, T718; approval pending at drafting time). Review tier by INV-1 (`kind: code`; `scripts/orchestrator/` is on no design-tier list; the gate and the audit runner themselves are untouched). Runs after `dotfiles-T128-playbook-rules-a02` (`after:`; the INV-6 successor of a01), because the SKILL sentences that will name these scripts belong to a later docs task, not to this PR. The threat table names every `allowed_files` entry plus the non-path controls; `task-consistency-check.py` C1 to C6 pass on this file.
+Written 2026-10-12 by the orchestrator seat under plan 007 (Phase 5, T718; approval pending at drafting time). Review tier by INV-1 (`kind: code`; `scripts/orchestrator/` is on no design-tier list; the gate and the audit runner themselves are untouched). Runs after `dotfiles-T128-playbook-rules-a04` (`after:`; the INV-6 successor of a01 to a03), because the SKILL sentences that will name these scripts belong to a later docs task, not to this PR. The threat table names every `allowed_files` entry plus the non-path controls; `task-consistency-check.py` C1 to C6 pass on this file.
 
 ## What to do
 
@@ -77,10 +77,12 @@ Written 2026-10-12 by the orchestrator seat under plan 007 (Phase 5, T718; appro
    - `boundary.sh <date-suffix> <commit-message-file>`: the boundary commit path (file list from `git status --short --untracked-files=all -- .orchestration`, copy into a detached worktree under `$TMPDIR`, masker, `make validate-agent-assets` bare, commit with `-c commit.gpgsign=false`, push over HTTPS with the gh credential helper as the SKILL names, `gh pr create`, `gh pr merge --squash --auto`); `set -euo pipefail`; no `rm -rf`; a failing validator leaves no commit (C-13).
    - `ff-main.sh`: as the input.
    - `orch-audit.sh <task> <head> <pr> [extra.tsv]` and `orch-gate.sh <task> <head> <pr> [extra.tsv]`: as the inputs, parameterised; they call `scripts/require-crit-review.py` through `make require-crit-review` and the audit runner as they are.
-   - `fill_sweep.py`: as the input, with the `evidence=` clause required on every `not-applicable` it emits (the grammar of `dotfiles-T128-gate-evidence-a01`).
+   - `fill_sweep.py`: as the input, with the `evidence=` clause required on every `not-applicable` it emits (the grammar of the gate task), and `acceptance-front-matter.py <task> <head> <pr>`: writes or updates the acceptance record's YAML front matter (task, head, pr, ledger, searches, audit_findings) from the sweep JSON, the ledger rows and the audit `.last.md`, so the gate of `dotfiles-T128-gate-evidence-a03` (plan 011 option F, C-24) reads data the orchestrator's tooling produced, never hand-typed fields.
    - `codex-review.sh <profile> <prompt-file> <receipt-out> <transcript-out>`: `codex --profile <profile> exec --sandbox read-only -C <repo> -c approval_policy=never -o <receipt-out> "$(cat <prompt-file>)" < /dev/null > <transcript-out> 2>&1`; exits with codex's status; prints the receipt path and the elapsed seconds (C-14).
    - `design-keydiff.py <design.md>`: as the input, with argument parsing, printing the changed hashed keys against `HEAD`'s copy (C-15).
    - `dispatch.sh <team> <from> <to> <pane> <line-file>`: reads a TASK or ACCEPTANCE line from a file, recomputes every `*_sha256=` field from the file each names (`task_file=`, `design=`, `amended_task=`), exits non-zero naming the field on a mismatch, otherwise calls `agmsg-dispatch` (C-20).
+   - `three-repeat.sh <class>`: validates the class against `^[a-z0-9-]+$` (exit 2 otherwise), runs `grep -rl` over `.orchestration/learning/mistakes/` for `classes:.*<class>` and the CompactionDB memory search without a shell, and prints the record's `search: <class> -> <sorted basenames or none>` line and the CompactionDB count (C-23; the T703 Bot threads 4249303433, 4249303398).
+   - `bus-read.sh <team> [<task id>]`: a complete bus read (`history.sh --limit 1000` or the messages store) that prints every open TASK without a RESULT and, per task, the minutes since its latest bus event (C-23; threads 4249303413, 4249303426).
    - `replay.sh <command…>`: runs a command that is about to enter rule or task text with the executor's binaries (`env -i PATH=/usr/bin:/bin bash -c`) inside a detached worktree at `origin/main` and prints its output and exit status for pasting (C-18).
 2. `tests/unit/test_orchestrator_tools.py`: with stubbed `git`, `gh`, `make`, `codex` on PATH: `test_boundary_stops_before_commit_when_the_validator_fails` (the exact closed-row name), the boundary happy path records a commit and a PR call, `codex-review.sh` closes stdin (the stub asserts stdin is at EOF) and propagates a non-zero status, `design-keydiff.py` reports `invariants ['INV-6']` for a fixture pair that differs in INV-6 only, and `fill_sweep.py` refuses to emit a `not-applicable` without `evidence=`.
 3. Keep the two checkers out (T704 owns `ledger-check.py` and `task-consistency-check.py`). Keep the attached inputs untouched; they are evidence of what ran on 2026-10-12.

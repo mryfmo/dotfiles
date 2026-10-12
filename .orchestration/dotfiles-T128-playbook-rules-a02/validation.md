@@ -249,3 +249,114 @@ $ git log --oneline origin/main..HEAD
 0158b866 docs(regime): record dispatches from the bus, send rule changes as amendments, fix the threat-row unit
 1083a8c1 chore(orchestration): record the dotfiles-T128-playbook-rules-a01 task
 ```
+
+## 16. Amendment 1 of a02 (TASK 13:28:30Z, Bot thread 4248319936)
+
+Only item 1's last sentence changes. Every check is rerun on the amended tree.
+
+```text
+$ shasum -a 256 <main checkout>/.orchestration/tasks/dotfiles-T128-playbook-rules-a02.md .orchestration/dotfiles-T128-playbook-rules-a02/task.md
+07b78f643bc5a488614bca59d195d45da93defb7d7c0acf5fc8a4820e00f4f33  <main checkout>/.orchestration/tasks/dotfiles-T128-playbook-rules-a02.md
+07b78f643bc5a488614bca59d195d45da93defb7d7c0acf5fc8a4820e00f4f33  .orchestration/dotfiles-T128-playbook-rules-a02/task.md
+$ cmp <main checkout>/.orchestration/tasks/dotfiles-T128-playbook-rules-a02.md .orchestration/dotfiles-T128-playbook-rules-a02/task.md && echo identical
+identical
+$ git ls-remote https://github.com/mryfmo/dotfiles refs/heads/regime/playbook-rules   # before the push: no update-branch merge to take
+375bae0f90bd167c0393be8088b92cf338657608	refs/heads/regime/playbook-rules
+$ uv run --no-project python "$TMPDIR/verbatim.py" "$PWD" .orchestration/dotfiles-T128-playbook-rules-a02/task.md
+item 1 quote 1: present (ok) 580 chars
+item 2 quote 1: present (ok) 33 chars
+item 2 quote 2: present (ok) 185 chars
+item 3 quote 1: present (ok) 960 chars
+item 4 quote 1: present (ok) 468 chars
+item 4 quote 2: present (ok) 40 chars
+item 4 quote 3: present (ok) 173 chars
+item 5 quote 1: absent (ok) 73 chars
+item 5 quote 2: present (ok) 184 chars
+$ uv run --no-project python -m unittest tests/unit/test_agmsg_orchestration_docs.py -v
+test_docs_no_longer_name_codex_review_commit ... ok
+test_rule_and_skill_name_worker_seats_not_codex_workers ... ok
+test_rule_drops_the_worker_network_escalation ... ok
+test_skill_drops_the_pane_status_gate_and_raw_pane_wakes ... ok
+test_rule_pointers_name_real_skill_sections ... ok
+test_rule_states_the_invariants ... ok
+test_word_budgets ... ok
+test_audit_command_lives_only_in_the_task_level_audit_bullet ... ok
+test_codex_agents_points_at_the_worklog_section ... ok
+test_contextdb_cli_is_invoked_with_uv_run ... ok
+test_skill_masks_evidence_with_a_runnable_command ... ok
+test_claude_worker_merge_denials_and_prefix_limits_are_documented ... ok
+test_codex_worker_profile_defaults_to_standard ... ok
+test_skill_carries_the_audit_gate_and_bot_wait_mechanics ... ok
+test_skill_carries_the_parallel_execution_and_routing_mechanics ... ok
+test_skill_carries_the_registration_and_delivery_mechanics ... ok
+test_skill_carries_the_session_lessons ... ok
+test_a_design_lands_on_main_before_its_task ... ok
+test_a_revise_acceptance_names_the_previous_head_and_a_check ... ok
+test_a_trust_boundary_task_carries_a_threat_table ... ok
+test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first ... ok
+test_boundary_merge_sentence_names_the_in_job_decision ... ok
+test_closed_selector_existence_is_checked_at_acceptance ... ok
+test_code_review_rules_cover_orchestration_records_and_threat_tables ... ok
+test_counters_bullet_names_owners_not_sources ... ok
+test_counters_run_before_every_acceptance_action ... ok
+test_design_review_runs_in_paired_rounds_with_a_cap ... ok
+test_dispatches_are_recorded_from_the_bus ... ok
+test_open_review_body_findings_have_an_identifier ... ok
+test_open_third_round_threads_have_an_integration_outcome ... ok
+test_orchestration_records_rule_binds_the_bot_review_only ... ok
+test_pattern_rules_pin_their_safeguards ... ok
+test_question_pongs_are_in_the_contract ... ok
+test_regime_rule_sections_are_pinned_whole ... ok
+test_rule_changes_travel_as_task_amendments ... ok
+test_shape_is_checked_by_hand_until_the_schema_lands ... ok
+test_shape_rules_and_the_decision_sentence_are_pinned ... ok
+test_task_file_review_is_one_round_with_a_fixed_stop_condition ... ok
+test_the_bot_wait_filters_the_codex_bot ... ok
+test_the_ci_watch_is_joined_before_the_result ... ok
+test_the_ci_watcher_survives_the_no_checks_race ... ok
+test_the_gate_reads_the_acceptance_record ... ok
+test_threat_table_rows_have_a_fixed_unit ... ok
+test_threat_table_rule_carries_no_grammar ... ok
+test_three_repeats_start_with_a_pasted_correction_search ... ok
+test_workers_commit_inside_the_sandbox ... ok
+test_workers_open_the_pr_as_a_draft ... ok
+
+----------------------------------------------------------------------
+Ran 47 tests in 0.010s
+
+OK
+$ uv run --no-project python -m unittest tests/unit/test_pr_feedback.py 2>&1 | tail -n 3
+Ran 16 tests in 0.022s
+
+OK
+$ ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py
+1 file already formatted
+$ uv run --no-project python "$TMPDIR/mutate.py" "$PWD"; git status --short   # 1b drops the new sentence, 1c puts back "expected duration"
+mutant 1a home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_dispatches_are_recorded_from_the_bus -> rc=1 FAILED (failures=1) fail_lines=1
+mutant 1b home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_dispatches_are_recorded_from_the_bus -> rc=1 FAILED (failures=1) fail_lines=1
+mutant 1c home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_dispatches_are_recorded_from_the_bus -> rc=1 FAILED (failures=2) fail_lines=2
+mutant 2 home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_rule_changes_travel_as_task_amendments -> rc=1 FAILED (failures=1) fail_lines=1
+mutant 3a home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_three_repeats_start_with_a_pasted_correction_search -> rc=1 FAILED (failures=2) fail_lines=2
+mutant 3d home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_three_repeats_start_with_a_pasted_correction_search -> rc=1 FAILED (failures=2) fail_lines=2
+mutant 3b home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_three_repeats_start_with_a_pasted_correction_search -> rc=1 FAILED (failures=1) fail_lines=1
+mutant 3c home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_three_repeats_start_with_a_pasted_correction_search -> rc=1 FAILED (failures=1) fail_lines=1
+mutant 4a home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_threat_table_rows_have_a_fixed_unit -> rc=1 FAILED (failures=1) fail_lines=1
+mutant 4b AGENTS.md: test_threat_table_rows_have_a_fixed_unit -> rc=1 FAILED (failures=1) fail_lines=1
+mutant 5 home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_task_file_review_is_one_round_with_a_fixed_stop_condition -> rc=1 FAILED (failures=2) fail_lines=2
+mutant 5b home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_task_file_review_is_one_round_with_a_fixed_stop_condition -> rc=1 FAILED (failures=1) fail_lines=1
+mutant 6 home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_the_gate_reads_the_acceptance_record -> rc=1 FAILED (failures=1) fail_lines=1
+mutant 7 home/dot_agents/skills/agmsg-orchestration/SKILL.md: test_regime_rule_sections_are_pinned_whole -> rc=1 FAILED (failures=1) fail_lines=1
+ M .orchestration/dotfiles-T128-playbook-rules-a02/validation.md
+$ git diff --numstat origin/main...HEAD -- . ":!.orchestration"
+1	1	AGENTS.md
+6	4	home/dot_agents/skills/agmsg-orchestration/SKILL.md
+1	1	tests/fixtures/regime/code-review-orchestration.md
+4	2	tests/fixtures/regime/invariants.md
+1	0	tests/fixtures/regime/orchestrator-step-6.md
+83	1	tests/unit/test_agmsg_orchestration_docs.py
+$ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "[memory:decision] dotfiles-T128-playbook-rules-a02 amendment 1 (Bot thread 4248319936): ..."   # main checkout, permission gate
+aa6c26f7-275d-4e89-8458-d4bca1cc96a0
+$ git log --oneline 375bae0f..HEAD
+4b62feda docs(regime): name the thirty-minute bus-silence trigger in step 6
+4486dbdd chore(orchestration): recommit the dotfiles-T128-playbook-rules-a02 task at amendment 1
+```

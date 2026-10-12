@@ -20,3 +20,7 @@ permission_gated_commands: 7
 | 5 | reading the Bot review and comments of the final head right before the RESULT | `gh` |
 | 6 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
 | 7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-playbook-rules-a02 …` | `agmsg-dispatch` |
+
+## Amendment 1 of a02
+
+These ran inside the sandbox: the edits, fixture generation, the tests, ruff, the verbatim check, the mutation proofs, `git ls-remote` over public HTTPS, and the commits. Gated calls for this round, counted in advance in this copy (the main-checkout copy gives the final count): the main-checkout `memory add`; the HTTPS push; `gh pr checks 328 --watch`; the Bot wait from the push; reading the final review; the masked copy to the main checkout; `agmsg-dispatch` of the RESULT.

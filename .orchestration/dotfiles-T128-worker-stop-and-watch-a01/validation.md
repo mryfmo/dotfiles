@@ -186,3 +186,41 @@ task=dotfiles-T128-worker-stop-and-watch-a01 tasks=2 amendments=1 questions=1 re
 detail: pr=none authors=claude-deep-dot tasks=01a12dc6-06b8-721a-8648-f2dfeaca1ad6,01a12dd6-b440-76d3-88de-3e7987d1a1fe results=- questions=01a12dd0-fb68-7960-8708-444e1696975f withdrawn=- bot_heads=- source=live
 rc=0
 ```
+
+## 8. Bot fix round 2 (threads 4244175775, 4244175778)
+
+A7-1 before the fix commit: the two threads of review 5486001543 (each a new class), and still no head after a first RESULT:
+
+```
+4244175775 P2 Count non-review feedback toward S1
+4244175778 P2 Ping workers as soon as a stop threshold is crossed
+$ git diff --stat HEAD -- home tests; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md tests/fixtures/regime/*.md 2>&1 | tail -1
+ home/dot_agents/skills/agmsg-orchestration/SKILL.md | 4 ++--
+ tests/fixtures/regime/orchestrator-step-7.md        | 2 +-
+ tests/fixtures/regime/worker-step-15.md             | 2 +-
+ tests/unit/test_agmsg_orchestration_docs.py         | 5 ++++-
+ 4 files changed, 8 insertions(+), 5 deletions(-)
+Ran 44 tests in 0.009s
+
+OK
+All matched files use Prettier code style!
+```
+
+Removal proofs (`scratchpad/mutate_a7_fix2.py`):
+
+```
+== removed token: one per item `scripts/pr-feedback.py <pr>` lists, whatever its source or priority
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_worker_stops_itself_on_repeated_findings
+== removed token: as soon as it first sees a task past the A2 cap or an INV-6 count
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_orchestrator_watches_from_github_and_history
+== restored: OK
+```
+
+A7-1 before the push, the complete `--history-only` output:
+
+```
+$ scripts/regime-counters.sh dotfiles-T128-worker-stop-and-watch-a01 --history-only
+task=dotfiles-T128-worker-stop-and-watch-a01 tasks=2 amendments=1 questions=1 results=0 withdrawn=0 revises=0 first_result_head=none bot_p1_heads_after_result=skipped audits=unknown wall=2026-10-12T01:41:55Z..none (-) source=live
+detail: pr=none authors=claude-deep-dot tasks=01a12dc6-06b8-721a-8648-f2dfeaca1ad6,01a12dd6-b440-76d3-88de-3e7987d1a1fe results=- questions=01a12dd0-fb68-7960-8708-444e1696975f withdrawn=- bot_heads=- source=live
+rc=0
+```

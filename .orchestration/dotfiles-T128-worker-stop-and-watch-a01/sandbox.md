@@ -1,14 +1,14 @@
 ---
 task_id: dotfiles-T128-worker-stop-and-watch-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 17
+permission_gated_commands: 21
 ---
 
 # Sandbox record: dotfiles-T128-worker-stop-and-watch-a01
 
 - Period: from the AGMSG-TASK (2026-10-12T01:41:55Z) to the RESULT. The branch, edits, the docs tests, prettier, ruff, the removal proofs, the two local premises, the `--history-only` count and the commits ran inside the sandbox (`git -c commit.gpgsign=false`, `UV_OFFLINE=1`). No `allowed_domains`, no refusal.
 
-`permission_gated_commands` counts every Bash call with `dangerouslyDisableSandbox`, one per call (`agmsg-dispatch` included; each Bot loop is one call). This copy was written before #11, so #11 to #17 are counted in advance; the main-checkout copy states the final count.
+`permission_gated_commands` counts every Bash call with `dangerouslyDisableSandbox`, one per call (`agmsg-dispatch` included; each Bot loop is one call). This copy was written before #15, so #15 to #21 are counted in advance; the main-checkout copy states the final count.
 
 | # | Command | Step 4 case |
 |--:|---|---|
@@ -25,7 +25,11 @@ permission_gated_commands: 17
 | 11 | the authorized push (fix round 1 with the Amendment 1 task copy and this evidence) | `git push` |
 | 12 | `gh pr checks 323 … --watch` on the fix head, started once a check run is listed (background, exit status joined) | `gh` |
 | 13 | Bot wait on the fix head, `scratchpad/bot-wait.sh` filtered by the Codex login, timed from the push | `gh` only |
-| 14 | `gh api` any thread of the fix head (only if the Bot raises one) | `gh` |
-| 15 | final recheck of reviews, review comments and the connector summary, with the inbox read right before the dispatch (`gh` only) | `gh` |
-| 16 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
-| 17 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-worker-stop-and-watch-a01 …` | `agmsg-dispatch` |
+| 14 | `gh api` threads 4244175775 and 4244175778 of review 5486001543 | `gh` |
+| 15 | the authorized push (fix round 2 and this evidence) | `git push` |
+| 16 | `gh pr checks 323 … --watch` on the final head, started once a check run is listed (background, exit status joined) | `gh` |
+| 17 | Bot wait on the final head, `scratchpad/bot-wait.sh` filtered by the Codex login, timed from the push | `gh` only |
+| 18 | `gh api` any thread of the final head (only if the Bot raises one) | `gh` |
+| 19 | final recheck of reviews, review comments and the connector summary, with the inbox read right before the dispatch (`gh` only) | `gh` |
+| 20 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
+| 21 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-worker-stop-and-watch-a01 …` | `agmsg-dispatch` |

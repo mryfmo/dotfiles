@@ -38,6 +38,17 @@ The orchestrator ordered fix round 1 with my proposed sentences, except (3) (ACC
 
 The two fixtures are regenerated in this commit, a declared change. The six new tokens each fail both their test and the whole-section pin when removed (validation §7). The docs module runs 44 tests, OK. Before the push, `--history-only` prints no `S2:` line (questions 1, amendments 1). Per the ACCEPTANCE, a further finding on these sentences is reported with its class, and fix round 2 is only for a new class.
 
+## Bot round 2 on `2c8dce27` and fix round 2
+
+Review 5486001543 (02:08:33Z) raised two P2 threads. The A7-1 counts were 0 heads after a first RESULT and eight classes at 1 each, so there was no stop. Both titles are new classes by A7-1's rule, and the ACCEPTANCE of 02:00Z allows fix round 2 for a new class, so I fixed both without another question PONG. A second one would itself have reached INV-6's question threshold.
+
+| Thread | Class (A7-1) | Fix in this commit |
+|---|---|---|
+| 4244175775 (P2) | count non-review feedback | the class count is now "one per item `scripts/pr-feedback.py <pr>` lists, whatever its source or priority". The sweep owns the sources, so the sentence names it instead of listing them: the a04 S1 lesson, since fix round 1's "(any reviewer, any priority, inline or review-body)" was an enumeration and the Bot found the missing source. The heads clause is unchanged. The thread is the same topic as 4244128846 but a new title class |
+| 4244175778 (P2) | ping workers as | step 7 adds: "The watch also sends `AGMSG-PING v1` as soon as it first sees a task past the A2 cap or an INV-6 count, without waiting for a stall." The removal rule then has the PING it needs |
+
+The two fixtures are regenerated in this commit. Both new tokens fail their test and the pin when removed (validation §8). The docs module runs 44 tests, OK. `--history-only` before the push prints no `S2:` line. This is fix round 2 of 2: a further finding on these sentences is reported with its class, not fixed.
+
 ## Notes
 
 - Understand-Anything hook: did not fire. plan-mode-used: no.

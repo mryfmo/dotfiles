@@ -506,7 +506,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "counted toward the fix cap and the classes, never INV-6's heads",
             "--history-only",
             # Bot fix round 1 on 9d001bcb (threads 4244128846, 4244128851, 4244128854, 4244128857).
-            "from every finding the PR-feedback sweep would list (any reviewer, any priority, inline or review-body",
+            # Thread 4244175775: the sweep owns the sources, so the class count names it instead of listing them.
+            "one per item `scripts/pr-feedback.py <pr>` lists, whatever its source or priority",
             "a Bot title never (only its reduced class)",
             "instead of a blocked PONG, and then waits for the ACCEPTANCE: one handoff",
             "pastes its complete output (the count line, the `detail:` line and any `S2:` line)",
@@ -526,6 +527,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             # Bot fix round 1 on 9d001bcb (threads 4244128840, 4244128859).
             "all three with `--paginate`",
             "the next seat is created in a clean worktree",
+            # Thread 4244175778: a worker pushing less than 45 minutes apart never stalls.
+            "as soon as it first sees a task past the A2 cap or an INV-6 count",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, playbook)

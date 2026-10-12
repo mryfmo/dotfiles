@@ -505,6 +505,11 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "and the review bodies whose `commit_id`, is at or after the task's first commit on the PR",
             "counted toward the fix cap and the classes, never INV-6's heads",
             "--history-only",
+            # Bot fix round 1 on 9d001bcb (threads 4244128846, 4244128851, 4244128854, 4244128857).
+            "from every finding the PR-feedback sweep would list (any reviewer, any priority, inline or review-body",
+            "a Bot title never (only its reduced class)",
+            "instead of a blocked PONG, and then waits for the ACCEPTANCE: one handoff",
+            "pastes its complete output (the count line, the `detail:` line and any `S2:` line)",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, step)
@@ -518,6 +523,9 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "never detects completion, which stays the RESULT's arrival",
             "45 minutes without a push, a PONG or a RESULT is a stall",
             "`herdr-agents --remove-worker <worktree> --force`",
+            # Bot fix round 1 on 9d001bcb (threads 4244128840, 4244128859).
+            "all three with `--paginate`",
+            "the next seat is created in a clean worktree",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, playbook)

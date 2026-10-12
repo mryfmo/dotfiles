@@ -129,3 +129,60 @@ rc=0
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-worker-stop-and-watch-a01 …'
 8d4a9e78-4caa-4211-91dc-6208369b7100
 ```
+
+## 7. Bot fix round 1 (Amendment 1; threads 4244128840, 4244128846, 4244128851, 4244128854, 4244128857, 4244128859)
+
+A7-1 before the fix commit: the six threads of review 5485951311 with their priority and title (the class is the first three words, badge stripped, lower-cased; each class counts 1), and no head after a first RESULT, because none was sent:
+
+```
+4244128840 P2 Paginate every endpoint used by the watcher
+4244128846 P2 Include every review finding in the S1 class count
+4244128851 P1 Encode review-derived classes before dispatching the PONG
+4244128854 P1 Choose one third-round handoff instead of waiting forever
+4244128857 P2 Preserve the complete counter output in validation
+4244128859 P2 Quarantine a forced worker worktree before reseating it
+```
+
+```
+$ shasum -a 256 ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-worker-stop-and-watch-a01.md .orchestration/dotfiles-T128-worker-stop-and-watch-a01/task.md | cut -c1-64
+b0b8459834bf11869843ba685d795538523f1fa19adb2c30777586b11bed0b19
+b0b8459834bf11869843ba685d795538523f1fa19adb2c30777586b11bed0b19
+$ git diff --stat HEAD -- home tests; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md tests/fixtures/regime/*.md 2>&1 | tail -1; ruff check --config ruff.toml tests/unit/test_agmsg_orchestration_docs.py
+ home/dot_agents/skills/agmsg-orchestration/SKILL.md | 6 +++---
+ tests/fixtures/regime/orchestrator-step-7.md        | 2 +-
+ tests/fixtures/regime/worker-step-15.md             | 4 ++--
+ tests/unit/test_agmsg_orchestration_docs.py         | 8 ++++++++
+ 4 files changed, 14 insertions(+), 6 deletions(-)
+Ran 44 tests in 0.009s
+
+OK
+All matched files use Prettier code style!
+All checks passed!
+```
+
+Removal proofs (`scratchpad/mutate_a7_fix1.py`, the same harness with the six new tokens):
+
+```
+== removed token: from every finding the PR-feedback sweep would list (any reviewer, any priority, inline or review-body
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_worker_stops_itself_on_repeated_findings
+== removed token: a Bot title never (only its reduced class)
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_worker_stops_itself_on_repeated_findings
+== removed token: instead of a blocked PONG, and then waits for the ACCEPTANCE: one handoff
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_worker_stops_itself_on_repeated_findings
+== removed token: pastes its complete output (the count line, the `detail:` line and any `S2:` line)
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_worker_stops_itself_on_repeated_findings
+== removed token: all three with `--paginate`
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_orchestrator_watches_from_github_and_history
+== removed token: the next seat is created in a clean worktree
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_orchestrator_watches_from_github_and_history
+== restored: OK
+```
+
+A7-1 before the push, the complete `--history-only` output:
+
+```
+$ scripts/regime-counters.sh dotfiles-T128-worker-stop-and-watch-a01 --history-only
+task=dotfiles-T128-worker-stop-and-watch-a01 tasks=2 amendments=1 questions=1 results=0 withdrawn=0 revises=0 first_result_head=none bot_p1_heads_after_result=skipped audits=unknown wall=2026-10-12T01:41:55Z..none (-) source=live
+detail: pr=none authors=claude-deep-dot tasks=01a12dc6-06b8-721a-8648-f2dfeaca1ad6,01a12dd6-b440-76d3-88de-3e7987d1a1fe results=- questions=01a12dd0-fb68-7960-8708-444e1696975f withdrawn=- bot_heads=- source=live
+rc=0
+```

@@ -18,6 +18,26 @@ All fourteen tokens fail both the token test and the whole-section pin when remo
 
 This is the first PR on which the worker counts. Before the first push: `task=… results=0 … bot_p1_heads_after_result=skipped … source=live` (validation §5). No fix commit has happened yet; the counts before any fix round are in the main-checkout copy and the RESULT.
 
+## Bot round 1 on `9d001bcb` and fix round 1 (Amendment 1, TASK 02:00:08Z, sha256 `b0b84598…`)
+
+Review 5485951311 (01:52:59Z) raised six threads, all on A7's own sentences. Per the task, a fix round on a rule sentence needs its class reported first. PONG 655 (`status=question`, default hold) reported the A7-1 counts:
+- 0 heads after the first RESULT, because none was sent;
+- six classes at 1 each;
+- so no stop.
+
+The orchestrator ordered fix round 1 with my proposed sentences, except (3) (ACCEPTANCE 02:00:08Z). Amendment 1 adds one threat-table row for review-derived text in notes, and this commit carries its byte-identical copy (validation §7).
+
+| Thread | Class (A7-1) | Fix in this commit |
+|---|---|---|
+| 4244128840 (P2) | paginate every endpoint | step 7's three list calls get `gh api --paginate`, "all three with `--paginate`" |
+| 4244128846 (P2) | include every review | the class count reads "every finding the PR-feedback sweep would list (any reviewer, any priority, inline or review-body…)"; INV-6's head count stays the Codex P0/P1 inline `review_comment` items |
+| 4244128851 (P1) | encode review-derived classes | before anything review-derived enters a note, it is reduced: a class name to `[a-z0-9-]`, a thread id to digits, "a Bot title never (only its reduced class)". Step 11's inline `agmsg-dispatch` stays and carries no review text, so there is no `--body-file` clause, as the ACCEPTANCE says |
+| 4244128854 (P1) | choose one third-round | when the heads=2 stop and the A2 third round coincide, the worker sends the `AGMSG-RESULT … bot_rounds=3` with the stop's note fields "instead of a blocked PONG, and then waits for the ACCEPTANCE: one handoff" |
+| 4244128857 (P2) | preserve the complete | the worker "pastes its complete output (the count line, the `detail:` line and any `S2:` line)" |
+| 4244128859 (P2) | quarantine a forced | after `--remove-worker --force`, "the stopped worktree's evidence is preserved and the next seat is created in a clean worktree" |
+
+The two fixtures are regenerated in this commit, a declared change. The six new tokens each fail both their test and the whole-section pin when removed (validation §7). The docs module runs 44 tests, OK. Before the push, `--history-only` prints no `S2:` line (questions 1, amendments 1). Per the ACCEPTANCE, a further finding on these sentences is reported with its class, and fix round 2 is only for a new class.
+
 ## Notes
 
 - Understand-Anything hook: did not fire. plan-mode-used: no.

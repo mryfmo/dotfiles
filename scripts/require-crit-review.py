@@ -33,7 +33,8 @@ FAILURE_REASON_MIN_CHARS = 20
 # An acceptance record's finding-class ledger row: <thread id or audit:<sha7>:<n>>\t<class>.
 LEDGER_ROW = re.compile(r"(?P<id>\d{10,}|audit:[0-9a-f]{7}:\d+)\t(?P<cls>\S+)")
 SEARCH_PREFIX = "search:"
-SEARCH_COMMANDS = ("contextdb_cli.py memory search", "grep -rl")
+# Mistake records name their ledger classes in `classes:`; the search covers them and CompactionDB memories.
+SEARCH_PARTS = ("grep -l 'classes:", ".orchestration/learning/mistakes", "contextdb_cli.py memory search")
 S6_CLASS_LIMIT = 3
 # herdr-agents --audit names and concludes the task-level audit this way.
 AUDIT_NAME = re.compile(r"(?P<task>.+)-audit-(?P<sha>[0-9a-f]{7,40})\.md")
@@ -750,7 +751,7 @@ def acceptance_errors(root: Path, required: bool) -> list[str]:
             continue
         # The slug as a whole token: `scope` is not named by a line about `class-count-scope`.
         slug = re.compile(rf"(?<![\w-]){re.escape(cls)}(?![\w-])")
-        if not any(slug.search(line) and all(command in line for command in SEARCH_COMMANDS) for line in searches):
+        if not any(slug.search(line) and all(part in line for part in SEARCH_PARTS) for line in searches):
             errors.append(f"S6: class {cls} at {count} without a pasted search")
     return errors
 

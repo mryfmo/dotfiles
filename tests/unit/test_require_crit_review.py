@@ -1289,10 +1289,13 @@ class ReviewGuardTest(unittest.TestCase):
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
         rows = "".join(f"42441288{index:02d}\tscope\n" for index in range(2)) + "audit:3a54d34:1\tscope\n"
-        both = "uv run --no-project .claude/hooks/contextdb_cli.py memory search x; grep -rl x .orchestration"
+        grep = "grep -l 'classes:.*x' .orchestration/learning/mistakes/"
+        both = f"{grep}; uv run --no-project .claude/hooks/contextdb_cli.py memory search x"
         for label, search in (
             ("another class's slug", f"search: class-count-scope: {both}\n"),
-            ("one command only", "search: scope: grep -rl scope .orchestration\n"),
+            ("one command only", f"search: scope: {grep}\n"),
+            ("grep outside the mistake records", f"search: scope: {both.replace('learning/mistakes', 'acceptance')}\n"),
+            ("pre-amendment grep -rl", "search: scope: grep -rl x .orchestration; contextdb_cli.py memory search x\n"),
             ("not at the line start", f"note search: scope: {both}\n"),
         ):
             with self.subTest(label):

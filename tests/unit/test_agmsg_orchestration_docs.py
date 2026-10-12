@@ -521,11 +521,14 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "`dispatch:` key as the bus line `history.sh <team>` prints, with its read marker; a seat is reported "
             "as working only from such a line, and after a context compaction the open TASK list is re-derived "
             "from the bus before any status is reported.",
-            "A RESULT wait past the task's expected duration ends in a bus read, then a PING, never in a longer "
-            "silent wait.",
+            # Thread 4248319936: "the task's expected duration" had no computable threshold; INV-10's clock does.
+            "Thirty minutes after a TASK, an amendment or a revise enters the bus history with no bus event from its "
+            "seat since (the clock and the figure of INV-10's first-push rule) trigger a bus read, then a PING; a "
+            "longer silent wait is never the answer.",
         ):
             with self.subTest(token=token[:40]):
                 self.assertIn(token, step)
+        self.assertNotIn("expected duration", step)
 
     def test_rule_changes_travel_as_task_amendments(self) -> None:
         # Plan 007 Phase 0: a rule sentence changed through a PONG answer bypasses the hash and C1 to C6.

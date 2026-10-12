@@ -23,8 +23,18 @@ DISABLE_ENV = "CRIT_REVIEW"
 PR_FEEDBACK_ENV = "PR_FEEDBACK_EVIDENCE"
 AUDIT_ENV = "AUDIT_EVIDENCE"
 AUDIT_DISPOSITIONS_ENV = "AUDIT_DISPOSITIONS"
-PR_FEEDBACK_DISPOSITION = re.compile(r"(?:fixed:(?P<commit>[0-9a-f]{7,40})|not-applicable:(?P<reason>.*\S.*))", re.S)
+ACCEPTANCE_ENV = "ACCEPTANCE_EVIDENCE"
+# A not-applicable reason names the command whose pasted output supports it (plan 007 Phase 0).
+PR_FEEDBACK_DISPOSITION = re.compile(
+    r"(?:fixed:(?P<commit>[0-9a-f]{7,40})|not-applicable:(?P<reason>.*\S.*);\s*evidence=(?P<command>.*\S.*))", re.S
+)
+DISPOSITION_GRAMMAR = "fixed:<commit> or not-applicable:<reason>; evidence=<command>"
 FAILURE_REASON_MIN_CHARS = 20
+# An acceptance record's finding-class ledger row: <thread id or audit:<sha7>:<n>>\t<class>.
+LEDGER_ROW = re.compile(r"(?P<id>\d{10,}|audit:[0-9a-f]{7}:\d+)\t(?P<cls>\S+)")
+SEARCH_PREFIX = "search:"
+SEARCH_COMMANDS = ("contextdb_cli.py memory search", "grep -rl")
+S6_CLASS_LIMIT = 3
 # herdr-agents --audit names and concludes the task-level audit this way.
 AUDIT_NAME = re.compile(r"(?P<task>.+)-audit-(?P<sha>[0-9a-f]{7,40})\.md")
 AUDIT_VERDICT = re.compile(r"\s*Verdict: (correct|incorrect|blocked)\s*")
@@ -406,7 +416,7 @@ def pr_feedback_errors(root: Path, required: bool, head: str | None = None, base
         disposition = item.get("disposition")
         match = PR_FEEDBACK_DISPOSITION.fullmatch(disposition) if isinstance(disposition, str) else None
         if not match:
-            errors.append(f"{label} needs a disposition `fixed:<commit>` or `not-applicable:<reason>`")
+            errors.append(f"{label} needs a disposition {DISPOSITION_GRAMMAR}")
             continue
         commit = match.group("commit")
         if commit and run_git(["cat-file", "-e", f"{commit}^{{commit}}"], root).returncode != 0:
@@ -697,7 +707,7 @@ def audit_disposition_errors(root: Path, findings: int) -> list[str]:
             continue
         match = PR_FEEDBACK_DISPOSITION.search(line)
         if match is None:
-            errors.append(f"{AUDIT_DISPOSITIONS_ENV} line needs `not-applicable:<reason>`: {line}")
+            errors.append(f"{AUDIT_DISPOSITIONS_ENV} line needs `not-applicable:<reason>; evidence=<command>`: {line}")
         elif match.group("commit"):
             errors.append(
                 f"{AUDIT_DISPOSITIONS_ENV} line cites fixed:{match.group('commit')}; a fix moves HEAD, so audit the new head instead: {line}"
@@ -711,8 +721,37 @@ def audit_disposition_errors(root: Path, findings: int) -> list[str]:
     missing = sorted(set(range(1, findings + 1)) - covered)
     if missing:
         errors.append(
-            f"{AUDIT_DISPOSITIONS_ENV} leaves audit finding(s) {', '.join(map(str, missing))} of {findings} without a disposition; add one `{AUDIT_FINDING_DISPOSITION_PREFIX} <n> … not-applicable:<reason>` line per finding, numbered in audit order"
+            f"{AUDIT_DISPOSITIONS_ENV} leaves audit finding(s) {', '.join(map(str, missing))} of {findings} without a disposition; add one `{AUDIT_FINDING_DISPOSITION_PREFIX} <n> … not-applicable:<reason>; evidence=<command>` line per finding, numbered in audit order"
         )
+    return errors
+
+
+def acceptance_errors(root: Path, required: bool) -> list[str]:
+    """Plan 007 S6: a class at three ledger rows needs a pasted search of the correction records."""
+    value = os.environ.get(ACCEPTANCE_ENV, "").strip()
+    if not value:
+        if required:
+            return [f"{ACCEPTANCE_ENV} must point to the task's acceptance record for PR integration"]
+        return []
+    path = Path(value)
+    if not path.is_absolute():
+        path = root / path
+    path_error = orchestration_path_error(root, path, ACCEPTANCE_ENV, "acceptance")
+    if path_error:
+        return [path_error]
+    if not path.is_file():
+        return [f"{ACCEPTANCE_ENV} file does not exist: {path}"]
+    lines = path.read_text().splitlines()
+    classes = Counter(match.group("cls") for line in lines if (match := LEDGER_ROW.fullmatch(line)))
+    searches = [line for line in map(str.strip, lines) if line.startswith(SEARCH_PREFIX)]
+    errors: list[str] = []
+    for cls, count in classes.items():
+        if count < S6_CLASS_LIMIT:
+            continue
+        # The slug as a whole token: `scope` is not named by a line about `class-count-scope`.
+        slug = re.compile(rf"(?<![\w-]){re.escape(cls)}(?![\w-])")
+        if not any(slug.search(line) and all(command in line for command in SEARCH_COMMANDS) for line in searches):
+            errors.append(f"S6: class {cls} at {count} without a pasted search")
     return errors
 
 
@@ -746,7 +785,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--base",
-        help="also review committed changes in <base>...HEAD and require PR_FEEDBACK_EVIDENCE, plus AUDIT_EVIDENCE when review is required (PR integration)",
+        help="also review committed changes in <base>...HEAD and require PR_FEEDBACK_EVIDENCE and ACCEPTANCE_EVIDENCE, plus AUDIT_EVIDENCE when review is required (PR integration)",
     )
     args = parser.parse_args()
     if os.environ.get(DISABLE_ENV) == "off":
@@ -774,6 +813,14 @@ def main() -> None:
                 f"PR feedback evidence format checked only: {os.environ[PR_FEEDBACK_ENV].strip()}"
                 " (set BASE=<ref> to bind it to HEAD, re-collect it, and check fixed: commits)"
             )
+    acceptance = acceptance_errors(root, required=args.base is not None)
+    if acceptance:
+        print("Acceptance record evidence is incomplete:")
+        for error in acceptance:
+            print(f"- {error}")
+        raise SystemExit(1)
+    if os.environ.get(ACCEPTANCE_ENV, "").strip():
+        print(f"Acceptance evidence accepted: {os.environ[ACCEPTANCE_ENV].strip()}")
 
     paths = changed_paths(root, args.base)
     reasons = review_reasons(root, paths, args.base)

@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 GUARD = ROOT / "scripts/require-crit-review.py"
+FIXTURES = ROOT / "tests/fixtures/gate-evidence"
 
 
 def run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -398,6 +399,11 @@ class ReviewGuardTest(unittest.TestCase):
         document = {"repo": "mryfmo/dotfiles", "pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
         self.collected.write_text(json.dumps(document))
 
+    def acceptance_record(self, fixture: str) -> str:
+        relative = ".orchestration/acceptance/test.md"
+        self.write_review_file(relative, (FIXTURES / fixture).read_text())
+        return relative
+
     def guard_base(self, env: dict[str, str] | None = None, base: str = "main") -> subprocess.CompletedProcess[str]:
         defaults = {
             "CRIT_REVIEW": "",
@@ -406,6 +412,8 @@ class ReviewGuardTest(unittest.TestCase):
             "FAKE_PR_METADATA": str(self.metadata),
             "PATH": f"{self.collected_dir}{os.pathsep}{os.environ['PATH']}",
         }
+        if "ACCEPTANCE_EVIDENCE" not in (env or {}):
+            defaults["ACCEPTANCE_EVIDENCE"] = self.acceptance_record("acceptance-s6-present.md")
         return run([sys.executable, str(GUARD), "--base", base], self.temp_dir, {**defaults, **(env or {})})
 
     def test_the_gate_has_no_github_identity_check(self) -> None:
@@ -435,7 +443,9 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(plain.returncode, 0, plain.stdout)
         self.assertIn("Review not required", plain.stdout)
 
-        feedback = self.write_feedback([{"source": "status", "level": "success", "disposition": "not-applicable:ok"}])
+        feedback = self.write_feedback(
+            [{"source": "status", "level": "success", "disposition": "not-applicable:ok; evidence=gh pr checks 1"}]
+        )
         based = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
         self.assertEqual(based.returncode, 1, based.stdout)
         self.assertIn("agent lifecycle path changed: scripts/update-agent-assets.sh", based.stdout)
@@ -476,20 +486,56 @@ class ReviewGuardTest(unittest.TestCase):
                 [{"source": "review_comment", "level": "comment", "disposition": "later"}],
                 "needs a disposition",
             ),
+            "no evidence clause": (
+                [{"source": "review_comment", "level": "comment", "disposition": "not-applicable:a nit"}],
+                "needs a disposition fixed:<commit> or not-applicable:<reason>; evidence=<command>",
+            ),
+            "empty evidence command": (
+                [{"source": "review_comment", "level": "comment", "disposition": "not-applicable:a nit; evidence= "}],
+                "needs a disposition fixed:<commit> or not-applicable:<reason>; evidence=<command>",
+            ),
+            "empty reason": (
+                [
+                    {
+                        "source": "review_comment",
+                        "level": "comment",
+                        "disposition": "not-applicable: ; evidence=gh pr checks 1",
+                    }
+                ],
+                "needs a disposition fixed:<commit> or not-applicable:<reason>; evidence=<command>",
+            ),
             "unknown commit": (
                 [{"source": "annotation", "level": "warning", "disposition": "fixed:deadbee"}],
                 "cites an unknown commit: deadbee",
             ),
             "short failure reason": (
-                [{"source": "annotation", "level": "failure", "disposition": "not-applicable:flaky"}],
+                [
+                    {
+                        "source": "annotation",
+                        "level": "failure",
+                        "disposition": "not-applicable:flaky; evidence=gh pr checks 1",
+                    }
+                ],
                 "failure-level; not-applicable needs a reason of at least 20 characters",
             ),
             "short in-progress reason": (
-                [{"source": "check_run", "level": "in_progress", "disposition": "not-applicable:wip"}],
+                [
+                    {
+                        "source": "check_run",
+                        "level": "in_progress",
+                        "disposition": "not-applicable:wip; evidence=gh pr checks 1",
+                    }
+                ],
                 "in_progress-level; not-applicable needs a reason of at least 20 characters",
             ),
             "short cancelled reason": (
-                [{"source": "check_run", "level": "cancelled", "disposition": "not-applicable:rerun"}],
+                [
+                    {
+                        "source": "check_run",
+                        "level": "cancelled",
+                        "disposition": "not-applicable:rerun; evidence=gh pr checks 1",
+                    }
+                ],
                 "cancelled-level; not-applicable needs a reason of at least 20 characters",
             ),
             "not an items document": ([], None),
@@ -510,7 +556,13 @@ class ReviewGuardTest(unittest.TestCase):
     def test_pr_feedback_must_be_collected_for_the_current_head(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback(
-            [{"source": "status", "level": "success", "disposition": "not-applicable:review completed"}],
+            [
+                {
+                    "source": "status",
+                    "level": "success",
+                    "disposition": "not-applicable:review completed; evidence=gh pr checks 1",
+                }
+            ],
             head_sha="0" * 40,
         )
 
@@ -540,9 +592,13 @@ class ReviewGuardTest(unittest.TestCase):
                 {
                     "source": "annotation",
                     "level": "failure",
-                    "disposition": "not-applicable:annotation belongs to a job on the base branch run, not this head",
+                    "disposition": "not-applicable:annotation belongs to a job on the base branch run, not this head; evidence=gh pr checks 1",
                 },
-                {"source": "status", "level": "success", "disposition": "not-applicable:review completed"},
+                {
+                    "source": "status",
+                    "level": "success",
+                    "disposition": "not-applicable:review completed; evidence=gh pr checks 1",
+                },
             ]
         )
 
@@ -555,7 +611,11 @@ class ReviewGuardTest(unittest.TestCase):
     def test_pr_feedback_evidence_file_is_not_counted_as_a_change(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         items = [
-            {"source": "annotation", "level": "notice", "disposition": f"not-applicable:runner notice {index}"}
+            {
+                "source": "annotation",
+                "level": "notice",
+                "disposition": f"not-applicable:runner notice {index}; evidence=gh pr checks 1",
+            }
             for index in range(60)
         ]
         feedback = self.write_feedback(items)
@@ -573,7 +633,10 @@ class ReviewGuardTest(unittest.TestCase):
         listed = {"source": "status", "level": "success", "url": "https://x/s", "body": "CodeRabbit: done"}
         unlisted = {"source": "annotation", "level": "warning", "url": "https://x/j", "body": "untrusted taps"}
         for name, evidence_items in (
-            ("one item missing", [{**listed, "disposition": "not-applicable:review completed"}]),
+            (
+                "one item missing",
+                [{**listed, "disposition": "not-applicable:review completed; evidence=gh pr checks 1"}],
+            ),
             ("hand-written empty list", []),
         ):
             with self.subTest(case=name):
@@ -600,7 +663,9 @@ class ReviewGuardTest(unittest.TestCase):
         ):
             with self.subTest(case=name):
                 item = {"source": "review_comment", "level": "comment", "url": "https://x/r1"}
-                feedback = self.write_feedback([{**item, "body": saved, "disposition": "not-applicable:quoted only"}])
+                feedback = self.write_feedback(
+                    [{**item, "body": saved, "disposition": "not-applicable:quoted only; evidence=gh pr checks 1"}]
+                )
                 path = self.temp_dir / feedback
                 if mask_file:
                     masker = ROOT / "scripts/validate-agent-assets.py"
@@ -624,7 +689,9 @@ class ReviewGuardTest(unittest.TestCase):
         ):
             with self.subTest(case=name):
                 live_item = {**base, **live}
-                feedback = self.write_feedback([{**live_item, **saved, "disposition": "not-applicable:a nit"}])
+                feedback = self.write_feedback(
+                    [{**live_item, **saved, "disposition": "not-applicable:a nit; evidence=gh pr checks 1"}]
+                )
                 if mask_file:
                     run([sys.executable, str(masker), "--mask-secrets", str(self.temp_dir / feedback)], self.temp_dir)
                 self.write_collected([live_item])
@@ -646,7 +713,14 @@ class ReviewGuardTest(unittest.TestCase):
         run(["git", "branch", "-M", "main"], self.temp_dir)
         self.commit_on_branch("docs/fix.md")
         feedback = self.write_feedback(
-            [{"source": "status", "level": "success", "url": "https://x/s", "disposition": "not-applicable:ok"}]
+            [
+                {
+                    "source": "status",
+                    "level": "success",
+                    "url": "https://x/s",
+                    "disposition": "not-applicable:ok; evidence=gh pr checks 1",
+                }
+            ]
         )
         self.assertFalse(any(item["source"] == "review" for item in json.loads(self.collected.read_text())["items"]))
 
@@ -684,7 +758,9 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn("could not re-collect PR #1 feedback", result.stdout)
 
     def test_pr_feedback_without_base_is_only_format_checked(self) -> None:
-        feedback = self.write_feedback([{"source": "status", "level": "success", "disposition": "not-applicable:ok"}])
+        feedback = self.write_feedback(
+            [{"source": "status", "level": "success", "disposition": "not-applicable:ok; evidence=gh pr checks 1"}]
+        )
 
         result = self.guard({"PR_FEEDBACK_EVIDENCE": feedback, "CRIT_REVIEW": ""})
 
@@ -733,7 +809,11 @@ class ReviewGuardTest(unittest.TestCase):
     def test_feedback_accepts_absolute_path_through_a_repository_parent_alias(self) -> None:
         feedback = self.write_feedback(
             [
-                {"source": "annotation", "level": "notice", "disposition": "not-applicable:runner notice"}
+                {
+                    "source": "annotation",
+                    "level": "notice",
+                    "disposition": "not-applicable:runner notice; evidence=gh pr checks 1",
+                }
                 for _ in range(60)
             ]
         )
@@ -1103,11 +1183,20 @@ class ReviewGuardTest(unittest.TestCase):
 
     def test_incorrect_audit_needs_not_applicable_dispositions(self) -> None:
         audit = "[P2] high impl a:1 one\n  - [P3] low impl b:2 two\nVerdict: incorrect\n"
-        reason = "not-applicable:the flagged path is generated output outside this task"
+        reason = "not-applicable:the flagged path is generated output outside this task; evidence=gh pr checks 1"
         for label, dispositions, message in (
             ("no dispositions", None, "AUDIT_DISPOSITIONS must name the acceptance record"),
             ("fixed commit", f"audit-finding: 1 fixed:{'a' * 7}\naudit-finding: 2 {reason}\n", "a fix moves HEAD"),
-            ("short reason", f"audit-finding: 1 not-applicable:nope\naudit-finding: 2 {reason}\n", "at least 20"),
+            (
+                "short reason",
+                f"audit-finding: 1 not-applicable:nope; evidence=gh pr checks 1\naudit-finding: 2 {reason}\n",
+                "at least 20",
+            ),
+            (
+                "no evidence clause",
+                f"audit-finding: 1 {reason.split(';')[0]}\naudit-finding: 2 {reason}\n",
+                "line needs `not-applicable:<reason>; evidence=<command>`",
+            ),
             ("one missing", f"audit-finding: 1 {reason}\n", "leaves audit finding(s) 2 of 2 without a disposition"),
             ("unnumbered repeat", f"audit-finding: x {reason}\naudit-finding: x {reason}\n", "must name its finding"),
             (
@@ -1131,7 +1220,8 @@ class ReviewGuardTest(unittest.TestCase):
 
     def test_incorrect_audit_without_findings_fails(self) -> None:
         result = self.audit_guard(
-            "Verdict: incorrect\n", dispositions="audit-finding: x not-applicable:nothing to see here at all\n"
+            "Verdict: incorrect\n",
+            dispositions="audit-finding: x not-applicable:nothing to see here at all; evidence=gh pr checks 1\n",
         )
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("lists no [P0-P3] finding", result.stdout)
@@ -1161,6 +1251,70 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn("broad diff touches", result.stdout)
         self.assertNotIn("AUDIT_EVIDENCE", result.stdout)
         self.assertNotIn("Task-level audit evidence is required", result.stdout)
+
+    def test_dispositions_of_2026_10_12_without_evidence_are_refused(self) -> None:
+        # As first written in PR 323's sweep at 3a54d340; the audit of that head refuted both.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback(json.loads((FIXTURES / "pr-feedback-wrong.json").read_text())["items"])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        grammar = "needs a disposition fixed:<commit> or not-applicable:<reason>; evidence=<command>"
+        self.assertEqual(result.stdout.count(grammar), 2, result.stdout)
+
+    def test_dispositions_with_an_evidence_command_are_accepted(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback(json.loads((FIXTURES / "pr-feedback-right.json").read_text())["items"])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn(f"PR feedback evidence accepted: {feedback}", result.stdout)
+
+    def test_s6_class_at_three_without_a_pasted_search_is_refused(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.acceptance_record("acceptance-s6-missing.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("S6: class class-count-scope at 3 without a pasted search", result.stdout)
+        self.assertNotIn("threat-row-outside-paths", result.stdout)
+
+    def test_s6_class_at_three_with_a_pasted_search_is_accepted(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.acceptance_record("acceptance-s6-present.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
+
+    def test_s6_search_line_names_the_class_token_and_both_commands(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        rows = "".join(f"42441288{index:02d}\tscope\n" for index in range(2)) + "audit:3a54d34:1\tscope\n"
+        both = "uv run --no-project .claude/hooks/contextdb_cli.py memory search x; grep -rl x .orchestration"
+        for label, search in (
+            ("another class's slug", f"search: class-count-scope: {both}\n"),
+            ("one command only", "search: scope: grep -rl scope .orchestration\n"),
+            ("not at the line start", f"note search: scope: {both}\n"),
+        ):
+            with self.subTest(label):
+                self.write_review_file(".orchestration/acceptance/s6.md", rows + search)
+                env = {"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": ".orchestration/acceptance/s6.md"}
+                result = self.guard_base(env)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("S6: class scope at 3 without a pasted search", result.stdout)
+
+    def test_base_requires_an_acceptance_record_under_acceptance(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        self.write_review_file(".orchestration/validation/test.md", "")
+        for value, message in (
+            ("", "ACCEPTANCE_EVIDENCE must point to the task's acceptance record for PR integration"),
+            (".orchestration/validation/test.md", "ACCEPTANCE_EVIDENCE must live under .orchestration/acceptance/"),
+            (".orchestration/acceptance/none.md", "ACCEPTANCE_EVIDENCE file does not exist"),
+        ):
+            with self.subTest(value=value):
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": value})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stdout)
 
 
 if __name__ == "__main__":

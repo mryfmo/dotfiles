@@ -217,6 +217,40 @@ class AgmsgRegimePatternTest(unittest.TestCase):
     def invariants(self) -> str:
         return self.section(SKILL.read_text(), "## Review and integration invariants")
 
+    # Plan 006 S1 on the docs tests (class unpinned): token tests pin only the clauses their author chose, so
+    # each regime rule section is also pinned whole; a rule changes only together with its fixture (INV-12).
+    PINNED_SECTIONS = (
+        # name, file, outer slice or None, (start, end): the start marker is part of the pinned text.
+        ("invariants", SKILL, None, ("## Review and integration invariants", "\n## ")),
+        ("worker-step-15", SKILL, None, ("\n15. After the final push", "\n## ")),
+        ("orchestrator-step-7", SKILL, ("## Orchestrator Playbook", "\n## "), ("\n7. ", "\n8. ")),
+        ("message-contract", SKILL, None, ("## Message Contract v1", "\n## ")),
+        (
+            "code-review-orchestration",
+            ROOT / "AGENTS.md",
+            None,
+            ("### Orchestration records and trust-boundary code", "\n## "),
+        ),
+    )
+
+    @staticmethod
+    def normalized(text: str) -> str:
+        return "\n".join(line.rstrip() for line in text.split("\n")).strip()
+
+    def test_regime_rule_sections_are_pinned_whole(self) -> None:
+        for name, path, outer, (start, end) in self.PINNED_SECTIONS:
+            with self.subTest(section=name):
+                text = path.read_text()
+                if outer:
+                    text = self.section(text, *outer)
+                fixture = ROOT / "tests/fixtures/regime" / f"{name}.md"
+                self.assertEqual(
+                    self.normalized(start + self.section(text, start, end)),
+                    self.normalized(fixture.read_text()),
+                    f"regime rule section {name} changed: declare the change by updating "
+                    f"tests/fixtures/regime/{name}.md in the same commit and listing it in the RESULT",
+                )
+
     def test_design_review_runs_in_paired_rounds_with_a_cap(self) -> None:
         text = self.invariants()
         for token in (

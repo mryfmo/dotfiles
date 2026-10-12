@@ -24,16 +24,23 @@ PR_FEEDBACK_ENV = "PR_FEEDBACK_EVIDENCE"
 AUDIT_ENV = "AUDIT_EVIDENCE"
 AUDIT_DISPOSITIONS_ENV = "AUDIT_DISPOSITIONS"
 ACCEPTANCE_ENV = "ACCEPTANCE_EVIDENCE"
-# A not-applicable reason names the command whose pasted output supports it (plan 007 Phase 0).
+# A not-applicable reason names the command whose pasted output supports it (plan 007 Phase 0). No character of
+# either part may start a `; evidence=`, so a full match splits at the first delimiter and refuses a second one.
+DISPOSITION_PART = r"(?:(?!;\s*evidence=).)*(?:(?!;\s*evidence=)\S)(?:(?!;\s*evidence=).)*"
 PR_FEEDBACK_DISPOSITION = re.compile(
-    r"(?:fixed:(?P<commit>[0-9a-f]{7,40})|not-applicable:(?P<reason>.*\S.*);\s*evidence=(?P<command>.*\S.*))", re.S
+    rf"(?:fixed:(?P<commit>[0-9a-f]{{7,40}})"
+    rf"|not-applicable:(?P<reason>{DISPOSITION_PART});\s*evidence=(?P<command>{DISPOSITION_PART}))",
+    re.S,
 )
 DISPOSITION_GRAMMAR = "fixed:<commit> or not-applicable:<reason>; evidence=<command>"
 FAILURE_REASON_MIN_CHARS = 20
 # An acceptance record's finding-class ledger row: <thread id or audit:<sha7>:<n>>\t<class>.
 LEDGER_ROW = re.compile(r"(?P<id>\d{10,}|audit:[0-9a-f]{7}:\d+)\t(?P<cls>\S+)")
-SEARCH_PREFIX = "search:"
 S6_CLASS_LIMIT = 3
+# S6 recomputes the records search; a record states its result as `search: <slug> -> <basenames, or none>`.
+S6_SLUG = re.compile(r"[a-z0-9-]+")
+S6_SEARCH_LINE = re.compile(r"search: (?P<slug>[a-z0-9-]+) -> (?P<files>\S.*)")
+MISTAKE_RECORDS = ".orchestration/learning/mistakes/"
 # A record line may be a Markdown list item (`- audit-finding: …`, `1. audit-finding: …`).
 RECORD_AUDIT_FINDING = re.compile(r"\s*(?:(?:[-*+]|\d+[.)])\s+)?audit-finding:")
 # herdr-agents --audit names and concludes the task-level audit this way.
@@ -714,6 +721,9 @@ def audit_disposition_errors(root: Path, findings: int) -> list[str]:
             errors.append(f"{AUDIT_DISPOSITIONS_ENV} dispositions finding {finding} more than once: {line}")
             continue
         match = PR_FEEDBACK_DISPOSITION.search(line)
+        if match is not None and match.group("reason") is not None:
+            # A not-applicable runs to the end of the line; a second `; evidence=` there refuses it.
+            match = PR_FEEDBACK_DISPOSITION.fullmatch(line, match.start())
         if match is None:
             errors.append(f"{AUDIT_DISPOSITIONS_ENV} line needs `not-applicable:<reason>; evidence=<command>`: {line}")
         elif match.group("commit"):
@@ -763,28 +773,42 @@ def acceptance_errors(root: Path, required: bool, task: str | None) -> list[str]
         if (
             RECORD_AUDIT_FINDING.match(line)
             and "not-applicable:" in line
-            and not PR_FEEDBACK_DISPOSITION.match(line, line.index("not-applicable:"))
+            and not PR_FEEDBACK_DISPOSITION.fullmatch(line, line.index("not-applicable:"))
         ):
             errors.append(f"{ACCEPTANCE_ENV} line needs `not-applicable:<reason>; evidence=<command>`: {line}")
     classes = Counter(match.group("cls") for line in lines if (match := LEDGER_ROW.fullmatch(line)))
-    searches = [line for line in map(str.strip, lines) if line.startswith(SEARCH_PREFIX)]
+    stated: dict[str, list[set[str]]] = {}
+    for line in map(str.strip, lines):
+        if match := S6_SEARCH_LINE.fullmatch(line):
+            files = set(match.group("files").split())
+            stated.setdefault(match.group("slug"), []).append(set() if files == {"none"} else files)
     for cls, count in classes.items():
-        if count >= S6_CLASS_LIMIT and not any(searches_class(line, cls) for line in searches):
-            errors.append(f"S6: class {cls} at {count} without a pasted search")
+        if count < S6_CLASS_LIMIT:
+            continue
+        if not S6_SLUG.fullmatch(cls):
+            errors.append(f"S6: class {cls!r} at {count} is not a [a-z0-9-] slug, so its records search cannot run")
+            continue
+        found = mistake_records(root, cls)
+        if isinstance(found, str):
+            errors.append(f"S6: class {cls} at {count}: {found}")
+        elif found not in stated.get(cls, []):
+            errors.append(f"S6: class {cls} at {count} without a matching records search")
     return errors
 
 
-def searches_class(line: str, cls: str) -> bool:
-    """Whether a search: line greps the mistake records' `classes:` for cls and searches CompactionDB for it."""
-    # The slug as a whole token: `scope` is not named by a query for `class-count-scope`.
-    slug = rf"(?<![\w-]){re.escape(cls)}(?![\w-])"
-    # `grep -l` given the bare directory exits 2 ("Is a directory") without reading a record: recurse or glob.
-    grep = (
-        rf"grep -rl 'classes:[^']*{slug}[^']*' \.orchestration/learning/mistakes/"
-        rf"|grep -l 'classes:[^']*{slug}[^']*' \.orchestration/learning/mistakes/\*\.md"
-    )
-    memory = rf"contextdb_cli\.py memory search [^;`'\n]*{slug}"
-    return bool(re.search(grep, line) and re.search(memory, line))
+def mistake_records(root: Path, slug: str) -> set[str] | str:
+    """Recompute S6's records search; the gate reads its result, never pasted command text."""
+    try:
+        # No shell: the slug is [a-z0-9-] and reaches grep as one argument.
+        result = subprocess.run(
+            ["grep", "-rl", f"classes:.*{slug}", MISTAKE_RECORDS], cwd=root, capture_output=True, text=True, check=False
+        )
+    except OSError as error:
+        return f"the records search could not run: {error}"
+    if result.returncode not in (0, 1):
+        detail = (result.stderr.strip().splitlines() or ["no output"])[-1]
+        return f"the records search failed (grep exit {result.returncode}): {detail}"
+    return {Path(line).name for line in result.stdout.splitlines() if line.strip()}
 
 
 def evidence_field(text: str, field: str) -> str | None:

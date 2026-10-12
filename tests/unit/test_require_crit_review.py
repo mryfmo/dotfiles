@@ -52,7 +52,11 @@ class ReviewGuardTest(unittest.TestCase):
             "out = sys.argv[sys.argv.index('--json') + 1]\n"
             "open(out, 'w').write(open(os.environ['FAKE_COLLECTED']).read())\n"
         )
-        run(["git", "add", "README.md", "scripts/pr-feedback.py"], self.temp_dir)
+        # A tracked mistake record: S6 greps these for the classes the acceptance record repeats.
+        mistakes = self.temp_dir / ".orchestration/learning/mistakes"
+        mistakes.mkdir(parents=True)
+        (mistakes / "M-20261012-3.md").write_text("---\nclasses: [evidence, class-count-scope]\n---\n")
+        run(["git", "add", "README.md", "scripts/pr-feedback.py", ".orchestration"], self.temp_dir)
         run(["git", "commit", "-m", "init"], self.temp_dir)
         self.collected_dir = Path(tempfile.mkdtemp(prefix="crit-guard-collected-"))
         self.collected = self.collected_dir / "collected.json"
@@ -500,6 +504,26 @@ class ReviewGuardTest(unittest.TestCase):
                         "source": "review_comment",
                         "level": "comment",
                         "disposition": "not-applicable: ; evidence=gh pr checks 1",
+                    }
+                ],
+                "needs a disposition fixed:<commit> or not-applicable:<reason>; evidence=<command>",
+            ),
+            "a second evidence delimiter as the reason": (
+                [
+                    {
+                        "source": "review_comment",
+                        "level": "comment",
+                        "disposition": "not-applicable:; evidence=echo proof; evidence=true",
+                    }
+                ],
+                "needs a disposition fixed:<commit> or not-applicable:<reason>; evidence=<command>",
+            ),
+            "a second evidence delimiter padding a failure reason": (
+                [
+                    {
+                        "source": "annotation",
+                        "level": "failure",
+                        "disposition": "not-applicable:x; evidence=padding past twenty chars; evidence=true",
                     }
                 ],
                 "needs a disposition fixed:<commit> or not-applicable:<reason>; evidence=<command>",
@@ -1197,6 +1221,11 @@ class ReviewGuardTest(unittest.TestCase):
                 f"audit-finding: 1 {reason.split(';')[0]}\naudit-finding: 2 {reason}\n",
                 "line needs `not-applicable:<reason>; evidence=<command>`",
             ),
+            (
+                "a second evidence delimiter",
+                f"audit-finding: 1 {reason}; evidence=true\naudit-finding: 2 {reason}\n",
+                "line needs `not-applicable:<reason>; evidence=<command>`",
+            ),
             ("one missing", f"audit-finding: 1 {reason}\n", "leaves audit finding(s) 2 of 2 without a disposition"),
             ("unnumbered repeat", f"audit-finding: x {reason}\naudit-finding: x {reason}\n", "must name its finding"),
             (
@@ -1268,61 +1297,64 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn(f"PR feedback evidence accepted: {feedback}", result.stdout)
 
-    def test_s6_class_at_three_without_a_pasted_search_is_refused(self) -> None:
+    def test_s6_class_at_three_without_a_search_line_is_refused(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
         record = self.acceptance_record("acceptance-s6-missing.md")
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
         self.assertEqual(result.returncode, 1, result.stdout)
-        self.assertIn("S6: class class-count-scope at 3 without a pasted search", result.stdout)
+        self.assertIn("S6: class class-count-scope at 3 without a matching records search", result.stdout)
         self.assertNotIn("threat-row-outside-paths", result.stdout)
 
-    def test_s6_class_at_three_with_a_pasted_search_is_accepted(self) -> None:
+    def test_s6_class_at_three_with_the_matching_search_line_is_accepted(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
-        skill_form = "grep -rl 'classes:.*class-count-scope' .orchestration/learning/mistakes/"
-        glob_form = "grep -l 'classes:.*class-count-scope' .orchestration/learning/mistakes/*.md"
-        for form in (skill_form, glob_form):
-            with self.subTest(form=form):
-                record = self.acceptance_record("acceptance-s6-present.md")
-                path = self.temp_dir / record
-                path.write_text(path.read_text().replace(skill_form, form))
-                self.assertIn(form, path.read_text())
-                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
-                self.assertEqual(result.returncode, 0, result.stdout)
-                self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
+        record = self.acceptance_record("acceptance-s6-present.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
 
-    def test_s6_search_line_names_the_class_token_and_both_commands(self) -> None:
+    def test_s6_search_line_must_equal_the_recomputed_records_search(self) -> None:
+        # `grep -rl 'classes:.*scope'` finds the base's M-20261012-3.md (classes: [evidence, class-count-scope]).
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
-        rows = "".join(f"42441288{index:02d}\tscope\n" for index in range(2)) + "audit:3a54d34:1\tscope\n"
-        grep = "grep -l 'classes:.*scope' .orchestration/learning/mistakes/*.md"
-        both = f"{grep}; uv run --no-project .claude/hooks/contextdb_cli.py memory search scope"
-        for label, search in (
-            ("another class's slug", f"search: class-count-scope: {both.replace('scope', 'class-count-scope')}\n"),
-            ("one command only", f"search: scope: {grep}\n"),
-            ("grep outside the mistake records", f"search: scope: {both.replace('learning/mistakes', 'acceptance')}\n"),
-            ("grep given the bare directory", f"search: scope: {both.replace('mistakes/*.md', 'mistakes/')}\n"),
+
+        def rows(cls: str) -> str:
+            return "".join(f"42441288{index:02d}\t{cls}\n" for index in range(2)) + f"audit:3a54d34:1\t{cls}\n"
+
+        refused = "S6: class scope at 3 without a matching records search"
+        for label, text, message in (
+            ("the matching set", rows("scope") + "search: scope -> M-20261012-3.md\n", None),
+            ("none where nothing matches", rows("absent") + "search: absent -> none\n", None),
+            ("a record missing", rows("scope") + "search: scope -> none\n", refused),
+            ("a record too many", rows("scope") + "search: scope -> M-20261012-3.md M-20261012-9.md\n", refused),
+            ("another class's line", rows("scope") + "search: class-count-scope -> M-20261012-3.md\n", refused),
             (
-                "pre-amendment grep -rl",
-                "search: scope: grep -rl scope .orchestration; contextdb_cli.py memory search scope\n",
+                "pasted command text",
+                rows("scope") + "search: scope: grep -rl 'classes:.*scope' .orchestration/learning/mistakes/\n",
+                refused,
             ),
-            ("grep for another class", f"search: scope: {both.replace('classes:.*scope', 'classes:.*x')}\n"),
+            ("not at the line start", rows("scope") + "note search: scope -> M-20261012-3.md\n", refused),
             (
-                "memory search for another class",
-                f"search: scope: {both.replace('memory search scope', 'memory search x')}\n",
+                "a class outside [a-z0-9-]",
+                rows("Scope;touch-pwned") + "search: scope -> M-20261012-3.md\n",
+                "S6: class 'Scope;touch-pwned' at 3 is not a [a-z0-9-] slug",
             ),
-            ("not at the line start", f"note search: scope: {both}\n"),
-            ("accepted", f"search: scope: {both}\n"),
         ):
             with self.subTest(label):
-                record = self.write_review_file(".orchestration/acceptance/test.md", rows + search)
+                record = self.write_review_file(".orchestration/acceptance/test.md", text)
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": str(record)})
-                if label == "accepted":
+                if message is None:
                     self.assertEqual(result.returncode, 0, result.stdout)
                 else:
                     self.assertEqual(result.returncode, 1, result.stdout)
-                    self.assertIn("S6: class scope at 3 without a pasted search", result.stdout)
+                    self.assertIn(message, result.stdout)
+        self.assertFalse((self.temp_dir / "pwned").exists())
+        shutil.rmtree(self.temp_dir / ".orchestration/learning/mistakes")
+        record = self.write_review_file(".orchestration/acceptance/test.md", rows("scope") + "search: scope -> none\n")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": str(record)})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("S6: class scope at 3: the records search failed (grep exit 2)", result.stdout)
 
     def test_base_requires_an_acceptance_record_under_acceptance(self) -> None:
         # The threat row for the ACCEPTANCE_EVIDENCE input: its path, then its content.
@@ -1334,6 +1366,7 @@ class ReviewGuardTest(unittest.TestCase):
         own = ".orchestration/acceptance/test.md"
         missing_search = (FIXTURES / "acceptance-s6-missing.md").read_text()
         bare_not_applicable = "audit-finding: 1 not-applicable:the flagged path is generated output outside this task\n"
+        needs_evidence = "ACCEPTANCE_EVIDENCE line needs `not-applicable:<reason>; evidence=<command>`"
         for value, content, message in (
             ("", None, "ACCEPTANCE_EVIDENCE must point to the task's acceptance record for PR integration"),
             (
@@ -1344,15 +1377,17 @@ class ReviewGuardTest(unittest.TestCase):
             (".orchestration/acceptance/other.md", None, "must be test.md, the record of the task named by"),
             (".orchestration/acceptance/alias.md", None, "must be test.md, the record of the task named by"),
             (own, None, "ACCEPTANCE_EVIDENCE file does not exist"),
-            (own, missing_search, "S6: class class-count-scope at 3 without a pasted search"),
-            (own, bare_not_applicable, "ACCEPTANCE_EVIDENCE line needs `not-applicable:<reason>; evidence=<command>`"),
+            (own, missing_search, "S6: class class-count-scope at 3 without a matching records search"),
             (
                 own,
-                f"- {bare_not_applicable}",
-                "ACCEPTANCE_EVIDENCE line needs `not-applicable:<reason>; evidence=<command>`",
+                missing_search + "search: class-count-scope -> none\n",
+                "S6: class class-count-scope at 3 without a matching records search",
             ),
+            (own, bare_not_applicable, needs_evidence),
+            (own, f"- {bare_not_applicable}", needs_evidence),
+            (own, bare_not_applicable.replace("\n", "; evidence=a; evidence=b\n"), needs_evidence),
         ):
-            with self.subTest(value=value, content=(content or "")[:30]):
+            with self.subTest(value=value, content=(content or "")[-40:]):
                 if content is not None:
                     self.write_review_file(own, content)
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": value})
@@ -1367,6 +1402,11 @@ class ReviewGuardTest(unittest.TestCase):
         for label, line, message in (
             ("no evidence clause", f"audit-finding: 1 {reason}\n", "ACCEPTANCE_EVIDENCE line needs"),
             ("bullet list item", f"- audit-finding: 1 {reason}\n", "ACCEPTANCE_EVIDENCE line needs"),
+            (
+                "a second evidence delimiter",
+                f"audit-finding: 1 {reason}; evidence=a; evidence=b\n",
+                "ACCEPTANCE_EVIDENCE line needs",
+            ),
             ("numbered list item", f"  1. audit-finding: 1 {reason}\n", "ACCEPTANCE_EVIDENCE line needs"),
             ("evidence clause", f"audit-finding: 1 {reason}; evidence=gh pr checks 1\n", None),
             ("list item with evidence clause", f"* audit-finding: 1 {reason}; evidence=gh pr checks 1\n", None),

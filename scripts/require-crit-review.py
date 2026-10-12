@@ -34,7 +34,12 @@ FAILURE_REASON_MIN_CHARS = 20
 LEDGER_ROW = re.compile(r"(?P<id>\d{10,}|audit:[0-9a-f]{7}:\d+)\t(?P<cls>\S+)")
 SEARCH_PREFIX = "search:"
 # Mistake records name their ledger classes in `classes:`; the search covers them and CompactionDB memories.
-SEARCH_PARTS = ("grep -l 'classes:", ".orchestration/learning/mistakes", "contextdb_cli.py memory search")
+# `grep -l` given the bare directory exits 2 ("Is a directory") without reading a record: recurse or glob.
+SEARCH_GREP = re.compile(
+    r"grep -rl 'classes:[^']*' \.orchestration/learning/mistakes/"
+    r"|grep -l 'classes:[^']*' \.orchestration/learning/mistakes/\*\.md"
+)
+SEARCH_MEMORY = "contextdb_cli.py memory search"
 S6_CLASS_LIMIT = 3
 # herdr-agents --audit names and concludes the task-level audit this way.
 AUDIT_NAME = re.compile(r"(?P<task>.+)-audit-(?P<sha>[0-9a-f]{7,40})\.md")
@@ -144,18 +149,25 @@ def git_root() -> Path:
 
 
 def is_ignored(root: Path, path: str) -> bool:
-    """Skip worklogs and the PR feedback evidence file itself when sizing a diff."""
+    """Skip worklogs and the PR feedback and acceptance evidence files themselves when sizing a diff."""
     if path.startswith(IGNORED_PREFIXES):
         return True
-    evidence = os.environ.get(PR_FEEDBACK_ENV, "").strip()
-    if not evidence:
-        return False
-    evidence_path = Path(evidence)
-    if not evidence_path.is_absolute():
-        evidence_path = root / evidence_path
-    return feedback_path_error(root, evidence_path) is None and feedback_relative_path(root, evidence_path) == Path(
-        path
-    )
+    for env, path_error in (
+        (PR_FEEDBACK_ENV, lambda evidence_path: feedback_path_error(root, evidence_path)),
+        (
+            ACCEPTANCE_ENV,
+            lambda evidence_path: orchestration_path_error(root, evidence_path, ACCEPTANCE_ENV, "acceptance"),
+        ),
+    ):
+        evidence = os.environ.get(env, "").strip()
+        if not evidence:
+            continue
+        evidence_path = Path(evidence)
+        if not evidence_path.is_absolute():
+            evidence_path = root / evidence_path
+        if path_error(evidence_path) is None and feedback_relative_path(root, evidence_path) == Path(path):
+            return True
+    return False
 
 
 def feedback_relative_path(root: Path, path: Path) -> Path:
@@ -727,7 +739,7 @@ def audit_disposition_errors(root: Path, findings: int) -> list[str]:
     return errors
 
 
-def acceptance_errors(root: Path, required: bool) -> list[str]:
+def acceptance_errors(root: Path, required: bool, task: str | None) -> list[str]:
     """Plan 007 S6: a class at three ledger rows needs a pasted search of the correction records."""
     value = os.environ.get(ACCEPTANCE_ENV, "").strip()
     if not value:
@@ -740,18 +752,33 @@ def acceptance_errors(root: Path, required: bool) -> list[str]:
     path_error = orchestration_path_error(root, path, ACCEPTANCE_ENV, "acceptance")
     if path_error:
         return [path_error]
+    # Bound like the audit: another task's record must not stand in for this one's.
+    if task is not None:
+        for name in (path.name, path.resolve().name):
+            if name != f"{task}.md":
+                return [
+                    f"{ACCEPTANCE_ENV} must be {task}.md, the record of the task named by {PR_FEEDBACK_ENV}, not {name}"
+                ]
     if not path.is_file():
         return [f"{ACCEPTANCE_ENV} file does not exist: {path}"]
     lines = path.read_text().splitlines()
+    errors: list[str] = []
+    # INV-6: every not-applicable the record carries names its evidence, whatever the audit verdict.
+    for line in map(str.strip, lines):
+        if (
+            line.startswith(AUDIT_FINDING_DISPOSITION_PREFIX)
+            and "not-applicable:" in line
+            and not PR_FEEDBACK_DISPOSITION.match(line, line.index("not-applicable:"))
+        ):
+            errors.append(f"{ACCEPTANCE_ENV} line needs `not-applicable:<reason>; evidence=<command>`: {line}")
     classes = Counter(match.group("cls") for line in lines if (match := LEDGER_ROW.fullmatch(line)))
     searches = [line for line in map(str.strip, lines) if line.startswith(SEARCH_PREFIX)]
-    errors: list[str] = []
     for cls, count in classes.items():
         if count < S6_CLASS_LIMIT:
             continue
         # The slug as a whole token: `scope` is not named by a line about `class-count-scope`.
         slug = re.compile(rf"(?<![\w-]){re.escape(cls)}(?![\w-])")
-        if not any(slug.search(line) and all(part in line for part in SEARCH_PARTS) for line in searches):
+        if not any(slug.search(line) and SEARCH_GREP.search(line) and SEARCH_MEMORY in line for line in searches):
             errors.append(f"S6: class {cls} at {count} without a pasted search")
     return errors
 
@@ -814,7 +841,10 @@ def main() -> None:
                 f"PR feedback evidence format checked only: {os.environ[PR_FEEDBACK_ENV].strip()}"
                 " (set BASE=<ref> to bind it to HEAD, re-collect it, and check fixed: commits)"
             )
-    acceptance = acceptance_errors(root, required=args.base is not None)
+    # pr_feedback_errors already validated PR_FEEDBACK_EVIDENCE's location and -pr-feedback.json suffix.
+    feedback = os.environ.get(PR_FEEDBACK_ENV, "").strip()
+    task = Path(feedback).name.removesuffix("-pr-feedback.json") if feedback else None
+    acceptance = acceptance_errors(root, required=args.base is not None, task=task)
     if acceptance:
         print("Acceptance record evidence is incomplete:")
         for error in acceptance:
@@ -830,8 +860,6 @@ def main() -> None:
         return
 
     if head is not None and not all(path.startswith(".orchestration/") for path in paths):
-        # The base path already validated PR_FEEDBACK_EVIDENCE's location and -pr-feedback.json suffix.
-        task = Path(os.environ[PR_FEEDBACK_ENV].strip()).name.removesuffix("-pr-feedback.json")
         errors = audit_errors(root, head, task)
         if errors:
             print("Task-level audit evidence is required for PR integration of this change:")

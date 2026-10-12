@@ -1280,44 +1280,100 @@ class ReviewGuardTest(unittest.TestCase):
     def test_s6_class_at_three_with_a_pasted_search_is_accepted(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
-        record = self.acceptance_record("acceptance-s6-present.md")
-        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
-        self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
+        skill_form = "grep -rl 'classes:.*class-count-scope' .orchestration/learning/mistakes/"
+        glob_form = "grep -l 'classes:.*class-count-scope' .orchestration/learning/mistakes/*.md"
+        for form in (skill_form, glob_form):
+            with self.subTest(form=form):
+                record = self.acceptance_record("acceptance-s6-present.md")
+                path = self.temp_dir / record
+                path.write_text(path.read_text().replace(skill_form, form))
+                self.assertIn(form, path.read_text())
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+                self.assertEqual(result.returncode, 0, result.stdout)
+                self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
 
     def test_s6_search_line_names_the_class_token_and_both_commands(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
         rows = "".join(f"42441288{index:02d}\tscope\n" for index in range(2)) + "audit:3a54d34:1\tscope\n"
-        grep = "grep -l 'classes:.*x' .orchestration/learning/mistakes/"
+        grep = "grep -l 'classes:.*x' .orchestration/learning/mistakes/*.md"
         both = f"{grep}; uv run --no-project .claude/hooks/contextdb_cli.py memory search x"
         for label, search in (
             ("another class's slug", f"search: class-count-scope: {both}\n"),
             ("one command only", f"search: scope: {grep}\n"),
             ("grep outside the mistake records", f"search: scope: {both.replace('learning/mistakes', 'acceptance')}\n"),
+            ("grep given the bare directory", f"search: scope: {both.replace('mistakes/*.md', 'mistakes/')}\n"),
             ("pre-amendment grep -rl", "search: scope: grep -rl x .orchestration; contextdb_cli.py memory search x\n"),
             ("not at the line start", f"note search: scope: {both}\n"),
         ):
             with self.subTest(label):
-                self.write_review_file(".orchestration/acceptance/s6.md", rows + search)
-                env = {"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": ".orchestration/acceptance/s6.md"}
-                result = self.guard_base(env)
+                record = self.write_review_file(".orchestration/acceptance/test.md", rows + search)
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": str(record)})
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn("S6: class scope at 3 without a pasted search", result.stdout)
 
     def test_base_requires_an_acceptance_record_under_acceptance(self) -> None:
+        # The threat row for the ACCEPTANCE_EVIDENCE input: its path, then its content.
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
         self.write_review_file(".orchestration/validation/test.md", "")
-        for value, message in (
-            ("", "ACCEPTANCE_EVIDENCE must point to the task's acceptance record for PR integration"),
-            (".orchestration/validation/test.md", "ACCEPTANCE_EVIDENCE must live under .orchestration/acceptance/"),
-            (".orchestration/acceptance/none.md", "ACCEPTANCE_EVIDENCE file does not exist"),
+        other = self.write_review_file(".orchestration/acceptance/other.md", "# another task's record\n")
+        (self.temp_dir / ".orchestration/acceptance/alias.md").symlink_to(other)
+        own = ".orchestration/acceptance/test.md"
+        missing_search = (FIXTURES / "acceptance-s6-missing.md").read_text()
+        bare_not_applicable = "audit-finding: 1 not-applicable:the flagged path is generated output outside this task\n"
+        for value, content, message in (
+            ("", None, "ACCEPTANCE_EVIDENCE must point to the task's acceptance record for PR integration"),
+            (
+                ".orchestration/validation/test.md",
+                None,
+                "ACCEPTANCE_EVIDENCE must live under .orchestration/acceptance/",
+            ),
+            (".orchestration/acceptance/other.md", None, "must be test.md, the record of the task named by"),
+            (".orchestration/acceptance/alias.md", None, "must be test.md, the record of the task named by"),
+            (own, None, "ACCEPTANCE_EVIDENCE file does not exist"),
+            (own, missing_search, "S6: class class-count-scope at 3 without a pasted search"),
+            (own, bare_not_applicable, "ACCEPTANCE_EVIDENCE line needs `not-applicable:<reason>; evidence=<command>`"),
         ):
-            with self.subTest(value=value):
+            with self.subTest(value=value, content=(content or "")[:30]):
+                if content is not None:
+                    self.write_review_file(own, content)
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": value})
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn(message, result.stdout)
+
+    def test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict(self) -> None:
+        # INV-6 reads the record itself; AUDIT_DISPOSITIONS is consulted only for an incorrect verdict.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        reason = "not-applicable:the flagged path is generated output outside this task"
+        for label, line, message in (
+            ("no evidence clause", f"audit-finding: 1 {reason}\n", "ACCEPTANCE_EVIDENCE line needs"),
+            ("evidence clause", f"audit-finding: 1 {reason}; evidence=gh pr checks 1\n", None),
+            ("a fixed finding in prose", "audit-finding: 2 (P2, a:1) → fixed in the revise round\n", None),
+        ):
+            with self.subTest(label):
+                text = (FIXTURES / "acceptance-s6-present.md").read_text() + line
+                record = self.write_review_file(".orchestration/acceptance/test.md", text)
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": str(record)})
+                if message is None:
+                    self.assertEqual(result.returncode, 0, result.stdout)
+                else:
+                    self.assertEqual(result.returncode, 1, result.stdout)
+                    self.assertIn(message, result.stdout)
+
+    def test_acceptance_record_is_not_counted_as_a_change(self) -> None:
+        # Four docs files stay below the broad-diff limit only when the untracked record is not counted.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        run(["git", "switch", "-c", "feature"], self.temp_dir)
+        for index in range(4):
+            self.write_review_file(f"docs/page{index}.md", "text\n")
+        run(["git", "add", "docs"], self.temp_dir)
+        run(["git", "commit", "-m", "docs"], self.temp_dir)
+        feedback = self.write_feedback([])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Review not required", result.stdout)
 
 
 if __name__ == "__main__":

@@ -7,4 +7,4 @@ audit:3a54d34:2	class-count-scope
 4244248692	threat-row-outside-paths
 ```
 
-search: class-count-scope: grep -l 'classes:.*class-count-scope' .orchestration/learning/mistakes/; uv run --no-project .claude/hooks/contextdb_cli.py memory search class-count-scope
+search: class-count-scope: `grep -rl 'classes:.*class-count-scope' .orchestration/learning/mistakes/`; `uv run --no-project .claude/hooks/contextdb_cli.py memory search class-count-scope`

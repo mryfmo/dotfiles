@@ -34,5 +34,11 @@
     "scope": "review",
     "resolved": true,
     "body": "Orchestrator review of PR 318 at the a03 head b9a9da7d (git diff b896d9bc..b9a9da7d: AGENTS.md +6, SKILL +18/-5, tests +202): since 27ea99b2 the revise round added the five audit fixes (AGENTS.md first bullet scoped to the pull-request review by the Codex Bot with the audit's full scope kept; shape checked by hand until schemas/task.json lands; four pinned safeguards; Worker Playbook step 2 commits inside the sandbox with -c commit.gpgsign=false when the signing key is unreadable; the boundary-merge sentence names the in-job decision), the three Bot P2s of 21c160c8, the Codex-seat push clause (798fa098), gh pr ready only while the PR is a draft (7524e001), and the a03 task.md with its four-row threat table (f4d45983). The old grammar and `none` are absent from the SKILL. INV-2 caps hold (3 files outside .orchestration). Approved, subject to the merge order: PR 320 first, then gh pr update-branch and the final audit on the updated head."
+  },
+  {
+    "id": "a03-review-2",
+    "scope": "review",
+    "resolved": true,
+    "body": "Two gh pr update-branch cycles after the Phase A merges: 6e47afa7 (onto 0e522059, A5) and b7ae2d54 (onto 52575497, A3); git diff 52575497..b7ae2d54 outside .orchestration is byte-identical to git diff b896d9bc..b9a9da7d outside .orchestration (AGENTS.md +6, SKILL +18/-5, tests +202). The merged A5 workflows make the SKILL's boundary-merge sentence true on the merged tree (the ordering thread 4240598178 was resolved at 21:45Z on PR 320's merge). Approved for the final audit on b7ae2d54."
   }
 ]

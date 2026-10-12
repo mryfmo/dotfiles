@@ -1,6 +1,7 @@
 ---
 format: 2
 task_id: dotfiles-T128-v1-task-schema-contract-a01
+superseded_by: dotfiles-T128-v1-task-schema-a01
 kind: code
 security: true
 design_review:

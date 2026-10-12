@@ -44,3 +44,12 @@ cost: n/a
 - Commits: `406ca746` (task copy), `a35a751e` (the fail-closed reader), `fca44b4c` (evidence), pushed together at 07:53:53Z. No `gh pr update-branch` was run here: the orchestrator runs it after the boundary PR merges.
 - CI: 13 of 13 pass on `fca44b4c`, the seven required contexts among them; the watcher exited 0 and was joined before the RESULT (validation §7).
 - Bot: one round on `fca44b4c`. The code review completed at 07:56:00Z with no review object and no comment, and the Bot reacted 👍 at 07:56:03Z (the security review last ran on `9fcd2b0`). `bot_rounds=1`, no fix round. No thread opened under a02; 4240499289 (a01, `fixed:e872f69f`) is the PR's only Bot thread.
+## Amendment 1 (TASK 09:41:42Z, sha256 `4de54fde…`)
+
+The boundary PR 321 merged at 09:40Z, so design `4520b8f0…` and this task id's `implementing_tasks` entry are on `main`; this is the TASK the worker acts on (INV-2), and the 07:35Z one is superseded. The task file changed only in `design_review.receipt` (round 18) and the design-on-main row of the threat table. The copy at `.orchestration/dotfiles-T128-ci-skip-orchestration-a02/task.md` is re-made byte-identical (validation §8). No content change; no `gh pr update-branch` here, as the orchestrator runs it after this RESULT.
+
+## Final head `a8c2bed9` (main-checkout copy, Amendment 1)
+
+- Commit: `a8c2bed9` (the Amendment 1 task copy and the evidence note), pushed at 09:43:15Z.
+- CI: 13 of 13 pass on `a8c2bed9`; the watcher exited 0 and was joined before the RESULT (validation §9).
+- Bot: code review completed at 09:44:38Z with no review object and no comment, 👍 at 09:44:41Z. `bot_rounds=2` under a02, no fix round; no thread opened under a02.

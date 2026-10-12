@@ -1,6 +1,5 @@
 # Acceptance: dotfiles-T128-process-rules-a06 (fifth continuation of PR #318; plan 006 Phase A: A1, A2, A4)
 
-- **Decision:** pending (the worker's one commit from `be0afe7e`: the a06 task copy and evidence; CI; Bot wait; RESULT; then re-sweep last, ledger check, audit, gate, merge).
 - pr=318
 - **Task:** `c45a1000651933ad8bf418ba809c5c4f7a4fdd703f358e24a1dc6cff03718d5d`, written by the review seat (`dotfiles-T128-process-rules-redesign-a05`, RESULT 624) as the INV-6 reset successor of a05: a05 (`71ca5df0…`, items 1 to 10) plus the fifth threat-table row for `tests/fixtures/regime/*.md` (the Bot's remedy on thread 4243885108). Dispatched 00:40Z to `claude-standard-dot-a003`, `.claude/worktrees/worker-f`, branch `docs/regime-pattern`.
 - **Reset lineage:** a01 → a02 → a03 → a04 → a05 → a06 (INV-6 four times, plan S1 once); records `…-a0{1,2,3,4,5}-design-reset.md`; cause records `plan-006-s1-process-rules-counters-bullet-2026-10-11.md`, `plan-006-s1-pr318-finding-classes-2026-10-12.md`.

@@ -2,7 +2,9 @@
 
 > **Executor instructions**: this plan records the resumption of PR #323 (`dotfiles-T128-worker-stop-and-watch-a02`, head `3a54d340`) as a plan, in plan 007's S7 report form. Nothing in it is executed until the operator chooses an option below. Every figure is pasted command output of 2026-10-12.
 >
-> **Drift check**: `git rev-parse origin/main` is `b67ea752`; PR #323 is `OPEN` at `3a54d340e9078ba3565237f6d73a00d8fc2d75e9` with CI 13 of 13 green, all 23 Bot threads replied and resolved, sweep 85 of 85 dispositioned, ledger 24 rows plus the four audit rows, audit `…-a02-audit-3a54d34.md` verdict `incorrect` with four findings; the worker `claude-standard-dot-a003` holds (ACCEPTANCE `under_review`, 03:32Z); the review seat `claude-review-dot-a001` is idle; no amendment or revise has been sent since the operator's halt. If any of these moved, re-read before acting.
+> **Drift check (at planning time, 04:4xZ; every line below has since moved)**: `git rev-parse origin/main` is `b67ea752`; PR #323 is `OPEN` at `3a54d340e9078ba3565237f6d73a00d8fc2d75e9` with CI 13 of 13 green, all 23 Bot threads replied and resolved, sweep 85 of 85 dispositioned, ledger 24 rows plus the four audit rows, audit `…-a02-audit-3a54d34.md` verdict `incorrect` with four findings; the worker `claude-standard-dot-a003` holds (ACCEPTANCE `under_review`, 03:32Z); the review seat `claude-review-dot-a001` is idle; no amendment or revise has been sent since the operator's halt. If any of these moved, re-read before acting.
+>
+> **State after decision 2 (09:32Z; re-read 10:49Z, main `c1ae5531`)**: PR #323 is a draft parked at `dc7edcc0` under `dotfiles-T128-worker-stop-and-watch-a02` (`1de19e51…`); worker `claude-standard-dot-a003` released (ACCEPTANCE `superseded`, 09:32:14Z); the review seat `claude-review-dot-a001` re-seated 10:05Z; T712 owns the continuation. This plan is DONE and nothing in it is executed again.
 
 ## Status
 

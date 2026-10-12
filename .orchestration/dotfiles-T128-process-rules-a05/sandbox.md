@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-process-rules-a05
 seat: claude-standard-dot-a003
-permission_gated_commands: 12
+permission_gated_commands: 19
 ---
 
 # Sandbox record: dotfiles-T128-process-rules-a05
@@ -24,3 +24,17 @@ permission_gated_commands: 12
 | 10 | final recheck of reviews, review comments and the connector summary right before the RESULT, with the inbox read right before the dispatch (`gh` only) | `gh` |
 | 11 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
 | 12 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a05 …` | `agmsg-dispatch` |
+
+## Revise round 1 (Amendment 1, item 10)
+
+Rows #1–#12 are the first a05 RESULT's (main-checkout copy). The revise commits were made inside the sandbox; only the push leaves it. R2 onward are counted in advance in this copy; the main-checkout copy states the final count.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| R1 | `cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add …` (item 10) | main-checkout `memory add` |
+| R2 | the authorized push (`b9194e3b`, `07b2160b` and this evidence) | `git push` |
+| R3 | `gh pr checks 318 … --watch`, started once a check run is listed (background, exit status joined) | `gh` |
+| R4 | Bot wait on the pushed head, `scratchpad/bot-wait.sh` filtered by the Codex login, timed from the push | `gh` only |
+| R5 | final recheck of reviews, review comments and the connector summary, with the inbox read right before the dispatch (`gh` only) | `gh` |
+| R6 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
+| R7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a05 …` | `agmsg-dispatch` |

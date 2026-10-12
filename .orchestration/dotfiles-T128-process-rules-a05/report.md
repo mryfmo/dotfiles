@@ -47,6 +47,20 @@ I asked first (PONG `status=question`, default hold), because all three findings
 
 All five proofs fail their tests (validation §6), the old freeze sentence pasted back among them. The docs module runs 41 tests, OK. This is fix round 1 of 2 under the A2 cap; a further P1 on the freeze sentence is reported with its class (class count 2), not fixed.
 
+## Revise round 1: Amendment 1, item 10 (TASK 00:25:26Z, sha256 `71ca5df0…`; ACCEPTANCE 00:25:27Z, `previous_head=4af89390`)
+
+- `b9194e3b` re-copies the amended task file byte-identical. Its `allowed_files` gain `tests/fixtures/regime/*.md` and this directory. `07b2160b` is item 10, the one revise commit, recorded in `revise.yaml` beside this report. It closes the class `unpinned` (plan 006 S1, 2026-10-12: threads 4240269219, 4240334098, 4240566263 and 4240566268, and audit findings 27ea99b:3, b7ae2d5:3 and 4af8939:2).
+- Five golden fixtures, each created from the tree at this commit:
+  - `tests/fixtures/regime/invariants.md`: SKILL "## Review and integration invariants";
+  - `worker-step-15.md`: Worker Playbook step 15, to `## Codex seat worklogs`;
+  - `orchestrator-step-7.md`: the Orchestrator Playbook sliced first, then `7. ` to `8. `;
+  - `message-contract.md`: "## Message Contract v1";
+  - `code-review-orchestration.md`: AGENTS.md "### Orchestration records and trust-boundary code", to the end of the file.
+- `test_regime_rule_sections_are_pinned_whole` slices each section with the module's `section` helper from its own marker table. It strips trailing whitespace per line and at the ends, and `assertEqual`s the slice to the fixture with the task's message. The token tests stay.
+- One choice the task leaves open: each pinned slice includes its start marker, the heading or the numbered line ("from its numbered line"). CI runs `prettier --check` on every tracked `.md` file, and `.prettierignore` is outside `allowed_files`. A step-15 slice that starts mid-sentence (", wait for CI…") is not valid Markdown, and prettier flags it. With the marker every fixture passes (validation §8).
+- Removal proofs (validation §8): the audit's four clauses each fail the new test when removed: the third pair is the last; the design goes back to a context other than its author; while that source has no entry for the task; three rows of one class stop the artifact. So does one clause from each of the other four sections. In every row the new test is the only failing test, so these clauses had no pin before. The docs module runs 42 tests, OK.
+- Audit findings 1 and 3 are the orchestrator's, as the ACCEPTANCE says. CompactionDB: `7b1907ee-8098-4422-967e-0dcd76bfd54a`. The final head's CI and Bot wait are in the RESULT and the main-checkout copy of this report.
+
 ## Notes
 
 - Nothing here touches the threat-table rule's payload wording.

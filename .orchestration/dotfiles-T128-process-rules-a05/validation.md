@@ -162,3 +162,70 @@ AssertionError: '`question`: the worker holds and asks; INV-6 counts it.' not fo
 FAILED (failures=1)
 == restored: OK
 ```
+
+## 8. Revise round 1: item 10 at `07b2160b` (`previous_head=4af89390`; §7 is the main-checkout copy's final head of the first RESULT)
+
+```
+$ shasum -a 256 ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-process-rules-a05.md .orchestration/dotfiles-T128-process-rules-a05/task.md | cut -c1-64
+71ca5df01db48361a5c6ea140faebeede70fa0fb41f00f78d280bd9ba13024fe
+71ca5df01db48361a5c6ea140faebeede70fa0fb41f00f78d280bd9ba13024fe
+$ git log --oneline -2; git show --stat --format= 07b2160b; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py; ruff check --config ruff.toml tests/unit/test_agmsg_orchestration_docs.py; prettier --check AGENTS.md home/dot_agents/skills/agmsg-orchestration/SKILL.md tests/fixtures/regime/*.md 2>&1 | tail -1
+07b2160b test(regime): pin the regime rule sections whole as golden fixtures
+b9194e3b chore(orchestration): task file for dotfiles-T128-process-rules-a05, Amendment 1
+ tests/fixtures/regime/code-review-orchestration.md |  5 +++
+ tests/fixtures/regime/invariants.md                | 28 +++++++++++++
+ tests/fixtures/regime/message-contract.md          | 48 ++++++++++++++++++++++
+ tests/fixtures/regime/orchestrator-step-7.md       |  1 +
+ tests/fixtures/regime/worker-step-15.md            |  9 ++++
+ tests/unit/test_agmsg_orchestration_docs.py        | 34 +++++++++++++++
+ 6 files changed, 125 insertions(+)
+Ran 42 tests in 0.010s
+
+OK
+1 file already formatted
+All checks passed!
+All matched files use Prettier code style!
+$ for f in tests/fixtures/regime/*.md; do printf "%s  %s lines  " "$f" "$(wc -l < "$f" | tr -d " ")"; head -1 "$f" | cut -c1-60; done
+tests/fixtures/regime/code-review-orchestration.md  5 lines  ### Orchestration records and trust-boundary code
+tests/fixtures/regime/invariants.md  28 lines  ## Review and integration invariants
+tests/fixtures/regime/message-contract.md  48 lines  ## Message Contract v1
+tests/fixtures/regime/orchestrator-step-7.md  1 lines  7. Track `max_turns`. Use `AGMSG-PING` for liveness if a wor
+tests/fixtures/regime/worker-step-15.md  9 lines  15. After the final push, wait for CI and the Codex Bot befo
+```
+
+Removal proofs (`scratchpad/mutate_a05_item10.py`: one clause deleted from a pinned section in a `git archive HEAD` copy of the working tree with the fixtures, then the whole docs module run; the first four rows are the clauses the audit of `4af89390` named):
+
+```
+== removed clause: invariants: the third pair is the last (home/dot_agents/skills/agmsg-orchestration/SKILL.md)
+   failing tests: test_regime_rule_sections_are_pinned_whole; pinned sections that changed: invariants
+   FAILED (failures=1)
+== removed clause: invariants: the design goes back to a context other than its author (home/dot_agents/skills/agmsg-orchestration/SKILL.md)
+   failing tests: test_regime_rule_sections_are_pinned_whole; pinned sections that changed: invariants
+   FAILED (failures=1)
+== removed clause: invariants: while that source has no entry for the task (home/dot_agents/skills/agmsg-orchestration/SKILL.md)
+   failing tests: test_regime_rule_sections_are_pinned_whole; pinned sections that changed: invariants
+   FAILED (failures=1)
+== removed clause: invariants: three rows of one class stop the artifact (home/dot_agents/skills/agmsg-orchestration/SKILL.md)
+   failing tests: test_regime_rule_sections_are_pinned_whole; pinned sections that changed: invariants
+   FAILED (failures=1)
+== removed clause: worker-step-15: a thumbs-up alone is not evidence (home/dot_agents/skills/agmsg-orchestration/SKILL.md)
+   failing tests: test_regime_rule_sections_are_pinned_whole; pinned sections that changed: worker-step-15
+   FAILED (failures=1)
+== removed clause: orchestrator-step-7: PING for liveness (home/dot_agents/skills/agmsg-orchestration/SKILL.md)
+   failing tests: test_regime_rule_sections_are_pinned_whole; pinned sections that changed: orchestrator-step-7
+   FAILED (failures=1)
+== removed clause: message-contract: single-line records (home/dot_agents/skills/agmsg-orchestration/SKILL.md)
+   failing tests: test_regime_rule_sections_are_pinned_whole; pinned sections that changed: message-contract
+   FAILED (failures=1)
+== removed clause: code-review-orchestration: lint and formatting to CI (AGENTS.md)
+   failing tests: test_regime_rule_sections_are_pinned_whole; pinned sections that changed: code-review-orchestration
+   FAILED (failures=1)
+== restored: OK
+```
+
+CompactionDB (main checkout, outside the sandbox through the permission gate):
+
+```
+$ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-process-rules-a05 Amendment 1 item 10 …'
+7b1907ee-8098-4422-967e-0dcd76bfd54a
+```

@@ -11,3 +11,19 @@
 - **Exemption declared:** evidence-sync bookkeeping and agmsg control plane.
 
 cost: rounds 1 (task files) + 1 pair (design v16) + 1 Codex confirmation; amendments 0; questions 0; wall 04:03Z (TASKs 409/410) to 04:13Z (revision applied); audits 0; Bot threads 0 (no PR).
+
+## A7 pointer change (2026-10-11 23:35Z)
+
+- The round-7 A7 text (`23417dde…`) named `after: [dotfiles-T128-process-rules-a03, dotfiles-T128-regime-counters-a02]`; a03 and a04 are superseded (INV-6 reset, then plan S1), so line 12 now names `dotfiles-T128-process-rules-a05`; no other byte differs. New hash `faedfcfc8bb37c706c23619297a5e48bfdbc2e50a91bce4e6a3d3cb4ccbae460`; the review seat confirmed it under this task id (`round=A7-pointer`, RESULT 601 at 23:35:58Z: four lines differ from the `60f782e2` text on `main`, line 12 plus round 7's three lines, so the pointer line alone differs from `23417dde`). Both sentences A7 inserts before or replaces exist at PR 318's head `7800ef92` and a05's item 9 touches neither (checked 23:36Z with `grep -c -F` on the SKILL at that head: 1 and 1).
+
+## A7 fixture consequence (2026-10-12 00:27Z)
+
+- a05 amendment 1 (item 10) pins Worker Playbook step 15 and Orchestrator Playbook step 7 whole as golden fixtures; A7 edits both. Four edits to the A7 text against `faedfcfc…`: `allowed_files` gains `tests/fixtures/regime/worker-step-15.md` and `orchestrator-step-7.md`; a fourth threat-table row for the two fixtures (residual: the fixture diff is read beside the SKILL diff; a fixture edit without the matching SKILL edit, or the reverse, fails the test); A7-3 opens with the sentence that the same commit updates both fixtures and the RESULT lists them (INV-12); Validation adds the pinned-sections test green with the two fixtures updated. New hash `1c89c36a1435651cbd2f1039f21a680a70d906f318ce94342f8c4f0bcff6c6e4`; the review seat confirmed it under this task id (`round=A7-pointer-2`, RESULT 619 at 00:27:13Z).
+
+## A7 consistency-check fixes (2026-10-12 00:58Z)
+
+- `task-consistency-check.py` (the pre-dispatch check plan 006 Phase 0 gained after the `bookkeeping` S1 of PR #318) flagged the `1c89c36a…` text: C2 (`allowed_files` lacked `.orchestration/dotfiles-T128-worker-stop-and-watch-a01/**`, the task copy and evidence directory) and C4 (the fixture row named `orchestrator-step-7.md` without its directory). Two edits: the directory entry; both full fixture paths in the row. New hash `7851d96986d2209b9433e3edcc1b93a2ed6c05569dd900f1b43a83ed394a77ef`, checker `OK`; confirmed by the review seat (`round=A7-pointer-3`, RESULT 635 at 00:57:02Z).
+
+## A7 generalized-check fixes (2026-10-12 01:13Z)
+
+- The generalized check (C4 every `allowed_files` entry named by a row; C6 the design's current receipt) flagged the `7851d969…` text: the SKILL row did not name `home/dot_agents/skills/agmsg-orchestration/SKILL.md`, and `design_review.receipt` named round 16 (which accepted `15957fbc…`) instead of round 18 (the design's own receipt for `4520b8f0…`). Two edits; new hash `84d8acde766ff997b9f9ed6122274f4cd68dd46bcd64e69b3775d7e24d23ae2a`, checker `OK`; confirmed by the review seat (`round=A7-pointer-4`, RESULT 644 at 01:16:48Z).

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "a3-a02-review-1",
+    "scope": "review",
+    "resolved": true,
+    "body": "Orchestrator review of PR 319's successor heads: 3ea405c8 (a02: first-token reads of status=/verdict=, reset_of binding read with PyYAML through uv run --offline, fixtures cut to 191 lines, 931 test lines), e87a52fc (amendment 1 after the INV-2 re-dispatch: the reset accept bound to the reset record's redesign_source via --reset-source with none accepting nothing, pr=none only for a task file with format-2 front matter and kind review or design, read with PyYAML; 944 test lines; 48 mutations killed) and 8b015cdc (gh pr update-branch onto main 3c845c55: git diff 3c845c55..8b015cdc outside .orchestration is byte-identical to git diff b896d9bc..e87a52fc outside .orchestration). Live replay by the orchestrator from a scratch worktree at e87a52fc: the process-rules a01 reset anchors with redesign_source redesign-a02 (accepted_by claude-review-dot-a001) and anchors nothing with redesign-a01; the boundary probe reports only T120 (amendments 7), the two T124 waiver-unanchored lines and V0 (bot heads 6). Approved for the final audit on 8b015cdc."
+  },
+  {
+    "id": "a3-a02-review-2",
+    "scope": "file",
+    "file": "scripts/regime-counters.sh",
+    "line": 1,
+    "resolved": true,
+    "body": "Checked: a forged note (status=question inside a blocked PONG's free text) counts 0 questions; counts follow INV-6's sentence exactly; every line ends in source=live or source=fixture; the own task's live line reads tasks=2 amendments=1 results=2 revises=1 bot_p1_heads_after_result=0 at 21:38Z."
+  },
+  {
+    "id": "a3-a02-review-3",
+    "scope": "file",
+    "file": "scripts/check-regime-boundary.sh",
+    "line": 1,
+    "resolved": true,
+    "body": "Checked: an accepted record silences only with the task's merged PR, or with pr=none on a format-2 review/design task file none of whose RESULTs names a PR; a reset record only when its redesign_task file names the task in reset_of, its hash matches, and the record's redesign_source task accepted that hash from a foreign identity; DESIGN_RESET_WAIVED_BY lines are reported as waiver-unanchored; the probe skips without the counters script or a readable store."
+  },
+  {
+    "id": "a3-a02-review-4",
+    "scope": "review",
+    "resolved": true,
+    "body": "Second gh pr update-branch after A5 merged (main 0e522059): head 8ce912b7; git diff 0e522059..8ce912b7 outside .orchestration is byte-identical to git diff b896d9bc..e87a52fc outside .orchestration (the PR's own files). CI on 8ce912b7: 14 of 14. Approved for the final audit on 8ce912b7."
+  }
+]

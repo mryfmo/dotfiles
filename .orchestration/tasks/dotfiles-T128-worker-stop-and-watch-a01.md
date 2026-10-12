@@ -4,19 +4,24 @@ task_id: dotfiles-T128-worker-stop-and-watch-a01
 kind: docs
 security: false
 design_review:
-  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round18.md
   design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
 allowed_files:
   - home/dot_agents/skills/agmsg-orchestration/SKILL.md
   - tests/unit/test_agmsg_orchestration_docs.py
-after: [dotfiles-T128-process-rules-a03, dotfiles-T128-regime-counters-a02]
+  - tests/fixtures/regime/worker-step-15.md
+  - tests/fixtures/regime/orchestrator-step-7.md
+  - .orchestration/dotfiles-T128-worker-stop-and-watch-a01/**
+after: [dotfiles-T128-process-rules-a05, dotfiles-T128-regime-counters-a02]
 threat_table:
-  - control: the PR edits the SKILL that Claude seats follow once it is applied
+  - control: the PR edits home/dot_agents/skills/agmsg-orchestration/SKILL.md, the rules Claude seats follow once it is applied
     disposition: "residual: the applied copy changes only after the merge and the operator's make update; before the merge the orchestrator's diff review and the audit from main judge every sentence, and tests/unit/test_agmsg_orchestration_docs.py pins each rule sentence with a token that fails when the sentence is removed"
   - control: the PR edits tests/unit/test_agmsg_orchestration_docs.py, the module that pins its own rule sentences, so it controls the oracle as well as the text
     disposition: "residual: the orchestrator's diff review and the task-level audit from main read the test diff beside the prose diff; main-tests is no control here, because the module is declared and would run only in dormant-contract mode"
   - control: the task-file copy on the branch (.orchestration/dotfiles-T128-worker-stop-and-watch-a01/task.md)
     disposition: "residual: the copy is byte-identical to the dispatched task file (sha256 in the worker's validation file, compared by the orchestrator at acceptance)"
+  - control: the two golden fixtures of the sections this task edits (tests/fixtures/regime/worker-step-15.md and tests/fixtures/regime/orchestrator-step-7.md), which test_regime_rule_sections_are_pinned_whole compares byte for byte, so the PR controls that oracle together with the text
+    disposition: "residual: the fixture diff is read beside the SKILL diff by the orchestrator and the task-level audit; a fixture edit without the matching SKILL edit, or the reverse, fails the test"
 premises:
   - claim: "on 2026-10-11 the V0 worker kept fixing Bot findings through seven Bot-reviewed heads of PR 317, six of them after its park at 03:09Z, and never read the halt and park messages, because the only stop in Worker Playbook step 15 was the Bot's silence; the loop ended by despawn at 04:12Z"
     command: "gh api --paginate repos/mryfmo/dotfiles/pulls/317/reviews --jq '.[]|select(.user.type==\"Bot\")|[.commit_id[0:8],.submitted_at]|@tsv'; sqlite3 ~/.agents/skills/agmsg/db/messages.db \"select id, created_at, coalesce(read_at,'UNREAD') from messages where id in (407,408)\""
@@ -56,15 +61,17 @@ Insert, before the bullet "Fix P0/P1 findings, inline or review-body, with a fix
 
 Replace "Track `max_turns`. Use `AGMSG-PING` for liveness if a worker stalls." with:
 
-- Track `max_turns` and watch every in-flight task from GitHub and history, never from panes, at the orchestrator's own action boundaries and at least every 30 minutes after a TASK: list the PR's commits, the Bot's reviews and the check runs (`gh api repos/{owner}/{repo}/pulls/<n>/commits`, `…/reviews`, `gh pr checks <n>`) and the task's PONGs in history. The cadence mechanism is one bounded background wait of at most 30 minutes per task between reads, never a foreground sleep loop; the watch reads state and never detects completion, which stays the RESULT's arrival through the Monitor or turn delivery. 45 minutes without a push, a PONG or a RESULT is a stall: send `AGMSG-PING v1` and wait one turn. A worker whose PING stays unread while it keeps pushing past the A2 cap or past an INV-6 count is stopped with `herdr-agents --remove-worker <worktree> --force` and the seat is re-created for the next task; the acceptance record names the PING id and the stop.
+- Track `max_turns` and watch every in-flight task from GitHub and history, never from panes, at the orchestrator's own action boundaries and at least every 30 minutes after a TASK: list the PR's commits, the Bot's reviews, its top-level review comments and the check runs (`gh api repos/{owner}/{repo}/pulls/<n>/commits`, `…/reviews`, `…/pulls/<n>/comments`, `gh pr checks <n>`; once A3 is on `main`, `scripts/regime-counters.sh <task id> --pr <n>` gives the same counts in one line) and the task's PONGs in history, so an INV-6 head count crossed by a worker that ignores its PING is seen from the inline P0/P1 threads. The cadence mechanism is one bounded background wait of at most 30 minutes per task between reads, never a foreground sleep loop; the watch reads state and never detects completion, which stays the RESULT's arrival through the Monitor or turn delivery. 45 minutes without a push, a PONG or a RESULT is a stall: send `AGMSG-PING v1` and wait one turn. A worker whose PING stays unread while it keeps pushing past the A2 cap or past an INV-6 count is stopped with `herdr-agents --remove-worker <worktree> --force` and the seat is re-created for the next task; the acceptance record names the PING id and the stop.
 
 ## A7-3 Tests
 
-`tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest` gains two tests, section-scoped like the others: `test_the_worker_stops_itself_on_repeated_findings` (tokens in step 15: "fixes nothing more", "`status=blocked note=S1|INV-6`", "whichever limit comes first ends the fixing", "never a disposition", "never for a fourth round of the same class", "not only the current head's", "and the review bodies whose `commit_id`, is at or after the task's first commit on the PR", "counted toward the fix cap and the classes, never INV-6's heads", "`--history-only`") and `test_the_orchestrator_watches_from_github_and_history` (tokens in the Orchestrator Playbook: "at least every 30 minutes after a TASK", "never detects completion, which stays the RESULT's arrival", "45 minutes without a push, a PONG or a RESULT is a stall", "`herdr-agents --remove-worker <worktree> --force`"). Each fails when its sentence is removed.
+Step 15 and step 7 are pinned whole by a05's item 10 (`tests/fixtures/regime/worker-step-15.md`, `orchestrator-step-7.md`, compared by `test_regime_rule_sections_are_pinned_whole`): the same commit that changes the two steps updates both fixtures to the new text, and the RESULT lists them (a declared change, INV-12).
+
+`tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest` gains two tests, section-scoped like the others: `test_the_worker_stops_itself_on_repeated_findings` (tokens in step 15: "fixes nothing more", "`status=blocked note=S1|INV-6`", "whichever limit comes first ends the fixing", "never a disposition", "never for a fourth round of the same class", "not only the current head's", "and the review bodies whose `commit_id`, is at or after the task's first commit on the PR", "counted toward the fix cap and the classes, never INV-6's heads", "`--history-only`") and `test_the_orchestrator_watches_from_github_and_history` (tokens in the Orchestrator Playbook: "at least every 30 minutes after a TASK", "`…/pulls/<n>/comments`", "never detects completion, which stays the RESULT's arrival", "45 minutes without a push, a PONG or a RESULT is a stall", "`herdr-agents --remove-worker <worktree> --force`"). Each fails when its sentence is removed.
 
 ## Validation
 
-`prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md`; `uv run python -m unittest tests.unit.test_agmsg_orchestration_docs -v`; removal proofs for the thirteen tokens; the premises re-run and pasted (the gh one from outside the sandbox).
+`prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md`; `uv run python -m unittest tests.unit.test_agmsg_orchestration_docs -v`; removal proofs for the fourteen tokens; `test_regime_rule_sections_are_pinned_whole` green with the two fixtures updated in the same commit; the premises re-run and pasted (the gh one from outside the sandbox).
 
 ## First commit
 

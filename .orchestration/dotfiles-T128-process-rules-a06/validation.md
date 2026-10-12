@@ -32,3 +32,13 @@ The empty `git diff --stat` is the "no content change". The removal proofs of it
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-process-rules-a06 …'
 52664f52-3f25-4b15-8fc3-ad49aaeb7612
 ```
+
+## 5. Amendment 1: the task copy (§4 is the main-checkout copy's final head of the first RESULT)
+
+```
+$ shasum -a 256 ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-process-rules-a06.md .orchestration/dotfiles-T128-process-rules-a06/task.md | cut -c1-64; git diff --stat HEAD -- .orchestration/dotfiles-T128-process-rules-a06/task.md; git diff --stat HEAD -- home AGENTS.md tests
+90fb32c26f4b1f70aebf44e7cee898e75dd7e273304def9bfaa2d7dff165f9aa
+90fb32c26f4b1f70aebf44e7cee898e75dd7e273304def9bfaa2d7dff165f9aa
+ .orchestration/dotfiles-T128-process-rules-a06/task.md | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+```

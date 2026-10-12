@@ -21,6 +21,11 @@ Note: the task's `allowed_files` lists `.orchestration/dotfiles-T128-process-rul
 
 The audit of `4af89390` finding 2 is `fixed:07b2160b` (item 10). The final head's CI and Bot wait are in the RESULT and the main-checkout copy of this report. The worker resolves no thread.
 
+## Amendment 1 (TASK 00:57:50Z, sha256 `90fb32c2…`)
+
+- Bot threads 4243923211 (P1) and 4243923214 (P2) on `3a4ebdbb`, both on this task's own record, were left open in the first RESULT with proposals. The amended task file fixes both lines: `allowed_files` names `.orchestration/dotfiles-T128-process-rules-a06/**`, and the copies row and its residual name `-a06/task.md` and the a06 hash. The orchestrator checked it with `task-consistency-check.py` (C1 to C5 OK) and the review seat re-anchored it.
+- This commit re-copies it byte-identical (validation §5) and carries this note. There is no content change, and the a06 directory is now in `allowed_files`. Both threads are `fixed:` this commit.
+
 ## Notes
 
 - Understand-Anything hook: did not fire. plan-mode-used: no.

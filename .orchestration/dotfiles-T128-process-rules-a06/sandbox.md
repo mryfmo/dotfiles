@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-process-rules-a06
 seat: claude-standard-dot-a003
-permission_gated_commands: 7
+permission_gated_commands: 14
 ---
 
 # Sandbox record: dotfiles-T128-process-rules-a06
@@ -19,3 +19,16 @@ permission_gated_commands: 7
 | 5 | final recheck of reviews, review comments and the connector summary, with the inbox read right before the dispatch (`gh` only) | `gh` |
 | 6 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
 | 7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a06 …` | `agmsg-dispatch` |
+
+## Amendment 1
+
+Rows #1 to #8 are the first a06 RESULT's (main-checkout copy). The copy commit was made inside the sandbox; only the push leaves it. These six follow, counted in advance from A1 on in this copy.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| A1 | the authorized push (the amended task copy and this evidence) | `git push` |
+| A2 | `gh pr checks 318 … --watch`, started once a check run is listed (background, exit status joined) | `gh` |
+| A3 | Bot wait on the pushed head, `scratchpad/bot-wait.sh` filtered by the Codex login, timed from the push | `gh` only |
+| A4 | final recheck of reviews, review comments and the connector summary, with the inbox read right before the dispatch (`gh` only) | `gh` |
+| A5 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
+| A6 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-a06 …` | `agmsg-dispatch` |

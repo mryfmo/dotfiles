@@ -207,6 +207,308 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
                 self.assertIn(token, text)
 
 
+class AgmsgRegimePatternTest(unittest.TestCase):
+    """Plan 006 Phase A: the review and fix pattern, each rule in the section that owns it."""
+
+    @staticmethod
+    def section(text: str, start: str, end: str = "\n## ") -> str:
+        return text.split(start, 1)[1].split(end, 1)[0]
+
+    def invariants(self) -> str:
+        return self.section(SKILL.read_text(), "## Review and integration invariants")
+
+    # Plan 006 S1 on the docs tests (class unpinned): token tests pin only the clauses their author chose, so
+    # each regime rule section is also pinned whole; a rule changes only together with its fixture (INV-12).
+    PINNED_SECTIONS = (
+        # name, file, outer slice or None, (start, end): the start marker is part of the pinned text.
+        ("invariants", SKILL, None, ("## Review and integration invariants", "\n## ")),
+        ("worker-step-15", SKILL, None, ("\n15. After the final push", "\n## ")),
+        ("orchestrator-step-7", SKILL, ("## Orchestrator Playbook", "\n## "), ("\n7. ", "\n8. ")),
+        ("message-contract", SKILL, None, ("## Message Contract v1", "\n## ")),
+        (
+            "code-review-orchestration",
+            ROOT / "AGENTS.md",
+            None,
+            ("### Orchestration records and trust-boundary code", "\n## "),
+        ),
+    )
+
+    @staticmethod
+    def normalized(text: str) -> str:
+        return "\n".join(line.rstrip() for line in text.split("\n")).strip()
+
+    def test_regime_rule_sections_are_pinned_whole(self) -> None:
+        for name, path, outer, (start, end) in self.PINNED_SECTIONS:
+            with self.subTest(section=name):
+                text = path.read_text()
+                if outer:
+                    text = self.section(text, *outer)
+                fixture = ROOT / "tests/fixtures/regime" / f"{name}.md"
+                self.assertEqual(
+                    self.normalized(start + self.section(text, start, end)),
+                    self.normalized(fixture.read_text()),
+                    f"regime rule section {name} changed: declare the change by updating "
+                    f"tests/fixtures/regime/{name}.md in the same commit and listing it in the RESULT",
+                )
+
+    def test_design_review_runs_in_paired_rounds_with_a_cap(self) -> None:
+        text = self.invariants()
+        for token in (
+            "get the same design hash at the same time",
+            "The orchestrator revises once per pair of results",
+            "opens no round while one is still open",
+            "frozen at the hash the pair last accepted",
+            # Thread 4243537279: a revision after the third pair would freeze an unreviewed hash.
+            "any later change to a hashed key is a new pair (INV-7)",
+            # Thread 4243732324: a third pair that returns revise or reject has no accepted hash to freeze.
+            "on its revise or reject nothing is frozen",
+            "becomes a residual list that is worker input",
+            "never implementation detail",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_task_file_review_is_one_round_with_a_fixed_stop_condition(self) -> None:
+        text = self.invariants()
+        for token in (
+            "A task-file review is one round with a fixed stop condition",
+            "no contradiction with the design",
+            "the premises hold",
+            "`allowed_files` covers every touch point that grep finds",
+            "one invariant check (a `-contract-a01` id maps to its implementing entry)",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_a_design_lands_on_main_before_its_task(self) -> None:
+        # Thread 4243537281: a boundary PR carrying the design is INV-2's dispatch prerequisite.
+        text = self.invariants()
+        for token in ("carries no task draft under review", "before its implementing TASK is dispatched (INV-2)"):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+        self.assertNotIn("is never a prerequisite of a dispatch", text)
+
+    def test_boundary_merge_sentence_names_the_in_job_decision(self) -> None:
+        # PR 320 removes the changes job: a skipped required job reports Success, so each job decides itself.
+        text = self.invariants()
+        self.assertIn(
+            "each required job decides inside itself and reports success on an `.orchestration`-only diff; "
+            "a skipped required job would report Success (fail-open), so no required job carries a job-level "
+            "`if` or a `needs`.",
+            text,
+        )
+        self.assertNotIn("the ruleset accepts the resulting `skipped` required checks", text)
+
+    def test_a_trust_boundary_task_carries_a_threat_table(self) -> None:
+        text = self.invariants()
+        for token in (
+            "carries a `threat_table` in its front matter",
+            "`closed: tests/<file>::<name>`",
+            "`residual: <sentence>`",
+            "`out-of-scope: <task id>`",
+            "Shape is `schemas/task.json`'s",
+            "Substance is the reviewers'",
+            "The table is the task's completion condition",
+            "a missing row is added once, counted as an amendment",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_threat_table_rule_carries_no_grammar(self) -> None:
+        # The reset of PR 318: shape lives in schemas/task.json, never as a pattern in prose.
+        text = self.invariants()
+        self.assertNotIn("^(closed|residual|out-of-scope)", text)
+        self.assertNotIn("`none`", text)
+
+    # Thread 4240348412 is closed by a05's counters bullet: the script reads the whole history (scripts/regime-counters.sh:85), no by-hand read remains.
+    def test_open_third_round_threads_have_an_integration_outcome(self) -> None:
+        # Thread 4240348414: an open: item needs a path through steps 10.1 and 10.5.
+        playbook = self.section(SKILL.read_text(), "## Orchestrator Playbook")
+        for token in ("is a sweep item like any other", "the PR is not merged, never with the thread open"):
+            with self.subTest(token=token):
+                self.assertIn(token, playbook)
+
+    def test_counters_run_before_every_acceptance_action(self) -> None:
+        text = self.invariants()
+        self.assertIn(
+            "Before every acceptance action (revise, accept, merge) the orchestrator runs "
+            "`scripts/regime-counters.sh <task id>`",
+            text,
+        )
+        # Thread 4240566268: the counts are evidence for the S1/S2 decision.
+        self.assertIn("and pastes its output into the acceptance record", text)
+
+    def test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first(self) -> None:
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        for token in (
+            # Thread 4240646079: after a fix push the PR is already ready, and `gh pr ready` fails there.
+            "Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft",
+            "within 10 minutes, post `@codex review`",
+            "at most twice. The third Bot round is not fixed",
+            "`AGMSG-RESULT … bot_rounds=3`",
+            "in the background and the Bot wait below at the same time",
+            "listed as `open:<thread id>`",
+            "an escalated label that the next bullet's",
+            "never from the end of CI",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, step)
+
+    def test_open_review_body_findings_have_an_identifier(self) -> None:
+        # Thread 4240290382: a review-body finding has no thread id.
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        self.assertIn("(`open:review-<review id>` for a review-body finding)", step)
+
+    def test_the_ci_watch_is_joined_before_the_result(self) -> None:
+        # Thread 4240290391: the background CI watcher's exit status gates the RESULT.
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        self.assertIn(
+            "Wait for that watcher's exit status before the RESULT: a non-zero exit means no RESULT until CI passes.",
+            step,
+        )
+
+    def test_question_pongs_are_in_the_contract(self) -> None:
+        # Thread 4243732330: INV-6 counts AGMSG-PONG status=question, so the contract must allow it.
+        contract = self.section(SKILL.read_text(), "## Message Contract v1")
+        for token in ("status=alive|blocked|question", "`question`: the worker holds and asks; INV-6 counts it."):
+            with self.subTest(token=token):
+                self.assertIn(token, contract)
+
+    def test_a_revise_acceptance_names_the_previous_head_and_a_check(self) -> None:
+        contract = self.section(SKILL.read_text(), "## Message Contract v1")
+        self.assertIn("carries `previous_head=<the RESULT head being revised>`", contract)
+        self.assertIn("one failing-test selector per finding (`check=tests/<file>::<name>`)", contract)
+        self.assertIn("`.orchestration/<task id>/revise.yaml`", contract)
+
+    def test_code_review_rules_cover_orchestration_records_and_threat_tables(self) -> None:
+        rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
+        subsection = self.section(rules, "### Orchestration records and trust-boundary code", "\n### ")
+        for token in (
+            "review them for secrets and home-directory paths only",
+            "Judge from the diff, whatever the task's metadata says, whether a change touches a trust boundary",
+            "report a missing table or a missing row",
+            "a `residual` row whose control does not mitigate the risk",
+            "an `out-of-scope` row whose owner does not own it",
+            "Do not re-raise a `residual` row whose control mitigates the risk",
+            "Shape (the test selector, the sentence, the owning task id) is the schema's to check, not the review's",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, subsection)
+
+    def test_orchestration_records_rule_binds_the_bot_review_only(self) -> None:
+        # Audit of 27ea99b2: the secrets-only scope is plan 006 A4's for the Bot, never the auditor's.
+        rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
+        bullet = self.section(rules, "### Orchestration records and trust-boundary code", "\n### ").split("\n- ")[1]
+        for token in (
+            "in the pull-request review by the Codex Bot, review them for secrets and home-directory paths only",
+            "The task-level audit keeps the full scope of the Audit section.",
+            # Thread 4243732326: the next bullet reviews the threat table inside task.md.
+            "except a trust-boundary task's `threat_table`",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, bullet)
+
+    def test_shape_is_checked_by_hand_until_the_schema_lands(self) -> None:
+        # Audit of 27ea99b2: neither schemas/task.json nor its validator exists yet.
+        sentence = (
+            "Until `schemas/task.json` lands in wave V1, the task-file review checks the three shape rules by hand."
+        )
+        rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
+        for name, text in (
+            ("SKILL invariants", self.invariants()),
+            ("AGENTS.md", self.section(rules, "### Orchestration records and trust-boundary code", "\n### ")),
+        ):
+            with self.subTest(section=name):
+                self.assertIn(sentence, text)
+
+    def test_pattern_rules_pin_their_safeguards(self) -> None:
+        # Audit of 27ea99b2: each safeguard could be removed with every other test still passing.
+        rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
+        subsection = self.section(rules, "### Orchestration records and trust-boundary code", "\n### ")
+        self.assertIn("report a `closed` row whose test does not close it", subsection)
+        text = self.invariants()
+        for token in (
+            "(the tree and its tests, task.md, workflow files,",
+            "a fresh Claude context on the `review` profile and a Codex read-only run",
+            # Item 7 of a04 reworded the clause; the safeguard is the same sentence.
+            "any merged boundary that carries the design meets that precondition",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_closed_selector_existence_is_checked_at_acceptance(self) -> None:
+        # Audit of b7ae2d54 and thread 4240646082: a closed row's test does not exist before implementation.
+        text = self.invariants()
+        for token in (
+            "a `closed` selector names a test present in the PR tree at acceptance and in the schema's validation of the PR",
+            "For a `closed` row it checks the selector's form only, since the test does not exist before implementation.",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_the_bot_wait_filters_the_codex_bot(self) -> None:
+        # Audit of b7ae2d54 and thread 4243369347: a CodeRabbit review matched `.user.type=="Bot"` and ended the wait.
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        for token in (
+            '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="<head-sha>")',
+            '.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="<head-sha>")',
+            "A human comment, a CodeRabbit review or an earlier head's review never ends the wait.",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, step)
+        self.assertNotIn('.user.type=="Bot"', step)
+
+    def test_shape_rules_and_the_decision_sentence_are_pinned(self) -> None:
+        # Audit of b7ae2d54: the S1/S2 decision and the three shape rules could each be removed unnoticed.
+        text = self.invariants()
+        for token in (
+            "S2 is decided from INV-6's counts",
+            "a `closed` selector names a test present in the PR tree",
+            "an `out-of-scope` owner is a task id in the design's `implementing_tasks`",
+            "a `residual` payload is a sentence of at least 20 characters",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_counters_bullet_names_owners_not_sources(self) -> None:
+        # Plan 006 S1 on the counters bullet: it states its obligations by reference and names no source.
+        bullet = self.section(self.invariants(), "\n- Before every acceptance action", "\n- ")
+        for token in (
+            "for each component it prints as `unknown` the record pastes the command and output that read the source INV-6 names for that component",
+            "gives a class to every finding the PR-feedback sweep lists, whatever its disposition, and to every task-level audit finding",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, bullet)
+        for phrase in ("review bodies", "by hand", "gh api --paginate", "until it is on `main`"):
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, bullet)
+
+    def test_the_ci_watcher_survives_the_no_checks_race(self) -> None:
+        # Thread 4243516880: `gh pr checks --watch` exits 1 with "no checks reported" before the first check appears.
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        self.assertIn(
+            "Right after a push GitHub can report no checks yet, and the watcher then exits 1 with `no checks reported`: start it once a check is listed, and restart it on that message instead of reading it as a CI failure.",
+            step,
+        )
+
+    def test_workers_open_the_pr_as_a_draft(self) -> None:
+        # Thread 4240566266: step 15's `gh pr ready` starts the Bot timer only on a draft PR.
+        step = self.section(SKILL.read_text(), "\n2. Switch to the `repo`", "\n3. ")
+        self.assertIn("`gh pr create --draft --head <branch>`", step)
+
+    def test_workers_commit_inside_the_sandbox(self) -> None:
+        # Audit of 27ea99b2: only the push is a step 4 exemption, so the commit stays inside.
+        step = self.section(SKILL.read_text(), "\n2. Switch to the `repo`", "\n3. ")
+        for token in (
+            "Commit inside the sandbox, with `git -c commit.gpgsign=false` when the signing key is unreadable there",
+            "only the push leaves the sandbox",
+            # Thread 4240598179: a Codex seat never leaves its sandbox, push included.
+            "a Codex seat pushes from inside it (step 4)",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, step)
+
+
 class AgmsgOrchestrationSingleSourceTest(unittest.TestCase):
     """The audit command appears once, in the SKILL's task-level audit bullet; everything else points there."""
 

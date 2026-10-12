@@ -1,0 +1,8 @@
+round: 1
+previous_head: 27ea99b273afffb457b5cbd74975dc4de0695285
+checks:
+  - tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest::test_orchestration_records_rule_binds_the_bot_review_only
+  - tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest::test_shape_is_checked_by_hand_until_the_schema_lands
+  - tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest::test_pattern_rules_pin_their_safeguards
+  - tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest::test_workers_commit_inside_the_sandbox
+  - tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest::test_boundary_merge_sentence_names_the_in_job_decision

@@ -30,3 +30,4 @@ audit-finding: 2 not-applicable:the acceptance record now names both TASK ids (4
 ## A5 measurement on the first records-only PR after A5 merged (plan 006 A5 row: an `.orchestration`-only PR merges within 10 minutes)
 
 - Boundary PR #322 (89 record files, no code): created 2026-10-12T01:46:58Z, merged 2026-10-12T01:48:19Z by auto-merge as `b67ea752` (`gh pr view 322 --json createdAt,mergedAt,mergeCommit`, pasted): 1 minute 21 seconds from creation to merge, every required context reported, no Bot thread (the A4 scope rule on `main` since `e83e923d`). Criterion met.
+- Boundary PR #324 (32 record files: plans 007 and 008, the M/C records, the #318 and #323 records): created 2026-10-12T09:36:33Z, merged 2026-10-12T09:38:31Z as `d1f98104` by auto-merge, 1 minute 58 seconds, no Bot thread (`gh pr view 324`, pasted by the watch). Criterion met a second time.

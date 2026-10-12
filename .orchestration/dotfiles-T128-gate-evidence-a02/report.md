@@ -2,7 +2,7 @@
 
 - Seat: `claude-standard-dot-a002` in `.claude/worktrees/worker-f`, branch `regime/gate-evidence`, PR #329, continued from a01's head `5971fffe` (INV-6 reset of `dotfiles-T128-gate-evidence-a01`; reset record `.orchestration/acceptance/dotfiles-T128-gate-evidence-a01-design-reset.md`).
 - Task file: sha256 `930f570b…` checked against the TASK (13:17:02Z) and copied byte-identical to `.orchestration/dotfiles-T128-gate-evidence-a02/task.md`. a01's copy (`d1b6fcf3…`) stays unchanged as history (validation §1).
-- Commits on the PR: a01's `7f763b7f`, `9a860c95` and `5971fffe` (evidence); a02's `379845f7` (the four round-1 fixes, the two-form search grammar, the a02 task copy), then this evidence.
+- Commits on the PR: a01's `7f763b7f`, `9a860c95` and `5971fffe` (evidence); a02's `379845f7` (the four round-1 fixes, the two-form search grammar, the a02 task copy), `386a71b3` (evidence), `c81c88a3` (fix round 2), then this evidence.
 
 ## What the PR does (task steps 1 to 5)
 
@@ -11,13 +11,13 @@
    - `orchestration_path_error(..., "acceptance")`;
    - when `PR_FEEDBACK_EVIDENCE` names a task, the record must be `<task>.md` by name and by resolved name, as the audit is bound (thread 4248232964);
    - the file must exist;
-   - every `audit-finding:` line that carries a `not-applicable:` must have the evidence clause, whatever the audit verdict (INV-6; thread 4248232988);
-   - ledger rows are the lines that fullmatch `(\d{10,}|audit:[0-9a-f]{7}:\d+)\t(\S+)`. For each class at three or more rows, a stripped line beginning with `search:` must name the class as a whole token (not next to `[\w-]`), carry a grep in one of a02's two forms, `grep -rl 'classes:…' .orchestration/learning/mistakes/` (the SKILL's form, used by the fixture) or `grep -l 'classes:…' .orchestration/learning/mistakes/*.md`, and contain `contextdb_cli.py memory search`; otherwise `S6: class <slug> at <n> without a pasted search`. `grep -l` given the bare directory is refused, because it exits 2 with "Is a directory" and reads no record (thread 4248233012; validation §5);
+   - every `audit-finding:` line that carries a `not-applicable:` must have the evidence clause, whatever the audit verdict (INV-6; thread 4248232988), including a line written as a Markdown list item (`- `, `* `, `+ `, `1. `), as existing records write them (thread 4248697668);
+   - ledger rows are the lines that fullmatch `(\d{10,}|audit:[0-9a-f]{7}:\d+)\t(\S+)`. For each class at three or more rows, a stripped line beginning with `search:` must carry a grep in one of a02's two forms, `grep -rl 'classes:…<slug>…' .orchestration/learning/mistakes/` (the SKILL's form, used by the fixture) or `grep -l 'classes:…<slug>…' .orchestration/learning/mistakes/*.md`, and a `contextdb_cli.py memory search …<slug>…`. The class slug must sit inside the grep's quoted `classes:` pattern and inside the memory-search query, each as a whole token (not next to `[\w-]`), so a line naming the class beside a search for another one fails (thread 4248697658). Otherwise the gate prints `S6: class <slug> at <n> without a pasted search`. `grep -l` given the bare directory is refused, because it exits 2 with "Is a directory" and reads no record (thread 4248233012; validation §5);
    - the record is not counted when sizing the diff, like the PR feedback file (thread 4248232998).
 
    The recipe passes `ACCEPTANCE_EVIDENCE="$(ACCEPTANCE_EVIDENCE)"` and its comment names it; README 427 to 428 and 1101 name it.
-3. Eight new tests and new cases in two existing tests (table below). The module runs 79 tests, against 71 on `origin/main` (validation §2, §3). Each new check fails a test when broken: eight one-line mutations and the two earlier heads (validation §4).
-4. `make require-crit-review` without `BASE` on a records-only tree prints the same line and exit status at `379845f7` as at `origin/main` (validation §6).
+3. Eight new tests and new cases in two existing tests (table below). The module runs 79 tests, against 71 on `origin/main` (validation §2, §3). Each new check fails a test when broken: ten one-line mutations (M2 to M11) and the guards of `origin/main` and of the round-2 head `386a71b3` (validation §4).
+4. `make require-crit-review` without `BASE` on a records-only tree prints the same line and exit status at `c81c88a3` as at `origin/main` (validation §6).
 5. Nothing else changes in the gate. Two message texts carry the new grammar: the audit no-match error and the "leaves audit finding(s) … without a disposition" hint.
 
 ## Fixtures and the tests that read them
@@ -33,9 +33,9 @@ The wrong fixture's two dispositions are, byte for byte, the `disposition` field
 
 New tests without a fixture:
 
-- `test_s6_search_line_names_the_class_token_and_both_commands` refuses six lines: another class's slug, one command only, a grep outside the mistake records, `grep -l` given the bare directory, the old `grep -rl x .orchestration`, and a `search:` not at the line start.
-- `test_base_requires_an_acceptance_record_under_acceptance`, the threat row's closing test, covers the path (empty, outside `.orchestration/acceptance/`, another task's record, a symlink alias to it, the task's own record missing) and the content (an S6 class at three without a search; an `audit-finding:` not-applicable without evidence).
-- `test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict`.
+- `test_s6_search_line_names_the_class_token_and_both_commands` refuses eight lines and accepts a control line. The eight are: another class's slug; one command only; a grep outside the mistake records; `grep -l` given the bare directory; the old `grep -rl scope .orchestration`; a grep for another class; a memory search for another class; and a `search:` not at the line start.
+- `test_base_requires_an_acceptance_record_under_acceptance`, the threat row's closing test, covers the path (empty, outside `.orchestration/acceptance/`, another task's record, a symlink alias to it, the task's own record missing) and the content (an S6 class at three without a search; an `audit-finding:` not-applicable without evidence, plain and as a list item).
+- `test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict` refuses the clause-less line plain, as a `- ` item and as an indented `1. ` item. It accepts the clause, plain and as a `* ` item, and a fixed finding in prose.
 - `test_acceptance_record_is_not_counted_as_a_change`: four docs files plus the record stay under the broad-diff limit.
 
 New cases in existing tests: `no evidence clause`, `empty evidence command` and `empty reason` in `test_pr_feedback_rejects_incomplete_or_invalid_dispositions`, and `no evidence clause` in `test_incorrect_audit_needs_not_applicable_dispositions`.
@@ -51,7 +51,14 @@ New cases in existing tests: `no evidence clause`, `empty evidence command` and 
 | 4248232998 | P2 | evidence-diff-sizing | `fixed:379845f7` |
 | 4248233012 | P1 | search-command-scan | `fixed:379845f7` |
 
-Questions under a01: one (PONG 13:00Z, `status=question`); a02 has none so far. This push is fix round 1. The worker resolves no thread.
+## Bot round 2 (review 5491635781 on `386a71b3`, 13:44:18Z): two P1
+
+| Thread | P | Class | Disposition |
+|---|---|---|---|
+| 4248697658 | P1 | search-command-scan (second, after 4248233012) | `fixed:c81c88a3` |
+| 4248697668 | P1 | acceptance-dispositions (second, after 4248232988) | `fixed:c81c88a3` |
+
+Classes at two on this artifact: search-command-scan and acceptance-dispositions; every other class is at one. Questions: one under a01 (PONG 13:00Z, `status=question`), none under a02. Fix rounds: two (`379845f7` for round 1, `c81c88a3` for round 2), so a Bot P0/P1 on the final head is reported open, not fixed (Worker Playbook step 15). The worker resolves no thread. CI on `5971fffe` and on `386a71b3`: 13 of 13 green (main-checkout validation).
 
 ## Declared beyond the letter of the task
 

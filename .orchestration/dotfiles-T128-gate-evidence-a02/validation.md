@@ -1,6 +1,6 @@
 # Validation: dotfiles-T128-gate-evidence-a02
 
-Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `regime/gate-evidence` (PR #329), except §10, run in the main checkout. Test runs set `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false` (sandbox record). Scratch file names (`numstat.txt`, `caps.py`, `mutate3.sh`, `fail-*.txt`) live in the session's `$TMPDIR`. This branch copy covers the code head `379845f7`; the main-checkout copy adds the final head, CI and the Bot wait.
+Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `regime/gate-evidence` (PR #329), except §10, run in the main checkout. Test runs set `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false` (sandbox record). Scratch file names (`numstat.txt`, `caps.py`, `mutate4.sh`, `mutations.py`, `fail-*.txt`) live in the session's `$TMPDIR`. This branch copy covers the code head `c81c88a3`; the main-checkout copy adds the final head, CI and the Bot wait.
 
 ## 1. Task file and the a01 history copy
 
@@ -36,7 +36,7 @@ OK
 ## 3. The module at the code head (79 tests; new: `test_dispositions_*`, `test_s6_*`, `test_base_requires_an_acceptance_record_under_acceptance`, `test_acceptance_record_*`)
 
 ```
-$ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false uv run --no-project python -m unittest tests/unit/test_require_crit_review.py -v 2>&1 | sed -E 's/ \(tests[^)]*\)//' | grep -E ' \.\.\. |^Ran|^OK|^FAILED'   # at 379845f7
+$ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false uv run --no-project python -m unittest tests/unit/test_require_crit_review.py -v 2>&1 | sed -E 's/ \(tests[^)]*\)//' | grep -E ' \.\.\. |^Ran|^OK|^FAILED'   # at c81c88a3 (the working tree before its commit, identical content)
 test_acceptance_record_is_not_counted_as_a_change ... ok
 test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict ... ok
 test_advanced_base_cannot_delete_collector_to_trigger_head_fallback ... ok
@@ -116,16 +116,16 @@ test_s6_search_line_names_the_class_token_and_both_commands ... ok
 test_small_docs_only_change_does_not_require_review ... ok
 test_the_gate_has_no_github_identity_check ... ok
 test_verdict_comes_only_from_the_last_message_file ... ok
-Ran 79 tests in 64.369s
+Ran 79 tests in 67.643s
 OK
 ```
 
 ## 4. Each new check fails a test when broken
 
 ```
-$ bash mutate3.sh   # runs the 10 new or changed tests on this change; on origin/main's guard (M0) and on a01's head 5971fffe (M1); and on eight one-line mutations of this guard (M2 to M8 as labelled); it restores the guard and checks it with cmp
+$ bash mutate4.sh | grep -v '^AssertionError'   # runs the 10 new or changed tests on this change; on origin/main's guard (M0) and on the round-2 head 386a71b3 (M1); and on ten one-line mutations of this guard (M2 to M11, mutations.py); it restores the guard and checks it with cmp
 == control: this change
-Ran 10 tests in 17.936s
+Ran 10 tests in 18.401s
 OK
 == M0 origin/main guard
 FAIL: test_dispositions_of_2026_10_12_without_evidence_are_refused
@@ -137,6 +137,8 @@ FAIL: test_s6_search_line_names_the_class_token_and_both_commands [one command o
 FAIL: test_s6_search_line_names_the_class_token_and_both_commands [grep outside the mistake records]
 FAIL: test_s6_search_line_names_the_class_token_and_both_commands [grep given the bare directory]
 FAIL: test_s6_search_line_names_the_class_token_and_both_commands [pre-amendment grep -rl]
+FAIL: test_s6_search_line_names_the_class_token_and_both_commands [grep for another class]
+FAIL: test_s6_search_line_names_the_class_token_and_both_commands [memory search for another class]
 FAIL: test_s6_search_line_names_the_class_token_and_both_commands [not at the line start]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='', content='')
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/validation/test.md', content='')
@@ -145,7 +147,10 @@ FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestr
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='')
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='# Acceptance: test (S6 fixture')
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='audit-finding: 1 not-applicabl')
+FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='- audit-finding: 1 not-applica')
 FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [no evidence clause]
+FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [bullet list item]
+FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [numbered list item]
 FAIL: test_acceptance_record_is_not_counted_as_a_change
 FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='no evidence clause')
 FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='empty evidence command')
@@ -155,34 +160,23 @@ FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='short i
 FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='short cancelled reason')
 FAIL: test_incorrect_audit_needs_not_applicable_dispositions [short reason]
 FAIL: test_incorrect_audit_needs_not_applicable_dispositions [no evidence clause]
-Ran 10 tests in 19.145s
-FAILED (failures=27)
-== M1 guard at 5971fffe (a01 head, before the round-1 fixes)
-FAIL: test_dispositions_with_an_evidence_command_are_accepted
-FAIL: test_s6_class_at_three_with_a_pasted_search_is_accepted (form="grep -rl 'classes:.*class-count-scope' .orchestration/learning/mistakes/")
-FAIL: test_s6_search_line_names_the_class_token_and_both_commands [grep given the bare directory]
-FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/other.md', content='')
-FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/alias.md', content='')
-FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='audit-finding: 1 not-applicabl')
-FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [no evidence clause]
-FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [evidence clause]
-FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [a fixed finding in prose]
-FAIL: test_acceptance_record_is_not_counted_as_a_change
-FAIL: test_incorrect_audit_needs_not_applicable_dispositions [no dispositions]
-FAIL: test_incorrect_audit_needs_not_applicable_dispositions [fixed commit]
-FAIL: test_incorrect_audit_needs_not_applicable_dispositions [short reason]
-FAIL: test_incorrect_audit_needs_not_applicable_dispositions [no evidence clause]
-FAIL: test_incorrect_audit_needs_not_applicable_dispositions [one missing]
-FAIL: test_incorrect_audit_needs_not_applicable_dispositions [unnumbered repeat]
-FAIL: test_incorrect_audit_needs_not_applicable_dispositions [same finding twice]
-FAIL: test_incorrect_audit_needs_not_applicable_dispositions [out of range]
-FAIL: test_incorrect_audit_needs_not_applicable_dispositions [accepted]
-Ran 10 tests in 17.273s
-FAILED (failures=19)
+Ran 10 tests in 20.747s
+FAILED (failures=32)
+== M1 guard at 386a71b3 (before fix round 2)
+FAIL: test_s6_search_line_names_the_class_token_and_both_commands [grep for another class]
+FAIL: test_s6_search_line_names_the_class_token_and_both_commands [memory search for another class]
+FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='- audit-finding: 1 not-applica')
+FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [bullet list item]
+FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [numbered list item]
+Ran 10 tests in 19.722s
+FAILED (failures=5)
 == M2 evidence clause optional
 FAIL: test_dispositions_of_2026_10_12_without_evidence_are_refused
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='audit-finding: 1 not-applicabl')
+FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='- audit-finding: 1 not-applica')
 FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [no evidence clause]
+FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [bullet list item]
+FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [numbered list item]
 FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='no evidence clause')
 FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='empty evidence command')
 FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='empty reason')
@@ -191,36 +185,54 @@ FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='short i
 FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='short cancelled reason')
 FAIL: test_incorrect_audit_needs_not_applicable_dispositions [short reason]
 FAIL: test_incorrect_audit_needs_not_applicable_dispositions [no evidence clause]
-Ran 10 tests in 18.082s
-FAILED (failures=11)
+Ran 10 tests in 13.775s
+FAILED (failures=14)
 == M3 slug matched as a substring
 FAIL: test_s6_search_line_names_the_class_token_and_both_commands [another class's slug]
-Ran 10 tests in 17.912s
+Ran 10 tests in 12.733s
 FAILED (failures=1)
 == M4 no grep form required
 FAIL: test_s6_search_line_names_the_class_token_and_both_commands [grep outside the mistake records]
 FAIL: test_s6_search_line_names_the_class_token_and_both_commands [grep given the bare directory]
 FAIL: test_s6_search_line_names_the_class_token_and_both_commands [pre-amendment grep -rl]
-Ran 10 tests in 17.013s
-FAILED (failures=3)
+FAIL: test_s6_search_line_names_the_class_token_and_both_commands [grep for another class]
+Ran 10 tests in 13.688s
+FAILED (failures=4)
 == M5 grep -l accepted on the bare directory
 FAIL: test_s6_search_line_names_the_class_token_and_both_commands [grep given the bare directory]
-Ran 10 tests in 18.476s
+Ran 10 tests in 13.485s
 FAILED (failures=1)
 == M6 record not bound to the task
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/other.md', content='')
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/alias.md', content='')
-Ran 10 tests in 18.253s
+Ran 10 tests in 12.953s
 FAILED (failures=2)
 == M7 record not-applicable lines unchecked
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='audit-finding: 1 not-applicabl')
+FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='- audit-finding: 1 not-applica')
 FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [no evidence clause]
-Ran 10 tests in 18.918s
-FAILED (failures=2)
+FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [bullet list item]
+FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [numbered list item]
+Ran 10 tests in 13.402s
+FAILED (failures=5)
 == M8 record counted as a change
 FAIL: test_acceptance_record_is_not_counted_as_a_change
-Ran 10 tests in 17.682s
+Ran 10 tests in 13.356s
 FAILED (failures=1)
+== M9 grep query not bound to the class
+FAIL: test_s6_search_line_names_the_class_token_and_both_commands [grep for another class]
+Ran 10 tests in 13.125s
+FAILED (failures=1)
+== M10 memory query not bound to the class
+FAIL: test_s6_search_line_names_the_class_token_and_both_commands [memory search for another class]
+Ran 10 tests in 13.105s
+FAILED (failures=1)
+== M11 list-item record lines skipped
+FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/test.md', content='- audit-finding: 1 not-applica')
+FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [bullet list item]
+FAIL: test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict [numbered list item]
+Ran 10 tests in 13.878s
+FAILED (failures=3)
 guard restored
 ```
 
@@ -264,7 +276,7 @@ $ wc -l tests/fixtures/gate-evidence/*
 
 ```
 $ git -C <scratch> rev-parse --short HEAD; git -C <scratch> status --short; make -C <scratch> require-crit-review; echo rc=$?
-379845f7
+c81c88a3
 ?? .orchestration/reports/probe.md
 Review not required: no meaningful review trigger found.
 rc=0
@@ -278,10 +290,10 @@ rc=0
 ## 7. Full unit suite at the code head against `origin/main`
 
 ```
-$ git rev-parse --short HEAD && UV_OFFLINE=1 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false uv run --no-project --with pyyaml python -m unittest discover -s tests/unit > unit-all-a02.txt 2>&1; echo "rc=$?"; tail -3 unit-all-a02.txt; grep -E '^(FAIL|ERROR): .*\(' unit-all-a02.txt | grep -oE '\(([a-z_]+\.)*test_[a-z_0-9]+\.[A-Za-z]+\.[a-z_0-9]+\)' | tr -d '()' | sed 's/^tests\.unit\.//' | sort > fail-a02.txt; wc -l < fail-a02.txt; cmp fail-base.txt fail-a02.txt && echo "identical to the origin/main failing set"
-379845f7
+$ git rev-parse --short HEAD && UV_OFFLINE=1 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false uv run --no-project --with pyyaml python -m unittest discover -s tests/unit > unit-all-r2.txt 2>&1; echo "rc=$?"; tail -3 unit-all-r2.txt; grep -E '^(FAIL|ERROR): .*\(' unit-all-r2.txt | grep -oE '\(([a-z_]+\.)*test_[a-z_0-9]+\.[A-Za-z]+\.[a-z_0-9]+\)' | tr -d '()' | sed 's/^tests\.unit\.//' | sort > fail-r2.txt; wc -l < fail-r2.txt; cmp fail-base.txt fail-r2.txt && echo "identical to the origin/main failing set"
+c81c88a3
 rc=1
-Ran 1004 tests in 530.665s
+Ran 1004 tests in 558.175s
 
 FAILED (failures=68, errors=10, skipped=2)
       78
@@ -334,27 +346,32 @@ $ (the same ruff check on the origin/main copies of both files, in a scratch dir
 ## 9. Diff size (INV-2: at most 15 files outside `.orchestration/`, 500 added lines outside `tests/`, 1000 under `tests/`) and the moved base
 
 ```
-$ git diff --numstat origin/main...379845f7 > numstat.txt; cat numstat.txt
+$ git diff --numstat origin/main...c81c88a3 > numstat.txt; cat numstat.txt
 3	0	.orchestration/dotfiles-T128-gate-evidence-a01/autoskill.md
 7	0	.orchestration/dotfiles-T128-gate-evidence-a01/learning.md
 44	0	.orchestration/dotfiles-T128-gate-evidence-a01/report.md
 15	0	.orchestration/dotfiles-T128-gate-evidence-a01/sandbox.md
 94	0	.orchestration/dotfiles-T128-gate-evidence-a01/task.md
 287	0	.orchestration/dotfiles-T128-gate-evidence-a01/validation.md
+3	0	.orchestration/dotfiles-T128-gate-evidence-a02/autoskill.md
+9	0	.orchestration/dotfiles-T128-gate-evidence-a02/learning.md
+74	0	.orchestration/dotfiles-T128-gate-evidence-a02/report.md
+16	0	.orchestration/dotfiles-T128-gate-evidence-a02/sandbox.md
 98	0	.orchestration/dotfiles-T128-gate-evidence-a02/task.md
+372	0	.orchestration/dotfiles-T128-gate-evidence-a02/validation.md
 3	3	Makefile
 5	5	README.md
-93	17	scripts/require-crit-review.py
+97	17	scripts/require-crit-review.py
 8	0	tests/fixtures/gate-evidence/acceptance-s6-missing.md
 10	0	tests/fixtures/gate-evidence/acceptance-s6-present.md
 4	0	tests/fixtures/gate-evidence/pr-feedback-right.json
 4	0	tests/fixtures/gate-evidence/pr-feedback-wrong.json
-230	17	tests/unit/test_require_crit_review.py
+250	17	tests/unit/test_require_crit_review.py
 $ uv run --no-project python caps.py numstat.txt   # caps.py: count files outside .orchestration/, added lines outside tests/, added lines under tests/
 files outside .orchestration: 8
-added outside tests/ (and .orchestration): 101
-added under tests/: 256
-$ git log --oneline 683384ea..origin/main; git diff --stat 683384ea origin/main -- README.md Makefile scripts/require-crit-review.py tests/unit/test_require_crit_review.py tests/fixtures/gate-evidence; git merge-tree --write-tree origin/main 379845f7 >/dev/null && echo "merges cleanly"
+added outside tests/ (and .orchestration): 105
+added under tests/: 276
+$ git log --oneline 683384ea..origin/main; git diff --stat 683384ea origin/main -- README.md Makefile scripts/require-crit-review.py tests/unit/test_require_crit_review.py tests/fixtures/gate-evidence; git merge-tree --write-tree origin/main c81c88a3 >/dev/null && echo "merges cleanly"
 7cbe5405 chore(orchestration): boundary commit 2026-10-12 (7): design v21 (gate-evidence-a02 map entry, round 24), T702 reset to a02 (INV-6), M-17/C-19, T714 draft fix (#331)
 4cf1d4e2 chore(orchestration): boundary commit 2026-10-12 (6): T703 reset to a02 (INV-6), classes field on the mistake records, M-14 to M-16, C-16 to C-18, amendment 1 of T702, drafts for T714/T716/T718, operator patches (#330)
 merges cleanly

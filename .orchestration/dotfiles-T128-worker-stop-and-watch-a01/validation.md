@@ -224,3 +224,44 @@ task=dotfiles-T128-worker-stop-and-watch-a01 tasks=2 amendments=1 questions=1 re
 detail: pr=none authors=claude-deep-dot tasks=01a12dc6-06b8-721a-8648-f2dfeaca1ad6,01a12dd6-b440-76d3-88de-3e7987d1a1fe results=- questions=01a12dd0-fb68-7960-8708-444e1696975f withdrawn=- bot_heads=- source=live
 rc=0
 ```
+
+## 10. Revise round 1 (`previous_head=040b32f9`; §9 is the main-checkout copy's final head of the first RESULT)
+
+```
+$ git log --oneline -1; git diff --stat HEAD -- home tests; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md tests/fixtures/regime/*.md 2>&1 | tail -1; grep -c "any reviewer, any priority" home/dot_agents/skills/agmsg-orchestration/SKILL.md tests/unit/test_agmsg_orchestration_docs.py
+8840f05d Merge branch 'main' into docs/worker-stop-and-watch
+ home/dot_agents/skills/agmsg-orchestration/SKILL.md | 4 ++--
+ tests/fixtures/regime/orchestrator-step-7.md        | 2 +-
+ tests/fixtures/regime/worker-step-15.md             | 2 +-
+ tests/unit/test_agmsg_orchestration_docs.py         | 8 ++++++--
+ 4 files changed, 10 insertions(+), 6 deletions(-)
+Ran 44 tests in 0.009s
+
+OK
+All matched files use Prettier code style!
+tests/unit/test_agmsg_orchestration_docs.py:0
+home/dot_agents/skills/agmsg-orchestration/SKILL.md:0
+```
+
+Removal proofs (`scratchpad/mutate_a7_r1.py`):
+
+```
+== removed token: an early stop
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_worker_stops_itself_on_repeated_findings
+== removed token: never widens the worker's input beyond the Codex Bot's items
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_worker_stops_itself_on_repeated_findings
+== removed token: When a stop (heads=2 or three of a class) coincides with the third Bot round
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_worker_stops_itself_on_repeated_findings
+== removed token: read or unread
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_orchestrator_watches_from_github_and_history
+== restored: OK
+```
+
+A7-1 before the push, the complete `--history-only` output (this is the revise head's first push after the RESULT; no Bot head after it yet):
+
+```
+$ scripts/regime-counters.sh dotfiles-T128-worker-stop-and-watch-a01 --history-only
+task=dotfiles-T128-worker-stop-and-watch-a01 tasks=2 amendments=1 questions=1 results=1 withdrawn=0 revises=0 first_result_head=040b32f9cfd88eb311f985a16ff434d6591acfbf bot_p1_heads_after_result=skipped audits=unknown wall=2026-10-12T01:41:55Z..2026-10-12T02:21:47Z (0:39) source=live
+detail: pr=323 authors=claude-deep-dot tasks=01a12dc6-06b8-721a-8648-f2dfeaca1ad6,01a12dd6-b440-76d3-88de-3e7987d1a1fe results=01a12dea-8290-783d-84fd-3c65453de786 questions=01a12dd0-fb68-7960-8708-444e1696975f withdrawn=- bot_heads=- source=live
+rc=0
+```

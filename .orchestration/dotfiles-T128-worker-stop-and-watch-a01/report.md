@@ -49,6 +49,25 @@ Review 5486001543 (02:08:33Z) raised two P2 threads. The A7-1 counts were 0 head
 
 The two fixtures are regenerated in this commit. Both new tokens fail their test and the pin when removed (validation §8). The docs module runs 44 tests, OK. `--history-only` before the push prints no `S2:` line. This is fix round 2 of 2: a further finding on these sentences is reported with its class, not fixed.
 
+## Revise round 1 (ACCEPTANCE 02:24:17Z, `previous_head=040b32f9`)
+
+The orchestrator read Bot round 3, together with round 2's class reading, as plan 006 S1 on the class-count sentence: six findings of one class. The cause record entry is "class-count scope" in `.orchestration/learning/plan-006-s1-pr318-finding-classes-2026-10-12.md`. Widening the count to every sweep item was its fix-round-1 sentence (2), and it reverts. I first fast-forwarded to `8840f05d`, the `gh pr update-branch` merge of `main` `b67ea752`. Then one commit, recorded in `revise.yaml` beside this report, carries three sentence changes. The ACCEPTANCE's note writes spaces as hyphens; I restored the apostrophes and code-formatted `original_commit_id` and `commit_id`.
+
+- (A) Step 15: the "one per item `scripts/pr-feedback.py <pr>` lists" clause becomes "The classes the worker counts are those of the Codex Bot's badged findings on the PR since the task's first commit (inline comments by `original_commit_id`, review bodies by `commit_id`, any priority): an early stop. S1 itself is decided by the orchestrator's finding-class ledger over every item the sweep lists, as the counters bullet states; the worker's narrower count never delays that decision and never widens the worker's input beyond the Codex Bot's items." The "any reviewer, any priority" text and its token are gone.
+- (B) Step 15: "When a stop (heads=2 or three of a class) coincides with the third Bot round, the worker sends the `AGMSG-RESULT … bot_rounds=3` …". The rest of the one-handoff sentence and its token stay.
+- (C) Step 7: "When pushes continue past the A2 cap or an INV-6 count after the PING, read or unread, the orchestrator removes the seat with `herdr-agents --remove-worker <worktree> --force`; …".
+
+Both fixtures are regenerated in this commit, a declared change (INV-12). The four new tokens ("an early stop", "never widens the worker's input beyond the Codex Bot's items", the (B) sentence opening and "read or unread") each fail their test and the pin when removed (validation §10). The docs module runs 44 tests, OK. The dispositions are the ACCEPTANCE's:
+
+| Threads | Disposition |
+|---|---|
+| 4244203596, 4244203600, 4244203603, 4244203607, 4244203611, 4244203615 | `fixed:` this commit ((A) for …596, …600, …611 and …615, (B) for …603, (C) for …607) |
+| 4244128846, 4244175775 | `not-applicable`: premise rejected (S1 is the orchestrator's ledger; the worker's count is narrower by design) |
+| 4244175778 | `fixed:040b32f9` |
+| 4244128840, 4244128851, 4244128854, 4244128857, 4244128859 | `fixed:2c8dce27` |
+
+Per the ACCEPTANCE, a Bot P0/P1 on the revise head is an INV-6 head. A finding that the worker's count is narrower than S1's scope is reported with its class (pre-declared `not-applicable`); a genuinely new class gets one fix round.
+
 ## Notes
 
 - Understand-Anything hook: did not fire. plan-mode-used: no.

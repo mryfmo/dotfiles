@@ -1,14 +1,14 @@
 ---
 task_id: dotfiles-T128-worker-stop-and-watch-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 21
+permission_gated_commands: 28
 ---
 
 # Sandbox record: dotfiles-T128-worker-stop-and-watch-a01
 
 - Period: from the AGMSG-TASK (2026-10-12T01:41:55Z) to the RESULT. The branch, edits, the docs tests, prettier, ruff, the removal proofs, the two local premises, the `--history-only` count and the commits ran inside the sandbox (`git -c commit.gpgsign=false`, `UV_OFFLINE=1`). No `allowed_domains`, no refusal.
 
-`permission_gated_commands` counts every Bash call with `dangerouslyDisableSandbox`, one per call (`agmsg-dispatch` included; each Bot loop is one call). This copy was written before #15, so #15 to #21 are counted in advance; the main-checkout copy states the final count.
+`permission_gated_commands` counts every Bash call with `dangerouslyDisableSandbox`, one per call (`agmsg-dispatch` included; each Bot loop is one call). Calls #15 to #21 ran as listed for the first RESULT (main-checkout copy); R1 onward follow, counted in advance from R2 in this copy.
 
 | # | Command | Step 4 case |
 |--:|---|---|
@@ -33,3 +33,15 @@ permission_gated_commands: 21
 | 19 | final recheck of reviews, review comments and the connector summary, with the inbox read right before the dispatch (`gh` only) | `gh` |
 | 20 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
 | 21 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-worker-stop-and-watch-a01 …` | `agmsg-dispatch` |
+
+## Revise round 1
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| R1 | the authenticated `git fetch` of the branch and `main` (the `update-branch` merge `8840f05d`) | authenticated `git fetch` |
+| R2 | the authorized push (the revise commit) | `git push` |
+| R3 | `gh pr checks 323 … --watch`, started once a check run is listed (background, exit status joined) | `gh` |
+| R4 | Bot wait on the revise head, `scratchpad/bot-wait.sh` filtered by the Codex login, timed from the push | `gh` only |
+| R5 | final recheck of reviews, review comments and the connector summary, with the inbox read right before the dispatch (`gh` only) | `gh` |
+| R6 | the masked copy of the five evidence files to the TASK's `expected_*` paths in the main checkout | artifact copy with the repository masker |
+| R7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-worker-stop-and-watch-a01 …` | `agmsg-dispatch` |

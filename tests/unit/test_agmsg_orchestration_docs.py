@@ -276,8 +276,10 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "no contradiction with the design",
             "the premises hold",
             "`allowed_files` covers every touch point that grep finds",
-            # Plan 006 B0: design v20 removed contract PRs, so the check names the implementing_tasks entry.
-            "one invariant check (the task id maps to its `implementing_tasks` entry and the invariant ids match)",
+            # Plan 006 B0: design v20 removed contract PRs, so the check names the implementing_tasks entry;
+            # thread 4247933561: a task without an `invariants` key (a docs or review task) needs no entry.
+            "one invariant check (for a task that carries an `invariants` key: the task id maps to its "
+            "`implementing_tasks` entry and the invariant ids match; a task without the key needs no entry)",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
@@ -537,18 +539,24 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         # Plan 007 S6: the third repeat of a class is answered by a recorded correction, never by another fix round.
         bullet = self.section(self.invariants(), "\n- When a finding class reaches three on one artifact", "\n- ")
         for token in (
+            # Thread 4247933574: a grep of the corrections misses a class they never name, so the search keys on
+            # the mistake records' classes field; -r because plain grep exits 2 on a directory argument.
             " (the record's ledger) or `scripts/regime-counters.sh` prints an S1 candidate, the next acceptance "
             "action is a search pasted into the record under a `search:` line naming the class: "
-            "`uv run --no-project .claude/hooks/contextdb_cli.py memory search <class slug>` and "
-            "`grep -rl <class slug> .orchestration/learning/corrections/`.",
+            "`grep -rl 'classes:.*<class slug>' .orchestration/learning/mistakes/` (each mistake record names its "
+            "ledger classes; its `corrections:` ids lead through `.orchestration/learning/index.yaml` to the "
+            "corrections) and `uv run --no-project .claude/hooks/contextdb_cli.py memory search <class slug>`.",
             "A matching correction with `status: landed` is applied as written; a `pending` one lands first; no "
-            "match means a new correction is researched from official sources and recorded under "
-            "`.orchestration/learning/corrections/` before any dispatch.",
+            "match means a new mistake record carrying the class and a new correction are researched from official "
+            "sources and recorded before any dispatch.",
             "The gate refuses the action without the paste (`dotfiles-T128-gate-evidence-a01`), and every "
             "`not-applicable` disposition carries `; evidence=<command>` with the output pasted in the record.",
         ):
             with self.subTest(token=token[:40]):
                 self.assertIn(token, bullet)
+        for stale in ("`grep -rl <class slug> .orchestration/learning/corrections/`", "`grep -l 'classes:"):
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, bullet)
 
     def test_threat_table_rows_have_a_fixed_unit(self) -> None:
         # Plan 007 T703 item 4: without a unit, a missing row is a judgment call for each reviewer.

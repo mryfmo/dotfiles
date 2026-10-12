@@ -28,6 +28,7 @@ implementing_tasks:
   dotfiles-T128-v0-main-tests-a02: [INV-12]
   dotfiles-T128-gate-evidence-a01: [INV-6]
   dotfiles-T128-gate-evidence-a02: [INV-6]
+  dotfiles-T128-gate-evidence-a03: [INV-6]
 supersedes:
   - dotfiles-T126-regime-v2-a01
   - dotfiles-T124-design-gate-and-reset-rule-a01
@@ -231,3 +232,5 @@ v20 (11:46Z): the Codex round-21 receipt found the v19 clause appended to INV-4 
 Round 22 (Claude 11:49:16Z `accept`, receipt `…-design-review-round22.md`; Codex 11:49:21Z `accept`, `…-design-review-round22-codex.md`) accepted v20 at `ed51f1d4…`; the unhashed `design_review.receipt` line now names the round-22 receipt (this edit), confirmed by a Codex pointer-only read as round 23.
 
 v21 (13:08Z, the orchestrator under the records exemption): `implementing_tasks` gains `dotfiles-T128-gate-evidence-a02: [INV-6]`, the INV-6 successor of `dotfiles-T128-gate-evidence-a01` (withdrawn 13:02Z under INV-6 before its second amendment; reset record `dotfiles-T128-gate-evidence-a01-design-reset.md`), beside the a01 entry that stays as parked history, as the V0 and round-18 successors did; nothing else changes. Round 24 asks both reviewers at once for one verdict each on this hash: receipts `…-design-review-round24.md` (Claude) and `…-design-review-round24-codex.md` (Codex).
+
+v22 (15:28Z, the orchestrator under the records exemption): `implementing_tasks` gains `dotfiles-T128-gate-evidence-a03: [INV-6]`, the INV-6 successor of a02 (withdrawn 15:25Z after its second S1 cycle; plan 011 option F: the acceptance record's machine-read parts as YAML front matter), beside the a01 and a02 entries kept as parked history; nothing else changes. Round 25 asks both reviewers at once for one verdict each on this hash: receipts `…-design-review-round25.md` (Claude) and `…-design-review-round25-codex.md` (Codex).

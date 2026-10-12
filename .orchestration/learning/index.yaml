@@ -66,6 +66,12 @@ mistakes:
   - id: M-20261012-20
     corrections: [C-22]
     status: open
+  - id: M-20261012-21
+    corrections: [C-23]
+    status: open
+  - id: M-20261012-22
+    corrections: [C-24]
+    status: open
 corrections:
   - id: C-1
     closes: [M-20261012-1]
@@ -133,7 +139,7 @@ corrections:
     status: "pending"
   - id: C-17
     closes: [M-20261012-15]
-    mechanism: ['rule:plan-007#three-repeat-procedure', 'rule:SKILL#three-repeat (T703, dotfiles-T128-playbook-rules-a02)', 'validator:require-crit-review#s6-search-grammar (T702 amendment 1)']
+    mechanism: ['rule:plan-007#three-repeat-procedure', 'rule:SKILL#three-repeat (T703, dotfiles-T128-playbook-rules-a03)', 'validator:require-crit-review#s6-search-grammar (T702 amendment 1)']
     status: "pending"
   - id: C-18
     closes: [M-20261012-16]
@@ -154,4 +160,12 @@ corrections:
   - id: C-22
     closes: [M-20261012-20]
     mechanism: ['validator:require-crit-review#s6-recompute (T702 a02 amendment 1)']
+    status: "pending"
+  - id: C-23
+    closes: [M-20261012-21]
+    mechanism: ['script:scripts/orchestrator/three-repeat.sh (T718)', 'rule:SKILL (obligation + script name + landing condition)']
+    status: "pending"
+  - id: C-24
+    closes: [M-20261012-22]
+    mechanism: ['validator:require-crit-review#acceptance-front-matter (T702 successor)']
     status: "pending"

@@ -1,0 +1,8 @@
+[
+  {
+    "id": "a07-review-1",
+    "scope": "review",
+    "resolved": true,
+    "body": "Orchestrator review of PR 318 final head 92634b25 (independent read of git diff origin/main..92634b25 outside .orchestration: 8 files changed, 416 insertions(+), 7 deletions(-); plus 46 record files under .orchestration/dotfiles-T128-process-rules-a0*/). AGENTS.md: the Code Review Rules subsection (records reviewed for secrets and home paths only, except a trust-boundary task's threat_table and the metadata needed to judge it; trust-boundary code reviewed against the threat table from the diff). SKILL: the regime bullets of 'Review and integration invariants' (paired design review with the third pair's accept-or-reset, the task-file review stop condition, boundary PRs carrying records with the design-on-main precondition, the threat-table rule with its shape left to the schema, the counters bullet stating its three obligations by reference and naming no source), Orchestrator Playbook step 10.1 (open:<id> as a sweep item), Worker Playbook step 15 (gh pr ready, the Codex-login filter, the CI watcher joined and retried, two fix rounds then open:<id>), Message Contract status=alive|blocked|question. Tests: AgmsgRegimePatternTest section-scoped tokens, the negative tests, test_regime_rule_sections_are_pinned_whole with five golden fixtures under tests/fixtures/regime/ (the four clauses the audit of 4af89390 named each fail it when removed, per the worker's validation and the audit of 92634b25). Every sentence matches the a07 task file (items 1 to 10) and the design (INV-2, INV-6, INV-7); nothing outside allowed_files changed; CI 13 of 13 on 92634b25; the Bot's pass on 92634b25 raised nothing. Approved."
+  }
+]

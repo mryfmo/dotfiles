@@ -1,6 +1,6 @@
 # Validation: dotfiles-T128-ci-skip-orchestration-a02
 
-Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `feat/ci-skip-orchestration` (PR #320). This main-checkout copy covers `a35a751e`, §7 the final head `fca44b4c` (design INV-8).
+Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `feat/ci-skip-orchestration` (PR #320). This main-checkout copy covers `a35a751e`, §7 the final head `fca44b4c`, §8 and §9 Amendment 1 and its head `a8c2bed9` (design INV-8).
 
 ## 1. Task file
 
@@ -224,4 +224,52 @@ $ gh api repos/mryfmo/dotfiles/issues/comments/6105983720 --jq .body | grep -E '
 | 🔒 **Security Review** | ✅ **Completed** <relative-time datetime="2026-10-11T05:55:43.193970Z">2026-10-11T05:55:43.193970Z</relative-time> | `9fcd2b0` | Draft marked ready |
 $ gh api repos/mryfmo/dotfiles/issues/320/reactions --jq '.[]|[.user.login,.content,.created_at]|@tsv'
 chatgpt-codex-connector[bot]	+1	2026-10-11T07:56:03Z
+```
+## 8. Amendment 1: the task copy
+
+```
+$ shasum -a 256 ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-ci-skip-orchestration-a02.md .orchestration/dotfiles-T128-ci-skip-orchestration-a02/task.md | cut -c1-64
+4de54fdec5db667e940365703ee5e16cd1d91f52794c79c75b48aad7eb0a8763
+4de54fdec5db667e940365703ee5e16cd1d91f52794c79c75b48aad7eb0a8763
+$ git diff --stat HEAD -- .orchestration/dotfiles-T128-ci-skip-orchestration-a02/task.md
+ .orchestration/dotfiles-T128-ci-skip-orchestration-a02/task.md | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+```
+
+## 9. Final head `a8c2bed9` (main-checkout copy, Amendment 1)
+
+```
+$ gh pr checks 320 --repo mryfmo/dotfiles --watch --interval 30   # final table; exit 0
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	0	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/38129377997/job/114440329188	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/38129377997/job/114440329081	
+private-bootstrap (ubuntu-24.04, server)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/38129377997/job/114440329196	
+public-bootstrap (macos-14, client)	pass	8m7s	https://github.com/mryfmo/dotfiles/actions/runs/38129377997/job/114440329125	
+public-bootstrap (ubuntu-24.04, client)	pass	9m42s	https://github.com/mryfmo/dotfiles/actions/runs/38129377997/job/114440329150	
+public-bootstrap (ubuntu-24.04, server)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/38129377997/job/114440329256	
+test (macos-14, client)	pass	6m15s	https://github.com/mryfmo/dotfiles/actions/runs/38129378007/job/114440329292	
+test (ubuntu-24.04, client)	pass	7m49s	https://github.com/mryfmo/dotfiles/actions/runs/38129378007/job/114440329219	
+test (ubuntu-24.04, server)	pass	5m2s	https://github.com/mryfmo/dotfiles/actions/runs/38129378007/job/114440329374	
+test (ubuntu-26.04, client)	pass	8m13s	https://github.com/mryfmo/dotfiles/actions/runs/38129378007/job/114440329357	
+validate	pass	1m36s	https://github.com/mryfmo/dotfiles/actions/runs/38129377998/job/114440328928	
+$ bash scratchpad/bot-wait.sh 320 a8c2bed92559e2d9855f78154a4181363893c3f5 2026-10-11T09:43:15Z   # last poll
+poll 4 09:44:58Z head a8c2bed92559e2d9855f78154a4181363893c3f5 asked=no
+reviews: 
+comments: 
+code-review-completed: | 📝 **Code Review** | ✅ **Completed** <relative-time datetime="2026-10-11T09:44:38.538540Z">2026-10-11T09:44:38.538540Z</relative-time> | `a8c2bed` | New commits |
+DONE
+$ # final recheck right before the RESULT
+2026-10-11T09:53:40Z
+$ gh pr view 320 --json headRefOid,state,isDraft
+a8c2bed92559e2d9855f78154a4181363893c3f5	OPEN	false
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/320/reviews --jq '.[]|select(.user.type=="Bot")|[.id,.commit_id[0:8],.submitted_at]|@tsv'
+5482144676	b3f88beb	2026-10-11T06:15:10Z
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/320/comments --jq '.[]|select(.in_reply_to_id == null and .user.type=="Bot")|[.id,.original_commit_id[0:8],.path,(.original_line|tostring)]|@tsv'
+4240499289	b3f88beb	.github/workflows/remote.yaml	61
+$ gh api repos/mryfmo/dotfiles/issues/comments/6105983720 --jq .body | grep -E 'Code Review|Security Review'
+| 📝 **Code Review** | ✅ **Completed** <relative-time datetime="2026-10-11T09:44:38.538540Z">2026-10-11T09:44:38.538540Z</relative-time> | `a8c2bed` | New commits |
+| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime="2026-10-11T05:55:43.193970Z">2026-10-11T05:55:43.193970Z</relative-time> | `9fcd2b0` | Draft marked ready |
+$ gh api repos/mryfmo/dotfiles/issues/320/reactions --jq '.[]|[.user.login,.content,.created_at]|@tsv'
+chatgpt-codex-connector[bot]	+1	2026-10-11T09:44:41Z
 ```

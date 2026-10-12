@@ -503,6 +503,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
         for token in (
             "fixes nothing more",
+            # Thread 4244354413: a round with no fix commit, the third one included, still runs the class scan.
+            "After every Bot review round, before deciding whether a fix commit follows",
             # The task lists this token and the --history-only one in backticks; in the prose both sit inside longer code spans.
             "status=blocked note=S1|INV-6",
             "whichever limit comes first ends the fixing",
@@ -547,6 +549,9 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "read or unread",
             # Threads 4244248710 and 4244272551: the audit-head component is read as the counters bullet prescribes.
             "read as the counters bullet prescribes",
+            # Threads 4244354410 and 4244354417: the PR number before the RESULT, and what counts as a fix round.
+            "`gh pr list --head <the task's branch> --json number`",
+            "A fix round is a push whose predecessor head carries a Codex P0/P1 finding",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, playbook)

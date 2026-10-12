@@ -30,6 +30,18 @@ Each new token fails its test and the whole-section pin when removed (validation
 
 A7-1 on this task: no RESULT yet, so 0 heads; the classes since the a02 task copy start empty, because a reset successor never inherits its predecessor's classes. The `--history-only` output before the push is in validation §4. The final head's CI and Bot wait are in the RESULT and the main-checkout copy; a further class-count scope finding is reported, not fixed.
 
+## Bot round 1 on `1d14eed5` and fix round 1
+
+Review 5486194208 (03:02:00Z) raised three P1s on A7 sentences. Its counts were 0 heads, since there is no a02 RESULT yet, and three classes at 1 each, so there was no stop. PONG 675 (`status=question`, a02's first, default hold) reported the classes with proposals. The ACCEPTANCE of 03:03:52Z ordered fix round 1 with the proposed sentences:
+
+| Thread | Class (A7-1) | Fix in this commit |
+|---|---|---|
+| 4244354410 (P1) | establish the pr | step 7: "Until the RESULT names the PR, the watch reads its number with `gh pr list --head <the task's branch> --json number`." |
+| 4244354413 (P1) | count repeated findings | step 15: "Before each fix commit" becomes "After every Bot review round, before deciding whether a fix commit follows", so a round with no fix commit, the third included, still runs the class scan |
+| 4244354417 (P1) | define how the | step 7: "A fix round is a push whose predecessor head carries a Codex P0/P1 finding, counted from the PR's commits, the Bot reviews' `commit_id` and the inline comments' `original_commit_id`." |
+
+Both fixtures are regenerated in this commit. The three new tokens fail their test and the pin when removed (validation §6). The docs module runs 45 tests, OK. A further finding on these sentences is reported with its class; fix round 2 is only for a new class.
+
 ## Notes
 
 - Understand-Anything hook: did not fire. plan-mode-used: no.

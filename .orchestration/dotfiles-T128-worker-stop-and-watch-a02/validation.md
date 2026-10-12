@@ -87,3 +87,44 @@ rc=0
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T128-worker-stop-and-watch-a02 …'
 dccaabd2-91e1-4256-9f2c-b934222c3b19
 ```
+
+## 6. Bot fix round 1 (threads 4244354410, 4244354413, 4244354417)
+
+A7-1 after the Bot round, before the fix commit: the three threads of review 5486194208 (each a class at 1), and no head after a first RESULT:
+
+```
+4244354410 P1 Establish the PR identifier before starting the watch
+4244354413 P1 Count repeated findings even when no fix commit follows
+4244354417 P1 Define how the watcher derives the A2 fix-round count
+$ git diff --stat HEAD -- home tests; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md tests/fixtures/regime/*.md 2>&1 | tail -1
+ home/dot_agents/skills/agmsg-orchestration/SKILL.md | 4 ++--
+ tests/fixtures/regime/orchestrator-step-7.md        | 2 +-
+ tests/fixtures/regime/worker-step-15.md             | 2 +-
+ tests/unit/test_agmsg_orchestration_docs.py         | 5 +++++
+ 4 files changed, 9 insertions(+), 4 deletions(-)
+Ran 45 tests in 0.009s
+
+OK
+All matched files use Prettier code style!
+```
+
+Removal proofs (`scratchpad/mutate_a7_a02_f1.py`):
+
+```
+== removed token: After every Bot review round, before deciding whether a fix commit follows
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_worker_stops_itself_on_repeated_findings
+== removed token: `gh pr list --head <the task's branch> --json number`
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_orchestrator_watches_from_github_and_history
+== removed token: A fix round is a push whose predecessor head carries a Codex P0/P1 finding
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_orchestrator_watches_from_github_and_history
+== restored: OK
+```
+
+A7-1 before the push, the complete `--history-only` output:
+
+```
+$ scripts/regime-counters.sh dotfiles-T128-worker-stop-and-watch-a02 --history-only
+task=dotfiles-T128-worker-stop-and-watch-a02 tasks=1 amendments=0 questions=1 results=0 withdrawn=0 revises=0 first_result_head=none bot_p1_heads_after_result=skipped audits=unknown wall=2026-10-12T02:54:30Z..none (-) source=live
+detail: pr=none authors=claude-deep-dot tasks=01a12e08-7a70-73a9-8437-bd8b05332226 results=- questions=01a12e10-3ad0-7b82-8718-e18bb4590029 withdrawn=- bot_heads=- source=live
+rc=0
+```

@@ -39,8 +39,12 @@ threat_table:
     disposition: "residual: the unit tests run the script under bash with stubbed curl, gpgv and installer commands, as the existing tests do; nothing from the PR is imported into the test process"
   - control: workflow and interpreter or environment inputs
     disposition: "residual: none in allowed_files; an undeclared change to such a file is outside the task and fails at the audit (INV-12)"
-  - control: orchestrator effects on this PR (merge, update-branch, forced worker removal)
-    disposition: "residual: merge only through gh pr merge --squash --match-head-commit <audited head> after the gate; update-branch re-runs CI, the sweep and the audit on the new head; no forced removal is planned"
+  - control: orchestrator effect merge
+    disposition: "residual: merge only through gh pr merge --squash --match-head-commit <audited head> after the gate (Orchestrator Playbook step 10.5); never a local merge or a push to main"
+  - control: orchestrator effect update-branch
+    disposition: "residual: gh pr update-branch moves the head, so CI, the sweep and the audit run again on the new head before any gate (Orchestrator Playbook step 10)"
+  - control: orchestrator effect forced worker removal
+    disposition: "residual: none planned; herdr-agents --remove-worker refuses a dirty worktree without --force, and a forced removal is recorded in the acceptance record with the uncommitted state it discarded"
 premises:
   - claim: "awscli is the only installed formula that uses python@3.14, a formula the upgrade script forbids; Homebrew upgrades a dependency with its dependent whatever the forbidden list says (Homebrew FAQ: pinned, outdated formulae that another formula depends on need to be upgraded when required)"
     command: "brew uses --installed python@3.14; brew deps --formula awscli | tr '\\n' ' '"

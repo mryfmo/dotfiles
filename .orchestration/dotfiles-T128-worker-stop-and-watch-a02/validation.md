@@ -128,3 +128,40 @@ task=dotfiles-T128-worker-stop-and-watch-a02 tasks=1 amendments=0 questions=1 re
 detail: pr=none authors=claude-deep-dot tasks=01a12e08-7a70-73a9-8437-bd8b05332226 results=- questions=01a12e10-3ad0-7b82-8718-e18bb4590029 withdrawn=- bot_heads=- source=live
 rc=0
 ```
+
+## 8. Amendment 1 and revise round 1 (`previous_head=3a54d340`; §7 is the main-checkout copy's final head of the first RESULT)
+
+```
+$ shasum -a 256 ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-worker-stop-and-watch-a02.md .orchestration/dotfiles-T128-worker-stop-and-watch-a02/task.md | cut -c1-64
+1de19e51b9e23edff9bfc21a64e92a6755ddf247d12c3cf98456bb7629e3878e
+1de19e51b9e23edff9bfc21a64e92a6755ddf247d12c3cf98456bb7629e3878e
+$ git diff --stat HEAD -- home tests; UV_OFFLINE=1 uv run python -m unittest tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3; prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md tests/fixtures/regime/*.md 2>&1 | tail -1
+ home/dot_agents/skills/agmsg-orchestration/SKILL.md |  4 ++--
+ tests/fixtures/regime/message-contract.md           |  2 +-
+ tests/fixtures/regime/orchestrator-step-7.md        |  2 +-
+ tests/unit/test_agmsg_orchestration_docs.py         | 10 ++++++++--
+ 4 files changed, 12 insertions(+), 6 deletions(-)
+Ran 45 tests in 0.011s
+
+OK
+All matched files use Prettier code style!
+```
+
+Removal proofs (`scratchpad/mutate_a7_a02_r1.py`):
+
+```
+== removed token: badged finding of any priority
+   failing tests: test_regime_rule_sections_are_pinned_whole, test_the_orchestrator_watches_from_github_and_history
+== removed token: a mismatch is answered with `status=revise`
+   failing tests: test_question_pongs_are_in_the_contract, test_regime_rule_sections_are_pinned_whole
+== restored: OK
+```
+
+A7-1 before the push, the complete `--history-only` output:
+
+```
+$ scripts/regime-counters.sh dotfiles-T128-worker-stop-and-watch-a02 --history-only
+task=dotfiles-T128-worker-stop-and-watch-a02 tasks=2 amendments=1 questions=1 results=1 withdrawn=0 revises=0 first_result_head=3a54d340e9078ba3565237f6d73a00d8fc2d75e9 bot_p1_heads_after_result=skipped audits=unknown wall=2026-10-12T02:54:30Z..2026-10-12T03:18:33Z (0:24) source=live
+detail: pr=323 authors=claude-deep-dot tasks=01a12e08-7a70-73a9-8437-bd8b05332226,01a12e76-ad60-7ec6-858b-cae29845dddc results=01a12e1e-7f28-787a-8270-9546f18bd95c questions=01a12e10-3ad0-7b82-8718-e18bb4590029 withdrawn=- bot_heads=- source=live
+rc=0
+```

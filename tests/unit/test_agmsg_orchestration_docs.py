@@ -370,7 +370,12 @@ class AgmsgRegimePatternTest(unittest.TestCase):
     def test_question_pongs_are_in_the_contract(self) -> None:
         # Thread 4243732330: INV-6 counts AGMSG-PONG status=question, so the contract must allow it.
         contract = self.section(SKILL.read_text(), "## Message Contract v1")
-        for token in ("status=alive|blocked|question", "`question`: the worker holds and asks; INV-6 counts it."):
+        # Audit of 3a54d340, finding 3: the first RESULT's head is checked against the PR's head before it becomes the baseline.
+        for token in (
+            "status=alive|blocked|question",
+            "`question`: the worker holds and asks; INV-6 counts it.",
+            "a mismatch is answered with `status=revise`",
+        ):
             with self.subTest(token=token):
                 self.assertIn(token, contract)
 
@@ -551,7 +556,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "read as the counters bullet prescribes",
             # Threads 4244354410 and 4244354417: the PR number before the RESULT, and what counts as a fix round.
             "`gh pr list --head <the task's branch> --json number`",
-            "A fix round is a push whose predecessor head carries a Codex P0/P1 finding",
+            # Audit of 3a54d340, finding 1: a fix round that fixed only P2/P3 findings still counts.
+            "A fix round is a push whose predecessor head carries a Codex badged finding of any priority",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, playbook)

@@ -22,7 +22,7 @@ AGMSG-RESULT v1 task_id=<id> status=ready_for_review|blocked head=<full sha>
 report=<path> validation=<path> sandbox=<path> learning=<path> autoskill=<path>
 ```
 
-`head=<full sha>` is mandatory: the first RESULT's head is INV-6's baseline, the sha the counters read.
+`head=<full sha>` is mandatory: the first RESULT's head is INV-6's baseline, the sha the counters read. When the first RESULT arrives the orchestrator checks its `head=` against the PR's head (`gh pr view <n> --json headRefOid`); a mismatch is answered with `status=revise` and that RESULT's head is not the baseline.
 
 Tasks that create persistent side effects outside the repository working tree, such as global asset installs, writes under `$HOME`, or external service registrations, include the optional field `effects=<semicolon-list-of-short-ids>`. In-repository edits within `allowed_files` are not effects. For each declared effect, the report must state its reverse mapping: a named `~/.agents/.installed-manifest.json` step removable with `remove-agent-asset`, a documented removal procedure, or an `irreversible:` statement with rationale.
 

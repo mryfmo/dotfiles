@@ -42,6 +42,16 @@ Review 5486194208 (03:02:00Z) raised three P1s on A7 sentences. Its counts were 
 
 Both fixtures are regenerated in this commit. The three new tokens fail their test and the pin when removed (validation §6). The docs module runs 45 tests, OK. A further finding on these sentences is reported with its class; fix round 2 is only for a new class.
 
+## Amendment 1 and revise round 1 (TASK and ACCEPTANCE 04:54:52Z; `previous_head=3a54d340`)
+
+The operator chose plan 008 option A, continuing in place. The audit of `3a54d340` was incorrect with four findings; its findings 2 and 4 are the amendment's, and findings 1 and 3 are this revise round's. One commit, recorded in `revise.yaml` beside this report, carries:
+
+- the byte-identical copy of the amended task file (sha256 `1de19e51…`). It adds a sixth threat-table row, the forced removal as the orchestrator's in-process effect with its pre-removal verification and the session's permission mode, and corrects premise 1 to four heads after the park;
+- audit finding 1, step 7: "A fix round is a push whose predecessor head carries a Codex badged finding of any priority, counted from the PR's commits, the Bot reviews' `commit_id` and the inline comments' `original_commit_id`." The test token is "…a Codex badged finding of any priority";
+- audit finding 3, Message Contract v1, after the `head=` baseline sentence: "When the first RESULT arrives the orchestrator checks its `head=` against the PR's head (`gh pr view <n> --json headRefOid`); a mismatch is answered with `status=revise` and that RESULT's head is not the baseline." The token "a mismatch is answered with `status=revise`" sits in `test_question_pongs_are_in_the_contract`, as the ACCEPTANCE names. This is also thread 4244378809's proposal.
+
+`orchestrator-step-7.md` and `message-contract.md` are regenerated in this commit, a declared change. Both new tokens fail their test and the pin when removed (validation §8). The docs module runs 45 tests, OK. Per the ACCEPTANCE, a Bot P0/P1 on the revise head is an INV-6 head.
+
 ## Notes
 
 - Understand-Anything hook: did not fire. plan-mode-used: no.

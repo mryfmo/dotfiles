@@ -374,6 +374,13 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, contract)
 
+    def test_result_head_is_in_the_contract(self) -> None:
+        # Thread 4244248706: the first RESULT's head is INV-6's baseline, so the contract makes it mandatory.
+        contract = self.section(SKILL.read_text(), "## Message Contract v1")
+        for token in ("head=<full sha>", "the first RESULT's head is INV-6's baseline"):
+            with self.subTest(token=token):
+                self.assertIn(token, contract)
+
     def test_a_revise_acceptance_names_the_previous_head_and_a_check(self) -> None:
         contract = self.section(SKILL.read_text(), "## Message Contract v1")
         self.assertIn("carries `previous_head=<the RESULT head being revised>`", contract)
@@ -503,7 +510,9 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "never for a fourth round of the same class",
             "not only the current head's",
             "and the review bodies whose `commit_id`, is at or after the task's first commit on the PR",
-            "counted toward the fix cap and the classes, never INV-6's heads",
+            "counted toward the classes at any priority and toward the fix cap at P0 or P1, never INV-6's heads",
+            # Thread 4244248703: the class count reads every badged Codex finding, review bodies P0 to P3.
+            "carries a badge, P0 to P3",
             "--history-only",
             # Bot fix round 1 on 9d001bcb (threads 4244128846, 4244128851, 4244128854, 4244128857).
             # Revise round 1 (plan S1 on the class-count sentence): the worker counts the Codex Bot's findings only.
@@ -536,8 +545,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "as soon as it first sees a task past the A2 cap or an INV-6 count",
             # Thread 4244203607: a PING the worker reads and ignores still leads to removal.
             "read or unread",
-            # Thread 4244248710: the watch reads INV-6's audit-head source, which the counter leaves unknown.
-            "for INV-6's audit-head component",
+            # Threads 4244248710 and 4244272551: the audit-head component is read as the counters bullet prescribes.
+            "read as the counters bullet prescribes",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, playbook)

@@ -1,11 +1,20 @@
-# Acceptance: test (S6 fixture)
+---
+format: 1
+task: test
+head: HEAD
+pr: 1
+ledger:
+  - id: 4244128846
+    class: class-count-scope
+  - id: 4244175775
+    class: class-count-scope
+  - id: audit:3a54d34:2
+    class: class-count-scope
+  - id: 4244248692
+    class: threat-row-outside-paths
+searches:
+  - class: class-count-scope
+    records: [M-20261012-3.md]
+---
 
-```text
-4244128846	class-count-scope
-4244175775	class-count-scope
-audit:3a54d34:2	class-count-scope
-4244248692	threat-row-outside-paths
-```
-
-search: class-count-scope -> M-20261012-3.md
-contextdb: class-count-scope -> 2 lines
+# Acceptance: test (S6 fixture, the search entry present)

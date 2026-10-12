@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -16,6 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 GUARD = ROOT / "scripts/require-crit-review.py"
 FIXTURES = ROOT / "tests/fixtures/gate-evidence"
+# The gate parses the record with `uv run --with pyyaml`; the fake HOME keeps the real uv cache.
+UV_CACHE = subprocess.run(["uv", "cache", "dir"], capture_output=True, text=True, check=True).stdout.strip()
 
 
 def run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -403,10 +407,22 @@ class ReviewGuardTest(unittest.TestCase):
         document = {"repo": "mryfmo/dotfiles", "pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
         self.collected.write_text(json.dumps(document))
 
-    def acceptance_record(self, fixture: str) -> str:
-        relative = ".orchestration/acceptance/test.md"
-        self.write_review_file(relative, (FIXTURES / fixture).read_text())
-        return relative
+    def write_record(self, fixture: str | None = None, *, text: str | None = None, **fields: object) -> str:
+        """Write .orchestration/acceptance/test.md: a fixture, raw text, or a front matter of fields.
+
+        Fields default to a passing record with no ledger; a field set to None is left out (JSON is YAML).
+        `head: HEAD` is replaced with this repository's HEAD.
+        """
+        if fixture is not None:
+            text = (FIXTURES / fixture).read_text()
+        elif text is None:
+            data = {"format": 1, "task": "test", "head": "HEAD", "pr": 1, "ledger": [], "searches": [], **fields}
+            lines = "".join(f"{key}: {json.dumps(value)}\n" for key, value in data.items() if value is not None)
+            text = f"---\n{lines}---\n\n# prose\n"
+        head = self.head_commit()
+        text = text.replace("head: HEAD\n", f"head: {head}\n").replace('head: "HEAD"\n', f"head: {head}\n")
+        self.write_review_file(".orchestration/acceptance/test.md", text)
+        return ".orchestration/acceptance/test.md"
 
     def guard_base(self, env: dict[str, str] | None = None, base: str = "main") -> subprocess.CompletedProcess[str]:
         defaults = {
@@ -415,9 +431,10 @@ class ReviewGuardTest(unittest.TestCase):
             "FAKE_COLLECTED": str(self.collected),
             "FAKE_PR_METADATA": str(self.metadata),
             "PATH": f"{self.collected_dir}{os.pathsep}{os.environ['PATH']}",
+            "UV_CACHE_DIR": UV_CACHE,
         }
         if "ACCEPTANCE_EVIDENCE" not in (env or {}):
-            defaults["ACCEPTANCE_EVIDENCE"] = self.acceptance_record("acceptance-s6-present.md")
+            defaults["ACCEPTANCE_EVIDENCE"] = self.write_record("acceptance-s6-present.md")
         return run([sys.executable, str(GUARD), "--base", base], self.temp_dir, {**defaults, **(env or {})})
 
     def test_the_gate_has_no_github_identity_check(self) -> None:
@@ -1077,7 +1094,8 @@ class ReviewGuardTest(unittest.TestCase):
         transcript: str = "exec\ngit diff\ncodex\nreview\n",
         sha: str | None = None,
         audit_path: str | None = None,
-        dispositions: str | None = None,
+        findings: list | None = None,
+        fixture: str = "acceptance-s6-present.md",
         last_symlink: Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
         """Run --base on a reviewed lifecycle change whose feedback and review evidence pass.
@@ -1101,7 +1119,6 @@ class ReviewGuardTest(unittest.TestCase):
             "AGENT_REVIEWED": "1",
             "REVIEW_EVIDENCE": str(receipt),
             "AUDIT_EVIDENCE": "",
-            "AUDIT_DISPOSITIONS": "",
         }
         if audit_text is not None:
             audit = audit_path or f".orchestration/validation/test-audit-{sha or self.head_commit()[:7]}.md"
@@ -1111,9 +1128,11 @@ class ReviewGuardTest(unittest.TestCase):
             else:
                 self.write_review_file(f"{audit}.last.md", audit_text)
             env["AUDIT_EVIDENCE"] = audit
-        if dispositions is not None:
-            env["AUDIT_DISPOSITIONS"] = ".orchestration/acceptance/t1.md"
-            self.write_review_file(env["AUDIT_DISPOSITIONS"], dispositions)
+        # The record is written at the audited head; findings become its audit_findings.
+        if findings is None:
+            env["ACCEPTANCE_EVIDENCE"] = self.write_record(fixture)
+        else:
+            env["ACCEPTANCE_EVIDENCE"] = self.write_record(audit_findings=findings)
         return self.guard_base(env)
 
     def test_base_requires_audit_evidence_for_a_reviewed_change(self) -> None:
@@ -1205,41 +1224,28 @@ class ReviewGuardTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn(message, result.stdout)
 
-    def test_incorrect_audit_needs_not_applicable_dispositions(self) -> None:
+    def test_incorrect_audit_needs_audit_findings(self) -> None:
         audit = "[P2] high impl a:1 one\n  - [P3] low impl b:2 two\nVerdict: incorrect\n"
-        reason = "not-applicable:the flagged path is generated output outside this task; evidence=gh pr checks 1"
-        for label, dispositions, message in (
-            ("no dispositions", None, "AUDIT_DISPOSITIONS must name the acceptance record"),
-            ("fixed commit", f"audit-finding: 1 fixed:{'a' * 7}\naudit-finding: 2 {reason}\n", "a fix moves HEAD"),
-            (
-                "short reason",
-                f"audit-finding: 1 not-applicable:nope; evidence=gh pr checks 1\naudit-finding: 2 {reason}\n",
-                "at least 20",
-            ),
-            (
-                "no evidence clause",
-                f"audit-finding: 1 {reason.split(';')[0]}\naudit-finding: 2 {reason}\n",
-                "line needs `not-applicable:<reason>; evidence=<command>`",
-            ),
-            (
-                "a second evidence delimiter",
-                f"audit-finding: 1 {reason}; evidence=true\naudit-finding: 2 {reason}\n",
-                "line needs `not-applicable:<reason>; evidence=<command>`",
-            ),
-            ("one missing", f"audit-finding: 1 {reason}\n", "leaves audit finding(s) 2 of 2 without a disposition"),
-            ("unnumbered repeat", f"audit-finding: x {reason}\naudit-finding: x {reason}\n", "must name its finding"),
-            (
-                "same finding twice",
-                f"audit-finding: 1 {reason}\naudit-finding: 1 {reason}\n",
-                "finding 1 more than once",
-            ),
-            ("out of range", f"audit-finding: 1 {reason}\naudit-finding: 3 {reason}\n", "<1-2>"),
-            ("accepted", f"# acceptance\naudit-finding: 1 {reason}\naudit-finding: 2 {reason}\n", None),
+        reason = "the flagged path is generated output outside this task"
+
+        def entry(n: int, **fields: object) -> dict:
+            return {"n": n, "reason": reason, "evidence": "gh pr checks 1", **fields}
+
+        for label, findings, message in (
+            ("no audit_findings", None, "the acceptance record's audit_findings must disposition its 2 finding(s)"),
+            ("a fix", [{"n": 1, "fixed": "a" * 7}, entry(2)], "a fix moves HEAD"),
+            ("short reason", [entry(1, reason="nope"), entry(2)], "at least 20"),
+            ("no evidence", [{"n": 1, "reason": reason}, entry(2)], "must be {n: <finding number>"),
+            ("empty evidence", [entry(1, evidence=" "), entry(2)], "must be {n: <finding number>"),
+            ("one missing", [entry(1)], "leaves audit finding(s) 2 of 2 without a disposition"),
+            ("same finding twice", [entry(1), entry(1)], "dispositions finding 1 more than once"),
+            ("out of range", [entry(1), entry(3)], "names finding 3, but the audit lists 2"),
+            ("accepted", [entry(1), entry(2)], None),
         ):
             with self.subTest(label):
                 self.tearDown()
                 self.setUp()
-                result = self.audit_guard(audit, dispositions=dispositions)
+                result = self.audit_guard(audit, findings=findings)
                 if message is None:
                     self.assertEqual(result.returncode, 0, result.stdout)
                     self.assertIn("Audit evidence accepted", result.stdout)
@@ -1248,10 +1254,7 @@ class ReviewGuardTest(unittest.TestCase):
                     self.assertIn(message, result.stdout)
 
     def test_incorrect_audit_without_findings_fails(self) -> None:
-        result = self.audit_guard(
-            "Verdict: incorrect\n",
-            dispositions="audit-finding: x not-applicable:nothing to see here at all; evidence=gh pr checks 1\n",
-        )
+        result = self.audit_guard("Verdict: incorrect\n")
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("lists no [P0-P3] finding", result.stdout)
 
@@ -1297,130 +1300,195 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn(f"PR feedback evidence accepted: {feedback}", result.stdout)
 
-    def test_s6_class_at_three_without_a_search_line_is_refused(self) -> None:
+    def test_s6_class_at_three_without_a_searches_entry_is_refused(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
-        record = self.acceptance_record("acceptance-s6-missing.md")
+        record = self.write_record("acceptance-s6-missing.md")
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("S6: class class-count-scope at 3 without a matching records search", result.stdout)
         self.assertNotIn("threat-row-outside-paths", result.stdout)
 
-    def test_s6_class_at_three_with_the_matching_search_line_is_accepted(self) -> None:
+    def test_s6_class_at_three_with_the_matching_searches_entry_is_accepted(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
-        record = self.acceptance_record("acceptance-s6-present.md")
+        record = self.write_record("acceptance-s6-present.md")
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
 
-    def test_s6_search_line_must_equal_the_recomputed_records_search(self) -> None:
+    def test_s6_searches_entry_must_equal_the_recomputed_records_search(self) -> None:
         # `grep -rl 'classes:.*scope'` finds the base's M-20261012-3.md (classes: [evidence, class-count-scope]).
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
 
-        def rows(cls: str) -> str:
-            return "".join(f"42441288{index:02d}\t{cls}\n" for index in range(2)) + f"audit:3a54d34:1\t{cls}\n"
+        def ledger(cls: str) -> list[dict]:
+            return [{"id": f"42441288{index:02d}", "class": cls} for index in range(2)] + [
+                {"id": "audit:3a54d34:1", "class": cls}
+            ]
 
         refused = "S6: class scope at 3 without a matching records search"
-        for label, text, message in (
-            ("the matching set", rows("scope") + "search: scope -> M-20261012-3.md\n", None),
-            ("none where nothing matches", rows("absent") + "search: absent -> none\n", None),
-            ("a record missing", rows("scope") + "search: scope -> none\n", refused),
-            ("a record too many", rows("scope") + "search: scope -> M-20261012-3.md M-20261012-9.md\n", refused),
-            ("another class's line", rows("scope") + "search: class-count-scope -> M-20261012-3.md\n", refused),
+        for label, fields, message in (
             (
-                "pasted command text",
-                rows("scope") + "search: scope: grep -rl 'classes:.*scope' .orchestration/learning/mistakes/\n",
+                "the matching set",
+                {"ledger": ledger("scope"), "searches": [{"class": "scope", "records": ["M-20261012-3.md"]}]},
+                None,
+            ),
+            (
+                "none where nothing matches",
+                {"ledger": ledger("absent"), "searches": [{"class": "absent", "records": []}]},
+                None,
+            ),
+            ("a record missing", {"ledger": ledger("scope"), "searches": [{"class": "scope", "records": []}]}, refused),
+            (
+                "a record too many",
+                {"ledger": ledger("scope"), "searches": [{"class": "scope", "records": ["M-20261012-3.md", "M-9.md"]}]},
                 refused,
             ),
-            ("not at the line start", rows("scope") + "note search: scope -> M-20261012-3.md\n", refused),
             (
-                "a class outside [a-z0-9-]",
-                rows("Scope;touch-pwned") + "search: scope -> M-20261012-3.md\n",
-                "S6: class 'Scope;touch-pwned' at 3 is not a [a-z0-9-] slug",
+                "another class's entry",
+                {
+                    "ledger": ledger("scope"),
+                    "searches": [{"class": "class-count-scope", "records": ["M-20261012-3.md"]}],
+                },
+                refused,
+            ),
+            (
+                "a pasted command for its records",
+                {
+                    "ledger": ledger("scope"),
+                    "searches": [{"class": "scope", "records": ["grep -rl 'classes:.*scope' ."]}],
+                },
+                refused,
             ),
         ):
             with self.subTest(label):
-                record = self.write_review_file(".orchestration/acceptance/test.md", text)
-                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": str(record)})
+                record = self.write_record(**fields)
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
                 if message is None:
                     self.assertEqual(result.returncode, 0, result.stdout)
                 else:
                     self.assertEqual(result.returncode, 1, result.stdout)
                     self.assertIn(message, result.stdout)
-        self.assertFalse((self.temp_dir / "pwned").exists())
         shutil.rmtree(self.temp_dir / ".orchestration/learning/mistakes")
-        record = self.write_review_file(".orchestration/acceptance/test.md", rows("scope") + "search: scope -> none\n")
-        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": str(record)})
+        record = self.write_record(ledger=ledger("scope"), searches=[{"class": "scope", "records": []}])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("S6: class scope at 3: the records search failed (grep exit 2)", result.stdout)
 
     def test_base_requires_an_acceptance_record_under_acceptance(self) -> None:
-        # The threat row for the ACCEPTANCE_EVIDENCE input: its path, then its content.
+        # The threat row for the ACCEPTANCE_EVIDENCE input: its path, then each front-matter field.
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
         self.write_review_file(".orchestration/validation/test.md", "")
         other = self.write_review_file(".orchestration/acceptance/other.md", "# another task's record\n")
         (self.temp_dir / ".orchestration/acceptance/alias.md").symlink_to(other)
         own = ".orchestration/acceptance/test.md"
-        missing_search = (FIXTURES / "acceptance-s6-missing.md").read_text()
-        bare_not_applicable = "audit-finding: 1 not-applicable:the flagged path is generated output outside this task\n"
-        needs_evidence = "ACCEPTANCE_EVIDENCE line needs `not-applicable:<reason>; evidence=<command>`"
-        for value, content, message in (
-            ("", None, "ACCEPTANCE_EVIDENCE must point to the task's acceptance record for PR integration"),
-            (
-                ".orchestration/validation/test.md",
-                None,
-                "ACCEPTANCE_EVIDENCE must live under .orchestration/acceptance/",
-            ),
-            (".orchestration/acceptance/other.md", None, "must be test.md, the record of the task named by"),
-            (".orchestration/acceptance/alias.md", None, "must be test.md, the record of the task named by"),
-            (own, None, "ACCEPTANCE_EVIDENCE file does not exist"),
-            (own, missing_search, "S6: class class-count-scope at 3 without a matching records search"),
-            (
-                own,
-                missing_search + "search: class-count-scope -> none\n",
-                "S6: class class-count-scope at 3 without a matching records search",
-            ),
-            (own, bare_not_applicable, needs_evidence),
-            (own, f"- {bare_not_applicable}", needs_evidence),
-            (own, bare_not_applicable.replace("\n", "; evidence=a; evidence=b\n"), needs_evidence),
+        for value, message in (
+            ("", "ACCEPTANCE_EVIDENCE must point to the task's acceptance record for PR integration"),
+            (".orchestration/validation/test.md", "ACCEPTANCE_EVIDENCE must live under .orchestration/acceptance/"),
+            (".orchestration/acceptance/other.md", "must be test.md, the record of the task named by"),
+            (".orchestration/acceptance/alias.md", "must be test.md, the record of the task named by"),
+            (own, "ACCEPTANCE_EVIDENCE file does not exist"),
         ):
-            with self.subTest(value=value, content=(content or "")[-40:]):
-                if content is not None:
-                    self.write_review_file(own, content)
+            with self.subTest(value=value):
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": value})
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn(message, result.stdout)
-
-    def test_acceptance_record_not_applicable_needs_evidence_whatever_the_verdict(self) -> None:
-        # INV-6 reads the record itself; AUDIT_DISPOSITIONS is consulted only for an incorrect verdict.
-        run(["git", "branch", "-M", "main"], self.temp_dir)
-        feedback = self.write_feedback([])
-        reason = "not-applicable:the flagged path is generated output outside this task"
-        for label, line, message in (
-            ("no evidence clause", f"audit-finding: 1 {reason}\n", "ACCEPTANCE_EVIDENCE line needs"),
-            ("bullet list item", f"- audit-finding: 1 {reason}\n", "ACCEPTANCE_EVIDENCE line needs"),
+        for label, write, message in (
+            ("no front matter", {"text": "# prose only\n"}, "must start with a YAML front matter between --- lines"),
+            ("unloadable YAML", {"text": "---\nformat: [1\n---\n"}, "could not be loaded with yaml.safe_load"),
+            ("a list, not a mapping", {"text": "---\n- 1\n---\n"}, "front matter must be a mapping"),
+            ("format", {"format": 2}, "format must be 1"),
+            ("task", {"task": "other"}, "task must be 'test', the task id the file name carries"),
             (
-                "a second evidence delimiter",
-                f"audit-finding: 1 {reason}; evidence=a; evidence=b\n",
-                "ACCEPTANCE_EVIDENCE line needs",
+                "head",
+                {"fixture": "acceptance-stale-head.md"},
+                "acceptance record head 0000000000000000000000000000000000000000 is not HEAD",
             ),
-            ("numbered list item", f"  1. audit-finding: 1 {reason}\n", "ACCEPTANCE_EVIDENCE line needs"),
-            ("evidence clause", f"audit-finding: 1 {reason}; evidence=gh pr checks 1\n", None),
-            ("list item with evidence clause", f"* audit-finding: 1 {reason}; evidence=gh pr checks 1\n", None),
-            ("a fixed finding in prose", "audit-finding: 2 (P2, a:1) → fixed in the revise round\n", None),
+            ("pr", {"pr": None}, "pr must be the pull request number"),
+            ("ledger id", {"ledger": [{"id": "123", "class": "scope"}]}, "ledger row 0 must be"),
+            ("ledger class", {"ledger": [{"id": 4244128846, "class": "Scope;x"}]}, "ledger row 0 must be"),
+            ("searches records", {"searches": [{"class": "scope", "records": "M-1.md"}]}, "searches entry 0 must be"),
+            (
+                "searches twice for one class",
+                {"searches": [{"class": "scope", "records": []}, {"class": "scope", "records": []}]},
+                "searches names class scope more than once",
+            ),
+            ("audit_findings entry", {"audit_findings": [{"n": 1, "fixed": "abcdef0"}]}, "a fix moves HEAD"),
+            (
+                "S6",
+                {"fixture": "acceptance-s6-missing.md"},
+                "S6: class class-count-scope at 3 without a matching records search",
+            ),
         ):
             with self.subTest(label):
-                text = (FIXTURES / "acceptance-s6-present.md").read_text() + line
-                record = self.write_review_file(".orchestration/acceptance/test.md", text)
-                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": str(record)})
-                if message is None:
-                    self.assertEqual(result.returncode, 0, result.stdout)
-                else:
-                    self.assertEqual(result.returncode, 1, result.stdout)
-                    self.assertIn(message, result.stdout)
+                record = self.write_record(**write)
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stdout)
+        # A PR-planted yaml.py or uv.toml never reaches the record's parser (`python -I`, a temporary cwd, --no-config).
+        (self.temp_dir / "yaml.py").write_text(
+            "open('planted-yaml-ran', 'w').write('x')\nsafe_load = lambda text: {}\n"
+        )
+        (self.temp_dir / "uv.toml").write_text('index-url = "http://127.0.0.1:9/simple"\n')
+        record = self.write_record("acceptance-s6-present.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        # The record passes; the planted files themselves are a broad diff, which the audit step then asks about.
+        self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout + result.stderr)
+        self.assertFalse((self.temp_dir / "planted-yaml-ran").exists())
+
+    def test_acceptance_record_prose_is_not_read(self) -> None:
+        # Only the front matter is read: prose that looks like a disposition or a search line is for people.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        prose = "audit-finding: 1 not-applicable:no evidence clause here\n- search: class-count-scope -> none\n"
+        text = (FIXTURES / "acceptance-s6-present.md").read_text() + prose
+        record = self.write_record(text=text)
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
+
+    def test_acceptance_record_head_must_be_head(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-stale-head.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn(
+            f"acceptance record head 0000000000000000000000000000000000000000 is not HEAD {self.head_commit()}",
+            result.stdout,
+        )
+
+    def test_audit_finding_reason_may_quote_the_grammar(self) -> None:
+        # Thread 4249544748: a reason is a field, so quoting `not-applicable:` in it is no disposition.
+        result = self.audit_guard(
+            "[P2] high impl a:1 one\nVerdict: incorrect\n", fixture="acceptance-finding-quotes-grammar.md"
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Audit evidence accepted", result.stdout)
+
+    def test_disposition_parsing_is_linear(self) -> None:
+        # Thread 4249544794: one split and two checks, so a long malformed disposition is refused at once.
+        spec = importlib.util.spec_from_file_location("require_crit_review", GUARD)
+        guard = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(guard)
+        for text in (
+            "not-applicable:" + "a" * 1_000_000,
+            "not-applicable:" + "a" * 1_000_000 + "; evidence=b; evidence=c",
+        ):
+            started = time.perf_counter()
+            self.assertIsNone(guard.parse_disposition(text))
+            self.assertLess(time.perf_counter() - started, 0.5)
+        self.assertEqual(guard.parse_disposition("not-applicable:a; b; evidence=c"), (None, "a; b"))
+        self.assertIsNone(guard.parse_disposition("not-applicable:r;evidence=c"))
+
+    def test_retired_audit_dispositions_is_not_read(self) -> None:
+        result = self.audit_guard("[P2] high impl a:1 one\nVerdict: incorrect\n", findings=None)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("audit_findings must disposition its 1 finding(s)", result.stdout)
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": self.write_feedback([]), "AUDIT_DISPOSITIONS": "x.md"})
+        self.assertIn("AUDIT_DISPOSITIONS is retired and not read", result.stdout)
 
     def test_acceptance_record_is_not_counted_as_a_change(self) -> None:
         # Four docs files stay below the broad-diff limit only when the untracked record is not counted.

@@ -204,7 +204,7 @@ render-check:
 
 .PHONY: require-crit-review
 # BASE=<ref> adds the committed <ref>...HEAD changes and requires PR_FEEDBACK_EVIDENCE and
-# ACCEPTANCE_EVIDENCE, plus AUDIT_EVIDENCE (and AUDIT_DISPOSITIONS for an incorrect verdict) when the change needs
+# ACCEPTANCE_EVIDENCE, plus AUDIT_EVIDENCE (an incorrect verdict's findings go in the record's audit_findings) when the change needs
 # review, for PR integration (home/dot_config/claude/rules/pr-integration.md; agmsg-orchestration
 # SKILL Orchestrator Playbook step 10).
 require-crit-review:

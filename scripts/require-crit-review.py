@@ -22,33 +22,27 @@ EVIDENCE_ENV = "REVIEW_EVIDENCE"
 DISABLE_ENV = "CRIT_REVIEW"
 PR_FEEDBACK_ENV = "PR_FEEDBACK_EVIDENCE"
 AUDIT_ENV = "AUDIT_EVIDENCE"
-AUDIT_DISPOSITIONS_ENV = "AUDIT_DISPOSITIONS"
+# Retired: an incorrect audit's findings are dispositioned in the acceptance record's `audit_findings`.
+RETIRED_AUDIT_DISPOSITIONS_ENV = "AUDIT_DISPOSITIONS"
 ACCEPTANCE_ENV = "ACCEPTANCE_EVIDENCE"
-# A not-applicable reason names the command whose pasted output supports it (plan 007 Phase 0). No character of
-# either part may start a `; evidence=`, so a full match splits at the first delimiter and refuses a second one.
-DISPOSITION_PART = r"(?:(?!;\s*evidence=).)*(?:(?!;\s*evidence=)\S)(?:(?!;\s*evidence=).)*"
-PR_FEEDBACK_DISPOSITION = re.compile(
-    rf"(?:fixed:(?P<commit>[0-9a-f]{{7,40}})"
-    rf"|not-applicable:(?P<reason>{DISPOSITION_PART});\s*evidence=(?P<command>{DISPOSITION_PART}))",
-    re.S,
-)
+# A not-applicable reason names the command whose pasted output supports it (plan 007 Phase 0); it is split once
+# on its first delimiter, and a second delimiter is refused.
+FIXED_DISPOSITION = re.compile(r"fixed:(?P<commit>[0-9a-f]{7,40})")
+EVIDENCE_DELIMITER = "; evidence="
 DISPOSITION_GRAMMAR = "fixed:<commit> or not-applicable:<reason>; evidence=<command>"
 FAILURE_REASON_MIN_CHARS = 20
-# An acceptance record's finding-class ledger row: <thread id or audit:<sha7>:<n>>\t<class>.
-LEDGER_ROW = re.compile(r"(?P<id>\d{10,}|audit:[0-9a-f]{7}:\d+)\t(?P<cls>\S+)")
+# The acceptance record's YAML front matter (the prose after it is not read).
+RECORD_FORMAT = 1
+LEDGER_ID = re.compile(r"\d{10,}|audit:[0-9a-f]{7}:\d+")
+CLASS_SLUG = re.compile(r"[a-z0-9-]+")
+AUDIT_FINDING_KEYS = {"n", "reason", "evidence"}
 S6_CLASS_LIMIT = 3
-# S6 recomputes the records search; a record states its result as `search: <slug> -> <basenames, or none>`.
-S6_SLUG = re.compile(r"[a-z0-9-]+")
-S6_SEARCH_LINE = re.compile(r"search: (?P<slug>[a-z0-9-]+) -> (?P<files>\S.*)")
 MISTAKE_RECORDS = ".orchestration/learning/mistakes/"
-# A record line may be a Markdown list item (`- audit-finding: …`, `1. audit-finding: …`).
-RECORD_AUDIT_FINDING = re.compile(r"\s*(?:(?:[-*+]|\d+[.)])\s+)?audit-finding:")
+SUBPROCESS_TIMEOUT = 120
 # herdr-agents --audit names and concludes the task-level audit this way.
 AUDIT_NAME = re.compile(r"(?P<task>.+)-audit-(?P<sha>[0-9a-f]{7,40})\.md")
 AUDIT_VERDICT = re.compile(r"\s*Verdict: (correct|incorrect|blocked)\s*")
 AUDIT_FINDING = re.compile(r"^\s*(?:[-*+]\s+)?\[P[0-3]\]", re.M)
-AUDIT_FINDING_DISPOSITION_PREFIX = "audit-finding:"
-AUDIT_FINDING_NUMBER = re.compile(rf"{AUDIT_FINDING_DISPOSITION_PREFIX}\s*(?P<number>\d+)\b")
 # Levels whose not-applicable disposition needs a concrete reason: failures and
 # runs that did not finish, so a work-in-progress run cannot be waved through.
 STRICT_REASON_LEVELS = {
@@ -390,6 +384,20 @@ def commit_in_range(root: Path, commit: str, base: str, head: str) -> bool:
     )
 
 
+def parse_disposition(text: object) -> tuple[str | None, str] | None:
+    """Read `fixed:<commit>` as (commit, "") or `not-applicable:<reason>; evidence=<command>` as (None, reason)."""
+    if not isinstance(text, str):
+        return None
+    if match := FIXED_DISPOSITION.fullmatch(text):
+        return match.group("commit"), ""
+    body = text.removeprefix("not-applicable:")
+    # One split on the first delimiter and two linear checks; a second delimiter is refused.
+    if body == text or body.count(EVIDENCE_DELIMITER) != 1:
+        return None
+    reason, _, command = body.partition(EVIDENCE_DELIMITER)
+    return (None, reason.strip()) if reason.strip() and command.strip() else None
+
+
 def pr_feedback_errors(root: Path, required: bool, head: str | None = None, base: str | None = None) -> list[str]:
     """Check the filled pr-feedback.py JSON: every item needs a root-cause disposition."""
     evidence = os.environ.get(PR_FEEDBACK_ENV, "").strip()
@@ -428,12 +436,11 @@ def pr_feedback_errors(root: Path, required: bool, head: str | None = None, base
             errors.append(f"{label} must be an object")
             continue
         label += f" ({item.get('source')}:{item.get('level')} {item.get('url') or ''})".rstrip()
-        disposition = item.get("disposition")
-        match = PR_FEEDBACK_DISPOSITION.fullmatch(disposition) if isinstance(disposition, str) else None
-        if not match:
+        parsed = parse_disposition(item.get("disposition"))
+        if parsed is None:
             errors.append(f"{label} needs a disposition {DISPOSITION_GRAMMAR}")
             continue
-        commit = match.group("commit")
+        commit, reason = parsed
         if commit and run_git(["cat-file", "-e", f"{commit}^{{commit}}"], root).returncode != 0:
             errors.append(f"{label} cites an unknown commit: {commit}")
         elif (
@@ -445,7 +452,6 @@ def pr_feedback_errors(root: Path, required: bool, head: str | None = None, base
             errors.append(
                 f"{label} cites commit {commit} outside GitHub base {data['base_sha']}..HEAD; cite the fix commit in this PR"
             )
-        reason = (match.group("reason") or "").strip()
         if item.get("level") in STRICT_REASON_LEVELS and not commit and len(reason) < FAILURE_REASON_MIN_CHARS:
             errors.append(
                 f"{label} is {item.get('level')}-level; not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters"
@@ -641,8 +647,8 @@ def audit_name_error(name: str, head: str, task: str) -> str | None:
     return None
 
 
-def audit_errors(root: Path, head: str, task: str) -> list[str]:
-    """Require the task-level audit of HEAD for task: `correct`, or `incorrect` with every finding not-applicable."""
+def audit_errors(root: Path, head: str, task: str, record: dict | None) -> list[str]:
+    """Require the task-level audit of HEAD for task: `correct`, or `incorrect` with every finding in audit_findings."""
     evidence = os.environ.get(AUDIT_ENV, "").strip()
     if not evidence:
         return [
@@ -687,113 +693,217 @@ def audit_errors(root: Path, head: str, task: str) -> list[str]:
     findings = len(AUDIT_FINDING.findall(text))
     if not findings:
         return [f"{AUDIT_ENV} verdict is incorrect but {source} lists no [P0-P3] finding to disposition"]
-    return audit_disposition_errors(root, findings)
+    return audit_findings_errors(record, findings)
 
 
-def audit_disposition_errors(root: Path, findings: int) -> list[str]:
-    value = os.environ.get(AUDIT_DISPOSITIONS_ENV, "").strip()
-    if not value:
+def audit_findings_errors(record: dict | None, findings: int) -> list[str]:
+    """An incorrect audit needs one `audit_findings` entry per finding 1..N (each entry's shape is checked on load)."""
+    entries = (record or {}).get("audit_findings")
+    if not entries:
         return [
-            f"{AUDIT_ENV} verdict is incorrect: {AUDIT_DISPOSITIONS_ENV} must name the acceptance record that dispositions its {findings} finding(s)"
+            f"{AUDIT_ENV} verdict is incorrect: the acceptance record's audit_findings must disposition its {findings} finding(s)"
         ]
-    path = Path(value)
-    if not path.is_absolute():
-        path = root / path
-    path_error = orchestration_path_error(root, path, AUDIT_DISPOSITIONS_ENV, "acceptance")
-    if path_error:
-        return [path_error]
-    if not path.is_file():
-        return [f"{AUDIT_DISPOSITIONS_ENV} file does not exist: {path}"]
-    errors: list[str] = []
-    covered: set[int] = set()
-    for line in path.read_text().splitlines():
-        line = line.strip()
-        if not line.startswith(AUDIT_FINDING_DISPOSITION_PREFIX):
-            continue
-        number = AUDIT_FINDING_NUMBER.match(line)
-        if number is None or not 1 <= int(number.group("number")) <= findings:
-            errors.append(
-                f"{AUDIT_DISPOSITIONS_ENV} line must name its finding as `{AUDIT_FINDING_DISPOSITION_PREFIX} <1-{findings}>` in audit order: {line}"
-            )
-            continue
-        finding = int(number.group("number"))
-        if finding in covered:
-            errors.append(f"{AUDIT_DISPOSITIONS_ENV} dispositions finding {finding} more than once: {line}")
-            continue
-        match = PR_FEEDBACK_DISPOSITION.search(line)
-        if match is not None and match.group("reason") is not None:
-            # A not-applicable runs to the end of the line; a second `; evidence=` there refuses it.
-            match = PR_FEEDBACK_DISPOSITION.fullmatch(line, match.start())
-        if match is None:
-            errors.append(f"{AUDIT_DISPOSITIONS_ENV} line needs `not-applicable:<reason>; evidence=<command>`: {line}")
-        elif match.group("commit"):
-            errors.append(
-                f"{AUDIT_DISPOSITIONS_ENV} line cites fixed:{match.group('commit')}; a fix moves HEAD, so audit the new head instead: {line}"
-            )
-        elif len(match.group("reason").strip()) < FAILURE_REASON_MIN_CHARS:
-            errors.append(
-                f"{AUDIT_DISPOSITIONS_ENV} not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters: {line}"
-            )
-        else:
-            covered.add(finding)
-    missing = sorted(set(range(1, findings + 1)) - covered)
+    numbers = [entry["n"] for entry in entries]
+    errors = [
+        f"audit_findings dispositions finding {n} more than once" for n in sorted(set(numbers)) if numbers.count(n) > 1
+    ]
+    errors += [
+        f"audit_findings names finding {n}, but the audit lists {findings}"
+        for n in sorted(set(numbers))
+        if n > findings
+    ]
+    missing = sorted(set(range(1, findings + 1)) - set(numbers))
     if missing:
         errors.append(
-            f"{AUDIT_DISPOSITIONS_ENV} leaves audit finding(s) {', '.join(map(str, missing))} of {findings} without a disposition; add one `{AUDIT_FINDING_DISPOSITION_PREFIX} <n> … not-applicable:<reason>; evidence=<command>` line per finding, numbered in audit order"
+            f"audit_findings leaves audit finding(s) {', '.join(map(str, missing))} of {findings} without a disposition; add one {{n, reason, evidence}} entry per finding"
         )
     return errors
 
 
-def acceptance_errors(root: Path, required: bool, task: str | None) -> list[str]:
-    """Plan 007 S6: a class at three ledger rows needs a pasted search of the correction records."""
+# PyYAML runs in a uv-provided interpreter: the gate's own python3 has no third-party packages. `-I` and a temporary
+# cwd keep a PR-planted yaml.py off sys.path, and --no-config ignores a PR-planted uv.toml.
+# A YAML error is reported as data (exit 0), so only a uv or interpreter failure retries the run online.
+YAML_TO_JSON = (
+    "import json, sys, yaml\n"
+    "try:\n    out = {'data': yaml.safe_load(sys.stdin.read())}\n"
+    "except yaml.YAMLError as error:\n    out = {'error': ' '.join(str(error).split())}\n"
+    "print(json.dumps(out, default=str))"
+)
+YAML_COMMAND = [
+    "uv",
+    "run",
+    "--no-config",
+    "--no-project",
+    "--quiet",
+    "--with",
+    "pyyaml",
+    "python",
+    "-I",
+    "-c",
+    YAML_TO_JSON,
+]
+
+
+def load_yaml(text: str) -> tuple[object, str | None]:
+    """yaml.safe_load text (from the uv cache first, as scripts/check-regime-boundary.sh does)."""
+    detail = "no output"
+    with tempfile.TemporaryDirectory() as cwd:
+        for command in ([*YAML_COMMAND[:2], "--offline", *YAML_COMMAND[2:]], YAML_COMMAND):
+            try:
+                result = subprocess.run(
+                    command,
+                    input=text,
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                    timeout=SUBPROCESS_TIMEOUT,
+                    check=False,
+                )
+            except (OSError, subprocess.TimeoutExpired) as error:
+                detail = str(error)
+                continue
+            if result.returncode == 0:
+                out = json.loads(result.stdout)
+                return (None, out["error"]) if "error" in out else (out["data"], None)
+            detail = (result.stderr.strip().splitlines() or ["no output"])[-1]
+    return None, detail
+
+
+def read_acceptance_record(path: Path) -> tuple[dict | None, str | None]:
+    """Load the record's YAML front matter (the idiom of validate-agent-assets.py's read_frontmatter)."""
+    text = path.read_text()
+    end = text.find("\n---", 4)
+    if not text.startswith("---\n") or end == -1:
+        return None, "must start with a YAML front matter between --- lines"
+    data, error = load_yaml(text[4:end])
+    if error is not None:
+        return None, f"front matter could not be loaded with yaml.safe_load: {error}"
+    if not isinstance(data, dict):
+        return None, "front matter must be a mapping"
+    return data, None
+
+
+def is_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def is_text(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def record_field_errors(record: dict, task: str, head: str) -> list[str]:
+    """Check the front matter field by field: format, task, head, pr, ledger, searches, audit_findings."""
+    errors: list[str] = []
+    if not is_int(record.get("format")) or record["format"] != RECORD_FORMAT:
+        errors.append(f"format must be {RECORD_FORMAT}")
+    if record.get("task") != task:
+        errors.append(f"task must be {task!r}, the task id the file name carries")
+    if record.get("head") != head:
+        errors.append(f"acceptance record head {record.get('head')} is not HEAD {head}")
+    if not is_int(record.get("pr")) or record["pr"] <= 0:
+        errors.append("pr must be the pull request number")
+    ledger = record.get("ledger")
+    if not isinstance(ledger, list):
+        errors.append("ledger must be a list of {id, class} rows")
+    else:
+        for index, row in enumerate(ledger):
+            # YAML reads an unquoted thread id as an int; the id is its text either way.
+            if (
+                not isinstance(row, dict)
+                or set(row) != {"id", "class"}
+                or not isinstance(row["id"], (int, str))
+                or isinstance(row["id"], bool)
+                or not LEDGER_ID.fullmatch(str(row["id"]))
+                or not isinstance(row["class"], str)
+                or not CLASS_SLUG.fullmatch(row["class"])
+            ):
+                errors.append(
+                    f"ledger row {index} must be {{id: <thread id or audit:<sha7>:<n>>, class: <[a-z0-9-] slug>}}: {row!r}"
+                )
+    searches = record.get("searches")
+    if not isinstance(searches, list):
+        errors.append("searches must be a list of {class, records} entries")
+    else:
+        seen: set[str] = set()
+        for index, entry in enumerate(searches):
+            if (
+                not isinstance(entry, dict)
+                or set(entry) != {"class", "records"}
+                or not isinstance(entry["class"], str)
+                or not CLASS_SLUG.fullmatch(entry["class"])
+                or not isinstance(entry["records"], list)
+                or not all(isinstance(name, str) for name in entry["records"])
+            ):
+                errors.append(
+                    f"searches entry {index} must be {{class: <slug>, records: [<file basename>, …]}}: {entry!r}"
+                )
+            elif entry["class"] in seen:
+                errors.append(f"searches names class {entry['class']} more than once")
+            else:
+                seen.add(entry["class"])
+    findings = record.get("audit_findings")
+    if findings is not None and not isinstance(findings, list):
+        errors.append("audit_findings must be a list of {n, reason, evidence} entries")
+    for index, entry in enumerate(findings if isinstance(findings, list) else []):
+        if isinstance(entry, dict) and "fixed" in entry:
+            errors.append(f"audit_findings entry {index} cites a fix; a fix moves HEAD, so audit the new head instead")
+        elif (
+            not isinstance(entry, dict)
+            or set(entry) != AUDIT_FINDING_KEYS
+            or not is_int(entry["n"])
+            or entry["n"] < 1
+            or not is_text(entry["reason"])
+            or not is_text(entry["evidence"])
+        ):
+            errors.append(
+                f"audit_findings entry {index} must be {{n: <finding number>, reason: <text>, evidence: <command>}}"
+            )
+        elif len(entry["reason"].strip()) < FAILURE_REASON_MIN_CHARS:
+            errors.append(
+                f"audit_findings entry {index} needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters"
+            )
+    return errors
+
+
+def acceptance_errors(root: Path, required: bool, task: str | None, head: str) -> tuple[list[str], dict | None]:
+    """The acceptance-record contract (plan 011 option F): a YAML front matter bound to the task and to HEAD."""
     value = os.environ.get(ACCEPTANCE_ENV, "").strip()
     if not value:
         if required:
-            return [f"{ACCEPTANCE_ENV} must point to the task's acceptance record for PR integration"]
-        return []
+            return [f"{ACCEPTANCE_ENV} must point to the task's acceptance record for PR integration"], None
+        return [], None
     path = Path(value)
     if not path.is_absolute():
         path = root / path
     path_error = orchestration_path_error(root, path, ACCEPTANCE_ENV, "acceptance")
     if path_error:
-        return [path_error]
+        return [path_error], None
     # Bound like the audit: another task's record must not stand in for this one's.
     if task is not None:
         for name in (path.name, path.resolve().name):
             if name != f"{task}.md":
                 return [
                     f"{ACCEPTANCE_ENV} must be {task}.md, the record of the task named by {PR_FEEDBACK_ENV}, not {name}"
-                ]
+                ], None
     if not path.is_file():
-        return [f"{ACCEPTANCE_ENV} file does not exist: {path}"]
-    lines = path.read_text().splitlines()
-    errors: list[str] = []
-    # INV-6: every not-applicable the record carries names its evidence, whatever the audit verdict.
-    for line in map(str.strip, lines):
-        if (
-            RECORD_AUDIT_FINDING.match(line)
-            and "not-applicable:" in line
-            and not PR_FEEDBACK_DISPOSITION.fullmatch(line, line.index("not-applicable:"))
-        ):
-            errors.append(f"{ACCEPTANCE_ENV} line needs `not-applicable:<reason>; evidence=<command>`: {line}")
-    classes = Counter(match.group("cls") for line in lines if (match := LEDGER_ROW.fullmatch(line)))
-    stated: dict[str, list[set[str]]] = {}
-    for line in map(str.strip, lines):
-        if match := S6_SEARCH_LINE.fullmatch(line):
-            files = set(match.group("files").split())
-            stated.setdefault(match.group("slug"), []).append(set() if files == {"none"} else files)
+        return [f"{ACCEPTANCE_ENV} file does not exist: {path}"], None
+    record, error = read_acceptance_record(path)
+    if record is None:
+        return [f"{ACCEPTANCE_ENV} {error}"], None
+    errors = record_field_errors(record, path.name.removesuffix(".md"), head)
+    if errors:
+        return errors, record
+    classes = Counter(row["class"] for row in record["ledger"])
+    stated = {entry["class"]: set(entry["records"]) for entry in record["searches"]}
     for cls, count in classes.items():
         if count < S6_CLASS_LIMIT:
-            continue
-        if not S6_SLUG.fullmatch(cls):
-            errors.append(f"S6: class {cls!r} at {count} is not a [a-z0-9-] slug, so its records search cannot run")
             continue
         found = mistake_records(root, cls)
         if isinstance(found, str):
             errors.append(f"S6: class {cls} at {count}: {found}")
-        elif found not in stated.get(cls, []):
+        elif stated.get(cls) != found:
             errors.append(f"S6: class {cls} at {count} without a matching records search")
-    return errors
+    return errors, record
 
 
 def mistake_records(root: Path, slug: str) -> set[str] | str:
@@ -801,9 +911,14 @@ def mistake_records(root: Path, slug: str) -> set[str] | str:
     try:
         # No shell: the slug is [a-z0-9-] and reaches grep as one argument.
         result = subprocess.run(
-            ["grep", "-rl", f"classes:.*{slug}", MISTAKE_RECORDS], cwd=root, capture_output=True, text=True, check=False
+            ["grep", "-rl", f"classes:.*{slug}", MISTAKE_RECORDS],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=SUBPROCESS_TIMEOUT,
+            check=False,
         )
-    except OSError as error:
+    except (OSError, subprocess.TimeoutExpired) as error:
         return f"the records search could not run: {error}"
     if result.returncode not in (0, 1):
         detail = (result.stderr.strip().splitlines() or ["no output"])[-1]
@@ -872,7 +987,8 @@ def main() -> None:
     # pr_feedback_errors already validated PR_FEEDBACK_EVIDENCE's location and -pr-feedback.json suffix.
     feedback = os.environ.get(PR_FEEDBACK_ENV, "").strip()
     task = Path(feedback).name.removesuffix("-pr-feedback.json") if feedback else None
-    acceptance = acceptance_errors(root, required=args.base is not None, task=task)
+    current_head = head or run_git(["rev-parse", "HEAD"], root).stdout.strip()
+    acceptance, record = acceptance_errors(root, required=args.base is not None, task=task, head=current_head)
     if acceptance:
         print("Acceptance record evidence is incomplete:")
         for error in acceptance:
@@ -880,6 +996,10 @@ def main() -> None:
         raise SystemExit(1)
     if os.environ.get(ACCEPTANCE_ENV, "").strip():
         print(f"Acceptance evidence accepted: {os.environ[ACCEPTANCE_ENV].strip()}")
+    if os.environ.get(RETIRED_AUDIT_DISPOSITIONS_ENV, "").strip():
+        print(
+            f"{RETIRED_AUDIT_DISPOSITIONS_ENV} is retired and not read: the acceptance record's audit_findings disposition an incorrect audit."
+        )
 
     paths = changed_paths(root, args.base)
     reasons = review_reasons(root, paths, args.base)
@@ -888,7 +1008,7 @@ def main() -> None:
         return
 
     if head is not None and not all(path.startswith(".orchestration/") for path in paths):
-        errors = audit_errors(root, head, task)
+        errors = audit_errors(root, head, task, record)
         if errors:
             print("Task-level audit evidence is required for PR integration of this change:")
             for line in (*reasons, *errors):

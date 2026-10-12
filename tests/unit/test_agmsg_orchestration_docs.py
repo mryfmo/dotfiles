@@ -223,6 +223,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         # name, file, outer slice or None, (start, end): the start marker is part of the pinned text.
         ("invariants", SKILL, None, ("## Review and integration invariants", "\n## ")),
         ("worker-step-15", SKILL, None, ("\n15. After the final push", "\n## ")),
+        ("orchestrator-step-6", SKILL, ("## Orchestrator Playbook", "\n## "), ("\n6. ", "\n7. ")),
         ("orchestrator-step-7", SKILL, ("## Orchestrator Playbook", "\n## "), ("\n7. ", "\n8. ")),
         ("message-contract", SKILL, None, ("## Message Contract v1", "\n## ")),
         (
@@ -275,10 +276,12 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "no contradiction with the design",
             "the premises hold",
             "`allowed_files` covers every touch point that grep finds",
-            "one invariant check (a `-contract-a01` id maps to its implementing entry)",
+            # Plan 006 B0: design v20 removed contract PRs, so the check names the implementing_tasks entry.
+            "one invariant check (the task id maps to its `implementing_tasks` entry and the invariant ids match)",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
+        self.assertNotIn("-contract-a01", text)
 
     def test_a_design_lands_on_main_before_its_task(self) -> None:
         # Thread 4243537281: a boundary PR carrying the design is INV-2's dispatch prerequisite.
@@ -507,6 +510,74 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         ):
             with self.subTest(token=token):
                 self.assertIn(token, step)
+
+    def test_dispatches_are_recorded_from_the_bus(self) -> None:
+        # Plan 007 T703 item 1 (C-12): a seat's status comes from a bus line, never from memory.
+        step = self.section(self.section(SKILL.read_text(), "## Orchestrator Playbook"), "\n6. ", "\n7. ")
+        for token in (
+            "Every dispatch (TASK, ACCEPTANCE, PING) is recorded in the current acceptance record under a "
+            "`dispatch:` key as the bus line `history.sh <team>` prints, with its read marker; a seat is reported "
+            "as working only from such a line, and after a context compaction the open TASK list is re-derived "
+            "from the bus before any status is reported.",
+            "A RESULT wait past the task's expected duration ends in a bus read, then a PING, never in a longer "
+            "silent wait.",
+        ):
+            with self.subTest(token=token[:40]):
+                self.assertIn(token, step)
+
+    def test_rule_changes_travel_as_task_amendments(self) -> None:
+        # Plan 007 Phase 0: a rule sentence changed through a PONG answer bypasses the hash and C1 to C6.
+        self.assertIn(
+            "A change to a rule sentence requested of a worker travels as a task amendment (hashed, checked by "
+            "task-consistency-check C1 to C6, confirmed by the review seat), never as a PONG answer.",
+            self.invariants(),
+        )
+
+    def test_three_repeats_start_with_a_pasted_correction_search(self) -> None:
+        # Plan 007 S6: the third repeat of a class is answered by a recorded correction, never by another fix round.
+        bullet = self.section(self.invariants(), "\n- When a finding class reaches three on one artifact", "\n- ")
+        for token in (
+            " (the record's ledger) or `scripts/regime-counters.sh` prints an S1 candidate, the next acceptance "
+            "action is a search pasted into the record under a `search:` line naming the class: "
+            "`uv run --no-project .claude/hooks/contextdb_cli.py memory search <class slug>` and "
+            "`grep -rl <class slug> .orchestration/learning/corrections/`.",
+            "A matching correction with `status: landed` is applied as written; a `pending` one lands first; no "
+            "match means a new correction is researched from official sources and recorded under "
+            "`.orchestration/learning/corrections/` before any dispatch.",
+            "The gate refuses the action without the paste (`dotfiles-T128-gate-evidence-a01`), and every "
+            "`not-applicable` disposition carries `; evidence=<command>` with the output pasted in the record.",
+        ):
+            with self.subTest(token=token[:40]):
+                self.assertIn(token, bullet)
+
+    def test_threat_table_rows_have_a_fixed_unit(self) -> None:
+        # Plan 007 T703 item 4: without a unit, a missing row is a judgment call for each reviewer.
+        bullet = self.section(self.invariants(), "\n- A task that touches a trust boundary", "\n- ")
+        self.assertIn(
+            "metadata separators). The row unit is one row per `allowed_files` entry, one row per listed control "
+            "that is not a path (task metadata, workflow and interpreter or environment inputs, in-process effects, "
+            "new or renamed scripts, metadata separators), carried by the declared test module's row where that is "
+            "where the control acts, and one row per orchestrator effect from the fixed list (forced removal, merge, "
+            "update-branch); task-consistency-check C4 verifies the path half before dispatch.",
+            bullet,
+        )
+        rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
+        subsection = self.section(rules, "### Orchestration records and trust-boundary code", "\n### ")
+        self.assertIn(
+            "report a missing table or a missing row; a row's unit is the SKILL threat-table bullet's (one per "
+            "`allowed_files` entry, one per non-path control, one per orchestrator effect), so review a missing "
+            "row at that unit; report a `closed` row",
+            subsection,
+        )
+
+    def test_the_gate_reads_the_acceptance_record(self) -> None:
+        # Plan 007 T703 item 6: the gate reads the record's ledger and `search:` line once gate-evidence-a01 lands.
+        step = self.section(self.section(SKILL.read_text(), "## Orchestrator Playbook"), "\n10. ", "\n11. ")
+        self.assertIn(
+            "REVIEW_EVIDENCE=<receipt> ACCEPTANCE_EVIDENCE=<acceptance record> BASE=origin/main "
+            "PR_FEEDBACK_EVIDENCE=<json> make require-crit-review",
+            step,
+        )
 
 
 class AgmsgOrchestrationSingleSourceTest(unittest.TestCase):

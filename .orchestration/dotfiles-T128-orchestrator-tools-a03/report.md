@@ -45,3 +45,14 @@ On head `58ecd753` (validation §7), Bot review 5498865497:
 | 4254771296 (P2, `regime-counters.sh:132`) | a stale or copied record's ledger was trusted without its `task` identity | `fixed:9496c734`: the block counts only when its `task` is the counted task; another task's record falls back to the title detector (mutant R4) |
 
 Results (§7): 9 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 30 mutants, 30 failures. Size: added lines outside and under `tests/`: 313 and 336 (caps 500 and 1000).
+
+## Fix round 2 (`6cd491f5`)
+
+On head `4fc6040f` (validation §8): all `test` jobs passed. Bot review 5498947497 found two P2s and no P1. Both are fixed, because the second guards gate evidence against loss:
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4254844587 (P2, `dispatch.sh:159`) | a record of another task took this line's dispatch | `fixed:6cd491f5`: a record whose `task` is not the line's `task_id` is refused before the send (mutant D16) |
+| 4254844595 (P2, `dispatch.sh:173`) | the in-place `write_text` after the send could leave the record truncated | `fixed:6cd491f5`: a temporary file in the record's directory, `fsync`, `os.replace` (mode copied; the temporary file is removed on failure). The record test asserts a new inode and no leftover file (mutant D17) |
+
+Results (§8): 9 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 32 mutants, 32 failures. Size: added lines outside and under `tests/`: 334 and 346 (caps 500 and 1000).

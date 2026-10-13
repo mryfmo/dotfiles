@@ -6,7 +6,7 @@
   - a01: `7f763b7f`, `9a860c95`, `5971fffe`;
   - a02: `379845f7`, `386a71b3`, `c81c88a3`, `d5d6c9b1`, `c6cf0548`, `61d90302`;
   - a03: `b2b3db45`, `c36fcd35`, `7581d590`, `3c20b0ca`, `f5f980f9`, `82e86e50`;
-  - a04: `9db7ed3c` (the coverage rule, `dispatch`, unknown keys, three fixtures, the task copy), `863ae465` (evidence), `ca7dcd73` (amendment 1's task copy and fixture wording), `8d54fd76` (fix round 1), `8c0c015b` (the fixtures moved to PR #340), then this evidence.
+  - a04: `9db7ed3c` (the coverage rule, `dispatch`, unknown keys, three fixtures, the task copy), `863ae465` (evidence), `ca7dcd73` (amendment 1's task copy and fixture wording), `8d54fd76` (fix round 1), `8c0c015b` (the fixtures moved to PR #340), `ffe7d872` (evidence), then revise 1: `09caaa91` (#329) and `2231a4f7` (#340), then this evidence.
 - **The INV-2 split** (the orchestrator's answer of 03:47Z: a cap is a split, never a disposition). The thirteen files under `tests/fixtures/gate-evidence/` (twelve fixtures and `.prettierrc`, 164 lines) are on PR #340, branch `regime/gate-evidence-fixtures` from `origin/main` `4470b0c8`, head `27e8a0ea`. PR #329 keeps four files outside `.orchestration/`: the gate, its test module, the Makefile and the README. Outside `.orchestration`, the tested content `8d54fd76` equals `8c0c015b` plus #340's fixtures (validation §9). #329's CI fails until #340 merges and #329 takes the new base, because its test module reads the fixtures.
 
 ## What a04 adds to a03 amendment 1 (task item 2's new sentence, items 3 and 5)
@@ -75,6 +75,20 @@ The main-checkout copy names the sha and adds the Bot round on the a04 head. The
 | 4254525603 | P1 | coverage-source-authentication (new) | `fixed:8d54fd76`: `feedback_key` compares `author` with the live collection too, so a saved sweep cannot change a Codex item's author to keep it out of the ledger's required ids (`test_swept_ids_come_from_authenticated_authors`) |
 
 CI on `ca7dcd73`: 12 of 12 check runs green. Questions under a04: none (PONG 03:47Z was the orchestrator's answer to a flag). Fix rounds: one.
+
+## Revise 1 (ACCEPTANCE of 04:57:32Z: the audit of PR #340's head `20d776d4`, verdict incorrect, two P2)
+
+- **Finding 1 (P2): the code deviated from the contract.** Task item 2 makes each `audit_findings` field a non-empty string. The gate accepted only an integer `n`, and `acceptance-finding-quotes-grammar.md` used `"n": 1`. Two commits fix it:
+  - `2231a4f7` on #340, on top of the update-branch merge `20d776d4`, sets the fixture's `n` to `"1"`.
+  - `09caaa91` on #329 makes the gate require `n` to be a string matching `FINDING_NUMBER` (`[1-9][0-9]*`: ASCII digits, no `0`, no leading zero). The coverage check reads it with `int()`, after the shape check has passed. The error now ends in `, each a non-empty string`.
+
+  In `test_incorrect_audit_needs_audit_findings`, every entry uses a string `n`, and two new cases are refused: `integer n` (`1`) and `zero n` (`"0"`). Validation §11 shows:
+  - the module runs 92 tests OK on `09caaa91` with `2231a4f7`'s fixtures;
+  - three new one-line mutations, M30 to M32, are caught;
+  - the gate refuses `27e8a0ea`'s integer-`n` fixture;
+  - the full mutation pass of §4 is repeated on the new code.
+- **Finding 2 (P2): call 7 of the sandbox record.** That call created the fixture branch, checked out the fixtures and committed `27e8a0ea` outside the sandbox, against Worker Playbook steps 2 and 4. The finding is recorded and needs no code change. From this round on, every mutation runs inside the sandbox: the fetch of `20d776d4`, the fast-forward, the edits, both commits, the scratch worktree and both pushes. A push works in the sandbox with `GIT_CONFIG_GLOBAL=/dev/null` and the `gh` credential helper. Only `gh` itself fails in the sandbox (TLS, `x509: OSStatus -26276`), so the Bot and CI reads run outside it.
+- Revises: one (this round). Amendments: one. Questions: none.
 
 ## Declared beyond the letter of the task
 

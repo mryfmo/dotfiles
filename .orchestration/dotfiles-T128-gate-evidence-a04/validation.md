@@ -1,6 +1,6 @@
 # Validation: dotfiles-T128-gate-evidence-a04
 
-Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `regime/gate-evidence` (PR #329), except §10, run in the main checkout. Test runs set `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false` (sandbox record). Scratch file names (`numstat.txt`, `caps.py`, `mutate6.sh`, `mutations.py`, `fail-*.txt`) live in the session's `$TMPDIR`. This branch copy covers PR #329's code head `8c0c015b` and the combined content `8d54fd76`; the main-checkout copy adds the final head, CI and the Bot wait.
+Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `regime/gate-evidence` (PR #329), except §10, run in the main checkout, and §11, the revise round. Test runs set `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false` (sandbox record). Scratch file names (`numstat.txt`, `caps.py`, `mutate6.sh`, `mutations.py`, `fail-*.txt`) live in the session's `$TMPDIR`. This branch copy covers PR #329's code head `8c0c015b` and the combined content `8d54fd76`; the main-checkout copy adds the final head, CI and the Bot wait.
 
 ## 1. Task file and the a01, a02, a03 history copies
 
@@ -642,4 +642,128 @@ $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py 
 4ea2924d-1d6f-41f7-a14f-e4a5b9cf81f8
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T128-gate-evidence-a04 (PR 329, plan 014 A): the acceptance record's ledger ids must include every swept finding id: Codex (chatgpt-codex-connector[bot]) review_comment items (id after the last _r of the url), Codex review bodies containing one of ![P0 Badge]..![P3 Badge] (id after pullrequestreview-), and audit:<HEAD[:7]>:<n> per [P0]-[P3] line of AUDIT_EVIDENCE's .last.md (required when AUDIT_EVIDENCE is set); refused with 'S6: ledger lacks <ids>'. The block may carry an optional dispatch list of strings; any other unknown key is refused." 2>&1 | tail -1   # under a04
 39e1994d-0211-43d5-99af-4e2439bba814
+```
+
+## 11. Revise 1: the string `n` (finding 1), on `09caaa91` with `2231a4f7`'s fixtures in the scratch worktree `revwt`
+
+```
+$ git log --oneline -1 regime/gate-evidence-fixtures; git diff 20d776d4 2231a4f7   # PR #340, on top of the update-branch merge
+2231a4f7 test(gate-evidence): audit_findings n as a string in the grammar fixture (a04 revise 1)
+diff --git a/tests/fixtures/gate-evidence/acceptance-finding-quotes-grammar.md b/tests/fixtures/gate-evidence/acceptance-finding-quotes-grammar.md
+index 1bfff2ba..ced3a445 100644
+--- a/tests/fixtures/gate-evidence/acceptance-finding-quotes-grammar.md
++++ b/tests/fixtures/gate-evidence/acceptance-finding-quotes-grammar.md
+@@ -9,7 +9,7 @@
+   "audit_findings":
+     [
+       {
+-        "n": 1,
++        "n": "1",
+         "reason": "the finding quotes not-applicable: without evidence; this reason is a field, not a disposition",
+         "evidence": "grep -n audit_findings scripts/require-crit-review.py"
+       }
+$ git log --oneline -1 09caaa91; git diff --stat ffe7d872 09caaa91   # PR #329
+09caaa91 fix(gate): audit_findings n is a digit string, as the contract says (a04 revise 1)
+ scripts/require-crit-review.py         |  9 +++++----
+ tests/unit/test_require_crit_review.py | 22 ++++++++++++----------
+ 2 files changed, 17 insertions(+), 14 deletions(-)
+$ git diff ffe7d872 09caaa91 -- scripts/require-crit-review.py
+diff --git a/scripts/require-crit-review.py b/scripts/require-crit-review.py
+index d37dc303..8ce2d0a2 100755
+--- a/scripts/require-crit-review.py
++++ b/scripts/require-crit-review.py
+@@ -36,6 +36,8 @@ RECORD_FORMAT = 1
+ LEDGER_ID = re.compile(r"\d{10,}|audit:[0-9a-f]{7}:\d+")
+ CLASS_SLUG = re.compile(r"[a-z0-9-]+")
+ AUDIT_FINDING_KEYS = {"n", "reason", "evidence"}
++# Every audit_findings field is a non-empty string; n holds the finding number in ASCII digits.
++FINDING_NUMBER = re.compile(r"[1-9][0-9]*")
+ RECORD_KEYS = {"format", "task", "head", "pr", "ledger", "searches", "audit_findings", "dispatch"}
+ # The swept finding ids the ledger must cover: Codex review comments, and Codex review bodies carrying a badge.
+ CODEX_BOT = "chatgpt-codex-connector[bot]"
+@@ -707,7 +709,7 @@ def audit_findings_errors(record: dict | None, findings: int) -> list[str]:
+         return [
+             f"{AUDIT_ENV} verdict is incorrect: the acceptance record's audit_findings must disposition its {findings} finding(s)"
+         ]
+-    numbers = [entry["n"] for entry in entries]
++    numbers = [int(entry["n"]) for entry in entries]
+     errors = [
+         f"audit_findings dispositions finding {n} more than once" for n in sorted(set(numbers)) if numbers.count(n) > 1
+     ]
+@@ -835,13 +837,12 @@ def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[
+         elif (
+             not isinstance(entry, dict)
+             or set(entry) != AUDIT_FINDING_KEYS
+-            or not is_int(entry["n"])
+-            or entry["n"] < 1
++            or not (isinstance(entry["n"], str) and FINDING_NUMBER.fullmatch(entry["n"]))
+             or not is_text(entry["reason"])
+             or not is_text(entry["evidence"])
+         ):
+             errors.append(
+-                f"audit_findings entry {index} must be {{n: <finding number>, reason: <text>, evidence: <command>}}"
++                f"audit_findings entry {index} must be {{n: <finding number>, reason: <text>, evidence: <command>}}, each a non-empty string"
+             )
+         elif len(entry["reason"].strip()) < FAILURE_REASON_MIN_CHARS:
+             errors.append(
+$ git worktree add --detach revwt 09caaa91; cd revwt; git checkout 2231a4f7 -- tests/fixtures/gate-evidence; python3 -m unittest tests.unit.test_require_crit_review 2>&1 | tail -3   # the combined content
+Ran 92 tests in 78.197s
+
+OK
+$ python3 mutate-rev1.py revwt   # each mutation runs test_incorrect_audit_needs_audit_findings; F1 runs the grammar test on the integer-n fixture of 27e8a0ea
+M30 n accepts a leading zero or 0: caught (rc=1; FAILED (failures=1))
+M31 n accepts an integer again: caught (rc=1; FAILED (failures=1))
+M32 coverage compares n as text: caught (rc=1; FAILED (failures=4))
+F1 the integer-n fixture of 27e8a0ea: refused (rc=1; FAILED (failures=1))
+restored: True
+$ ruff format --config ruff.toml --check scripts/require-crit-review.py tests/unit/test_require_crit_review.py
+2 files already formatted
+$ ruff check --config ruff.toml --output-format concise scripts/require-crit-review.py tests/unit/test_require_crit_review.py | sed -E "s/:[0-9]+:[0-9]+:/:/" | sort | uniq -c   # the same six as in §8
+   1 [*] 3 fixable with `--fix` (3 unsafe fixes available with `--fix --unsafe-fixes`).
+   1 Found 6 errors.
+   1 scripts/require-crit-review.py: FURB167 [*] Use of regular expression alias `re.M`
+   1 scripts/require-crit-review.py: I001 [*] Import block is un-sorted or un-formatted
+   2 scripts/require-crit-review.py: UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+   1 tests/unit/test_require_crit_review.py: I001 [*] Import block is un-sorted or un-formatted
+   1 tests/unit/test_require_crit_review.py: UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+$ git push https://github.com/mryfmo/dotfiles regime/gate-evidence-fixtures 2>&1 | tail -2   # inside the sandbox (GIT_CONFIG_GLOBAL=/dev/null, the gh credential helper)
+To https://github.com/mryfmo/dotfiles
+   20d776d4..2231a4f7  regime/gate-evidence-fixtures -> regime/gate-evidence-fixtures
+$ bash mutate-rev1-full.sh > mutation-rev1-full.txt   # §4's pass (mutate6.sh), run in revwt
+$ awk '/^== /{if(l!="")print (c?"caught":"no failure") "\t" l; l=substr($0,4); c=0; next} /^(FAIL|ERROR):|^FAILED/{c=1} END{print (c?"caught":"no failure") "\t" l}' mutation-rev1-full.txt   # a section is caught when a selected test fails; the control must show no failure
+no failure	control: this change
+caught	M0 origin/main guard
+caught	M1 guard at 61d90302 (a02's final head)
+caught	M1b guard at f5f980f9 (a03 amendment 1, before a04)
+caught	M1c guard at 9db7ed3c (a04, before its round-1 fixes)
+caught	M2 a second delimiter allowed
+caught	M3 an empty command allowed
+caught	M4 head not compared
+caught	M5 task not compared
+caught	M6 format not checked
+caught	M7 ledger id not checked
+caught	M8 ledger class not checked
+caught	M9 searches set not compared
+caught	M10 a missing records directory searched as empty
+caught	M11 audit coverage not checked
+caught	M12 a finding dispositioned twice
+caught	M13 a fixed entry not named
+caught	M14 short audit reasons accepted
+caught	M15 a classes: line not required at the line start
+caught	M16 record not bound to the task
+caught	M17 record counted as a change
+caught	M18 duplicate keys kept
+caught	M19 pr not compared with the swept pr
+caught	M20 non-finite numbers accepted
+caught	M21 ledger coverage not checked
+caught	M22 every Codex review body counted
+caught	M23 audit findings not counted
+caught	M24 a missing audit summary read anyway
+caught	M25 unknown keys accepted
+caught	M26 dispatch not checked
+caught	M27 any author's review comment counted
+caught	M28 a delimiter matched as a prefix
+caught	M29 author not matched live
+$ tail -1 mutation-rev1-full.txt
+guard restored
 ```

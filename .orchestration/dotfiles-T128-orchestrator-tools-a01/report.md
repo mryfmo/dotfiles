@@ -68,3 +68,18 @@ The first head `61290da8` drew a CI failure and Codex Bot review 5497968688 (two
 | 4253994704 (P1, task.md:19) | the first threat row (`scripts/orchestrator/*`, three scripts) closes on one test that covers only `dispatch.sh` | not fixable by the worker: the row is in the task file, whose copy must stay byte-identical (threat row 5), and changing it is an amendment (the T703 amendment rule). Proposed split, one `closed` row per script: `dispatch.sh` → `tests/unit/test_orchestrator_tools.py::test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file`; `three-repeat.sh` → `…::test_scripts_read_and_run_their_own_checkout_never_the_callers` (with `…::test_three_repeat_refuses_a_class_that_is_not_a_slug` for the slug); `bus-read.sh` → `…::test_bus_read_refuses_a_read_that_reaches_its_limit`. Every selector exists in this head |
 
 After the round, the new module runs 8 tests, OK; the counters module 26, OK; shellcheck is clean; all 16 mutants fail (§9). Size: 6 files outside `.orchestration/`; 207 added lines outside `tests/`; 240 under `tests/`.
+
+## Fix round 2 (`17d3735d`, worker fix round 2 of 2)
+
+On head `4843ccb6` (validation §10):
+- **CI:** all 12 check runs succeeded after `gh run rerun --failed` of a snap store timeout (`api.snapcraft.io` HTTP 408 in `public-bootstrap (ubuntu-24.04, client)`).
+- **Bot:** the review arrived at 02:27:54Z, two minutes after the 15-minute window, which had closed as `bot: none` even though `@codex review` went out at 02:21:19Z. It is dispositioned all the same:
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4254107304 (P2, `dispatch.sh:34`) | `$( )` dropped every trailing newline, so the message followed by a blank line passed as one line | `fixed:17d3735d`: the read keeps a sentinel and strips exactly one final newline; a new `test_dispatch_refuses_malformed_lines` case; the old read put back fails it (mutant N1) |
+| 4254107312 (P1, `dispatch.sh:77`) | once PR #328's a04 rule text lands, every dispatch is recorded under the acceptance record's `dispatch:` key, but `dispatch.sh` takes no record path and only calls `agmsg-dispatch` | not fixed, the orchestrator's call: this task's item 1 specifies `dispatch.sh` as check-and-send, and nothing defines where a `dispatch:` key lives. The gate-evidence-a03 JSON block lists `format`, `task`, `head`, `pr`, `ledger`, `searches` and `audit_findings` and validates field by field, so an extra key written by a worker's guess could break the gate. The rule text and this script disagree (a04 item 1, "dispatch.sh writes the line"), which the first report section already notes. Options: an amendment that adds a record-path argument and a defined place for `dispatch:` (prose line or JSON field), or moving it to `dotfiles-T128-orchestrator-tools-a02` |
+
+Unchanged in this round: 8 tests OK, shellcheck clean (§10).
+
+A slip without effect: while checking a file without a final newline, I ran the real `scripts/orchestrator/dispatch.sh a b c d <file>` once, with the host's `agmsg-dispatch` on PATH instead of the stub. `agmsg-dispatch` resolves the pane before it sends anything, so it exited at "pane not found or unavailable: d". `team-list.sh` still lists only `dotfiles-conformance`: no message was sent and no team was created.

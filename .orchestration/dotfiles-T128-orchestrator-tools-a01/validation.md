@@ -199,3 +199,63 @@ $ git diff --numstat origin/main...HEAD -- . ":!.orchestration"
 $ git log --oneline 61290da8..HEAD
 e6f2bdc0 fix(orchestrator): run the contextdb CLI of the script's own checkout, never the caller's
 ```
+
+## 10. Fix round 2: CI and the Bot on `4843ccb6`
+
+CI on `4843ccb6`: `public-bootstrap (ubuntu-24.04, client)` failed on a snap store timeout (`api.snapcraft.io` HTTP 408 while installing `gtk-common-themes`), and fail-fast cancelled the other two; `gh run rerun 38335666287 --failed` passed. The Bot posted no review in 10 minutes, so `@codex review` went out at 02:21:19Z; the wait closed at 15 minutes with none, and the Bot's review of `4843ccb6` arrived at 02:27:54Z, two minutes after the window. It is read here all the same.
+
+```text
+$ gh api repos/mryfmo/dotfiles/commits/4843ccb697fb51cc273ff48b06dcfcef8d8b4fa0/check-runs --paginate --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv' | sort
+GitGuardian Security Checks	completed	success
+private-bootstrap (macos-14, client)	completed	success
+private-bootstrap (ubuntu-24.04, client)	completed	success
+private-bootstrap (ubuntu-24.04, server)	completed	success
+public-bootstrap (macos-14, client)	completed	success
+public-bootstrap (ubuntu-24.04, client)	completed	success
+public-bootstrap (ubuntu-24.04, server)	completed	success
+test (macos-14, client)	completed	success
+test (ubuntu-24.04, client)	completed	success
+test (ubuntu-24.04, server)	completed	success
+test (ubuntu-26.04, client)	completed	success
+validate	completed	success
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/336/reviews --jq '.[]|[.user.login,.commit_id[0:8],.submitted_at]|@tsv'
+chatgpt-codex-connector[bot]	61290da8	2026-10-13T02:02:40Z
+chatgpt-codex-connector[bot]	4843ccb6	2026-10-13T02:27:54Z
+$ gh api repos/mryfmo/dotfiles/issues/336/comments --jq '.[]|[.user.login,.created_at,(.body|split("
+")[0][0:60])]|@tsv'
+coderabbitai[bot]	2026-10-13T01:55:45Z	<!-- This is an auto-generated comment: summarize by coderab
+chatgpt-codex-connector[bot]	2026-10-13T01:55:56Z	<!-- codex-pull-request-review-summary -->
+moriya-fumio-thd	2026-10-13T02:21:18Z	@codex review
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/336/comments --jq '.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="4843ccb6…")|[.id,.path,.original_line]|@tsv'
+4254107304	scripts/orchestrator/dispatch.sh	34
+4254107312	scripts/orchestrator/dispatch.sh	77
+$ uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v
+test_bus_read_lists_open_tasks_with_their_minutes_since_the_latest_event ... ok
+test_bus_read_refuses_a_read_that_reaches_its_limit ... ok
+test_dispatch_passes_the_line_byte_identical ... ok
+test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file ... ok
+test_dispatch_refuses_malformed_lines ... ok
+test_scripts_read_and_run_their_own_checkout_never_the_callers ... ok
+test_three_repeat_prints_the_records_search_line ... ok
+test_three_repeat_refuses_a_class_that_is_not_a_slug ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 1.522s
+
+OK
+$ shellcheck -x scripts/orchestrator/*.sh scripts/regime-counters.sh; echo "shellcheck exit $?"
+shellcheck exit 0
+$ ruff format --config ruff.toml --check tests/unit/test_orchestrator_tools.py
+1 file already formatted
+$ uv run --no-project python "$TMPDIR/mutate-nl.py" "$PWD"; git status --short
+mutant N1 the $( ) read put back: test_dispatch_refuses_malformed_lines -> rc=1 FAILED (failures=4)
+$ git diff --numstat origin/main...HEAD -- . ":!.orchestration"
+57	0	scripts/orchestrator/bus-read.sh
+78	0	scripts/orchestrator/dispatch.sh
+44	0	scripts/orchestrator/three-repeat.sh
+29	9	scripts/regime-counters.sh
+210	0	tests/unit/test_orchestrator_tools.py
+32	1	tests/unit/test_regime_counters.py
+$ git log --oneline 4843ccb6..HEAD
+17d3735d fix(orchestrator): refuse a dispatch line file with a blank line after the message
+```

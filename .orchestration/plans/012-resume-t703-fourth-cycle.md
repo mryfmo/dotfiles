@@ -6,7 +6,7 @@
 
 ## Status
 
-- **Execution**: DECIDED 2026-10-13 01:05Z: option B (operator, AskUserQuestion). R1 done 01:18Z (a01 re-scoped: dispatch.sh, three-repeat.sh, bus-read.sh, counters slug; a02 drafted; C1 to C10 OK); R2 review pair: round 1 revise (seat 3 findings, Codex 1), round 2 confirm ×2 (seat 01:25:29Z, Codex); R3 boundary PR #334 merged (`480aabc0`); R4 T718 dispatched to a003 01:35:23Z (`t718-dispatch.sh`, hash from the file). R5: T718 a01 RESULT 02:46:54Z (head 5b6d5f24, CI green, three open Bot threads that are task text → amendment 1, review pair in progress); integration after the amendment's worker round. a04 (PR #328) held meanwhile.
+- **Execution**: DECIDED 2026-10-13 01:05Z: option B (operator, AskUserQuestion). R1 done 01:18Z (a01 re-scoped: dispatch.sh, three-repeat.sh, bus-read.sh, counters slug; a02 drafted; C1 to C10 OK); R2 review pair: round 1 revise (seat 3 findings, Codex 1), round 2 confirm ×2 (seat 01:25:29Z, Codex); R3 boundary PR #334 merged (`480aabc0`); R4 T718 dispatched to a003 01:35:23Z (`t718-dispatch.sh`, hash from the file). R5: T718 a01 RESULT 02:46:54Z (head 5b6d5f24, CI green, three open Bot threads that are task text → amendment 1, review pair in progress); integration after the amendment's worker round; the amendment line went to a003 03:13:58Z (bus 854) after boundary PR #338. a04 (PR #328) held meanwhile.
 - **Priority**: P1 (T703 blocks T702's integration order and T718's `after:`)
 - **Planned at**: main `3709a6d8`, 2026-10-12 16:12Z
 

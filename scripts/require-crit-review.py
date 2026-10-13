@@ -723,9 +723,18 @@ def audit_findings_errors(record: dict | None, findings: int) -> list[str]:
 # PyYAML runs in a uv-provided interpreter: the gate's own python3 has no third-party packages. `-I` and a temporary
 # cwd keep a PR-planted yaml.py off sys.path, and --no-config ignores a PR-planted uv.toml.
 # A YAML error is reported as data (exit 0), so only a uv or interpreter failure retries the run online.
+# The loader is yaml.SafeLoader that also refuses a duplicate mapping key, which safe_load would silently overwrite.
 YAML_TO_JSON = (
     "import json, sys, yaml\n"
-    "try:\n    out = {'data': yaml.safe_load(sys.stdin.read())}\n"
+    "class Loader(yaml.SafeLoader):\n    pass\n"
+    "def mapping(loader, node, deep=False):\n"
+    "    keys = [loader.construct_object(key, deep=deep) for key, _ in node.value]\n"
+    "    duplicates = sorted({str(key) for key in keys if keys.count(key) > 1})\n"
+    "    if duplicates:\n"
+    "        raise yaml.constructor.ConstructorError(None, None, 'duplicate key(s): ' + ', '.join(duplicates), node.start_mark)\n"
+    "    return yaml.SafeLoader.construct_mapping(loader, node, deep=deep)\n"
+    "Loader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, mapping)\n"
+    "try:\n    out = {'data': yaml.load(sys.stdin.read(), Loader=Loader)}\n"
     "except yaml.YAMLError as error:\n    out = {'error': ' '.join(str(error).split())}\n"
     "print(json.dumps(out, default=str))"
 )
@@ -791,7 +800,7 @@ def is_text(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
-def record_field_errors(record: dict, task: str, head: str) -> list[str]:
+def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[str]:
     """Check the front matter field by field: format, task, head, pr, ledger, searches, audit_findings."""
     errors: list[str] = []
     if not is_int(record.get("format")) or record["format"] != RECORD_FORMAT:
@@ -802,6 +811,8 @@ def record_field_errors(record: dict, task: str, head: str) -> list[str]:
         errors.append(f"acceptance record head {record.get('head')} is not HEAD {head}")
     if not is_int(record.get("pr")) or record["pr"] <= 0:
         errors.append("pr must be the pull request number")
+    elif pr is not None and record["pr"] != pr:
+        errors.append(f"pr must be {pr}, the pull request {PR_FEEDBACK_ENV} names, not {record['pr']}")
     ledger = record.get("ledger")
     if not isinstance(ledger, list):
         errors.append("ledger must be a list of {id, class} rows")
@@ -865,7 +876,9 @@ def record_field_errors(record: dict, task: str, head: str) -> list[str]:
     return errors
 
 
-def acceptance_errors(root: Path, required: bool, task: str | None, head: str) -> tuple[list[str], dict | None]:
+def acceptance_errors(
+    root: Path, required: bool, task: str | None, head: str, pr: object = None
+) -> tuple[list[str], dict | None]:
     """The acceptance-record contract (plan 011 option F): a YAML front matter bound to the task and to HEAD."""
     value = os.environ.get(ACCEPTANCE_ENV, "").strip()
     if not value:
@@ -890,7 +903,7 @@ def acceptance_errors(root: Path, required: bool, task: str | None, head: str) -
     record, error = read_acceptance_record(path)
     if record is None:
         return [f"{ACCEPTANCE_ENV} {error}"], None
-    errors = record_field_errors(record, path.name.removesuffix(".md"), head)
+    errors = record_field_errors(record, path.name.removesuffix(".md"), head, pr)
     if errors:
         return errors, record
     classes = Counter(row["class"] for row in record["ledger"])
@@ -987,8 +1000,12 @@ def main() -> None:
     # pr_feedback_errors already validated PR_FEEDBACK_EVIDENCE's location and -pr-feedback.json suffix.
     feedback = os.environ.get(PR_FEEDBACK_ENV, "").strip()
     task = Path(feedback).name.removesuffix("-pr-feedback.json") if feedback else None
+    # Bound to the swept PR: pr_feedback_errors already loaded this document and checked its `items`.
+    feedback_pr = json.loads((root / feedback).read_text()).get("pr") if feedback else None
     current_head = head or run_git(["rev-parse", "HEAD"], root).stdout.strip()
-    acceptance, record = acceptance_errors(root, required=args.base is not None, task=task, head=current_head)
+    acceptance, record = acceptance_errors(
+        root, required=args.base is not None, task=task, head=current_head, pr=feedback_pr
+    )
     if acceptance:
         print("Acceptance record evidence is incomplete:")
         for error in acceptance:

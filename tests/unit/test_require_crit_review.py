@@ -1407,6 +1407,16 @@ class ReviewGuardTest(unittest.TestCase):
                 "acceptance record head 0000000000000000000000000000000000000000 is not HEAD",
             ),
             ("pr", {"pr": None}, "pr must be the pull request number"),
+            ("pr of another PR", {"pr": 2}, "pr must be 1, the pull request PR_FEEDBACK_EVIDENCE names, not 2"),
+            (
+                "a duplicate key",
+                {
+                    "text": "---\nformat: 1\ntask: test\nhead: HEAD\npr: 1\nsearches: []\n"
+                    "ledger: [{id: 4244128846, class: x}, {id: 4244175775, class: x}, {id: 4244175776, class: x}]\n"
+                    "ledger: []\n---\n"
+                },
+                "duplicate key(s): ledger",
+            ),
             ("ledger id", {"ledger": [{"id": "123", "class": "scope"}]}, "ledger row 0 must be"),
             ("ledger class", {"ledger": [{"id": 4244128846, "class": "Scope;x"}]}, "ledger row 0 must be"),
             ("searches records", {"searches": [{"class": "scope", "records": "M-1.md"}]}, "searches entry 0 must be"),

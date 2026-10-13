@@ -1,70 +1,70 @@
 {
   "repo": "mryfmo/dotfiles",
-  "pr": 340,
-  "head_sha": "60d152a10c58080210f4bebc35fecb25b97a57d6",
+  "pr": 329,
+  "head_sha": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
   "base_ref": "main",
-  "base_sha": "c31fcccfb3a62dc0e6e8cd305683c5227b0dab44",
-  "generated_at": "2026-10-13T05:39:52+00:00",
+  "base_sha": "26909ee4b8b1fde0bb263acdee1b1cd6a9869d05",
+  "generated_at": "2026-10-13T15:12:14+00:00",
   "checks": [
     {
-      "name": "test (macos-14, client)",
+      "name": "test (ubuntu-26.04, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413286/job/115144438299"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028274/job/115360576077"
     },
     {
       "name": "test (ubuntu-24.04, server)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413286/job/115144438149"
-    },
-    {
-      "name": "private-bootstrap (macos-14, client)",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413314/job/115144438115"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028274/job/115360575990"
     },
     {
       "name": "test (ubuntu-24.04, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413286/job/115144438071"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028274/job/115360575949"
     },
     {
-      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "name": "test (macos-14, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413314/job/115144438034"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028274/job/115360575474"
     },
     {
       "name": "public-bootstrap (ubuntu-24.04, server)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413314/job/115144438013"
-    },
-    {
-      "name": "public-bootstrap (macos-14, client)",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413314/job/115144437980"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028131/job/115360573946"
     },
     {
       "name": "private-bootstrap (ubuntu-24.04, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413314/job/115144437976"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028131/job/115360573897"
     },
     {
-      "name": "test (ubuntu-26.04, client)",
+      "name": "private-bootstrap (macos-14, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413286/job/115144437885"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028131/job/115360573772"
     },
     {
-      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "name": "private-bootstrap (ubuntu-24.04, server)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413314/job/115144437861"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028131/job/115360573729"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028131/job/115360573726"
     },
     {
       "name": "validate",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413281/job/115144437779"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028021/job/115360573552"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028131/job/115360573351"
     },
     {
       "name": "GitGuardian Security Checks",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/runs/115144428388"
+      "url": "https://github.com/mryfmo/dotfiles/runs/115360545229"
     }
   ],
   "items": [
@@ -75,9 +75,9 @@
       "level": "comment",
       "path": null,
       "line": null,
-      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary><strong>\u2699\ufe0f Run configuration</strong></summary>\n> <dl>\n> <dd>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `36c1be60-9bb3-4107-a296-c8cf054fea06`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> \ud83d\udd0d Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autofix</strong> \u00b7 Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=340)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary><strong>\u2764\ufe0f Share</strong></summary>\n<dl>\n<dd>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</dd>\n</dl>\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
-      "url": "https://github.com/mryfmo/dotfiles/pull/340#issuecomment-6138052508",
-      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6138052508 --jq '.user.login,.body'"
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary><strong>⚙️ Run configuration</strong></summary>\n> <dl>\n> <dd>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `c9a07eea-cb7a-4b72-a943-473d59603a3b`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autofix</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=329)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary><strong>❤️ Share</strong></summary>\n<dl>\n<dd>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</dd>\n</dl>\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#issuecomment-6124447525",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6124447525 --jq '.user.login,.body'"
     },
     {
       "source": "issue_comment",
@@ -86,9 +86,9 @@
       "level": "comment",
       "path": null,
       "line": null,
-      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"27e8a0ea376cbaeb73b976ed77ffa0d8d166e6c2\",\"mergeGateEnabled\":false,\"pullRequestNumber\":340,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| \ud83d\udcdd **Code Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-13T05:28:26.529750Z\">2026-10-13T05:28:26.529750Z</relative-time> | `60d152a` | New commits |\n| \ud83d\udd12 **Security Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-13T04:13:09.146852Z\">2026-10-13T04:13:09.146852Z</relative-time> | `27e8a0e` | PR opened |\n\n\n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with \ud83d\udc40 while any review is running, comments if it has suggestions, and reacts with \ud83d\udc4d once all reviews finish with no findings.\n\n</details>",
-      "url": "https://github.com/mryfmo/dotfiles/pull/340#issuecomment-6138053046",
-      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6138053046 --jq '.user.login,.body'"
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"5971fffe3f3a0af1dbd01ce9507d9a06c305f482\",\"mergeGateEnabled\":false,\"pullRequestNumber\":329,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-13T05:53:30.010288Z\">2026-10-13T05:53:30.010288Z</relative-time> | `21badcd` | New commits |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-12T12:56:45.711994Z\">2026-10-12T12:56:45.711994Z</relative-time> | `5971fff` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#issuecomment-6124568496",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6124568496 --jq '.user.login,.body'"
     },
     {
       "source": "issue_comment",
@@ -98,19 +98,8 @@
       "path": null,
       "line": null,
       "body": "@codex review",
-      "url": "https://github.com/mryfmo/dotfiles/pull/340#issuecomment-6138186114",
-      "disposition": "not-applicable:the operator's review trigger comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/340/comments --jq '.[]|select(.user.login==\"moriya-fumio-thd\")|.body'"
-    },
-    {
-      "source": "issue_comment",
-      "author": "chatgpt-codex-connector[bot]",
-      "bot": true,
-      "level": "comment",
-      "path": null,
-      "line": null,
-      "body": "Codex Review: Didn't find any major issues. Hooray!\n\n**Reviewed commit:** `27e8a0ea37`\n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with \ud83d\udc4d.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
-      "url": "https://github.com/mryfmo/dotfiles/pull/340#issuecomment-6138208548",
-      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6138208548 --jq '.user.login,.body'"
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#issuecomment-6126868913",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6126868913 --jq '.user.login,.body'"
     },
     {
       "source": "issue_comment",
@@ -120,8 +109,8 @@
       "path": null,
       "line": null,
       "body": "@codex review",
-      "url": "https://github.com/mryfmo/dotfiles/pull/340#issuecomment-6138745264",
-      "disposition": "not-applicable:the operator's review trigger comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/340/comments --jq '.[]|select(.user.login==\"moriya-fumio-thd\")|.body'"
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#issuecomment-6138928342",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6138928342 --jq '.user.login,.body'"
     },
     {
       "source": "issue_comment",
@@ -130,9 +119,865 @@
       "level": "comment",
       "path": null,
       "line": null,
-      "body": "Codex Review: Didn't find any major issues. Bravo.\n\n**Reviewed commit:** `2231a4f7b0`\n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with \ud83d\udc4d.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
-      "url": "https://github.com/mryfmo/dotfiles/pull/340#issuecomment-6138767624",
-      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6138767624 --jq '.user.login,.body'"
+      "body": "Codex Review: Didn't find any major issues. Breezy!\n\n**Reviewed commit:** `bbe62911e7`\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#issuecomment-6138971719",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6138971719 --jq '.user.login,.body'"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `5971fffe3f`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5491066199",
+      "commit": "5971fffe3f3a0af1dbd01ce9507d9a06c305f482",
+      "disposition": "not-applicable:review object, its findings are the inline threads, each dispositioned on its own; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5491066199 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `386a71b3bf`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5491635781",
+      "commit": "386a71b3bf3992488ca3942c2390dfe7160d1f69",
+      "disposition": "not-applicable:review object, its findings are the inline threads, each dispositioned on its own; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5491635781 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `d5d6c9b1b2`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5491920865",
+      "commit": "d5d6c9b1b22c32e483f76ed2d313571a487aa16a",
+      "disposition": "not-applicable:review object, its findings are the inline threads, each dispositioned on its own; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5491920865 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `4e2266aae7`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5492641317",
+      "commit": "4e2266aae7cddb692a9d56d8a8d2c83e48cc8303",
+      "disposition": "not-applicable:review object, its findings are the inline threads, each dispositioned on its own; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5492641317 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `c36fcd3559`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5493539294",
+      "commit": "c36fcd35597f4d06d52382cf907fa1df585503f7",
+      "disposition": "not-applicable:review object, its findings are the inline threads, each dispositioned on its own; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5493539294 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `82e86e5005`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5498081103",
+      "commit": "82e86e50057d25493a06943c8c8e65a7b217e54a",
+      "disposition": "not-applicable:review object, its findings are the inline threads, each dispositioned on its own; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5498081103 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `ca7dcd73e4`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5498584052",
+      "commit": "ca7dcd73e49a5e0145565510588211edc84d2671",
+      "disposition": "not-applicable:review object, its findings are the inline threads, each dispositioned on its own; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5498584052 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `ffe7d872f3`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5498822030",
+      "commit": "ffe7d872f39491dbb539399b4aa5482a85c91ce2",
+      "disposition": "not-applicable:review object, its findings are the inline threads, each dispositioned on its own; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5498822030 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505778658",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505778658 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505779460",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505779460 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505780025",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505780025 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505780651",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505780651 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505781224",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505781224 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505781813",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505781813 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505782403",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505782403 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505783044",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505783044 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505783658",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505783658 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505784439",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505784439 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505785165",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505785165 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505785762",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505785762 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505786257",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505786257 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505786812",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505786812 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505787344",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505787344 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505787924",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505787924 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505788544",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505788544 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505789281",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505789281 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505790020",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505790020 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-5505790841",
+      "commit": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/329/reviews/5505790841 --jq '.state,.body'"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 735,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Add acceptance evidence to the canonical gate command**\n\nRequiring this variable immediately breaks PR integration for every orchestrator that follows the current canonical command in `home/dot_agents/skills/agmsg-orchestration/SKILL.md:170`, because that command still supplies `BASE`, `PR_FEEDBACK_EVIDENCE`, and audit evidence but not `ACCEPTANCE_EVIDENCE`. The commit's report explicitly confirms that the documented command is refused until a separate sibling task lands; merge that prerequisite first or update the command atomically so the repository's required integration workflow remains usable.\n\nAGENTS.md reference: [AGENTS.md:L40-L44](https://github.com/mryfmo/dotfiles/blob/5971fffe3f3a0af1dbd01ce9507d9a06c305f482/AGENTS.md#L40-L44)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4248232955",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:fixed on main before this PR's final base: T703 a04 (squash 26909ee4) adds ACCEPTANCE_EVIDENCE to the canonical gate command in SKILL step 10.4, and the update-branch merge brings it into this branch, so a fixed:<sha> outside base..head is not accepted by the gate and the merged result carries the fix; evidence=git show origin/main:home/dot_agents/skills/agmsg-orchestration/SKILL.md | grep -n ACCEPTANCE_EVIDENCE"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 744,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind acceptance evidence to the current task**\n\nWhen an operator accidentally supplies any other existing `.orchestration/acceptance/*.md` file, this check accepts it because it validates only the directory and existence; a record with no class repeated three times therefore bypasses S6 even if the current task's actual acceptance record should be refused. Bind the record to the task already derived from the `<task>-pr-feedback.json` filename, as the audit evidence is, before evaluating its ledger.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/5971fffe3f3a0af1dbd01ce9507d9a06c305f482/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4248232964",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:379845f7"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": ".orchestration/dotfiles-T128-gate-evidence-a01/task.md",
+      "line": 38,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Cover the new acceptance input in the threat table**\n\nReplace this claim that there are no environment inputs: the change introduces `ACCEPTANCE_EVIDENCE`, whose path and file contents now decide whether the merge backstop passes. No other row analyzes wrong-task substitution, symlink/path handling, or untrusted ledger/search content, so this trust-boundary input is missing from the required threat table and needs its own control and disposition.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/5971fffe3f3a0af1dbd01ce9507d9a06c305f482/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4248232976",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:379845f7"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 747,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Validate dispositions in the acceptance record**\n\nWhen the audit verdict is `correct`, the gate never calls `audit_disposition_errors`, and this new reader examines only ledger rows and `search:` lines. Consequently an acceptance record containing `audit-finding: … not-applicable:<reason>` without `evidence=` passes, contrary to this changeset's INV-6 requirement that the merge backstop refuse any acceptance record carrying such a disposition; apply the disposition grammar while reading `ACCEPTANCE_EVIDENCE`, regardless of the audit verdict.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/5971fffe3f3a0af1dbd01ce9507d9a06c305f482/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4248232988",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 824,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Exclude acceptance evidence from diff sizing**\n\nBecause `ACCEPTANCE_EVIDENCE` is mandatory in PR mode but is not excluded by `is_ignored`, the untracked main-checkout acceptance record becomes part of `changed_paths` and `numstat_line_count`. For example, a normally exempt four-file Markdown PR becomes a five-file broad diff solely after its required acceptance record is written, causing the gate to demand an audit that the product changes themselves did not require; exclude this evidence path using the same normalized-path handling as `PR_FEEDBACK_EVIDENCE`.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4248232998",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:379845f7"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 37,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require a search command that actually scans the records**\n\nThe mandated substring accepts the passing fixture's `grep -l 'classes:…' .orchestration/learning/mistakes/`, but that command does not inspect files: on the repository's GNU grep it exits 2 with `Is a directory`, while `grep --help` identifies `-r, --recursive` as `like --directories=recurse`. Thus an acceptance record can satisfy S6 with a pasted search that returned no correction records; require recursive grep or a file glob and update the passing fixture accordingly.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/5971fffe3f3a0af1dbd01ce9507d9a06c305f482/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4248233012",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 781,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind the grep pattern to the repeated class**\n\nThe class and grep checks are independent, so a record such as `search: scope: grep -l 'classes:.*x' .orchestration/learning/mistakes/*.md; contextdb_cli.py memory search x` passes: `slug.search(line)` finds `scope` in the prefix while `SEARCH_GREP.search(line)` accepts the unrelated `x` query. The gate therefore allows S6 evidence that never searches correction records for the repeated class; validate that the class token occurs inside the grep's `classes:` pattern. Fresh evidence in this head is the newly added compound condition, which still permits this bypass after the earlier bare-directory fix. The closed threat-table test does not cover this matching-prefix/wrong-query case.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/386a71b3bf3992488ca3942c2390dfe7160d1f69/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4248697658",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 769,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Validate list-prefixed audit findings**\n\nWhen an acceptance record formats a disposition as a Markdown list item, for example `- audit-finding: 1 … not-applicable:<reason>`, `str.strip()` leaves the `- ` prefix and this `startswith` check skips it. This is an existing record format (for example `.orchestration/acceptance/dotfiles-T65-agent-stop-gate-a01.md:41`), so with a `correct` audit verdict the merge gate accepts such a line without the newly required `evidence=` clause. Strip an optional Markdown list marker or match the disposition prefix explicitly; the closed acceptance-input threat-table test currently exercises only unprefixed lines.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/386a71b3bf3992488ca3942c2390dfe7160d1f69/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4248697668",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 29,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject repeated evidence delimiters**\n\nWhen a disposition contains multiple `; evidence=` delimiters, the greedy reason group splits at the last one. Consequently `not-applicable:; evidence=echo proof; evidence=true` is accepted with `; evidence=echo proof` as its supposedly non-empty reason, and a failure-level item can similarly pad a one-character reason past the 20-character minimum. This bypass affects PR feedback, audit dispositions, and acceptance-record validation through the shared regex; parse the first delimiter or explicitly reject additional delimiters. The closed acceptance-input threat-table test does not exercise this case.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/d5d6c9b1b22c32e483f76ed2d313571a487aa16a/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4248934816",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:c6cf0548"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 786,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require shell-command boundaries in pasted searches**\n\nBecause both command patterns are found as arbitrary substrings, a `search:` line containing `xgrep -l 'classes:.*scope' .orchestration/learning/mistakes/*.md; xcontextdb_cli.py memory search scope` passes `searches_class`, as does an `echo grep ...; echo contextdb_cli.py ...` line. In either case no required search command exists or scans the correction records, so a class repeated three times can still pass S6 with invalid pasted evidence. Require `grep` and `contextdb_cli.py` to begin actual shell command segments; the closed acceptance-input threat-table test does not cover this bypass.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/d5d6c9b1b22c32e483f76ed2d313571a487aa16a/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4248934830",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 776,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Distinguish quoted grammar from a disposition**\n\nWhen a fixed audit finding merely describes the `not-applicable:` syntax—for example, `audit-finding: 1 parser accepts not-applicable: without evidence -> fixed:abcdef0`—this substring check treats that mention as the line's disposition and rejects the task's acceptance record. This can block the mandatory integration gate for exactly the grammar-related findings this change addresses; identify the actual trailing disposition instead of using the first occurrence anywhere in the finding text. The closed acceptance-input test does not cover this case.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/4e2266aae7cddb692a9d56d8a8d2c83e48cc8303/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4249544748",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 904,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind the acceptance record to the current head**\n\nAfter `gh pr update-branch` or any subsequent fix moves `HEAD`, an older acceptance record with the same task filename still passes this check because only its path and task name are validated. Even when the PR-feedback and audit inputs are refreshed for the new head, the stale record can omit newly introduced ledger rows or dispositions and thereby bypass the S6 check; require a machine-readable head binding and compare it with the current `HEAD` so the mandated sweep → audit → acceptance → gate order is enforceable.\n\nAGENTS.md reference: [AGENTS.md:L44-L44](https://github.com/mryfmo/dotfiles/blob/4e2266aae7cddb692a9d56d8a8d2c83e48cc8303/AGENTS.md#L44-L44)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4249544762",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 32,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Avoid quadratic backtracking in disposition parsing**\n\nFor a malformed disposition with no delimiter, or one containing a second `; evidence=`, the three overlapping repetitions in `DISPOSITION_PART` backtrack quadratically before rejecting it. In the reviewed environment, increasing a clause-less reason from 1,000 to 2,000 characters increased matching time from about 0.02s to 0.09s, and 5,000 characters took about 0.56s; several long malformed evidence entries can therefore stall the mandatory integration gate. Split once on the delimiter and validate the two parts with linear checks instead.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/4e2266aae7cddb692a9d56d8a8d2c83e48cc8303/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4249544794",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 804,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind the acceptance PR to the swept PR**\n\nA positive `pr` is accepted without comparing it to the `pr` in `PR_FEEDBACK_EVIDENCE`. When two PRs share the same task name and head commit—or a record is copied with the wrong positive PR number—the other PR's ledger can pass and omit the current PR's repeated finding classes, bypassing S6. Pass the swept PR number into this validation and require equality; the threat table's closed acceptance-input row is not closed by the test that only rejects a missing `pr`.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/c36fcd35597f4d06d52382cf907fa1df585503f7/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4250238714",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": ".orchestration/dotfiles-T128-gate-evidence-a03/task.md",
+      "line": 42,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Account for the gate's new runtime dependencies**\n\nThis row claims there are no interpreter or environment inputs, but the change makes every PR-mode gate invoke external `uv`, resolve `pyyaml` (retrying online if it is not cached), and invoke `grep`. On an offline integration host without the package cached, the mandatory gate cannot validate any acceptance record; an online run also resolves an unpinned package at this host-side trust boundary. Replace this inaccurate residual with controls covering dependency availability and provenance, plus the external executable resolution.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/c36fcd35597f4d06d52382cf907fa1df585503f7/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4250238721",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 730,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject duplicate acceptance-record keys**\n\n`yaml.safe_load` silently keeps the last occurrence of a duplicate mapping key, so a record can visibly contain a three-row `ledger` followed by `ledger: []` (or two conflicting `head`/`pr` fields) and the gate validates only the latter value. This creates an ambiguous machine-versus-reviewer view and lets the S6 check be bypassed even though the record carries the repeated-class table. Use a loader that rejects duplicate mapping keys and add that case to the acceptance-input threat-row test.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/c36fcd35597f4d06d52382cf907fa1df585503f7/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4250238729",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:f5f980f9"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 922,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind ledger rows to swept findings**\n\nThe S6 check counts only rows supplied by the acceptance record and never verifies that the ledger includes every item from `PR_FEEDBACK_EVIDENCE` or every audit finding. An acceptance record with `ledger: []`, or one that omits enough occurrences of a repeated class to keep its count below three, therefore passes and bypasses the mandatory records-search check. The a03 threat table marks acceptance-input validation closed, but its named test covers field shape and a pre-populated three-row ledger, not ledger completeness; compare ledger IDs against the swept feedback and audit findings before counting classes.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/82e86e50057d25493a06943c8c8e65a7b217e54a/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4254092805",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:9db7ed3c"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 744,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require an exact closing front-matter delimiter**\n\nWhen an acceptance file places `---junk` after its JSON object, this prefix search treats it as the closing delimiter and accepts the record even though the declared contract requires a line containing exactly `---`. This lets malformed evidence pass the mandatory merge backstop, so the acceptance-input threat row's `closed` tests do not fully enforce the boundary; match a complete separator line instead.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/ca7dcd73e49a5e0145565510588211edc84d2671/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4254525594",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:8d54fd76"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 859,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Authenticate authors before filtering swept findings**\n\nWhen the saved feedback changes or removes a Codex item's `author`, live recollection still accepts that item because `feedback_key()` does not compare `author`, but this filter then excludes it from the required ledger IDs. The record can therefore omit every Codex finding and evade the S6 repeated-class check while the feedback sweep passes. Fresh evidence in this final head is that ledger completeness now depends on an unauthenticated field; include the author in the live match or derive IDs from authenticated recollected items.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/ca7dcd73e49a5e0145565510588211edc84d2671/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4254525603",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:8d54fd76"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "tests/unit/test_require_crit_review.py",
+      "line": 21,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Add the referenced gate-evidence fixtures**\n\nWhen `tests.unit.test_require_crit_review` runs from this commit, `FIXTURES` points to a directory absent from the repository tree, so the newly added BASE-path tests fail immediately with `FileNotFoundError` while reading files such as `acceptance-s6-present.md` and `pr-feedback-right.json`. A repo-wide tree search (`git ls-tree -r 916985d`) found none of the thirteen referenced `tests/fixtures/gate-evidence/*` artifacts, so include those fixtures in this changeset rather than relying on another unmerged change; otherwise the threat table's closed acceptance-input tests cannot execute.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/ffe7d872f39491dbb539399b4aa5482a85c91ce2/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4254731145",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:21badcd7"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 735,
+      "body": "Disposition (orchestrator): not-applicable:fixed on main before this PR's final base: T703 a04 (squash 26909ee4) adds ACCEPTANCE_EVIDENCE to the canonical gate command in SKILL step 10.4, and the update-branch merge brings it into this branch, so a fixed:<sha> outside base..head is not accepted by the gate and the merged result carries the fix; evidence=git show origin/main:home/dot_agents/skills/agmsg-orchestration/SKILL.md | grep -n ACCEPTANCE_EVIDENCE. Resolving; the owning task on main carries it.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260426609",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260426609 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 744,
+      "body": "Disposition (orchestrator): fixed:379845f7. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260427372",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260427372 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": ".orchestration/dotfiles-T128-gate-evidence-a01/task.md",
+      "line": 38,
+      "body": "Disposition (orchestrator): fixed:379845f7. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260427897",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260427897 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 747,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260428443",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260428443 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 824,
+      "body": "Disposition (orchestrator): fixed:379845f7. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260428874",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260428874 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 37,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260429481",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260429481 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 781,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260430004",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260430004 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 769,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260430527",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260430527 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 29,
+      "body": "Disposition (orchestrator): fixed:c6cf0548. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260431106",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260431106 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 786,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260431806",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260431806 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 776,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260432437",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260432437 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 904,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260432929",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260432929 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 32,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260433438",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260433438 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 804,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260433896",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260433896 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": ".orchestration/dotfiles-T128-gate-evidence-a03/task.md",
+      "line": 42,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260434396",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260434396 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 730,
+      "body": "Disposition (orchestrator): fixed:f5f980f9. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260434891",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260434891 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 922,
+      "body": "Disposition (orchestrator): fixed:9db7ed3c. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260435351",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260435351 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 744,
+      "body": "Disposition (orchestrator): fixed:8d54fd76. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260435859",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260435859 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/require-crit-review.py",
+      "line": 859,
+      "body": "Disposition (orchestrator): fixed:8d54fd76. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260436438",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260436438 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "tests/unit/test_require_crit_review.py",
+      "line": 21,
+      "body": "Disposition (orchestrator): fixed:21badcd7. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/329#discussion_r4260437093",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4260437093 --jq '.in_reply_to_id,.user.login'"
     },
     {
       "source": "annotation",
@@ -142,9 +987,9 @@
       "path": ".github",
       "line": 1,
       "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413286/job/115144438299",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028274/job/115360575474",
       "check": "test (macos-14, client)",
-      "disposition": "not-applicable:runner capacity notice, no finding; evidence=gh run view 38351413286 --repo mryfmo/dotfiles --job 115144438299"
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=gh run view 38416028274 --repo mryfmo/dotfiles --job 115360575474"
     },
     {
       "source": "annotation",
@@ -154,9 +999,9 @@
       "path": ".github",
       "line": 1,
       "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413314/job/115144438115",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028131/job/115360573772",
       "check": "private-bootstrap (macos-14, client)",
-      "disposition": "not-applicable:runner capacity notice, no finding; evidence=gh run view 38351413314 --repo mryfmo/dotfiles --job 115144438115"
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=gh run view 38416028131 --repo mryfmo/dotfiles --job 115360573772"
     },
     {
       "source": "annotation",
@@ -166,9 +1011,9 @@
       "path": ".github",
       "line": 1,
       "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38351413314/job/115144437980",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38416028131/job/115360573726",
       "check": "public-bootstrap (macos-14, client)",
-      "disposition": "not-applicable:runner capacity notice, no finding; evidence=gh run view 38351413314 --repo mryfmo/dotfiles --job 115144437980"
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=gh run view 38416028131 --repo mryfmo/dotfiles --job 115360573726"
     },
     {
       "source": "status",
@@ -180,7 +1025,7 @@
       "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
       "url": null,
       "check": "CodeRabbit",
-      "disposition": "not-applicable:CI status, no finding; evidence=gh pr checks 340 --repo mryfmo/dotfiles"
+      "disposition": "not-applicable:CI status, no finding; evidence=gh pr checks 329 --repo mryfmo/dotfiles"
     }
   ]
 }

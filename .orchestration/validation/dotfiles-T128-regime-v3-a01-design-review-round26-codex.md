@@ -1,0 +1,3 @@
+P1 high — `.orchestration/tasks/dotfiles-T128-gate-evidence-a04.md:93`: Ledger coverage includes only Codex `review_comment` items, omitting P0–P3 findings carried by `source: review` bodies; this violates plan 014’s “every Bot-badged sweep item” requirement and leaves an S6 bypass. Include badged Codex review-body items and test that omission.
+
+Design verdict: dotfiles-T128-regime-v3-a01 v23: revise

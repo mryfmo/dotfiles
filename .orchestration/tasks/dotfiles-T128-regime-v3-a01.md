@@ -29,6 +29,7 @@ implementing_tasks:
   dotfiles-T128-gate-evidence-a01: [INV-6]
   dotfiles-T128-gate-evidence-a02: [INV-6]
   dotfiles-T128-gate-evidence-a03: [INV-6]
+  dotfiles-T128-gate-evidence-a04: [INV-6]
 supersedes:
   - dotfiles-T126-regime-v2-a01
   - dotfiles-T124-design-gate-and-reset-rule-a01
@@ -234,3 +235,7 @@ Round 22 (Claude 11:49:16Z `accept`, receipt `…-design-review-round22.md`; Cod
 v21 (13:08Z, the orchestrator under the records exemption): `implementing_tasks` gains `dotfiles-T128-gate-evidence-a02: [INV-6]`, the INV-6 successor of `dotfiles-T128-gate-evidence-a01` (withdrawn 13:02Z under INV-6 before its second amendment; reset record `dotfiles-T128-gate-evidence-a01-design-reset.md`), beside the a01 entry that stays as parked history, as the V0 and round-18 successors did; nothing else changes. Round 24 asks both reviewers at once for one verdict each on this hash: receipts `…-design-review-round24.md` (Claude) and `…-design-review-round24-codex.md` (Codex).
 
 v22 (15:28Z, the orchestrator under the records exemption): `implementing_tasks` gains `dotfiles-T128-gate-evidence-a03: [INV-6]`, the INV-6 successor of a02 (withdrawn 15:25Z after its second S1 cycle; plan 011 option F: the acceptance record's machine-read parts as YAML front matter), beside the a01 and a02 entries kept as parked history; nothing else changes. Round 25 asks both reviewers at once for one verdict each on this hash: receipts `…-design-review-round25.md` (Claude) and `…-design-review-round25-codex.md` (Codex).
+
+v23 (2026-10-13 02:55Z, the orchestrator under the records exemption): `implementing_tasks` gains `dotfiles-T128-gate-evidence-a04: [INV-6]`, the INV-6 successor of a03 (withdrawn 02:3xZ after the fourth binding row; plan 014 option A: the acceptance record's `ledger` must cover every swept Codex finding id and every audit finding `audit:<sha7>:<n>`, a set difference the gate computes; the a04 file's hash is in the reset record `dotfiles-T128-gate-evidence-a03-design-reset.md`, not here), beside the a01 to a03 entries kept as parked history; nothing else changes. Round 26 asks both reviewers at once for one verdict each on this hash: receipts `…-design-review-round26.md` (Claude) and `…-design-review-round26-codex.md` (Codex).
+
+v24 (2026-10-13 03:05Z, the orchestrator under the records exemption): the v23 line named the a04 file's hash, which moved when round 26's Codex half found the coverage sentence omitted badged Codex review bodies (a04 round 4 after round 3; no a04 hash appears in this design, the reset record `dotfiles-T128-gate-evidence-a03-design-reset.md` is the sole anchor, so later a04 rounds do not move the design); the map entry `dotfiles-T128-gate-evidence-a04: [INV-6]` is unchanged; nothing else changes. Rounds 27 and 28 ask both reviewers at once for one verdict each on this hash: receipts `…-design-review-round28.md` (Claude) and `…-design-review-round28-codex.md` (Codex); round 27's Codex half found the two hash mentions this text removed.

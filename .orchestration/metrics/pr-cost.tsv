@@ -1,0 +1,5 @@
+pr	branch	created	merged	wall_h	commits	bot_reviews	p1	p2	local_reviews	boundary_updates	recorded_at
+336	tools/orchestrator-scripts	2026-10-13T01:55:34Z	2026-10-13T09:56:27Z	8.0	30	13	9	21	3	3	2026-10-13T13:40:11Z
+328	regime/playbook-rules	2026-10-12T12:07:05Z	open	25.6	17	7	8	8	1	2	2026-10-13T13:40:14Z
+329	regime/gate-evidence	2026-10-12T12:31:24Z	open	25.1	26	8	18	2	0	3	2026-10-13T13:40:18Z
+346	tools/orchestrator-scripts-2	2026-10-13T10:33:56Z	open	3.1	3	0	0	0	0	0	2026-10-13T13:40:21Z

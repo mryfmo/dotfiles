@@ -37,7 +37,7 @@ files="$(/usr/bin/grep -rl -- "^classes:.*${class}" "${dir}")" || rc=$?
 records="$(if [[ -n ${files} ]]; then awk -F/ '{print $NF}' <<< "${files}" | LC_ALL=C sort | paste -sd, - | sed 's/,/, /g'; fi)"
 echo "search: ${class} -> ${records:-none}"
 
-memory="$(cd -- "${root}" && uv run --no-project .claude/hooks/contextdb_cli.py memory search "${class}")" || {
+memory="$(cd -- "${root}" && uv run --no-project "${root}/.claude/hooks/contextdb_cli.py" memory search "${class}")" || {
     echo "three-repeat: the CompactionDB search failed" >&2
     exit 1
 }

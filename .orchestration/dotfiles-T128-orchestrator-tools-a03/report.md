@@ -33,3 +33,15 @@ No code change, as the task expects. Understand-Anything hook: did not fire. pla
 `memory add` printed `7a16273b-e91b-450e-abcd-de070e344d08` (§6).
 
 cost: n/a
+
+## Fix round 1 (`9496c734`)
+
+On head `58ecd753` (validation §7), Bot review 5498865497:
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4254771302 (P1, `dispatch.sh:94`) | the field grammar `^([a-z_]+)_sha256=` skipped names with digits (`a02_expected_sha256=`), so such a hash went unchecked | `fixed:9496c734`: any name before `_sha256=` (`^([^=]+)_sha256=`) is checked like the rest; a new case in `test_dispatch_refuses_malformed_lines` (mutant D15) |
+| 4254771284 (P2, `three-repeat.sh:40`) | a slug such as `--help` passes `^[a-z0-9-]+$` and reached the CompactionDB CLI as an option | `fixed:9496c734`: `memory search -- <class>`. The real CLI searches `--help` as a query after `--` (§7), and the slug grammar stays the gate's. The closed-row test asserts the argv (mutant T6) |
+| 4254771296 (P2, `regime-counters.sh:132`) | a stale or copied record's ledger was trusted without its `task` identity | `fixed:9496c734`: the block counts only when its `task` is the counted task; another task's record falls back to the title detector (mutant R4) |
+
+Results (§7): 9 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 30 mutants, 30 failures. Size: added lines outside and under `tests/`: 313 and 336 (caps 500 and 1000).

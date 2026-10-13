@@ -424,8 +424,8 @@ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make requi
 CRIT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make require-crit-review
 # Only use this explicit escape hatch when the user disables review.
 CRIT_REVIEW=off make require-crit-review
-# PR integration adds BASE, PR_FEEDBACK_EVIDENCE and AUDIT_EVIDENCE as the
-# agmsg-orchestration SKILL's Orchestrator Playbook step 10 gives them (see below).
+# PR integration adds BASE, PR_FEEDBACK_EVIDENCE, ACCEPTANCE_EVIDENCE and
+# AUDIT_EVIDENCE as the agmsg-orchestration SKILL's Orchestrator Playbook step 10 gives them (see below).
 ```
 
 Codex runs a hook from `~/.codex/config.toml` or a plugin only when
@@ -1091,17 +1091,17 @@ gh pr comment <pr> --body '@coderabbitai full review'
 # Collect comments, reviews, inline threads, non-passing checks, every
 # check-run annotation (notice/warning/failure), and commit statuses.
 python3 scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json
-# Fill every item's disposition with fixed:<commit> or not-applicable:<reason>,
+# Fill every item's disposition with fixed:<commit> or not-applicable:<reason>; evidence=<command>,
 # run the task-level audit of the head, write the acceptance record, then run
 # the integration gate exactly as the agmsg-orchestration SKILL's
 # Orchestrator Playbook step 10 gives it.
 ```
 
 With `BASE=<ref>` (`--base <ref>` on the script), the guard also reviews the
-committed `<ref>...HEAD` changes and requires `PR_FEEDBACK_EVIDENCE`. It
+committed `<ref>...HEAD` changes and requires `PR_FEEDBACK_EVIDENCE` and `ACCEPTANCE_EVIDENCE`. It
 rejects a missing, external, or malformed file; evidence whose `head_sha` is
 not the current `HEAD`; any item without a `fixed:<commit>` or
-`not-applicable:<reason>` disposition; a `fixed:` commit that does not exist
+`not-applicable:<reason>; evidence=<command>` disposition; a `fixed:` commit that does not exist
 or lies outside `<ref>..HEAD`; and a `not-applicable` reason shorter than 20
 characters on an item that failed or did not finish (`failure`, `error`,
 `cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`,

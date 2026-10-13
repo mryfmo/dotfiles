@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-orchestrator-tools-a03-pr336-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "e16c52198af41f1914b980b13c631cf9cd72c10a",
+    "pr": "336",
+    "reviewed_at": "2026-10-13T06:09:52Z",
+    "body": "Orchestrator review of PR #336 (dotfiles-T128-orchestrator-tools-a03, the INV-6 successor of a01; T718 first slice) at its final head: scripts/orchestrator/dispatch.sh (209 lines), three-repeat.sh (45), bus-read.sh (57), the S1 line of scripts/regime-counters.sh (+38/-10) and the two test modules (323 and +42 lines); 6 files outside .orchestration/. Each script does what items 1 and 3 of a03 say and nothing else: dispatch.sh reads exactly one line, requires exactly one task_id and, for a TASK, task_file and task_sha256, recomputes every *_sha256 from the file its sibling token names (both-ways and repeated keys refused), resolves relative paths from its own checkout, sends the line byte for byte, and with a record appends the sent line with history.sh's read marker to the record's JSON dispatch list through Python's standard json with an atomic replace, refusing another task's record; three-repeat.sh validates the slug, greps classes: lines in the mistakes directory of its own checkout and runs the repository's contextdb CLI; bus-read.sh reads the team history through history.sh with a positional limit and a truncation guard and prints open TASKs with minutes since their last event; regime-counters.sh reads S1 classes from the record's JSON ledger with jq and otherwise prints the title only as a JSON string field. Seventeen Bot threads: sixteen fixed in the head, one (4255079204, the ledger-shape guard) owned by the second slice's item 3. CI 12 of 12 on ba4d4762; shellcheck and shfmt clean; 33 of 33 mutants fail. Approved."
+  }
+]

@@ -96,6 +96,21 @@ mistakes:
   - id: M-20261012-30
     corrections: [C-29]
     status: open
+  - id: M-20261012-31
+    corrections: [C-30]
+    status: open
+  - id: M-20261012-32
+    corrections: [C-31]
+    status: open
+  - id: M-20261012-33
+    corrections: [C-32]
+    status: open
+  - id: M-20261012-34
+    corrections: [C-33]
+    status: open
+  - id: M-20261012-35
+    corrections: [C-34]
+    status: open
 corrections:
   - id: C-1
     closes: [M-20261012-1]
@@ -212,4 +227,24 @@ corrections:
   - id: C-29
     closes: [M-20261012-30]
     mechanism: ['rule:integrate-prep#sandbox-scan', 'script:sandbox-check.py (T704 or T718 a02, proposed)']
+    status: "pending"
+  - id: C-30
+    closes: [M-20261012-31]
+    mechanism: ['rule:SKILL#acceptance-statuses (proposed)', 'script:scripts/agent-stop-gate.sh accepted set (proposed)']
+    status: "pending"
+  - id: C-31
+    closes: [M-20261012-32]
+    mechanism: ['rule:redesign-brief-standing-items#input-grammar', 'validator:task-consistency-check#C12 (T704, proposed)', 'task:dotfiles-T128-orchestrator-tools-a02 (tables before dispatch)']
+    status: "pending"
+  - id: C-32
+    closes: [M-20261012-33]
+    mechanism: ['script:local-review.sh (scratchpad 2026-10-13; scripts/orchestrator in the tools task after a02, proposed)', 'rule:integrate-prep#local-review-before-sweep', 'rule:boundary#hold-while-pr-awaits-merge', 'script:three-repeat.sh body search and limit (proposed)', 'script:bus-read.sh closing rule from the stop gate (proposed)']
+    status: "pending"
+  - id: C-33
+    closes: [M-20261012-34]
+    mechanism: ['script:brief-check.sh (scratchpad 2026-10-13)', 'rule:redesign-brief-standing-items#brief-check-before-dispatch', 'rule:dispatch-scripts#brief-check-before-send (next brief)']
+    status: "pending"
+  - id: C-34
+    closes: [M-20261012-35]
+    mechanism: ['script:finish-336c.sh exact verdict match (2026-10-13)', 'rule:chain-scripts#exact-string-decisions (standing)', 'task:tools task after a02 (chain scripts with stop-branch tests, proposed)']
     status: "pending"

@@ -1,6 +1,6 @@
 # Validation: dotfiles-T128-gate-evidence-a04
 
-Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `regime/gate-evidence` (PR #329), except §10, run in the main checkout. Test runs set `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false` (sandbox record). Scratch file names (`numstat.txt`, `caps.py`, `mutate6.sh`, `mutations.py`, `fail-*.txt`) live in the session's `$TMPDIR`. This main-checkout copy repeats the branch copy, which covers PR #329's code head `8c0c015b` and the combined content `8d54fd76`. Sections 11 to 16 add the final heads: `ffe7d872` for #329, and `27e8a0ea` and GitHub's update-branch merge `20d776d4` for #340. In §11 and §12, `gh` ran outside the sandbox.
+Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `regime/gate-evidence` (PR #329), except §10, run in the main checkout, and §11, the revise round. Test runs set `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false` (sandbox record). Scratch file names (`numstat.txt`, `caps.py`, `mutate6.sh`, `mutations.py`, `fail-*.txt`) live in the session's `$TMPDIR`. This main-checkout copy repeats the branch copy, which covers PR #329's code head `8c0c015b` and the combined content `8d54fd76`. Sections 12 to 20 add the heads of the first RESULT: `ffe7d872` for #329, and `27e8a0ea` and GitHub's update-branch merge `20d776d4` for #340. Sections 18 to 20 add revise 1's heads and GitHub's update-branch merges of them. In §12, §13, §18 and §19, `gh` ran outside the sandbox.
 
 ## 1. Task file and the a01, a02, a03 history copies
 
@@ -643,7 +643,131 @@ $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py 
 $ cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "dotfiles-T128-gate-evidence-a04 (PR 329, plan 014 A): the acceptance record's ledger ids must include every swept finding id: Codex (chatgpt-codex-connector[bot]) review_comment items (id after the last _r of the url), Codex review bodies containing one of ![P0 Badge]..![P3 Badge] (id after pullrequestreview-), and audit:<HEAD[:7]>:<n> per [P0]-[P3] line of AUDIT_EVIDENCE's .last.md (required when AUDIT_EVIDENCE is set); refused with 'S6: ledger lacks <ids>'. The block may carry an optional dispatch list of strings; any other unknown key is refused." 2>&1 | tail -1   # under a04
 39e1994d-0211-43d5-99af-4e2439bba814
 ```
-## 11. CI on a04's heads (check runs by commit; `9db7ed3c`, `8d54fd76` and `8c0c015b` were never a pushed head), and #329's failed job
+
+## 11. Revise 1: the string `n` (finding 1), on `09caaa91` with `2231a4f7`'s fixtures in the scratch worktree `revwt`
+
+```
+$ git log --oneline -1 regime/gate-evidence-fixtures; git diff 20d776d4 2231a4f7   # PR #340, on top of the update-branch merge
+2231a4f7 test(gate-evidence): audit_findings n as a string in the grammar fixture (a04 revise 1)
+diff --git a/tests/fixtures/gate-evidence/acceptance-finding-quotes-grammar.md b/tests/fixtures/gate-evidence/acceptance-finding-quotes-grammar.md
+index 1bfff2ba..ced3a445 100644
+--- a/tests/fixtures/gate-evidence/acceptance-finding-quotes-grammar.md
++++ b/tests/fixtures/gate-evidence/acceptance-finding-quotes-grammar.md
+@@ -9,7 +9,7 @@
+   "audit_findings":
+     [
+       {
+-        "n": 1,
++        "n": "1",
+         "reason": "the finding quotes not-applicable: without evidence; this reason is a field, not a disposition",
+         "evidence": "grep -n audit_findings scripts/require-crit-review.py"
+       }
+$ git log --oneline -1 09caaa91; git diff --stat ffe7d872 09caaa91   # PR #329
+09caaa91 fix(gate): audit_findings n is a digit string, as the contract says (a04 revise 1)
+ scripts/require-crit-review.py         |  9 +++++----
+ tests/unit/test_require_crit_review.py | 22 ++++++++++++----------
+ 2 files changed, 17 insertions(+), 14 deletions(-)
+$ git diff ffe7d872 09caaa91 -- scripts/require-crit-review.py
+diff --git a/scripts/require-crit-review.py b/scripts/require-crit-review.py
+index d37dc303..8ce2d0a2 100755
+--- a/scripts/require-crit-review.py
++++ b/scripts/require-crit-review.py
+@@ -36,6 +36,8 @@ RECORD_FORMAT = 1
+ LEDGER_ID = re.compile(r"\d{10,}|audit:[0-9a-f]{7}:\d+")
+ CLASS_SLUG = re.compile(r"[a-z0-9-]+")
+ AUDIT_FINDING_KEYS = {"n", "reason", "evidence"}
++# Every audit_findings field is a non-empty string; n holds the finding number in ASCII digits.
++FINDING_NUMBER = re.compile(r"[1-9][0-9]*")
+ RECORD_KEYS = {"format", "task", "head", "pr", "ledger", "searches", "audit_findings", "dispatch"}
+ # The swept finding ids the ledger must cover: Codex review comments, and Codex review bodies carrying a badge.
+ CODEX_BOT = "chatgpt-codex-connector[bot]"
+@@ -707,7 +709,7 @@ def audit_findings_errors(record: dict | None, findings: int) -> list[str]:
+         return [
+             f"{AUDIT_ENV} verdict is incorrect: the acceptance record's audit_findings must disposition its {findings} finding(s)"
+         ]
+-    numbers = [entry["n"] for entry in entries]
++    numbers = [int(entry["n"]) for entry in entries]
+     errors = [
+         f"audit_findings dispositions finding {n} more than once" for n in sorted(set(numbers)) if numbers.count(n) > 1
+     ]
+@@ -835,13 +837,12 @@ def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[
+         elif (
+             not isinstance(entry, dict)
+             or set(entry) != AUDIT_FINDING_KEYS
+-            or not is_int(entry["n"])
+-            or entry["n"] < 1
++            or not (isinstance(entry["n"], str) and FINDING_NUMBER.fullmatch(entry["n"]))
+             or not is_text(entry["reason"])
+             or not is_text(entry["evidence"])
+         ):
+             errors.append(
+-                f"audit_findings entry {index} must be {{n: <finding number>, reason: <text>, evidence: <command>}}"
++                f"audit_findings entry {index} must be {{n: <finding number>, reason: <text>, evidence: <command>}}, each a non-empty string"
+             )
+         elif len(entry["reason"].strip()) < FAILURE_REASON_MIN_CHARS:
+             errors.append(
+$ git worktree add --detach revwt 09caaa91; cd revwt; git checkout 2231a4f7 -- tests/fixtures/gate-evidence; python3 -m unittest tests.unit.test_require_crit_review 2>&1 | tail -3   # the combined content
+Ran 92 tests in 78.197s
+
+OK
+$ python3 mutate-rev1.py revwt   # each mutation runs test_incorrect_audit_needs_audit_findings; F1 runs the grammar test on the integer-n fixture of 27e8a0ea
+M30 n accepts a leading zero or 0: caught (rc=1; FAILED (failures=1))
+M31 n accepts an integer again: caught (rc=1; FAILED (failures=1))
+M32 coverage compares n as text: caught (rc=1; FAILED (failures=4))
+F1 the integer-n fixture of 27e8a0ea: refused (rc=1; FAILED (failures=1))
+restored: True
+$ ruff format --config ruff.toml --check scripts/require-crit-review.py tests/unit/test_require_crit_review.py
+2 files already formatted
+$ ruff check --config ruff.toml --output-format concise scripts/require-crit-review.py tests/unit/test_require_crit_review.py | sed -E "s/:[0-9]+:[0-9]+:/:/" | sort | uniq -c   # the same six as in §8
+   1 [*] 3 fixable with `--fix` (3 unsafe fixes available with `--fix --unsafe-fixes`).
+   1 Found 6 errors.
+   1 scripts/require-crit-review.py: FURB167 [*] Use of regular expression alias `re.M`
+   1 scripts/require-crit-review.py: I001 [*] Import block is un-sorted or un-formatted
+   2 scripts/require-crit-review.py: UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+   1 tests/unit/test_require_crit_review.py: I001 [*] Import block is un-sorted or un-formatted
+   1 tests/unit/test_require_crit_review.py: UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+$ git push https://github.com/mryfmo/dotfiles regime/gate-evidence-fixtures 2>&1 | tail -2   # inside the sandbox (GIT_CONFIG_GLOBAL=/dev/null, the gh credential helper)
+To https://github.com/mryfmo/dotfiles
+   20d776d4..2231a4f7  regime/gate-evidence-fixtures -> regime/gate-evidence-fixtures
+$ bash mutate-rev1-full.sh > mutation-rev1-full.txt   # §4's pass (mutate6.sh), run in revwt
+$ awk '/^== /{if(l!="")print (c?"caught":"no failure") "\t" l; l=substr($0,4); c=0; next} /^(FAIL|ERROR):|^FAILED/{c=1} END{print (c?"caught":"no failure") "\t" l}' mutation-rev1-full.txt   # a section is caught when a selected test fails; the control must show no failure
+no failure	control: this change
+caught	M0 origin/main guard
+caught	M1 guard at 61d90302 (a02's final head)
+caught	M1b guard at f5f980f9 (a03 amendment 1, before a04)
+caught	M1c guard at 9db7ed3c (a04, before its round-1 fixes)
+caught	M2 a second delimiter allowed
+caught	M3 an empty command allowed
+caught	M4 head not compared
+caught	M5 task not compared
+caught	M6 format not checked
+caught	M7 ledger id not checked
+caught	M8 ledger class not checked
+caught	M9 searches set not compared
+caught	M10 a missing records directory searched as empty
+caught	M11 audit coverage not checked
+caught	M12 a finding dispositioned twice
+caught	M13 a fixed entry not named
+caught	M14 short audit reasons accepted
+caught	M15 a classes: line not required at the line start
+caught	M16 record not bound to the task
+caught	M17 record counted as a change
+caught	M18 duplicate keys kept
+caught	M19 pr not compared with the swept pr
+caught	M20 non-finite numbers accepted
+caught	M21 ledger coverage not checked
+caught	M22 every Codex review body counted
+caught	M23 audit findings not counted
+caught	M24 a missing audit summary read anyway
+caught	M25 unknown keys accepted
+caught	M26 dispatch not checked
+caught	M27 any author's review comment counted
+caught	M28 a delimiter matched as a prefix
+caught	M29 author not matched live
+$ tail -1 mutation-rev1-full.txt
+guard restored
+```
+## 12. CI on a04's heads (check runs by commit; `9db7ed3c`, `8d54fd76` and `8c0c015b` were never a pushed head), and #329's failed job
 
 ```
 $ gh api --paginate repos/mryfmo/dotfiles/commits/9db7ed3c532a9a86210fe455a56ad3751f865f70/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv' | sort
@@ -741,7 +865,7 @@ validate	completed	success
 [exited with code 0]
 ```
 
-## 12. Codex Bot reviews, top-level comments and summary comments on a04's heads (the Worker Playbook step 15 listing, with the badge)
+## 13. Codex Bot reviews, top-level comments and summary comments on a04's heads (the Worker Playbook step 15 listing, with the badge)
 
 ```
 $ gh api --paginate repos/mryfmo/dotfiles/pulls/329/reviews --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="ca7dcd73e49a5e0145565510588211edc84d2671")|[.id,.commit_id,.submitted_at,.state]|@tsv'
@@ -777,7 +901,7 @@ $ gh api --paginate repos/mryfmo/dotfiles/pulls/329/reviews --jq '.[]|select(.us
 $ gh api --paginate repos/mryfmo/dotfiles/pulls/340/reviews --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]")|[.id,.commit_id[:8],.submitted_at]|@tsv'   # every Codex review on #340: none
 ```
 
-## 13. The gate's imports, precisely
+## 14. The gate's imports, precisely
 
 ```
 $ grep -n -E '^ *(import|from) +yaml|"uv"|\["grep"' scripts/require-crit-review.py; echo rc=$?   # at ffe7d872: no PyYAML import, no uv argument, no grep subprocess
@@ -797,14 +921,14 @@ $ grep -n -E '^(import|from) ' scripts/require-crit-review.py   # every top-leve
 16:from pathlib import Path
 ```
 
-## 14. The recipe passes `ACCEPTANCE_EVIDENCE` (no test runs make)
+## 15. The recipe passes `ACCEPTANCE_EVIDENCE` (no test runs make)
 
 ```
 $ make -n require-crit-review BASE=origin/main ACCEPTANCE_EVIDENCE=x   # at ffe7d872
 AGENT_REVIEWED="" CRIT_REVIEWED="" CRIT_REVIEW="" REVIEW_EVIDENCE="" PR_FEEDBACK_EVIDENCE="" ACCEPTANCE_EVIDENCE="x" ./scripts/require-crit-review.py --base "origin/main"
 ```
 
-## 15. PR #329's diff size at the final head (INV-2) and the base
+## 16. PR #329's diff size at the final head (INV-2) and the base
 
 ```
 $ git diff --numstat origin/main...ffe7d872 > numstat-final-a04.txt; grep -v '^[0-9]*	[0-9]*	.orchestration/' numstat-final-a04.txt   # PR #329's final head, outside .orchestration
@@ -825,10 +949,10 @@ $ git diff --name-only 4470b0c8 1da9594c -- tests scripts Makefile README.md | w
        0
 ```
 
-## 16. a04's messages (the INV-6 question and amendment counts)
+## 17. a04's messages up to this RESULT (the INV-6 question, amendment and revise counts)
 
 ```
-$ history.sh dotfiles-conformance claude-standard-dot-a002 --limit 1000 > hist-a04.txt; grep 'gate-evidence-a04' hist-a04.txt | grep -oE '\[[^]]+\] [^:]+: AGMSG-[A-Z]+ v1 task_id=[^ ]+( amendment=[0-9]+)?( repo=[^ ]+)?( status=[a-z_]+)?' | sed -E 's/ repo=[^ ]+//'
+$ history.sh dotfiles-conformance claude-standard-dot-a002 --limit 1000 > hist-rev1.txt; grep 'gate-evidence-a04' hist-rev1.txt | grep -oE '\[[^]]+\] [^:]+: AGMSG-[A-Z]+ v1 task_id=[^ ]+( amendment=[0-9]+)?( repo=[^ ]+)?( status=[a-z_]+)?' | sed -E 's/ repo=[^ ]+//'
 [2026-10-13T03:13:46Z] claude-deep-dot → claude-standard-dot-a002: AGMSG-TASK v1 task_id=dotfiles-T128-gate-evidence-a04
 [2026-10-13T03:37:55Z] claude-deep-dot → claude-standard-dot-a002: AGMSG-TASK v1 task_id=dotfiles-T128-gate-evidence-a04 amendment=1
 [2026-10-13T03:45:49Z] claude-standard-dot-a002 → claude-deep-dot: AGMSG-PONG v1 task_id=dotfiles-T128-gate-evidence-a04 status=alive
@@ -836,7 +960,155 @@ $ history.sh dotfiles-conformance claude-standard-dot-a002 --limit 1000 > hist-a
 [2026-10-13T03:56:22Z] claude-standard-dot-a002 → claude-deep-dot: AGMSG-PONG v1 task_id=dotfiles-T128-gate-evidence-a04 status=alive
 [2026-10-13T04:11:06Z] claude-standard-dot-a002 → claude-deep-dot: AGMSG-PONG v1 task_id=dotfiles-T128-gate-evidence-a04 status=alive
 [2026-10-13T04:23:20Z] claude-standard-dot-a002 → claude-deep-dot: AGMSG-PONG v1 task_id=dotfiles-T128-gate-evidence-a04 status=alive
-$ grep 'gate-evidence-a04' hist-a04.txt | grep -c 'status=question'
+[2026-10-13T04:48:43Z] claude-standard-dot-a002 → claude-deep-dot: AGMSG-RESULT v1 task_id=dotfiles-T128-gate-evidence-a04 status=ready_for_review
+[2026-10-13T04:52:20Z] claude-deep-dot → claude-standard-dot-a002: AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-gate-evidence-a04 status=accepted
+[2026-10-13T04:57:32Z] claude-deep-dot → claude-standard-dot-a002: AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-gate-evidence-a04 status=revise
+[2026-10-13T05:18:13Z] claude-standard-dot-a002 → claude-deep-dot: AGMSG-PONG v1 task_id=dotfiles-T128-gate-evidence-a04 status=alive
+$ grep 'gate-evidence-a04' hist-rev1.txt | grep -c 'status=question'
 0
+$ grep -c ': AGMSG-RESULT v1 task_id=dotfiles-T128-gate-evidence-a04 ' hist-rev1.txt   # RESULTs before this one (a TASK's done_signal=AGMSG-RESULT is not one)
+1
+```
+
+## 18. Revise 1: CI on its heads (`09caaa91` was never a pushed head) and #329's failed job, and GitHub's update-branch merges `bbe62911` (#329) and `60d152a1` (#340)
+
+```
+$ gh api --paginate repos/mryfmo/dotfiles/commits/09caaa91152aca2ebc991cd111039cf74597a007/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv' | sort
+$ gh api --paginate repos/mryfmo/dotfiles/commits/2239c2eb3f7000155224e3b29c2556d9536e423f/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv' | sort
+GitGuardian Security Checks	completed	success
+private-bootstrap (macos-14, client)	completed	success
+private-bootstrap (ubuntu-24.04, client)	completed	success
+private-bootstrap (ubuntu-24.04, server)	completed	success
+public-bootstrap (macos-14, client)	completed	success
+public-bootstrap (ubuntu-24.04, client)	completed	success
+public-bootstrap (ubuntu-24.04, server)	completed	success
+test (macos-14, client)	completed	cancelled
+test (ubuntu-24.04, client)	completed	failure
+test (ubuntu-24.04, server)	completed	cancelled
+test (ubuntu-26.04, client)	completed	cancelled
+validate	completed	success
+$ gh api --paginate repos/mryfmo/dotfiles/commits/2231a4f7b0ae810c1cb38f56f648519dd010cf43/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv' | sort
+GitGuardian Security Checks	completed	success
+private-bootstrap (macos-14, client)	completed	success
+private-bootstrap (ubuntu-24.04, client)	completed	success
+private-bootstrap (ubuntu-24.04, server)	completed	success
+public-bootstrap (macos-14, client)	completed	success
+public-bootstrap (ubuntu-24.04, client)	completed	success
+public-bootstrap (ubuntu-24.04, server)	completed	success
+test (macos-14, client)	completed	success
+test (ubuntu-24.04, client)	completed	success
+test (ubuntu-24.04, server)	completed	success
+test (ubuntu-26.04, client)	completed	success
+validate	completed	success
+$ gh run view 38350691230 --repo mryfmo/dotfiles --json jobs --jq '.jobs[]|[.name,.conclusion]|@tsv'   # the failed run on 2239c2eb
+test (ubuntu-24.04, server)	cancelled
+test (macos-14, client)	cancelled
+test (ubuntu-26.04, client)	cancelled
+test (ubuntu-24.04, client)	failure
+$ gh run view 38350691230 --repo mryfmo/dotfiles --log-failed | grep -E 'Ran [0-9]+ tests|FAILED \(' | cut -f3 | cut -c30-
+Ran 1017 tests in 176.414s
+FAILED (errors=82)
+$ gh run view 38350691230 --repo mryfmo/dotfiles --log-failed | grep -c FileNotFoundError
+82
+$ gh run view 38350691230 --repo mryfmo/dotfiles --log-failed | grep -oE '(ERROR|FAIL): [a-z0-9_]+ \([a-zA-Z_]+\.' | sed -E 's/.*\(//' | sort | uniq -c
+  82 test_require_crit_review.
+$ gh api repos/mryfmo/dotfiles/commits/bbe62911e744815bf333d222c8ce7ea288b7dab7 --jq '[.sha[:8], .commit.author.name, .commit.committer.name, .commit.author.date, ([.parents[].sha[:8]]|join(",")), (.commit.message|split("
+")[0])]|@tsv'
+bbe62911	moriya-fumio-thd	GitHub	2026-10-13T05:25:39Z	2239c2eb,c31fcccf	Merge branch 'main' into regime/gate-evidence
+$ gh api --paginate repos/mryfmo/dotfiles/commits/bbe62911e744815bf333d222c8ce7ea288b7dab7/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv' | sort
+GitGuardian Security Checks	completed	success
+private-bootstrap (macos-14, client)	completed	success
+private-bootstrap (ubuntu-24.04, client)	completed	success
+private-bootstrap (ubuntu-24.04, server)	completed	success
+public-bootstrap (macos-14, client)	in_progress	
+public-bootstrap (ubuntu-24.04, client)	in_progress	
+public-bootstrap (ubuntu-24.04, server)	completed	success
+test (macos-14, client)	completed	cancelled
+test (ubuntu-24.04, client)	completed	failure
+test (ubuntu-24.04, server)	completed	cancelled
+test (ubuntu-26.04, client)	completed	failure
+validate	completed	success
+$ gh api repos/mryfmo/dotfiles/commits/60d152a10c58080210f4bebc35fecb25b97a57d6 --jq '[.sha[:8], .commit.author.name, .commit.committer.name, .commit.author.date, ([.parents[].sha[:8]]|join(",")), (.commit.message|split("
+")[0])]|@tsv'
+60d152a1	moriya-fumio-thd	GitHub	2026-10-13T05:26:40Z	2231a4f7,c31fcccf	Merge branch 'main' into regime/gate-evidence-fixtures
+$ gh api --paginate repos/mryfmo/dotfiles/commits/60d152a10c58080210f4bebc35fecb25b97a57d6/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv' | sort
+GitGuardian Security Checks	completed	success
+private-bootstrap (macos-14, client)	completed	success
+private-bootstrap (ubuntu-24.04, client)	completed	success
+private-bootstrap (ubuntu-24.04, server)	completed	success
+public-bootstrap (macos-14, client)	in_progress	
+public-bootstrap (ubuntu-24.04, client)	in_progress	
+public-bootstrap (ubuntu-24.04, server)	in_progress	
+test (macos-14, client)	in_progress	
+test (ubuntu-24.04, client)	in_progress	
+test (ubuntu-24.04, server)	completed	success
+test (ubuntu-26.04, client)	in_progress	
+validate	completed	success
+$ gh api --paginate repos/mryfmo/dotfiles/issues/340/comments --jq '.[]|select(.created_at > "2026-10-13T05:15:00Z")|[.id,.user.login,.created_at,(.body|split("
+")[0])]|@tsv'
+$ gh api --paginate repos/mryfmo/dotfiles/commits/60d152a10c58080210f4bebc35fecb25b97a57d6/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv' | sort   # after it finished
+GitGuardian Security Checks	completed	success
+private-bootstrap (macos-14, client)	completed	success
+private-bootstrap (ubuntu-24.04, client)	completed	success
+private-bootstrap (ubuntu-24.04, server)	completed	success
+public-bootstrap (macos-14, client)	completed	success
+public-bootstrap (ubuntu-24.04, client)	completed	success
+public-bootstrap (ubuntu-24.04, server)	completed	success
+test (macos-14, client)	completed	success
+test (ubuntu-24.04, client)	completed	success
+test (ubuntu-24.04, server)	completed	success
+test (ubuntu-26.04, client)	completed	success
+validate	completed	success
+```
+
+## 19. Revise 1: Codex Bot reviews, top-level comments and no-findings comments on its heads
+
+```
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/329/reviews --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="2239c2eb3f7000155224e3b29c2556d9536e423f")|[.id,.commit_id,.submitted_at,.state]|@tsv'
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/329/comments --jq '.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="2239c2eb3f7000155224e3b29c2556d9536e423f")|[.id,.path]|@tsv'
+$ gh api --paginate repos/mryfmo/dotfiles/issues/329/comments --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .created_at > "2026-10-13T05:00:00Z")|[.id,.created_at,(.body|split("
+")|map(select(test("Codex Review:|Reviewed commit")))|join(" / "))]|@tsv'
+6138971719	2026-10-13T05:32:05Z	Codex Review: Didn't find any major issues. Breezy! / **Reviewed commit:** `bbe62911e7`
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/340/reviews --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="2231a4f7b0ae810c1cb38f56f648519dd010cf43")|[.id,.commit_id,.submitted_at,.state]|@tsv'
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/340/comments --jq '.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="2231a4f7b0ae810c1cb38f56f648519dd010cf43")|[.id,.path]|@tsv'
+$ gh api --paginate repos/mryfmo/dotfiles/issues/340/comments --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .created_at > "2026-10-13T05:00:00Z")|[.id,.created_at,(.body|split("
+")|map(select(test("Codex Review:|Reviewed commit")))|join(" / "))]|@tsv'
+6138767624	2026-10-13T05:14:50Z	Codex Review: Didn't find any major issues. Bravo. / **Reviewed commit:** `2231a4f7b0`
+$ gh pr view 340 --repo mryfmo/dotfiles --json state,headRefOid,mergeable --jq '[.state,.headRefOid,.mergeable]|@tsv'
+OPEN	60d152a10c58080210f4bebc35fecb25b97a57d6	MERGEABLE
+$ gh pr view 329 --repo mryfmo/dotfiles --json state,headRefOid,mergeable --jq '[.state,.headRefOid,.mergeable]|@tsv'
+OPEN	bbe62911e744815bf333d222c8ce7ea288b7dab7	MERGEABLE
+```
+
+## 20. Revise 1: each PR's diff size at its revise head (INV-2) and the base
+
+```
+$ git rev-parse --short origin/main
+c31fcccf
+$ git diff --numstat origin/main...2239c2eb > numstat-rev1.txt; /usr/bin/grep -v '	.orchestration/' numstat-rev1.txt   # PR #329's revise head, outside .orchestration
+3	3	Makefile
+5	5	README.md
+329	71	scripts/require-crit-review.py
+557	39	tests/unit/test_require_crit_review.py
+$ uv run --no-project python caps.py numstat-rev1.txt
+files outside .orchestration: 4
+added outside tests/ (and .orchestration): 337
+added under tests/: 557
+$ git merge-tree --write-tree origin/main 2239c2eb >/dev/null && echo 'merges cleanly'
+merges cleanly
+$ git diff --numstat origin/main...2231a4f7   # PR #340's revise head
+1	0	tests/fixtures/gate-evidence/.prettierrc
+17	0	tests/fixtures/gate-evidence/acceptance-dispatch-key.md
+18	0	tests/fixtures/gate-evidence/acceptance-duplicate-key.md
+20	0	tests/fixtures/gate-evidence/acceptance-finding-quotes-grammar.md
+12	0	tests/fixtures/gate-evidence/acceptance-ledger-incomplete.md
+16	0	tests/fixtures/gate-evidence/acceptance-ledger-review-body.md
+12	0	tests/fixtures/gate-evidence/acceptance-nan.md
+18	0	tests/fixtures/gate-evidence/acceptance-s6-missing.md
+18	0	tests/fixtures/gate-evidence/acceptance-s6-present.md
+12	0	tests/fixtures/gate-evidence/acceptance-stale-head.md
+12	0	tests/fixtures/gate-evidence/acceptance-wrong-pr.md
+4	0	tests/fixtures/gate-evidence/pr-feedback-right.json
+4	0	tests/fixtures/gate-evidence/pr-feedback-wrong.json
 ```
 

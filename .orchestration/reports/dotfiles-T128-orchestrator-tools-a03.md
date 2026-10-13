@@ -67,3 +67,24 @@ Results (§8): 9 tests OK; the counters, boundary and docs modules 77 OK; shfmt,
 | 4254893065 (P2, `dispatch.sh:62`) | a TASK, ACCEPTANCE or PING without `task_id=` passes the prefix check and is sent; with a record, the association check is skipped for it | `open:4254893065`. The finding holds: the SKILL's message contract gives all three a `task_id=`. Proposed fix, about five lines and one test case: refuse a line with no `task_id=`, an empty one, or more than one, before any hash or record work |
 
 All fourteen Codex Bot threads on PR #336, by id (§9): the ten of the a01 phase stand as a01's report tables them (nine `fixed:`, and 4254494999 answered by this task's threat row, `fixed:a3b71527`); 4254771302, 4254771284, 4254771296 `fixed:9496c734`; 4254844587, 4254844595 `fixed:6cd491f5`; 4254893065 `open:4254893065` (third round). The worker resolves no thread.
+
+## Revise round 1 with amendment 1 (ACCEPTANCE 05:06:44Z; amendment TASK 05:16:22Z, sha256 `ef3b2646…`)
+
+The revise answers thread 4254893065 (P2) on `c8fb09b0`: a TASK, ACCEPTANCE or PING without `task_id=` was sent and, with a record, skipped the association check. Amendment 1 adds the threat row for that path and names its test. At the orchestrator's request (PONG 05:07:59Z) the fix, the test and the task copy travel in one push and one RESULT.
+
+- `6e1e834d`: `dispatch.sh` refuses a line whose `task_id=` is missing, empty or repeated, exit 1, before any hash or record work. `test_dispatch_refuses_a_line_without_a_task_id`, the closed-row name, covers all three with a record given; the stub records no call and the record is unchanged. Mutant D18 (the check removed) fails it.
+- `.orchestration/dotfiles-T128-orchestrator-tools-a03/revise.yaml`: `round: 1`, `previous_head: c8fb09b0…`, and the check `tests/unit/test_orchestrator_tools.py::OrchestratorToolsTest::test_dispatch_refuses_a_line_without_a_task_id`.
+- `88e8209c`: the task copy, recommitted byte-identical at amendment 1. All six closed rows name a test in this head (validation §10).
+
+Results (§10): 10 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 33 mutants, 33 failures. Size: added lines outside and under `tests/`: 340 and 364 (caps 500 and 1000).
+
+## The revise head `ba4d4762` (main-checkout copy)
+
+- CI: all 12 check runs are `completed success`, and the watcher exited 0 (validation §11).
+- Bot: the wait closed at 15 minutes with `bot: none` (`@codex review` posted at 05:30:20Z). The recheck at 05:35:16Z found review 5499220546, submitted at 05:35:06Z, eleven seconds after the window, with one P2. It is read here all the same:
+
+| Thread | Finding | Proposed handling |
+|---|---|---|
+| 4255079204 (P2, `regime-counters.sh:132`) | a matching record whose `ledger` rows are not `{id, class}` objects (for example `[{}, {}, {}]`) is still trusted: it prints a false `class=invalid count=3`, or with fewer such rows suppresses the title fallback | `open:4255079204`, not fixed: a P2 after the revise the ACCEPTANCE scoped to thread 4254893065. The finding holds. Proposed fix, about two lines of jq and one test case: accept the block only when every ledger row is an object with a string `id` and a `class` of `[a-z0-9-]`, otherwise treat it as no record (the title detector speaks) |
+
+- 4254893065 → `fixed:6e1e834d` (with the amendment's row, `88e8209c`). The other twelve threads stand as tabled above. The worker resolves no thread.

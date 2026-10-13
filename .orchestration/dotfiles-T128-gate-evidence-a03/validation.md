@@ -1,6 +1,6 @@
 # Validation: dotfiles-T128-gate-evidence-a03
 
-Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `regime/gate-evidence` (PR #329), except §10, run in the main checkout. Test runs set `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false` (sandbox record). Scratch file names (`numstat.txt`, `caps.py`, `mutate6.sh`, `mutations.py`, `fail-*.txt`) live in the session's `$TMPDIR`. This branch copy covers the code head `b2b3db45`; the main-checkout copy adds the final head, CI and the Bot wait.
+Every block is the verbatim output of the command shown, run in `.claude/worktrees/worker-f` on `regime/gate-evidence` (PR #329), except §10, run in the main checkout. Test runs set `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false` (sandbox record). Scratch file names (`numstat.txt`, `caps.py`, `mutate6.sh`, `mutations.py`, `fail-*.txt`) live in the session's `$TMPDIR`. This branch copy covers the code head `7581d590`; the main-checkout copy adds the final head, CI and the Bot wait.
 
 ## 1. Task file and the a01, a02 history copies
 
@@ -35,7 +35,7 @@ OK
 ## 3. The module at the code head (83 tests)
 
 ```
-$ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false uv run --no-project python -m unittest tests/unit/test_require_crit_review.py -v 2>&1 | sed -E 's/ \(tests[^)]*\)//' | grep -E ' \.\.\. |^Ran|^OK|^FAILED'   # the working tree that became 3c67f512 (b2b3db45's content, §9)
+$ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false uv run --no-project python -m unittest tests/unit/test_require_crit_review.py -v 2>&1 | sed -E 's/ \(tests[^)]*\)//' | grep -E ' \.\.\. |^Ran|^OK|^FAILED'   # the working tree that became 7581d590
 test_acceptance_record_head_must_be_head ... ok
 test_acceptance_record_is_not_counted_as_a_change ... ok
 test_acceptance_record_prose_is_not_read ... ok
@@ -119,16 +119,16 @@ test_s6_searches_entry_must_equal_the_recomputed_records_search ... ok
 test_small_docs_only_change_does_not_require_review ... ok
 test_the_gate_has_no_github_identity_check ... ok
 test_verdict_comes_only_from_the_last_message_file ... ok
-Ran 83 tests in 82.858s
+Ran 83 tests in 74.117s
 OK
 ```
 
 ## 4. Each rule fails a test when broken
 
 ```
-$ bash mutate6.sh | grep -v '^AssertionError'   # runs the 14 new or changed tests on this change; on origin/main's guard (M0) and on a02's final head 61d90302 (M1); and on sixteen mutations of this guard (M2 to M17, mutations.py; M15 removes both -I and the temporary cwd); it restores the guard and checks it with cmp
+$ bash mutate6.sh | grep -v '^AssertionError'   # runs the 14 new or changed tests on this change; on origin/main's guard (M0), on a02's final head 61d90302 (M1) and on a03's first code head b2b3db45 (M1b); and on eighteen mutations of this guard (M2 to M19, mutations.py; M15 removes both -I and the temporary cwd); it restores the guard and checks it with cmp
 == control: this change
-Ran 14 tests in 26.833s
+Ran 14 tests in 25.550s
 OK
 == M0 origin/main guard
 ERROR: test_disposition_parsing_is_linear
@@ -160,6 +160,8 @@ FAIL: test_base_requires_an_acceptance_record_under_acceptance [format]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [task]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [head]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [pr]
+FAIL: test_base_requires_an_acceptance_record_under_acceptance [pr of another PR]
+FAIL: test_base_requires_an_acceptance_record_under_acceptance [a duplicate key]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [ledger id]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [ledger class]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [searches records]
@@ -181,8 +183,8 @@ FAIL: test_incorrect_audit_needs_audit_findings [out of range]
 FAIL: test_incorrect_audit_needs_audit_findings [accepted]
 FAIL: test_acceptance_record_is_not_counted_as_a_change
 FAIL: test_retired_audit_dispositions_is_not_read
-Ran 14 tests in 27.082s
-FAILED (failures=49, errors=1)
+Ran 14 tests in 26.136s
+FAILED (failures=51, errors=1)
 == M1 guard at 61d90302 (a02's final head)
 ERROR: test_disposition_parsing_is_linear
 FAIL: test_s6_class_at_three_without_a_searches_entry_is_refused
@@ -198,6 +200,8 @@ FAIL: test_base_requires_an_acceptance_record_under_acceptance [format]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [task]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [head]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [pr]
+FAIL: test_base_requires_an_acceptance_record_under_acceptance [pr of another PR]
+FAIL: test_base_requires_an_acceptance_record_under_acceptance [a duplicate key]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [ledger id]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [ledger class]
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [searches records]
@@ -217,82 +221,95 @@ FAIL: test_incorrect_audit_needs_audit_findings [same finding twice]
 FAIL: test_incorrect_audit_needs_audit_findings [out of range]
 FAIL: test_incorrect_audit_needs_audit_findings [accepted]
 FAIL: test_retired_audit_dispositions_is_not_read
-Ran 14 tests in 27.451s
-FAILED (failures=32, errors=1)
+Ran 14 tests in 25.197s
+FAILED (failures=34, errors=1)
+== M1b guard at b2b3db45 (a03's first code head, before its round-1 fixes)
+FAIL: test_base_requires_an_acceptance_record_under_acceptance [pr of another PR]
+FAIL: test_base_requires_an_acceptance_record_under_acceptance [a duplicate key]
+Ran 14 tests in 24.868s
+FAILED (failures=2)
 == M2 a second delimiter allowed
 FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='a second evidence delimiter padding a failure reason')
 FAIL: test_disposition_parsing_is_linear
-Ran 14 tests in 28.607s
+Ran 14 tests in 17.908s
 FAILED (failures=2)
 == M3 an empty command allowed
 FAIL: test_pr_feedback_rejects_incomplete_or_invalid_dispositions (case='empty evidence command')
-Ran 14 tests in 18.924s
+Ran 14 tests in 18.230s
 FAILED (failures=1)
 == M4 head not compared
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [head]
 FAIL: test_acceptance_record_head_must_be_head
-Ran 14 tests in 19.249s
+Ran 14 tests in 19.083s
 FAILED (failures=2)
 == M5 task not compared
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [task]
-Ran 14 tests in 21.066s
+Ran 14 tests in 18.764s
 FAILED (failures=1)
 == M6 format not checked
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [format]
-Ran 14 tests in 26.812s
+Ran 14 tests in 17.846s
 FAILED (failures=1)
 == M7 ledger id not checked
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [ledger id]
-Ran 14 tests in 19.386s
+Ran 14 tests in 17.991s
 FAILED (failures=1)
 == M8 ledger class not checked
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [ledger class]
-Ran 14 tests in 17.972s
+Ran 14 tests in 17.751s
 FAILED (failures=1)
 == M9 searches set not compared
 FAIL: test_s6_searches_entry_must_equal_the_recomputed_records_search [a record missing]
 FAIL: test_s6_searches_entry_must_equal_the_recomputed_records_search [a record too many]
 FAIL: test_s6_searches_entry_must_equal_the_recomputed_records_search [a pasted command for its records]
-Ran 14 tests in 18.793s
+Ran 14 tests in 18.134s
 FAILED (failures=3)
 == M10 grep exit 2 accepted
 FAIL: test_s6_searches_entry_must_equal_the_recomputed_records_search
-Ran 14 tests in 17.850s
+Ran 14 tests in 17.643s
 FAILED (failures=1)
 == M11 audit coverage not checked
 FAIL: test_incorrect_audit_needs_audit_findings [one missing]
-Ran 14 tests in 17.656s
+Ran 14 tests in 24.991s
 FAILED (failures=1)
 == M12 a finding dispositioned twice
 FAIL: test_incorrect_audit_needs_audit_findings [same finding twice]
-Ran 14 tests in 18.032s
+Ran 14 tests in 17.494s
 FAILED (failures=1)
 == M13 a fixed entry not named
 FAIL: test_base_requires_an_acceptance_record_under_acceptance [audit_findings entry]
 FAIL: test_incorrect_audit_needs_audit_findings [a fix]
-Ran 14 tests in 18.479s
+Ran 14 tests in 17.561s
 FAILED (failures=2)
 == M14 short audit reasons accepted
 FAIL: test_incorrect_audit_needs_audit_findings [short reason]
-Ran 14 tests in 18.672s
+Ran 14 tests in 18.335s
 FAILED (failures=1)
 == M15 YAML parsed in the repository (no -I, cwd=root)
 FAIL: test_base_requires_an_acceptance_record_under_acceptance
-Ran 14 tests in 17.974s
+Ran 14 tests in 24.549s
 FAILED (failures=1)
 == M16 record not bound to the task
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/other.md')
 FAIL: test_base_requires_an_acceptance_record_under_acceptance (value='.orchestration/acceptance/alias.md')
-Ran 14 tests in 18.231s
+Ran 14 tests in 18.228s
 FAILED (failures=2)
 == M17 record counted as a change
 FAIL: test_acceptance_record_is_not_counted_as_a_change
-Ran 14 tests in 18.059s
+Ran 14 tests in 18.744s
+FAILED (failures=1)
+== M18 duplicate keys kept
+FAIL: test_base_requires_an_acceptance_record_under_acceptance [a duplicate key]
+Ran 14 tests in 19.147s
+FAILED (failures=1)
+== M19 pr not compared
+FAIL: test_base_requires_an_acceptance_record_under_acceptance [pr of another PR]
+Ran 14 tests in 18.647s
 FAILED (failures=1)
 guard restored
 ```
 
-## 5. Fixture provenance, the right fixture's evidence commands, the interpreters the gate meets, thread 4248232955's evidence, the present fixture's records, fixture size
+## 5. Fixture provenance, the right fixture's evidence commands, the interpreters the gate meets, thread 4248232955's evidence, the present fixture's records, fixture size, and the pruned uv cache (thread 4250238721)
 
 ```
 $ uv run --no-project python -c 'import json,sys; d=json.load(open(sys.argv[1])); print("head_sha", d["head_sha"], "generated_at", d["generated_at"]); [print(i["url"].rsplit("_r",1)[1], i["disposition"]) for i in d["items"] if (i.get("url") or "").endswith(("r4244248692","r4244378809"))]' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T128-worker-stop-and-watch-a02-pr-feedback.json
@@ -331,13 +348,28 @@ $ wc -l tests/fixtures/gate-evidence/*
        4 tests/fixtures/gate-evidence/pr-feedback-right.json
        4 tests/fixtures/gate-evidence/pr-feedback-wrong.json
       70 total
+$ uv run --no-project python - <<'PY'   # 00:5xZ: the gate's offline YAML command, as load_yaml runs it, from a temporary cwd
+rc 1
+out 
+err error: No solution found when resolving `--with` dependencies
+  cause: Because pyyaml was not found in the cache and you require pyyaml, we can conclude that your requirements are unsatisfiable.
+
+hint: Packages were unavailable because the network was disabled. When the network is disabled, registry packages may only be read from the cache.
+$ uv cache dir; UV_OFFLINE=1 uv run --no-project --with pyyaml python -c 'import yaml; print(yaml.__version__)' 2>&1 | tail -2; du -sh "$(uv cache dir)"
+~/.cache/uv
+
+hint: Packages were unavailable because the network was disabled. When the network is disabled, registry packages may only be read from the cache.
+ 38M	~/.cache/uv
+$ uv run --no-project --with pyyaml python -c 'import yaml; print("pyyaml", yaml.__version__)' 2>&1 | tail -2; UV_OFFLINE=1 uv run --no-project --with pyyaml python -c 'import yaml; print("offline ok", yaml.__version__)' 2>&1 | tail -1   # allowed_domains pypi.org, files.pythonhosted.org
+pyyaml 6.0.3
+offline ok 6.0.3
 ```
 
 ## 6. `make require-crit-review` without `BASE` on a records-only tree (step 4)
 
 ```
 $ git -C <scratch> rev-parse --short HEAD; git -C <scratch> status --short; make -C <scratch> require-crit-review; echo rc=$?
-b2b3db45
+7581d590
 ?? .orchestration/reports/probe.md
 Review not required: no meaningful review trigger found.
 rc=0
@@ -351,10 +383,10 @@ rc=0
 ## 7. Full unit suite at the code head against `origin/main`
 
 ```
-$ git rev-parse --short HEAD && UV_OFFLINE=1 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false uv run --no-project --with pyyaml python -m unittest discover -s tests/unit > unit-all-a03.txt 2>&1; echo "rc=$?"; tail -3 unit-all-a03.txt; grep -E '^(FAIL|ERROR): .*\(' unit-all-a03.txt | grep -oE '\(([a-z_]+\.)*test_[a-z_0-9]+\.[A-Za-z]+\.[a-z_0-9]+\)' | tr -d '()' | sed 's/^tests\.unit\.//' | sort > fail-a03.txt; wc -l < fail-a03.txt; cmp fail-base.txt fail-a03.txt && echo "identical to the origin/main failing set"   # at 3c67f512, the same content as b2b3db45 (§9)
-3c67f512
+$ git rev-parse --short HEAD && UV_OFFLINE=1 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false uv run --no-project --with pyyaml python -m unittest discover -s tests/unit > unit-all-a03r1.txt 2>&1; echo "rc=$?"; tail -3 unit-all-a03r1.txt; grep -E '^(FAIL|ERROR): .*\(' unit-all-a03r1.txt | grep -oE '\(([a-z_]+\.)*test_[a-z_0-9]+\.[A-Za-z]+\.[a-z_0-9]+\)' | tr -d '()' | sed 's/^tests\.unit\.//' | sort > fail-a03r1.txt; wc -l < fail-a03r1.txt; cmp fail-base.txt fail-a03r1.txt && echo "identical to the origin/main failing set"
+7581d590
 rc=1
-Ran 1008 tests in 561.139s
+Ran 1008 tests in 544.614s
 
 FAILED (failures=68, errors=10, skipped=2)
       78
@@ -385,7 +417,7 @@ $ prettier --check README.md tests/fixtures/gate-evidence/*.md .orchestration/do
 Checking formatting...
 All matched files use Prettier code style!
 $ ruff check --config ruff.toml --output-format concise scripts/require-crit-review.py tests/unit/test_require_crit_review.py | sed -E "s/:[0-9]+:[0-9]+:/:/" | sort | uniq -c   # not a CI gate (CI runs ruff format --check)
-   1 [*] 3 fixable with the `--fix` option (3 hidden fixes can be enabled with the `--unsafe-fixes` option).
+   1 [*] 3 fixable with `--fix` (3 unsafe fixes available with `--fix --unsafe-fixes`).
    1 Found 6 errors.
    1 scripts/require-crit-review.py: FURB167 [*] Use of regular expression alias `re.M`
    1 scripts/require-crit-review.py: I001 [*] Import block is un-sorted or un-formatted
@@ -393,7 +425,7 @@ $ ruff check --config ruff.toml --output-format concise scripts/require-crit-rev
    1 tests/unit/test_require_crit_review.py: I001 [*] Import block is un-sorted or un-formatted
    1 tests/unit/test_require_crit_review.py: UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
 $ (the same ruff check on the origin/main copies of both files, in a scratch directory)
-   1 [*] 4 fixable with the `--fix` option (3 hidden fixes can be enabled with the `--unsafe-fixes` option).
+   1 [*] 4 fixable with `--fix` (3 unsafe fixes available with `--fix --unsafe-fixes`).
    1 Found 7 errors.
    1 scripts/require-crit-review.py: FURB167 [*] Use of regular expression alias `re.M`
    1 scripts/require-crit-review.py: FURB167 [*] Use of regular expression alias `re.S`
@@ -412,7 +444,7 @@ b2b3db45 feat(gate): read the acceptance record as a YAML front matter bound to 
 61d90302 docs(orchestration): gate-evidence a02 evidence at amendment 1 (c6cf0548)
 non-.orchestration content identical to the tested 3c67f512
 0
-$ git diff --numstat origin/main...b2b3db45 > numstat.txt; cat numstat.txt
+$ git diff --numstat origin/main...7581d590 > numstat.txt; cat numstat.txt
 3	0	.orchestration/dotfiles-T128-gate-evidence-a01/autoskill.md
 7	0	.orchestration/dotfiles-T128-gate-evidence-a01/learning.md
 44	0	.orchestration/dotfiles-T128-gate-evidence-a01/report.md
@@ -425,22 +457,27 @@ $ git diff --numstat origin/main...b2b3db45 > numstat.txt; cat numstat.txt
 16	0	.orchestration/dotfiles-T128-gate-evidence-a02/sandbox.md
 98	0	.orchestration/dotfiles-T128-gate-evidence-a02/task.md
 431	0	.orchestration/dotfiles-T128-gate-evidence-a02/validation.md
+3	0	.orchestration/dotfiles-T128-gate-evidence-a03/autoskill.md
+12	0	.orchestration/dotfiles-T128-gate-evidence-a03/learning.md
+110	0	.orchestration/dotfiles-T128-gate-evidence-a03/report.md
+17	0	.orchestration/dotfiles-T128-gate-evidence-a03/sandbox.md
 100	0	.orchestration/dotfiles-T128-gate-evidence-a03/task.md
+461	0	.orchestration/dotfiles-T128-gate-evidence-a03/validation.md
 3	3	Makefile
 5	5	README.md
-291	67	scripts/require-crit-review.py
+308	67	scripts/require-crit-review.py
 14	0	tests/fixtures/gate-evidence/acceptance-finding-quotes-grammar.md
 18	0	tests/fixtures/gate-evidence/acceptance-s6-missing.md
 20	0	tests/fixtures/gate-evidence/acceptance-s6-present.md
 10	0	tests/fixtures/gate-evidence/acceptance-stale-head.md
 4	0	tests/fixtures/gate-evidence/pr-feedback-right.json
 4	0	tests/fixtures/gate-evidence/pr-feedback-wrong.json
-380	39	tests/unit/test_require_crit_review.py
+390	39	tests/unit/test_require_crit_review.py
 $ uv run --no-project python caps.py numstat.txt   # caps.py: count files outside .orchestration/, added lines outside tests/, added lines under tests/
 files outside .orchestration: 10
-added outside tests/ (and .orchestration): 299
-added under tests/: 450
-$ git merge-tree --write-tree origin/main b2b3db45 >/dev/null && echo "merges cleanly"; git rev-parse --short origin/main
+added outside tests/ (and .orchestration): 316
+added under tests/: 460
+$ git merge-tree --write-tree origin/main 7581d590 >/dev/null && echo "merges cleanly"; git rev-parse --short origin/main
 merges cleanly
 3709a6d8
 ```

@@ -2,17 +2,17 @@
 
 - Seat: `claude-standard-dot-a002` in `.claude/worktrees/worker-f`, branch `regime/gate-evidence`, PR #329. a03 is a02's reset under plan 011 option F (reset record `.orchestration/acceptance/dotfiles-T128-gate-evidence-a02-design-reset.md`), continued from the worker's head `61d90302` (merge head `4e2266aa`).
 - Task file: sha256 `686806a1…` checked against the TASK (15:41:03Z) and copied byte-identical to `.orchestration/dotfiles-T128-gate-evidence-a03/task.md`. a01's and a02's copies stay unchanged as history (validation §1).
-- Commits: a01's `7f763b7f`, `9a860c95`, `5971fffe`; a02's `379845f7`, `386a71b3`, `c81c88a3`, `d5d6c9b1`, `c6cf0548`, `61d90302`; a03's `b2b3db45` (the record contract, the task copy; first made as `3c67f512` on `61d90302` and replayed onto the merge head `4e2266aa` with the same content outside `.orchestration`, validation §9), then this evidence.
+- Commits: a01's `7f763b7f`, `9a860c95`, `5971fffe`; a02's `379845f7`, `386a71b3`, `c81c88a3`, `d5d6c9b1`, `c6cf0548`, `61d90302`; a03's `b2b3db45` (the record contract, the task copy; first made as `3c67f512` on `61d90302` and replayed onto the merge head `4e2266aa` with the same content outside `.orchestration`, validation §9), `c36fcd35` (evidence), `7581d590` (fix round 1), then this evidence.
 
 ## What the PR does (task steps 1 to 5)
 
 1. A disposition is `fixed:<commit>` (unchanged; a `fullmatch` of `fixed:[0-9a-f]{7,40}`) or `not-applicable:<reason>; evidence=<command>`. `parse_disposition` splits once on the literal `; evidence=` with `str.partition` and checks that both parts are non-empty. A text with more than one delimiter is refused, so a second delimiter can neither empty the reason nor pad a failure-level reason past the 20-character minimum. The work is linear: a one-million-character malformed disposition is refused in well under 0.5 s (thread 4249544794; validation §3). `;evidence=` without the space is no delimiter, because the task names the literal. The error text is unchanged: `needs a disposition fixed:<commit> or not-applicable:<reason>; evidence=<command>`.
 2. The acceptance-record contract. `ACCEPTANCE_EVIDENCE` is required whenever `BASE` is set and is checked right after the PR-feedback evidence:
    - `orchestration_path_error(..., "acceptance")`, then the a02 binding: the file is `<task>.md` for the task named by `<task>-pr-feedback.json`, by name and by resolved name;
-   - the record starts with a YAML front matter between `---` lines, split with the idiom of `validate-agent-assets.py`'s `read_frontmatter` (`startswith("---\n")`, `find("\n---", 4)`) and loaded with `yaml.safe_load`. The prose after it is not read: no regex is applied to prose anywhere (`test_acceptance_record_prose_is_not_read`);
+   - the record starts with a YAML front matter between `---` lines, split with the idiom of `validate-agent-assets.py`'s `read_frontmatter` (`startswith("---\n")`, `find("\n---", 4)`) and loaded by a `yaml.SafeLoader` subclass. It is `safe_load`'s loader plus one rule: a duplicate mapping key is refused, where `safe_load` would keep the last one silently (a03 Bot round 1, thread 4250238729). The prose after it is not read: no regex is applied to prose anywhere (`test_acceptance_record_prose_is_not_read`);
    - `format` is the int 1, and `task` equals the file's task id;
    - `head` equals the full `HEAD` sha the gate runs at (computed also without `BASE`), else `acceptance record head <x> is not HEAD <y>` (thread 4249544762);
-   - `pr` is a positive int. It is not cross-checked with the feedback JSON's `pr`; `head` already binds the record to this push;
+   - `pr` is a positive int, equal to the `pr` of `PR_FEEDBACK_EVIDENCE` when it is set, else `pr must be <n>, the pull request PR_FEEDBACK_EVIDENCE names, not <m>` (a03 Bot round 1, thread 4250238714);
    - `ledger` is a list of exactly `{id, class}`. `id` is a thread id (10 or more digits) or `audit:<sha7>:<n>`, accepted as an int or a string, because YAML reads an unquoted thread id as an int. `class` matches `[a-z0-9-]+`;
    - `searches` is a list of exactly `{class, records}`, where `records` is a list of strings; a class named twice is refused;
    - for each class at three or more ledger rows, the gate runs `grep -rl 'classes:.*<class>' .orchestration/learning/mistakes/` from the repository root, as an argument list without a shell, and requires that class's `records` to equal the basenames it found as a set (`records: []` when it finds none). Otherwise `S6: class <slug> at <n> without a matching records search`. A grep exit other than 0 or 1 is refused, and the class regex makes the slug safe as one argument;
@@ -20,7 +20,7 @@
    - the record is not counted when sizing the diff (a02, thread 4248232998).
 
    `AUDIT_DISPOSITIONS` is retired: the gate no longer reads it. When it is still set, the gate prints one line saying so instead of refusing, because the SKILL names it until `dotfiles-T128-playbook-rules-a04` lands. The recipe's comment in `Makefile` names `audit_findings` in its place; README 427 to 428 and 1101 already name `ACCEPTANCE_EVIDENCE` and never named `AUDIT_DISPOSITIONS`.
-3. Tests and fixtures (below). The module runs 83 tests, against 71 on `origin/main` (validation §2, §3). Each rule fails a test when broken: one-line mutations M2 to M17, plus the guards of `origin/main` and of a02's head `61d90302` (validation §4).
+3. Tests and fixtures (below). The module runs 83 tests, against 71 on `origin/main` (validation §2, §3). Each rule fails a test when broken: one-line mutations M2 to M19, plus the guards of `origin/main`, of a02's head `61d90302` and of a03's first code head `b2b3db45` (validation §4).
 4. `make require-crit-review` without `BASE` on a records-only tree prints the same line and exit status at the a03 code head as at `origin/main` (validation §6). No record is set there, so no `uv` runs.
 5. Nothing else changes in the gate.
 
@@ -60,7 +60,7 @@ New and rewritten tests:
 - `test_s6_class_at_three_without_a_searches_entry_is_refused` and `test_s6_class_at_three_with_the_matching_searches_entry_is_accepted`.
 - `audit_guard` writes the record at the audited head; its `findings` become `audit_findings`. `guard_base` keeps the real uv cache (`UV_CACHE_DIR`) under its fake `HOME`, as `test_check_regime_boundary.py` does.
 
-## Bot threads
+## Bot threads (before a03)
 
 | Thread | P | Class | Disposition |
 |---|---|---|---|
@@ -79,6 +79,16 @@ New and rewritten tests:
 | 4249544794 | P2 | regex-backtracking | `fixed:b2b3db45` (one split, linear checks) |
 
 The main-checkout copy adds the Bot rounds on the a03 head. The worker resolves no thread.
+
+## a03 Bot round 1 (review 5493539294 on `c36fcd35`, 16:28:30Z): three P1
+
+| Thread | P | Class | Disposition |
+|---|---|---|---|
+| 4250238714 | P1 | acceptance-record-binding (third on this artifact, after 4248232964 and 4249544762: an S1 candidate) | `fixed:7581d590` (the record's `pr` equals the swept PR's) |
+| 4250238729 | P1 | yaml-duplicate-keys (new) | `fixed:7581d590` (the loader refuses a duplicate key, at any depth) |
+| 4250238721 | P1 | threat-row-runtime-inputs (new) | the orchestrator's: the row "workflow and interpreter or environment inputs" reads `residual: none in allowed_files`, but the gate now runs `uv` (PyYAML from the cache, else the network) and `grep`. Live evidence from this session: the uv cache was pruned overnight, and the gate could not load any record offline until PyYAML was fetched again (validation §5). The task text needs a row for availability and provenance (an unpinned `pyyaml`), and for resolving the `uv` and `grep` executables. |
+
+CI on `c36fcd35`: 12 of 12 check runs green. The question PONG (01:3xZ) proposed pushing the two fixes by default.
 
 ## Declared beyond the letter of the task
 

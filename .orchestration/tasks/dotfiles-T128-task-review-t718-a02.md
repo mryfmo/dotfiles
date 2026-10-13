@@ -20,3 +20,19 @@ Drafted 2026-10-13 01:40Z by the orchestrator seat under plan 012 option B: the 
 ## Output
 
 `.orchestration/validation/dotfiles-T128-task-review-t718-a02.md`: the usual header with the file's sha256, findings (`P0`–`P3`, confidence, `file:line`, one line), then exactly one line `Task-file verdict: dotfiles-T128-orchestrator-tools-a02: confirm|revise`. Forbidden: editing tracked files, branches, commits, pushes, PRs. RESULT: `AGMSG-RESULT v1 task_id=dotfiles-T128-task-review-t718-a02 verdict=confirm|revise reviewed_sha256=<sha> validation=<path>`.
+
+## Note for the seat (orchestrator, 2026-10-13 01:44Z)
+
+The Codex half already ran on an earlier hash and asked for two changes, both applied before your first look: `acceptance-front-matter.py <task> <sweep-json>` derives `head` from `git rev-parse HEAD` and `pr` from the sweep JSON (never arguments), and `allowed_files` enumerates the nine scripts with one threat row each (no `scripts/orchestrator/*`). The TASK line carries the file's sha256.
+
+## Round 2 (orchestrator, 2026-10-13 01:5xZ)
+
+The seat's round-1 RESULT (bus 807, on `cb53e687…`; its receipt file is absent on disk, `receipt_sha256=` empty, later written, receipt_sha256=b542e996…; the three P3s applied too: ff-main.sh's rm scope and record citation, the checker phrase C1 to C10 and C7b, the named sources of the ledger rows and the audit summary) and the Codex half (rounds 2 and 3 on `cb53e687…` and `91811afe…`) are applied: `acceptance-front-matter.py <task> <sweep-json> <pr-worktree>` takes `head` from the PR worktree's HEAD and refuses a sweep JSON with another head; `orch-gate.sh` passes the a03 gate's inputs and never `AUDIT_DISPOSITIONS`, `orch-audit.sh` names no scratchpad checker; the environment row names the masker's PyYAML under uv beside design-keydiff.py's; item 2 adds the `acceptance-front-matter.py` tests. The TASK line carries the file's sha256.
+
+## Round 3 (orchestrator, 2026-10-13 01:5xZ)
+
+The seat's round 2 (receipt_sha256=4f34925d…): the sweep JSON carries `head_sha`, not `head` (pr-feedback.py's keys: repo, pr, head_sha, base_ref, base_sha, generated_at, checks, items); the three places now say `head_sha`. The coreutils list is open and names awk, cat, cp, date, mkdir, mktemp, mv, rm, sed, sort, tr, xargs. The TASK line carries the file's sha256.
+
+## Round 4 (orchestrator, 2026-10-13 01:5xZ)
+
+The seat confirmed `304f60e3…` (round 3). The Codex half's round-4 receipt (on the earlier `b47ec90b…`) carried two P2s on `codex-review.sh` that the later hashes still had: it accepted any profile and had no reviewed-file or hash step, contradicting its threat row. Item 1 now specifies `codex-review.sh <reviewed-file> <prompt-template> <receipt-out> <transcript-out>` with the profile fixed to `review` inside the script and the hash computed and rendered (exit 2 without the placeholder); item 2 adds the two tests. `amend-sweep.sh` also found row 47 still saying "C1 to C6"; it says C1 to C10 and C7b. Sweep after the edit: no leftover of `C1 to C6`, `<profile>`, `sweep JSON's head`. The TASK line carries the file's sha256.

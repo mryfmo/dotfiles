@@ -48,5 +48,5 @@ Rule text ahead of its mechanism, the pattern plan 007's dependency rationale an
 
 ## Steps after the decision (filled when it arrives)
 
-- B: R1 re-scope `dotfiles-T128-orchestrator-tools-a01` (items, allowed_files, threat rows; C1 to C10), draft `-a02` for the remainder; R2 task-file review pair (seat + Codex headless, same hash); R3 boundary PR (this plan, M-23, C-25, T718 files); R4 dispatch T718 to a003 on branch `regime/orchestrator-tools`; R5 T718 integration; R6 `gh pr update-branch 328`, Bot, sweep with 4250028600 `fixed:<T718 squash>`, audit, acceptance record, gate, merge; R7 T702 integration.
+- B: R1 re-scope `dotfiles-T128-orchestrator-tools-a01` (items, allowed_files, threat rows; C1 to C10), draft `-a02` for the remainder; R2 task-file review pair (seat + Codex headless, same hash); R3 boundary PR (this plan, M-23, C-25, T718 files); R4 dispatch T718 to a003 on branch `tools/orchestrator-scripts`; R5 T718 integration; R6 `gh pr update-branch 328`, Bot, sweep with 4250028600 `fixed:<T718 squash>`, audit, acceptance record, gate, merge; R7 T702 integration.
 - C or A: R1 amendment 1 text, hashed, confirmed by the review seat; R2 dispatch to a003; R3 integration as planned. A further finding on items 1 or 3 is INV-6's count: reset to a05 and S7.

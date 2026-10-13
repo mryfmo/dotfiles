@@ -71,14 +71,21 @@ mistakes:
     status: open
   - id: M-20261012-22
     corrections: [C-24]
+    status: open
   - id: M-20261012-23
     corrections: [C-25]
+    status: open
   - id: M-20261012-24
     corrections: [C-26]
+    status: open
   - id: M-20261012-25
     corrections: [C-13, C-14]
+    status: open
   - id: M-20261012-26
     corrections: [C-13, C-20]
+    status: open
+  - id: M-20261012-27
+    corrections: [C-27]
     status: open
 corrections:
   - id: C-1
@@ -184,4 +191,8 @@ corrections:
   - id: C-26
     closes: [M-20261012-24]
     mechanism: ['rule:task-contract (identity triple; a03 amendment 1, plan 013)', 'validator:diff-env-inputs#C11 (T704, proposed)', 'validator:ledger-check#one-class-one-slug (T704, proposed)']
+    status: "pending"
+  - id: C-27
+    closes: [M-20261012-27]
+    mechanism: ['script:amend-sweep.sh (scratchpad; T718 a02 candidate)', 'rule:review-task (the round note pastes the sweep output)']
     status: "pending"

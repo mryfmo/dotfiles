@@ -181,3 +181,124 @@ $ git diff --numstat origin/main...HEAD -- . ":!.orchestration"
 $ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "[memory:decision] dotfiles-T128-playbook-rules-a04 (plan 010 option D): SKILL Orchestrator Playbook step 6 and the three-repeat bullet state the obligation ..."   # main checkout, permission gate
 a3ae0494-87a7-437c-b39a-2a08ecfcd170
 ```
+
+## 9. Revise round 1, amendment 1 (ACCEPTANCE `status=revise` of 2026-10-13T13:57:09Z on `2276a365`)
+
+The branch fast-forwarded to the remote head `7771082f` and merged `origin/main` (`4e7a9b3a`) in `87bce51e`. The amended sentences are in `e6602ca1`.
+
+```text
+$ git show origin/main:.orchestration/tasks/dotfiles-T128-playbook-rules-a04.md | shasum -a 256; shasum -a 256 .orchestration/dotfiles-T128-playbook-rules-a04/task.md
+c5dbc2c3d3514707870c2146ac4acfd6e96279d50f0f6bf04bd8921cd242a6fa  -
+c5dbc2c3d3514707870c2146ac4acfd6e96279d50f0f6bf04bd8921cd242a6fa  .orchestration/dotfiles-T128-playbook-rules-a04/task.md
+$ git log --oneline -4
+e6602ca1 docs(agmsg-orchestration): playbook-rules a04 amendment 1 sentences
+87bce51e Merge remote-tracking branch 'origin/main' into regime/playbook-rules
+4e7a9b3a chore(orchestration): boundary commit 2026-10-13 (12): plan 020/021 (the by-construction order), the three owner tasks, the cost ledger, plans 018 and 019 (#348)
+a1d33849 chore(orchestration): boundary commit 2026-10-13 (11): T718 first slice merged (a04 records), a02 dispatched, T703 a04 amendment 1 and its owner task, M-20261012-34/35, C-33/34, plan 017 (#347)
+$ uv run --no-project python -I <the check below>   # each quoted sentence of the amended items 1, 4 and 5, as the task file quotes it, is in the SKILL verbatim
+item 1: 1161 characters, in the SKILL: True
+item 4: 789 characters, in the SKILL: True
+item 5: 334 characters, in the SKILL: True
+$ uv run --no-project python -m unittest tests/unit/test_agmsg_orchestration_docs.py -v 2>&1 | sed -E 's/ \(tests\.unit\.[a-z_]+\.[A-Za-z]+\.[a-z0-9_]+\)//'   # drops each test's repeated dotted id
+test_docs_no_longer_name_codex_review_commit ... ok
+test_rule_and_skill_name_worker_seats_not_codex_workers ... ok
+test_rule_drops_the_worker_network_escalation ... ok
+test_skill_drops_the_pane_status_gate_and_raw_pane_wakes ... ok
+test_rule_pointers_name_real_skill_sections ... ok
+test_rule_states_the_invariants ... ok
+test_word_budgets ... ok
+test_audit_command_lives_only_in_the_task_level_audit_bullet ... ok
+test_codex_agents_points_at_the_worklog_section ... ok
+test_contextdb_cli_is_invoked_with_uv_run ... ok
+test_skill_masks_evidence_with_a_runnable_command ... ok
+test_claude_worker_merge_denials_and_prefix_limits_are_documented ... ok
+test_codex_worker_profile_defaults_to_standard ... ok
+test_skill_carries_the_audit_gate_and_bot_wait_mechanics ... ok
+test_skill_carries_the_parallel_execution_and_routing_mechanics ... ok
+test_skill_carries_the_registration_and_delivery_mechanics ... ok
+test_skill_carries_the_session_lessons ... ok
+test_a_design_lands_on_main_before_its_task ... ok
+test_a_revise_acceptance_names_the_previous_head_and_a_check ... ok
+test_a_trust_boundary_task_carries_a_threat_table ... ok
+test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first ... ok
+test_boundary_merge_sentence_names_the_in_job_decision ... ok
+test_closed_selector_existence_is_checked_at_acceptance ... ok
+test_code_review_rules_cover_orchestration_records_and_threat_tables ... ok
+test_counters_bullet_names_owners_not_sources ... ok
+test_counters_run_before_every_acceptance_action ... ok
+test_design_review_runs_in_paired_rounds_with_a_cap ... ok
+test_dispatches_are_recorded_from_the_bus ... ok
+test_open_review_body_findings_have_an_identifier ... ok
+test_open_third_round_threads_have_an_integration_outcome ... ok
+test_orchestration_records_rule_binds_the_bot_review_only ... ok
+test_pattern_rules_pin_their_safeguards ... ok
+test_question_pongs_are_in_the_contract ... ok
+test_regime_rule_sections_are_pinned_whole ... ok
+test_rule_changes_travel_as_task_amendments ... ok
+test_shape_is_checked_by_hand_until_the_schema_lands ... ok
+test_shape_rules_and_the_decision_sentence_are_pinned ... ok
+test_task_file_review_is_one_round_with_a_fixed_stop_condition ... ok
+test_the_bot_wait_filters_the_codex_bot ... ok
+test_the_ci_watch_is_joined_before_the_result ... ok
+test_the_ci_watcher_survives_the_no_checks_race ... ok
+test_the_gate_reads_the_acceptance_record ... ok
+test_threat_table_rows_have_a_fixed_unit ... ok
+test_threat_table_rule_carries_no_grammar ... ok
+test_three_repeats_start_with_a_pasted_correction_search ... ok
+test_workers_commit_inside_the_sandbox ... ok
+test_workers_open_the_pr_as_a_draft ... ok
+
+----------------------------------------------------------------------
+Ran 47 tests in 0.009s
+
+OK
+$ prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md tests/fixtures/regime/*.md; ruff format --config ruff.toml --check tests/unit/test_agmsg_orchestration_docs.py
+Checking formatting...
+All matched files use Prettier code style!
+1 file already formatted
+$ git diff --stat 87bce51e HEAD -- home tests AGENTS.md   # the fixture changes of this round: invariants.md and orchestrator-step-6.md
+ .../dot_agents/skills/agmsg-orchestration/SKILL.md |  6 ++--
+ tests/fixtures/regime/invariants.md                |  4 +--
+ tests/fixtures/regime/orchestrator-step-6.md       |  2 +-
+ tests/unit/test_agmsg_orchestration_docs.py        | 38 +++++++++++++++-------
+ 4 files changed, 32 insertions(+), 18 deletions(-)
+$ uv run --no-project python <scratchpad>/mutate-pr328.py   # each amended sentence put back to its previous form, in the SKILL and its fixture
+P1 step 6: complete bus read: test_dispatches_are_recorded_from_the_bus -> FAILED (killed) | AssertionError: 'Every dispatch (TASK, ACCEPTANCE, PING) is recorded in the current acceptance record under a `dispatch:` key as the bus line with its read mark
+P2 step 6: thirty minutes: test_dispatches_are_recorded_from_the_bus -> FAILED (killed) | AssertionError: "A seated worker idle for 20 minutes since its latest bus event for the task while a dispatchable task exists (INV-10's idle figure; its 30 minu
+P3 row unit: no wildcard rule: test_threat_table_rows_have_a_fixed_unit -> FAILED (killed) | AssertionError: "metadata separators). The row unit is one row per `allowed_files` entry, one row per listed control that is not a path (task metadata, workflow
+P4 invariant check: ids only: test_task_file_review_is_one_round_with_a_fixed_stop_condition -> FAILED (killed) | AssertionError: "one invariant check (for a task that carries an `invariants` key: the task id maps to its `implementing_tasks` entry, the invariant ids match, 
+P5 fixture only (pinning): test_regime_rule_sections_are_pinned_whole -> FAILED (killed) | AssertionError: '6. S[2911 chars] for 20 minutes since its latest bus event for[568 chars]ge).' != '6. S[2911 chars] for 30 minutes since its latest bus event f
+$ git diff --numstat origin/main...HEAD
+3	0	.orchestration/dotfiles-T128-playbook-rules-a01/autoskill.md
+7	0	.orchestration/dotfiles-T128-playbook-rules-a01/learning.md
+49	0	.orchestration/dotfiles-T128-playbook-rules-a01/report.md
+26	0	.orchestration/dotfiles-T128-playbook-rules-a01/sandbox.md
+84	0	.orchestration/dotfiles-T128-playbook-rules-a01/task.md
+220	0	.orchestration/dotfiles-T128-playbook-rules-a01/validation.md
+3	0	.orchestration/dotfiles-T128-playbook-rules-a02/autoskill.md
+7	0	.orchestration/dotfiles-T128-playbook-rules-a02/learning.md
+71	0	.orchestration/dotfiles-T128-playbook-rules-a02/report.md
+26	0	.orchestration/dotfiles-T128-playbook-rules-a02/sandbox.md
+90	0	.orchestration/dotfiles-T128-playbook-rules-a02/task.md
+362	0	.orchestration/dotfiles-T128-playbook-rules-a02/validation.md
+3	0	.orchestration/dotfiles-T128-playbook-rules-a03/autoskill.md
+6	0	.orchestration/dotfiles-T128-playbook-rules-a03/learning.md
+53	0	.orchestration/dotfiles-T128-playbook-rules-a03/report.md
+21	0	.orchestration/dotfiles-T128-playbook-rules-a03/sandbox.md
+92	0	.orchestration/dotfiles-T128-playbook-rules-a03/task.md
+183	0	.orchestration/dotfiles-T128-playbook-rules-a03/validation.md
+3	0	.orchestration/dotfiles-T128-playbook-rules-a04/autoskill.md
+6	0	.orchestration/dotfiles-T128-playbook-rules-a04/learning.md
+55	0	.orchestration/dotfiles-T128-playbook-rules-a04/report.md
+21	0	.orchestration/dotfiles-T128-playbook-rules-a04/sandbox.md
+94	0	.orchestration/dotfiles-T128-playbook-rules-a04/task.md
+183	0	.orchestration/dotfiles-T128-playbook-rules-a04/validation.md
+1	1	AGENTS.md
+6	4	home/dot_agents/skills/agmsg-orchestration/SKILL.md
+1	1	tests/fixtures/regime/code-review-orchestration.md
+4	2	tests/fixtures/regime/invariants.md
+1	0	tests/fixtures/regime/orchestrator-step-6.md
+121	1	tests/unit/test_agmsg_orchestration_docs.py
+$ git diff --numstat origin/main...HEAD | awk '$3 !~ /^\.orchestration\// {f++} $3 !~ /^\.orchestration\// && $3 !~ /^tests\// {o+=$1} $3 ~ /^tests\// {t+=$1} END {print "files outside .orchestration/:", f, "added outside tests/:", o, "added under tests/:", t}'
+files outside .orchestration/: 6 added outside tests/: 7 added under tests/: 127
+```

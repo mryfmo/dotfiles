@@ -53,3 +53,19 @@ The earlier threads stand as the a03 report tables them. 4248319926 is answered 
 `memory add` printed `a3ae0494-87a7-437c-b39a-2a08ecfcd170` (§8), with the `history.sh --limit` mechanism above.
 
 cost: n/a
+
+## Revise round 1 with amendment 1 (ACCEPTANCE of 13:57:09Z; task file sha256 `c5dbc2c3…`)
+
+The orchestrator's line lifted the operator's 10:36Z stop and superseded TASK 935. The branch fast-forwarded to the remote head `7771082f`, merged `origin/main` (`4e7a9b3a`) in `87bce51e`, and the task copy now matches the amended file byte for byte (validation §9). `e6602ca1` puts the amended sentences of items 1, 4 and 5 in the SKILL verbatim, as the task file quotes them (§9 checks all three):
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4257278283 (P1) | the invariant check compared ids only | `fixed:e6602ca1`. Each invariant's sentence equals the design's byte for byte, the design read from main (INV-2), by hand until a checker lands. Test: `test_task_file_review_is_one_round_with_a_fixed_stop_condition` (P4) |
+| 4257278271 (P2) | step 6 used thirty minutes as INV-10's figure | `fixed:e6602ca1`. A seated worker idle for 20 minutes (INV-10's idle figure; 30 minutes is the first-push deadline). The orchestrator applies it to the minutes `bus-read.sh` prints. Test: `test_dispatches_are_recorded_from_the_bus` (P2) |
+| 4257278276 (P2) | the row unit had no rule for a wildcard entry | `fixed:e6602ca1`. One row per concrete changed file under an executed or applied wildcard entry; a data wildcard keeps one row. Test: `test_threat_table_rows_have_a_fixed_unit` (P3) |
+| local review of `7771082f`, finding 1 | "a complete bus read", which the merged script does not do | `fixed:e6602ca1`. The read is refused when it reaches its limit, and the orchestrator raises `BUS_READ_LIMIT` and reads again. Test: `test_dispatches_are_recorded_from_the_bus` (P1) |
+
+- Declared fixture changes (INV-12): `tests/fixtures/regime/invariants.md` (the task-file-review and threat-table bullets) and `tests/fixtures/regime/orchestrator-step-6.md` (step 6). `test_regime_rule_sections_are_pinned_whole` fails on a changed fixture (P5).
+- The `test_dispatches_are_recorded_from_the_bus` stale list also refuses `complete bus read` and `silent for thirty minutes`.
+- Results (§9): 47 docs tests OK; Prettier and ruff clean; 5 mutants, 5 failures. Size: 6 files outside `.orchestration/`; added lines outside and under `tests/`: 7 and 127.
+- The orchestrator's line says the Bot reviews on PR open only now, so there is no Bot wait; the pushed head's CI is in the RESULT and in the main-checkout copy.

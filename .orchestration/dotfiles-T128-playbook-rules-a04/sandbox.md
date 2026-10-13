@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-playbook-rules-a04
 seat: claude-standard-dot-a003
-permission_gated_commands: 7
+permission_gated_commands: 11
 ---
 
 # Sandbox record: dotfiles-T128-playbook-rules-a04
@@ -19,3 +19,9 @@ permission_gated_commands: 7
 | 5 | reading the Bot review and the check runs of the final head | `gh` |
 | 6 | the masked copy of the five evidence files to the main checkout | artifact copy with the repository masker |
 | 7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-playbook-rules-a04 …` | `agmsg-dispatch` |
+| 8 | the revise round's HTTPS push | `git push` |
+| 9 | `gh pr checks 328 --watch` on the revise head | `gh` |
+| 10 | the masked copy of the evidence files to the main checkout | artifact copy with the repository masker |
+| 11 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-playbook-rules-a04 revise=1 …` | `agmsg-dispatch` |
+
+Revise round 1 (amendment 1): #8 to #11 are counted in advance in this copy; there is no Bot wait (the orchestrator's line of 13:57:09Z).

@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../../lib/installer-pins/">
+        <link rel="prev" href="../boundary/">
       
       
-        <link rel="next" href="../dispatch/">
+        <link rel="next" href="../codex-review/">
       
       
         
@@ -3457,6 +3457,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../boundary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/boundary.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -3557,6 +3585,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../codex-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/codex-review.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../dispatch/" class="md-nav__link">
         
   
@@ -3565,6 +3621,90 @@
     
   
     scripts/orchestrator/dispatch.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ff-main/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/ff-main.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../orch-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/orch-audit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../replay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/replay.sh
   
 
     
@@ -3832,7 +3972,7 @@
 
 
 <h1 id="scriptsorchestratorbus-readsh">scripts/orchestrator/bus-read.sh<a class="headerlink" href="#scriptsorchestratorbus-readsh" title="Permanent link">&para;</a></h1>
-<p>Plan 007 T718 (C-23). Reads the history through agmsg's <code>history.sh &lt;team&gt; "" &lt;limit&gt;</code> (its documented positional form; never the database file) with a limit far above the team's size, and refuses a read whose rows reach the limit, so a truncated view is never taken for the whole bus. The open rule is the stop gate's worker-seat branch (<code>scripts/agent-stop-gate.sh</code>; threads 4255494133, 4255494139): a task's latest opener, its latest AGMSG-TASK (X to Y) or a later AGMSG-ACCEPTANCE <code>status=revise</code> between the same X and Y (a revise between other endpoints opens nothing: the orchestrator's local review of 5b99a744), keeps it open until a later AGMSG-RESULT or AGMSG-PONG <code>status=blocked</code> from Y to X, or a later AGMSG-ACCEPTANCE from X to Y with any other status or none; a row between other endpoints neither opens nor closes it. A row counts only in the form <code>&lt;marker&gt; [&lt;at&gt;] &lt;from&gt; → &lt;to&gt;: &lt;body&gt;</code>, with the marker <code>●</code> or <code>○</code> (thread 4256541723), an <code>&lt;at&gt;</code> jq's <code>fromdateiso8601</code> parses and a body of AGMSG-TASK, -ACCEPTANCE, -RESULT or -PONG, then <code>v1</code>, exactly one non-empty <code>task_id=</code> and at most one <code>status=</code>; any other non-empty line is skipped and counted, never an exit. For each open task it prints the seat the opener went to, the time of the task's latest counted row, the whole minutes since then, and <code>silent=yes</code> at thirty minutes or more (INV-10's figure), else <code>silent=no</code>; <code>open: none</code> when no task (or not the named one) is open; then <code>skipped=&lt;n&gt;</code>.</p>
+<p>Plan 007 T718 (C-23). Reads the history through agmsg's <code>history.sh &lt;team&gt; "" &lt;limit&gt;</code> (its documented positional form; never the database file) with a limit far above the team's size, and refuses a read whose non-empty lines reach the limit, counted before any row is skipped (thread 4256987062), so a truncated view is never taken for the whole bus. The open rule is the stop gate's worker-seat branch (<code>scripts/agent-stop-gate.sh</code>; threads 4255494133, 4255494139): a task's latest opener, its latest AGMSG-TASK (X to Y) or a later AGMSG-ACCEPTANCE <code>status=revise</code> between the same X and Y (a revise between other endpoints opens nothing: the orchestrator's local review of 5b99a744), keeps it open until a later AGMSG-RESULT or AGMSG-PONG <code>status=blocked</code> from Y to X, or a later AGMSG-ACCEPTANCE from X to Y with any other status or none; a row between other endpoints neither opens nor closes it. A row counts only in the form <code>&lt;marker&gt; [&lt;at&gt;] &lt;from&gt; → &lt;to&gt;: &lt;body&gt;</code>, with the marker <code>●</code> or <code>○</code> (thread 4256541723), an <code>&lt;at&gt;</code> jq's <code>fromdateiso8601</code> parses and a body of AGMSG-TASK, -ACCEPTANCE, -RESULT or -PONG, then <code>v1</code>, exactly one non-empty <code>task_id=</code> and at most one <code>status=</code>, its tokens split on runs of spaces and tabs as the stop gate's awk splits them (the audit of 3e5cad37); any other non-empty line is skipped and counted, never an exit. For each open task it prints the seat the opener went to, the time of the latest counted row between the opener's two endpoints (thread 4256987076), the whole minutes since then, and <code>silent=yes</code> at thirty minutes or more (INV-10's figure), else <code>silent=no</code>; <code>open: none</code> when no task (or not the named one) is open; then <code>skipped=&lt;n&gt;</code>.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/orchestrator/bus-read.sh</code></li>
@@ -3846,8 +3986,9 @@
 <span class="c1"># @description</span>
 <span class="c1">#   Plan 007 T718 (C-23). Reads the history through agmsg's `history.sh &lt;team&gt;</span>
 <span class="c1">#   "" &lt;limit&gt;` (its documented positional form; never the database file) with</span>
-<span class="c1">#   a limit far above the team's size, and refuses a read whose rows reach the</span>
-<span class="c1">#   limit, so a truncated view is never taken for the whole bus. The open rule</span>
+<span class="c1">#   a limit far above the team's size, and refuses a read whose non-empty lines</span>
+<span class="c1">#   reach the limit, counted before any row is skipped (thread 4256987062), so a</span>
+<span class="c1">#   truncated view is never taken for the whole bus. The open rule</span>
 <span class="c1">#   is the stop gate's worker-seat branch (`scripts/agent-stop-gate.sh`; threads</span>
 <span class="c1">#   4255494133, 4255494139): a task's latest opener, its latest AGMSG-TASK (X</span>
 <span class="c1">#   to Y) or a later AGMSG-ACCEPTANCE `status=revise` between the same X and Y</span>
@@ -3859,9 +4000,11 @@
 <span class="c1">#   &lt;body&gt;`, with the marker `●` or `○` (thread 4256541723), an `&lt;at&gt;` jq's</span>
 <span class="c1">#   `fromdateiso8601` parses and a body of AGMSG-TASK, -ACCEPTANCE, -RESULT or</span>
 <span class="c1">#   -PONG, then `v1`, exactly one non-empty `task_id=` and at most one</span>
-<span class="c1">#   `status=`; any other non-empty line is skipped and counted, never an exit.</span>
-<span class="c1">#   For each open task it prints the seat the opener went to, the time of the</span>
-<span class="c1">#   task's latest counted row, the whole minutes since then, and `silent=yes`</span>
+<span class="c1">#   `status=`, its tokens split on runs of spaces and tabs as the stop gate's</span>
+<span class="c1">#   awk splits them (the audit of 3e5cad37); any other non-empty line is</span>
+<span class="c1">#   skipped and counted, never an exit. For each open task it prints the seat</span>
+<span class="c1">#   the opener went to, the time of the latest counted row between the opener's</span>
+<span class="c1">#   two endpoints (thread 4256987076), the whole minutes since then, and `silent=yes`</span>
 <span class="c1">#   at thirty minutes or more (INV-10's figure), else `silent=no`; `open: none`</span>
 <span class="c1">#   when no task (or not the named one) is open; then `skipped=&lt;n&gt;`.</span>
 <span class="c1"># @arg $1 string agmsg team.</span>
@@ -3893,9 +4036,9 @@
 <span class="s1">  def count($k): [.toks[] | select(startswith($k + "="))] | length;</span>
 <span class="s1">  def tok($k): [.toks[] | select(startswith($k + "="))][0] // null | if . then .[($k | length) + 1:] else null end;</span>
 <span class="s1">  [inputs | select(. != "")] as $lines</span>
+<span class="s1">  | if ($lines | length) &gt;= $limit then error("bus-read: the read reached its limit of \($limit) rows; raise BUS_READ_LIMIT") else . end</span>
 <span class="s1">  | [$lines[] | capture("^\\s*[●○]\\s+\\[(?&lt;at&gt;[^\\]]+)\\]\\s+(?&lt;from&gt;\\S+)\\s+→\\s+(?&lt;to&gt;\\S+):\\s(?&lt;body&gt;.*)$")] as $all</span>
-<span class="s1">  | if ($all | length) &gt;= $limit then error("bus-read: the read reached its limit of \($limit) rows; raise BUS_READ_LIMIT") else . end</span>
-<span class="s1">  | [$all | to_entries[] | .value + {i: .key} | .toks = (.body | split(" ")) | .kind = .toks[0]</span>
+<span class="s1">  | [$all | to_entries[] | .value + {i: .key} | .toks = [.body | splits("[ \\t]+") | select(. != "")] | .kind = .toks[0]</span>
 <span class="s1">      | select((.kind | IN("AGMSG-TASK", "AGMSG-ACCEPTANCE", "AGMSG-RESULT", "AGMSG-PONG")) and .toks[1] == "v1"</span>
 <span class="s1">          and count("task_id") == 1 and tok("task_id") != "" and count("status") &lt;= 1</span>
 <span class="s1">          and (.at | try fromdateiso8601 catch null) != null)</span>
@@ -3908,7 +4051,8 @@
 <span class="s1">      | select(any(.[]; .i &gt; $o.i and (</span>
 <span class="s1">          (.from == $o.to and .to == $o.from and (.kind == "AGMSG-RESULT" or (.kind == "AGMSG-PONG" and .status == "blocked")))</span>
 <span class="s1">          or (.from == $o.from and .to == $o.to and .kind == "AGMSG-ACCEPTANCE" and .status != "revise"))) | not)</span>
-<span class="s1">      | max_by(.i).at as $last | ((now - ($last | fromdateiso8601)) / 60 | floor) as $min</span>
+<span class="s1">      | map(select([.from, .to] | sort == ([$o.from, $o.to] | sort))) | max_by(.i).at as $last</span>
+<span class="s1">      | ((now - ($last | fromdateiso8601)) / 60 | floor) as $min</span>
 <span class="s1">      | "open: task=\($o.task) seat=\($o.to) last_event=\($last) minutes=\($min) silent=\(if $min &gt;= 30 then "yes" else "no" end)"]</span>
 <span class="s1">  | (if length == 0 then "open: none" else .[] end), "skipped=\(($lines | length) - ($rows | length))"'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">history</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">report</span><span class="si">}</span><span class="s2">"</span>

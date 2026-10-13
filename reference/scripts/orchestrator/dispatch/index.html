@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../bus-read/">
+        <link rel="prev" href="../codex-review/">
       
       
-        <link rel="next" href="../three-repeat/">
+        <link rel="next" href="../ff-main/">
       
       
         
@@ -3460,6 +3460,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../boundary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/boundary.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../bus-read/" class="md-nav__link">
         
   
@@ -3468,6 +3496,34 @@
     
   
     scripts/orchestrator/bus-read.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../codex-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/codex-review.sh
   
 
     
@@ -3584,6 +3640,90 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ff-main/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/ff-main.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../orch-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/orch-audit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../replay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/replay.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -3854,7 +3994,7 @@
 
 
 <h1 id="scriptsorchestratordispatchsh">scripts/orchestrator/dispatch.sh<a class="headerlink" href="#scriptsorchestratordispatchsh" title="Permanent link">&para;</a></h1>
-<p>Plan 007 T718 (C-20). Reads exactly one physical line from a file (a second line, blank or not, or a NUL byte is refused). Every <code>&lt;name&gt;_sha256=&lt;64 hex&gt;</code> token is recomputed from the file its sibling token names, <code>&lt;name&gt;_file=</code> or else <code>&lt;name&gt;=</code> (<code>task_sha256</code> from <code>task_file=</code>, <code>design_sha256</code> from <code>design=</code>, <code>amended_task_sha256</code> from <code>amended_task=</code>; a line naming the file both ways, or repeating one of these keys, is refused), except a <code>previous_&lt;name&gt;_sha256=</code> reference to an earlier version, which is checked as 64 lowercase hex only; every line must carry exactly one non-empty <code>task_id=</code>, and an AGMSG-TASK line must carry <code>task_file=</code> and <code>task_sha256=</code>. A relative path is read from the root of the checkout this script lives in (<code>git rev-parse --show-toplevel</code> there), never from the caller's directory. A missing field or file, a malformed value or a mismatch exits 1 naming the field, and nothing is sent. Otherwise the line goes to <code>agmsg-dispatch</code> as one argument, byte for byte. With an acceptance record, the record is checked before the send and, once the line is on the bus, <code>&lt;the line&gt; read_at=&lt;read|unread&gt;</code> is appended to the <code>dispatch</code> list of the record's JSON block, the object between its first two <code>---</code> lines. The block is read and written with Python's standard json (malformed JSON, a duplicate key, NaN or Infinity, a block that is not an object or a <code>dispatch</code> that is not a list is refused; <code>sort_keys</code>, <code>indent=2</code>); the key is created when absent, and a record without a block gets a block holding only <code>dispatch</code>. The prose after the block is kept byte for byte, and the record is replaced atomically (a temporary file in its directory, fsync, rename). A record that is not an existing regular file writable in a writable directory, or whose <code>task</code> is not the line's <code>task_id</code>, is refused before the send, and nothing is sent. Only a bus row this send created is recorded: the rows matching the line, sender and recipient are counted before and after the send, and a send that added none leaves the record unchanged and exits 1. The read state is the marker the team-wide <code>history.sh &lt;team&gt; "" 100000</code> prints for the new row (<code>●</code> unread, <code>○</code> read): agmsg's scripts expose no read_at time, this script never reads the message database, and it never passes an agent to history.sh, whose agent argument renames the caller's pane after it.</p>
+<p>Plan 007 T718 (C-20). Reads exactly one physical line from a file (a second line, blank or not, or a NUL byte is refused). Every <code>&lt;name&gt;_sha256=&lt;64 hex&gt;</code> token is recomputed from the file its sibling token names, <code>&lt;name&gt;_file=</code> or else <code>&lt;name&gt;=</code> (<code>task_sha256</code> from <code>task_file=</code>, <code>design_sha256</code> from <code>design=</code>, <code>amended_task_sha256</code> from <code>amended_task=</code>; a line naming the file both ways, or repeating one of these keys, is refused), except a <code>previous_&lt;name&gt;_sha256=</code> reference to an earlier version, which is checked as 64 lowercase hex only; every line must carry exactly one non-empty <code>task_id=</code>, and an AGMSG-TASK line must carry <code>task_file=</code> and <code>task_sha256=</code>. Tokens are separated by any run of spaces and tabs, and every token after <code>v1</code> is <code>&lt;key&gt;=&lt;value&gt;</code> (exit 2 otherwise, so a repeated prefix or a value split by a space is refused); the recorder takes <code>task_id</code> from that one parse (thread 4255272793). A relative path is read from the root of the checkout this script lives in (<code>git rev-parse --show-toplevel</code> there), never from the caller's directory. A missing field or file, a malformed value or a mismatch exits 1 naming the field, and nothing is sent. Otherwise the line goes to <code>agmsg-dispatch</code> as one argument, byte for byte. With an acceptance record, the record is checked before the send and, once the line is on the bus, <code>&lt;the line&gt; read_at=&lt;read|unread&gt;</code> is appended to the <code>dispatch</code> list of the record's JSON block, the object between its first two <code>---</code> lines. The block is read and written with Python's standard json (malformed JSON, a duplicate key, NaN or Infinity, a block that is not an object or a <code>dispatch</code> that is not a list is refused; <code>sort_keys</code>, <code>indent=2</code>); the key is created when absent, and a record without a block gets a block holding only <code>dispatch</code>. The prose after the block is kept byte for byte, CRLF included (thread 4256987087), and the record is replaced atomically (a temporary file in its directory, fsync, rename) under an exclusive <code>flock</code> of that directory, so two dispatches to one record never lose an entry (thread 4255272797). A record that is not an existing regular file writable in a writable directory, or whose <code>task</code> is not the line's <code>task_id</code>, is refused before the send, and nothing is sent. Only a bus row this send created is recorded: the rows matching the line, sender and recipient are counted before and after the send, and a send that added none leaves the record unchanged and exits 1. The read state is the marker the team-wide <code>history.sh &lt;team&gt; "" &lt;BUS_READ_LIMIT&gt;</code> prints for the new row (<code>●</code> unread, <code>○</code> read): agmsg's scripts expose no read_at time, this script never reads the message database, and it never passes an agent to history.sh, whose agent argument renames the caller's pane after it. A read whose non-empty lines reach the limit may have lost its oldest rows, so it is refused before the send (thread 4255272803).</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/orchestrator/dispatch.sh</code></li>
@@ -3863,7 +4003,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>bus() { "${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "${team}" "" 100000; }</code></li>
+<li><code>bus() { "${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "${team}" "" "${limit}"; }</code></li>
 <li><code>count_of</code></li>
 <li><code>usage</code></li>
 <li><code>value_of</code></li>
@@ -3882,7 +4022,10 @@
 <span class="c1">#   refused), except a `previous_&lt;name&gt;_sha256=` reference to an earlier</span>
 <span class="c1">#   version, which is checked as 64 lowercase hex only; every line must carry</span>
 <span class="c1">#   exactly one non-empty `task_id=`, and an AGMSG-TASK line must carry</span>
-<span class="c1">#   `task_file=` and `task_sha256=`. A relative path is read from the root of</span>
+<span class="c1">#   `task_file=` and `task_sha256=`. Tokens are separated by any run of spaces</span>
+<span class="c1">#   and tabs, and every token after `v1` is `&lt;key&gt;=&lt;value&gt;` (exit 2 otherwise,</span>
+<span class="c1">#   so a repeated prefix or a value split by a space is refused); the</span>
+<span class="c1">#   recorder takes `task_id` from that one parse (thread 4255272793). A relative path is read from the root of</span>
 <span class="c1">#   the checkout this script lives in (`git rev-parse --show-toplevel` there),</span>
 <span class="c1">#   never from the caller's directory. A missing field or file, a malformed value</span>
 <span class="c1">#   or a mismatch exits 1 naming the field, and nothing is sent. Otherwise the</span>
@@ -3895,18 +4038,22 @@
 <span class="c1">#   duplicate key, NaN or Infinity, a block that is not an object or a</span>
 <span class="c1">#   `dispatch` that is not a list is refused; `sort_keys`, `indent=2`); the key</span>
 <span class="c1">#   is created when absent, and a record without a block gets a block holding</span>
-<span class="c1">#   only `dispatch`. The prose after the block is kept byte for byte, and the</span>
-<span class="c1">#   record is replaced atomically (a temporary file in its directory, fsync,</span>
-<span class="c1">#   rename). A record that is not an existing regular file writable in a</span>
+<span class="c1">#   only `dispatch`. The prose after the block is kept byte for byte, CRLF</span>
+<span class="c1">#   included (thread 4256987087), and the record is replaced atomically (a</span>
+<span class="c1">#   temporary file in its directory, fsync, rename) under an exclusive `flock`</span>
+<span class="c1">#   of that directory, so two dispatches to one record never lose an entry</span>
+<span class="c1">#   (thread 4255272797). A record that is not an existing regular file writable in a</span>
 <span class="c1">#   writable directory, or whose `task` is not the line's `task_id`, is refused</span>
 <span class="c1">#   before the send, and nothing is sent.</span>
 <span class="c1">#   Only a bus row this send created is recorded: the rows matching the line,</span>
 <span class="c1">#   sender and recipient are counted before and after the send, and a send that</span>
 <span class="c1">#   added none leaves the record unchanged and exits 1. The read state is the</span>
-<span class="c1">#   marker the team-wide `history.sh &lt;team&gt; "" 100000` prints for the new row</span>
+<span class="c1">#   marker the team-wide `history.sh &lt;team&gt; "" &lt;BUS_READ_LIMIT&gt;` prints for the new row</span>
 <span class="c1">#   (`●` unread, `○` read): agmsg's scripts expose no read_at time, this script</span>
 <span class="c1">#   never reads the message database, and it never passes an agent to</span>
-<span class="c1">#   history.sh, whose agent argument renames the caller's pane after it.</span>
+<span class="c1">#   history.sh, whose agent argument renames the caller's pane after it. A read</span>
+<span class="c1">#   whose non-empty lines reach the limit may have lost its oldest rows, so it</span>
+<span class="c1">#   is refused before the send (thread 4255272803).</span>
 <span class="c1"># @arg $1 string agmsg team.</span>
 <span class="c1"># @arg $2 string Sender identity.</span>
 <span class="c1"># @arg $3 string Recipient identity.</span>
@@ -3914,6 +4061,7 @@
 <span class="c1"># @arg $5 path File holding the line.</span>
 <span class="c1"># @arg $6 path Optional acceptance record (`.orchestration/acceptance/&lt;task&gt;.md`), relative to the current directory.</span>
 <span class="c1"># @env AGMSG_SCRIPTS The agmsg scripts directory (default `$HOME/.agents/skills/agmsg/scripts`).</span>
+<span class="c1"># @env BUS_READ_LIMIT The row limit of the history read (default 100000).</span>
 <span class="c1"># @exitcode 0 Sent, and recorded when a record was given (agmsg-dispatch's own status otherwise).</span>
 <span class="c1"># @exitcode 1 A field check failed, the record is malformed, or the sent line was not recorded.</span>
 <span class="c1"># @exitcode 2 Usage error, or the file is not one AGMSG-TASK, AGMSG-ACCEPTANCE or AGMSG-PING v1 line.</span>
@@ -3940,13 +4088,19 @@ usage<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"dispatch: </span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2"> holds more than one line"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="o">}</span>
-<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^AGMSG-<span class="o">(</span>TASK<span class="p">|</span>ACCEPTANCE<span class="p">|</span>PING<span class="o">)</span><span class="se">\ </span>v1<span class="se">\ </span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^AGMSG-<span class="o">(</span>TASK<span class="p">|</span>ACCEPTANCE<span class="p">|</span>PING<span class="o">)[[</span>:blank:<span class="o">]]</span>+v1<span class="o">[[</span>:blank:<span class="o">]]</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"dispatch: not an AGMSG-TASK, AGMSG-ACCEPTANCE or AGMSG-PING v1 line"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="o">}</span>
 <span class="nv">root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="k">)</span><span class="s2">"</span>
 
 <span class="nb">read</span><span class="w"> </span>-ra<span class="w"> </span>tokens<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">for</span><span class="w"> </span>t<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tokens</span><span class="p">[@]:</span><span class="nv">2</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">t</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="o">=</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"dispatch: </span><span class="si">${</span><span class="nv">t</span><span class="si">}</span><span class="s2"> is not a &lt;key&gt;=&lt;value&gt; token"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="k">done</span>
 <span class="c1"># @description Print the value of the first `&lt;key&gt;=` token, or fail.</span>
 <span class="c1"># @arg $1 string Key.</span>
 value_of<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3970,8 +4124,9 @@ count_of<span class="o">()</span><span class="w"> </span><span class="o">{</span
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"dispatch: the line needs exactly one non-empty task_id="</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="k">fi</span>
-<span class="c1"># Thread 4254163604: a TASK whose file is not hash-bound is never sent.</span>
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"AGMSG-TASK "</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="c1"># Thread 4254163604: a TASK whose file is not hash-bound is never sent. The kind is the parsed</span>
+<span class="c1"># first token, so a tab after it does not skip this check (thread 4260535901).</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">tokens</span><span class="p">[0]</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>AGMSG-TASK<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>field<span class="w"> </span><span class="k">in</span><span class="w"> </span>task_file<span class="w"> </span>task_sha256<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span>value_of<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">field</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"dispatch: an AGMSG-TASK line needs </span><span class="si">${</span><span class="nv">field</span><span class="si">}</span><span class="s2">="</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
@@ -4023,11 +4178,12 @@ count_of<span class="o">()</span><span class="w"> </span><span class="o">{</span
 <span class="c1"># Modes: `check` parses the record; `append` finds the sent line in history.sh's</span>
 <span class="c1"># output on stdin, takes its read marker (● unread, ○ read) and appends it.</span>
 <span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-d<span class="w"> </span><span class="s1">''</span><span class="w"> </span>recorder<span class="w"> </span><span class="s">&lt;&lt; 'PY' || true</span>
-<span class="s">import json, os, re, shutil, sys, tempfile</span>
+<span class="s">import fcntl, json, os, re, shutil, sys, tempfile</span>
 <span class="s">from pathlib import Path</span>
 
-<span class="s">mode, path, line, sender, to, before = sys.argv[1:7]</span>
+<span class="s">mode, path, line, sender, to, before, task, limit = sys.argv[1:9]</span>
 <span class="s">record = Path(path)</span>
+<span class="s">rows = [r for r in sys.stdin.read().splitlines() if r]</span>
 
 <span class="s">def refuse(pairs):</span>
 <span class="s">    keys = [k for k, _ in pairs]</span>
@@ -4039,41 +4195,50 @@ count_of<span class="o">()</span><span class="w"> </span><span class="o">{</span
 <span class="s">def constant(name):</span>
 <span class="s">    sys.exit(f"dispatch: {path}: non-finite number {name}")</span>
 
-<span class="s">text = record.read_text()</span>
-<span class="s">block, rest = {}, text</span>
-<span class="s">if text.startswith("---\n"):</span>
-<span class="s">    end = text.find("\n---\n", 3)</span>
-<span class="s">    if end &lt; 0:</span>
-<span class="s">        sys.exit(f"dispatch: {path}: the block between the first two --- lines is not closed")</span>
-<span class="s">    try:</span>
-<span class="s">        block = json.loads(text[4:end], object_pairs_hook=refuse, parse_constant=constant)</span>
-<span class="s">    except json.JSONDecodeError as e:</span>
-<span class="s">        sys.exit(f"dispatch: {path}: the block is not valid JSON: {e}")</span>
-<span class="s">    rest = text[end + 5:]</span>
-<span class="s">    if not isinstance(block, dict):</span>
-<span class="s">        sys.exit(f"dispatch: {path}: the block is not a JSON object")</span>
-<span class="s">entries = block.setdefault("dispatch", [])</span>
-<span class="s">if not isinstance(entries, list):</span>
-<span class="s">    sys.exit(f"dispatch: {path}: dispatch is not a list")</span>
-<span class="s"># Thread 4254844587: another task's record never takes this task's dispatch.</span>
-<span class="s">task = next((t[len("task_id="):] for t in line.split(" ") if t.startswith("task_id=")), None)</span>
-<span class="s">if task is not None and "task" in block and block["task"] != task:</span>
-<span class="s">    sys.exit(f"dispatch: {path} is the record of task {block['task']}, the line is task {task}")</span>
+<span class="s">def load():</span>
+<span class="s">    # newline="": a CRLF record keeps its line endings (thread 4256987087).</span>
+<span class="s">    with open(record, newline="") as f:</span>
+<span class="s">        text = f.read()</span>
+<span class="s">    block, rest = {}, text</span>
+<span class="s">    if re.match(r"---\r?\n", text):</span>
+<span class="s">        m = re.match(r"---\r?\n(.*?)\r?\n---\r?\n", text, re.S)</span>
+<span class="s">        if not m:</span>
+<span class="s">            sys.exit(f"dispatch: {path}: the block between the first two --- lines is not closed")</span>
+<span class="s">        try:</span>
+<span class="s">            block = json.loads(m.group(1), object_pairs_hook=refuse, parse_constant=constant)</span>
+<span class="s">        except json.JSONDecodeError as e:</span>
+<span class="s">            sys.exit(f"dispatch: {path}: the block is not valid JSON: {e}")</span>
+<span class="s">        rest = text[m.end():]</span>
+<span class="s">        if not isinstance(block, dict):</span>
+<span class="s">            sys.exit(f"dispatch: {path}: the block is not a JSON object")</span>
+<span class="s">    if not isinstance(block.setdefault("dispatch", []), list):</span>
+<span class="s">        sys.exit(f"dispatch: {path}: dispatch is not a list")</span>
+<span class="s">    # Thread 4254844587: another task's record never takes this task's dispatch.</span>
+<span class="s">    if "task" in block and block["task"] != task:</span>
+<span class="s">        sys.exit(f"dispatch: {path} is the record of task {block['task']}, the line is task {task}")</span>
+<span class="s">    return block, rest</span>
+
 <span class="s">row = re.compile(r"^\s*(\S+)\s+\[[^\]]+\]\s+(\S+)\s+→\s+(\S+):\s(.*)$")</span>
-<span class="s">marks = [m.group(1) for m in map(row.match, sys.stdin.read().splitlines())</span>
-<span class="s">         if m and (m.group(2), m.group(3), m.group(4)) == (sender, to, line)]</span>
+<span class="s">marks = [m.group(1) for m in map(row.match, rows) if m and (m.group(2), m.group(3), m.group(4)) == (sender, to, line)]</span>
 <span class="s">if mode == "check":</span>
+<span class="s">    load()</span>
+<span class="s">    if len(rows) &gt;= int(limit):</span>
+<span class="s">        sys.exit(f"dispatch: the history read is capped at {limit} rows; raise BUS_READ_LIMIT")</span>
 <span class="s">    print(len(marks))</span>
 <span class="s">    sys.exit(0)</span>
+<span class="s"># Thread 4255272797: the read-modify-write holds the record directory's lock, so a second dispatch waits.</span>
+<span class="s">lock = os.open(record.parent, os.O_RDONLY)</span>
+<span class="s">fcntl.flock(lock, fcntl.LOCK_EX)</span>
+<span class="s">block, rest = load()</span>
 <span class="s"># Thread 4254399807: an older identical row is not this send.</span>
 <span class="s">if len(marks) &lt;= int(before):</span>
 <span class="s">    sys.exit(f"dispatch: this send added no bus row; {path} is unchanged")</span>
-<span class="s">entries.append(f"{line} read_at={'read' if marks[-1] == '○' else 'unread'}")</span>
+<span class="s">block["dispatch"].append(f"{line} read_at={'read' if marks[-1] == '○' else 'unread'}")</span>
 <span class="s">body = json.dumps(block, sort_keys=True, indent=2, ensure_ascii=False)</span>
 <span class="s"># Thread 4254844595: the line is already sent, so the record is replaced whole or not at all.</span>
 <span class="s">fd, tmp = tempfile.mkstemp(dir=record.parent, prefix=f".{record.name}.")</span>
 <span class="s">try:</span>
-<span class="s">    with os.fdopen(fd, "w") as f:</span>
+<span class="s">    with os.fdopen(fd, "w", newline="") as f:</span>
 <span class="s">        f.write(f"---\n{body}\n---\n{rest}")</span>
 <span class="s">        f.flush()</span>
 <span class="s">        os.fsync(f.fileno())</span>
@@ -4089,12 +4254,15 @@ count_of<span class="o">()</span><span class="w"> </span><span class="o">{</span
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"dispatch: the record </span><span class="si">${</span><span class="nv">record</span><span class="si">}</span><span class="s2"> cannot be written"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="k">fi</span>
+<span class="nv">limit</span><span class="o">=</span><span class="si">${</span><span class="nv">BUS_READ_LIMIT</span><span class="k">:-</span><span class="nv">100000</span><span class="si">}</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">limit</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">1</span>-9<span class="o">][</span><span class="m">0</span>-9<span class="o">]</span>*$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>usage
+<span class="nv">task</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>value_of<span class="w"> </span>task_id<span class="k">)</span><span class="s2">"</span>
 <span class="c1"># Team-wide: history.sh renames the calling pane after an agent argument (thread 4254399805).</span>
-bus<span class="o">()</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGMSG_SCRIPTS</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.agents/skills/agmsg/scripts</span><span class="si">}</span><span class="s2">/history.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">""</span><span class="w"> </span><span class="m">100000</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
-<span class="nv">before</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>bus<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-I<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">recorder</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>check<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">record</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">to</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">0</span><span class="k">)</span><span class="s2">"</span>
+bus<span class="o">()</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGMSG_SCRIPTS</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.agents/skills/agmsg/scripts</span><span class="si">}</span><span class="s2">/history.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">""</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">limit</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
+<span class="nv">before</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>bus<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-I<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">recorder</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>check<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">record</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">to</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">limit</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="nv">rc</span><span class="o">=</span><span class="m">0</span>
 agmsg-dispatch<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">to</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">rc</span><span class="o">=</span><span class="nv">$?</span>
-bus<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-I<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">recorder</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>append<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">record</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">to</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">before</span><span class="si">}</span><span class="s2">"</span>
+bus<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-I<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">recorder</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>append<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">record</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">to</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">before</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">limit</span><span class="si">}</span><span class="s2">"</span>
 <span class="nb">exit</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rc</span><span class="si">}</span><span class="s2">"</span>
 </code></pre></div>
 

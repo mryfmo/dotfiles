@@ -1415,7 +1415,12 @@ class ReviewGuardTest(unittest.TestCase):
             (
                 "no block",
                 {"text": "# prose only\n"},
-                "acceptance record must start with a JSON block between --- lines",
+                "acceptance record must start with a JSON block between two lines that are exactly ---",
+            ),
+            (
+                "a closing line that is not exactly ---",
+                {"text": '---\n{"format": 1}\n---junk\n'},
+                "acceptance record must start with a JSON block between two lines that are exactly ---",
             ),
             (
                 "not JSON",
@@ -1596,6 +1601,19 @@ class ReviewGuardTest(unittest.TestCase):
             guard.swept_finding_ids([], "[P1] x\n  - [P2] y\nVerdict: incorrect\n", "abcdef0" + "0" * 33),
             {"audit:abcdef0:1", "audit:abcdef0:2"},
         )
+
+    def test_swept_ids_come_from_authenticated_authors(self) -> None:
+        # Thread 4254525603: a saved item whose author no longer names the Codex bot no longer matches the live
+        # collection, so the coverage rule cannot be dodged by editing the sweep file.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        live = json.loads((FIXTURES / "pr-feedback-right.json").read_text())["items"]
+        saved = [{**item, "author": "someone-else"} for item in live]
+        feedback = self.write_feedback(saved)
+        self.write_collected([{key: value for key, value in item.items() if key != "disposition"} for item in live])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": self.write_record()})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("lacks 2 current feedback item(s) for PR #1", result.stdout)
+        self.assertNotIn("Acceptance evidence accepted", result.stdout)
 
     def test_acceptance_record_accepts_a_dispatch_list(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)

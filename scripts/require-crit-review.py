@@ -480,10 +480,11 @@ def feedback_key(item: dict, masked: bool = False) -> tuple:
     A saved body or path may be verbatim or exactly that masked form, because
     masking (`validate-agent-assets.py --mask-secrets`, which masks the string
     values of a JSON file) is the repository's documented way to keep evidence
-    scannable, and the url still identifies the item. Source, url, level and
-    line stay byte-exact.
+    scannable, and the url still identifies the item. Source, url, level, line
+    and author stay byte-exact; the author decides which items the acceptance
+    record's ledger must cover, so it is matched against the live collection too.
     """
-    key = {field: item.get(field) for field in ("source", "url", "level", "path", "line", "body")}
+    key = {field: item.get(field) for field in ("source", "url", "level", "path", "line", "body", "author")}
     if masked:
         # Only the body and a key-shaped file path may be masked; the rest is exact.
         for field in ("path", "body"):
@@ -740,12 +741,13 @@ def refuse_non_finite(name: str) -> object:
 
 def read_acceptance_record(path: Path) -> tuple[dict | None, str | None]:
     """Load the record's JSON block between its first two --- lines with the standard library only."""
-    text = path.read_text()
-    end = text.find("\n---", 4)
-    if not text.startswith("---\n") or end == -1:
-        return None, "acceptance record must start with a JSON block between --- lines"
+    # Both delimiters are whole lines that are exactly `---`: `---junk` closes nothing.
+    lines = path.read_text().split("\n")
+    if lines[0] != "---" or "---" not in lines[1:]:
+        return None, "acceptance record must start with a JSON block between two lines that are exactly ---"
+    block = "\n".join(lines[1 : lines.index("---", 1)])
     try:
-        data = json.loads(text[4:end], object_pairs_hook=refuse_duplicate_keys, parse_constant=refuse_non_finite)
+        data = json.loads(block, object_pairs_hook=refuse_duplicate_keys, parse_constant=refuse_non_finite)
     except json.JSONDecodeError as error:
         return None, f"acceptance record: the block between the first two --- lines is not JSON: {error}"
     except ValueError as error:

@@ -96,6 +96,9 @@ mistakes:
   - id: M-20261012-30
     corrections: [C-29]
     status: open
+  - id: M-20261012-31
+    corrections: [C-30]
+    status: open
 corrections:
   - id: C-1
     closes: [M-20261012-1]
@@ -212,4 +215,8 @@ corrections:
   - id: C-29
     closes: [M-20261012-30]
     mechanism: ['rule:integrate-prep#sandbox-scan', 'script:sandbox-check.py (T704 or T718 a02, proposed)']
+    status: "pending"
+  - id: C-30
+    closes: [M-20261012-31]
+    mechanism: ['rule:SKILL#acceptance-statuses (proposed)', 'script:scripts/agent-stop-gate.sh accepted set (proposed)']
     status: "pending"

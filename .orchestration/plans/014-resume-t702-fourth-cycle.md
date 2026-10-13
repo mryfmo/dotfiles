@@ -48,3 +48,7 @@ No matches.
 ## INV-2 split (2026-10-13 03:4xZ)
 
 The a04 head `ca7dcd73` changes 17 files outside `.orchestration/` (13 fixtures, `.prettierrc`, the gate, its test, Makefile, README); INV-2 caps a PR at 15 and names a split as the only answer. The worker splits: a fixtures-only PR from `origin/main` (14 files, data; integrated at once, independent of T703), then PR #329 with the four code and doc files, update-branched after the fixtures merge. No amendment, no question (INV-6 unchanged: `amendments=1 questions=0` for a04).
+
+## Fixtures merged (2026-10-13 05:50Z)
+
+PR #340 merged as `00943c6a` (audits of 20d776d4 → incorrect, revise; 2231a4f7 → correct; 60d152a1 → one process finding dispositioned, M-31/C-30). PR #329 update-branched to `21badcd7`; it integrates after T703.

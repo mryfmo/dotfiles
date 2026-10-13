@@ -1,0 +1,5 @@
+# Acceptance: dotfiles-T128-orchestrator-tools-a01 (T718 first slice, plan 012 B)
+
+- Task file reviewed at `aaf02188d4ea60606f07a08379ba5184582c190c79ab431ee9587be599e5a908` (seat round 2 confirm 01:25:29Z, Codex confirm; `dotfiles-T128-task-review-t718-a01`). On `main` with boundary PR #334 (`480aabc0`).
+- Dispatch 2026-10-13 01:35:23Z to `claude-standard-dot-a003` (worker-c, w5:pA) by `t718-dispatch.sh` after the script compared the file with `origin/main` (equal): `AGMSG-TASK v1 task_id=dotfiles-T128-orchestrator-tools-a01 … task_sha256=aaf02188d4ea60606f07a08379ba5184582c190c79ab431ee9587be599e5a908 … note=plan-012-B:fresh-branch-tools/orchestrator-scripts-from-origin/main;PR-328-branch-regime/playbook-rules-stays-untouched-in-your-worktree(a04-held-until-this-lands)`. INV-10 first-push threshold 02:05:23Z.
+- Wave: concurrent with T702 a03 (worker-f; `allowed_files` disjoint: `scripts/orchestrator/*`, `scripts/regime-counters.sh`, the two test modules vs `scripts/require-crit-review.py`, its test, fixtures, Makefile, README).

@@ -8,6 +8,7 @@ so an argument is compared byte for byte (`gh` and `make` append one line per ca
 
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -33,7 +34,8 @@ STUBS = {
     "shasum": '#!/usr/bin/env python3\nimport hashlib, sys\np = sys.argv[-1]\nprint(hashlib.sha256(open(p, "rb").read()).hexdigest() + "  " + p)\n',
     "uv": "#!/usr/bin/env bash\n" + RECORD.format(name="uv") + 'pwd -P > "$CALLS/uv-cwd"\ncat "$CALLS/uv-output"\n',
     "gh": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/gh.log"\n[[ "$1 $2" != "pr create" ]] || echo https://github.test/pull/9\n',
-    "make": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/make.log"\n[[ ! -f "$CALLS/make-fails" ]] || exit 2\n',
+    "make": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/make.log"\nenv > "$CALLS/make-env"\npwd -P > "$CALLS/make-cwd"\n'
+    + '[[ ! -f "$CALLS/make-fails" ]] || exit 2\n',
     # codex reads its stdin to the end (empty when the caller closed it) and writes its -o file.
     "codex": "#!/usr/bin/env bash\n"
     + RECORD.format(name="codex")
@@ -876,6 +878,154 @@ class OrchestratorToolsTest(unittest.TestCase):
                 self.assertEqual("", self.git("status", "--porcelain", cwd=review))
         out = self.run_tool("orch-audit.sh", "t-a01", pr, 9).stdout
         self.assertTrue(out.endswith(": Verdict: correct\n"), out)
+
+    # acceptance-front-matter.py, orch-gate.sh
+
+    def front_matter(self, *args, code=0):
+        script = str(self.repo / "scripts/orchestrator/acceptance-front-matter.py")
+        result = subprocess.run(
+            [sys.executable, "-I", script, "t-a01", "sweep.json", self.repo, *map(str, args)],
+            cwd=self.repo,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+        return result.stdout + result.stderr
+
+    def gate_module(self):
+        spec = importlib.util.spec_from_file_location("gate", ROOT / "scripts/require-crit-review.py")
+        gate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gate)
+        return gate
+
+    def test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record(self):
+        shutil.copy(ROOT / "scripts/require-crit-review.py", self.repo / "scripts/require-crit-review.py")
+        self.write(".orchestration/learning/mistakes/M-1.md", "---\nclasses: [stale-path, other]\n---\n")
+        self.write(".orchestration/learning/mistakes/M-2.md", "---\nclasses: [other]\n---\n")
+        self.origin()
+        head = self.git("rev-parse", "HEAD")
+        self.write("sweep.json", json.dumps({"pr": 9, "head_sha": head, "items": []}))
+        old = {
+            "task": "t-a01",
+            "dispatch": ["AGMSG-TASK v1 task_id=t-a01"],
+            "ledger": [{"id": "4250000001", "class": "stale-path"}],
+        }
+        record = self.write(".orchestration/acceptance/t-a01.md", "---\n" + json.dumps(old) + "\n---\n\n# Record\n")
+        rows = ["4250000001\tother", "4250000002\tstale-path", "audit:abcdef1:1\tstale-path", "4250000003\tother"]
+        out = self.front_matter("--ledger", self.write("ledger.tsv", "\n".join(rows) + "\n"))
+        self.assertIn("kept-ledger-row 4250000001", out)
+        block, rest = self.gate_block(record)
+        self.assertEqual(
+            ("t-a01", head, 9, 1, "\n# Record\n"), (block["task"], block["head"], block["pr"], block["format"], rest)
+        )
+        self.assertEqual(old["dispatch"], block["dispatch"])
+        self.assertEqual(["stale-path", "stale-path", "stale-path", "other"], [r["class"] for r in block["ledger"]])
+        self.assertEqual([{"class": "stale-path", "records": ["M-1.md"]}], block["searches"])
+        self.assertEqual([], block["audit_findings"])
+        self.assertEqual([], self.gate_module().record_field_errors(block, "t-a01", head, 9))
+        written = record.read_text()
+        # A row the gate's field checks refuse, a sweep of another head and a record with a duplicate key are
+        # refused, and nothing is written.
+        self.assertIn("ledger row 4", self.front_matter("--ledger", self.write("bad.tsv", "42\tother\n"), code=1))
+        self.assertEqual(written, record.read_text())
+        self.write("sweep.json", json.dumps({"pr": 9, "head_sha": "0" * 40, "items": []}))
+        self.assertIn("the sweep was collected for head", self.front_matter(code=1))
+        self.assertEqual(written, record.read_text())
+        self.write("sweep.json", json.dumps({"pr": 9, "head_sha": head, "items": []}))
+        record.write_text('---\n{"task": "t-a01", "task": "t-a02"}\n---\n')
+        self.assertIn("duplicate key task", self.front_matter(code=1))
+        self.assertEqual('---\n{"task": "t-a01", "task": "t-a02"}\n---\n', record.read_text())
+
+    def test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit(self):
+        shutil.copy(ROOT / "scripts/require-crit-review.py", self.repo / "scripts/require-crit-review.py")
+        self.origin()
+        head = self.git("rev-parse", "HEAD")
+        self.write("sweep.json", json.dumps({"pr": 9, "head_sha": head, "items": []}))
+        summary = self.write(
+            f".orchestration/validation/t-a01-audit-{head[:7]}.md.last.md", "- [P1] high a.sh:1 x\nVerdict: incorrect\n"
+        )
+        record = self.repo / ".orchestration/acceptance/t-a01.md"
+        reason = "advisory, owned by the follow-up task"
+        dispositions = self.write("audit.tsv", f"1\t{reason}\tgrep -n x a.sh\n")
+        self.assertIn("--audit-dispositions is required", self.front_matter(code=1))
+        self.assertFalse(record.exists())
+        wrong = self.write("wrong.tsv", f"2\t{reason}\tgrep -n x a.sh\n")
+        self.assertIn("names finding 2", self.front_matter("--audit-dispositions", wrong, code=1))
+        self.assertFalse(record.exists())
+        self.front_matter("--audit-dispositions", dispositions)
+        findings = self.gate_block(record)[0]["audit_findings"]
+        self.assertEqual([{"n": "1", "reason": reason, "evidence": "grep -n x a.sh"}], findings)
+        summary.write_text("Verdict: correct\n")
+        self.assertIn(
+            "--audit-dispositions is refused", self.front_matter("--audit-dispositions", dispositions, code=1)
+        )
+        self.front_matter()
+        self.assertEqual([], self.gate_block(record)[0]["audit_findings"])
+
+    def gate(self, *, code=0, pr=9):
+        self.origin()
+        worktree = self.temp / "pr"
+        self.git("worktree", "add", "-q", "-b", "pr", str(worktree), "main")
+        self.git("commit", "-q", "--allow-empty", "-m", "change", cwd=worktree)
+        head = self.git("rev-parse", "HEAD", cwd=worktree)
+        review = self.repo / ".claude/worktrees/orchestrator-review"
+        self.git("worktree", "add", "-q", "--detach", str(review), "origin/main")
+        v = ".orchestration/validation/t-a01"
+        self.write(f"{v}-pr-feedback.json", json.dumps({"pr": pr, "head_sha": head, "items": []}))
+        for rel in (
+            f"{v}-audit-{head[:7]}.md",
+            f"{v}-audit-{head[:7]}.md.last.md",
+            f"{v}-review-receipt.md",
+            f"{v}-crit.json",
+        ):
+            self.write(rel, "x\n")
+        self.write(".orchestration/acceptance/t-a01.md", "---\n{}\n---\n")
+        result = self.run_tool(
+            "orch-gate.sh", "t-a01", worktree, 9, code=code, env={"AUDIT_DISPOSITIONS": "retired.md"}
+        )
+        self.assertEqual("", self.git("status", "--porcelain", cwd=review))
+        self.assertEqual(self.git("rev-parse", "origin/main"), self.git("rev-parse", "HEAD", cwd=review))
+        return result, head
+
+    def test_orch_gate_passes_the_gate_inputs_from_the_review_worktree(self):
+        _, head = self.gate()
+        self.assertEqual("require-crit-review\n", (self.calls / "make.log").read_text())
+        self.assertEqual(
+            str(self.repo / ".claude/worktrees/orchestrator-review"), (self.calls / "make-cwd").read_text().strip()
+        )
+        env = dict(line.split("=", 1) for line in (self.calls / "make-env").read_text().splitlines() if "=" in line)
+        v = ".orchestration/validation/t-a01"
+        self.assertEqual(
+            {
+                "ACCEPTANCE_EVIDENCE": ".orchestration/acceptance/t-a01.md",
+                "AUDIT_EVIDENCE": f"{v}-audit-{head[:7]}.md",
+                "PR_FEEDBACK_EVIDENCE": f"{v}-pr-feedback.json",
+                "REVIEW_EVIDENCE": f"{v}-review-receipt.md",
+                "AGENT_REVIEWED": "1",
+                "BASE": "origin/main",
+            },
+            {
+                k: env.get(k)
+                for k in (
+                    "ACCEPTANCE_EVIDENCE",
+                    "AUDIT_EVIDENCE",
+                    "PR_FEEDBACK_EVIDENCE",
+                    "REVIEW_EVIDENCE",
+                    "AGENT_REVIEWED",
+                    "BASE",
+                )
+            },
+        )
+        self.assertNotIn("AUDIT_DISPOSITIONS", env)
+
+    def test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree(self):
+        (self.calls / "make-fails").write_text("")
+        self.assertIn("gate rc=2", self.gate(code=2)[0].stdout)
+
+    def test_orch_gate_refuses_a_sweep_of_another_pr_before_the_review_worktree_moves(self):
+        self.assertIn("is not the sweep of PR 9", self.gate(code=2, pr=8)[0].stderr)
+        self.assertFalse((self.calls / "make.log").exists())
 
 
 if __name__ == "__main__":

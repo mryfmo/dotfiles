@@ -1,0 +1,68 @@
+# Report: dotfiles-T128-orchestrator-tools-a03
+
+- Seat: `claude-standard-dot-a003` in `.claude/worktrees/worker-c`, branch `tools/orchestrator-scripts`, PR #336, continued from a01 amendment 1's head `5ec05d8d`. a03 is a01's INV-6 reset (`reset_of: [dotfiles-T128-orchestrator-tools-a01]`) after thread 4254494999.
+- Task file sha256 `b7348b8a…` matches the TASK's `task_sha256`. It is copied byte-identical in `a3b71527` to `.orchestration/dotfiles-T128-orchestrator-tools-a03/task.md`. The a01 copy stays at amendment 1 (`91eb1ebe…`, unchanged since `2dddff84`) as the task says (validation §1).
+
+## The delta
+
+a03 is a01 amendment 1 plus one threat row: `dispatch.sh`'s acceptance-record path (it reads the record's JSON block, reads the bus marker through `history.sh`, and rewrites the `dispatch` list after the send), closed by `tests/unit/test_orchestrator_tools.py::test_dispatch_records_the_sent_line_with_its_read_marker`. As the task's Completion expects, the code is unchanged since `5ec05d8d` (§1), and this head adds only the task copy and this evidence.
+
+- All five closed rows name a test present in this head (§2).
+- The new row's listed controls are in the code at the lines §3 prints:
+  - the record is an argument (`record=${6:-}`);
+  - the block is read with `object_pairs_hook=refuse` (a duplicate key refuses);
+  - only the `dispatch` list is touched (`setdefault("dispatch", [])`);
+  - the file is written whole with `sort_keys=True, indent=2`;
+  - the marker is read team-wide through `history.sh <team> "" 100000`.
+- Its closing test covers the pre-send refusal of a malformed record, the prose kept byte for byte, the team-wide read, a read and an unread marker, a prose-only record, and only a row this send created being recorded. The record mutants D6 to D9, D12 and D13 each fail it (§5).
+
+## Results
+
+9 tests OK; the counters, boundary and docs modules 77 OK; shfmt (`-i 4 -sr`, the CI form), shellcheck and ruff clean; 27 mutants, 27 failures (§4, §5). Size (§6): 6 files outside `.orchestration/`; added lines outside and under `tests/`: 311 and 316 (caps 500 and 1000).
+
+## Bot threads
+
+The ten threads of the a01 phase stand as a01's report tables them: nine `fixed:` (`e6f2bdc0`, `2dddff84`, `17d3735d`, `0a5ae302` twice, `b80b03ee` three times, `77e75595`). 4254494999 is answered by this task's threat row, `fixed:a3b71527` (the a03 task copy that carries it). The worker resolves no thread. The CI and the Bot on the a03 head are in the RESULT and in the main-checkout copy of this report.
+
+## Not done, or outside scope
+
+No code change, as the task expects. Understand-Anything hook: did not fire. plan-mode-used: no.
+
+## CompactionDB
+
+`memory add` printed `7a16273b-e91b-450e-abcd-de070e344d08` (§6).
+
+cost: n/a
+
+## Fix round 1 (`9496c734`)
+
+On head `58ecd753` (validation §7), Bot review 5498865497:
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4254771302 (P1, `dispatch.sh:94`) | the field grammar `^([a-z_]+)_sha256=` skipped names with digits (`a02_expected_sha256=`), so such a hash went unchecked | `fixed:9496c734`: any name before `_sha256=` (`^([^=]+)_sha256=`) is checked like the rest; a new case in `test_dispatch_refuses_malformed_lines` (mutant D15) |
+| 4254771284 (P2, `three-repeat.sh:40`) | a slug such as `--help` passes `^[a-z0-9-]+$` and reached the CompactionDB CLI as an option | `fixed:9496c734`: `memory search -- <class>`. The real CLI searches `--help` as a query after `--` (§7), and the slug grammar stays the gate's. The closed-row test asserts the argv (mutant T6) |
+| 4254771296 (P2, `regime-counters.sh:132`) | a stale or copied record's ledger was trusted without its `task` identity | `fixed:9496c734`: the block counts only when its `task` is the counted task; another task's record falls back to the title detector (mutant R4) |
+
+Results (§7): 9 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 30 mutants, 30 failures. Size: added lines outside and under `tests/`: 313 and 336 (caps 500 and 1000).
+
+## Fix round 2 (`6cd491f5`)
+
+On head `4fc6040f` (validation §8): all `test` jobs passed. Bot review 5498947497 found two P2s and no P1. Both are fixed, because the second guards gate evidence against loss:
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4254844587 (P2, `dispatch.sh:159`) | a record of another task took this line's dispatch | `fixed:6cd491f5`: a record whose `task` is not the line's `task_id` is refused before the send (mutant D16) |
+| 4254844595 (P2, `dispatch.sh:173`) | the in-place `write_text` after the send could leave the record truncated | `fixed:6cd491f5`: a temporary file in the record's directory, `fsync`, `os.replace` (mode copied; the temporary file is removed on failure). The record test asserts a new inode and no leftover file (mutant D17) |
+
+Results (§8): 9 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 32 mutants, 32 failures. Size: added lines outside and under `tests/`: 334 and 346 (caps 500 and 1000).
+
+## Revise round 1 with amendment 1 (ACCEPTANCE 05:06:44Z; amendment TASK 05:16:22Z, sha256 `ef3b2646…`)
+
+The revise answers thread 4254893065 (P2) on `c8fb09b0`: a TASK, ACCEPTANCE or PING without `task_id=` was sent and, with a record, skipped the association check. Amendment 1 adds the threat row for that path and names its test. At the orchestrator's request (PONG 05:07:59Z) the fix, the test and the task copy travel in one push and one RESULT.
+
+- `6e1e834d`: `dispatch.sh` refuses a line whose `task_id=` is missing, empty or repeated, exit 1, before any hash or record work. `test_dispatch_refuses_a_line_without_a_task_id`, the closed-row name, covers all three with a record given; the stub records no call and the record is unchanged. Mutant D18 (the check removed) fails it.
+- `.orchestration/dotfiles-T128-orchestrator-tools-a03/revise.yaml`: `round: 1`, `previous_head: c8fb09b0…`, and the check `tests/unit/test_orchestrator_tools.py::OrchestratorToolsTest::test_dispatch_refuses_a_line_without_a_task_id`.
+- `88e8209c`: the task copy, recommitted byte-identical at amendment 1. All six closed rows name a test in this head (validation §10).
+
+Results (§10): 10 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 33 mutants, 33 failures. Size: added lines outside and under `tests/`: 340 and 364 (caps 500 and 1000).

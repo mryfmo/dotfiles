@@ -90,6 +90,9 @@ mistakes:
   - id: M-20261012-28
     corrections: [C-26]
     status: open
+  - id: M-20261012-29
+    corrections: [C-28]
+    status: open
 corrections:
   - id: C-1
     closes: [M-20261012-1]
@@ -198,4 +201,8 @@ corrections:
   - id: C-27
     closes: [M-20261012-27]
     mechanism: ['script:amend-sweep.sh (scratchpad; T718 a02 candidate)', 'rule:review-task (the round note pastes the sweep output)']
+    status: "pending"
+  - id: C-28
+    closes: [M-20261012-29]
+    mechanism: ['rule:amend-review-template#behaviour-rows', 'validator:task-consistency-check#C7-effects (T704, proposed)']
     status: "pending"

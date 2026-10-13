@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-orchestrator-tools-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 30
+permission_gated_commands: 51
 ---
 
 # Sandbox record: dotfiles-T128-orchestrator-tools-a01
@@ -23,3 +23,17 @@ permission_gated_commands: 30
 | 1 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a01 …` | `agmsg-dispatch` |
 
 One sandboxed call ran the real `agmsg-dispatch` by mistake (report, fix round 2); it stopped at the pane check and sent nothing.
+
+## Amendment 1 (TASK 03:13:58Z to the RESULT)
+
+Inside the sandbox: the edits, the tests, shfmt, shellcheck, ruff, the mutation proofs, the history.sh and self-rename reads, the PONG question (`agmsg-dispatch` runs through excludedCommands), and the commits. 21 more calls ran with `dangerouslyDisableSandbox`, for a total of 51:
+
+| Calls | Command | Step 4 case |
+|--:|---|---|
+| 1 | main-checkout `memory add` | main-checkout `memory add` |
+| 3 | the HTTPS pushes of `374fc171`, `e707c764`, `5ec05d8d` | `git push` |
+| 6 | Bot waits and `gh pr checks 336 --watch`, background, exit status joined (three heads) | `gh` |
+| 9 | reading Bot comments, check runs, the failed shfmt jobs and their steps, writing §13's to §15's GitHub excerpts to the session scratchpad, and the final recheck | `gh` |
+| 1 | the masked copy of the five evidence files to the main checkout | artifact copy with the repository masker |
+| 1 | `agmsg-dispatch … AGMSG-RESULT …` | `agmsg-dispatch` |
+| 1 | stopping a foreground wait loop that ran past its timeout (TaskStop, no command) | none |

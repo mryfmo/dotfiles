@@ -6,10 +6,14 @@
 #   <pr-worktree> rev-parse HEAD`. From the checkout this script lives in, it requires the task's sweep JSON (whose
 #   `pr` must be <pr>), the audit of this head and its `.last.md`, the review receipt, the crit JSON and the
 #   acceptance record, all under `.orchestration/`, before it checks the clean review worktree
-#   `.claude/worktrees/orchestrator-review` out at the head. It copies them in and runs `make require-crit-review`
-#   there with exactly the gate's inputs: AUDIT_EVIDENCE, ACCEPTANCE_EVIDENCE, PR_FEEDBACK_EVIDENCE,
-#   AGENT_REVIEWED=1, REVIEW_EVIDENCE and BASE=origin/main, the retired AUDIT_DISPOSITIONS unset. The review
-#   worktree is restored to origin/main whatever the gate says.
+#   `.claude/worktrees/orchestrator-review` out at the head; a head that tracks a symlink under `.orchestration`
+#   is refused, so no copy follows a link out of the worktree. It copies them in and runs, with the review worktree
+#   as its working tree, the gate `make require-crit-review` runs, but this checkout's copy: the head's Makefile
+#   and gate are PR-controlled (PR #350 thread 4265190252), so `scripts/require-crit-review.py` and the validator
+#   it loads must equal origin/main's here. The gate gets exactly its inputs: AUDIT_EVIDENCE, ACCEPTANCE_EVIDENCE,
+#   PR_FEEDBACK_EVIDENCE, AGENT_REVIEWED=1, REVIEW_EVIDENCE and `--base origin/main`, with the retired
+#   AUDIT_DISPOSITIONS and the overrides CRIT_REVIEW and CRIT_REVIEWED unset. The review worktree is restored to
+#   origin/main whatever the gate says.
 # @arg $1 string Task id.
 # @arg $2 path The PR's checkout (its HEAD is the gated head).
 # @arg $3 int PR number.
@@ -39,10 +43,14 @@ sweep="${v}/${task}-pr-feedback.json" audit="${v}/${task}-audit-${head:0:7}.md"
 record=".orchestration/acceptance/${task}.md" receipt="${v}/${task}-review-receipt.md"
 evidence=("${sweep}" "${audit}" "${audit}.last.md" "${receipt}" "${v}/${task}-crit.json" "${record}")
 cd -- "${root}"
+git diff --quiet origin/main -- scripts/require-crit-review.py scripts/validate-agent-assets.py ||
+    refuse "the gate here differs from origin/main's"
 for f in "${evidence[@]}"; do
     [[ -f ${f} ]] || refuse "${f} is missing"
 done
 [[ $(jq -r .pr "${sweep}") == "${pr}" ]] || refuse "${sweep} is not the sweep of PR ${pr}"
+[[ -z $(git ls-tree -r "${head}" -- .orchestration | awk '$1 == "120000"') ]] ||
+    refuse "${head:0:7} tracks a symlink under .orchestration (PR #350 thread 4265190259)"
 [[ -z $(git -C "${review}" status --porcelain --untracked-files=all) ]] || refuse "the review worktree is not clean"
 git -C "${review}" checkout -q --detach "${head}"
 for f in "${evidence[@]}"; do
@@ -53,9 +61,10 @@ rc=0
 (
     # errexit is off left of ||, so a failed cd exits here instead of gating another tree.
     cd -- "${review}" || exit 2
-    unset AUDIT_DISPOSITIONS
+    # CRIT_REVIEW=off would skip the gate and CRIT_REVIEWED=1 would swap its review marker (thread 4265190267).
+    unset AUDIT_DISPOSITIONS CRIT_REVIEW CRIT_REVIEWED
     AUDIT_EVIDENCE="${audit}" ACCEPTANCE_EVIDENCE="${record}" PR_FEEDBACK_EVIDENCE="${sweep}" AGENT_REVIEWED=1 \
-        REVIEW_EVIDENCE="${receipt}" BASE=origin/main make require-crit-review
+        REVIEW_EVIDENCE="${receipt}" uv run --no-project python -I "${root}/scripts/require-crit-review.py" --base origin/main
 ) || rc=$?
 git -C "${review}" clean -fdq -- .orchestration
 git -C "${review}" checkout -qf --detach origin/main

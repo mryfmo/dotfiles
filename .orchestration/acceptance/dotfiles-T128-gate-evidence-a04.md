@@ -45,3 +45,26 @@ audit:60d152a:1	acceptance-order
 
 - 05:4xZ gate rerun on `60d152a1` refused by its precondition (`review worktree not clean`: the audit wrapper's lineage copy `…-audit-2231a4f.md.last.md` was left in the review worktree); cleaned with `git clean` on that one path; gate, merge, ff and update-branch #329 re-run.
 - 05:50:15Z PR #340 merged: squash `00943c6a` on main, bound to the audited head `60d152a1` (gate rc=0 after the review-worktree clean); main fast-forwarded. `gh pr update-branch 329` → head `21badcd7` (now carries the fixtures; CI and a Bot round follow); #329 integrates after T703 (plan 012) with a final update-branch before its gate.
+
+## Ledger (machine rows id<TAB>class; the lineage a01 → a04 on PR #329, classes assigned from the thread titles at 13:42Z; advisory rows, if any, go under the owner heading below)
+
+4248232955	acceptance-record-binding
+4248232964	acceptance-record-binding
+4248232976	threat-row-missing
+4248232988	acceptance-dispositions
+4248232998	scope
+4248233012	search-command-scan
+4248697658	search-command-scan
+4248697668	hand-parser
+4248934816	input-validation
+4248934830	search-command-scan
+4249544748	hand-parser
+4249544762	acceptance-record-binding
+4249544794	hand-parser
+4250238714	acceptance-record-binding
+4250238721	tool-environment
+4250238729	input-validation
+4254092805	ledger-completeness
+4254525594	input-validation
+4254525603	acceptance-record-binding
+4254731145	fixture-missing

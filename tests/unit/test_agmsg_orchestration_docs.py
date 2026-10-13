@@ -277,9 +277,12 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "the premises hold",
             "`allowed_files` covers every touch point that grep finds",
             # Plan 006 B0: design v20 removed contract PRs, so the check names the implementing_tasks entry;
-            # thread 4247933561: a task without an `invariants` key (a docs or review task) needs no entry.
+            # thread 4247933561: a task without an `invariants` key (a docs or review task) needs no entry;
+            # thread 4257278283: matching ids is not enough, so each sentence is compared with the design's.
             "one invariant check (for a task that carries an `invariants` key: the task id maps to its "
-            "`implementing_tasks` entry and the invariant ids match; a task without the key needs no entry)",
+            "`implementing_tasks` entry, the invariant ids match, and each invariant's sentence equals the design's "
+            "byte-for-byte, the design read from main (INV-2), checked by hand in the review until a checker lands; "
+            "a task without the key needs no entry)",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
@@ -520,15 +523,21 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         for token in (
             "Every dispatch (TASK, ACCEPTANCE, PING) is recorded in the current acceptance record under a "
             "`dispatch:` key as the bus line with its read marker; a seat is reported as working only from such a "
-            "line, and after a context compaction the open TASK list is re-derived from a complete bus read, never "
-            "from a default-limited one.",
-            # Threads 4248319936 and 4249303426: the clock runs from the seat's latest event for the task.
-            "A seat silent for thirty minutes since its latest bus event for the task (INV-10's figure) gets a bus "
-            "read, then a PING; a longer silent wait is never the answer.",
+            # The local review of 7771082f: the merged bus-read.sh refuses a read at its limit; nothing reads all.
+            "line, and after a context compaction the open TASK list is re-derived from a bus read that is refused "
+            "when it reaches its limit (`bus-read.sh` exits when the history reaches `BUS_READ_LIMIT`; the "
+            "orchestrator raises the limit and reads again), never from a default-limited one and never from a read "
+            "whose truncation went unnoticed.",
+            # Threads 4248319936 and 4249303426: the clock runs from the seat's latest event for the task;
+            # thread 4257278271: INV-10's idle figure is 20 minutes, its 30 minutes the first-push deadline.
+            "A seated worker idle for 20 minutes since its latest bus event for the task while a dispatchable task "
+            "exists (INV-10's idle figure; its 30 minutes is the first-push deadline) gets a bus read, then a PING; "
+            "a longer silent wait is never the answer.",
             # Thread 4249303413: history.sh shows the latest 20 rows unless given a limit.
-            "Once plan 007 T718 lands, `scripts/orchestrator/dispatch.sh` writes the line and "
-            "`scripts/orchestrator/bus-read.sh` performs the complete read and the silence check; until then the "
-            "orchestrator runs `history.sh <team> --limit 1000` and pastes.",
+            "`scripts/orchestrator/dispatch.sh` writes the line and `scripts/orchestrator/bus-read.sh` performs the "
+            "read and prints the minutes since each open task's latest event (both on main since a03c1daa, plan 007 "
+            "T718); the orchestrator applies the 20-minute figure to the minutes the script prints (the script's own "
+            "silence flag still uses 30 minutes, a recorded residual of the tools lineage).",
         ):
             with self.subTest(token=token[:40]):
                 self.assertIn(token, step)
@@ -536,6 +545,8 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "expected duration",
             "the bus line `history.sh <team>` prints",
             "no bus event from its seat since",
+            "complete bus read",
+            "silent for thirty minutes",
         ):
             with self.subTest(stale=stale):
                 self.assertNotIn(stale, step)
@@ -591,8 +602,11 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "new or renamed scripts, metadata separators), carried by the declared test module's row where that is "
             "where the control acts, and one row per orchestrator effect from the fixed list (forced removal, merge, "
             # Thread 4248711371: C4 is not on main yet, so the sentence names its landing condition.
-            "update-branch); C4 of the task-consistency check (plan 007 T704) verifies the path half once it lands, "
-            "and the task-file review checks it by hand until then.",
+            # Thread 4257278276: an executed wildcard entry gets a row per changed file; a data wildcard keeps one.
+            "update-branch); under a wildcard `allowed_files` entry whose files are executed or applied (scripts, "
+            "workflows, hooks, settings, the rules seats follow), one row per concrete file the PR changes; a "
+            "wildcard over test fixtures or other data files keeps one row; C4 of the task-consistency check (plan "
+            "007 T704) verifies the path half once it lands, and the task-file review checks it by hand until then.",
             bullet,
         )
         self.assertNotIn("C4 verifies the path half before dispatch", bullet)

@@ -1,0 +1,8 @@
+# Learning triage: dotfiles-T128-orchestrator-tools-a04
+
+These are candidates only; nothing is promoted. The candidates of a01 and a03 stand (`.orchestration/dotfiles-T128-orchestrator-tools-a01/learning.md`, `.orchestration/dotfiles-T128-orchestrator-tools-a03/learning.md`).
+
+1. [memory:decision] A tool that restates another component's rule takes that rule's shape, not a summary of it. `bus-read.sh` had listed closing statuses and taken any member's RESULT. The stop gate binds every closer to the opener's two endpoints and closes on any ACCEPTANCE but `revise`. Two Bot threads on one line (4255494133, 4255494139) came from that gap, and a status list falls behind as soon as a new status (`closed-historical`, `hold`) is used.
+2. [memory:failure] Check every precondition of a side effect before the step that cannot be undone. `dispatch.sh` sent first and only then found that `mkstemp` could not write the record (the local review of `0d199475`). The record now has to be an existing regular file, writable in a writable directory, before the send.
+3. [memory:decision] A count read from a CLI with a default row limit is a count of at most that limit. `memory search` returns 30 rows unless told otherwise, so three-repeat.sh passes `--limit 1000` and prints `(capped)` when the count reaches it (thread 4255494137).
+4. [memory:failure] Inside the Claude sandbox, `mise x` run from a worktree fails: it cannot link the worktree into `~/.local/state/mise/trusted-configs` (`Operation not permitted`). Run `mise x shfmt@3.14.1 -- shfmt …` from `$TMPDIR` with absolute paths; the formatter is the same.

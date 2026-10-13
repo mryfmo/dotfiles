@@ -31,14 +31,13 @@ FIXED_DISPOSITION = re.compile(r"fixed:(?P<commit>[0-9a-f]{7,40})")
 EVIDENCE_DELIMITER = "; evidence="
 DISPOSITION_GRAMMAR = "fixed:<commit> or not-applicable:<reason>; evidence=<command>"
 FAILURE_REASON_MIN_CHARS = 20
-# The acceptance record's YAML front matter (the prose after it is not read).
+# The acceptance record's JSON block between its first two --- lines (the prose after it is not read).
 RECORD_FORMAT = 1
 LEDGER_ID = re.compile(r"\d{10,}|audit:[0-9a-f]{7}:\d+")
 CLASS_SLUG = re.compile(r"[a-z0-9-]+")
 AUDIT_FINDING_KEYS = {"n", "reason", "evidence"}
 S6_CLASS_LIMIT = 3
 MISTAKE_RECORDS = ".orchestration/learning/mistakes/"
-SUBPROCESS_TIMEOUT = 120
 # herdr-agents --audit names and concludes the task-level audit this way.
 AUDIT_NAME = re.compile(r"(?P<task>.+)-audit-(?P<sha>[0-9a-f]{7,40})\.md")
 AUDIT_VERDICT = re.compile(r"\s*Verdict: (correct|incorrect|blocked)\s*")
@@ -720,75 +719,35 @@ def audit_findings_errors(record: dict | None, findings: int) -> list[str]:
     return errors
 
 
-# PyYAML runs in a uv-provided interpreter: the gate's own python3 has no third-party packages. `-I` and a temporary
-# cwd keep a PR-planted yaml.py off sys.path, and --no-config ignores a PR-planted uv.toml.
-# A YAML error is reported as data (exit 0), so only a uv or interpreter failure retries the run online.
-# The loader is yaml.SafeLoader that also refuses a duplicate mapping key, which safe_load would silently overwrite.
-YAML_TO_JSON = (
-    "import json, sys, yaml\n"
-    "class Loader(yaml.SafeLoader):\n    pass\n"
-    "def mapping(loader, node, deep=False):\n"
-    "    keys = [loader.construct_object(key, deep=deep) for key, _ in node.value]\n"
-    "    duplicates = sorted({str(key) for key in keys if keys.count(key) > 1})\n"
-    "    if duplicates:\n"
-    "        raise yaml.constructor.ConstructorError(None, None, 'duplicate key(s): ' + ', '.join(duplicates), node.start_mark)\n"
-    "    return yaml.SafeLoader.construct_mapping(loader, node, deep=deep)\n"
-    "Loader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, mapping)\n"
-    "try:\n    out = {'data': yaml.load(sys.stdin.read(), Loader=Loader)}\n"
-    "except yaml.YAMLError as error:\n    out = {'error': ' '.join(str(error).split())}\n"
-    "print(json.dumps(out, default=str))"
-)
-YAML_COMMAND = [
-    "uv",
-    "run",
-    "--no-config",
-    "--no-project",
-    "--quiet",
-    "--with",
-    "pyyaml",
-    "python",
-    "-I",
-    "-c",
-    YAML_TO_JSON,
-]
+def refuse_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    """json.loads keeps the last of two equal keys; the record's reader refuses them instead."""
+    seen: set[str] = set()
+    for key, _ in pairs:
+        if key in seen:
+            raise ValueError(f"acceptance record: duplicate key {key}")
+        seen.add(key)
+    return dict(pairs)
 
 
-def load_yaml(text: str) -> tuple[object, str | None]:
-    """yaml.safe_load text (from the uv cache first, as scripts/check-regime-boundary.sh does)."""
-    detail = "no output"
-    with tempfile.TemporaryDirectory() as cwd:
-        for command in ([*YAML_COMMAND[:2], "--offline", *YAML_COMMAND[2:]], YAML_COMMAND):
-            try:
-                result = subprocess.run(
-                    command,
-                    input=text,
-                    cwd=cwd,
-                    capture_output=True,
-                    text=True,
-                    timeout=SUBPROCESS_TIMEOUT,
-                    check=False,
-                )
-            except (OSError, subprocess.TimeoutExpired) as error:
-                detail = str(error)
-                continue
-            if result.returncode == 0:
-                out = json.loads(result.stdout)
-                return (None, out["error"]) if "error" in out else (out["data"], None)
-            detail = (result.stderr.strip().splitlines() or ["no output"])[-1]
-    return None, detail
+def refuse_non_finite(name: str) -> object:
+    """json.loads accepts NaN and Infinity by default; a record field never needs one."""
+    raise ValueError("acceptance record: non-finite number")
 
 
 def read_acceptance_record(path: Path) -> tuple[dict | None, str | None]:
-    """Load the record's YAML front matter (the idiom of validate-agent-assets.py's read_frontmatter)."""
+    """Load the record's JSON block between its first two --- lines with the standard library only."""
     text = path.read_text()
     end = text.find("\n---", 4)
     if not text.startswith("---\n") or end == -1:
-        return None, "must start with a YAML front matter between --- lines"
-    data, error = load_yaml(text[4:end])
-    if error is not None:
-        return None, f"front matter could not be loaded with yaml.safe_load: {error}"
+        return None, "acceptance record must start with a JSON block between --- lines"
+    try:
+        data = json.loads(text[4:end], object_pairs_hook=refuse_duplicate_keys, parse_constant=refuse_non_finite)
+    except json.JSONDecodeError as error:
+        return None, f"acceptance record: the block between the first two --- lines is not JSON: {error}"
+    except ValueError as error:
+        return None, str(error)
     if not isinstance(data, dict):
-        return None, "front matter must be a mapping"
+        return None, "acceptance record: the block must be one JSON object"
     return data, None
 
 
@@ -801,24 +760,28 @@ def is_text(value: object) -> bool:
 
 
 def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[str]:
-    """Check the front matter field by field: format, task, head, pr, ledger, searches, audit_findings."""
+    """Check the identity triple (task, head, pr) first, then format, ledger, searches and audit_findings."""
     errors: list[str] = []
-    if not is_int(record.get("format")) or record["format"] != RECORD_FORMAT:
-        errors.append(f"format must be {RECORD_FORMAT}")
     if record.get("task") != task:
         errors.append(f"task must be {task!r}, the task id the file name carries")
     if record.get("head") != head:
         errors.append(f"acceptance record head {record.get('head')} is not HEAD {head}")
-    if not is_int(record.get("pr")) or record["pr"] <= 0:
-        errors.append("pr must be the pull request number")
-    elif pr is not None and record["pr"] != pr:
-        errors.append(f"pr must be {pr}, the pull request {PR_FEEDBACK_ENV} names, not {record['pr']}")
+    if not is_int(record.get("pr")) or record["pr"] <= 0 or (pr is not None and record["pr"] != pr):
+        errors.append(
+            f"acceptance record pr {record.get('pr')} is not the swept pr {pr}"
+            if pr is not None
+            else "acceptance record pr must be the pull request number"
+        )
+    if errors:
+        return errors
+    if not is_int(record.get("format")) or record["format"] != RECORD_FORMAT:
+        errors.append(f"format must be {RECORD_FORMAT}")
     ledger = record.get("ledger")
     if not isinstance(ledger, list):
         errors.append("ledger must be a list of {id, class} rows")
     else:
         for index, row in enumerate(ledger):
-            # YAML reads an unquoted thread id as an int; the id is its text either way.
+            # A thread id may be a JSON number or a string; the id is its text either way.
             if (
                 not isinstance(row, dict)
                 or set(row) != {"id", "class"}
@@ -879,7 +842,7 @@ def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[
 def acceptance_errors(
     root: Path, required: bool, task: str | None, head: str, pr: object = None
 ) -> tuple[list[str], dict | None]:
-    """The acceptance-record contract (plan 011 option F): a YAML front matter bound to the task and to HEAD."""
+    """The acceptance-record contract (plan 013 option A′): a JSON block bound to the task, HEAD and the swept PR."""
     value = os.environ.get(ACCEPTANCE_ENV, "").strip()
     if not value:
         if required:
@@ -920,23 +883,21 @@ def acceptance_errors(
 
 
 def mistake_records(root: Path, slug: str) -> set[str] | str:
-    """Recompute S6's records search; the gate reads its result, never pasted command text."""
-    try:
-        # No shell: the slug is [a-z0-9-] and reaches grep as one argument.
-        result = subprocess.run(
-            ["grep", "-rl", f"classes:.*{slug}", MISTAKE_RECORDS],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            timeout=SUBPROCESS_TIMEOUT,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired) as error:
-        return f"the records search could not run: {error}"
-    if result.returncode not in (0, 1):
-        detail = (result.stderr.strip().splitlines() or ["no output"])[-1]
-        return f"the records search failed (grep exit {result.returncode}): {detail}"
-    return {Path(line).name for line in result.stdout.splitlines() if line.strip()}
+    """Recompute S6's records search with pathlib: the files with a `classes:` line naming the class.
+
+    The same match as `grep -rl 'classes:.*<class>'`, without a subprocess; the gate reads its result, never
+    pasted command text.
+    """
+    directory = root / MISTAKE_RECORDS
+    if not directory.is_dir():
+        return f"the records directory {MISTAKE_RECORDS} is missing"
+    found: set[str] = set()
+    for path in directory.rglob("*"):
+        if path.is_file() and not path.is_symlink():
+            lines = path.read_text(errors="replace").splitlines()
+            if any(line.startswith("classes:") and slug in line[len("classes:") :] for line in lines):
+                found.add(path.name)
+    return found
 
 
 def evidence_field(text: str, field: str) -> str | None:

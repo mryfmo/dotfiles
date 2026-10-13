@@ -18,8 +18,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 GUARD = ROOT / "scripts/require-crit-review.py"
 FIXTURES = ROOT / "tests/fixtures/gate-evidence"
-# The gate parses the record with `uv run --with pyyaml`; the fake HOME keeps the real uv cache.
-UV_CACHE = subprocess.run(["uv", "cache", "dir"], capture_output=True, text=True, check=True).stdout.strip()
 
 
 def run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -410,17 +408,17 @@ class ReviewGuardTest(unittest.TestCase):
     def write_record(self, fixture: str | None = None, *, text: str | None = None, **fields: object) -> str:
         """Write .orchestration/acceptance/test.md: a fixture, raw text, or a front matter of fields.
 
-        Fields default to a passing record with no ledger; a field set to None is left out (JSON is YAML).
-        `head: HEAD` is replaced with this repository's HEAD.
+        Fields default to a passing record with no ledger; a field set to None is left out.
+        `"head": "HEAD"` is replaced with this repository's HEAD.
         """
         if fixture is not None:
             text = (FIXTURES / fixture).read_text()
         elif text is None:
             data = {"format": 1, "task": "test", "head": "HEAD", "pr": 1, "ledger": [], "searches": [], **fields}
-            lines = "".join(f"{key}: {json.dumps(value)}\n" for key, value in data.items() if value is not None)
-            text = f"---\n{lines}---\n\n# prose\n"
+            block = json.dumps({key: value for key, value in data.items() if value is not None}, indent=2)
+            text = f"---\n{block}\n---\n\n# prose\n"
         head = self.head_commit()
-        text = text.replace("head: HEAD\n", f"head: {head}\n").replace('head: "HEAD"\n', f"head: {head}\n")
+        text = text.replace('"head": "HEAD"', f'"head": "{head}"')
         self.write_review_file(".orchestration/acceptance/test.md", text)
         return ".orchestration/acceptance/test.md"
 
@@ -431,7 +429,6 @@ class ReviewGuardTest(unittest.TestCase):
             "FAKE_COLLECTED": str(self.collected),
             "FAKE_PR_METADATA": str(self.metadata),
             "PATH": f"{self.collected_dir}{os.pathsep}{os.environ['PATH']}",
-            "UV_CACHE_DIR": UV_CACHE,
         }
         if "ACCEPTANCE_EVIDENCE" not in (env or {}):
             defaults["ACCEPTANCE_EVIDENCE"] = self.write_record("acceptance-s6-present.md")
@@ -1318,9 +1315,13 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
 
     def test_s6_searches_entry_must_equal_the_recomputed_records_search(self) -> None:
-        # `grep -rl 'classes:.*scope'` finds the base's M-20261012-3.md (classes: [evidence, class-count-scope]).
+        # The search finds the base's M-20261012-3.md (classes: [evidence, class-count-scope]); only a line that
+        # begins with `classes:` counts, so M-20261012-9.md, which names `scope` elsewhere, is not found.
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
+        self.write_review_file(
+            ".orchestration/learning/mistakes/M-20261012-9.md", "---\nartifact: a scope review\nclasses: [other]\n---\n"
+        )
 
         def ledger(cls: str) -> list[dict]:
             return [{"id": f"42441288{index:02d}", "class": cls} for index in range(2)] + [
@@ -1374,7 +1375,9 @@ class ReviewGuardTest(unittest.TestCase):
         record = self.write_record(ledger=ledger("scope"), searches=[{"class": "scope", "records": []}])
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
         self.assertEqual(result.returncode, 1, result.stdout)
-        self.assertIn("S6: class scope at 3: the records search failed (grep exit 2)", result.stdout)
+        self.assertIn(
+            "S6: class scope at 3: the records directory .orchestration/learning/mistakes/ is missing", result.stdout
+        )
 
     def test_base_requires_an_acceptance_record_under_acceptance(self) -> None:
         # The threat row for the ACCEPTANCE_EVIDENCE input: its path, then each front-matter field.
@@ -1396,9 +1399,23 @@ class ReviewGuardTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn(message, result.stdout)
         for label, write, message in (
-            ("no front matter", {"text": "# prose only\n"}, "must start with a YAML front matter between --- lines"),
-            ("unloadable YAML", {"text": "---\nformat: [1\n---\n"}, "could not be loaded with yaml.safe_load"),
-            ("a list, not a mapping", {"text": "---\n- 1\n---\n"}, "front matter must be a mapping"),
+            (
+                "no block",
+                {"text": "# prose only\n"},
+                "acceptance record must start with a JSON block between --- lines",
+            ),
+            (
+                "not JSON",
+                {"text": "---\nformat: 1\n---\n"},
+                "acceptance record: the block between the first two --- lines is not JSON",
+            ),
+            (
+                "a list, not an object",
+                {"text": "---\n[1]\n---\n"},
+                "acceptance record: the block must be one JSON object",
+            ),
+            ("a non-finite number", {"fixture": "acceptance-nan.md"}, "acceptance record: non-finite number"),
+            ("a duplicate key", {"fixture": "acceptance-duplicate-key.md"}, "acceptance record: duplicate key ledger"),
             ("format", {"format": 2}, "format must be 1"),
             ("task", {"task": "other"}, "task must be 'test', the task id the file name carries"),
             (
@@ -1406,17 +1423,8 @@ class ReviewGuardTest(unittest.TestCase):
                 {"fixture": "acceptance-stale-head.md"},
                 "acceptance record head 0000000000000000000000000000000000000000 is not HEAD",
             ),
-            ("pr", {"pr": None}, "pr must be the pull request number"),
-            ("pr of another PR", {"pr": 2}, "pr must be 1, the pull request PR_FEEDBACK_EVIDENCE names, not 2"),
-            (
-                "a duplicate key",
-                {
-                    "text": "---\nformat: 1\ntask: test\nhead: HEAD\npr: 1\nsearches: []\n"
-                    "ledger: [{id: 4244128846, class: x}, {id: 4244175775, class: x}, {id: 4244175776, class: x}]\n"
-                    "ledger: []\n---\n"
-                },
-                "duplicate key(s): ledger",
-            ),
+            ("pr", {"pr": None}, "acceptance record pr None is not the swept pr 1"),
+            ("pr of another PR", {"fixture": "acceptance-wrong-pr.md"}, "acceptance record pr 2 is not the swept pr 1"),
             ("ledger id", {"ledger": [{"id": "123", "class": "scope"}]}, "ledger row 0 must be"),
             ("ledger class", {"ledger": [{"id": 4244128846, "class": "Scope;x"}]}, "ledger row 0 must be"),
             ("searches records", {"searches": [{"class": "scope", "records": "M-1.md"}]}, "searches entry 0 must be"),
@@ -1437,16 +1445,6 @@ class ReviewGuardTest(unittest.TestCase):
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn(message, result.stdout)
-        # A PR-planted yaml.py or uv.toml never reaches the record's parser (`python -I`, a temporary cwd, --no-config).
-        (self.temp_dir / "yaml.py").write_text(
-            "open('planted-yaml-ran', 'w').write('x')\nsafe_load = lambda text: {}\n"
-        )
-        (self.temp_dir / "uv.toml").write_text('index-url = "http://127.0.0.1:9/simple"\n')
-        record = self.write_record("acceptance-s6-present.md")
-        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
-        # The record passes; the planted files themselves are a broad diff, which the audit step then asks about.
-        self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout + result.stderr)
-        self.assertFalse((self.temp_dir / "planted-yaml-ran").exists())
 
     def test_acceptance_record_prose_is_not_read(self) -> None:
         # Only the front matter is read: prose that looks like a disposition or a search line is for people.
@@ -1469,6 +1467,33 @@ class ReviewGuardTest(unittest.TestCase):
             f"acceptance record head 0000000000000000000000000000000000000000 is not HEAD {self.head_commit()}",
             result.stdout,
         )
+
+    def test_acceptance_record_pr_must_be_the_swept_pr(self) -> None:
+        # Thread 4250238714: the identity triple binds the record to the pull request the sweep collected.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-wrong-pr.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("acceptance record pr 2 is not the swept pr 1", result.stdout)
+
+    def test_acceptance_record_refuses_a_duplicate_key(self) -> None:
+        # Thread 4250238729: plain json.loads keeps the last `ledger`, so the three rows above it would vanish.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-duplicate-key.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("acceptance record: duplicate key ledger", result.stdout)
+
+    def test_acceptance_record_refuses_a_non_finite_number(self) -> None:
+        # json.loads accepts NaN by default; the record's reader refuses it.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-nan.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("acceptance record: non-finite number", result.stdout)
 
     def test_audit_finding_reason_may_quote_the_grammar(self) -> None:
         # Thread 4249544748: a reason is a field, so quoting `not-applicable:` in it is no disposition.

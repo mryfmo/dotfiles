@@ -1,6 +1,6 @@
 """Exercise scripts/orchestrator/{dispatch,three-repeat,bus-read}.sh with stubbed host binaries.
 
-Each script runs as a subprocess in a temporary git repository, with `agmsg-dispatch`, `shasum` and
+Each script runs as a subprocess from its copy in a temporary git repository, with `agmsg-dispatch`, `shasum` and
 `uv` stubbed on PATH and `history.sh` stubbed in the directory `AGMSG_SCRIPTS` names; every stub
 records its argv NUL-separated, so an argument is compared byte for byte.
 """
@@ -8,6 +8,7 @@ records its argv NUL-separated, so an argument is compared byte for byte.
 import hashlib
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -20,7 +21,7 @@ RECORD = 'printf \'%s\\0\' "$@" > "$CALLS/{name}"\n'
 STUBS = {
     "agmsg-dispatch": "#!/usr/bin/env bash\n" + RECORD.format(name="agmsg-dispatch"),
     "shasum": '#!/usr/bin/env python3\nimport hashlib, sys\np = sys.argv[-1]\nprint(hashlib.sha256(open(p, "rb").read()).hexdigest() + "  " + p)\n',
-    "uv": "#!/usr/bin/env bash\n" + RECORD.format(name="uv") + 'cat "$CALLS/uv-output"\n',
+    "uv": "#!/usr/bin/env bash\n" + RECORD.format(name="uv") + 'pwd -P > "$CALLS/uv-cwd"\ncat "$CALLS/uv-output"\n',
 }
 HISTORY_SH = "#!/usr/bin/env bash\n" + RECORD.format(name="history.sh") + 'cat "$CALLS/history"\n'
 
@@ -37,6 +38,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.repo = self.temp / "repo"
         self.repo.mkdir()
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        shutil.copytree(TOOLS, self.repo / "scripts/orchestrator")
         self.calls = self.temp / "calls"
         self.calls.mkdir()
         bin_dir, agmsg = self.temp / "bin", self.temp / "agmsg"
@@ -52,12 +54,12 @@ class OrchestratorToolsTest(unittest.TestCase):
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         }
 
-    def run_tool(self, name, *args, code=0, env=None):
+    def run_tool(self, name, *args, code=0, env=None, cwd=None):
         result = subprocess.run(
-            ["bash", str(TOOLS / name), *args],
+            ["bash", str(self.repo / "scripts/orchestrator" / name), *args],
             capture_output=True,
             text=True,
-            cwd=self.repo,
+            cwd=cwd or self.repo,
             env={**self.env, **(env or {})},
             timeout=30,
             check=False,
@@ -139,6 +141,25 @@ class OrchestratorToolsTest(unittest.TestCase):
             ["search: absent -> none", "compactiondb: absent -> 0 matches"],
             self.run_tool("three-repeat.sh", "absent").stdout.splitlines(),
         )
+
+    def test_scripts_read_and_run_their_own_checkout_never_the_callers(self):
+        # Thread 4253994697: a PR worktree's contextdb CLI is PR-controlled code, so the root is the script's own.
+        pr = self.temp / "pr"
+        subprocess.run(["git", "init", "-q", str(pr)], check=True)
+        (pr / ".orchestration/learning/mistakes").mkdir(parents=True)
+        (pr / ".orchestration/learning/mistakes/M-PR.md").write_text("classes: [bookkeeping]\n")
+        self.write(".orchestration/learning/mistakes/M-OWN.md", "classes: [bookkeeping]\n")
+        (self.calls / "uv-output").write_text("No matches.\n")
+        out = self.run_tool("three-repeat.sh", "bookkeeping", cwd=pr).stdout.splitlines()
+        self.assertEqual("search: bookkeeping -> M-OWN.md", out[0])
+        self.assertEqual(str(self.repo), (self.calls / "uv-cwd").read_text().strip())
+        self.write(".orchestration/tasks/t.md", "task\n")
+        self.write(
+            "line.txt",
+            f"AGMSG-PING v1 task_id=t task_file=.orchestration/tasks/t.md task_sha256={sha('task' + chr(10))}\n",
+        )
+        self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", str(self.repo / "line.txt"), cwd=pr)
+        self.assertEqual("w5:pA", self.call("agmsg-dispatch")[3])
 
     # bus-read.sh
 

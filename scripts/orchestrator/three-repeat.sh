@@ -8,8 +8,10 @@
 #   line that begins with `classes:` and contains the class (`grep -rl
 #   '^classes:.*<class>'`), printed as `search: <class> -> <basenames, sorted,
 #   or none>`. The CompactionDB search runs `uv run --no-project
-#   .claude/hooks/contextdb_cli.py memory search <class>` from the repository
-#   root with the class as one argument (no shell), and prints its match count.
+#   .claude/hooks/contextdb_cli.py memory search <class>` with the class as one
+#   argument (no shell), and prints its match count. Both run in the checkout
+#   this script lives in (`git rev-parse --show-toplevel` there), never the
+#   caller's: a PR worktree's CLI is PR-controlled code (thread 4253994697).
 # @arg $1 string Class slug.
 # @exitcode 0 Both searches ran.
 # @exitcode 1 A search failed (the search line is printed first when it ran).
@@ -18,12 +20,12 @@
 #   scripts/orchestrator/three-repeat.sh bookkeeping
 set -euo pipefail
 
-(($# == 1)) && [[ $1 =~ ^[a-z0-9-]+$ ]] || {
+if (($# != 1)) || [[ ! $1 =~ ^[a-z0-9-]+$ ]]; then
     echo "usage: three-repeat.sh <class>   (a slug of [a-z0-9-])" >&2
     exit 2
-}
+fi
 class=$1
-root="$(git rev-parse --show-toplevel)"
+root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 dir="${root}/.orchestration/learning/mistakes"
 [[ -d ${dir} ]] || {
     echo "three-repeat: ${dir} does not exist" >&2

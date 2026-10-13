@@ -6,8 +6,9 @@
 #   `<name>_sha256=<64 hex>` token is recomputed from the file its sibling
 #   token names, `<name>_file=` or else `<name>=` (`task_sha256` from
 #   `task_file=`, `design_sha256` from `design=`, `amended_task_sha256` from
-#   `amended_task=`); a relative path is read from the repository root (`git
-#   rev-parse --show-toplevel`). A missing sibling, a missing file, a malformed
+#   `amended_task=`); a relative path is read from the root of the checkout
+#   this script lives in (`git rev-parse --show-toplevel` there), never from
+#   the caller's directory. A missing sibling, a missing file, a malformed
 #   value or a mismatch exits 1 naming the field, and nothing is sent. Otherwise
 #   the line goes to `agmsg-dispatch` as one argument, byte for byte.
 # @arg $1 string agmsg team.
@@ -38,7 +39,7 @@ line="$(< "${file}")" # $( ) drops the trailing newline
     echo "dispatch: not an AGMSG-TASK, AGMSG-ACCEPTANCE or AGMSG-PING v1 line" >&2
     exit 2
 }
-root="$(git rev-parse --show-toplevel)"
+root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 
 read -ra tokens <<< "${line}"
 # @description Print the value of the first `<key>=` token, or fail.

@@ -97,3 +97,15 @@ The amendment answers threads 4253994704, 4254107312 and 4254163604 and confirms
 - **`three-repeat.sh`**: it already resolved its root from its own checkout (`e6f2bdc0`). It now also passes the CLI to `uv` by its absolute path there, which the new closed-row test asserts.
 - **Tests** carry the four closed-row names. Two-line and blank-line files move into the new TASK test, and the ACCEPTANCE case for a missing `amended_task=` remains. The new record test loads the block as the gate's contract says (standard json, duplicate keys and NaN refused, since the gate's loader is not on `main`) and covers both markers, a prose-only record and a duplicate key.
 - **Results** (§12): 9 tests OK; 26 + 51 neighbouring tests OK; shellcheck clean; 23 mutants, 23 failures. The new mutants put back the unbound TASK, skip the pre-send check, invert the marker, drop the prose, accept duplicate keys, use the caller root, or pass a relative CLI path.
+
+## Amendment 1, fix round 1 (`b80b03ee`)
+
+On head `374fc171` (validation §13): Bot review 5498425049 found two P1s and a P2, and CI's `Run shfmt` failed on a backslash-continued pipe (`test (ubuntu-24.04, client)` and `test (ubuntu-26.04, client)`). This round removes that pipe, and the CI command `shfmt -i 4 -sr -d` (v3.14.1) is clean locally on all four scripts.
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4254399805 (P1, `dispatch.sh:152`) | `history.sh <team> <agent>` renames the calling pane after the agent, so recording a dispatch would relabel the orchestrator's pane as the worker | `fixed:b80b03ee`: the marker is read team-wide, `history.sh <team> "" 100000`. `agmsg_self_rename_on_action` returns at once for an empty agent (§13 quotes it), and `bus-read.sh` already used that form. The record test asserts the history call's argv; with `${to}` put back it fails (mutant D12) |
+| 4254399807 (P2, `dispatch.sh:152`) | after a failed send, an older identical row satisfied the match and was recorded | `fixed:b80b03ee`: matching rows are counted before and after the send, and only a send that added a row is recorded; otherwise the record is unchanged and the script exits 1. The stub bus now gains a row per successful send; the test keeps an identical older row on the bus and fails a send (mutant D13) |
+| 4254399800 (P1, `dispatch.sh:87`) | `design=` with `design_file=` let `_file` win and bind a different artifact | `fixed:b80b03ee`: a line naming the file both ways is refused, exit 1 naming the field; a new case in `test_dispatch_refuses_malformed_lines` (mutant D11) |
+
+Results (§13): 9 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 26 mutants, 26 failures. Size: 6 files outside `.orchestration/`; added lines outside and under `tests/`: 295 and 310 (caps 500 and 1000).

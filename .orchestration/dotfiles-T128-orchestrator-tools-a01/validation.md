@@ -342,3 +342,101 @@ $ git log --oneline 5b6d5f24..HEAD
 0a5ae302 feat(orchestrator): record dispatches in the acceptance record and refuse an unbound TASK
 2dddff84 chore(orchestration): recommit the dotfiles-T128-orchestrator-tools-a01 task at amendment 1
 ```
+
+## 13. Amendment 1, fix round 1: CI and the Bot on `374fc171`
+
+Bot review 5498425049 of `374fc171` (03:28:16Z): two P1s and one P2 on `dispatch.sh`. CI: `Run shfmt` failed on a backslash-continued pipe that this round removes.
+
+```text
+$ gh api …/commits/374fc171…/check-runs --jq '.check_runs[]|.conclusion' | sort | uniq -c
+   2 
+   2 cancelled
+   2 failure
+   6 success
+$ gh api …/actions/jobs/<id> --jq '[.conclusion, (.steps[]|select(.conclusion=="failure")|.name)]|@tsv'   # test (ubuntu-24.04, client) and test (ubuntu-26.04, client)
+failure	Run `shfmt`
+failure	Run `shfmt`
+$ gh run view --job 115112766434 --log-failed | grep -A9 "^diff scripts/orchestrator"
+diff scripts/orchestrator/dispatch.sh.orig scripts/orchestrator/dispatch.sh
+--- scripts/orchestrator/dispatch.sh.orig
++++ scripts/orchestrator/dispatch.sh
+@@ -148,6 +148,6 @@
+ python3 -I -c "${recorder}" check "${record}" "${line}" "${from}" "${to}" < /dev/null
+ rc=0
+ agmsg-dispatch "${team}" "${from}" "${to}" "${pane}" "${line}" || rc=$?
+-"${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "${team}" "${to}" 200 \
+-    | python3 -I -c "${recorder}" append "${record}" "${line}" "${from}" "${to}"
++"${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "${team}" "${to}" 200 |
+$ gh api --paginate …/pulls/336/comments --jq '.[]|select(.in_reply_to_id == null and .original_commit_id=="374fc171…")|[.id,.path,(.original_line|tostring),(.body|split("
+")[0]|capture("!\[(?<p>P[0-3])").p)]|@tsv'
+4254399800	scripts/orchestrator/dispatch.sh	87	P1
+4254399805	scripts/orchestrator/dispatch.sh	152	P1
+4254399807	scripts/orchestrator/dispatch.sh	152	P2
+$ sed -n '30p' ~/.agents/skills/agmsg/scripts/history.sh; awk '/agmsg_self_rename_on_action\(\)/{p=1} p{n++; if(n<=3) print}' ~/.agents/skills/agmsg/scripts/lib/self-rename.sh   # an agent argument renames the caller; an empty one returns at once
+  agmsg_self_rename_on_action "$TEAM" "$AGENT"
+agmsg_self_rename_on_action() {
+  local team="${1:-}" agent="${2:-}" type="${3:-}"
+  [ -n "$team" ] && [ -n "$agent" ] || return 0
+$ uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v
+test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event ... ok
+test_bus_read_refuses_a_read_that_reaches_its_limit ... ok
+test_dispatch_passes_the_line_byte_identical ... ok
+test_dispatch_records_the_sent_line_with_its_read_marker ... ok
+test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file ... ok
+test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line ... ok
+test_dispatch_refuses_malformed_lines ... ok
+test_three_repeat_prints_the_records_search_line ... ok
+test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 2.318s
+
+OK
+$ uv run --no-project python -m unittest tests/unit/test_regime_counters.py tests/unit/test_check_regime_boundary.py tests/unit/test_agmsg_orchestration_docs.py 2>&1 | tail -n 3
+Ran 77 tests in 19.035s
+
+OK
+$ shfmt --version; shfmt -i 4 -sr -d scripts/orchestrator/*.sh scripts/regime-counters.sh; echo "shfmt exit $?"   # the CI command
+v3.14.1
+shfmt exit 0
+$ shellcheck -x scripts/orchestrator/*.sh scripts/regime-counters.sh; echo "shellcheck exit $?"
+shellcheck exit 0
+$ ruff format --config ruff.toml --check tests/unit/test_orchestrator_tools.py tests/unit/test_regime_counters.py
+2 files already formatted
+$ uv run --no-project python "$TMPDIR/mutate-am1.py" "$PWD"; git status --short
+mutant D1 mismatch check off: test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file -> rc=1 FAILED (failures=1)
+mutant D2 line word-split: test_dispatch_passes_the_line_byte_identical -> rc=1 FAILED (failures=1)
+mutant D3 multi-line check off: test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line -> rc=1 FAILED (failures=2)
+mutant D4 the $( ) read put back: test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line -> rc=1 FAILED (failures=1)
+mutant D5 TASK binding check off: test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line -> rc=1 FAILED (failures=4)
+mutant D6 record not checked before the send: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D7 read marker inverted: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D8 prose dropped: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D9 duplicate keys accepted: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D10 caller root: test_dispatch_passes_the_line_byte_identical -> rc=1 FAILED (failures=1)
+mutant D11 doubly named file accepted: test_dispatch_refuses_malformed_lines -> rc=1 FAILED (failures=1)
+mutant D12 history read with the agent: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D13 no before-count: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant T1 slug check loosened: test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout -> rc=1 FAILED (failures=2)
+mutant T2 records match unanchored: test_three_repeat_prints_the_records_search_line -> rc=1 FAILED (failures=1)
+mutant T3 class not one argument: test_three_repeat_prints_the_records_search_line -> rc=1 FAILED (failures=1)
+mutant T4 caller root: test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout -> rc=1 FAILED (failures=1)
+mutant T5 relative CLI path: test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout -> rc=1 FAILED (failures=1)
+mutant B1 revise does not reopen: test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event -> rc=1 FAILED (failures=1)
+mutant B2 withdrawn does not close: test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event -> rc=1 FAILED (failures=1)
+mutant B3 silence at sixty minutes: test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event -> rc=1 FAILED (failures=1)
+mutant B4 limit guard off: test_bus_read_refuses_a_read_that_reaches_its_limit -> rc=1 FAILED (failures=1)
+mutant B5 the --limit flag form: test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event -> rc=1 FAILED (failures=1)
+mutant R1 record mode off: test_s1_reads_the_ledger_classes_of_the_acceptance_record -> rc=1 FAILED (failures=1)
+mutant R2 title not JSON-quoted: test_s1_quotes_a_title_with_shell_metacharacters -> rc=1 FAILED (failures=1)
+mutant R3 slug check off: test_s1_reads_the_ledger_classes_of_the_acceptance_record -> rc=1 FAILED (failures=1)
+$ git diff --numstat origin/main...HEAD -- . ":!.orchestration"
+57	0	scripts/orchestrator/bus-read.sh
+165	0	scripts/orchestrator/dispatch.sh
+44	0	scripts/orchestrator/three-repeat.sh
+29	9	scripts/regime-counters.sh
+278	0	tests/unit/test_orchestrator_tools.py
+32	1	tests/unit/test_regime_counters.py
+$ git log --oneline 374fc171..HEAD
+b80b03ee fix(orchestrator): read the dispatch marker team-wide, record only this send's row, refuse a doubly named file
+```

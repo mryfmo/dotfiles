@@ -9,7 +9,7 @@
   "audit_findings":
     [
       {
-        "n": 1,
+        "n": "1",
         "reason": "the finding quotes not-applicable: without evidence; this reason is a field, not a disposition",
         "evidence": "grep -n audit_findings scripts/require-crit-review.py"
       }

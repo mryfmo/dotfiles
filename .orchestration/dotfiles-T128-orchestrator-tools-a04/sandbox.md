@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-orchestrator-tools-a04
 seat: claude-standard-dot-a003
-permission_gated_commands: 7
+permission_gated_commands: 15
 ---
 
 # Sandbox record: dotfiles-T128-orchestrator-tools-a04
@@ -13,7 +13,7 @@ permission_gated_commands: 7
   - the commits.
 - In the sandbox, `mise x` run from the worktree cannot link it into mise's trusted-configs directory (`Operation not permitted`). shfmt ran with `mise x` from `$TMPDIR`, with absolute paths. The full discover fails in the sandbox wherever a test signs a commit with the SSH key the sandbox denies (validation §4); CI is the authority there.
 
-`permission_gated_commands` counts every Bash call made with `dangerouslyDisableSandbox`, one per call. This copy was written before #1, so all seven are counted in advance; the main-checkout copy gives the final count.
+`permission_gated_commands` counts every Bash call made with `dangerouslyDisableSandbox`, one per call. This copy was written before the revise round's push, so #10 to #15 are counted in advance; the main-checkout copy gives the final count. #5 was denied at the gate and did not run.
 
 | # | Command | Step 4 case |
 |--:|---|---|
@@ -21,6 +21,14 @@ permission_gated_commands: 7
 | 2 | the HTTPS push | `git push` |
 | 3 | `gh pr checks 336 --watch` (background, exit status joined) | `gh` |
 | 4 | Bot wait from the push | `gh` |
-| 5 | reading the Bot review and the check runs of the final head | `gh` |
-| 6 | the masked copy of the five evidence files to the main checkout | artifact copy with the repository masker |
-| 7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a04 …` | `agmsg-dispatch` |
+| 5 | a `gh api` read of the Bot comments with a GraphQL thread-state query: denied at the gate, not run | `gh` |
+| 6 | the `gh api` REST read of the six Bot comment bodies | `gh` |
+| 7 | the masked copy of the five evidence files to the main checkout | artifact copy with the repository masker |
+| 8 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a04 …` | `agmsg-dispatch` |
+| 9 | `agmsg-dispatch … AGMSG-PONG v1 task_id=dotfiles-T128-orchestrator-tools-a04 status=alive …` (the revise round's PING) | `agmsg-dispatch` |
+| 10 | the revise round's HTTPS push | `git push` |
+| 11 | `gh pr checks 336 --watch` on the revise head | `gh` |
+| 12 | Bot wait from the revise push | `gh` |
+| 13 | reading the Bot review of the revise head | `gh` |
+| 14 | the masked copy of the evidence files to the main checkout | artifact copy with the repository masker |
+| 15 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a04 revise=1 …` | `agmsg-dispatch` |

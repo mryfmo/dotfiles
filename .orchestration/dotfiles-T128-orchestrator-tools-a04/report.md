@@ -51,3 +51,25 @@ Nothing the task names is left undone. Understand-Anything hook: did not fire. p
 `memory add` in the main checkout printed `02822e62-4e86-4360-a142-3ccd2d6fc359`.
 
 cost: n/a
+
+## Revise round 1 (`e2e67de8`)
+
+The ACCEPTANCE `status=revise` of 08:56:02Z on `5b99a744` returned the orchestrator's local review and the four Bot threads of review 5500993250. All five are fixed in `e2e67de8`. Each test named below is an existing test, extended (validation §8):
+
+| Finding | Disposition | Test |
+|---|---|---|
+| local review of `5b99a744` (P2, `bus-read.sh:60`): a revise between other endpoints became the opener, so the worker's RESULT no longer closed the task | `fixed:e2e67de8`. The opener is the task's latest TASK (X to Y), or a later revise ACCEPTANCE between the same X and Y. A revise between other endpoints opens nothing, and a task with no TASK is not open | `test_bus_read_ignores_closers_between_other_endpoints`: T3's revises from `w9` to `w8` and from `w9` to `w3` leave it closed (R1) |
+| 4256541708 (P2): the unwritable-record test failed as root | `fixed:e2e67de8`. A missing record and a record under a regular file are refused for any user. Only the read-only directory case skips under UID 0 | `test_dispatch_refuses_an_unwritable_record_before_sending` (M1; M1r runs as a root run would, with the locked case skipped, and still fails) |
+| 4256541716 (P2): command substitution dropped a NUL byte | `fixed:e2e67de8`. A line file whose byte count changes when NUL bytes are deleted is refused with `holds a NUL byte`, exit 2, and nothing is sent | `test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line` (R2) |
+| 4256541723 (P2): the row regex took any first token | `fixed:e2e67de8`. A row counts only with the marker `●` or `○`; any other first token is skipped and counted | `test_bus_read_skips_and_counts_malformed_rows`: an `X`-marked RESULT that would close T1, `skipped=9` (R3) |
+| 4256541725 (P2): a `previous_design_sha256=` reference was refused | `fixed:e2e67de8`. A `previous_<name>_sha256=` token is checked as 64 lowercase hex and never recomputed, and needs no source token (a02 item 4's grammar row) | `test_dispatch_passes_the_line_byte_identical` carries `previous_design_sha256=` as the bus's design-review lines do (R4); `test_dispatch_refuses_malformed_lines` refuses a non-hex one (R5) |
+
+- The NUL check compares byte counts, not `tr -d '\0' < file | cmp -s - file`, because shellcheck reports SC2094 on the pipe.
+- `dispatch.sh`'s recorder regex still takes any first token as the marker. An unknown marker reads as `unread` there, and it opens or closes nothing.
+
+Results (§8):
+
+- 16 tests OK; the counters module 26 OK.
+- shellcheck, shfmt and ruff are clean.
+- 21 mutants, 21 failures.
+- Size: 6 files outside `.orchestration/`; added lines outside and under `tests/`: 393 and 485 (caps 500 and 1000).

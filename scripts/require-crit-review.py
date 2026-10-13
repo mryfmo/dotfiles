@@ -36,6 +36,8 @@ RECORD_FORMAT = 1
 LEDGER_ID = re.compile(r"\d{10,}|audit:[0-9a-f]{7}:\d+")
 CLASS_SLUG = re.compile(r"[a-z0-9-]+")
 AUDIT_FINDING_KEYS = {"n", "reason", "evidence"}
+# Every audit_findings field is a non-empty string; n holds the finding number in ASCII digits.
+FINDING_NUMBER = re.compile(r"[1-9][0-9]*")
 RECORD_KEYS = {"format", "task", "head", "pr", "ledger", "searches", "audit_findings", "dispatch"}
 # The swept finding ids the ledger must cover: Codex review comments, and Codex review bodies carrying a badge.
 CODEX_BOT = "chatgpt-codex-connector[bot]"
@@ -707,7 +709,7 @@ def audit_findings_errors(record: dict | None, findings: int) -> list[str]:
         return [
             f"{AUDIT_ENV} verdict is incorrect: the acceptance record's audit_findings must disposition its {findings} finding(s)"
         ]
-    numbers = [entry["n"] for entry in entries]
+    numbers = [int(entry["n"]) for entry in entries]
     errors = [
         f"audit_findings dispositions finding {n} more than once" for n in sorted(set(numbers)) if numbers.count(n) > 1
     ]
@@ -835,13 +837,12 @@ def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[
         elif (
             not isinstance(entry, dict)
             or set(entry) != AUDIT_FINDING_KEYS
-            or not is_int(entry["n"])
-            or entry["n"] < 1
+            or not (isinstance(entry["n"], str) and FINDING_NUMBER.fullmatch(entry["n"]))
             or not is_text(entry["reason"])
             or not is_text(entry["evidence"])
         ):
             errors.append(
-                f"audit_findings entry {index} must be {{n: <finding number>, reason: <text>, evidence: <command>}}"
+                f"audit_findings entry {index} must be {{n: <finding number>, reason: <text>, evidence: <command>}}, each a non-empty string"
             )
         elif len(entry["reason"].strip()) < FAILURE_REASON_MIN_CHARS:
             errors.append(

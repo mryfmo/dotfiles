@@ -1231,19 +1231,21 @@ class ReviewGuardTest(unittest.TestCase):
         audit = "[P2] high impl a:1 one\n  - [P3] low impl b:2 two\nVerdict: incorrect\n"
         reason = "the flagged path is generated output outside this task"
 
-        def entry(n: int, **fields: object) -> dict:
+        def entry(n: object, **fields: object) -> dict:
             return {"n": n, "reason": reason, "evidence": "gh pr checks 1", **fields}
 
         for label, findings, message in (
             ("no audit_findings", None, "the acceptance record's audit_findings must disposition its 2 finding(s)"),
-            ("a fix", [{"n": 1, "fixed": "a" * 7}, entry(2)], "a fix moves HEAD"),
-            ("short reason", [entry(1, reason="nope"), entry(2)], "at least 20"),
-            ("no evidence", [{"n": 1, "reason": reason}, entry(2)], "must be {n: <finding number>"),
-            ("empty evidence", [entry(1, evidence=" "), entry(2)], "must be {n: <finding number>"),
-            ("one missing", [entry(1)], "leaves audit finding(s) 2 of 2 without a disposition"),
-            ("same finding twice", [entry(1), entry(1)], "dispositions finding 1 more than once"),
-            ("out of range", [entry(1), entry(3)], "names finding 3, but the audit lists 2"),
-            ("accepted", [entry(1), entry(2)], None),
+            ("a fix", [{"n": "1", "fixed": "a" * 7}, entry("2")], "a fix moves HEAD"),
+            ("short reason", [entry("1", reason="nope"), entry("2")], "at least 20"),
+            ("no evidence", [{"n": "1", "reason": reason}, entry("2")], "must be {n: <finding number>"),
+            ("empty evidence", [entry("1", evidence=" "), entry("2")], "must be {n: <finding number>"),
+            ("integer n", [entry(1), entry("2")], "each a non-empty string"),
+            ("zero n", [entry("0"), entry("1"), entry("2")], "each a non-empty string"),
+            ("one missing", [entry("1")], "leaves audit finding(s) 2 of 2 without a disposition"),
+            ("same finding twice", [entry("1"), entry("1")], "dispositions finding 1 more than once"),
+            ("out of range", [entry("1"), entry("3")], "names finding 3, but the audit lists 2"),
+            ("accepted", [entry("1"), entry("2")], None),
         ):
             with self.subTest(label):
                 self.tearDown()
@@ -1451,7 +1453,7 @@ class ReviewGuardTest(unittest.TestCase):
                 {"searches": [{"class": "scope", "records": []}, {"class": "scope", "records": []}]},
                 "searches names class scope more than once",
             ),
-            ("audit_findings entry", {"audit_findings": [{"n": 1, "fixed": "abcdef0"}]}, "a fix moves HEAD"),
+            ("audit_findings entry", {"audit_findings": [{"n": "1", "fixed": "abcdef0"}]}, "a fix moves HEAD"),
             (
                 "S6",
                 {"fixture": "acceptance-s6-missing.md"},

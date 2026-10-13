@@ -6,7 +6,7 @@
 #   gate). History is the whole team history, read through agmsg's storage
 #   facade the way scripts/agent-stop-gate.sh read_history reads it; GitHub is
 #   `gh api --paginate` on this repository. A message's task, status and verdict
-#   are its first `task_id=`, `status=` and `verdict=` tokens (later ones are
+#   are its first `task_id=`, `status=` and `verdict=` tokens, split on whitespace runs (tabs too) as dispatch.sh reads a line (later ones are
 #   free text). Counts follow INV-6's sentence only: amendments = AGMSG-TASKs -
 #   1; revises = AGMSG-RESULTs - 1, whatever their status; questions = PONGs of
 #   status question; withdrawn = ACCEPTANCEs of status withdrawn, informational.
@@ -112,7 +112,7 @@ elif ! history="$(read_history "${team}")"; then
 fi
 rows='def tok($k): [.toks[] | select(startswith($k + "="))][0] // null | if . then .[($k | length) + 1:] else null end;
 def rows: inputs | split("\t") | {id: .[0], at: .[1], from: .[2], body: (.[4:] | join("\t"))}
-  | .toks = (.body | split(" ")) | .task = (tok("task_id") // "") | select(.toks[1] == "v1");'
+  | .toks = [.body | gsub("\\\\(?<c>[tnr\\\\])"; {t: "\t", n: "\n", r: "\r"}[.c] // "\\") | splits("\\s+") | select(. != "")] | .task = (tok("task_id") // "") | select(.toks[1] == "v1");'
 if [[ ${list} == true ]]; then
     jq -nrR --arg s "${source}" "${rows}"'[rows | select(.toks[0] == "AGMSG-TASK" and .task != "") | .task] | unique[] | "\(.) source=\($s)"' <<< "${history}"
     exit 0

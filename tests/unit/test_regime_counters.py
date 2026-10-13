@@ -287,6 +287,20 @@ class RegimeCountersTest(unittest.TestCase):
             (detail["results"], detail["withdrawn"], detail["tasks"], detail["authors"]),
         )
 
+    def test_a_tab_separated_task_counts_as_an_amendment(self):
+        # dispatch.sh sends any whitespace run between tokens (the audit of 8576645c, P1 at dispatch.sh:80).
+        history = tsv(
+            ("orch", "AGMSG-TASK v1 task_id=T1"),
+            ("orch", "AGMSG-TASK\tv1 task_id=T1 amendment=1"),
+            ("orch", "AGMSG-TASK  v1\ttask_id=T1 amendment=2"),
+            ("w", "\tAGMSG-RESULT v1  task_id=T1\tstatus=ready_for_review"),
+            ("w", "AGMSG-PONG\t\tv1 task_id=T1 status=question\t"),
+            ("w", "AGMSG-PONG v1 task_id=T1 \\tstatus=question"),  # a backslash and a t, which @tsv escapes: no status
+        )
+        self.store(history)  # through the storage facade, where read_history's @tsv escapes each tab
+        got = fields(self.run_counters("T1", "--history-only")[0])
+        self.assertEqual(("3", "2", "1", "1"), (got["tasks"], got["amendments"], got["results"], got["questions"]))
+
     def test_bot_heads_are_unknown_when_gh_fails(self):
         lines = self.run_counters(V0, "--history-file", str(FIXTURES / f"{V0}.tsv"))
         self.assertEqual("unknown", fields(lines[0])["bot_p1_heads_after_result"])

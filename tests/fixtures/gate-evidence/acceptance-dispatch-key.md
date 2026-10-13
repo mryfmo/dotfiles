@@ -8,7 +8,7 @@
   "searches": [],
   "dispatch":
     [
-      "AGMSG-TASK v1 task_id=test read_at=2026-10-13T03:00:00Z",
+      "AGMSG-TASK v1 task_id=test read_at=read",
       "AGMSG-PING v1 task_id=test read_at=unread"
     ]
 }

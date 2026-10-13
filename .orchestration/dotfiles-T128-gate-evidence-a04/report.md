@@ -1,12 +1,12 @@
 # Report: dotfiles-T128-gate-evidence-a04
 
 - Seat: `claude-standard-dot-a002` in `.claude/worktrees/worker-f`, branch `regime/gate-evidence`, PR #329. a04 is a03's INV-6 reset under plan 014 option A (reset record `.orchestration/acceptance/dotfiles-T128-gate-evidence-a03-design-reset.md`), continued from a03's amendment-1 head `82e86e50`.
-- Task file: sha256 `03a5253d…` checked against the TASK (03:13:46Z) and copied byte-identical to `.orchestration/dotfiles-T128-gate-evidence-a04/task.md`. a01's, a02's and a03's copies stay unchanged as history (validation §1).
+- Task file: amendment 1 (03:37:55Z; wording only, the `dispatch` entry's ` read_at=read|unread` suffix) at sha256 `be659392…`, recommitted byte-identical to `.orchestration/dotfiles-T128-gate-evidence-a04/task.md`; the first a04 copy was `03a5253d…`. `acceptance-dispatch-key.md`'s example entries now end in `read_at=read` and `read_at=unread`; the gate still validates the list only as strings. a01's, a02's and a03's copies stay unchanged as history (validation §1).
 - Commits:
   - a01: `7f763b7f`, `9a860c95`, `5971fffe`;
   - a02: `379845f7`, `386a71b3`, `c81c88a3`, `d5d6c9b1`, `c6cf0548`, `61d90302`;
   - a03: `b2b3db45`, `c36fcd35`, `7581d590`, `3c20b0ca`, `f5f980f9`, `82e86e50`;
-  - a04: `9db7ed3c` (the coverage rule, `dispatch`, unknown keys, three fixtures, the task copy), then this evidence.
+  - a04: `9db7ed3c` (the coverage rule, `dispatch`, unknown keys, three fixtures, the task copy), `863ae465` (evidence), then amendment 1's task copy, fixture wording and this evidence.
 
 ## What a04 adds to a03 amendment 1 (task item 2's new sentence, items 3 and 5)
 

@@ -7,7 +7,7 @@ Every block is the verbatim output of the command shown, run in `.claude/worktre
 ```
 $ shasum -a 256 ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-gate-evidence-a04.md .orchestration/dotfiles-T128-gate-evidence-a04/task.md | cut -c1-64
 be659392a6300bc0fff0ba3c421660352938762d6fccb259075f1c430ae8b3d8
-03a5253d1bc78ad928b5b9bc66cbe9ffada6e6090f732acc76c05a532c40001f
+be659392a6300bc0fff0ba3c421660352938762d6fccb259075f1c430ae8b3d8
 $ git diff --quiet 82e86e50 HEAD -- .orchestration/dotfiles-T128-gate-evidence-a01/ .orchestration/dotfiles-T128-gate-evidence-a02/ .orchestration/dotfiles-T128-gate-evidence-a03/ && echo "a01, a02 and a03 records unchanged since 82e86e50"
 a01, a02 and a03 records unchanged since 82e86e50
 ```
@@ -35,7 +35,7 @@ OK
 ## 3. The module at the code head (91 tests; 71 on origin/main, §2)
 
 ```
-$ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false uv run --no-project python -m unittest tests/unit/test_require_crit_review.py -v 2>&1 | sed -E 's/ \(tests[^)]*\)//' | grep -E ' \.\.\. |^Ran|^OK|^FAILED'   # the working tree that became 9db7ed3c
+$ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false uv run --no-project python -m unittest tests/unit/test_require_crit_review.py -v 2>&1 | sed -E 's/ \(tests[^)]*\)//' | grep -E ' \.\.\. |^Ran|^OK|^FAILED'   # 9db7ed3c with amendment 1's dispatch-fixture wording
 test_acceptance_record_accepts_a_dispatch_list ... ok
 test_acceptance_record_head_must_be_head ... ok
 test_acceptance_record_is_not_counted_as_a_change ... ok
@@ -127,7 +127,7 @@ test_small_docs_only_change_does_not_require_review ... ok
 test_swept_ids_are_exactly_the_review_comments_and_the_badged_review_body ... ok
 test_the_gate_has_no_github_identity_check ... ok
 test_verdict_comes_only_from_the_last_message_file ... ok
-Ran 91 tests in 79.870s
+Ran 91 tests in 75.089s
 OK
 ```
 

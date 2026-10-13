@@ -287,6 +287,20 @@ class RegimeCountersTest(unittest.TestCase):
             (detail["results"], detail["withdrawn"], detail["tasks"], detail["authors"]),
         )
 
+    def test_a_tab_separated_task_counts_as_an_amendment(self):
+        # dispatch.sh sends any whitespace run between tokens (the audit of 8576645c, P1 at dispatch.sh:80).
+        history = tsv(
+            ("orch", "AGMSG-TASK v1 task_id=T1"),
+            ("orch", "AGMSG-TASK\tv1 task_id=T1 amendment=1"),
+            ("orch", "AGMSG-TASK  v1\ttask_id=T1 amendment=2"),
+            ("w", "\tAGMSG-RESULT v1  task_id=T1\tstatus=ready_for_review"),
+            ("w", "AGMSG-PONG\t\tv1 task_id=T1 status=question\t"),
+            ("w", "AGMSG-PONG v1 task_id=T1 \\tstatus=question"),  # a backslash and a t, which @tsv escapes: no status
+        )
+        self.store(history)  # through the storage facade, where read_history's @tsv escapes each tab
+        got = fields(self.run_counters("T1", "--history-only")[0])
+        self.assertEqual(("3", "2", "1", "1"), (got["tasks"], got["amendments"], got["results"], got["questions"]))
+
     def test_bot_heads_are_unknown_when_gh_fails(self):
         lines = self.run_counters(V0, "--history-file", str(FIXTURES / f"{V0}.tsv"))
         self.assertEqual("unknown", fields(lines[0])["bot_p1_heads_after_result"])
@@ -459,7 +473,7 @@ class RegimeCountersTest(unittest.TestCase):
         shutil.copy(SCRIPT, repo / "scripts")
         (repo / ".orchestration/acceptance").mkdir(parents=True)
         ledger = [{"id": f"42500286{i:02d}", "class": c} for i, c in enumerate(["bookkeeping"] * 3 + ["sources"] * 2)]
-        ledger += [{"id": f"audit:abcdef1:{n}", "class": "Reject skipped"} for n in (1, 2, 3)]
+        ledger += [{"id": f"audit:abcdef1:{n}", "class": "input-validation"} for n in (1, 2, 3)]
         block = json.dumps({"format": 1, "task": "T1", "ledger": ledger})
         (repo / ".orchestration/acceptance/T1.md").write_text(f"---\n{block}\n---\n\nProse for people.\n")
         history = self.write("h.tsv", tsv(("orch", "AGMSG-TASK v1 task_id=T1")))
@@ -468,7 +482,7 @@ class RegimeCountersTest(unittest.TestCase):
             "T1", "--history-file", history, "--github-file", gh, script=repo / "scripts/regime-counters.sh"
         )
         self.assertEqual(
-            ["S1: class=invalid count=3 source=record", "S1: class=bookkeeping count=3 source=record"],
+            ["S1: class=bookkeeping count=3 source=record", "S1: class=input-validation count=3 source=record"],
             [line for line in lines if line.startswith("S1:")],
         )
         # Thread 4254771296: a record of another task is not this task's ledger; the title detector speaks.
@@ -478,6 +492,52 @@ class RegimeCountersTest(unittest.TestCase):
         )
         self.assertEqual(
             ['S1: candidate class=unclassified count=3 title="Reject skipped contract tests" source=fixture'],
+            [line for line in lines if line.startswith("S1:")],
+        )
+
+    def test_s1_ignores_a_record_whose_ledger_rows_are_not_id_class_objects(self):
+        # Thread 4255079204: a block is trusted only when every ledger row is {string id, slug class}.
+        repo = self.temp / "repo"
+        (repo / "scripts").mkdir(parents=True)
+        shutil.copy(SCRIPT, repo / "scripts")
+        (repo / ".orchestration/acceptance").mkdir(parents=True)
+        history = self.write("h.tsv", tsv(("orch", "AGMSG-TASK v1 task_id=T1")))
+        gh = self.github(["aaaaaaa1"], [comment("aaaaaaa1", "Reject skipped contract tests")] * 3)
+        good = [{"id": f"42500286{i}", "class": "bookkeeping"} for i in range(3)]
+        title = 'title="Reject skipped contract tests"'
+        for row, expected in (
+            (
+                "bookkeeping",
+                f"S1: candidate class=unclassified count=3 {title} source=record-ignored:ledger-row-not-object",
+            ),
+            (
+                {"id": 4250028600, "class": "bookkeeping"},
+                f"S1: candidate class=unclassified count=3 {title} source=record-ignored:id-not-string",
+            ),
+            (
+                {"class": "bookkeeping"},
+                f"S1: candidate class=unclassified count=3 {title} source=record-ignored:id-not-string",
+            ),
+            (
+                {"id": "4250028600", "class": "Reject $(id)"},
+                f"S1: candidate class=unclassified count=3 {title} source=record-ignored:class-not-slug",
+            ),
+            (None, "S1: class=bookkeeping count=3 source=record"),
+        ):
+            with self.subTest(expected=expected):
+                block = json.dumps({"format": 1, "task": "T1", "ledger": good + ([row] if row is not None else [])})
+                (repo / ".orchestration/acceptance/T1.md").write_text(f"---\n{block}\n---\n")
+                lines = self.run_counters(
+                    "T1", "--history-file", history, "--github-file", gh, script=repo / "scripts/regime-counters.sh"
+                )
+                self.assertEqual([expected], [line for line in lines if line.startswith("S1:")])
+        # A block that is not JSON is no record either; the reason is the script's slug, never record text.
+        (repo / ".orchestration/acceptance/T1.md").write_text('---\n{"task": "T1", $(id)\n---\n')
+        lines = self.run_counters(
+            "T1", "--history-file", history, "--github-file", gh, script=repo / "scripts/regime-counters.sh"
+        )
+        self.assertEqual(
+            [f"S1: candidate class=unclassified count=3 {title} source=record-ignored:block-not-json"],
             [line for line in lines if line.startswith("S1:")],
         )
 

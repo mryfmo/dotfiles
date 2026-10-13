@@ -6,7 +6,7 @@
 #   gate). History is the whole team history, read through agmsg's storage
 #   facade the way scripts/agent-stop-gate.sh read_history reads it; GitHub is
 #   `gh api --paginate` on this repository. A message's task, status and verdict
-#   are its first `task_id=`, `status=` and `verdict=` tokens (later ones are
+#   are its first `task_id=`, `status=` and `verdict=` tokens, split on whitespace runs (tabs too) as dispatch.sh reads a line (later ones are
 #   free text). Counts follow INV-6's sentence only: amendments = AGMSG-TASKs -
 #   1; revises = AGMSG-RESULTs - 1, whatever their status; questions = PONGs of
 #   status question; withdrawn = ACCEPTANCEs of status withdrawn, informational.
@@ -18,13 +18,18 @@
 #   them or without `original_commit_id` print `unknown`, never 0. S1 comes from
 #   the task's acceptance record `.orchestration/acceptance/<task>.md` when its
 #   block between the first two `---` lines is a JSON object whose `task` is the
-#   counted task and whose `ledger` is a list of `{id, class}` (read with jq only): every class with three or more
-#   rows prints `S1: class=<slug> count=<n> source=record`, `class=invalid` when
-#   the class is not `[a-z0-9-]`. Without such a record (none, or a prose one),
-#   Codex Bot thread titles grouped by their first three words (badge stripped,
-#   lower-cased) seen three or more times on the PR print
-#   `S1: candidate class=unclassified count=<n> title=<JSON string>`: the title
-#   is data for people, never a class a procedure substitutes into a command.
+#   counted task and whose `ledger` is a list of `{id, class}` rows, each an
+#   object with a string `id` and a `[a-z0-9-]` `class` (read with jq only):
+#   every class with three or more rows prints `S1: class=<slug> count=<n>
+#   source=record`. Without such a record (none, or a prose one), Codex Bot
+#   thread titles grouped by their first three words (badge stripped,
+#   lower-cased) seen three or more times on the PR print `S1: candidate
+#   class=unclassified count=<n> title=<JSON string>`: the title is data for
+#   people, never a class a procedure substitutes into a command. A block that
+#   is not JSON, or a ledger row of another shape, is no record either, and those
+#   lines then end in `source=record-ignored:<reason>`, one of the fixed slugs
+#   `block-not-json`, `ledger-row-not-object`, `id-not-string` and
+#   `class-not-slug` (thread 4255079204), never text from the record.
 #   Output: the count line; one `S2:` line per INV-6 threshold reached; the
 #   `S1:` lines (none with --history-only); a `detail:` line (the PR: digits, `none` when
 #   no RESULT carries `pr=`, `invalid` for another value; the TASK senders, every
@@ -107,7 +112,7 @@ elif ! history="$(read_history "${team}")"; then
 fi
 rows='def tok($k): [.toks[] | select(startswith($k + "="))][0] // null | if . then .[($k | length) + 1:] else null end;
 def rows: inputs | split("\t") | {id: .[0], at: .[1], from: .[2], body: (.[4:] | join("\t"))}
-  | .toks = (.body | split(" ")) | .task = (tok("task_id") // "") | select(.toks[1] == "v1");'
+  | .toks = [.body | gsub("\\\\(?<c>[tnr\\\\])"; {t: "\t", n: "\n", r: "\r"}[.c] // "\\") | splits("\\s+") | select(. != "")] | .task = (tok("task_id") // "") | select(.toks[1] == "v1");'
 if [[ ${list} == true ]]; then
     jq -nrR --arg s "${source}" "${rows}"'[rows | select(.toks[0] == "AGMSG-TASK" and .task != "") | .task] | unique[] | "\(.) source=\($s)"' <<< "${history}"
     exit 0
@@ -124,11 +129,16 @@ counts="$(jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" 
      accepted_by: [$all[] | select($hash != "" and $src != "" and .task == $src and .toks[0] == "AGMSG-RESULT" and tok("verdict") == "accept" and tok("design_sha256") == $hash)
        | .from | select(. as $f | any($authors[]; . == $f) | not)] | unique}' <<< "${history}")"
 
-# The record's JSON block, or null for no record, a prose record or another shape.
+# {rec: the record's JSON block}, {why: <slug>} for a block it ignores, or null for no record, a prose one or another task's.
 record=null
 if [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && -f ${root}/.orchestration/acceptance/${task}.md ]]; then
     record="$(jq -cRs 'split("\n") | if .[0] == "---" then .[1:] | index("---") as $e | if $e then .[:$e] | join("\n")
-      | (try fromjson catch null) | if type == "object" and (.ledger | type) == "array" and .task == $t then . else null end
+      | (try {rec: fromjson} catch {why: "block-not-json"})
+      | if has("why") then . elif (.rec | type) == "object" and (.rec.ledger | type) == "array" and .rec.task == $t then
+          [.rec.ledger[] | if type != "object" then "ledger-row-not-object" elif (.id | type) != "string" then "id-not-string"
+            elif (.class | type) != "string" or (.class | test("^[a-z0-9-]+$") | not) then "class-not-slug" else empty end][0] as $why
+          | if $why then {why: $why} else . end
+        else null end
       else null end else null end' --arg t "${task}" "${root}/.orchestration/acceptance/${task}.md")"
 fi
 
@@ -158,12 +168,12 @@ jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" -
     ([["revises", $revises], ["amendments", $amendments], ["questions", ($c.questions | length)], ["bot_p1_heads", $n]][]
       | select((.[1] | type) == "number" and .[1] >= $limit) | "S2: \(.[0]) \(.[1]) >= \($limit) source=\($s)"),
     (if $state == "skipped" then empty
-      elif $rec != null then [$rec.ledger[] | if type == "object" then .class else null end] | group_by(.)[] | select(length >= 3)
-        | "S1: class=\(.[0] | if type == "string" and test("^[a-z0-9-]+$") then . else "invalid" end) count=\(length) source=record"
+      elif $rec.rec != null then [$rec.rec.ledger[].class] | group_by(.)[] | select(length >= 3)
+        | "S1: class=\(.[0]) count=\(length) source=record"
       elif $state == "ok" then [$gh.comments[] | select(codex and .in_reply_to_id == null) | title
         | gsub("!\\[[^\\]]*\\]\\([^)]*\\)|</?sub>|\\*\\*"; "") | sub("^\\s+"; "") | sub("\\s+$"; "")
         | {key: (ascii_downcase | [splits("\\s+") | select(. != "")][0:3] | join(" ")), title: .} | select(.key != "")]
-      | group_by(.key)[] | select(length >= 3) | "S1: candidate class=unclassified count=\(length) title=\(.[0].title | tojson) source=\($s)"
+      | group_by(.key)[] | select(length >= 3) | "S1: candidate class=unclassified count=\(length) title=\(.[0].title | tojson) source=\(if $rec.why then "record-ignored:\($rec.why)" else $s end)"
       else empty end),
     "detail: pr=\($c.pr // "none") authors=\($c.authors | list) tasks=\($c.tasks | list) results=\($c.results | list) questions=\($c.questions | list) withdrawn=\($c.withdrawn | list) bot_heads=\(if ($b | type) == "array" then $b | list else "-" end) source=\($s)",
     (if $hash != "" then "reset: design_sha256=\($hash) redesign_source=\(if $src != "" then $src else "none" end) accepted_by=\($c.accepted_by | if length > 0 then join(",") else "none" end) source=\($s)" else empty end)' <<< "${github}"

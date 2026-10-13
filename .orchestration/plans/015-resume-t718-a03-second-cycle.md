@@ -6,7 +6,7 @@
 
 ## Status
 
-- **Execution**: DECIDED 2026-10-13 06:1xZ: option B (operator, AskUserQuestion). R1 a02 item 4 written (dispatch.sh's three fixes with the line's grammar table; allowed_files, row, test), pair round 9 / Codex 13 running; R2 boundary (9), then the #336 dispositions, audit of e16c5219, gate, merge; R3 the T703 and T702 chains.
+- **Execution**: DECIDED 2026-10-13 06:1xZ: option B (operator, AskUserQuestion). R1 done: a02 item 4 (dispatch.sh's three fixes, the line's grammar table with its table-driven test, the closed binary list) pair-confirmed at `3817bb70…` after seat rounds 9 to 11 and Codex rounds 13 to 17 (06:25Z); R2 boundary (9) running, then `finish-336.sh`: the twenty #336 dispositions, the audit of e16c5219, gate, merge; R3 `integrate-328.sh <squash>` then `integrate-329.sh <T703 squash>`.
 - **Priority**: P1 (T703 and T702 integrate after this merge; a02's dispatch follows it)
 - **Planned at**: main `0a071318`, 2026-10-13 06:1xZ
 

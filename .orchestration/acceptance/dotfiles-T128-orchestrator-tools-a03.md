@@ -65,3 +65,35 @@ search: input-validation -> M-20261012-32.md
 (M-20261012-32 / C-31 is the matching record: an input-grammar table for every parsed input; it is `pending`, landing with a02.) No ACCEPTANCE, revise, reset or disposition until the operator chooses.
 - 06:1xZ operator: plan 015 option B. The accepted head merges; threads 4255272793, 4255272797, 4255272803 are `not-applicable: owned by dotfiles-T128-orchestrator-tools-a02 item 4` (the pair re-confirms a02; boundary (9) lands it so the evidence command reads origin/main). Then the audit of `e16c5219`, gate, merge, `integrate-328.sh`.
 
+- Boundary (9) PR #344 opened (auto-merge: plan 015, a02 at 3817bb70, this ledger, M-32/C-31). `finish-336.sh 344` waits for its merge, fast-forwards main, checks the four owned thread ids on origin/main's a02, fills the twenty dispositions, audits `e16c5219`, and on `correct` gates, merges with `--match-head-commit`, fast-forwards and starts `integrate-328.sh` with the squash sha.
+- 06:30:48Z boundary PR #344 merged (`a5475d9e`); `finish-336.sh` stopped: PR #336 was behind main again (boundary (9) moved it after the update-branch onto 0a071318). `finish-336b.sh` re-runs the chain: update-branch by ancestry, CI, Bot, sweep with the twenty dispositions (a new Bot thread stops it for judgment), receipt, audit, gate, merge, ff, then `integrate-328.sh`. Rule from now: no boundary while an open PR is between its final update-branch and its merge.
+- 06:40:11Z Bot review 5499708109 on the second update-branch head `0d199475` (`finish-336b.sh`: update-branch, CI passed, sweep 44 items, 41 filled, 3 gaps; the chain stopped by design): three new P2 threads, two on `bus-read.sh:51` (4255494133 "Bind closing messages to the task's worker", 4255494139 "Recognize historical acceptance closures") and one on `three-repeat.sh:41` (4255494137 "Request an uncapped CompactionDB count"). The scripts are byte-identical to the accepted `ba4d4762` (`git diff --stat ba4d4762 0d199475 -- scripts/orchestrator scripts/regime-counters.sh tests/unit` → empty). Neither script is in a02's `allowed_files`, so plan 015 B does not cover them: a third Bot cycle on the artifact → S7, plan 016 (M-20261012-33 / C-32). No ACCEPTANCE, revise, reset or disposition until the operator chooses.
+
+4255494133	duplicated-state-machine
+4255494137	default-limited-read
+4255494139	duplicated-state-machine
+
+```text
+$ /usr/bin/grep -rl 'classes:.*duplicated-state-machine' .orchestration/learning/mistakes/
+(no file)
+$ /usr/bin/grep -rl 'classes:.*default-limited' .orchestration/learning/mistakes/
+(no file)
+$ /usr/bin/grep -rli 'default.limited' .orchestration/learning/mistakes/
+.orchestration/learning/mistakes/M-20261012-21.md
+$ uv run --no-project .claude/hooks/contextdb_cli.py memory search duplicated-state-machine
+No matches.
+$ uv run --no-project .claude/hooks/contextdb_cli.py memory search default-limited
+No matches.
+```
+
+(The `classes:` search misses M-20261012-21, whose default-limited read is in its prose: the recall hole C-32 closes.)
+
+- 07:16Z operator: plan 016 option G′. Guards first (local review before the audit, no boundary while a PR awaits its merge, a02 item 6 as the owner of the final head's residual P2, on main before the findings), then INV-6's reset of a03 to a04 by the review seat (the three threads and the local finding as items with grammar tables and closing tests), same worker, same PR; the three threads stay open until a04's final head, where they are `fixed:` or owned by a02 item 6.
+- 07:24Z R1 of plan 016 G′ done (the three guards in the chain scripts; a02 item 6 owns the final head's residual P2, checker OK); the redesign brief `dotfiles-T128-orchestrator-tools-redesign-a02` (a04 = a03 + the stop gate's closing rule for bus-read.sh, the body search and the stated memory cap for three-repeat.sh, the record-destination check for dispatch.sh, four tests) sent to the review seat 07:23:32Z (read 07:23:39Z) (bus 905). The local-review file of 0d199475 is `.orchestration/validation/dotfiles-T128-orchestrator-tools-a03-local-review-0d19947.md` (1 finding).
+- 07:33:48Z review seat RESULT (bus 906): a04 written at `046a70905b06a7223225a0901897c941e58ad43f275b04779b1317b236bfbd98` (receipt `dotfiles-T128-orchestrator-tools-redesign-a02.md`, `47dcd0d1…`), checker OK, the sweep's only `a03/` leftover is the a03 copy row kept as history; the seat's judgement calls (the history row's first token is the read marker, not a sequence number; `skipped=` counts every rejected row; a missing record is refused, not created; a02 item 6 must be on main before a04 dispatches) accepted by the orchestrator 07:36Z. The Codex half reviews a04 against the brief (running); the seat's round 12 on a02 dispatched 07:35:38Z.
+- 07:37Z Codex half on a04 (`046a7090…`): `revise`, three P2 (receipt `dotfiles-T128-orchestrator-tools-redesign-a02-codex.md`): dispatch.sh's record block and history.sh output without grammar tables; bus-read.sh's table without `<at>` and the `<n>`→`<marker>` deviation unrecorded; regime-counters.sh's block without a table. Round 2 of the brief (items 8 to 10: the block table with one table-driven test, the history row cited, the `<at>` row and the deviation clause, the counters citing a02 item 3) written; it goes to the seat after its round 12 on a02.
+- 07:43Z Codex round 2 on a04 (`2094896c…`): `revise`, one P2 (the skip-and-count path of bus-read.sh without a closed row or test, C-28); round 3 of the brief (item 11: the row and `test_bus_read_skips_and_counts_malformed_rows`) dispatched to the seat.
+- 07:45Z bookkeeping pending for the next pair round of a04: the brief and a04 give 07:22Z for the operator's choice of plan 016 G′ (the brief's drafting time); the choice was 07:16Z (plan 016 status). The two acceptance records gate-evidence-a03 and playbook-rules-a04 differed from main by their worker-worktree path alone (main holds the masked form; `ff-main-safe.sh` copied the unmasked local copy back after each boundary, the fifth time per the map agent): restored to main's version; the copy-back now masks before comparing.
+- 07:46Z seat round 3 `accept` at `58cfc5ced16096967d7a9ee905b5905c5997e2af0a004c929ffb34e99abf8219` (item 11: the skip-and-count row and its test; checker OK). Round 4 (item 12: the choice time 07:16Z, one token) sent; the Codex half reviews the round-4 hash.
+- 07:49Z Codex round 4 on a04 (`8b63cce0…`): `revise`, one P3 ("four tests" at lines 98 and 110 after items 8 to 11 made six; a sweep term the orchestrator did not give the seat, M-20261012-27 class). Round 5 (item 13, with the sweep terms) sent.
+- 07:53Z a04 pair-confirmed at `d0a26050132a32ddc8d3b397b31f3a815bdaed1a55867daa4d81551f15e14fd7` (seat round 5 RESULT bus 917; Codex rounds 1 and 2 revise, the last one confirm): reset record `dotfiles-T128-orchestrator-tools-a03-design-reset.md` written (anchor 917); ACCEPTANCE round=2 accepted sent to the seat. a03's acceptance of 05:36:59Z stands withdrawn by the reset (`ba4d4762` is not merged). Boundary (10) follows, then the a04 line to a003 through `after-boundary-10.sh`.

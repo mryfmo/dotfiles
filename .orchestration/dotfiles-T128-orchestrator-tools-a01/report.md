@@ -83,3 +83,17 @@ On head `4843ccb6` (validation §10):
 Unchanged in this round: 8 tests OK, shellcheck clean (§10).
 
 A slip without effect: while checking a file without a final newline, I ran the real `scripts/orchestrator/dispatch.sh a b c d <file>` once, with the host's `agmsg-dispatch` on PATH instead of the stub. `agmsg-dispatch` resolves the pane before it sends anything, so it exited at "pane not found or unavailable: d". `team-list.sh` still lists only `dotfiles-conformance`: no message was sent and no team was created.
+
+## Amendment 1 (TASK 03:13:58Z, sha256 `91eb1ebe…`; commits `2dddff84`, `0a5ae302`)
+
+The amendment answers threads 4253994704, 4254107312 and 4254163604 and confirms `e6f2bdc0` for 4253994697. The task copy was recommitted byte-identical (validation §12).
+
+- **`dispatch.sh`**
+  - An AGMSG-TASK line without `task_file=` or `task_sha256=` exits 1 naming the missing field, and nothing is sent (thread 4254163604).
+  - It takes an optional sixth argument, the acceptance record (thread 4254107312). The record's JSON block is parsed before the send, so a malformed record means no send. After `agmsg-dispatch`, the script finds the sent line in `history.sh <team> <to> 200` and appends `<line> read_at=read` (marker `○`) or `read_at=unread` (marker `●`) to the block's `dispatch` list. It writes with Python's standard json (duplicate keys and NaN refused, `sort_keys`, `indent=2`, non-ASCII kept) and keeps the prose byte for byte. A prose-only or missing record gets a block holding only `dispatch`.
+  - The read state is the marker. `history.sh` prints no read_at time, and `agmsg-dispatch` polls `read_at` without printing it; the orchestrator chose that option (A) in its PONG of 03:16Z, and messages.db is never read.
+  - When `agmsg-dispatch` exits non-zero (unread at its timeout), the line is still recorded as unread and the script exits with that status. If the line is not on the bus at all, the record is left unchanged and the script exits 1.
+  - New host binary: `python3 -I` (standard library only), which the amendment's "standard library's json" implies.
+- **`three-repeat.sh`**: it already resolved its root from its own checkout (`e6f2bdc0`). It now also passes the CLI to `uv` by its absolute path there, which the new closed-row test asserts.
+- **Tests** carry the four closed-row names. Two-line and blank-line files move into the new TASK test, and the ACCEPTANCE case for a missing `amended_task=` remains. The new record test loads the block as the gate's contract says (standard json, duplicate keys and NaN refused, since the gate's loader is not on `main`) and covers both markers, a prose-only record and a duplicate key.
+- **Results** (§12): 9 tests OK; 26 + 51 neighbouring tests OK; shellcheck clean; 23 mutants, 23 failures. The new mutants put back the unbound TASK, skip the pre-send check, invert the marker, drop the prose, accept duplicate keys, use the caller root, or pass a relative CLI path.

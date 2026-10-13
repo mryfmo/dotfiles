@@ -3,11 +3,13 @@
 # @brief Send one AGMSG-TASK, AGMSG-ACCEPTANCE or AGMSG-PING line after checking its sha256 fields, and record it.
 # @description
 #   Plan 007 T718 (C-20). Reads exactly one physical line from a file (a second
-#   line, blank or not, is refused). Every `<name>_sha256=<64 hex>` token is
-#   recomputed from the file its sibling token names, `<name>_file=` or else
-#   `<name>=` (`task_sha256` from `task_file=`, `design_sha256` from `design=`,
-#   `amended_task_sha256` from `amended_task=`; a line naming the file both
-#   ways, or repeating one of these keys, is refused); every line must carry
+#   line, blank or not, or a NUL byte is refused). Every `<name>_sha256=<64
+#   hex>` token is recomputed from the file its sibling token names,
+#   `<name>_file=` or else `<name>=` (`task_sha256` from `task_file=`,
+#   `design_sha256` from `design=`, `amended_task_sha256` from `amended_task=`;
+#   a line naming the file both ways, or repeating one of these keys, is
+#   refused), except a `previous_<name>_sha256=` reference to an earlier
+#   version, which is checked as 64 lowercase hex only; every line must carry
 #   exactly one non-empty `task_id=`, and an AGMSG-TASK line must carry
 #   `task_file=` and `task_sha256=`. A relative path is read from the root of
 #   the checkout this script lives in (`git rev-parse --show-toplevel` there),
@@ -56,6 +58,11 @@ usage() {
 (($# == 5 || $# == 6)) || usage
 team=$1 from=$2 to=$3 pane=$4 file=$5 record=${6:-}
 [[ -f ${file} ]] || usage
+# Thread 4256541716: command substitution drops a NUL byte, so the line sent would not be the file's.
+if (($(tr -d '\0' < "${file}" | wc -c) != $(wc -c < "${file}"))); then
+    echo "dispatch: ${file} holds a NUL byte" >&2
+    exit 2
+fi
 # The sentinel keeps every trailing newline, which $( ) alone would drop (thread 4254107304).
 line="$(cat -- "${file}" && printf x)" && line=${line%x} && line=${line%$'\n'}
 [[ ${line} != *$'\n'* ]] || {
@@ -110,6 +117,10 @@ for t in "${tokens[@]}"; do
         echo "dispatch: ${field} is not 64 lowercase hex digits" >&2
         exit 1
     }
+    # Thread 4256541725: a previous_<name>_sha256= reference names no file here (a02 item 4's grammar row).
+    if [[ ${name} == previous_* ]]; then
+        continue
+    fi
     # Thread 4254494989: a repeated key leaves a second, unhashed value in the line.
     for key in "${field}" "${name}_file" "${name}"; do
         (($(count_of "${key}") <= 1)) || {

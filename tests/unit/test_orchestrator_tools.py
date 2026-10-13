@@ -105,6 +105,8 @@ class OrchestratorToolsTest(unittest.TestCase):
             ("AGMSG-TASK v1 task_id=t\nAGMSG-TASK v1 task_id=u", 2, "more than one line"),
             # Thread 4254107304: a blank line after the message is a second line, not a trailing newline.
             ("AGMSG-PING v1 task_id=t\n", 2, "more than one line"),
+            # Thread 4256541716: command substitution would drop the NUL and send another line.
+            ("AGMSG-PING v1 task_id=t\0 reason=check", 2, "holds a NUL byte"),
         ):
             with self.subTest(needle=needle, code=code):
                 self.assertIn(needle, self.dispatch(line, code=code).stderr)
@@ -118,7 +120,9 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.write("design.md", "design\n")
         line = (
             f"AGMSG-TASK v1 task_id=t task_file=.orchestration/tasks/t.md task_sha256={sha('task' + chr(10))}"
-            f" design=design.md design_sha256={sha('design' + chr(10))} note=a;b(c)`d`$(e)"
+            f" design=design.md design_sha256={sha('design' + chr(10))}"
+            # Thread 4256541725: a reference to the previous design, checked as hex and never recomputed.
+            f" previous_design_sha256={sha('old design')} note=a;b(c)`d`$(e)"
         )
         self.write("line.txt", line + "\n")
         self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", str(self.repo / "line.txt"), cwd=pr)
@@ -147,6 +151,7 @@ class OrchestratorToolsTest(unittest.TestCase):
             ("hello task_id=t", 2, "not an AGMSG-TASK"),
             (f"AGMSG-ACCEPTANCE v1 task_id=t amended_task_sha256={sha('x')}", 1, "amended_task_sha256 has no"),
             ("AGMSG-ACCEPTANCE v1 task_id=t design=d.md design_sha256=abc", 1, "not 64 lowercase hex"),
+            ("AGMSG-ACCEPTANCE v1 task_id=t previous_design_sha256=abc", 1, "previous_design_sha256 is not 64"),
             # Thread 4254771302: a hash field whose name has a digit is checked like any other.
             (
                 f"AGMSG-ACCEPTANCE v1 task_id=t a02_expected=x.md a02_expected_sha256={sha('x')}",
@@ -234,8 +239,12 @@ class OrchestratorToolsTest(unittest.TestCase):
         locked.parent.chmod(0o555)
         self.addCleanup(locked.parent.chmod, 0o755)
         missing = self.repo / ".orchestration/acceptance/absent.md"
-        for record in (locked, missing):
-            with self.subTest(record=record.name):
+        # Thread 4256541708: a missing record and one under a regular file are refused whoever runs the test.
+        under_file = self.repo / "line.txt/t.md"
+        for record in (missing, under_file, locked):
+            with self.subTest(record=str(record.relative_to(self.repo))):
+                if record == locked and os.geteuid() == 0:
+                    self.skipTest("root writes a read-only directory")
                 result = self.run_tool(
                     "dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record), code=1
                 )
@@ -373,7 +382,8 @@ class OrchestratorToolsTest(unittest.TestCase):
         return re.findall(r"^open: task=(\S+) seat=(\S+) ", out, re.MULTILINE), out.splitlines()[-1]
 
     def test_bus_read_ignores_closers_between_other_endpoints(self):
-        # Thread 4255494133: only the opener's endpoints close a task, as in the stop gate's worker-seat branch.
+        # Thread 4255494133: only the opener's endpoints close a task, as in the stop gate's worker-seat branch;
+        # the local review of 5b99a744: and only the latest TASK's endpoints reopen it with a revise.
         self.history(
             (30, "orch", "w1", "AGMSG-TASK v1 task_id=T1"),
             (25, "w9", "orch", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"),
@@ -381,6 +391,10 @@ class OrchestratorToolsTest(unittest.TestCase):
             (23, "w9", "orch", "AGMSG-PONG v1 task_id=T1 status=blocked"),
             (20, "orch", "w2", "AGMSG-TASK v1 task_id=T2"),
             (10, "w2", "orch", "AGMSG-PONG v1 task_id=T2 status=blocked"),
+            (9, "orch", "w3", "AGMSG-TASK v1 task_id=T3"),
+            (8, "w3", "orch", "AGMSG-RESULT v1 task_id=T3 status=ready_for_review"),
+            (7, "w9", "w8", "AGMSG-ACCEPTANCE v1 task_id=T3 status=revise"),
+            (6, "w9", "w3", "AGMSG-ACCEPTANCE v1 task_id=T3 status=revise"),
         )
         self.assertEqual(([("T1", "w1")], "skipped=1"), self.open_tasks())
 
@@ -411,8 +425,11 @@ class OrchestratorToolsTest(unittest.TestCase):
             (20, "orch", "w1", "AGMSG-ACCEPTANCE v1 task_id=T1 status=accepted status=accepted"),
             ("yesterday", "w1", "orch", "AGMSG-RESULT v1 task_id=T1"),
         )
-        # The helper's first line (a shape mismatch) and the seven rows after the TASK.
-        self.assertEqual(([("T1", "w1")], "skipped=8"), self.open_tasks())
+        # Thread 4256541723: history.sh marks a row ● or ○, so any other first token is not a row.
+        with (self.calls / "history").open("a") as f:
+            f.write("  X [2026-10-13T00:00:00Z] w1 → orch: AGMSG-RESULT v1 task_id=T1\n")
+        # The helper's first line (a shape mismatch) and the eight rows after the TASK.
+        self.assertEqual(([("T1", "w1")], "skipped=9"), self.open_tasks())
         # An empty history is one empty line on jq's input, never a skipped row.
         (self.calls / "history").write_text("")
         self.assertEqual(["open: none", "skipped=0"], self.run_tool("bus-read.sh", "team").stdout.splitlines())

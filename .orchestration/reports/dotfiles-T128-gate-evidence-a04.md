@@ -6,7 +6,7 @@
   - a01: `7f763b7f`, `9a860c95`, `5971fffe`;
   - a02: `379845f7`, `386a71b3`, `c81c88a3`, `d5d6c9b1`, `c6cf0548`, `61d90302`;
   - a03: `b2b3db45`, `c36fcd35`, `7581d590`, `3c20b0ca`, `f5f980f9`, `82e86e50`;
-  - a04: `9db7ed3c` (the coverage rule, `dispatch`, unknown keys, three fixtures, the task copy), `863ae465` (evidence), `ca7dcd73` (amendment 1's task copy and fixture wording), `8d54fd76` (fix round 1), `8c0c015b` (the fixtures moved to PR #340), then this evidence.
+  - a04: `9db7ed3c` (the coverage rule, `dispatch`, unknown keys, three fixtures, the task copy), `863ae465` (evidence), `ca7dcd73` (amendment 1's task copy and fixture wording), `8d54fd76` (fix round 1), `8c0c015b` (the fixtures moved to PR #340), `ffe7d872` (evidence), then revise 1: `09caaa91` (#329) and `2231a4f7` (#340), then this evidence.
 - **The INV-2 split** (the orchestrator's answer of 03:47Z: a cap is a split, never a disposition). The thirteen files under `tests/fixtures/gate-evidence/` (twelve fixtures and `.prettierrc`, 164 lines) are on PR #340, branch `regime/gate-evidence-fixtures` from `origin/main` `4470b0c8`, head `27e8a0ea`. PR #329 keeps four files outside `.orchestration/`: the gate, its test module, the Makefile and the README. Outside `.orchestration`, the tested content `8d54fd76` equals `8c0c015b` plus #340's fixtures (validation §9). #329's CI fails until #340 merges and #329 takes the new base, because its test module reads the fixtures.
 
 ## What a04 adds to a03 amendment 1 (task item 2's new sentence, items 3 and 5)
@@ -76,6 +76,20 @@ The main-checkout copy names the sha and adds the Bot round on the a04 head. The
 
 CI on `ca7dcd73`: 12 of 12 check runs green. Questions under a04: none (PONG 03:47Z was the orchestrator's answer to a flag). Fix rounds: one.
 
+## Revise 1 (ACCEPTANCE of 04:57:32Z: the audit of PR #340's head `20d776d4`, verdict incorrect, two P2)
+
+- **Finding 1 (P2): the code deviated from the contract.** Task item 2 makes each `audit_findings` field a non-empty string. The gate accepted only an integer `n`, and `acceptance-finding-quotes-grammar.md` used `"n": 1`. Two commits fix it:
+  - `2231a4f7` on #340, on top of the update-branch merge `20d776d4`, sets the fixture's `n` to `"1"`.
+  - `09caaa91` on #329 makes the gate require `n` to be a string matching `FINDING_NUMBER` (`[1-9][0-9]*`: ASCII digits, no `0`, no leading zero). The coverage check reads it with `int()`, after the shape check has passed. The error now ends in `, each a non-empty string`.
+
+  In `test_incorrect_audit_needs_audit_findings`, every entry uses a string `n`, and two new cases are refused: `integer n` (`1`) and `zero n` (`"0"`). Validation §11 shows:
+  - the module runs 92 tests OK on `09caaa91` with `2231a4f7`'s fixtures;
+  - three new one-line mutations, M30 to M32, are caught;
+  - the gate refuses `27e8a0ea`'s integer-`n` fixture;
+  - the full mutation pass of §4 is repeated on the new code.
+- **Finding 2 (P2): call 7 of the sandbox record.** That call created the fixture branch, checked out the fixtures and committed `27e8a0ea` outside the sandbox, against Worker Playbook steps 2 and 4. The finding is recorded and needs no code change. From this round on, every mutation runs inside the sandbox: the fetch of `20d776d4`, the fast-forward, the edits, both commits, the scratch worktree and both pushes. A push works in the sandbox with `GIT_CONFIG_GLOBAL=/dev/null` and the `gh` credential helper. Only `gh` itself fails in the sandbox (TLS, `x509: OSStatus -26276`), so the Bot and CI reads run outside it.
+- Revises: one (this round). Amendments: one. Questions: none.
+
 ## Declared beyond the letter of the task
 
 - `pr-feedback-wrong.json` and `pr-feedback-right.json`: each of their two items gains `"author": "chatgpt-codex-connector[bot]"`, the real author of threads 4244248692 and 4244378809 in the a02 sweep (validation §5). Their dispositions stay byte-for-byte, and the wrong and right fixtures keep the same items. So `pr-feedback-right.json` already has the Codex `review_comment` with a `_r<digits>` url that item 3 asks for, and gains no third item.
@@ -104,36 +118,54 @@ CI on `ca7dcd73`: 12 of 12 check runs green. Questions under a04: none (PONG 03:
 - The main-checkout copy adds the final head, CI and the Bot wait.
 
 
-## Final heads, CI and the Bot (main-checkout copy)
+## First RESULT (04:48:43Z): final heads, CI and the Bot (main-checkout copy)
 
-- PR #329: final head `ffe7d872f39491dbb539399b4aa5482a85c91ce2` (the evidence commit over the code head `8c0c015b`; outside `.orchestration/` the two are identical, validation §15). `origin/main` (`1da9594c`) merges cleanly.
-- PR #340: the worker's head `27e8a0ea376cbaeb73b976ed77ffa0d8d166e6c2`. GitHub's `update-branch` merge `20d776d4` (04:33:39Z, parents `27e8a0ea` and `1da9594c`) is not a worker commit. `1da9594c` touches no file of either PR (validation §15).
-- CI (validation §11):
+- PR #329: final head `ffe7d872f39491dbb539399b4aa5482a85c91ce2` (the evidence commit over the code head `8c0c015b`; outside `.orchestration/` the two are identical, validation §16). `origin/main` (`1da9594c`) merges cleanly.
+- PR #340: the worker's head `27e8a0ea376cbaeb73b976ed77ffa0d8d166e6c2`. GitHub's `update-branch` merge `20d776d4` (04:33:39Z, parents `27e8a0ea` and `1da9594c`) is not a worker commit. `1da9594c` touches no file of either PR (validation §16).
+- CI (validation §12):
   - `863ae465` and `ca7dcd73`: 12 of 12 check runs green.
   - `27e8a0ea` (#340): 12 of 12 green. `20d776d4`: 12 of 12 green.
   - `ffe7d872` (#329): eight green, `test (ubuntu-24.04, server)` failed, and the other three test jobs were cancelled by fail-fast. The failed job ran 1017 tests with 82 errors, all in `test_require_crit_review` and all `FileNotFoundError` on `tests/fixtures/gate-evidence/*`. That is the split's expected red: it lasts until #340 merges and #329 takes the new base.
-- Bot (validation §12):
+- Bot (validation §13):
   - a04 round 1: review 5498584052 on `ca7dcd73`, two P1, fixed in `8d54fd76` (the table above).
   - a04 round 2: review 5498822030 on `ffe7d872` (04:27:57Z), one P1 (below).
   - #340: the security review completed on `27e8a0e` with no comment. The code review on `27e8a0e` was a manual `@codex review` and answered "Didn't find any major issues" in an issue comment (6138208548, 04:25:33Z). The code review on `20d776d` completed at 04:35:27Z with no comment.
-  - The Bot wait on #340 printed `bot: none` because it read only the Bot's reviews, not its issue comments; the listing in validation §12 shows the issue comment.
+  - The Bot wait on #340 printed `bot: none` because it read only the Bot's reviews, not its issue comments; the listing in validation §13 shows the issue comment.
 - Bot rounds under a04: two on #329 and one on #340. Fix rounds: one (`8d54fd76`). Questions: none. Amendments: one (`be659392`).
-- This is a04's first RESULT, so no INV-6 count for Bot P1s on heads after the first RESULT applies yet. `863ae465` was GitHub's head from 03:41:59Z until `ca7dcd73`'s push at 03:45:31Z, and the unfiltered listing in validation §12 shows no Codex review on it.
-- History (validation §16): two AGMSG-TASKs, the first and amendment 1, so one amendment. The four worker PONGs are all `status=alive`, so there are no questions. The orchestrator's 03:47:03Z PONG is `status=answer`, to the INV-2 flag carried in the worker's 03:45:49Z PONG.
-- The branch report's "For the orchestrator" names `origin/main` as `948d1f38`. That sha predates the fetch at 04:10Z; §9 (`4470b0c8`) and §15 (`1da9594c`) are authoritative.
+- This is a04's first RESULT, so no INV-6 count for Bot P1s on heads after the first RESULT applies yet. `863ae465` was GitHub's head from 03:41:59Z until `ca7dcd73`'s push at 03:45:31Z, and the unfiltered listing in validation §13 shows no Codex review on it.
+- History (validation §17): two AGMSG-TASKs, the first and amendment 1, so one amendment. The four worker PONGs are all `status=alive`, so there are no questions. The orchestrator's 03:47:03Z PONG is `status=answer`, to the INV-2 flag carried in the worker's 03:45:49Z PONG.
+- The branch report's "For the orchestrator" names `origin/main` as `948d1f38`. That sha predates the fetch at 04:10Z; §9 (`4470b0c8`) and §16 (`1da9594c`) are authoritative.
 
 | Thread | P | Class | State and proposal |
 |---|---|---|---|
-| 4254731145 (review 5498822030 on `ffe7d872`) | P1 | split-fixture-order (new) | proposed `not-applicable:the fixtures are on PR #340 by the orchestrator's INV-2 split (PONG 03:47Z), which integrates first, and #329 takes them through update-branch before its gate; evidence=git ls-tree -r --name-only origin/main tests/fixtures/gate-evidence`. The finding is accurate for #329 alone: the test module reads 13 files that #329 does not carry. Adding them back would undo the split that the cap requires. Validation §11 shows that the red job's 82 errors are all `FileNotFoundError` on paths under `tests/fixtures/gate-evidence/`; ten of the 13 names appear, because each test stops at its first missing read. After #340 merges, the evidence command lists the 13 paths. If you prefer `fixed:`, the update-branch merge that brings #340's fixtures into #329 also passes the gate's range check: an ancestor of HEAD and not of the base (`scripts/require-crit-review.py:385-386`). |
+| 4254731145 (review 5498822030 on `ffe7d872`) | P1 | split-fixture-order (new) | proposed `not-applicable:the fixtures are on PR #340 by the orchestrator's INV-2 split (PONG 03:47Z), which integrates first, and #329 takes them through update-branch before its gate; evidence=git ls-tree -r --name-only origin/main tests/fixtures/gate-evidence`. The finding is accurate for #329 alone: the test module reads 13 files that #329 does not carry. Adding them back would undo the split that the cap requires. Validation §12 shows that the red job's 82 errors are all `FileNotFoundError` on paths under `tests/fixtures/gate-evidence/`; ten of the 13 names appear, because each test stops at its first missing read. After #340 merges, the evidence command lists the 13 paths. If you prefer `fixed:`, the update-branch merge that brings #340's fixtures into #329 also passes the gate's range check: an ancestor of HEAD and not of the base (`scripts/require-crit-review.py:385-386`). The orchestrator's disposition (ACCEPTANCE 04:52:20Z): `fixed` at #329's update-branch merge, because the fixtures land on main first. |
 
 ## Precision notes (main-checkout copy)
 
-- The gate imports only standard-library modules. The precise check at `ffe7d872` finds no PyYAML import, no `"uv"` argument and no `["grep"` subprocess (validation §13).
-- The recipe passes `ACCEPTANCE_EVIDENCE` to the gate (validation §14).
+- The gate imports only standard-library modules. The precise check at `ffe7d872` finds no PyYAML import, no `"uv"` argument and no `["grep"` subprocess (validation §14).
+- The recipe passes `ACCEPTANCE_EVIDENCE` to the gate (validation §15).
+
+## Revise 1 RESULT: heads, CI and the Bot (main-checkout copy)
+
+- The revise (ACCEPTANCE 04:57:32Z) followed the audit of #340's head `20d776d4`. Its two P2 findings and their fixes are in the branch report's "Revise 1" section and validation §11.
+- PR #340: the worker's head is `2231a4f7`, on top of `20d776d4`.
+  - CI: 12 of 12 check runs green.
+  - Bot: the wait posted `@codex review` at 607s. The answer was issue comment 6138767624 (05:14:50Z), "Didn't find any major issues", with reviewed commit `2231a4f7b0`.
+  - GitHub's update-branch merge `60d152a1` (05:26:40Z, parents `2231a4f7` and `c31fcccf`) is not a worker commit. Its CI: 12 of 12 green.
+- PR #329: the worker's head is `2239c2eb` (code `09caaa91`).
+  - CI on `2239c2eb`: red by design, as before. `test (ubuntu-24.04, client)` ran 1017 tests with 82 errors, all `FileNotFoundError` in `test_require_crit_review`, and the other three test jobs were cancelled.
+  - Bot: no review and no comment on `2239c2eb`. The wait posted `@codex review` at 630s. The answer was issue comment 6138971719 (05:32:05Z), "Didn't find any major issues", with reviewed commit `bbe62911e7`.
+  - That reviewed commit is GitHub's update-branch merge `bbe62911` (05:25:39Z, parents `2239c2eb` and `c31fcccf`), which adds only main's boundary commit. The patched wait accepts any no-findings comment after the window opened, so it took this one; validation §19 shows the reviewed commit. CI on `bbe62911` is red as well (validation §18): it is `2239c2eb` plus `c31fcccf`, and #329's tree still lacks the fixtures until #340 merges.
+- Counts from history (validation §17): one RESULT before this one, so this RESULT makes revises one. Amendments: one. Questions: none. Fix rounds: one (`8d54fd76`), plus this revise.
+- No new Bot thread on either PR. 4254731145 and 4248232955 keep the orchestrator's dispositions of 04:52:20Z.
+- INV-2 at the revise heads (validation §20): #329 (`2239c2eb`) has 4 files outside `.orchestration/`, 337 added lines outside `tests/` and 557 under `tests/`, and it merges cleanly with `origin/main` (`c31fcccf`). #340 (`2231a4f7`) has 13 files and 164 lines.
+- Not re-run for the revise: the full unit suite (validation §7, at `8d54fd76`). The revise ran the module and §4's mutation pass on the combined revise content (§11). CI runs the suite once #340 merges and #329 takes the new base.
+- For the acceptance record: `audit_findings` entries now need `n` as a digit string (`"1"`, not `1`). No example in `README.md`, the `Makefile` or the skills shows an integer `n`.
+- The five main-checkout artifacts were committed in #342. This copy overwrites them, so they show as modified tracked files for the next boundary sweep.
 
 ## RESULT
 
-`AGMSG-RESULT v1 task_id=dotfiles-T128-gate-evidence-a04 status=ready_for_review pr=329 head=ffe7d872f39491dbb539399b4aa5482a85c91ce2 fixtures_pr=340 fixtures_head=27e8a0ea376cbaeb73b976ed77ffa0d8d166e6c2 …` (the dispatched line names the five main-checkout paths, the CI state, the dispositions and the memory ids).
+`AGMSG-RESULT v1 task_id=dotfiles-T128-gate-evidence-a04 status=ready_for_review pr=329 head=2239c2eb3f7000155224e3b29c2556d9536e423f code_head=09caaa91 fixtures_pr=340 fixtures_head=2231a4f7b0ae810c1cb38f56f648519dd010cf43 revises=1 …` (the dispatched line names the five main-checkout paths, the CI state and the memory ids).
 
 cost: n/a
 

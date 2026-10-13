@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-orchestrator-tools-a03
 seat: claude-standard-dot-a003
-permission_gated_commands: 20
+permission_gated_commands: 28
 ---
 
 # Sandbox record: dotfiles-T128-orchestrator-tools-a03
@@ -19,3 +19,7 @@ permission_gated_commands: 20
 | 1 | the main checkout's contextdb CLI run with `--` before an option-shaped query (thread 4254771284) | main-checkout CompactionDB, read-only |
 | 1 | the masked copy of the five evidence files to the main checkout | artifact copy with the repository masker |
 | 1 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a03 …` | `agmsg-dispatch` |
+
+## Revise round 1 (ACCEPTANCE 05:06:44Z to the RESULT)
+
+Eight more calls ran with `dangerouslyDisableSandbox`, for a total of 28: the main-checkout `memory add`; the HTTPS push of `ba4d4762`; the Bot wait and the CI watcher (background); the recheck of reviews and check runs; reading the late review's comment; the masked copy to the main checkout; and `agmsg-dispatch` of the RESULT.

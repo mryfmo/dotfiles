@@ -1,8 +1,9 @@
-"""Exercise scripts/orchestrator/{dispatch,three-repeat,bus-read}.sh with stubbed host binaries.
+"""Exercise the scripts under scripts/orchestrator/ with stubbed host binaries.
 
-Each script runs as a subprocess from its copy in a temporary git repository, with `agmsg-dispatch`, `shasum` and
-`uv` stubbed on PATH and `history.sh` stubbed in the directory `AGMSG_SCRIPTS` names; every stub
-records its argv NUL-separated, so an argument is compared byte for byte.
+Each script runs as a subprocess from its copy in a temporary git repository, with `agmsg-dispatch`, `shasum`,
+`uv`, `gh`, `make` and `codex` stubbed on PATH and `history.sh` stubbed in the directory `AGMSG_SCRIPTS` names;
+git is the real one, against a bare repository standing in for `origin`. A stub records its argv NUL-separated,
+so an argument is compared byte for byte (`gh` and `make` append one line per call).
 """
 
 import fcntl
@@ -12,6 +13,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -30,7 +32,15 @@ STUBS = {
     + '"$(cat "$CALLS/dispatch-marker")" "$2" "$3" "$5" >> "$CALLS/history"\nexit 0\n',
     "shasum": '#!/usr/bin/env python3\nimport hashlib, sys\np = sys.argv[-1]\nprint(hashlib.sha256(open(p, "rb").read()).hexdigest() + "  " + p)\n',
     "uv": "#!/usr/bin/env bash\n" + RECORD.format(name="uv") + 'pwd -P > "$CALLS/uv-cwd"\ncat "$CALLS/uv-output"\n',
+    "gh": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/gh.log"\n[[ "$1 $2" != "pr create" ]] || echo https://github.test/pull/9\n',
+    "make": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/make.log"\n[[ ! -f "$CALLS/make-fails" ]] || exit 2\n',
+    # codex reads its stdin to the end (empty when the caller closed it) and writes its -o file.
+    "codex": "#!/usr/bin/env bash\n"
+    + RECORD.format(name="codex")
+    + 'cat > "$CALLS/codex-stdin"\nwhile (($#)); do [[ $1 != -o ]] || echo "Verdict: correct" > "$2"; shift; done\n'
+    + 'echo transcript\nexit "$(cat "$CALLS/codex-status" 2> /dev/null || echo 0)"\n',
 }
+GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 HISTORY_SH = "#!/usr/bin/env bash\n" + RECORD.format(name="history.sh") + 'cat "$CALLS/history"\n'
 
 
@@ -60,13 +70,16 @@ class OrchestratorToolsTest(unittest.TestCase):
             "CALLS": str(self.calls),
             "AGMSG_SCRIPTS": str(agmsg),
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "TMPDIR": str(self.temp),
+            **GIT_ENV,
         }
 
-    def run_tool(self, name, *args, code=0, env=None, cwd=None):
+    def run_tool(self, name, *args, code=0, env=None, cwd=None, stdin=None):
         result = subprocess.run(
-            ["bash", str(self.repo / "scripts/orchestrator" / name), *args],
+            ["bash", str(self.repo / "scripts/orchestrator" / name), *map(str, args)],
             capture_output=True,
             text=True,
+            input=stdin,
             cwd=cwd or self.repo,
             env={**self.env, **(env or {})},
             timeout=30,
@@ -78,6 +91,26 @@ class OrchestratorToolsTest(unittest.TestCase):
     def call(self, name):
         path = self.calls / name
         return path.read_text().split("\0")[:-1] if path.exists() else None
+
+    def git(self, *args, cwd=None):
+        return subprocess.run(
+            ["git", "-c", "commit.gpgsign=false", *args],
+            cwd=cwd or self.repo,
+            env={**os.environ, **GIT_ENV},
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+
+    def origin(self, *files):
+        """Commit the given repo files as main, and push it to a bare repository that is `origin`."""
+        self.git("add", "--", *files)
+        self.git("commit", "-q", "--allow-empty", "-m", "init")
+        self.git("branch", "-M", "main")
+        self.git("init", "-q", "--bare", str(self.temp / "origin.git"))
+        self.git("remote", "add", "origin", str(self.temp / "origin.git"))
+        self.git("push", "-q", "origin", "main")
+        self.git("fetch", "-q", "origin")
 
     def write(self, rel, text):
         path = self.repo / rel
@@ -539,6 +572,173 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.history(*[(i, "orch", "w1", f"AGMSG-TASK v1 task_id=T{i}") for i in range(2)])
         result = self.run_tool("bus-read.sh", "team", code=1, env={"BUS_READ_LIMIT": "3"})
         self.assertIn("reached its limit of 3 rows", result.stderr)
+
+    # boundary.sh, ff-main.sh, replay.sh
+
+    def boundary(self, code):
+        self.origin()
+        self.write(".orchestration/acceptance/x.md", "record\n")
+        message = self.write("msg.txt", "chore(orchestration): boundary\n\nBody.\n")
+        (self.calls / "uv-output").write_text("")
+        result = self.run_tool("boundary.sh", "2026-10-13-1", message, code=code)
+        return result, message, "orchestration/boundary-2026-10-13-1"
+
+    def test_boundary_stops_before_commit_when_the_validator_fails(self):
+        (self.calls / "make-fails").write_text("")
+        _, _, branch = self.boundary(code=2)
+        self.assertEqual(self.git("rev-parse", "origin/main"), self.git("rev-parse", branch))
+        self.assertEqual("", self.git("ls-remote", "origin", branch))
+        self.assertFalse((self.calls / "gh.log").exists())
+        self.assertEqual("validate-agent-assets\n", (self.calls / "make.log").read_text())
+        self.assertEqual(".orchestration/acceptance/x.md", self.call("uv")[-1])
+
+    def test_boundary_commits_pushes_and_queues_the_pr(self):
+        _, message, branch = self.boundary(code=0)
+        self.assertEqual("chore(orchestration): boundary", self.git("log", "-1", "--format=%s", branch))
+        self.assertEqual(".orchestration/acceptance/x.md", self.git("show", "--name-only", "--format=", branch))
+        self.assertEqual(self.git("rev-parse", branch), self.git("ls-remote", "origin", branch).split()[0])
+        self.assertEqual(
+            [
+                f"pr create --base main --head {branch} --title chore(orchestration): boundary --body-file {message}",
+                f"pr merge {branch} --squash --auto",
+            ],
+            (self.calls / "gh.log").read_text().splitlines(),
+        )
+        self.assertEqual(1, len(self.git("worktree", "list").splitlines()))
+
+    def test_ff_main_keeps_local_edits_across_the_fast_forward(self):
+        self.write(".orchestration/a.md", "a\n")
+        self.origin(".orchestration/a.md")
+        other = self.temp / "other"
+        self.git("clone", "-q", "-b", "main", str(self.temp / "origin.git"), str(other))
+        for name in ("b", "c"):
+            (other / f".orchestration/{name}.md").write_text(f"{name}\n")
+        self.git("add", ".orchestration", cwd=other)
+        self.git("commit", "-q", "-m", "boundary", cwd=other)
+        self.git("push", "-q", "origin", "main", cwd=other)
+        # A local edit of a tracked file, an untracked copy equal to main's, and one that differs.
+        self.write(".orchestration/a.md", "a local\n")
+        self.write(".orchestration/b.md", "b\n")
+        self.write(".orchestration/c.md", "c local\n")
+        out = self.run_tool("ff-main.sh").stdout.splitlines()
+        self.assertEqual(["restored: .orchestration/a.md", "restored: .orchestration/c.md"], out[:2])
+        self.assertEqual(self.git("rev-parse", "origin/main"), self.git("rev-parse", "HEAD"))
+        self.assertEqual(["a local\n", "b\n", "c local\n"], [self.write_back(n) for n in "abc"])
+        # A refused fast-forward puts every moved file back.
+        self.git("commit", "-q", "--allow-empty", "-m", "diverge")
+        self.git("commit", "-q", "--allow-empty", "-m", "ahead", cwd=other)
+        self.git("push", "-q", "origin", "main", cwd=other)
+        self.assertIn("refused", self.run_tool("ff-main.sh", code=1).stderr)
+        self.assertEqual(["a local\n", "b\n", "c local\n"], [self.write_back(n) for n in "abc"])
+
+    def write_back(self, name):
+        return (self.repo / f".orchestration/{name}.md").read_text()
+
+    def test_replay_propagates_the_command_status(self):
+        self.origin()
+        result = self.run_tool("replay.sh", "echo $PATH; exit 7", code=7)
+        self.assertEqual(["/usr/bin:/bin", "exit=7"], result.stdout.splitlines())
+        self.assertEqual(1, len(self.git("worktree", "list").splitlines()))
+
+    # codex-review.sh, design-keydiff.py, fill_sweep.py
+
+    def test_codex_review_closes_stdin_fixes_the_profile_and_needs_the_hash(self):
+        reviewed = self.write("design.md", "design\n")
+        template = self.write("prompt.txt", "Review design.md at @@SHA@@.\n")
+        receipt, transcript = self.temp / "receipt.md", self.temp / "transcript.txt"
+        (self.calls / "codex-status").write_text("3")
+        result = self.run_tool(
+            "codex-review.sh",
+            reviewed,
+            template,
+            receipt,
+            transcript,
+            code=3,
+            env={"CODEX_PROFILE": "deep"},
+            stdin="open\n",
+        )
+        prompt = f"Review design.md at {sha('design' + chr(10))}."
+        self.assertEqual(
+            [
+                "--profile",
+                "review",
+                "exec",
+                "--sandbox",
+                "read-only",
+                "-C",
+                str(self.repo),
+                "-c",
+                "approval_policy=never",
+            ]
+            + ["-o", str(receipt), prompt],
+            self.call("codex"),
+        )
+        self.assertEqual("", (self.calls / "codex-stdin").read_text())
+        self.assertEqual("transcript\n", transcript.read_text())
+        self.assertIn(f"sha256={sha('design' + chr(10))} receipt={receipt}", result.stdout)
+        (self.calls / "codex").unlink()
+        self.write("prompt.txt", "Review design.md.\n")
+        self.assertIn(
+            "no @@SHA@@", self.run_tool("codex-review.sh", reviewed, template, receipt, transcript, code=2).stderr
+        )
+        self.assertIsNone(self.call("codex"))
+
+    def test_design_keydiff_names_the_changed_invariant(self):
+        design = "---\ninvariants:\n  INV-1: one\n  INV-6: {0}\npremises: []\n---\n\n# Design\n"
+        self.write("design.md", design.format("six"))
+        self.git("add", "design.md")
+        self.git("commit", "-q", "-m", "design")
+        self.write("design.md", design.format("six, amended") + "\nA paragraph.\n")
+        result = subprocess.run(
+            [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", "python", "-I"]
+            + [str(self.repo / "scripts/orchestrator/design-keydiff.py"), "design.md"],
+            cwd=self.repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        self.assertEqual("invariants ['INV-6']\n", result.stdout)
+
+    def test_fill_sweep_refuses_a_not_applicable_without_evidence(self):
+        url = "https://github.test/pull/9"
+        items = [
+            {"source": "review_comment", "bot": True, "url": f"{url}#discussion_r11", "body": "P2", "level": "P2"},
+            {
+                "source": "issue_comment",
+                "bot": True,
+                "url": f"{url}#issuecomment-12",
+                "body": "Summary",
+                "level": "info",
+            },
+        ]
+        sweep = self.write("sweep.json", json.dumps({"pr": 9, "items": [{**i, "disposition": ""} for i in items]}))
+        before = sweep.read_text()
+
+        def fill(reply, code):
+            comments = self.write(
+                "comments.json", json.dumps([{"user": {"login": "o"}, "in_reply_to_id": 11, "body": reply}])
+            )
+            script = str(self.repo / "scripts/orchestrator/fill_sweep.py")
+            result = subprocess.run(
+                [sys.executable, "-I", script, sweep, comments], capture_output=True, text=True, check=False
+            )
+            self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+            return result.stdout
+
+        self.assertIn(
+            "GAP discussion_r11 review_comment P2 not-applicable:the line is gone",
+            fill("`not-applicable:the line is gone`", 1),
+        )
+        self.assertEqual(before, sweep.read_text())
+        fill("`not-applicable:the line is gone; evidence=git show HEAD:x`", 0)
+        self.assertEqual(
+            [
+                "not-applicable:the line is gone; evidence=git show HEAD:x",
+                "not-applicable:bot summary or onboarding comment, no finding; "
+                + f"""evidence=jq '.items[] | select(.url == "{url}#issuecomment-12")' {sweep}""",
+            ],
+            [i["disposition"] for i in json.loads(sweep.read_text())["items"]],
+        )
 
 
 if __name__ == "__main__":

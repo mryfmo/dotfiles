@@ -370,7 +370,19 @@ class AgmsgRegimePatternTest(unittest.TestCase):
     def test_question_pongs_are_in_the_contract(self) -> None:
         # Thread 4243732330: INV-6 counts AGMSG-PONG status=question, so the contract must allow it.
         contract = self.section(SKILL.read_text(), "## Message Contract v1")
-        for token in ("status=alive|blocked|question", "`question`: the worker holds and asks; INV-6 counts it."):
+        # Audit of 3a54d340, finding 3: the first RESULT's head is checked against the PR's head before it becomes the baseline.
+        for token in (
+            "status=alive|blocked|question",
+            "`question`: the worker holds and asks; INV-6 counts it.",
+            "a mismatch is answered with `status=revise`",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, contract)
+
+    def test_result_head_is_in_the_contract(self) -> None:
+        # Thread 4244248706: the first RESULT's head is INV-6's baseline, so the contract makes it mandatory.
+        contract = self.section(SKILL.read_text(), "## Message Contract v1")
+        for token in ("head=<full sha>", "the first RESULT's head is INV-6's baseline"):
             with self.subTest(token=token):
                 self.assertIn(token, contract)
 
@@ -490,6 +502,65 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "Right after a push GitHub can report no checks yet, and the watcher then exits 1 with `no checks reported`: start it once a check is listed, and restart it on that message instead of reading it as a CI failure.",
             step,
         )
+
+    def test_the_worker_stops_itself_on_repeated_findings(self) -> None:
+        # Plan 006 A7-1: PR 317's V0 worker kept fixing through seven Bot-reviewed heads and never read its halt.
+        step = self.section(SKILL.read_text(), "\n15. After the final push", "\n## ")
+        for token in (
+            "fixes nothing more",
+            # Thread 4244354413: a round with no fix commit, the third one included, still runs the class scan.
+            "After every Bot review round, before deciding whether a fix commit follows",
+            # The task lists this token and the --history-only one in backticks; in the prose both sit inside longer code spans.
+            "status=blocked note=S1|INV-6",
+            "whichever limit comes first ends the fixing",
+            "never a disposition",
+            "never for a fourth round of the same class",
+            "not only the current head's",
+            "and the review bodies whose `commit_id`, is at or after the task's first commit on the PR",
+            "counted toward the classes at any priority and toward the fix cap at P0 or P1, never INV-6's heads",
+            # Thread 4244248703: the class count reads every badged Codex finding, review bodies P0 to P3.
+            "carries a badge, P0 to P3",
+            "--history-only",
+            # Bot fix round 1 on 9d001bcb (threads 4244128846, 4244128851, 4244128854, 4244128857).
+            # Revise round 1 (plan S1 on the class-count sentence): the worker counts the Codex Bot's findings only.
+            "an early stop",
+            "never widens the worker's input beyond the Codex Bot's items",
+            "When a stop (heads=2 or three of a class) coincides with the third Bot round",
+            # Thread 4244248694: the worker's reviews and commits lookups page through every result.
+            "`gh api --paginate …/pulls/<n>/reviews`",
+            "`gh api --paginate …/pulls/<n>/commits`",
+            "a Bot title never (only its reduced class)",
+            "instead of a blocked PONG, and then waits for the ACCEPTANCE: one handoff",
+            "pastes its complete output (the count line, the `detail:` line and any `S2:` line)",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, step)
+
+    def test_the_orchestrator_watches_from_github_and_history(self) -> None:
+        # Plan 006 A7-2: a worker that ignores its PING is seen from GitHub and history, never from panes.
+        playbook = self.section(SKILL.read_text(), "## Orchestrator Playbook")
+        for token in (
+            "at least every 30 minutes after a TASK",
+            "`…/pulls/<n>/comments`",
+            "never detects completion, which stays the RESULT's arrival",
+            "45 minutes without a push, a PONG or a RESULT is a stall",
+            "`herdr-agents --remove-worker <worktree> --force`",
+            # Bot fix round 1 on 9d001bcb (threads 4244128840, 4244128859).
+            "all three with `--paginate`",
+            "the next seat is created in a clean worktree",
+            # Thread 4244175778: a worker pushing less than 45 minutes apart never stalls.
+            "as soon as it first sees a task past the A2 cap or an INV-6 count",
+            # Thread 4244203607: a PING the worker reads and ignores still leads to removal.
+            "read or unread",
+            # Threads 4244248710 and 4244272551: the audit-head component is read as the counters bullet prescribes.
+            "read as the counters bullet prescribes",
+            # Threads 4244354410 and 4244354417: the PR number before the RESULT, and what counts as a fix round.
+            "`gh pr list --head <the task's branch> --json number`",
+            # Audit of 3a54d340, finding 1: a fix round that fixed only P2/P3 findings still counts.
+            "A fix round is a push whose predecessor head carries a Codex badged finding of any priority",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, playbook)
 
     def test_workers_open_the_pr_as_a_draft(self) -> None:
         # Thread 4240566266: step 15's `gh pr ready` starts the Bot timer only on a draft PR.

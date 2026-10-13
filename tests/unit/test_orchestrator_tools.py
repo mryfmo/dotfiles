@@ -5,6 +5,7 @@ Each script runs as a subprocess from its copy in a temporary git repository, wi
 records its argv NUL-separated, so an argument is compared byte for byte.
 """
 
+import fcntl
 import hashlib
 import json
 import os
@@ -12,6 +13,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -217,6 +219,12 @@ class OrchestratorToolsTest(unittest.TestCase):
         (self.calls / "dispatch-marker").write_text("●")
         self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(plain))
         self.assertEqual(({"dispatch": [f"{ping} read_at=unread"]}, "Prose only.\n"), self.gate_block(plain))
+        # Thread 4256987087: a CRLF record's block is found and its prose keeps every byte.
+        crlf = self.repo / ".orchestration/acceptance/c.md"
+        crlf.write_bytes(b'---\r\n{"task": "t"}\r\n---\r\n\r\nProse.\r\n')
+        self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(crlf))
+        self.assertTrue(crlf.read_bytes().endswith(b'"task": "t"\n}\n---\n\r\nProse.\r\n'), crlf.read_bytes())
+        self.assertEqual({"dispatch": [f"{ping} read_at=unread"], "task": "t"}, self.gate_block(crlf)[0])
         # A send that adds no row records nothing, though identical rows are already on the bus.
         (self.calls / "dispatch-fails").write_text("")
         before = record.read_text()
@@ -269,6 +277,92 @@ class OrchestratorToolsTest(unittest.TestCase):
                 self.assertIn(needle, result.stderr)
                 self.assertIsNone(self.call("agmsg-dispatch"))
                 self.assertEqual(f"---\n{block}\n---\n", record.read_text())
+
+    def test_dispatch_line_grammar_table(self):
+        # Item 4's input grammar (C-31): one refused line per row the tests above do not cover.
+        self.write(".orchestration/tasks/t.md", "task\n")
+        task = f"task_file=.orchestration/tasks/t.md task_sha256={sha('task' + chr(10))}"
+        for line, code, needle in (
+            ("AGMSG-TASK task_id=t", 2, "not an AGMSG-TASK"),
+            (f"AGMSG-TASK v1 AGMSG-TASK v1 task_id=t {task}", 2, "AGMSG-TASK is not a <key>=<value> token"),
+            (f"AGMSG-TASK v1 task_id=t task_sha256={sha('task' + chr(10))}", 1, "needs task_file="),
+            ("AGMSG-ACCEPTANCE v1 task_id=t design=d.md design_sha256=ABC", 1, "not 64 lowercase hex"),
+            (
+                f"AGMSG-ACCEPTANCE v1 task_id=t design=d.md design_file=e.md design_sha256={sha('x')}",
+                1,
+                "both design_file=",
+            ),
+            (
+                f"AGMSG-ACCEPTANCE v1 task_id=t design=d.md design=e.md design_sha256={sha('x')}",
+                1,
+                "design= appears more",
+            ),
+            (f"AGMSG-ACCEPTANCE v1 task_id=t design=absent.md design_sha256={sha('x')}", 1, "absent.md does not exist"),
+            ("AGMSG-PING v1 task_id=t note=two words", 2, "words is not a <key>=<value> token"),
+        ):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, self.dispatch(line, code=code).stderr)
+                self.assertIsNone(self.call("agmsg-dispatch"))
+        for line in (
+            f"AGMSG-ACCEPTANCE v1 task_id=t previous_design_sha256={sha('old')}",
+            f"AGMSG-TASK\tv1\ttask_id=t\t{task.replace(' ', chr(9))}",
+        ):
+            with self.subTest(line=line):
+                self.dispatch(line)
+                self.assertEqual(line, self.call("agmsg-dispatch")[4])
+                (self.calls / "agmsg-dispatch").unlink()
+
+    def test_dispatch_record_path_tokenizes_locks_and_refuses_a_capped_history(self):
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        (self.calls / "history").write_text("")
+        (self.calls / "dispatch-marker").write_text("○")
+        args = ["team", "orch", "worker", "w5:pA"]
+        # Thread 4255272793: the record check reads the validator's task_id, whatever whitespace precedes it.
+        self.write("line.txt", "AGMSG-PING v1 \ttask_id=u reason=check\n")
+        result = self.run_tool("dispatch.sh", *args, "line.txt", str(record), code=1)
+        self.assertIn("is the record of task t, the line is task u", result.stderr)
+        self.assertIsNone(self.call("agmsg-dispatch"))
+        # Thread 4255272797: both sends wait for the record directory's lock, then both are recorded.
+        lines = [f"AGMSG-PING v1\ttask_id=t reason=r{n}" for n in (0, 1)]
+        for n, line in enumerate(lines):
+            self.write(f"line{n}.txt", line + "\n")
+        lock = os.open(record.parent, os.O_RDONLY)
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        script = str(self.repo / "scripts/orchestrator/dispatch.sh")
+        procs = [
+            subprocess.Popen(
+                ["bash", script, *args, f"line{n}.txt", str(record)],
+                cwd=self.repo,
+                env=self.env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            for n in (0, 1)
+        ]
+        deadline = time.monotonic() + 20
+        while len((self.calls / "history").read_text().splitlines()) < 2 and time.monotonic() < deadline:
+            time.sleep(0.05)
+        time.sleep(0.5)
+        self.assertEqual([None, None], [proc.poll() for proc in procs])
+        self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        os.close(lock)
+        for proc in procs:
+            _, err = proc.communicate(timeout=30)
+            self.assertEqual(0, proc.returncode, err)
+        self.assertEqual(
+            sorted(f"{line} read_at=read" for line in lines), sorted(self.gate_block(record)[0]["dispatch"])
+        )
+        # Thread 4255272803: a read whose lines reach the limit may have lost its oldest rows; nothing is sent.
+        (self.calls / "agmsg-dispatch").unlink()
+        (self.calls / "history").write_text("  ○ [2026-10-13T00:00:00Z] a → b: AGMSG-PING v1 task_id=x\n" * 3)
+        before = record.read_text()
+        result = self.run_tool("dispatch.sh", *args, "line0.txt", str(record), code=1, env={"BUS_READ_LIMIT": "3"})
+        self.assertIn("the history read is capped at 3 rows; raise BUS_READ_LIMIT", result.stderr)
+        self.assertIsNone(self.call("agmsg-dispatch"))
+        self.assertEqual(["team", "", "3"], self.call("history.sh"))
+        self.assertEqual(before, record.read_text())
 
     # three-repeat.sh
 
@@ -390,13 +484,16 @@ class OrchestratorToolsTest(unittest.TestCase):
             (24, "w9", "w1", "AGMSG-ACCEPTANCE v1 task_id=T1 status=accepted"),
             (23, "w9", "orch", "AGMSG-PONG v1 task_id=T1 status=blocked"),
             (20, "orch", "w2", "AGMSG-TASK v1 task_id=T2"),
-            (10, "w2", "orch", "AGMSG-PONG v1 task_id=T2 status=blocked"),
+            # The audit of 3e5cad37: a body is split on runs of spaces and tabs, as the stop gate's awk splits it.
+            (10, "w2", "orch", "AGMSG-PONG\tv1  task_id=T2\tstatus=blocked"),
             (9, "orch", "w3", "AGMSG-TASK v1 task_id=T3"),
             (8, "w3", "orch", "AGMSG-RESULT v1 task_id=T3 status=ready_for_review"),
             (7, "w9", "w8", "AGMSG-ACCEPTANCE v1 task_id=T3 status=revise"),
             (6, "w9", "w3", "AGMSG-ACCEPTANCE v1 task_id=T3 status=revise"),
         )
         self.assertEqual(([("T1", "w1")], "skipped=1"), self.open_tasks())
+        # Thread 4256987076: w9's later rows do not reset the silence clock of T1's pair (its TASK, 30 minutes ago).
+        self.assertIn(" silent=yes", self.run_tool("bus-read.sh", "team").stdout.splitlines()[0])
 
     def test_bus_read_closes_a_task_on_any_non_revise_acceptance(self):
         # Thread 4255494139: no status whitelist; any ACCEPTANCE from the opener's sender but revise closes.
@@ -436,6 +533,10 @@ class OrchestratorToolsTest(unittest.TestCase):
 
     def test_bus_read_refuses_a_read_that_reaches_its_limit(self):
         self.history(*[(i, "orch", "w1", f"AGMSG-TASK v1 task_id=T{i}") for i in range(3)])
+        result = self.run_tool("bus-read.sh", "team", code=1, env={"BUS_READ_LIMIT": "3"})
+        self.assertIn("reached its limit of 3 rows", result.stderr)
+        # Thread 4256987062: lines are counted before any is skipped, the helper's first line included.
+        self.history(*[(i, "orch", "w1", f"AGMSG-TASK v1 task_id=T{i}") for i in range(2)])
         result = self.run_tool("bus-read.sh", "team", code=1, env={"BUS_READ_LIMIT": "3"})
         self.assertIn("reached its limit of 3 rows", result.stderr)
 

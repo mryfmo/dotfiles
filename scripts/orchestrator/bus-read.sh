@@ -4,8 +4,9 @@
 # @description
 #   Plan 007 T718 (C-23). Reads the history through agmsg's `history.sh <team>
 #   "" <limit>` (its documented positional form; never the database file) with
-#   a limit far above the team's size, and refuses a read whose rows reach the
-#   limit, so a truncated view is never taken for the whole bus. The open rule
+#   a limit far above the team's size, and refuses a read whose non-empty lines
+#   reach the limit, counted before any row is skipped (thread 4256987062), so a
+#   truncated view is never taken for the whole bus. The open rule
 #   is the stop gate's worker-seat branch (`scripts/agent-stop-gate.sh`; threads
 #   4255494133, 4255494139): a task's latest opener, its latest AGMSG-TASK (X
 #   to Y) or a later AGMSG-ACCEPTANCE `status=revise` between the same X and Y
@@ -17,9 +18,11 @@
 #   <body>`, with the marker `●` or `○` (thread 4256541723), an `<at>` jq's
 #   `fromdateiso8601` parses and a body of AGMSG-TASK, -ACCEPTANCE, -RESULT or
 #   -PONG, then `v1`, exactly one non-empty `task_id=` and at most one
-#   `status=`; any other non-empty line is skipped and counted, never an exit.
-#   For each open task it prints the seat the opener went to, the time of the
-#   task's latest counted row, the whole minutes since then, and `silent=yes`
+#   `status=`, its tokens split on runs of spaces and tabs as the stop gate's
+#   awk splits them (the audit of 3e5cad37); any other non-empty line is
+#   skipped and counted, never an exit. For each open task it prints the seat
+#   the opener went to, the time of the latest counted row between the opener's
+#   two endpoints (thread 4256987076), the whole minutes since then, and `silent=yes`
 #   at thirty minutes or more (INV-10's figure), else `silent=no`; `open: none`
 #   when no task (or not the named one) is open; then `skipped=<n>`.
 # @arg $1 string agmsg team.
@@ -51,9 +54,9 @@ report="$(jq -nrR --arg only "${only}" --argjson limit "${limit}" '
   def count($k): [.toks[] | select(startswith($k + "="))] | length;
   def tok($k): [.toks[] | select(startswith($k + "="))][0] // null | if . then .[($k | length) + 1:] else null end;
   [inputs | select(. != "")] as $lines
+  | if ($lines | length) >= $limit then error("bus-read: the read reached its limit of \($limit) rows; raise BUS_READ_LIMIT") else . end
   | [$lines[] | capture("^\\s*[●○]\\s+\\[(?<at>[^\\]]+)\\]\\s+(?<from>\\S+)\\s+→\\s+(?<to>\\S+):\\s(?<body>.*)$")] as $all
-  | if ($all | length) >= $limit then error("bus-read: the read reached its limit of \($limit) rows; raise BUS_READ_LIMIT") else . end
-  | [$all | to_entries[] | .value + {i: .key} | .toks = (.body | split(" ")) | .kind = .toks[0]
+  | [$all | to_entries[] | .value + {i: .key} | .toks = [.body | splits("[ \\t]+") | select(. != "")] | .kind = .toks[0]
       | select((.kind | IN("AGMSG-TASK", "AGMSG-ACCEPTANCE", "AGMSG-RESULT", "AGMSG-PONG")) and .toks[1] == "v1"
           and count("task_id") == 1 and tok("task_id") != "" and count("status") <= 1
           and (.at | try fromdateiso8601 catch null) != null)
@@ -66,7 +69,8 @@ report="$(jq -nrR --arg only "${only}" --argjson limit "${limit}" '
       | select(any(.[]; .i > $o.i and (
           (.from == $o.to and .to == $o.from and (.kind == "AGMSG-RESULT" or (.kind == "AGMSG-PONG" and .status == "blocked")))
           or (.from == $o.from and .to == $o.to and .kind == "AGMSG-ACCEPTANCE" and .status != "revise"))) | not)
-      | max_by(.i).at as $last | ((now - ($last | fromdateiso8601)) / 60 | floor) as $min
+      | map(select([.from, .to] | sort == ([$o.from, $o.to] | sort))) | max_by(.i).at as $last
+      | ((now - ($last | fromdateiso8601)) / 60 | floor) as $min
       | "open: task=\($o.task) seat=\($o.to) last_event=\($last) minutes=\($min) silent=\(if $min >= 30 then "yes" else "no" end)"]
   | (if length == 0 then "open: none" else .[] end), "skipped=\(($lines | length) - ($rows | length))"' <<< "${history}")" || exit 1
 printf '%s\n' "${report}"

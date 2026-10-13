@@ -11,7 +11,10 @@
 #   refused), except a `previous_<name>_sha256=` reference to an earlier
 #   version, which is checked as 64 lowercase hex only; every line must carry
 #   exactly one non-empty `task_id=`, and an AGMSG-TASK line must carry
-#   `task_file=` and `task_sha256=`. A relative path is read from the root of
+#   `task_file=` and `task_sha256=`. Tokens are separated by any run of spaces
+#   and tabs, and every token after `v1` is `<key>=<value>` (exit 2 otherwise,
+#   so a repeated prefix or a value split by a space is refused); the
+#   recorder takes `task_id` from that one parse (thread 4255272793). A relative path is read from the root of
 #   the checkout this script lives in (`git rev-parse --show-toplevel` there),
 #   never from the caller's directory. A missing field or file, a malformed value
 #   or a mismatch exits 1 naming the field, and nothing is sent. Otherwise the
@@ -24,18 +27,22 @@
 #   duplicate key, NaN or Infinity, a block that is not an object or a
 #   `dispatch` that is not a list is refused; `sort_keys`, `indent=2`); the key
 #   is created when absent, and a record without a block gets a block holding
-#   only `dispatch`. The prose after the block is kept byte for byte, and the
-#   record is replaced atomically (a temporary file in its directory, fsync,
-#   rename). A record that is not an existing regular file writable in a
+#   only `dispatch`. The prose after the block is kept byte for byte, CRLF
+#   included (thread 4256987087), and the record is replaced atomically (a
+#   temporary file in its directory, fsync, rename) under an exclusive `flock`
+#   of that directory, so two dispatches to one record never lose an entry
+#   (thread 4255272797). A record that is not an existing regular file writable in a
 #   writable directory, or whose `task` is not the line's `task_id`, is refused
 #   before the send, and nothing is sent.
 #   Only a bus row this send created is recorded: the rows matching the line,
 #   sender and recipient are counted before and after the send, and a send that
 #   added none leaves the record unchanged and exits 1. The read state is the
-#   marker the team-wide `history.sh <team> "" 100000` prints for the new row
+#   marker the team-wide `history.sh <team> "" <BUS_READ_LIMIT>` prints for the new row
 #   (`●` unread, `○` read): agmsg's scripts expose no read_at time, this script
 #   never reads the message database, and it never passes an agent to
-#   history.sh, whose agent argument renames the caller's pane after it.
+#   history.sh, whose agent argument renames the caller's pane after it. A read
+#   whose non-empty lines reach the limit may have lost its oldest rows, so it
+#   is refused before the send (thread 4255272803).
 # @arg $1 string agmsg team.
 # @arg $2 string Sender identity.
 # @arg $3 string Recipient identity.
@@ -43,6 +50,7 @@
 # @arg $5 path File holding the line.
 # @arg $6 path Optional acceptance record (`.orchestration/acceptance/<task>.md`), relative to the current directory.
 # @env AGMSG_SCRIPTS The agmsg scripts directory (default `$HOME/.agents/skills/agmsg/scripts`).
+# @env BUS_READ_LIMIT The row limit of the history read (default 100000).
 # @exitcode 0 Sent, and recorded when a record was given (agmsg-dispatch's own status otherwise).
 # @exitcode 1 A field check failed, the record is malformed, or the sent line was not recorded.
 # @exitcode 2 Usage error, or the file is not one AGMSG-TASK, AGMSG-ACCEPTANCE or AGMSG-PING v1 line.
@@ -69,13 +77,19 @@ line="$(cat -- "${file}" && printf x)" && line=${line%x} && line=${line%$'\n'}
     echo "dispatch: ${file} holds more than one line" >&2
     exit 2
 }
-[[ ${line} =~ ^AGMSG-(TASK|ACCEPTANCE|PING)\ v1\  ]] || {
+[[ ${line} =~ ^AGMSG-(TASK|ACCEPTANCE|PING)[[:blank:]]+v1[[:blank:]] ]] || {
     echo "dispatch: not an AGMSG-TASK, AGMSG-ACCEPTANCE or AGMSG-PING v1 line" >&2
     exit 2
 }
 root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 
 read -ra tokens <<< "${line}"
+for t in "${tokens[@]:2}"; do
+    [[ ${t} == *=* ]] || {
+        echo "dispatch: ${t} is not a <key>=<value> token" >&2
+        exit 2
+    }
+done
 # @description Print the value of the first `<key>=` token, or fail.
 # @arg $1 string Key.
 value_of() {
@@ -152,11 +166,12 @@ done
 # Modes: `check` parses the record; `append` finds the sent line in history.sh's
 # output on stdin, takes its read marker (● unread, ○ read) and appends it.
 read -r -d '' recorder << 'PY' || true
-import json, os, re, shutil, sys, tempfile
+import fcntl, json, os, re, shutil, sys, tempfile
 from pathlib import Path
 
-mode, path, line, sender, to, before = sys.argv[1:7]
+mode, path, line, sender, to, before, task, limit = sys.argv[1:9]
 record = Path(path)
+rows = [r for r in sys.stdin.read().splitlines() if r]
 
 def refuse(pairs):
     keys = [k for k, _ in pairs]
@@ -168,41 +183,50 @@ def refuse(pairs):
 def constant(name):
     sys.exit(f"dispatch: {path}: non-finite number {name}")
 
-text = record.read_text()
-block, rest = {}, text
-if text.startswith("---\n"):
-    end = text.find("\n---\n", 3)
-    if end < 0:
-        sys.exit(f"dispatch: {path}: the block between the first two --- lines is not closed")
-    try:
-        block = json.loads(text[4:end], object_pairs_hook=refuse, parse_constant=constant)
-    except json.JSONDecodeError as e:
-        sys.exit(f"dispatch: {path}: the block is not valid JSON: {e}")
-    rest = text[end + 5:]
-    if not isinstance(block, dict):
-        sys.exit(f"dispatch: {path}: the block is not a JSON object")
-entries = block.setdefault("dispatch", [])
-if not isinstance(entries, list):
-    sys.exit(f"dispatch: {path}: dispatch is not a list")
-# Thread 4254844587: another task's record never takes this task's dispatch.
-task = next((t[len("task_id="):] for t in line.split(" ") if t.startswith("task_id=")), None)
-if task is not None and "task" in block and block["task"] != task:
-    sys.exit(f"dispatch: {path} is the record of task {block['task']}, the line is task {task}")
+def load():
+    # newline="": a CRLF record keeps its line endings (thread 4256987087).
+    with open(record, newline="") as f:
+        text = f.read()
+    block, rest = {}, text
+    if re.match(r"---\r?\n", text):
+        m = re.match(r"---\r?\n(.*?)\r?\n---\r?\n", text, re.S)
+        if not m:
+            sys.exit(f"dispatch: {path}: the block between the first two --- lines is not closed")
+        try:
+            block = json.loads(m.group(1), object_pairs_hook=refuse, parse_constant=constant)
+        except json.JSONDecodeError as e:
+            sys.exit(f"dispatch: {path}: the block is not valid JSON: {e}")
+        rest = text[m.end():]
+        if not isinstance(block, dict):
+            sys.exit(f"dispatch: {path}: the block is not a JSON object")
+    if not isinstance(block.setdefault("dispatch", []), list):
+        sys.exit(f"dispatch: {path}: dispatch is not a list")
+    # Thread 4254844587: another task's record never takes this task's dispatch.
+    if "task" in block and block["task"] != task:
+        sys.exit(f"dispatch: {path} is the record of task {block['task']}, the line is task {task}")
+    return block, rest
+
 row = re.compile(r"^\s*(\S+)\s+\[[^\]]+\]\s+(\S+)\s+→\s+(\S+):\s(.*)$")
-marks = [m.group(1) for m in map(row.match, sys.stdin.read().splitlines())
-         if m and (m.group(2), m.group(3), m.group(4)) == (sender, to, line)]
+marks = [m.group(1) for m in map(row.match, rows) if m and (m.group(2), m.group(3), m.group(4)) == (sender, to, line)]
 if mode == "check":
+    load()
+    if len(rows) >= int(limit):
+        sys.exit(f"dispatch: the history read is capped at {limit} rows; raise BUS_READ_LIMIT")
     print(len(marks))
     sys.exit(0)
+# Thread 4255272797: the read-modify-write holds the record directory's lock, so a second dispatch waits.
+lock = os.open(record.parent, os.O_RDONLY)
+fcntl.flock(lock, fcntl.LOCK_EX)
+block, rest = load()
 # Thread 4254399807: an older identical row is not this send.
 if len(marks) <= int(before):
     sys.exit(f"dispatch: this send added no bus row; {path} is unchanged")
-entries.append(f"{line} read_at={'read' if marks[-1] == '○' else 'unread'}")
+block["dispatch"].append(f"{line} read_at={'read' if marks[-1] == '○' else 'unread'}")
 body = json.dumps(block, sort_keys=True, indent=2, ensure_ascii=False)
 # Thread 4254844595: the line is already sent, so the record is replaced whole or not at all.
 fd, tmp = tempfile.mkstemp(dir=record.parent, prefix=f".{record.name}.")
 try:
-    with os.fdopen(fd, "w") as f:
+    with os.fdopen(fd, "w", newline="") as f:
         f.write(f"---\n{body}\n---\n{rest}")
         f.flush()
         os.fsync(f.fileno())
@@ -218,10 +242,13 @@ if [[ ! -f ${record} || ! -w ${record} || ! -w "$(dirname -- "${record}")" ]]; t
     echo "dispatch: the record ${record} cannot be written" >&2
     exit 1
 fi
+limit=${BUS_READ_LIMIT:-100000}
+[[ ${limit} =~ ^[1-9][0-9]*$ ]] || usage
+task="$(value_of task_id)"
 # Team-wide: history.sh renames the calling pane after an agent argument (thread 4254399805).
-bus() { "${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "${team}" "" 100000; }
-before="$(bus | python3 -I -c "${recorder}" check "${record}" "${line}" "${from}" "${to}" 0)"
+bus() { "${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "${team}" "" "${limit}"; }
+before="$(bus | python3 -I -c "${recorder}" check "${record}" "${line}" "${from}" "${to}" 0 "${task}" "${limit}")"
 rc=0
 agmsg-dispatch "${team}" "${from}" "${to}" "${pane}" "${line}" || rc=$?
-bus | python3 -I -c "${recorder}" append "${record}" "${line}" "${from}" "${to}" "${before}"
+bus | python3 -I -c "${recorder}" append "${record}" "${line}" "${from}" "${to}" "${before}" "${task}" "${limit}"
 exit "${rc}"

@@ -283,3 +283,60 @@ G5 review worktree left at the head: KILLED rc=1 AssertionError: '8ba1a18e7249f2
 G6 no PR binding: KILLED rc=1 AssertionError: 0 != 2 : 
 restored: 0 OK
 ```
+
+## 10. PR-B fix round (`e30cbed0`)
+
+```text
+$ git log --oneline -3
+e30cbed0 fix(orchestrator): orch-gate.sh runs the trusted gate, refuses tracked symlinks, clears overrides
+0749e931 chore(orchestration): dotfiles-T128-orchestrator-tools-a05 PR-B evidence
+362a9c2b test(orchestrator): assert the dispatch list and the absent key without a KeyError or an env dump
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v 2>&1 | grep -E "orch_gate|front_matter|ERROR|FAIL|^Ran|^OK"
+test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record) ... ok
+test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit) ... ok
+test_design_keydiff_names_the_changed_invariant (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_design_keydiff_names_the_changed_invariant) ... ERROR
+test_orch_gate_refuses_a_head_that_tracks_a_symlink_under_orchestration (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_refuses_a_head_that_tracks_a_symlink_under_orchestration) ... ok
+test_orch_gate_refuses_another_prs_sweep_or_a_changed_gate_before_the_review_worktree_moves (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_refuses_another_prs_sweep_or_a_changed_gate_before_the_review_worktree_moves) ... ok
+test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree) ... ok
+test_orch_gate_runs_this_checkouts_gate_on_the_review_worktree_with_the_gate_inputs (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_runs_this_checkouts_gate_on_the_review_worktree_with_the_gate_inputs) ... ok
+Ran 36 tests in 20.715s
+FAILED (errors=1)
+$ (cd "$TMPDIR" && UV_OFFLINE=1 uv run --no-project --with pyyaml python -I -c 'import yaml' 2>&1 | tail -2)
+error: Failed to download and build `pyyaml==6.0.3`
+  cause: Network connectivity is disabled, but the requested data wasn't found in the cache: https://files.pythonhosted.org/packages/05/8e/961c0007c59b8dd7729d542c61a4d537767a59645b82a0b521206e1e25c2/pyyaml-6.0.3.tar.gz
+$ shellcheck scripts/orchestrator/*.sh && echo shellcheck-clean
+shellcheck-clean
+$ (cd "$TMPDIR" && shfmt --indent 4 --space-redirects --diff <worktree>/scripts/orchestrator/orch-gate.sh) && echo shfmt-clean
+shfmt-clean
+$ ruff format --check tests/unit/test_orchestrator_tools.py && ruff check tests/unit/test_orchestrator_tools.py
+1 file already formatted
+All checks passed!
+$ git diff --numstat origin/main...HEAD | awk (files and added lines outside .orchestration)
+files 3 added-non-test 196 added-test 174
+```
+
+After `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets …` fetched PyYAML into the cache (the masker of these records, run with pypi.org and files.pythonhosted.org allowed), the module passes offline:
+
+```text
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py 2>&1 | tail -3
+Ran 36 tests in 21.011s
+
+OK
+```
+
+Mutation proofs. `mutate-prb2.py` (scratchpad) uses the same rules as §9.
+
+```text
+F1 the head's gate runs: KILLED rc=1 AssertionError: Lists differ: ['run[31 chars]I', '/private/tmp/claude-501/tmpnso2ai87/repo/[52 chars]ain'] != ['run[31 chars]I', 'scripts/re
+F2 no gate equality check: KILLED rc=1 AssertionError: 0 != 2 : 
+F3 tracked symlinks allowed: KILLED rc=1 AssertionError: 0 != 2 : 
+F4 CRIT_REVIEW inherited: KILLED rc=1 AssertionError: Lists differ: [] != ['CRIT_REVIEW']
+F5 CRIT_REVIEWED inherited: KILLED rc=1 AssertionError: Lists differ: [] != ['CRIT_REVIEWED']
+G1 AUDIT_DISPOSITIONS inherited: KILLED rc=1 AssertionError: Lists differ: [] != ['AUDIT_DISPOSITIONS']
+G2 no ACCEPTANCE_EVIDENCE: KILLED rc=1 AssertionError: {'ACC[14 chars]CE': '.orchestration/acceptance/t-a01.md', 'AU[232 chars] '1'} != {'ACC[14 chars]CE': None, 'AUDIT_EVIDENCE':
+G3 the gate in the main checkout: KILLED rc=1 AssertionError: '/private/tmp/claude-501/tmp5juebzi8/repo/.claude/worktrees/orchestrator-review' != '/private/tmp/claude-501/tmp5juebzi8/rep
+G4 gate status dropped: KILLED rc=1 AssertionError: 0 != 2 : 
+G5 review worktree left at the head: KILLED rc=1 AssertionError: '7525355595ba59d72065367ba38d83ec85a83874' != '15456cf2590c836208cf7a6f47c9dc2bae69f3ca'
+G6 no PR binding: KILLED rc=1 AssertionError: 0 != 2 : 
+restored: 0 OK
+```

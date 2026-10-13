@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-orchestrator-tools-a05
 seat: claude-standard-dot-a003
-permission_gated_commands: 19
+permission_gated_commands: 24
 ---
 
 # Sandbox record: dotfiles-T128-orchestrator-tools-a05
@@ -50,3 +50,23 @@ These ran inside the sandbox: the fetch, the branch, the edits, the tests, the l
 | 6 | main-checkout `memory add` | main-checkout `memory add` |
 | 7 | the masked copy of the PR-B sections to the main checkout | artifact copy with the repository masker |
 | 8 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a05 part=PR-B …` | `agmsg-dispatch` |
+
+### PR-B as run so far, with the fix round
+
+The table above predicted eight calls. Machine sleep cut in after the push, and the review took a second wait, so PR-B makes thirteen calls in all. The front matter counts twenty-four: eleven from earlier rounds and these thirteen. Calls 1 to 8 have run; 9 to 13 follow this commit, and the main-checkout copy gives the final count.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| 1 | `agmsg-dispatch … AGMSG-PONG … part=PR-B` (PING 966) | `agmsg-dispatch` |
+| 2 | the HTTPS push of `0749e931` | `git push` |
+| 3 | `agmsg-dispatch … AGMSG-PONG … status=alive` (the wake PING after the sleep) | `agmsg-dispatch` |
+| 4 | `gh pr list --head tools/orchestrator-scripts-3` (no PR yet) | `gh` |
+| 5 | `gh pr create` (#350) | `gh` |
+| 6 | `gh pr checks 350 --watch` (13/13 pass on `0749e931`) | `gh` |
+| 7 | the first Bot wait; it stopped on the summary comment posted at PR open with `"status":"running"` | `gh` |
+| 8 | the second Bot wait, until the summary's status left `running` | `gh` |
+| 9 | the HTTPS push of the fix round | `git push` |
+| 10 | `gh pr checks 350 --watch` on the new head | `gh` |
+| 11 | main-checkout `memory add` | main-checkout `memory add` |
+| 12 | the masked copy of the PR-B sections to the main checkout | artifact copy with the repository masker |
+| 13 | `agmsg-dispatch … AGMSG-RESULT … part=PR-B` | `agmsg-dispatch` |

@@ -150,3 +150,28 @@ The `make` stub now also records its environment and working directory (`make-en
 - Validation §9 lists 15 mutants, all killed: 9 in `acceptance-front-matter.py` and 6 in `orch-gate.sh`.
 - The first run killed 14 of 15. AF6 raised a KeyError rather than an assertion failure. The G1 failure message also printed the captured environment, values included. `362a9c2b` makes both assertions plain: `.get`, and the sorted key names only.
 - INV-2: 3 files outside `.orchestration`, 187 added lines outside tests and 151 under tests.
+
+### PR-B fix round (`e30cbed0`): the Codex review of `0749e931` on PR #350
+
+The Bot's one review (23:33:44Z code review, 23:40:27Z security review) left three P1 threads, all on `orch-gate.sh`. Each is fixed at its root:
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4265190252 (P1) | `make require-crit-review` at the PR head runs the head's own Makefile and gate, so a PR can pass itself | `fixed:e30cbed0` |
+| 4265190259 (P1) | a head that commits an evidence path as a symlink makes `cp` write outside the review worktree | `fixed:e30cbed0` |
+| 4265190267 (P1) | an inherited `CRIT_REVIEW=off` makes the gate return success unchecked | `fixed:e30cbed0` |
+
+- **Thread 4265190252.** The wrapper no longer calls `make` in the review worktree. It runs this checkout's `scripts/require-crit-review.py` with the same inputs: `uv run --no-project python -I <root>/scripts/require-crit-review.py --base origin/main`, the review worktree as its working directory. The gate resolves its repository from the working directory (`git rev-parse --show-toplevel`), so it still reads the head's diff and the copied evidence. The validator it loads ships next to it in this checkout. Before anything moves, the wrapper refuses unless `scripts/require-crit-review.py` and `scripts/validate-agent-assets.py` here equal origin/main's (`git diff --quiet origin/main -- …`).
+- **Thread 4265190259.** A head whose tree has any `120000` entry under `.orchestration` (`git ls-tree -r <head> -- .orchestration`) is refused before the review worktree moves. That covers `.orchestration` itself, a directory, or an evidence file. origin/main tracks none: the same command lists 0 entries at `c586f20d`.
+- **Thread 4265190267.** `CRIT_REVIEW` and `CRIT_REVIEWED` are unset along with `AUDIT_DISPOSITIONS`. Those three, with the five inputs it sets, are every variable the gate reads (`os.environ` in `require-crit-review.py`).
+- **Deviation from item 1's text.** The item says "passes exactly the gate's inputs … to `make require-crit-review`", and the threat row says it "calls make require-crit-review as it is". The fix keeps the inputs and the gate's own refusals, but it runs the trusted base copy of the gate instead of the head's `make` target. The orchestrator should judge this against the row.
+- **Tests.** The four orch-gate tests now read:
+  - `test_orch_gate_runs_this_checkouts_gate_on_the_review_worktree_with_the_gate_inputs`: the argv, the working directory, the five inputs, and none of `AUDIT_DISPOSITIONS`, `CRIT_REVIEW` or `CRIT_REVIEWED` although the caller sets all three;
+  - `test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree`;
+  - `test_orch_gate_refuses_another_prs_sweep_or_a_changed_gate_before_the_review_worktree_moves`;
+  - `test_orch_gate_refuses_a_head_that_tracks_a_symlink_under_orchestration`: the file the link points to stays unchanged.
+
+  The `make` stub is back to its original form. The `uv` stub records its environment and fails on a flag file.
+- **Mutation proofs.** Validation §10 lists 11 mutants, all killed: F1 to F5 for the fix, and G1 to G6 for the earlier orch-gate rows.
+- **Size.** INV-2: 3 files outside `.orchestration`, 196 added lines outside tests and 174 under tests.
+- **Locally,** `test_design_keydiff_names_the_changed_invariant` errors because the real `uv` it runs, offline, finds no PyYAML 6.0.3 in its cache (validation §10). Once the masker fetched PyYAML into the cache, the module passes offline, 36 tests OK (validation §10).

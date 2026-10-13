@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-orchestrator-tools-a02-pr346-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "7b574d323c4ec30d5982755bc6f9fe627264de5f",
+    "pr": "346",
+    "reviewed_at": "2026-10-13T16:18:11Z",
+    "body": "Orchestrator review of PR #346 (dotfiles-T128-orchestrator-tools-a02, PR-A of the T718 second slice: items 3, 4 and 6 and the seven scripts without a gate dependency: boundary.sh, ff-main.sh, orch-audit.sh, codex-review.sh, design-keydiff.py, replay.sh, fill_sweep.py; acceptance-front-matter.py and orch-gate.sh wait for PR #329 as PR-B) at its final head: the scripts and tests under scripts/orchestrator/, scripts/regime-counters.sh and the two test modules, outside .orchestration/. Each script does what a02's items say and nothing else: the ledger-shape guard of the counters (item 3), the three record-path fixes of dispatch.sh with the line's grammar table (item 4), the owned residual rows of a04's acceptance ledger (item 6: bus-read.sh's limit checked before the shape filter, the silence clock bound to the assigned seat, dispatch.sh preserving CRLF, the whitespace tokenization of the row body), and the seven scripts with their closed-row tests; the Bot's single review on ready-for-review and the local review's findings are each fixed in the head (P0/P1, one round at most) or advisory and owned by dotfiles-T128-orchestrator-tools-followup-a01 on main; INV-2 caps hold (489 lines outside tests, 11 of headroom). Approved for the gate at the audited head."
+  }
+]

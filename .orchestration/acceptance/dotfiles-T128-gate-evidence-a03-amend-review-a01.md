@@ -1,0 +1,11 @@
+# Acceptance: dotfiles-T128-gate-evidence-a03-amend-review-a01 (amendment 1 of T702's a03, plan 013 A′)
+
+- Round 1 (Codex half only, 01:27Z, 112 s): one P1, no test for the `parse_constant` refusal (INV-12). Applied: `acceptance-nan.md`, caps 120 lines, at least nine tests; amended sha `e8cfe390315dc3053d271a4e849febb896ff60f3a19ca5f2959f4644178935a4`.
+- Round 2: the seat's TASK (bus 793, 01:29:41Z; bus 791 void, empty hash fields, M-20261012-26) → RESULT (01:30:27Z) verdict=confirm on amended_task_sha256=e8cfe390…, task_sha256=114b50af…; Codex half re-run through `codex-review.sh` (the C-13/C-14 mechanism, scratchpad until T718 a02) on the same hash: see `…-codex-r2.md`.
+- Next: boundary PR, then the amendment TASK line to `claude-standard-dot-a002` (hash recomputed from the file at dispatch time).
+- Round 2, Codex half (through `codex-review.sh`, on `e8cfe390…`): revise, two P2s, both leftover sentences of the amendment text (Validation said "the four new tests"; the summary said two fixtures). Fixed 01:35Z; amended sha `aaf470a565d09332b6532107c09cbefd00003c0aed53831dd4eec59e8ce45a43`.
+- Round 3: seat TASK (01:3xZ, hashes computed in the sending command) and Codex half on the same hash; the amendment TASK line to a002 goes out only when both confirm this hash and the file is on `origin/main`.
+- Round 3, Codex half (`codex-review.sh`, 62 s, receipt `…-codex-r3.md`): confirm on `aaf470a565d09332b6532107c09cbefd00003c0aed53831dd4eec59e8ce45a43`, no findings ("amendment 1 closes all three threads by construction, and the diff contains only the listed changes"). Seat round 3 (bus 795, read 01:33:27Z) pending.
+- Round 4: seat confirm (bus 800, 01:38:47Z) on `04659bd5…`; Codex half revise (one P1: the introduction at line 78 still described the YAML/PyYAML contract). Round 5 fixes every stale wording in one pass (sweep pasted in the orchestrator's record) before re-hashing.
+- Round 5: the pair agrees on `1b8ba5b406cb5a6c5396805e8b4d960713876ca307109a487fd9651b4b42d659`: seat confirm (bus 802, 01:41:07Z, receipt_sha256=bf8f24d3…), Codex confirm (`…-codex-r5.md`, no findings). Amendment 1 of `dotfiles-T128-gate-evidence-a03` is confirmed; boundary (2) carries it, then the amendment TASK line to a002.
+- 01:45Z ACCEPTANCE round=5 status=accepted sent to the review seat.

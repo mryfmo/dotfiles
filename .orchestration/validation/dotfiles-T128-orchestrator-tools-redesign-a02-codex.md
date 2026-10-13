@@ -1,0 +1,5 @@
+- P2 high — `.orchestration/tasks/dotfiles-T128-orchestrator-tools-a04.md:103`: `dispatch.sh` parses the acceptance-record JSON block and `history.sh` output, but specifies only the message-line grammar and record-path checks; the standing C-31 requirement needs grammars and malformed-input behavior for both parsed formats.
+- P2 high — `.orchestration/tasks/dotfiles-T128-orchestrator-tools-a04.md:105`: the `bus-read.sh` table leaves `<at>` undefined even though the timestamp is parsed to calculate elapsed minutes, and it changes the brief’s required row shape from `<n>` to `<marker>` without recording that deviation.
+- P2 high — `.orchestration/tasks/dotfiles-T128-orchestrator-tools-a04.md:107`: `regime-counters.sh` parses an acceptance-record JSON block and its `ledger` rows but has no input-grammar table, contrary to the standing requirement that every parsed input have one.
+
+Task-file verdict: dotfiles-T128-orchestrator-tools-a04: revise

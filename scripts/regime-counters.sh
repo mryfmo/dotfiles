@@ -15,11 +15,18 @@
 #   P0 or P1 badge, counted only for commits after the first RESULT's `head=` in
 #   the PR's commit order. No PR, a gh failure, a first RESULT without `head=`,
 #   that head missing from the commits, or a counted comment on a commit outside
-#   them or without `original_commit_id` print `unknown`, never 0. S1 candidates
-#   are Codex Bot thread title classes (first three words of the title line,
-#   badge stripped, lower-cased) seen three or more times on the PR. Output:
-#   the count line; one `S2:` line per INV-6 threshold reached; one
-#   `S1:` line per candidate class; a `detail:` line (the PR: digits, `none` when
+#   them or without `original_commit_id` print `unknown`, never 0. S1 comes from
+#   the task's acceptance record `.orchestration/acceptance/<task>.md` when its
+#   block between the first two `---` lines is a JSON object whose `task` is the
+#   counted task and whose `ledger` is a list of `{id, class}` (read with jq only): every class with three or more
+#   rows prints `S1: class=<slug> count=<n> source=record`, `class=invalid` when
+#   the class is not `[a-z0-9-]`. Without such a record (none, or a prose one),
+#   Codex Bot thread titles grouped by their first three words (badge stripped,
+#   lower-cased) seen three or more times on the PR print
+#   `S1: candidate class=unclassified count=<n> title=<JSON string>`: the title
+#   is data for people, never a class a procedure substitutes into a command.
+#   Output: the count line; one `S2:` line per INV-6 threshold reached; the
+#   `S1:` lines (none with --history-only); a `detail:` line (the PR: digits, `none` when
 #   no RESULT carries `pr=`, `invalid` for another value; the TASK senders, every
 #   counted message id and Bot head); with --reset-hash, a `reset:` line.
 #   Every line ends in `source=live`, or `source=fixture` when a test seam fed it.
@@ -117,6 +124,14 @@ counts="$(jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" 
      accepted_by: [$all[] | select($hash != "" and $src != "" and .task == $src and .toks[0] == "AGMSG-RESULT" and tok("verdict") == "accept" and tok("design_sha256") == $hash)
        | .from | select(. as $f | any($authors[]; . == $f) | not)] | unique}' <<< "${history}")"
 
+# The record's JSON block, or null for no record, a prose record or another shape.
+record=null
+if [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && -f ${root}/.orchestration/acceptance/${task}.md ]]; then
+    record="$(jq -cRs 'split("\n") | if .[0] == "---" then .[1:] | index("---") as $e | if $e then .[:$e] | join("\n")
+      | (try fromjson catch null) | if type == "object" and (.ledger | type) == "array" and .task == $t then . else null end
+      else null end else null end' --arg t "${task}" "${root}/.orchestration/acceptance/${task}.md")"
+fi
+
 github=null state=skipped
 if [[ ${history_only} == false ]]; then
     state=unknown
@@ -128,7 +143,7 @@ if [[ ${history_only} == false ]]; then
     fi
 fi
 
-jq -r --argjson c "${counts}" --arg state "${state}" --arg t "${task}" --arg s "${source}" --arg hash "${reset_hash}" --arg src "${reset_source}" --argjson limit "${threshold}" '. as $gh
+jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" --arg t "${task}" --arg s "${source}" --arg hash "${reset_hash}" --arg src "${reset_source}" --argjson limit "${threshold}" '. as $gh
   | def title: (.body // "") | split("\n")[0]; def codex: .user.login == "chatgpt-codex-connector[bot]";
   def bot: if $state != "ok" then $state elif $c.head == null then "unknown" else
       [$gh.commits[].sha] as $shas | [range(0; $shas | length) | select($shas[.] | startswith($c.head))][0] as $i
@@ -142,8 +157,13 @@ jq -r --argjson c "${counts}" --arg state "${state}" --arg t "${task}" --arg s "
   | "task=\($t) tasks=\($c.tasks | length) amendments=\($amendments) questions=\($c.questions | length) results=\($c.results | length) withdrawn=\($c.withdrawn | length) revises=\($revises) first_result_head=\($c.head // "none") bot_p1_heads_after_result=\($n) audits=unknown wall=\($c.first // "none")..\($c.last // "none") (\(if $c.first and $c.last then ($c.last | fromdateiso8601) - ($c.first | fromdateiso8601) | hm else "-" end)) source=\($s)",
     ([["revises", $revises], ["amendments", $amendments], ["questions", ($c.questions | length)], ["bot_p1_heads", $n]][]
       | select((.[1] | type) == "number" and .[1] >= $limit) | "S2: \(.[0]) \(.[1]) >= \($limit) source=\($s)"),
-    (if $state == "ok" then [$gh.comments[] | select(codex and .in_reply_to_id == null) | title
-        | gsub("!\\[[^\\]]*\\]\\([^)]*\\)|</?sub>|\\*\\*"; "") | ascii_downcase | [splits("\\s+") | select(. != "")][0:3] | join(" ") | select(. != "")]
-      | group_by(.)[] | select(length >= 3) | "S1: candidate class=\(.[0]) count=\(length) source=\($s)" else empty end),
+    (if $state == "skipped" then empty
+      elif $rec != null then [$rec.ledger[] | if type == "object" then .class else null end] | group_by(.)[] | select(length >= 3)
+        | "S1: class=\(.[0] | if type == "string" and test("^[a-z0-9-]+$") then . else "invalid" end) count=\(length) source=record"
+      elif $state == "ok" then [$gh.comments[] | select(codex and .in_reply_to_id == null) | title
+        | gsub("!\\[[^\\]]*\\]\\([^)]*\\)|</?sub>|\\*\\*"; "") | sub("^\\s+"; "") | sub("\\s+$"; "")
+        | {key: (ascii_downcase | [splits("\\s+") | select(. != "")][0:3] | join(" ")), title: .} | select(.key != "")]
+      | group_by(.key)[] | select(length >= 3) | "S1: candidate class=unclassified count=\(length) title=\(.[0].title | tojson) source=\($s)"
+      else empty end),
     "detail: pr=\($c.pr // "none") authors=\($c.authors | list) tasks=\($c.tasks | list) results=\($c.results | list) questions=\($c.questions | list) withdrawn=\($c.withdrawn | list) bot_heads=\(if ($b | type) == "array" then $b | list else "-" end) source=\($s)",
     (if $hash != "" then "reset: design_sha256=\($hash) redesign_source=\(if $src != "" then $src else "none" end) accepted_by=\($c.accepted_by | if length > 0 then join(",") else "none" end) source=\($s)" else empty end)' <<< "${github}"

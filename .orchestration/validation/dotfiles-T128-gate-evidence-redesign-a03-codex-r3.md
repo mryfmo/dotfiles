@@ -1,0 +1,3 @@
+[P1] high `.orchestration/tasks/dotfiles-T128-gate-evidence-a04.md:94` — The review-body fixture only proves that one correctly badged `review` is required; it does not prove that unbadged bodies or near-matching badge text are excluded. An implementation that treats every Bot `review` body as a finding would pass the specified tests while violating the exact-four-token/no-other-text rule and INV-12. Add negative cases for an unbadged body and a near-match token.
+
+Task-file verdict: dotfiles-T128-gate-evidence-a04: revise

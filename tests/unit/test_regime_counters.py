@@ -447,8 +447,48 @@ class RegimeCountersTest(unittest.TestCase):
             ],
         )
         lines = self.run_counters("T1", "--history-file", history, "--github-file", gh)
+        # Thread 4250028600: without a record the title is quoted data, never a class.
         self.assertEqual(
-            ["S1: candidate class=reject skipped contract count=3 source=fixture"],
+            ['S1: candidate class=unclassified count=3 title="Reject skipped contract tests" source=fixture'],
+            [line for line in lines if line.startswith("S1:")],
+        )
+
+    def test_s1_reads_the_ledger_classes_of_the_acceptance_record(self):
+        repo = self.temp / "repo"
+        (repo / "scripts").mkdir(parents=True)
+        shutil.copy(SCRIPT, repo / "scripts")
+        (repo / ".orchestration/acceptance").mkdir(parents=True)
+        ledger = [{"id": f"42500286{i:02d}", "class": c} for i, c in enumerate(["bookkeeping"] * 3 + ["sources"] * 2)]
+        ledger += [{"id": f"audit:abcdef1:{n}", "class": "Reject skipped"} for n in (1, 2, 3)]
+        block = json.dumps({"format": 1, "task": "T1", "ledger": ledger})
+        (repo / ".orchestration/acceptance/T1.md").write_text(f"---\n{block}\n---\n\nProse for people.\n")
+        history = self.write("h.tsv", tsv(("orch", "AGMSG-TASK v1 task_id=T1")))
+        gh = self.github(["aaaaaaa1"], [comment("aaaaaaa1", "Reject skipped contract tests")] * 3)
+        lines = self.run_counters(
+            "T1", "--history-file", history, "--github-file", gh, script=repo / "scripts/regime-counters.sh"
+        )
+        self.assertEqual(
+            ["S1: class=invalid count=3 source=record", "S1: class=bookkeeping count=3 source=record"],
+            [line for line in lines if line.startswith("S1:")],
+        )
+        # Thread 4254771296: a record of another task is not this task's ledger; the title detector speaks.
+        (repo / ".orchestration/acceptance/T1.md").write_text(f"---\n{block.replace('"T1"', '"T9"')}\n---\n")
+        lines = self.run_counters(
+            "T1", "--history-file", history, "--github-file", gh, script=repo / "scripts/regime-counters.sh"
+        )
+        self.assertEqual(
+            ['S1: candidate class=unclassified count=3 title="Reject skipped contract tests" source=fixture'],
+            [line for line in lines if line.startswith("S1:")],
+        )
+
+    def test_s1_quotes_a_title_with_shell_metacharacters(self):
+        # Thread 4249303433: a title is printed only as a JSON string, in its own field.
+        history = self.write("h.tsv", tsv(("orch", "AGMSG-TASK v1 task_id=T1")))
+        titles = ["Run `rm` $(id) now", "run `rm` $(id) later", "RUN `rm` $(id) x"]
+        gh = self.github(["aaaaaaa1"], [comment("aaaaaaa1", t) for t in titles])
+        lines = self.run_counters("T1", "--history-file", history, "--github-file", gh)
+        self.assertEqual(
+            ['S1: candidate class=unclassified count=3 title="Run `rm` $(id) now" source=fixture'],
             [line for line in lines if line.startswith("S1:")],
         )
 

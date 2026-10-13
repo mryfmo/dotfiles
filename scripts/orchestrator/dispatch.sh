@@ -6,7 +6,8 @@
 #   line, blank or not, is refused). Every `<name>_sha256=<64 hex>` token is
 #   recomputed from the file its sibling token names, `<name>_file=` or else
 #   `<name>=` (`task_sha256` from `task_file=`, `design_sha256` from `design=`,
-#   `amended_task_sha256` from `amended_task=`); an AGMSG-TASK line must carry
+#   `amended_task_sha256` from `amended_task=`; a line naming the file both
+#   ways is refused); an AGMSG-TASK line must carry
 #   `task_file=` and `task_sha256=`. A relative path is read from the root of
 #   the checkout this script lives in (`git rev-parse --show-toplevel` there),
 #   never from the caller's directory. A missing field or file, a malformed value
@@ -20,9 +21,13 @@
 #   or Infinity is refused; `sort_keys`, `indent=2`); the key is created when
 #   absent, and a record without a block, or a missing record file, gets a block
 #   holding only `dispatch`. The prose after the block is kept byte for byte.
-#   The read state is the marker `history.sh <team> <to> 200` prints for that
-#   message (`●` unread, `○` read): agmsg's scripts expose no read_at time, and
-#   this script never reads the message database.
+#   Only a bus row this send created is recorded: the rows matching the line,
+#   sender and recipient are counted before and after the send, and a send that
+#   added none leaves the record unchanged and exits 1. The read state is the
+#   marker the team-wide `history.sh <team> "" 100000` prints for the new row
+#   (`●` unread, `○` read): agmsg's scripts expose no read_at time, this script
+#   never reads the message database, and it never passes an agent to
+#   history.sh, whose agent argument renames the caller's pane after it.
 # @arg $1 string agmsg team.
 # @arg $2 string Sender identity.
 # @arg $3 string Recipient identity.
@@ -84,6 +89,10 @@ for t in "${tokens[@]}"; do
         echo "dispatch: ${field} is not 64 lowercase hex digits" >&2
         exit 1
     }
+    if value_of "${name}_file" > /dev/null && value_of "${name}" > /dev/null; then
+        echo "dispatch: ${field}: both ${name}_file= and ${name}= name a file" >&2
+        exit 1
+    fi
     path="$(value_of "${name}_file" || value_of "${name}")" || {
         echo "dispatch: ${field} has no ${name}_file= or ${name}= field naming its file" >&2
         exit 1
@@ -107,7 +116,7 @@ read -r -d '' recorder << 'PY' || true
 import json, re, sys
 from pathlib import Path
 
-mode, path, line, sender, to = sys.argv[1:6]
+mode, path, line, sender, to, before = sys.argv[1:7]
 record = Path(path)
 
 def refuse(pairs):
@@ -133,21 +142,24 @@ if text.startswith("---\n"):
 entries = block.setdefault("dispatch", [])
 if not isinstance(entries, list):
     sys.exit(f"dispatch: {path}: dispatch is not a list")
-if mode == "check":
-    sys.exit(0)
 row = re.compile(r"^\s*(\S+)\s+\[[^\]]+\]\s+(\S+)\s+→\s+(\S+):\s(.*)$")
 marks = [m.group(1) for m in map(row.match, sys.stdin.read().splitlines())
          if m and (m.group(2), m.group(3), m.group(4)) == (sender, to, line)]
-if not marks:
-    sys.exit(f"dispatch: the sent line is not in the bus history; {path} is unchanged")
+if mode == "check":
+    print(len(marks))
+    sys.exit(0)
+# Thread 4254399807: an older identical row is not this send.
+if len(marks) <= int(before):
+    sys.exit(f"dispatch: this send added no bus row; {path} is unchanged")
 entries.append(f"{line} read_at={'read' if marks[-1] == '○' else 'unread'}")
 body = json.dumps(block, sort_keys=True, indent=2, ensure_ascii=False)
 record.write_text(f"---\n{body}\n---\n{rest}")
 PY
 [[ ${record} == /* ]] || record="${PWD}/${record}"
-python3 -I -c "${recorder}" check "${record}" "${line}" "${from}" "${to}" < /dev/null
+# Team-wide: history.sh renames the calling pane after an agent argument (thread 4254399805).
+bus() { "${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "${team}" "" 100000; }
+before="$(bus | python3 -I -c "${recorder}" check "${record}" "${line}" "${from}" "${to}" 0)"
 rc=0
 agmsg-dispatch "${team}" "${from}" "${to}" "${pane}" "${line}" || rc=$?
-"${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "${team}" "${to}" 200 \
-    | python3 -I -c "${recorder}" append "${record}" "${line}" "${from}" "${to}"
+bus | python3 -I -c "${recorder}" append "${record}" "${line}" "${from}" "${to}" "${before}"
 exit "${rc}"

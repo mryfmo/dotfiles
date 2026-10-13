@@ -20,7 +20,12 @@ ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "scripts/orchestrator"
 RECORD = 'printf \'%s\\0\' "$@" > "$CALLS/{name}"\n'
 STUBS = {
-    "agmsg-dispatch": "#!/usr/bin/env bash\n" + RECORD.format(name="agmsg-dispatch"),
+    "agmsg-dispatch": "#!/usr/bin/env bash\n"
+    + RECORD.format(name="agmsg-dispatch")
+    # A send puts its row on the stub bus with the marker in dispatch-marker; dispatch-fails sends nothing.
+    + '[[ -f "$CALLS/dispatch-fails" ]] && exit 1\n'
+    + '[[ -f "$CALLS/dispatch-marker" ]] && printf "  %s [2026-10-13T03:00:00Z] %s → %s: %s\\n" '
+    + '"$(cat "$CALLS/dispatch-marker")" "$2" "$3" "$5" >> "$CALLS/history"\nexit 0\n',
     "shasum": '#!/usr/bin/env python3\nimport hashlib, sys\np = sys.argv[-1]\nprint(hashlib.sha256(open(p, "rb").read()).hexdigest() + "  " + p)\n',
     "uv": "#!/usr/bin/env bash\n" + RECORD.format(name="uv") + 'pwd -P > "$CALLS/uv-cwd"\ncat "$CALLS/uv-output"\n',
 }
@@ -124,6 +129,12 @@ class OrchestratorToolsTest(unittest.TestCase):
             ("hello task_id=t", 2, "not an AGMSG-TASK"),
             (f"AGMSG-ACCEPTANCE v1 task_id=t amended_task_sha256={sha('x')}", 1, "amended_task_sha256 has no"),
             ("AGMSG-ACCEPTANCE v1 task_id=t design=d.md design_sha256=abc", 1, "not 64 lowercase hex"),
+            # Thread 4254399800: a line naming the file both ways could bind the wrong artifact.
+            (
+                f"AGMSG-ACCEPTANCE v1 task_id=t design=d.md design_file=e.md design_sha256={sha('x')}",
+                1,
+                "both design_file= and design=",
+            ),
         ):
             with self.subTest(needle=needle):
                 self.assertIn(needle, self.dispatch(line, code=code).stderr)
@@ -152,18 +163,27 @@ class OrchestratorToolsTest(unittest.TestCase):
             ".orchestration/acceptance/t.md", '---\n{"format": 1, "task": "t", "ledger": []}\n---\n\nProse.\n'
         )
         ping = "AGMSG-PING v1 task_id=t reason=check"
-        (self.calls / "history").write_text(f"  ○ [2026-10-13T03:00:00Z] orch → worker: {ping}\n")
+        # Thread 4254399807: an older identical row on the bus is not this send.
+        (self.calls / "history").write_text(f"  ● [2026-10-12T00:00:00Z] orch → worker: {ping}\n")
+        (self.calls / "dispatch-marker").write_text("○")
         self.write("line.txt", ping + "\n")
         self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record))
         block, prose = self.gate_block(record)
         self.assertEqual({"dispatch": [f"{ping} read_at=read"], "format": 1, "ledger": [], "task": "t"}, block)
         self.assertEqual("\nProse.\n", prose)
-        self.assertEqual(["team", "worker", "200"], self.call("history.sh"))
+        # Thread 4254399805: team-wide, never with an agent, which would rename the calling pane.
+        self.assertEqual(["team", "", "100000"], self.call("history.sh"))
         # A record without a block gets one holding only dispatch; an unread message says so.
         plain = self.write(".orchestration/acceptance/u.md", "Prose only.\n")
-        (self.calls / "history").write_text(f"  ● [2026-10-13T03:01:00Z] orch → worker: {ping}\n")
+        (self.calls / "dispatch-marker").write_text("●")
         self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(plain))
         self.assertEqual(({"dispatch": [f"{ping} read_at=unread"]}, "Prose only.\n"), self.gate_block(plain))
+        # A send that adds no row records nothing, though identical rows are already on the bus.
+        (self.calls / "dispatch-fails").write_text("")
+        before = record.read_text()
+        result = self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record), code=1)
+        self.assertIn("this send added no bus row", result.stderr)
+        self.assertEqual(before, record.read_text())
         # A malformed record is refused before anything is sent.
         (self.calls / "agmsg-dispatch").unlink()
         bad = self.write(".orchestration/acceptance/v.md", '---\n{"task": "a", "task": "b"}\n---\n')

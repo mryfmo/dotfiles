@@ -6,7 +6,7 @@
 
 ## Status
 
-- **Execution**: DECIDED 2026-10-13 01:2xZ: option A′ (operator, AskUserQuestion); hold PING 783 to a002 at 01:12:46Z. R1 amendment 1 written 01:3xZ (sha 6d6bfc03…, C1 to C10 OK; review task dotfiles-T128-gate-evidence-a03-amend-review-a01); review pair pending (Codex running, seat after T718's round 2); R2 dispatch after the boundary.
+- **Execution**: DECIDED 2026-10-13 01:2xZ: option A′ (operator, AskUserQuestion); hold PING 783 to a002 at 01:12:46Z. R1 amendment 1 written 01:3xZ (sha 6d6bfc03…, C1 to C10 OK; review task dotfiles-T128-gate-evidence-a03-amend-review-a01); review pair: five rounds (Codex found a missing parse_constant test, two leftover count sentences, the stale introduction; the seat an addendum on the fixture row), agreement on `1b8ba5b4…` at 01:41Z (seat bus 802, Codex r5). R2 done: boundary PR #335 merged (`720517b1`), amendment line sent 01:46:09Z (bus 805). R3 next: the worker's push, CI, Bot; R4 held until T703 merges (update-branch, audit, acceptance record with the JSON block, gate, merge).
 - **Priority**: P1 (T702 is the gate; its a03 counters stand at `questions=1 amendments=0 revises=0`: one more of either is INV-6's reset)
 - **Planned at**: main `3709a6d8`, 2026-10-13 01:20Z
 

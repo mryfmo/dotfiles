@@ -919,7 +919,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.assertEqual(
             ("t-a01", head, 9, 1, "\n# Record\n"), (block["task"], block["head"], block["pr"], block["format"], rest)
         )
-        self.assertEqual(old["dispatch"], block["dispatch"])
+        self.assertEqual(old["dispatch"], block.get("dispatch"))
         self.assertEqual(["stale-path", "stale-path", "stale-path", "other"], [r["class"] for r in block["ledger"]])
         self.assertEqual([{"class": "stale-path", "records": ["M-1.md"]}], block["searches"])
         self.assertEqual([], block["audit_findings"])
@@ -1017,7 +1017,7 @@ class OrchestratorToolsTest(unittest.TestCase):
                 )
             },
         )
-        self.assertNotIn("AUDIT_DISPOSITIONS", env)
+        self.assertNotIn("AUDIT_DISPOSITIONS", sorted(env))  # names only: a failure must not print values
 
     def test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree(self):
         (self.calls / "make-fails").write_text("")

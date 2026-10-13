@@ -1,3 +1,153 @@
+---
+{
+  "format": 1,
+  "task": "dotfiles-T128-gate-evidence-a04",
+  "head": "71eb920b1fd24de51afed7b421ebf4aba254cd51",
+  "pr": 329,
+  "ledger": [
+    {
+      "id": "audit:20d776d:1",
+      "class": "contract-type-mismatch"
+    },
+    {
+      "id": "audit:20d776d:2",
+      "class": "worker-sandbox-discipline"
+    },
+    {
+      "id": "audit:60d152a:1",
+      "class": "acceptance-order"
+    },
+    {
+      "id": 4248232955,
+      "class": "acceptance-record-binding"
+    },
+    {
+      "id": 4248232964,
+      "class": "acceptance-record-binding"
+    },
+    {
+      "id": 4248232976,
+      "class": "threat-row-missing"
+    },
+    {
+      "id": 4248232988,
+      "class": "acceptance-dispositions"
+    },
+    {
+      "id": 4248232998,
+      "class": "scope"
+    },
+    {
+      "id": 4248233012,
+      "class": "search-command-scan"
+    },
+    {
+      "id": 4248697658,
+      "class": "search-command-scan"
+    },
+    {
+      "id": 4248697668,
+      "class": "hand-parser"
+    },
+    {
+      "id": 4248934816,
+      "class": "input-validation"
+    },
+    {
+      "id": 4248934830,
+      "class": "search-command-scan"
+    },
+    {
+      "id": 4249544748,
+      "class": "hand-parser"
+    },
+    {
+      "id": 4249544762,
+      "class": "acceptance-record-binding"
+    },
+    {
+      "id": 4249544794,
+      "class": "hand-parser"
+    },
+    {
+      "id": 4250238714,
+      "class": "acceptance-record-binding"
+    },
+    {
+      "id": 4250238721,
+      "class": "tool-environment"
+    },
+    {
+      "id": 4250238729,
+      "class": "input-validation"
+    },
+    {
+      "id": 4254092805,
+      "class": "ledger-completeness"
+    },
+    {
+      "id": 4254525594,
+      "class": "input-validation"
+    },
+    {
+      "id": 4254525603,
+      "class": "acceptance-record-binding"
+    },
+    {
+      "id": 4254731145,
+      "class": "fixture-missing"
+    },
+    {
+      "id": "audit:71eb920:1",
+      "class": "procedure-migration"
+    },
+    {
+      "id": "audit:71eb920:2",
+      "class": "disposition-range"
+    }
+  ],
+  "searches": [
+    {
+      "class": "acceptance-record-binding",
+      "records": [
+        "M-20261012-24.md",
+        "M-20261012-28.md"
+      ]
+    },
+    {
+      "class": "hand-parser",
+      "records": [
+        "M-20261012-22.md"
+      ]
+    },
+    {
+      "class": "input-validation",
+      "records": [
+        "M-20261012-32.md"
+      ]
+    },
+    {
+      "class": "search-command-scan",
+      "records": [
+        "M-20261012-20.md"
+      ]
+    }
+  ],
+  "audit_findings": [
+    {
+      "n": "1",
+      "reason": "advisory per plan 020 (P2 orchestration, no P0/P1): the SKILL step 10.4 gate-command text is a rule file migrated by plan 020 step 8's single rules patch (operator, Claude-boundary) and owned until then by dotfiles-T128-playbook-rules-followup-a01 (row audit:71eb920:1 under its heading in .orchestration/acceptance/dotfiles-T128-playbook-rules-a04.md); the orchestrator's chain passes AUDIT_DISPOSITIONS and writes the record's JSON block by hand until acceptance-front-matter.py lands (PR-B)",
+      "evidence": "git show origin/main:.orchestration/tasks/dotfiles-T128-playbook-rules-followup-a01.md | grep -n 'item 1'"
+    },
+    {
+      "n": "2",
+      "reason": "corrected in the sweep table at 15:08Z: thread 4254731145 now reads fixed:21badcd7, the commit that brought the fixtures into this branch (inside base..head); the re-run sweep carries the corrected row",
+      "evidence": "grep -n 4254731145 .orchestration/validation/dotfiles-T128-gate-evidence-a04-pr-feedback.json"
+    }
+  ]
+}
+---
+
 # Acceptance: dotfiles-T128-gate-evidence-a04 (T702, INV-6 successor of a03 after plan 014 option A)
 
 - Task file pair-confirmed at `03a5253d1bc78ad928b5b9bc66cbe9ffada6e6090f732acc76c05a532c40001f` (review seat rounds 1 to 4 of `dotfiles-T128-gate-evidence-redesign-a03`, Codex round 4); design v24 `fa2c5157…` maps it (rounds 26 to 28); reset record `dotfiles-T128-gate-evidence-a03-design-reset.md` anchored on bus 845. On `main` with boundary PR #338 (`948d1f38`).
@@ -68,3 +218,13 @@ audit:60d152a:1	acceptance-order
 4254525594	input-validation
 4254525603	acceptance-record-binding
 4254731145	fixture-missing
+- 14:58Z plan 021 step 5.3: `integrate-329.sh 26909ee4`: update-branch to `71eb920b` (14:44:47Z; main 26909ee4 after T703), CI 13 green, no Bot review on the new head (the trigger is PR open since 13:3xZ), the C-32 local review of 71eb920b found nothing (`dotfiles-T128-gate-evidence-a04-local-review-71eb920.md`), sweep 37 items 0 gaps: 4248232964/976/998 `fixed:379845f7`, 4248934816 `fixed:c6cf0548`, eleven a03-era threads `fixed:f5f980f9`, 4254092805 `fixed:9db7ed3c`, 4254525594/603 `fixed:8d54fd76`, 4254731145 `fixed:71eb920b` (the fixtures arrive with the update-branch merge of #340's main), 4248232955 `not-applicable` (T703 a04 landed the gate-command sentence on main as 26909ee4, outside base..head). Review receipt and one audit of 71eb920b running.
+
+- 15:08Z audit of 71eb920b (`dotfiles-T128-gate-evidence-a04-audit-71eb920.md`): `Verdict: incorrect`, two P2 orchestration findings, no P0/P1, INV-6 holds: (1) the SKILL on main (step 10.4, lines 171 to 178) still documents `AUDIT_DISPOSITIONS` while this task retires it for the record's `audit_findings`: a procedure migration in a rule file (Claude-boundary), owned by `dotfiles-T128-playbook-rules-followup-a01` (row `audit:71eb920:1` under its heading in the T703 a04 record) and part of plan 020 step 8's single rules patch; until it lands the orchestrator's chain supplies both forms (the `audit-finding:` lines and the record's JSON block written by hand, plan 021 6.1); (2) thread 4254731145 cited `fixed:71eb920b` (the update-branch merge, which changes no fixture); the fixtures entered this branch at `21badcd7`, inside base..head: the table row now reads `fixed:21badcd7`. Both dispositioned below; the chain continues to the gate and the merge.
+
+audit:71eb920:1	procedure-migration
+audit:71eb920:2	disposition-range
+
+audit-finding: 1 not-applicable:advisory per plan 020 (P2 orchestration, no P0/P1): the SKILL step 10.4 gate-command text is a rule file migrated by plan 020 step 8's single rules patch (operator, Claude-boundary) and owned until then by dotfiles-T128-playbook-rules-followup-a01 (row audit:71eb920:1 under its heading in .orchestration/acceptance/dotfiles-T128-playbook-rules-a04.md); the orchestrator's chain passes AUDIT_DISPOSITIONS and writes the record's JSON block by hand until acceptance-front-matter.py lands (PR-B); evidence=git show origin/main:.orchestration/tasks/dotfiles-T128-playbook-rules-followup-a01.md | grep -n 'item 1'
+audit-finding: 2 not-applicable:corrected in the sweep table at 15:08Z: thread 4254731145 now reads fixed:21badcd7, the commit that brought the fixtures into this branch (inside base..head); the re-run sweep carries the corrected row; evidence=grep -n 4254731145 .orchestration/validation/dotfiles-T128-gate-evidence-a04-pr-feedback.json
+- 15:15:01Z **merged as `73f56c15`** (`gh pr merge --squash --match-head-commit 71eb920b`) after the gate rc=0: the gate on this head is the new one this task lands, so the record now starts with the JSON block (format 1, the identity triple, 25 ledger rows, the four S6 searches recomputed from the mistake records, the two audit findings with string numbers); the gate printed "AUDIT_DISPOSITIONS is retired and not read". ACCEPTANCE `accepted` sent to a002 (15:16Z). T702 done; plan 007 Phase 1 (T702, T703) closed.

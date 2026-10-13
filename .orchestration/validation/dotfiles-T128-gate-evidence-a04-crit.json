@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-gate-evidence-a04-pr340-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "60d152a10c58080210f4bebc35fecb25b97a57d6",
+    "pr": "340",
+    "reviewed_at": "2026-10-13T05:39:54Z",
+    "body": "Orchestrator review of PR #340 (fixtures of dotfiles-T128-gate-evidence-a04, split under INV-2): 13 files under tests/fixtures/gate-evidence/ (twelve fixture records as JSON objects between --- lines, two pr-feedback JSON fixtures, .prettierrc with trailingComma none scoped to the directory), 164 added lines, no code. Each fixture matches a case of the a04 contract (stale head, S6 missing/present, finding quoting the grammar, wrong pr, duplicate key, NaN, dispatch key, ledger incomplete, badged review body; the review-body sweep fixture carries the unbadged and near-match bodies). Thread ids are JSON numbers; the gate on PR #329 compares ids as strings, so the audit of #329 checks the normalisation. CI 12 of 12 on the update-branch head, Codex review on 27e8a0ea \"Didn't find any major issues\", security review clean. Approved as data."
+  }
+]

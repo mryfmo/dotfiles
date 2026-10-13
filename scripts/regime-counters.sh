@@ -17,8 +17,8 @@
 #   that head missing from the commits, or a counted comment on a commit outside
 #   them or without `original_commit_id` print `unknown`, never 0. S1 comes from
 #   the task's acceptance record `.orchestration/acceptance/<task>.md` when its
-#   block between the first two `---` lines is a JSON object with a `ledger`
-#   list of `{id, class}` (read with jq only): every class with three or more
+#   block between the first two `---` lines is a JSON object whose `task` is the
+#   counted task and whose `ledger` is a list of `{id, class}` (read with jq only): every class with three or more
 #   rows prints `S1: class=<slug> count=<n> source=record`, `class=invalid` when
 #   the class is not `[a-z0-9-]`. Without such a record (none, or a prose one),
 #   Codex Bot thread titles grouped by their first three words (badge stripped,
@@ -128,8 +128,8 @@ counts="$(jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" 
 record=null
 if [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && -f ${root}/.orchestration/acceptance/${task}.md ]]; then
     record="$(jq -cRs 'split("\n") | if .[0] == "---" then .[1:] | index("---") as $e | if $e then .[:$e] | join("\n")
-      | (try fromjson catch null) | if type == "object" and (.ledger | type) == "array" then . else null end
-      else null end else null end' "${root}/.orchestration/acceptance/${task}.md")"
+      | (try fromjson catch null) | if type == "object" and (.ledger | type) == "array" and .task == $t then . else null end
+      else null end else null end' --arg t "${task}" "${root}/.orchestration/acceptance/${task}.md")"
 fi
 
 github=null state=skipped

@@ -129,6 +129,12 @@ class OrchestratorToolsTest(unittest.TestCase):
             ("hello task_id=t", 2, "not an AGMSG-TASK"),
             (f"AGMSG-ACCEPTANCE v1 task_id=t amended_task_sha256={sha('x')}", 1, "amended_task_sha256 has no"),
             ("AGMSG-ACCEPTANCE v1 task_id=t design=d.md design_sha256=abc", 1, "not 64 lowercase hex"),
+            # Thread 4254771302: a hash field whose name has a digit is checked like any other.
+            (
+                f"AGMSG-ACCEPTANCE v1 task_id=t a02_expected=x.md a02_expected_sha256={sha('x')}",
+                1,
+                "a02_expected_sha256: ",
+            ),
             # Thread 4254494989: a repeated source key leaves an unhashed second path in the line.
             (
                 f"AGMSG-TASK v1 task_id=t task_file=.orchestration/tasks/t.md task_file=other.md task_sha256={sha('task' + chr(10))}",
@@ -204,6 +210,11 @@ class OrchestratorToolsTest(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertIn("usage", self.run_tool("three-repeat.sh", value, code=2).stderr)
         self.assertIsNone(self.call("uv"))
+        # Thread 4254771284: a slug that looks like an option reaches the CLI after --, as its query.
+        (self.calls / "uv-output").write_text("No matches.\n")
+        self.write(".orchestration/learning/mistakes/M-0.md", "classes: [x]\n")
+        self.run_tool("three-repeat.sh", "--help")
+        self.assertEqual(["memory", "search", "--", "--help"], self.call("uv")[3:])
         # Thread 4253994697: a PR worktree's contextdb CLI is PR-controlled code, so the root is the script's own.
         pr = self.temp / "pr"
         subprocess.run(["git", "init", "-q", str(pr)], check=True)
@@ -230,7 +241,7 @@ class OrchestratorToolsTest(unittest.TestCase):
             ["search: bookkeeping -> M-20261012-2.md, M-20261012-4.md", "compactiondb: bookkeeping -> 2 matches"], out
         )
         cli = str(self.repo / ".claude/hooks/contextdb_cli.py")
-        self.assertEqual(["run", "--no-project", cli, "memory", "search", "bookkeeping"], self.call("uv"))
+        self.assertEqual(["run", "--no-project", cli, "memory", "search", "--", "bookkeeping"], self.call("uv"))
         (self.calls / "uv-output").write_text("No matches.\n")
         self.assertEqual(
             ["search: absent -> none", "compactiondb: absent -> 0 matches"],

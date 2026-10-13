@@ -8,8 +8,9 @@
 #   line that begins with `classes:` and contains the class (`grep -rl
 #   '^classes:.*<class>'`), printed as `search: <class> -> <basenames, sorted,
 #   or none>`. The CompactionDB search runs `uv run --no-project
-#   .claude/hooks/contextdb_cli.py memory search <class>` with the class as one
-#   argument (no shell), and prints its match count. Both run in the checkout
+#   .claude/hooks/contextdb_cli.py memory search -- <class>` with the class as
+#   one argument after `--` (no shell; a slug like `--help` is a query, never an
+#   option: thread 4254771284), and prints its match count. Both run in the checkout
 #   this script lives in (`git rev-parse --show-toplevel` there), never the
 #   caller's: a PR worktree's CLI is PR-controlled code (thread 4253994697).
 # @arg $1 string Class slug.
@@ -37,7 +38,7 @@ files="$(/usr/bin/grep -rl -- "^classes:.*${class}" "${dir}")" || rc=$?
 records="$(if [[ -n ${files} ]]; then awk -F/ '{print $NF}' <<< "${files}" | LC_ALL=C sort | paste -sd, - | sed 's/,/, /g'; fi)"
 echo "search: ${class} -> ${records:-none}"
 
-memory="$(cd -- "${root}" && uv run --no-project "${root}/.claude/hooks/contextdb_cli.py" memory search "${class}")" || {
+memory="$(cd -- "${root}" && uv run --no-project "${root}/.claude/hooks/contextdb_cli.py" memory search -- "${class}")" || {
     echo "three-repeat: the CompactionDB search failed" >&2
     exit 1
 }

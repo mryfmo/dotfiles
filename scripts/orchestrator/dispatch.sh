@@ -91,7 +91,8 @@ if [[ ${line} == "AGMSG-TASK "* ]]; then
     done
 fi
 for t in "${tokens[@]}"; do
-    [[ ${t} =~ ^([a-z_]+)_sha256=(.*)$ ]] || continue
+    # Thread 4254771302: any name before _sha256=, digits included (a02_expected_sha256=).
+    [[ ${t} =~ ^([^=]+)_sha256=(.*)$ ]] || continue
     name=${BASH_REMATCH[1]} want=${BASH_REMATCH[2]}
     field="${name}_sha256"
     [[ ${want} =~ ^[0-9a-f]{64}$ ]] || {

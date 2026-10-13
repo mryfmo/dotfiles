@@ -471,6 +471,15 @@ class RegimeCountersTest(unittest.TestCase):
             ["S1: class=invalid count=3 source=record", "S1: class=bookkeeping count=3 source=record"],
             [line for line in lines if line.startswith("S1:")],
         )
+        # Thread 4254771296: a record of another task is not this task's ledger; the title detector speaks.
+        (repo / ".orchestration/acceptance/T1.md").write_text(f"---\n{block.replace('"T1"', '"T9"')}\n---\n")
+        lines = self.run_counters(
+            "T1", "--history-file", history, "--github-file", gh, script=repo / "scripts/regime-counters.sh"
+        )
+        self.assertEqual(
+            ['S1: candidate class=unclassified count=3 title="Reject skipped contract tests" source=fixture'],
+            [line for line in lines if line.startswith("S1:")],
+        )
 
     def test_s1_quotes_a_title_with_shell_metacharacters(self):
         # Thread 4249303433: a title is printed only as a JSON string, in its own field.

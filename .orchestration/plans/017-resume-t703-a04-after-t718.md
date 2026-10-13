@@ -6,7 +6,7 @@
 
 ## Status
 
-- **Execution**: DECIDED 2026-10-13 10:30Z: option G″ (operator, AskUserQuestion). R1 the pair review of the drafts (seat TASK 10:21:43Z, Codex half) → R2 boundary (11) → R3 the amendment line to a003 → R4 the round, the local review, one revise at most, dispositions, resolution, sweep, audit, gate, merge → `integrate-329.sh`.
+- **Execution**: DECIDED 2026-10-13 10:30Z: option G″ (operator, AskUserQuestion). R1 done 10:35Z: the pair confirms a04 amendment 1 at c5dbc2c3… and the owner task at cb32794d… (seat rounds 1 revise, 2 confirm, bus 933; Codex rounds 1 revise, 2 confirm) → R2 boundary (11) running (land-t703-amend.sh) → R3 the amendment line to a003 → R4 the round, the local review, one revise at most, dispositions, resolution, sweep, audit, gate, merge → `integrate-329.sh`.
 - **Priority**: P1 (T703 and T702 close plan 007 Phase 1; a02 PR-B waits on #329)
 - **Planned at**: main `a03c1daa`, 2026-10-13 10:21Z
 

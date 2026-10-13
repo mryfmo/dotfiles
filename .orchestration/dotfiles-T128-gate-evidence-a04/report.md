@@ -6,7 +6,8 @@
   - a01: `7f763b7f`, `9a860c95`, `5971fffe`;
   - a02: `379845f7`, `386a71b3`, `c81c88a3`, `d5d6c9b1`, `c6cf0548`, `61d90302`;
   - a03: `b2b3db45`, `c36fcd35`, `7581d590`, `3c20b0ca`, `f5f980f9`, `82e86e50`;
-  - a04: `9db7ed3c` (the coverage rule, `dispatch`, unknown keys, three fixtures, the task copy), `863ae465` (evidence), then amendment 1's task copy, fixture wording and this evidence.
+  - a04: `9db7ed3c` (the coverage rule, `dispatch`, unknown keys, three fixtures, the task copy), `863ae465` (evidence), `ca7dcd73` (amendment 1's task copy and fixture wording), `8d54fd76` (fix round 1), `8c0c015b` (the fixtures moved to PR #340), then this evidence.
+- **The INV-2 split** (the orchestrator's answer of 03:47Z: a cap is a split, never a disposition). The thirteen files under `tests/fixtures/gate-evidence/` (twelve fixtures and `.prettierrc`, 164 lines) are on PR #340, branch `regime/gate-evidence-fixtures` from `origin/main` `4470b0c8`, head `27e8a0ea`. PR #329 keeps four files outside `.orchestration/`: the gate, its test module, the Makefile and the README. Outside `.orchestration`, the tested content `8d54fd76` equals `8c0c015b` plus #340's fixtures (validation §9). #329's CI fails until #340 merges and #329 takes the new base, because its test module reads the fixtures.
 
 ## What a04 adds to a03 amendment 1 (task item 2's new sentence, items 3 and 5)
 
@@ -28,7 +29,7 @@
 
 ## Tests and fixtures
 
-The module runs 91 tests, against 71 on `origin/main`: 20 more, where the task asks for at least 13 (validation §2, §3). Each rule fails a test when broken: one-line mutations M2 to M27, plus the guards of `origin/main`, of a02's head `61d90302` and of a03's code head `f5f980f9` (validation §4).
+The module runs 92 tests on the combined content (#329 with #340's fixtures), against 71 on `origin/main`: 21 more, where the task asks for at least 13 (validation §2, §3). Each rule fails a test when broken: one-line mutations M2 to M29, plus the guards of `origin/main`, of a02's head `61d90302`, of a03's code head `f5f980f9` and of a04's `9db7ed3c` (validation §4).
 
 | Fixture (`tests/fixtures/gate-evidence/`) | Read by |
 |---|---|
@@ -45,7 +46,7 @@ The module runs 91 tests, against 71 on `origin/main`: 20 more, where the task a
 | `acceptance-dispatch-key.md` | `test_acceptance_record_accepts_a_dispatch_list` |
 | `acceptance-ledger-review-body.md` | `test_acceptance_record_ledger_must_cover_a_badged_review_body` |
 
-The twelve fixtures total 163 lines, under the 170 cap (validation §5).
+The twelve fixtures, now on PR #340, total 163 lines, under the 170 cap; with `.prettierrc`, 164 (validation §5).
 
 New tests:
 
@@ -66,6 +67,15 @@ All earlier threads keep their a03 dispositions (`.orchestration/dotfiles-T128-g
 
 The main-checkout copy names the sha and adds the Bot round on the a04 head. The worker resolves no thread.
 
+## a04 Bot round 1 (review 5498584052 on `ca7dcd73`, 03:50:47Z): two P1, fix round 1 (`8d54fd76`)
+
+| Thread | P | Class | Disposition |
+|---|---|---|---|
+| 4254525594 | P1 | front-matter-delimiter (new) | `fixed:8d54fd76`: both delimiters are whole lines that are exactly `---` (a prefix search let `---junk` close the block); the closing test's `a closing line that is not exactly ---` case |
+| 4254525603 | P1 | coverage-source-authentication (new) | `fixed:8d54fd76`: `feedback_key` compares `author` with the live collection too, so a saved sweep cannot change a Codex item's author to keep it out of the ledger's required ids (`test_swept_ids_come_from_authenticated_authors`) |
+
+CI on `ca7dcd73`: 12 of 12 check runs green. Questions under a04: none (PONG 03:47Z was the orchestrator's answer to a flag). Fix rounds: one.
+
 ## Declared beyond the letter of the task
 
 - `pr-feedback-wrong.json` and `pr-feedback-right.json`: each of their two items gains `"author": "chatgpt-codex-connector[bot]"`, the real author of threads 4244248692 and 4244378809 in the a02 sweep (validation §5). Their dispositions stay byte-for-byte, and the wrong and right fixtures keep the same items. So `pr-feedback-right.json` already has the Codex `review_comment` with a `_r<digits>` url that item 3 asks for, and gains no third item.
@@ -84,7 +94,7 @@ The main-checkout copy names the sha and adds the Bot round on the a04 head. The
 
   It also needs `; evidence=<command>`, once, on every `not-applicable` in the sweep JSON.
 - The threat row for the audit summary (`.last.md`) is residual. The gate counts its `[P0]`–`[P3]` lines and reads nothing else, so a shortened summary shrinks the required set.
-- **INV-2's file cap cannot be met as the task is written.** The Validation section allows at most 15 changed files outside `.orchestration/`. Item 3 alone requires twelve fixtures, and items 2 and 3 require the gate, its test module, the Makefile and the README: 16 files. `tests/fixtures/gate-evidence/.prettierrc` makes 17 (validation §9). The other two caps hold: 331 added lines outside `tests/` (cap 500) and 701 under `tests/` (cap 1000). I did not drop a required fixture or the `.prettierrc` to fit the cap; without the `.prettierrc`, prettier rewrites the JSON fixtures into invalid JSON and CI's format check fails. The fix is task text, and yours: raise the cap, move a fixture into its test (as the unknown-key case already is), or waive INV-2 for this PR.
+- INV-2: answered by the split above. PR #329 has 4 files outside `.orchestration/` and PR #340 has 13; each PR is within the 500-line and 1000-line caps (validation §9).
 - `origin/main` (`948d1f38`) merges cleanly, and `update-branch` is yours (validation §9).
 
 ## Notes

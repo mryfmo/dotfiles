@@ -124,6 +124,24 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", str(self.repo / "line.txt"), cwd=pr)
         self.assertEqual(["team", "orch", "worker", "w5:pA", line], self.call("agmsg-dispatch"))
 
+    def test_dispatch_refuses_a_line_without_a_task_id(self):
+        # Thread 4254893065: a message without exactly one non-empty task_id= is never sent, nor recorded.
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        before = record.read_text()
+        for line in (
+            "AGMSG-PING v1 reason=check",
+            "AGMSG-PING v1 task_id= reason=check",
+            "AGMSG-ACCEPTANCE v1 task_id=t task_id=u status=accepted",
+        ):
+            with self.subTest(line=line):
+                self.write("line.txt", line + "\n")
+                result = self.run_tool(
+                    "dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record), code=1
+                )
+                self.assertIn("exactly one non-empty task_id=", result.stderr)
+                self.assertIsNone(self.call("agmsg-dispatch"))
+                self.assertEqual(before, record.read_text())
+
     def test_dispatch_refuses_malformed_lines(self):
         for line, code, needle in (
             ("hello task_id=t", 2, "not an AGMSG-TASK"),

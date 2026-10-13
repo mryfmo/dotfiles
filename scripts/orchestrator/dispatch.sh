@@ -7,7 +7,8 @@
 #   recomputed from the file its sibling token names, `<name>_file=` or else
 #   `<name>=` (`task_sha256` from `task_file=`, `design_sha256` from `design=`,
 #   `amended_task_sha256` from `amended_task=`; a line naming the file both
-#   ways, or repeating one of these keys, is refused); an AGMSG-TASK line must carry
+#   ways, or repeating one of these keys, is refused); every line must carry
+#   exactly one non-empty `task_id=`, and an AGMSG-TASK line must carry
 #   `task_file=` and `task_sha256=`. A relative path is read from the root of
 #   the checkout this script lives in (`git rev-parse --show-toplevel` there),
 #   never from the caller's directory. A missing field or file, a malformed value
@@ -84,6 +85,11 @@ count_of() {
     done
     printf '%s' "${n}"
 }
+# Thread 4254893065: every message names exactly one task, before any hash or record work.
+if (($(count_of task_id) != 1)) || [[ -z "$(value_of task_id)" ]]; then
+    echo "dispatch: the line needs exactly one non-empty task_id=" >&2
+    exit 1
+fi
 # Thread 4254163604: a TASK whose file is not hash-bound is never sent.
 if [[ ${line} == "AGMSG-TASK "* ]]; then
     for field in task_file task_sha256; do

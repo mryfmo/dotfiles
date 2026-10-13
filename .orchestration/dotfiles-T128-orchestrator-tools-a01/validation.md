@@ -130,3 +130,72 @@ $ git log --oneline origin/main..HEAD
 8ea05883 feat(orchestrator): add dispatch, three-repeat and bus-read scripts; read S1 classes from the acceptance record
 b0cba1a7 chore(orchestration): record the dotfiles-T128-orchestrator-tools-a01 task
 ```
+
+## 9. Fix round 1: CI and the Bot on `61290da8`
+
+The first head drew a CI failure and Bot review 5497968688 (02:02:40Z, two P1s).
+
+```text
+$ gh run view --job 115091278790 --log-failed | grep -E "In scripts|SC2015|##\[error\]"   # test (ubuntu-24.04, client), Run ShellCheck
+In scripts/orchestrator/three-repeat.sh line 21:
+            ^-- SC2015 (info): Note that A && B || C is not if-then-else. C may run when A is true.
+  https://www.shellcheck.net/wiki/SC2015 -- Note that A && B || C is not if-t...
+##[error]Process completed with exit code 123.
+$ gh api …/runs/38334448739/jobs --jq ".jobs[]|[.name,.conclusion]|@tsv"
+test (ubuntu-24.04, client)	failure
+test (macos-14, client)	cancelled
+test (ubuntu-24.04, server)	cancelled
+test (ubuntu-26.04, client)	cancelled
+$ gh api --paginate …/pulls/336/comments --jq ".[]|select(.original_commit_id==\"61290da8…\" and .in_reply_to_id==null)|[.id,.path,.original_line]|@tsv"
+4253994697	scripts/orchestrator/three-repeat.sh	38
+4253994704	.orchestration/dotfiles-T128-orchestrator-tools-a01/task.md	19
+$ uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v
+test_bus_read_lists_open_tasks_with_their_minutes_since_the_latest_event ... ok
+test_bus_read_refuses_a_read_that_reaches_its_limit ... ok
+test_dispatch_passes_the_line_byte_identical ... ok
+test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file ... ok
+test_dispatch_refuses_malformed_lines ... ok
+test_scripts_read_and_run_their_own_checkout_never_the_callers ... ok
+test_three_repeat_prints_the_records_search_line ... ok
+test_three_repeat_refuses_a_class_that_is_not_a_slug ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 1.544s
+
+OK
+$ uv run --no-project python -m unittest tests/unit/test_regime_counters.py 2>&1 | tail -n 3
+Ran 26 tests in 3.049s
+
+OK
+$ shellcheck -x scripts/orchestrator/*.sh scripts/regime-counters.sh; echo "shellcheck exit $?"
+shellcheck exit 0
+$ ruff format --config ruff.toml --check tests/unit/test_orchestrator_tools.py
+1 file already formatted
+$ uv run --no-project python "$TMPDIR/mutate-own.py" "$PWD"   # each script put back to the caller root
+mutant O1 three-repeat from the caller: test_scripts_read_and_run_their_own_checkout_never_the_callers -> rc=1 FAILED (failures=1)
+mutant O2 dispatch from the caller: test_scripts_read_and_run_their_own_checkout_never_the_callers -> rc=1 FAILED (failures=1)
+$ uv run --no-project python "$TMPDIR/mutate-tools.py" "$PWD"; git status --short   # the 14, T1 now on the if form
+mutant D1 mismatch check off: test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file -> rc=1 FAILED (failures=1)
+mutant D2 line word-split: test_dispatch_passes_the_line_byte_identical -> rc=1 FAILED (failures=1)
+mutant D3 multi-line check off: test_dispatch_refuses_malformed_lines -> rc=1 FAILED (failures=4)
+mutant T1 slug check loosened: test_three_repeat_refuses_a_class_that_is_not_a_slug -> rc=1 FAILED (failures=2)
+mutant T2 records match unanchored: test_three_repeat_prints_the_records_search_line -> rc=1 FAILED (failures=1)
+mutant T3 class not one argument: test_three_repeat_prints_the_records_search_line -> rc=1 FAILED (failures=1)
+mutant B1 revise does not reopen: test_bus_read_lists_open_tasks_with_their_minutes_since_the_latest_event -> rc=1 FAILED (failures=1)
+mutant B2 withdrawn does not close: test_bus_read_lists_open_tasks_with_their_minutes_since_the_latest_event -> rc=1 FAILED (failures=1)
+mutant B3 silence at sixty minutes: test_bus_read_lists_open_tasks_with_their_minutes_since_the_latest_event -> rc=1 FAILED (failures=1)
+mutant B4 limit guard off: test_bus_read_refuses_a_read_that_reaches_its_limit -> rc=1 FAILED (failures=1)
+mutant B5 the --limit flag form: test_bus_read_lists_open_tasks_with_their_minutes_since_the_latest_event -> rc=1 FAILED (failures=1)
+mutant R1 record mode off: test_s1_reads_the_ledger_classes_of_the_acceptance_record -> rc=1 FAILED (failures=1)
+mutant R2 title not JSON-quoted: test_s1_quotes_a_title_with_shell_metacharacters -> rc=1 FAILED (failures=1)
+mutant R3 slug check off: test_s1_reads_the_ledger_classes_of_the_acceptance_record -> rc=1 FAILED (failures=1)
+$ git diff --numstat origin/main...HEAD -- . ":!.orchestration"
+57	0	scripts/orchestrator/bus-read.sh
+77	0	scripts/orchestrator/dispatch.sh
+44	0	scripts/orchestrator/three-repeat.sh
+29	9	scripts/regime-counters.sh
+208	0	tests/unit/test_orchestrator_tools.py
+32	1	tests/unit/test_regime_counters.py
+$ git log --oneline 61290da8..HEAD
+e6f2bdc0 fix(orchestrator): run the contextdb CLI of the script's own checkout, never the caller's
+```

@@ -56,3 +56,15 @@ They run on the head that carries this evidence. The results are in the RESULT a
 `memory add` printed `c63b57e5-47d3-46c0-92e5-142680cda997` (§8).
 
 cost: n/a
+
+## Fix round 1 (`e6f2bdc0`, worker fix round 1 of at most 2)
+
+The first head `61290da8` drew a CI failure and Codex Bot review 5497968688 (two P1s) (validation §9).
+
+| Item | Finding | Disposition |
+|---|---|---|
+| CI `test (ubuntu-24.04, client)`, Run ShellCheck | SC2015 (info) at `three-repeat.sh:21`, `A && B \|\| C`. Ubuntu's apt shellcheck reports it; the local 0.11.0 does not. Fail-fast cancelled the other three jobs | `fixed:e6f2bdc0`: the guard is an `if` |
+| 4253994697 (P1, `three-repeat.sh:38`) | the root came from the caller's directory, so run from a PR worktree the script executed that PR's `.claude/hooks/contextdb_cli.py` on the orchestrator host | `fixed:e6f2bdc0`: `three-repeat.sh`, and `dispatch.sh` for the same reason (it hashes task files by relative path), take the root of the checkout they live in, `git -C <script dir> rev-parse --show-toplevel`. Running the main checkout's script runs the main checkout's CLI whatever the cwd; running a PR's copy of the script is already running PR code, so no new boundary is crossed. `test_scripts_read_and_run_their_own_checkout_never_the_callers` runs both scripts from a foreign git checkout and asserts the records, the CLI's cwd and the hashed file are the script's own; each script put back to the caller root fails it (mutants O1, O2) |
+| 4253994704 (P1, task.md:19) | the first threat row (`scripts/orchestrator/*`, three scripts) closes on one test that covers only `dispatch.sh` | not fixable by the worker: the row is in the task file, whose copy must stay byte-identical (threat row 5), and changing it is an amendment (the T703 amendment rule). Proposed split, one `closed` row per script: `dispatch.sh` → `tests/unit/test_orchestrator_tools.py::test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file`; `three-repeat.sh` → `…::test_scripts_read_and_run_their_own_checkout_never_the_callers` (with `…::test_three_repeat_refuses_a_class_that_is_not_a_slug` for the slug); `bus-read.sh` → `…::test_bus_read_refuses_a_read_that_reaches_its_limit`. Every selector exists in this head |
+
+After the round, the new module runs 8 tests, OK; the counters module 26, OK; shellcheck is clean; all 16 mutants fail (§9). Size: 6 files outside `.orchestration/`; 207 added lines outside `tests/`; 240 under `tests/`.

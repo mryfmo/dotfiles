@@ -2,7 +2,8 @@
 
 A Bot thread takes the disposition of the orchestrator's latest reply in it (`fixed:<sha>` or
 `not-applicable:<reason>; evidence=<command>` in backticks); extra.tsv (`id<TAB>disposition`) overrides or
-adds; other items get the fixed rules below, each with a jq command that shows the item. A not-applicable
+adds; other items get the fixed rules below, each with a jq command that shows the item. An annotation or a
+status gets its rule only at its NEUTRAL level, so a warning, a failure or a pending status is a gap. A not-applicable
 without the gate's grammar (one `; evidence=` between a non-empty reason and command) is never emitted but
 listed as a gap. The sweep JSON is rewritten only when every item has a disposition; otherwise exit 1.
 """
@@ -23,6 +24,7 @@ RULES = {
     "annotation": "runner capacity notice, no finding",
     "status": "CI status, no finding",
 }
+NEUTRAL = {"annotation": "notice", "status": "success"}
 
 
 def valid(disposition):
@@ -55,7 +57,7 @@ def main(argv):
         elif source == "review" and "Codex Review" in body:
             source = "codex_review"
         show = f"{EVIDENCE}jq '.items[] | select(.url == \"{item.get('url')}\")' {sweep_path}"
-        rule = RULES.get(source)
+        rule = RULES.get(source) if NEUTRAL.get(source, item.get("level")) == item.get("level") else None
         d = extra.get(cid) or (
             reply.get(cid) if source == "review_comment" else rule and f"not-applicable:{rule}{show}"
         )

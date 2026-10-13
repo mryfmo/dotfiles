@@ -345,6 +345,17 @@ class OrchestratorToolsTest(unittest.TestCase):
                 self.assertEqual(line, self.call("agmsg-dispatch")[4])
                 (self.calls / "agmsg-dispatch").unlink()
 
+    def test_dispatch_refuses_a_tab_separated_task_without_its_hash_fields(self):
+        # Thread 4260535901: a tab after AGMSG-TASK must not skip the required-field check.
+        self.write(".orchestration/tasks/t.md", "task\n")
+        for line, needle in (
+            ("AGMSG-TASK\tv1\ttask_id=t", "needs task_file="),
+            ("AGMSG-TASK\tv1 task_id=t task_file=.orchestration/tasks/t.md", "needs task_sha256="),
+        ):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, self.dispatch(line, code=1).stderr)
+                self.assertIsNone(self.call("agmsg-dispatch"))
+
     def test_dispatch_record_path_tokenizes_locks_and_refuses_a_capped_history(self):
         record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
         (self.calls / "history").write_text("")
@@ -739,6 +750,26 @@ class OrchestratorToolsTest(unittest.TestCase):
             ],
             [i["disposition"] for i in json.loads(sweep.read_text())["items"]],
         )
+
+    def test_fill_sweep_fills_only_notice_annotations_and_success_statuses(self):
+        url = "https://github.test/pull/9/checks"
+        levels = [("annotation", lv) for lv in ("notice", "warning", "failure")]
+        levels += [("status", lv) for lv in ("success", "failure", "error", "pending")]
+        items = [{"source": s, "bot": True, "url": f"{url}#{s}-{lv}", "body": lv, "level": lv} for s, lv in levels]
+        sweep = self.write("sweep.json", json.dumps({"pr": 9, "items": [{**i, "disposition": ""} for i in items]}))
+        before = sweep.read_text()
+        comments = self.write("comments.json", "[]")
+        script = str(self.repo / "scripts/orchestrator/fill_sweep.py")
+        result = subprocess.run(
+            [sys.executable, "-I", script, sweep, comments], capture_output=True, text=True, check=False
+        )
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(
+            ["annotation-warning", "annotation-failure", "status-failure", "status-error", "status-pending"],
+            re.findall(r"^GAP (\S+)", result.stdout, re.MULTILINE),
+        )
+        self.assertIn("items 7 filled 2 gaps 5", result.stdout)
+        self.assertEqual(before, sweep.read_text())
 
 
 if __name__ == "__main__":

@@ -113,8 +113,9 @@ if (($(count_of task_id) != 1)) || [[ -z "$(value_of task_id)" ]]; then
     echo "dispatch: the line needs exactly one non-empty task_id=" >&2
     exit 1
 fi
-# Thread 4254163604: a TASK whose file is not hash-bound is never sent.
-if [[ ${line} == "AGMSG-TASK "* ]]; then
+# Thread 4254163604: a TASK whose file is not hash-bound is never sent. The kind is the parsed
+# first token, so a tab after it does not skip this check (thread 4260535901).
+if [[ ${tokens[0]} == AGMSG-TASK ]]; then
     for field in task_file task_sha256; do
         value_of "${field}" > /dev/null || {
             echo "dispatch: an AGMSG-TASK line needs ${field}=" >&2

@@ -99,6 +99,9 @@ mistakes:
   - id: M-20261012-31
     corrections: [C-30]
     status: open
+  - id: M-20261012-32
+    corrections: [C-31]
+    status: open
 corrections:
   - id: C-1
     closes: [M-20261012-1]
@@ -219,4 +222,8 @@ corrections:
   - id: C-30
     closes: [M-20261012-31]
     mechanism: ['rule:SKILL#acceptance-statuses (proposed)', 'script:scripts/agent-stop-gate.sh accepted set (proposed)']
+    status: "pending"
+  - id: C-31
+    closes: [M-20261012-32]
+    mechanism: ['rule:redesign-brief-standing-items#input-grammar', 'validator:task-consistency-check#C12 (T704, proposed)', 'task:dotfiles-T128-orchestrator-tools-a02 (tables before dispatch)']
     status: "pending"

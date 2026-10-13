@@ -93,6 +93,9 @@ mistakes:
   - id: M-20261012-29
     corrections: [C-28]
     status: open
+  - id: M-20261012-30
+    corrections: [C-29]
+    status: open
 corrections:
   - id: C-1
     closes: [M-20261012-1]
@@ -205,4 +208,8 @@ corrections:
   - id: C-28
     closes: [M-20261012-29]
     mechanism: ['rule:amend-review-template#behaviour-rows', 'validator:task-consistency-check#C7-effects (T704, proposed)']
+    status: "pending"
+  - id: C-29
+    closes: [M-20261012-30]
+    mechanism: ['rule:integrate-prep#sandbox-scan', 'script:sandbox-check.py (T704 or T718 a02, proposed)']
     status: "pending"

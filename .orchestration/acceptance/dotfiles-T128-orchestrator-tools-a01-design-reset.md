@@ -9,7 +9,7 @@ reason: INV-6-second-amendment-pre-empted; thread-4254494999
 
 # Reset record: dotfiles-T128-orchestrator-tools-a01 → a03 (INV-6 pre-empted at the second amendment, 2026-10-13 04:1xZ; a02 is T718's second slice, not this lineage)
 
-- **Trigger:** Codex Bot thread 4254494999 (P1, `task.md:21`, 03:45:31Z) on the amendment-1 head `5ec05d8d`: dispatch.sh's record read/rewrite path, added by amendment 1, has no threat row; the row is task text and a01 already carries one amendment and one question. Counters at 04:19:29Z:
+- **Trigger:** Codex Bot thread 4254494999 (P1, `task.md:21`, 03:45:31Z) on the amendment-1 head `5ec05d8d`: dispatch.sh's record read/rewrite path, added by amendment 1, has no threat row; the row is task text and a01 already carries one amendment and one question; the pasted counters also show `bot_p1_heads_after_result=2`, the S2 threshold (two post-RESULT heads with Bot P1s), a second ground for the same reset. Counters at 04:19:29Z:
 
 ```text
 task=dotfiles-T128-orchestrator-tools-a01 tasks=2 amendments=1 questions=1 results=2 withdrawn=1 revises=1 first_result_head=5b6d5f24d2b056803eea4dd4275ffcd79c2bb16c bot_p1_heads_after_result=2 audits=unknown wall=2026-10-13T01:35:13Z..2026-10-13T04:13:13Z (2:38) source=live

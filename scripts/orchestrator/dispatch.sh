@@ -20,7 +20,10 @@
 #   block is read and written with Python's standard json (a duplicate key, NaN
 #   or Infinity is refused; `sort_keys`, `indent=2`); the key is created when
 #   absent, and a record without a block, or a missing record file, gets a block
-#   holding only `dispatch`. The prose after the block is kept byte for byte.
+#   holding only `dispatch`. The prose after the block is kept byte for byte,
+#   and the record is replaced atomically (a temporary file in its directory,
+#   fsync, rename). A record whose `task` is not the line's `task_id` is
+#   refused before the send.
 #   Only a bus row this send created is recorded: the rows matching the line,
 #   sender and recipient are counted before and after the send, and a send that
 #   added none leaves the record unchanged and exits 1. The read state is the
@@ -130,7 +133,7 @@ done
 # Modes: `check` parses the record; `append` finds the sent line in history.sh's
 # output on stdin, takes its read marker (● unread, ○ read) and appends it.
 read -r -d '' recorder << 'PY' || true
-import json, re, sys
+import json, os, re, shutil, sys, tempfile
 from pathlib import Path
 
 mode, path, line, sender, to, before = sys.argv[1:7]
@@ -159,6 +162,10 @@ if text.startswith("---\n"):
 entries = block.setdefault("dispatch", [])
 if not isinstance(entries, list):
     sys.exit(f"dispatch: {path}: dispatch is not a list")
+# Thread 4254844587: another task's record never takes this task's dispatch.
+task = next((t[len("task_id="):] for t in line.split(" ") if t.startswith("task_id=")), None)
+if task is not None and "task" in block and block["task"] != task:
+    sys.exit(f"dispatch: {path} is the record of task {block['task']}, the line is task {task}")
 row = re.compile(r"^\s*(\S+)\s+\[[^\]]+\]\s+(\S+)\s+→\s+(\S+):\s(.*)$")
 marks = [m.group(1) for m in map(row.match, sys.stdin.read().splitlines())
          if m and (m.group(2), m.group(3), m.group(4)) == (sender, to, line)]
@@ -170,7 +177,21 @@ if len(marks) <= int(before):
     sys.exit(f"dispatch: this send added no bus row; {path} is unchanged")
 entries.append(f"{line} read_at={'read' if marks[-1] == '○' else 'unread'}")
 body = json.dumps(block, sort_keys=True, indent=2, ensure_ascii=False)
-record.write_text(f"---\n{body}\n---\n{rest}")
+# Thread 4254844595: the line is already sent, so the record is replaced whole or not at all.
+fd, tmp = tempfile.mkstemp(dir=record.parent, prefix=f".{record.name}.")
+try:
+    with os.fdopen(fd, "w") as f:
+        f.write(f"---\n{body}\n---\n{rest}")
+        f.flush()
+        os.fsync(f.fileno())
+    if record.exists():
+        shutil.copymode(record, tmp)
+    else:
+        os.chmod(tmp, 0o644)
+    os.replace(tmp, record)
+except BaseException:
+    Path(tmp).unlink(missing_ok=True)
+    raise
 PY
 [[ ${record} == /* ]] || record="${PWD}/${record}"
 # Team-wide: history.sh renames the calling pane after an agent argument (thread 4254399805).

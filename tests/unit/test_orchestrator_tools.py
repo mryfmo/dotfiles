@@ -179,7 +179,11 @@ class OrchestratorToolsTest(unittest.TestCase):
         (self.calls / "history").write_text(f"  ● [2026-10-12T00:00:00Z] orch → worker: {ping}\n")
         (self.calls / "dispatch-marker").write_text("○")
         self.write("line.txt", ping + "\n")
+        inode = record.stat().st_ino
         self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record))
+        # Thread 4254844595: the record is replaced whole (a new inode), never rewritten in place.
+        self.assertNotEqual(inode, record.stat().st_ino)
+        self.assertEqual(["t.md"], sorted(p.name for p in record.parent.iterdir()))
         block, prose = self.gate_block(record)
         self.assertEqual({"dispatch": [f"{ping} read_at=read"], "format": 1, "ledger": [], "task": "t"}, block)
         self.assertEqual("\nProse.\n", prose)
@@ -196,8 +200,14 @@ class OrchestratorToolsTest(unittest.TestCase):
         result = self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record), code=1)
         self.assertIn("this send added no bus row", result.stderr)
         self.assertEqual(before, record.read_text())
-        # A malformed record is refused before anything is sent.
+        # Thread 4254844587: another task's record is refused before anything is sent.
+        (self.calls / "dispatch-fails").unlink()
         (self.calls / "agmsg-dispatch").unlink()
+        other = self.write(".orchestration/acceptance/w.md", '---\n{"task": "u"}\n---\n')
+        result = self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(other), code=1)
+        self.assertIn("is the record of task u, the line is task t", result.stderr)
+        self.assertIsNone(self.call("agmsg-dispatch"))
+        # A malformed record is refused before anything is sent.
         bad = self.write(".orchestration/acceptance/v.md", '---\n{"task": "a", "task": "b"}\n---\n')
         result = self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(bad), code=1)
         self.assertIn("duplicate key task", result.stderr)

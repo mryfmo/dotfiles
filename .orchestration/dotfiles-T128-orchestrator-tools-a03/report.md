@@ -56,3 +56,13 @@ On head `4fc6040f` (validation §8): all `test` jobs passed. Bot review 54989474
 | 4254844595 (P2, `dispatch.sh:173`) | the in-place `write_text` after the send could leave the record truncated | `fixed:6cd491f5`: a temporary file in the record's directory, `fsync`, `os.replace` (mode copied; the temporary file is removed on failure). The record test asserts a new inode and no leftover file (mutant D17) |
 
 Results (§8): 9 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 32 mutants, 32 failures. Size: added lines outside and under `tests/`: 334 and 346 (caps 500 and 1000).
+
+## Revise round 1 with amendment 1 (ACCEPTANCE 05:06:44Z; amendment TASK 05:16:22Z, sha256 `ef3b2646…`)
+
+The revise answers thread 4254893065 (P2) on `c8fb09b0`: a TASK, ACCEPTANCE or PING without `task_id=` was sent and, with a record, skipped the association check. Amendment 1 adds the threat row for that path and names its test. At the orchestrator's request (PONG 05:07:59Z) the fix, the test and the task copy travel in one push and one RESULT.
+
+- `6e1e834d`: `dispatch.sh` refuses a line whose `task_id=` is missing, empty or repeated, exit 1, before any hash or record work. `test_dispatch_refuses_a_line_without_a_task_id`, the closed-row name, covers all three with a record given; the stub records no call and the record is unchanged. Mutant D18 (the check removed) fails it.
+- `.orchestration/dotfiles-T128-orchestrator-tools-a03/revise.yaml`: `round: 1`, `previous_head: c8fb09b0…`, and the check `tests/unit/test_orchestrator_tools.py::OrchestratorToolsTest::test_dispatch_refuses_a_line_without_a_task_id`.
+- `88e8209c`: the task copy, recommitted byte-identical at amendment 1. All six closed rows name a test in this head (validation §10).
+
+Results (§10): 10 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 33 mutants, 33 failures. Size: added lines outside and under `tests/`: 340 and 364 (caps 500 and 1000).

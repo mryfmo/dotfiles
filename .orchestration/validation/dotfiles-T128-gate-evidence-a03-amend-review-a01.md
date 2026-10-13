@@ -1,34 +1,35 @@
 ---
-reviewed_at: 2026-10-13T01:30:27Z
+reviewed_at: 2026-10-13T01:41:06Z
 reviewer: claude-review-dot-a001
 profile: review
 session: 2089b04f-f9c7-498b-86c5-76f2140048d5
 design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md@20d0937b9f7c6adebe6e4d5e6ad26ceb3578ae9b050bdce4f353b0a00ce9504a
 task: dotfiles-T128-gate-evidence-a03-amend-review-a01
-round: 2
-task_file: dotfiles-T128-gate-evidence-a03-amend-review-a01@114b50af6c3361a9a7c20295c08ff53eaeac45d84c79b5cefbc8e93b25d3bf49
+round: 5
+task_file: dotfiles-T128-gate-evidence-a03-amend-review-a01@ec1d269d59539e66add03f3cc4d3655c880b50479b4472869c22f54d05090c56
 files:
-  - dotfiles-T128-gate-evidence-a03@e8cfe390315dc3053d271a4e849febb896ff60f3a19ca5f2959f4644178935a4
-previous: main 3709a6d8 copy 686806a1b6cff143 (pre-amendment)
+  - dotfiles-T128-gate-evidence-a03@1b8ba5b406cb5a6c5396805e8b4d960713876ca307109a487fd9651b4b42d659
+previous: round 4 confirmed 04659bd5 (receipt 7d1b8b799aeac6ab5f0118d9d0f0aabc25fb9759b8dc2046f074d1ee2aa21652); rounds 2 and 3 confirmed e8cfe390 and aaf470a5; pre-amendment copy 686806a1 at 3709a6d8
 verdicts:
   dotfiles-T128-gate-evidence-a03: confirm
 ---
 
-# Amendment review: dotfiles-T128-gate-evidence-a03 amendment 1 (plan 013 A′), review-seat half, round 2
+# Amendment review: dotfiles-T128-gate-evidence-a03 amendment 1 (plan 013 A′), review-seat half, round 5
 
-Round 1 was the Codex half alone; its P1 (no fails-when-removed test for the parse_constant refusal) is applied in this version: item 3 adds acceptance-nan.md ("pr": NaN, refused with `acceptance record: non-finite number`), nine fixtures under 120 lines, at least nine new tests, and item 2 names the refusal text. The bus line of 01:26:03Z (empty hash fields, M-20261012-26) is void; this receipt reviews the hashes the 01:29:41Z line carries, both recomputed and equal.
+Round 5 changes line 78 only (diff against the round-4 copy: one line): the introduction's description of item 2 now says the machine-read parts are data the gate loads field by field, that plan 011 F said a YAML front matter read with PyYAML, and that amendment 1 (plan 013 A′) makes it a JSON object between the first two `---` lines read with the standard library. Both hashes of the 01:40:05Z TASK line recomputed and equal.
 
-Stop condition, each point:
+Stop condition, each point, on 1b8ba5b4:
 
-1. Diff against main's copy (git diff origin/main, numstat 8 added, 4 removed): the environment-inputs row (line 42), the ACCEPTANCE_EVIDENCE row (line 47, "JSON block"), item 2 (line 87), item 3 (line 88) and the Amendment 1 section (lines 102 to 105). Nothing else: reset_of, allowed_files, the copy rows (a01, a02, a03) and the a03 evidence directory are byte-identical to main.
-2. The three threads close by construction: 4250238729 by object_pairs_hook (a duplicate key never reaches validation, refused with the named text); 4250238714 by the triple task/head/pr checked together, pr against PR_FEEDBACK_EVIDENCE's, with its own refusal text and fixture; 4250238721 by json (standard library) and pathlib, no uv, no third-party package, no subprocess, no online retry. INV-1: json.loads is a library parser, not a hand-written one, and the block is a flow mapping any YAML 1.2 reader (T718's jq path, item 3 of dotfiles-T128-orchestrator-tools-a01, agrees). INV-12: every refusal now has a fixture. Plan 011 F's field checks are unchanged; only its word "PyYAML" is superseded, as the Amendment 1 section says.
-3. Checker on a copy named after the task id: OK (C1 to C10); C7b: the six allowed_files entries have one row each (lines 21, 23, 25, 31, 43, 45).
+1. Diff against the pre-amendment copy the task names (3709a6d8, 686806a1; numstat 11 added, 7 removed): lines 25, 42, 47, 78, 87 to 88, 94 and 101 to 104. reset_of, allowed_files, the copy rows and the a03 evidence directory are byte-identical.
+2. Unchanged from rounds 2 to 4: the three threads close by construction; INV-1 and INV-12 hold; plan 011 F's field checks are unchanged.
+3. Checker on a copy named after the task id: OK (C1 to C10); C7b unchanged.
+
+My own sweep (grep -n -o -i over yaml, front matter, safe_load, uv, grep): lines 33 to 36 are the task copy's own front matter and PyYAML in the checker (correct); 42, 64, 90 and 94 name uv or grep as the tests' runner or as evidence commands (correct); 87 says "valid YAML 1.2, so any YAML reader still reads it" and "the prose after the front matter is not read" (the block is a front matter in form, JSON in content; consistent); 104 names PyYAML as the superseded word. No YAML-era contract sentence remains.
 
 ## Findings
 
-- P3 0.7 .orchestration/tasks/dotfiles-T128-gate-evidence-a03.md:42 — the row states "C-26's check C11 replays this on the head" as an existing mechanism; C-26 and index.yaml list C11 as "T704, proposed; scratchpad replay". Say "C-26's proposed check C11 (scratchpad replay until T704 lands)". Same row, "adds no host binary call": the head comparison resolves HEAD through git, the gate's existing binary (run_git), so "no host binary beyond git, which the gate already runs" is the true sentence.
-- P3 0.7 .orchestration/tasks/dotfiles-T128-gate-evidence-a03.md:87 — the S6 set is "a line that begins with classes: contains <class>" and is called "the same match as grep -rl 'classes:.*<class>'"; grep matches the pattern anywhere in the line (M-20261012-19 line 7 carries "classes:" mid-line in prose), so the gate's recomputed set and the orchestrator's pasted search (INV-6's clause) can differ and a correct paste would be refused with the S6 text. Pick one definition in both places: "a line containing classes: followed by <class>" (grep's), or the pasted command becomes grep -rl '^classes:.*<class>'.
+- P3 1.0 .orchestration/tasks/dotfiles-T128-gate-evidence-a03.md:78 — typo only: "read with the standard library), with `head` bound to `HEAD`" keeps the closing parenthesis of the deleted "(INV-1's form: …)" clause; delete the stray ")". No meaning changes; not worth a round on its own, fix it at the next edit of the file.
 
-Neither finding contradicts the design or the amended contract's checks; both are one-sentence corrections the orchestrator may fold into the dispatch note or the next amendment.
+The two P3 text notes of round 2 (lines 42 and 87) stand as non-blocking.
 
 Amendment verdict: dotfiles-T128-gate-evidence-a03: confirm

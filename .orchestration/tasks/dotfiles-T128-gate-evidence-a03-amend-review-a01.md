@@ -7,7 +7,7 @@ security: false
 
 # AGMSG-TASK dotfiles-T128-gate-evidence-a03-amend-review-a01 — confirm amendment 1 of `dotfiles-T128-gate-evidence-a03` (review seat half; Codex headless runs the same check)
 
-Drafted 2026-10-13 01:4xZ by the orchestrator seat under plan 013 option A′ (operator). The Codex Bot's review 5493539294 of PR #329 head `c36fcd35` raised three P1s (4250238714 pr not compared with the swept PR; 4250238721 the gate's uv/PyYAML/grep inputs absent from the environment row; 4250238729 duplicate YAML keys kept). Amended file: `.orchestration/tasks/dotfiles-T128-gate-evidence-a03.md`, sha256 `e8cfe390315dc3053d271a4e849febb896ff60f3a19ca5f2959f4644178935a4`; the pre-amendment copy is on `main` (`3709a6d8`, sha256 686806a1…).
+Drafted 2026-10-13 01:4xZ by the orchestrator seat under plan 013 option A′ (operator). The Codex Bot's review 5493539294 of PR #329 head `c36fcd35` raised three P1s (4250238714 pr not compared with the swept PR; 4250238721 the gate's uv/PyYAML/grep inputs absent from the environment row; 4250238729 duplicate YAML keys kept). Amended file: `.orchestration/tasks/dotfiles-T128-gate-evidence-a03.md`, sha256 `1b8ba5b406cb5a6c5396805e8b4d960713876ca307109a487fd9651b4b42d659`; the pre-amendment copy is on `main` (`3709a6d8`, sha256 686806a1…).
 
 ## What changed (amendment 1)
 
@@ -24,8 +24,20 @@ Drafted 2026-10-13 01:4xZ by the orchestrator seat under plan 013 option A′ (o
 
 ## Output
 
-`.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01.md`: the usual header with the file's sha256, findings (`P0`–`P3`, confidence, `file:line`, one line), one line `Amendment verdict: dotfiles-T128-gate-evidence-a03: confirm|revise`. Forbidden: editing tracked files, branches, commits, pushes, PRs. RESULT: `AGMSG-RESULT v1 task_id=dotfiles-T128-gate-evidence-a03-amend-review-a01 verdict=confirm|revise amended_task_sha256=e8cfe390315dc3053d271a4e849febb896ff60f3a19ca5f2959f4644178935a4 validation=<path>`.
+`.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01.md`: the usual header with the file's sha256, findings (`P0`–`P3`, confidence, `file:line`, one line), one line `Amendment verdict: dotfiles-T128-gate-evidence-a03: confirm|revise`. Forbidden: editing tracked files, branches, commits, pushes, PRs. RESULT: `AGMSG-RESULT v1 task_id=dotfiles-T128-gate-evidence-a03-amend-review-a01 verdict=confirm|revise amended_task_sha256=1b8ba5b406cb5a6c5396805e8b4d960713876ca307109a487fd9651b4b42d659 validation=<path>`.
 
 ## Round 2 (orchestrator, 2026-10-13 01:3xZ)
 
 Round 1 was the Codex half alone (`…-amend-review-a01-codex.md`, 01:27Z): one P1, a test for the `parse_constant` refusal (INV-12). Applied once: item 3 adds `acceptance-nan.md` (refused with `acceptance record: non-finite number`), the fixture cap is 120 lines and the test count grows by at least nine; item 2 names the refusal text. The seat's TASK line of 01:26:03Z (bus 791) carried empty hash fields (M-20261012-26) and is void; the round-2 line that follows carries this file's sha256. Same stop condition.
+
+## Round 3 (orchestrator, 2026-10-13 01:35Z)
+
+The Codex half's round-2 receipt (on `e8cfe390…`, which the seat confirmed) found two leftover sentences: the Validation bullet still said "the four new tests" (now: the test count before and after, and the nine or more new tests), and the Amendment 1 summary said two fixtures (now three: wrong pr, duplicate key, NaN). Nothing else changed; the sha256 above is the file's. Same stop condition; confirm or revise on this hash.
+
+## Round 4 (orchestrator, 2026-10-13 01:4xZ)
+
+Both halves confirmed `aaf470a5…` (seat 01:34:40Z, Codex 01:3xZ). The seat's addendum named one more leftover, the fixture row at line 25 ("four acceptance-record front matters" → "seven acceptance-record JSON blocks"); fixed, one line. The sha256 above is the file's; confirm on it.
+
+## Round 5 (orchestrator, 2026-10-13 01:4xZ)
+
+The seat confirmed `04659bd5…`; the Codex half found the introduction (line 78) still describing the YAML/PyYAML contract. A full sweep of the file for YAML-era wording (`grep -n -i 'yaml|front matter|safe_load|grep -rl|four |six |eight '`) leaves only the task-copy rows at lines 33 to 36, which are about the task file's own front matter and the checker, not the acceptance record, and are correct. Line 78 now states plan 011 F and the amendment. The sha256 above is the file's; confirm on it.

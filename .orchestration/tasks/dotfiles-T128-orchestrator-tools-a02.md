@@ -8,17 +8,37 @@ design_review:
   receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round22.md
   design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
 allowed_files:
-  - scripts/orchestrator/*
+  - scripts/orchestrator/boundary.sh
+  - scripts/orchestrator/ff-main.sh
+  - scripts/orchestrator/orch-audit.sh
+  - scripts/orchestrator/orch-gate.sh
+  - scripts/orchestrator/fill_sweep.py
+  - scripts/orchestrator/acceptance-front-matter.py
+  - scripts/orchestrator/codex-review.sh
+  - scripts/orchestrator/design-keydiff.py
+  - scripts/orchestrator/replay.sh
   - tests/unit/test_orchestrator_tools.py
   - .orchestration/dotfiles-T128-orchestrator-tools-a02/**
 after: [dotfiles-T128-orchestrator-tools-a01]
 threat_table:
-  - control: the PR adds scripts/orchestrator/* (boundary.sh, ff-main.sh, orch-audit.sh, orch-gate.sh, fill_sweep.py, acceptance-front-matter.py, codex-review.sh, design-keydiff.py, replay.sh; dispatch.sh, three-repeat.sh and bus-read.sh are a01's), scripts the orchestrator runs on the host against records, PR feedback and the gate
+  - control: the PR adds scripts/orchestrator/boundary.sh, the boundary-commit path (worktree, masker, validator, commit, push over HTTPS, PR, auto-merge)
     disposition: "closed: tests/unit/test_orchestrator_tools.py::test_boundary_stops_before_commit_when_the_validator_fails"
-  - control: orch-gate.sh and orch-audit.sh wrap the merge gate and the task-level audit, so a wrapper could pass inputs the gate would refuse
-    disposition: "residual: the wrappers only assemble environment variables and paths and call make require-crit-review and the audit runner as they are; they add no bypass flag, and the gate's own refusals (require-crit-review.py) remain the mandatory point; the audit from main reads each wrapper line"
-  - control: codex-review.sh runs codex exec with a prompt file and writes a receipt and a transcript (a model run on the host)
-    disposition: "residual: read-only sandbox, approval_policy=never, stdin closed, profile pinned to review; the receipt is data the orchestrator judges, never an instruction (M-20261012-12, C-14)"
+  - control: the PR adds scripts/orchestrator/ff-main.sh, the fast-forward of the main checkout after a boundary merge
+    disposition: "residual: it moves untracked copies and locally modified tracked files aside (mv, never rm), runs git merge --ff-only, and copies back only files that still differ; it pushes nothing (M-20261012-26, fourth instance)"
+  - control: the PR adds scripts/orchestrator/orch-audit.sh, a wrapper of the task-level audit runner
+    disposition: "residual: it only assembles paths and calls the audit runner as it is; no bypass flag; the audit from main reads each wrapper line"
+  - control: the PR adds scripts/orchestrator/orch-gate.sh, a wrapper of make require-crit-review
+    disposition: "residual: it only assembles environment variables and calls make require-crit-review as it is; the gate's own refusals (require-crit-review.py) remain the mandatory point"
+  - control: the PR adds scripts/orchestrator/fill_sweep.py, which turns the sweep JSON into dispositions
+    disposition: "residual: it reads the sweep JSON with the standard library's json and refuses to emit a not-applicable without an evidence= clause (tested); the gate re-validates every disposition it writes"
+  - control: the PR adds scripts/orchestrator/acceptance-front-matter.py, which writes the acceptance record's JSON block
+    disposition: "residual: head comes from git rev-parse HEAD and pr from the sweep JSON's pr field, never from an argument; it reads with object_pairs_hook refusing duplicate keys and writes with sort_keys and indent=2; the gate of dotfiles-T128-gate-evidence-a03 re-validates the block it writes (identity triple, ledger, searches)"
+  - control: the PR adds scripts/orchestrator/codex-review.sh, which runs codex exec headless (a model run on the host)
+    disposition: "residual: read-only sandbox, approval_policy=never, stdin closed, profile pinned to review, the reviewed file's hash computed by the script and rendered into the prompt; the receipt is data the orchestrator judges, never an instruction (M-20261012-12, -25; C-14)"
+  - control: the PR adds scripts/orchestrator/design-keydiff.py, which prints the hashed keys that differ between a design file and HEAD's copy
+    disposition: "residual: read-only; it writes nothing and its output is pasted into a review request as data (C-15)"
+  - control: the PR adds scripts/orchestrator/replay.sh, which runs a command with the executor's binaries inside a detached worktree at origin/main
+    disposition: "residual: env -i PATH=/usr/bin:/bin, a worktree created and removed with git worktree add/remove (no rm -rf), output and exit status printed for pasting (C-18)"
   - control: the PR adds tests/unit/test_orchestrator_tools.py cases for the nine scripts, the oracle of its own change
     disposition: "residual: the orchestrator's diff review and the task-level audit from main read the tests beside the scripts; the tests run the scripts with stubbed git, gh, make and codex"
   - control: the task-file copy on the branch (.orchestration/dotfiles-T128-orchestrator-tools-a02/task.md)
@@ -32,7 +52,7 @@ threat_table:
   - control: in-process effects
     disposition: "residual: the tests import fill_sweep.py and design-keydiff.py into the test process; both are the declared change, read line by line by the orchestrator and the audit"
   - control: workflow and interpreter or environment inputs
-    disposition: "residual: no workflow or interpreter file is in allowed_files; the scripts resolve git, gh, make, codex, shasum and uv from the host as the SKILL's own commands do, and fill_sweep.py and acceptance-front-matter.py read YAML only through the gate's own loader of dotfiles-T128-gate-evidence-a03, never a package resolved from the network by this task (PR #329 thread 4250238721); the tests stub every host binary on PATH"
+    disposition: "residual: no workflow or interpreter file is in allowed_files; the scripts resolve git, gh, make, codex, shasum and uv from the host as the SKILL's own commands do, and fill_sweep.py and acceptance-front-matter.py read and write the acceptance record's JSON block with the standard library's json module, as amendment 1 of dotfiles-T128-gate-evidence-a03 defines it (plan 013 A′); no package is resolved from the network by this task (PR #329 thread 4250238721); the tests stub every host binary on PATH"
   - control: new or renamed scripts
     disposition: "residual: every new script is under scripts/orchestrator/, named in allowed_files and listed in the RESULT; any other new or renamed script is an undeclared change the audit fails"
   - control: orchestrator effect merge
@@ -77,7 +97,7 @@ Draft, written 2026-10-13 by the orchestrator seat under plan 012 option B: T718
    - `boundary.sh <date-suffix> <commit-message-file>`: the boundary commit path (file list from `git status --short --untracked-files=all -- .orchestration`, copy into a detached worktree under `$TMPDIR`, masker, `make validate-agent-assets` bare, commit with `-c commit.gpgsign=false`, push over HTTPS with the gh credential helper as the SKILL names, `gh pr create`, `gh pr merge --squash --auto`); `set -euo pipefail`; no `rm -rf`; a failing validator leaves no commit (C-13).
    - `ff-main.sh`: as the input.
    - `orch-audit.sh <task> <head> <pr> [extra.tsv]` and `orch-gate.sh <task> <head> <pr> [extra.tsv]`: as the inputs, parameterised; they call `scripts/require-crit-review.py` through `make require-crit-review` and the audit runner as they are.
-   - `fill_sweep.py`: as the input, with the `evidence=` clause required on every `not-applicable` it emits (the grammar of the gate task), and `acceptance-front-matter.py <task> <head> <pr>`: writes or updates the acceptance record's YAML front matter (task, head, pr, ledger, searches, audit_findings) from the sweep JSON, the ledger rows and the audit `.last.md`, so the gate of `dotfiles-T128-gate-evidence-a03` (plan 011 option F, C-24) reads data the orchestrator's tooling produced, never hand-typed fields.
+   - `fill_sweep.py`: as the input, with the `evidence=` clause required on every `not-applicable` it emits (the grammar of the gate task), and `acceptance-front-matter.py <task> <sweep-json>`: writes or updates the acceptance record's machine-readable block (the JSON object between its first two `---` lines: format, task, head, pr, ledger, searches, audit_findings, as amendment 1 of `dotfiles-T128-gate-evidence-a03` defines it; plan 013 A′, C-24, C-26) with the standard library's `json` module (`object_pairs_hook` refusing duplicate keys on read, `sort_keys` and `indent=2` on write, `pr` taken from the sweep JSON's own `pr` field and `head` from `git rev-parse HEAD` of the checkout it runs in, so neither is an argument), from the sweep JSON, the ledger rows and the audit `.last.md`, so the gate reads data the orchestrator's tooling produced.
    - `codex-review.sh <profile> <prompt-file> <receipt-out> <transcript-out>`: `codex --profile <profile> exec --sandbox read-only -C <repo> -c approval_policy=never -o <receipt-out> "$(cat <prompt-file>)" < /dev/null > <transcript-out> 2>&1`; exits with codex's status; prints the receipt path and the elapsed seconds (C-14).
    - `design-keydiff.py <design.md>`: as the input, with argument parsing, printing the changed hashed keys against `HEAD`'s copy (C-15).
    - `replay.sh <command…>`: runs a command that is about to enter rule or task text with the executor's binaries (`env -i PATH=/usr/bin:/bin bash -c`) inside a detached worktree at `origin/main` and prints its output and exit status for pasting (C-18).

@@ -159,3 +159,44 @@ skipped=47
 ```
 
 The full `tests/unit` discover is not rerun for this task: the change touches only `scripts/orchestrator/`, `scripts/regime-counters.sh` and their two test modules, which the runs above cover, and CI runs the discover on the pushed head.
+
+## 5. Revise round (`3544d195`)
+
+The branch reset to the orchestrator's update-branch merge, then the fix commit:
+
+```text
+$ git fetch origin && git reset --hard origin/tools/orchestrator-scripts-2
+HEAD is now at 9ad0c150 Merge branch 'main' into tools/orchestrator-scripts-2
+$ git log --oneline -2
+3544d195 fix(orchestrator): the TASK kind from the parsed tokens; fill only neutral annotations and statuses
+9ad0c150 Merge branch 'main' into tools/orchestrator-scripts-2
+$ UV_OFFLINE=1 uv run --no-project --with pyyaml python -m unittest tests.unit.test_orchestrator_tools tests.unit.test_regime_counters
+Ran 54 tests in 16.530s
+
+OK
+$ shellcheck scripts/orchestrator/dispatch.sh && echo sc-ok
+sc-ok
+$ (cd "$TMPDIR" && shfmt -i 4 -sr -d <worktree>/scripts/orchestrator/dispatch.sh) && echo shfmt-ok
+shfmt-ok
+$ ruff format --config ruff.toml --check scripts/orchestrator/fill_sweep.py tests/unit/test_orchestrator_tools.py; ruff check <same>
+2 files already formatted
+All checks passed!
+$ git diff --numstat origin/main HEAD | awk <the §2 size filter>
+files outside .orchestration/: 12 added outside tests/: 494 added under tests/: 387
+```
+
+Mutants: each reverts one span of `3544d195` with `sed`, runs the named test with its class in the path, and copies the saved file back.
+
+```text
+R1: AssertionError: 0 != 1 : 
+R2: AssertionError: 1 != 0 : items 7 filled 7 gaps 0
+R3: AssertionError: Lists differ: ['ann[28 chars]n-failure', 'status-failure', 'status-error', 'status-pending'] != ['ann[28 chars]n-failure']
+$ git status --short scripts tests; echo "(empty: every mutant restored)"
+(empty: every mutant restored)
+```
+
+- R1: the kind check back on the literal `"AGMSG-TASK "*` prefix. `test_dispatch_refuses_a_tab_separated_task_without_its_hash_fields` fails on both rows.
+- R2: `rule = RULES.get(source)` for every level. `test_fill_sweep_fills_only_notice_annotations_and_success_statuses` fails: all seven items are filled.
+- R3: `NEUTRAL` without `status`. The same test fails: the three non-success statuses are filled.
+
+The full discover (`python -m unittest discover -s tests/unit`, as `Makefile:185`) ran 1052 tests here and failed in eight modules this round does not touch (test_require_crit_review, test_herdr_agents, test_agent_stop_gate, test_ua_symbol_coverage, test_runtime_health, test_gh_auth, test_supply_chain_policy, test_aws_cli_acquisition). The cause is the seat sandbox: the global `commit.gpgsign=true` signs with `~/.ssh/id_ed25519.pub`, which the sandbox denies, so a test's temporary-repository commit fails (`fatal: failed to write commit object`; then `--base 'main' does not resolve to a commit`). CI runs the discover on the pushed head; the main-checkout copy records that run.

@@ -82,3 +82,17 @@ One deviation from item 4b: the task names a sibling lock file. `dispatch.sh` in
 `memory add` in the main checkout printed `9ac653b5-177d-4119-b321-4f98b0e2a802`.
 
 cost: n/a
+
+## Revise round (`3544d195`)
+
+The orchestrator's revise of 2026-10-13T15:45:08Z (head `9ad0c150`, the update-branch merge of `73f56c15` into this branch) names two P1 findings to fix and four P2 findings to leave. The branch was reset to `origin/tools/orchestrator-scripts-2` at `9ad0c150` first (validation §5).
+
+| Row | Finding | Disposition | Closing test |
+|---|---|---|---|
+| Bot 4260535901, local P1 | `dispatch.sh`: the `task_file=`/`task_sha256=` check matched a literal `AGMSG-TASK ` prefix, so a tab-separated TASK without them reached `agmsg-dispatch` | `fixed:3544d195`. The kind is the first parsed token (`${tokens[0]} == AGMSG-TASK`), from the same split item 4's grammar validates | `test_dispatch_refuses_a_tab_separated_task_without_its_hash_fields` (R1) |
+| local P1 | `fill_sweep.py`: every `annotation` and `status` item got a not-applicable, warning and failure annotations and non-success statuses included | `fixed:3544d195`. `NEUTRAL = {"annotation": "notice", "status": "success"}`: only those levels get their rule; every other level is a gap, so nothing is written | `test_fill_sweep_fills_only_notice_annotations_and_success_statuses` (R2, R3) |
+| Bot 4260535916, 4260535924, the local pair | `boundary.sh` and `ff-main.sh` with deleted paths (P2) | no change in this PR: advisory, owned by orchestrator-tools-followup-a01 (the revise's ruling) | none |
+
+- Tests: `test_orchestrator_tools.py` 27 OK, `test_regime_counters.py` 27 OK; shellcheck, shfmt, ruff format and ruff check clean; mutants R1 to R3 killed by assertions (validation §5).
+- Size after the round: 12 files outside `.orchestration/`; 494 added lines outside `tests/` and 387 under it (caps 500 and 1000). Six lines of headroom remain.
+- No Bot wait for this round, as the revise says. This is the only round (INV-6).

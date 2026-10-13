@@ -18,13 +18,15 @@
 #   the line is on the bus, `<the line> read_at=<read|unread>` is appended to
 #   the `dispatch` list of
 #   the record's JSON block, the object between its first two `---` lines. The
-#   block is read and written with Python's standard json (a duplicate key, NaN
-#   or Infinity is refused; `sort_keys`, `indent=2`); the key is created when
-#   absent, and a record without a block, or a missing record file, gets a block
-#   holding only `dispatch`. The prose after the block is kept byte for byte,
-#   and the record is replaced atomically (a temporary file in its directory,
-#   fsync, rename). A record whose `task` is not the line's `task_id` is
-#   refused before the send.
+#   block is read and written with Python's standard json (malformed JSON, a
+#   duplicate key, NaN or Infinity, a block that is not an object or a
+#   `dispatch` that is not a list is refused; `sort_keys`, `indent=2`); the key
+#   is created when absent, and a record without a block gets a block holding
+#   only `dispatch`. The prose after the block is kept byte for byte, and the
+#   record is replaced atomically (a temporary file in its directory, fsync,
+#   rename). A record that is not an existing regular file writable in a
+#   writable directory, or whose `task` is not the line's `task_id`, is refused
+#   before the send, and nothing is sent.
 #   Only a bus row this send created is recorded: the rows matching the line,
 #   sender and recipient are counted before and after the send, and a send that
 #   added none leaves the record unchanged and exits 1. The read state is the
@@ -155,13 +157,16 @@ def refuse(pairs):
 def constant(name):
     sys.exit(f"dispatch: {path}: non-finite number {name}")
 
-text = record.read_text() if record.exists() else ""
+text = record.read_text()
 block, rest = {}, text
 if text.startswith("---\n"):
     end = text.find("\n---\n", 3)
     if end < 0:
         sys.exit(f"dispatch: {path}: the block between the first two --- lines is not closed")
-    block = json.loads(text[4:end], object_pairs_hook=refuse, parse_constant=constant)
+    try:
+        block = json.loads(text[4:end], object_pairs_hook=refuse, parse_constant=constant)
+    except json.JSONDecodeError as e:
+        sys.exit(f"dispatch: {path}: the block is not valid JSON: {e}")
     rest = text[end + 5:]
     if not isinstance(block, dict):
         sys.exit(f"dispatch: {path}: the block is not a JSON object")
@@ -190,16 +195,18 @@ try:
         f.write(f"---\n{body}\n---\n{rest}")
         f.flush()
         os.fsync(f.fileno())
-    if record.exists():
-        shutil.copymode(record, tmp)
-    else:
-        os.chmod(tmp, 0o644)
+    shutil.copymode(record, tmp)
     os.replace(tmp, record)
 except BaseException:
     Path(tmp).unlink(missing_ok=True)
     raise
 PY
 [[ ${record} == /* ]] || record="${PWD}/${record}"
+# The local review of 0d199475 (C-32): a record mkstemp cannot replace would fail only after the send.
+if [[ ! -f ${record} || ! -w ${record} || ! -w "$(dirname -- "${record}")" ]]; then
+    echo "dispatch: the record ${record} cannot be written" >&2
+    exit 1
+fi
 # Team-wide: history.sh renames the calling pane after an agent argument (thread 4254399805).
 bus() { "${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "${team}" "" 100000; }
 before="$(bus | python3 -I -c "${recorder}" check "${record}" "${line}" "${from}" "${to}" 0)"

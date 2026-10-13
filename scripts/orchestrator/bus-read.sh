@@ -4,17 +4,22 @@
 # @description
 #   Plan 007 T718 (C-23). Reads the history through agmsg's `history.sh <team>
 #   "" <limit>` (its documented positional form; never the database file) with
-#   a limit far above the team's size, and refuses a read that reaches the
-#   limit, so a truncated view is never taken for the whole bus. A task's state
-#   is its last state-bearing message: an AGMSG-TASK (amendments included) or
-#   an AGMSG-ACCEPTANCE `status=revise` opens it; an AGMSG-RESULT, or an
-#   AGMSG-ACCEPTANCE `status=accepted`, `withdrawn`, `superseded`, `reset` or
-#   `parked`, closes it (any other status, `under_review` among them, changes
-#   nothing, so an unknown status leaves a task open rather than hiding it).
-#   For each open task it prints the seat the last opener went to, the time of
-#   the task's latest bus message in either direction, the whole minutes since
-#   then, and `silent=yes` at thirty minutes or more (INV-10's figure), else
-#   `silent=no`. `open: none` when no task (or not the named one) is open.
+#   a limit far above the team's size, and refuses a read whose rows reach the
+#   limit, so a truncated view is never taken for the whole bus. The open rule
+#   is the stop gate's worker-seat branch (`scripts/agent-stop-gate.sh`; threads
+#   4255494133, 4255494139): a task's latest opener, an AGMSG-TASK or an
+#   AGMSG-ACCEPTANCE `status=revise` from X to Y, keeps it open until a later
+#   AGMSG-RESULT or AGMSG-PONG `status=blocked` from Y to X, or a later
+#   AGMSG-ACCEPTANCE from X to Y with any other status or none; a row between
+#   other endpoints neither opens nor closes it. A row counts only in the form
+#   `<marker> [<at>] <from> → <to>: <body>`, with an `<at>` jq's
+#   `fromdateiso8601` parses and a body of AGMSG-TASK, -ACCEPTANCE, -RESULT or
+#   -PONG, then `v1`, exactly one non-empty `task_id=` and at most one
+#   `status=`; any other non-empty line is skipped and counted, never an exit.
+#   For each open task it prints the seat the opener went to, the time of the
+#   task's latest counted row, the whole minutes since then, and `silent=yes`
+#   at thirty minutes or more (INV-10's figure), else `silent=no`; `open: none`
+#   when no task (or not the named one) is open; then `skipped=<n>`.
 # @arg $1 string agmsg team.
 # @arg $2 string Optional task id: report only that task.
 # @env AGMSG_SCRIPTS The agmsg scripts directory (default `$HOME/.agents/skills/agmsg/scripts`).
@@ -41,17 +46,23 @@ history="$("${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "
     exit 1
 }
 report="$(jq -nrR --arg only "${only}" --argjson limit "${limit}" '
+  def count($k): [.toks[] | select(startswith($k + "="))] | length;
   def tok($k): [.toks[] | select(startswith($k + "="))][0] // null | if . then .[($k | length) + 1:] else null end;
-  [inputs | capture("^\\s*\\S+\\s+\\[(?<at>[^\\]]+)\\]\\s+(?<from>\\S+)\\s+→\\s+(?<to>\\S+):\\s(?<body>.*)$")] as $all
+  [inputs | select(. != "")] as $lines
+  | [$lines[] | capture("^\\s*\\S+\\s+\\[(?<at>[^\\]]+)\\]\\s+(?<from>\\S+)\\s+→\\s+(?<to>\\S+):\\s(?<body>.*)$")] as $all
   | if ($all | length) >= $limit then error("bus-read: the read reached its limit of \($limit) rows; raise BUS_READ_LIMIT") else . end
   | [$all | to_entries[] | .value + {i: .key} | .toks = (.body | split(" ")) | .kind = .toks[0]
-      | .task = tok("task_id") | .status = tok("status") | select(.task != null and .toks[1] == "v1")]
-  | [group_by(.task)[]
-      | map(select(.kind == "AGMSG-TASK" or (.kind == "AGMSG-ACCEPTANCE" and .status == "revise"))) as $openers
-      | map(select(.kind == "AGMSG-RESULT" or (.kind == "AGMSG-ACCEPTANCE" and (.status | IN("accepted", "withdrawn", "superseded", "reset", "parked"))))) as $closers
-      | select(($openers | length) > 0 and (($closers | length) == 0 or $openers[-1].i > $closers[-1].i))
-      | select($only == "" or .[0].task == $only)
-      | .[-1].at as $last | ((now - ($last | fromdateiso8601)) / 60 | floor) as $min
-      | "open: task=\(.[0].task) seat=\($openers[-1].to) last_event=\($last) minutes=\($min) silent=\(if $min >= 30 then "yes" else "no" end)"]
-  | if length == 0 then "open: none" else .[] end' <<< "${history}")" || exit 1
+      | select((.kind | IN("AGMSG-TASK", "AGMSG-ACCEPTANCE", "AGMSG-RESULT", "AGMSG-PONG")) and .toks[1] == "v1"
+          and count("task_id") == 1 and tok("task_id") != "" and count("status") <= 1
+          and (.at | try fromdateiso8601 catch null) != null)
+      | .task = tok("task_id") | .status = tok("status")] as $rows
+  | [$rows | group_by(.task)[]
+      | (map(select(.kind == "AGMSG-TASK" or (.kind == "AGMSG-ACCEPTANCE" and .status == "revise"))) | max_by(.i)) as $o
+      | select($o != null and ($only == "" or $o.task == $only))
+      | select(any(.[]; .i > $o.i and (
+          (.from == $o.to and .to == $o.from and (.kind == "AGMSG-RESULT" or (.kind == "AGMSG-PONG" and .status == "blocked")))
+          or (.from == $o.from and .to == $o.to and .kind == "AGMSG-ACCEPTANCE" and .status != "revise"))) | not)
+      | max_by(.i).at as $last | ((now - ($last | fromdateiso8601)) / 60 | floor) as $min
+      | "open: task=\($o.task) seat=\($o.to) last_event=\($last) minutes=\($min) silent=\(if $min >= 30 then "yes" else "no" end)"]
+  | (if length == 0 then "open: none" else .[] end), "skipped=\(($lines | length) - ($rows | length))"' <<< "${history}")" || exit 1
 printf '%s\n' "${report}"

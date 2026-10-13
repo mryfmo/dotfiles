@@ -7,15 +7,19 @@
 #   gate's own match: the files under `.orchestration/learning/mistakes/` with a
 #   line that begins with `classes:` and contains the class (`grep -rl
 #   '^classes:.*<class>'`), printed as `search: <class> -> <basenames, sorted,
-#   or none>`. The CompactionDB search runs `uv run --no-project
-#   .claude/hooks/contextdb_cli.py memory search -- <class>` with the class as
-#   one argument after `--` (no shell; a slug like `--help` is a query, never an
-#   option: thread 4254771284), and prints its match count. Both run in the checkout
-#   this script lives in (`git rev-parse --show-toplevel` there), never the
-#   caller's: a PR worktree's CLI is PR-controlled code (thread 4253994697).
+#   or none>`; beside it, the files that mention the class anywhere (`grep -rli
+#   <class>`), printed as `search-body: <class> -> <basenames or none>`. The
+#   CompactionDB search runs `uv run --no-project .claude/hooks/contextdb_cli.py
+#   memory search --limit 1000 -- <class>` with the class as one argument after
+#   `--` (no shell; a slug like `--help` is a query, never an option: thread
+#   4254771284), and prints its match count, `>=1000 matches (capped)` when the
+#   count reaches that limit (the CLI's default is 30: thread 4255494137). All
+#   run in the checkout this script lives in (`git rev-parse --show-toplevel`
+#   there), never the caller's: a PR worktree's CLI is PR-controlled code
+#   (thread 4253994697).
 # @arg $1 string Class slug.
-# @exitcode 0 Both searches ran.
-# @exitcode 1 A search failed (the search line is printed first when it ran).
+# @exitcode 0 Every search ran.
+# @exitcode 1 A search failed (the lines of the searches before it are printed).
 # @exitcode 2 Usage error, or the class is not a slug.
 # @example
 #   scripts/orchestrator/three-repeat.sh bookkeeping
@@ -32,14 +36,30 @@ dir="${root}/.orchestration/learning/mistakes"
     echo "three-repeat: ${dir} does not exist" >&2
     exit 1
 }
-rc=0
-files="$(/usr/bin/grep -rl -- "^classes:.*${class}" "${dir}")" || rc=$?
-((rc <= 1)) || exit 1
-records="$(if [[ -n ${files} ]]; then awk -F/ '{print $NF}' <<< "${files}" | LC_ALL=C sort | paste -sd, - | sed 's/,/, /g'; fi)"
-echo "search: ${class} -> ${records:-none}"
+# @description Print the sorted basenames of the records grep matches, or `none`.
+# @arg $1 string grep options (`-rl` or `-rli`).
+# @arg $2 string Pattern.
+# @exitcode 1 grep failed (exit 2).
+matches() {
+    local files rc=0
+    files="$(/usr/bin/grep "$1" -- "$2" "${dir}")" || rc=$?
+    ((rc <= 1)) || return 1
+    files="$(awk -F/ 'NF {print $NF}' <<< "${files}" | LC_ALL=C sort | paste -sd, - | sed 's/,/, /g')"
+    printf '%s' "${files:-none}"
+}
+records="$(matches -rl "^classes:.*${class}")" || exit 1
+echo "search: ${class} -> ${records}"
+records="$(matches -rli "${class}")" || exit 1
+echo "search-body: ${class} -> ${records}"
 
-memory="$(cd -- "${root}" && uv run --no-project "${root}/.claude/hooks/contextdb_cli.py" memory search -- "${class}")" || {
+limit=1000
+memory="$(cd -- "${root}" && uv run --no-project "${root}/.claude/hooks/contextdb_cli.py" memory search --limit "${limit}" -- "${class}")" || {
     echo "three-repeat: the CompactionDB search failed" >&2
     exit 1
 }
-echo "compactiondb: ${class} -> $(/usr/bin/grep -cE '^[0-9a-f]{8}-' <<< "${memory}" || true) matches"
+n="$(/usr/bin/grep -cE '^[0-9a-f]{8}-' <<< "${memory}" || true)"
+if ((n >= limit)); then
+    echo "compactiondb: ${class} -> >=${limit} matches (capped)"
+else
+    echo "compactiondb: ${class} -> ${n} matches"
+fi

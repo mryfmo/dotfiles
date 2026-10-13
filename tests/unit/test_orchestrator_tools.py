@@ -225,11 +225,41 @@ class OrchestratorToolsTest(unittest.TestCase):
         result = self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(other), code=1)
         self.assertIn("is the record of task u, the line is task t", result.stderr)
         self.assertIsNone(self.call("agmsg-dispatch"))
-        # A malformed record is refused before anything is sent.
-        bad = self.write(".orchestration/acceptance/v.md", '---\n{"task": "a", "task": "b"}\n---\n')
-        result = self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(bad), code=1)
-        self.assertIn("duplicate key task", result.stderr)
-        self.assertIsNone(self.call("agmsg-dispatch"))
+
+    def test_dispatch_refuses_an_unwritable_record_before_sending(self):
+        # The local review of 0d199475 (C-32): a record the atomic replace would fail on is refused before the send.
+        self.write("line.txt", "AGMSG-PING v1 task_id=t reason=check\n")
+        (self.calls / "history").write_text("")
+        locked = self.write("locked/t.md", '---\n{"task": "t"}\n---\n')
+        locked.parent.chmod(0o555)
+        self.addCleanup(locked.parent.chmod, 0o755)
+        missing = self.repo / ".orchestration/acceptance/absent.md"
+        for record in (locked, missing):
+            with self.subTest(record=record.name):
+                result = self.run_tool(
+                    "dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record), code=1
+                )
+                self.assertIn(f"the record {record} cannot be written", result.stderr)
+                self.assertIsNone(self.call("agmsg-dispatch"))
+        self.assertFalse(missing.exists())
+
+    def test_dispatch_refuses_a_malformed_record_block_before_sending(self):
+        self.write("line.txt", "AGMSG-PING v1 task_id=t reason=check\n")
+        (self.calls / "history").write_text("")
+        for block, needle in (
+            ('["t"]', "the block is not a JSON object"),
+            ('{"task": "t",}', "the block is not valid JSON"),
+            ('{"task": "t", "task": "t"}', "duplicate key task"),
+            ('{"task": "t", "dispatch": {}}', "dispatch is not a list"),
+        ):
+            with self.subTest(needle=needle):
+                record = self.write(".orchestration/acceptance/t.md", f"---\n{block}\n---\n")
+                result = self.run_tool(
+                    "dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record), code=1
+                )
+                self.assertIn(needle, result.stderr)
+                self.assertIsNone(self.call("agmsg-dispatch"))
+                self.assertEqual(f"---\n{block}\n---\n", record.read_text())
 
     # three-repeat.sh
 
@@ -242,7 +272,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         (self.calls / "uv-output").write_text("No matches.\n")
         self.write(".orchestration/learning/mistakes/M-0.md", "classes: [x]\n")
         self.run_tool("three-repeat.sh", "--help")
-        self.assertEqual(["memory", "search", "--", "--help"], self.call("uv")[3:])
+        self.assertEqual(["memory", "search", "--limit", "1000", "--", "--help"], self.call("uv")[3:])
         # Thread 4253994697: a PR worktree's contextdb CLI is PR-controlled code, so the root is the script's own.
         pr = self.temp / "pr"
         subprocess.run(["git", "init", "-q", str(pr)], check=True)
@@ -266,24 +296,47 @@ class OrchestratorToolsTest(unittest.TestCase):
         (self.calls / "uv-output").write_text("0f1e2d3c-aaaa-bbbb x\n1a2b3c4d-cccc-dddd y\n")
         out = self.run_tool("three-repeat.sh", "bookkeeping").stdout.splitlines()
         self.assertEqual(
-            ["search: bookkeeping -> M-20261012-2.md, M-20261012-4.md", "compactiondb: bookkeeping -> 2 matches"], out
+            [
+                "search: bookkeeping -> M-20261012-2.md, M-20261012-4.md",
+                "search-body: bookkeeping -> M-20261011-1.md, M-20261012-2.md, M-20261012-4.md",
+                "compactiondb: bookkeeping -> 2 matches",
+            ],
+            out,
         )
         cli = str(self.repo / ".claude/hooks/contextdb_cli.py")
-        self.assertEqual(["run", "--no-project", cli, "memory", "search", "--", "bookkeeping"], self.call("uv"))
+        self.assertEqual(
+            ["run", "--no-project", cli, "memory", "search", "--limit", "1000", "--", "bookkeeping"], self.call("uv")
+        )
         (self.calls / "uv-output").write_text("No matches.\n")
         self.assertEqual(
-            ["search: absent -> none", "compactiondb: absent -> 0 matches"],
+            ["search: absent -> none", "search-body: absent -> none", "compactiondb: absent -> 0 matches"],
             self.run_tool("three-repeat.sh", "absent").stdout.splitlines(),
         )
+
+    def test_three_repeat_prints_body_matches_and_states_a_capped_memory_count(self):
+        mistakes = ".orchestration/learning/mistakes"
+        self.write(f"{mistakes}/M-1.md", "id: M-1\nclasses: [bookkeeping]\n")
+        # Thread 4255494137: a class named in the prose only is a body match, never a classes: match.
+        self.write(f"{mistakes}/M-2.md", "id: M-2\nclasses: [sources]\nThe Bookkeeping slipped.\n")
+        (self.calls / "uv-output").write_text("".join(f"{i:08x}-0000 row\n" for i in range(1000)))
+        self.assertEqual(
+            [
+                "search: bookkeeping -> M-1.md",
+                "search-body: bookkeeping -> M-1.md, M-2.md",
+                "compactiondb: bookkeeping -> >=1000 matches (capped)",
+            ],
+            self.run_tool("three-repeat.sh", "bookkeeping").stdout.splitlines(),
+        )
+        self.assertEqual(["memory", "search", "--limit", "1000", "--", "bookkeeping"], self.call("uv")[3:])
 
     # bus-read.sh
 
     def history(self, *messages):
-        """history.sh rows from (minutes ago, from, to, body)."""
+        """history.sh rows from (minutes ago or a literal <at>, from, to, body), after one line that is not a row."""
         now = datetime.now(UTC)
         rows = ["agmsg: a line that is not a message"]
         for ago, sender, to, body in messages:
-            at = (now - timedelta(minutes=ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            at = ago if isinstance(ago, str) else (now - timedelta(minutes=ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
             rows.append(f"  ○ [{at}] {sender} → {to}: {body}")
         (self.calls / "history").write_text("\n".join(rows) + "\n")
 
@@ -300,7 +353,8 @@ class OrchestratorToolsTest(unittest.TestCase):
             (8, "orch", "w4", "AGMSG-ACCEPTANCE v1 task_id=T4 status=withdrawn"),
             (7, "orch", "w2", "AGMSG-ACCEPTANCE v1 task_id=T2 status=under_review"),
         )
-        lines = self.run_tool("bus-read.sh", "team").stdout.splitlines()
+        *lines, skipped = self.run_tool("bus-read.sh", "team").stdout.splitlines()
+        self.assertEqual("skipped=1", skipped)
         self.assertEqual(["T1", "T3"], [re.search(r"task=(\S+)", line).group(1) for line in lines])
         fields = [dict(re.findall(r"(\w+)=(\S+)", line)) for line in lines]
         self.assertEqual(["w1", "w3"], [f["seat"] for f in fields])
@@ -309,9 +363,59 @@ class OrchestratorToolsTest(unittest.TestCase):
             self.assertLessEqual(abs(int(f["minutes"]) - minutes), 1, f)
         self.assertEqual(["team", "", "100000"], self.call("history.sh"))
         only = self.run_tool("bus-read.sh", "team", "T3").stdout.splitlines()
-        self.assertEqual(1, len(only))
+        self.assertEqual(2, len(only))
         self.assertIn("task=T3 ", only[0])
-        self.assertEqual(["open: none"], self.run_tool("bus-read.sh", "team", "T2").stdout.splitlines())
+        self.assertEqual(["open: none", "skipped=1"], self.run_tool("bus-read.sh", "team", "T2").stdout.splitlines())
+
+    def open_tasks(self):
+        """bus-read.sh's (task, seat) pairs and its final line."""
+        out = self.run_tool("bus-read.sh", "team").stdout
+        return re.findall(r"^open: task=(\S+) seat=(\S+) ", out, re.MULTILINE), out.splitlines()[-1]
+
+    def test_bus_read_ignores_closers_between_other_endpoints(self):
+        # Thread 4255494133: only the opener's endpoints close a task, as in the stop gate's worker-seat branch.
+        self.history(
+            (30, "orch", "w1", "AGMSG-TASK v1 task_id=T1"),
+            (25, "w9", "orch", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"),
+            (24, "w9", "w1", "AGMSG-ACCEPTANCE v1 task_id=T1 status=accepted"),
+            (23, "w9", "orch", "AGMSG-PONG v1 task_id=T1 status=blocked"),
+            (20, "orch", "w2", "AGMSG-TASK v1 task_id=T2"),
+            (10, "w2", "orch", "AGMSG-PONG v1 task_id=T2 status=blocked"),
+        )
+        self.assertEqual(([("T1", "w1")], "skipped=1"), self.open_tasks())
+
+    def test_bus_read_closes_a_task_on_any_non_revise_acceptance(self):
+        # Thread 4255494139: no status whitelist; any ACCEPTANCE from the opener's sender but revise closes.
+        self.history(
+            (40, "orch", "w1", "AGMSG-TASK v1 task_id=T1"),
+            (39, "orch", "w1", "AGMSG-ACCEPTANCE v1 task_id=T1 status=closed-historical"),
+            (38, "orch", "w2", "AGMSG-TASK v1 task_id=T2"),
+            (37, "orch", "w2", "AGMSG-ACCEPTANCE v1 task_id=T2 status=hold"),
+            (36, "orch", "w3", "AGMSG-TASK v1 task_id=T3"),
+            (35, "orch", "w3", "AGMSG-ACCEPTANCE v1 task_id=T3"),
+            (34, "orch", "w4", "AGMSG-TASK v1 task_id=T4"),
+            (33, "w4", "orch", "AGMSG-RESULT v1 task_id=T4 status=ready_for_review"),
+            (32, "orch", "w4", "AGMSG-ACCEPTANCE v1 task_id=T4 status=revise"),
+        )
+        self.assertEqual(([("T4", "w4")], "skipped=1"), self.open_tasks())
+
+    def test_bus_read_skips_and_counts_malformed_rows(self):
+        # The Codex round-2 receipt (C-28): each rejected row would close T1 if it counted; none is an exit.
+        self.history(
+            (30, "orch", "w1", "AGMSG-TASK v1 task_id=T1"),
+            (20, "orch", "w1", "AGMSG-PING v1 task_id=T1 reason=check"),
+            (20, "w1", "orch", "AGMSG-RESULT task_id=T1"),
+            (20, "w1", "orch", "AGMSG-RESULT v1 status=ready_for_review"),
+            (20, "w1", "orch", "AGMSG-RESULT v1 task_id= status=ready_for_review"),
+            (20, "w1", "orch", "AGMSG-RESULT v1 task_id=T1 task_id=T1"),
+            (20, "orch", "w1", "AGMSG-ACCEPTANCE v1 task_id=T1 status=accepted status=accepted"),
+            ("yesterday", "w1", "orch", "AGMSG-RESULT v1 task_id=T1"),
+        )
+        # The helper's first line (a shape mismatch) and the seven rows after the TASK.
+        self.assertEqual(([("T1", "w1")], "skipped=8"), self.open_tasks())
+        # An empty history is one empty line on jq's input, never a skipped row.
+        (self.calls / "history").write_text("")
+        self.assertEqual(["open: none", "skipped=0"], self.run_tool("bus-read.sh", "team").stdout.splitlines())
 
     def test_bus_read_refuses_a_read_that_reaches_its_limit(self):
         self.history(*[(i, "orch", "w1", f"AGMSG-TASK v1 task_id=T{i}") for i in range(3)])

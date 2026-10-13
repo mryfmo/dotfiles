@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-orchestrator-tools-a05
 seat: claude-standard-dot-a003
-permission_gated_commands: 11
+permission_gated_commands: 19
 ---
 
 # Sandbox record: dotfiles-T128-orchestrator-tools-a05
@@ -35,3 +35,18 @@ The round ran these inside the sandbox: the fetch and reset, the edit, the tests
 | 3 | main-checkout `memory add` | main-checkout `memory add` |
 | 4 | the masked copy of the revise sections to the main checkout | artifact copy with the repository masker |
 | 5 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a05 …` | `agmsg-dispatch` |
+
+## PR-B
+
+These ran inside the sandbox: the fetch, the branch, the edits, the tests, the lint, the mutation proofs and the commits. PR-B makes eight permission-gated calls, counted here in advance; the main-checkout copy gives the final count. Earlier rounds ran eleven, so the front matter counts nineteen.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| 1 | `agmsg-dispatch … AGMSG-PONG v1 … part=PR-B` (the PING's answer) | `agmsg-dispatch` |
+| 2 | the HTTPS push | `git push` |
+| 3 | `gh pr create` | `gh` |
+| 4 | `gh pr checks <pr> --watch` (background, exit status joined) | `gh` |
+| 5 | Bot wait from the push and the thread list (`gh api` reads) | `gh` |
+| 6 | main-checkout `memory add` | main-checkout `memory add` |
+| 7 | the masked copy of the PR-B sections to the main checkout | artifact copy with the repository masker |
+| 8 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a05 part=PR-B …` | `agmsg-dispatch` |

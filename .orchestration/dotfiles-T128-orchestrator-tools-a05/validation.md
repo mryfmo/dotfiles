@@ -219,3 +219,67 @@ R3 empty tokens kept: KILLED rc=1 ["AssertionError: Tuples differ: ('3', '2', '1
 R4 naive tab unescape: KILLED rc=1 ["AssertionError: Tuples differ: ('3', '2', '1', '1') != ('3', '2', '1', '2')"]
 restored: 0 OK
 ```
+
+## 9. PR-B on `tools/orchestrator-scripts-3`
+
+```text
+$ git log --oneline -4
+362a9c2b test(orchestrator): assert the dispatch list and the absent key without a KeyError or an env dump
+d19ed9be feat(orchestrator): acceptance-front-matter.py and orch-gate.sh (T718 a05, PR-B)
+c586f20d feat(orchestrator): the second slice's scripts and the first slice's residual fixes (T718 a02, PR-A) (#346)
+df044557 chore(orchestration): boundary commit 2026-10-13 (13): plan 020 step 5 (T703 #328 and T702 #329 merged, Phase 1 closed; a02 PR-A #346 stopped by the one-round rule and reset to a05), records and the cost ledger (#349)
+$ git merge-base HEAD origin/main
+c586f20dbc7627a16c2e900a094083f31a55f34f
+$ shasum -a 256 .orchestration/dotfiles-T128-orchestrator-tools-a05/task.md
+eaac8e4bd03cda154273097736944b3762581f872d5f5fbcdca67650b43236ea  .orchestration/dotfiles-T128-orchestrator-tools-a05/task.md
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v 2>&1 | tail -n 4
+----------------------------------------------------------------------
+Ran 35 tests in 18.486s
+
+OK
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v 2>&1 | grep -E "front_matter|orch_gate"
+test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record) ... ok
+test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit) ... ok
+test_orch_gate_passes_the_gate_inputs_from_the_review_worktree (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_passes_the_gate_inputs_from_the_review_worktree) ... ok
+test_orch_gate_refuses_a_sweep_of_another_pr_before_the_review_worktree_moves (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_refuses_a_sweep_of_another_pr_before_the_review_worktree_moves) ... ok
+test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree) ... ok
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_regime_counters.py 2>&1 | tail -n 3
+Ran 28 tests in 3.855s
+
+OK
+$ shellcheck --version | sed -n 2p; shellcheck scripts/orchestrator/*.sh && echo shellcheck-clean
+version: 0.11.0
+shellcheck-clean
+$ (cd "$TMPDIR" && shfmt --indent 4 --space-redirects --diff <worktree>/scripts/orchestrator/orch-gate.sh) && echo shfmt-clean
+shfmt-clean
+$ ruff format --check scripts/orchestrator/acceptance-front-matter.py tests/unit/test_orchestrator_tools.py && ruff check scripts/orchestrator tests/unit/test_orchestrator_tools.py
+2 files already formatted
+All checks passed!
+$ git diff --numstat origin/main...HEAD
+124	0	scripts/orchestrator/acceptance-front-matter.py
+63	0	scripts/orchestrator/orch-gate.sh
+151	1	tests/unit/test_orchestrator_tools.py
+$ (the INV-2 sums outside .orchestration)
+files 3 added-non-test 187 added-test 151
+```
+
+Mutation proofs. `mutate-prb.py` (scratchpad) edits one span, runs the named test of `tests.unit.test_orchestrator_tools.OrchestratorToolsTest`, counts a kill only on an AssertionError, and restores the file with `git checkout --`.
+
+```text
+AF1 no head check: KILLED rc=1 AssertionError: 1 != 0 : written .orchestration/acceptance/t-a01.md head 2126e5d pr 9 ledger 4
+AF2 duplicate keys read: KILLED rc=1 AssertionError: 1 != 0 : written .orchestration/acceptance/t-a01.md head 694e94f pr 9 ledger 0
+AF3 present ids re-added: KILLED rc=1 AssertionError: 'kept-ledger-row 4250000001' not found in 'written .orchestration/acceptance/t-a01.md head e35186d pr 9 ledger 5\n'
+AF4 searches for every class: KILLED rc=1 AssertionError: Lists differ: [{'class': 'stale-path', 'records': ['M-1.md']}] != [{'class': 'other', 'records': ['M-1.md', 'M-2.md']},[43 chars]d']}]
+AF5 text after the block dropped: KILLED rc=1 AssertionError: Tuples differ: ('t-a01', '4d473acc281f02941f7be4ed5ce74992965c9f95', 9, 1, '\n# Record\n') != ('t-a01', '4d473acc281f02941f7be4ed5ce74
+AF6 dispatch list dropped: KILLED rc=1 AssertionError: ['AGMSG-TASK v1 task_id=t-a01'] != None
+AF7 field checks skipped: KILLED rc=1 AssertionError: 1 != 0 : written .orchestration/acceptance/t-a01.md head f52b1bc pr 9 ledger 5
+AF8 dispositions not required: KILLED rc=1 AssertionError: '--audit-dispositions is required' not found in "acceptance-front-matter: AUDIT_EVIDENCE verdict is incorrect: the acceptance record's
+AF9 completeness skipped: KILLED rc=1 AssertionError: 1 != 0 : written .orchestration/acceptance/t-a01.md head b73c5ec pr 9 ledger 0
+G1 AUDIT_DISPOSITIONS kept: KILLED rc=1 AssertionError: 'AUDIT_DISPOSITIONS' unexpectedly found in ['ACCEPTANCE_EVIDENCE', 'AGENT_REVIEWED', 'AGMSG_SCRIPTS', 'AGMSG_SPAWNED', 'AI_AGENT', 'AL
+G2 no ACCEPTANCE_EVIDENCE: KILLED rc=1 AssertionError: {'ACC[14 chars]CE': '.orchestration/acceptance/t-a01.md', 'AU[255 chars]ain'} != {'ACC[14 chars]CE': None, 'AUDIT_EVIDENCE': '.orchest
+G3 make in the main checkout: KILLED rc=1 AssertionError: '/private/tmp/claude-501/tmptralagwa/repo/.claude/worktrees/orchestrator-review' != '/private/tmp/claude-501/tmptralagwa/repo'
+G4 gate status dropped: KILLED rc=1 AssertionError: 0 != 2 : 
+G5 review worktree left at the head: KILLED rc=1 AssertionError: '8ba1a18e7249f2eaeb3ffbd7a1b330ab3858133f' != 'f485bdd5723eac97d8b38e3207f95e2b8c0ba55f'
+G6 no PR binding: KILLED rc=1 AssertionError: 0 != 2 : 
+restored: 0 OK
+```

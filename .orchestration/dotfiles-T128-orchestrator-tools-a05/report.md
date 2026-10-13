@@ -82,3 +82,71 @@ cost: n/a
 - Size, against the INV-2 caps: 499 added lines outside tests (cap 500), 507 under tests (cap 1000), and 12 files outside `.orchestration` (cap 15). The fix edits two existing lines in place.
 - The three P2 (the fill_sweep URL key, the record, the report claim): no change, per the ACCEPTANCE.
 - Seen, not changed: `scripts/agent-stop-gate.sh:277` also splits each history body on one space (`split($3, w, " ")`). It is not in allowed_files and it is a Claude-boundary hook, so routing it is the orchestrator's call.
+
+## PR-B (`d19ed9be`, `362a9c2b`)
+
+- The branch is `tools/orchestrator-scripts-3`, fresh from `origin/main` at `c586f20d` (PR-A merged), per the orchestrator's PING of 22:34:32Z.
+- The scope is a05 item 1's `acceptance-front-matter.py` and `orch-gate.sh` bullets, item 2's tests for them, and these records.
+- The task copy is unchanged: it still hashes to `eaac8e4b…`, now from main (validation §9).
+
+### `scripts/orchestrator/acceptance-front-matter.py <task> <sweep-json> <pr-worktree> [--ledger <tsv>] [--audit-dispositions <tsv>]`
+
+- **head and pr.** `head` is `git -C <pr-worktree> rev-parse HEAD`. The script refuses (exit 1, nothing written) when the sweep JSON's `head_sha` differs from it. `pr` is the sweep JSON's own `pr`, never an argument.
+- **The gate module.** The script imports `scripts/require-crit-review.py` from its own checkout (`git rev-parse --show-toplevel`) and keeps no second copy of a check. It uses that module's:
+  - reader (`read_acceptance_record`: duplicate keys and non-finite numbers refused);
+  - field checks (`record_field_errors`, identity triple first);
+  - finding completeness (`audit_findings_errors`);
+  - records search (`mistake_records`);
+  - constants (`AUDIT_VERDICT`, `AUDIT_FINDING`, `S6_CLASS_LIMIT`, `RECORD_FORMAT`).
+- **Writing.** The block is written with `sort_keys` and `indent=2`. Any refusal happens before the one write.
+- **An existing record** is handled in one of three ways:
+  - it starts with a `---` block the gate reader accepts: the block is replaced and the text after it kept;
+  - it starts with `---` but the reader refuses it (not JSON, a duplicate key, YAML front matter): the script refuses and writes nothing;
+  - it is a prose record: the block is prepended.
+- **dispatch.** The `dispatch` list (and any other key) is carried over. An unknown key then fails the gate's field checks, as the gate would.
+- **ledger.** Every row already present is kept. A `--ledger` row (`id<TAB>class`) is added only when its id is new; otherwise it prints `kept-ledger-row <id>`.
+- **searches** is recomputed on every run by the gate's rule: each class with three or more rows, with the sorted basenames of the mistake records naming it, and `[]` records when none do.
+- **audit_findings.** The audit summary is the `.last.md` that orch-audit.sh writes beside its receipt for this head, and its verdict is the gate's rule (the last non-blank line).
+  - When that line is `Verdict: incorrect`, `--audit-dispositions` (`n<TAB>reason<TAB>evidence`, n kept as a string) is required, and the gate's completeness check runs on it.
+  - Otherwise, including when no summary exists yet, the option is refused and `audit_findings` is `[]`.
+
+  The record is written before the audit, which reads it, and rewritten after an incorrect audit.
+- **Not done.** The S6 coverage of swept ids by the ledger (`acceptance_errors`) is not checked by this script. Item 1 names the field checks, and the gate checks coverage at the gate.
+
+### `scripts/orchestrator/orch-gate.sh <task> <pr-worktree> <pr>`
+
+This is the input `orch-gate.sh` (`.orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/`) parameterised:
+
+- The head is `git -C <pr-worktree> rev-parse HEAD`; the root comes from the script's own checkout, with no home-directory literal.
+- `<pr>` must equal the sweep JSON's `pr` (jq). The input never used it.
+- The six evidence files must exist before the review worktree moves.
+- `make require-crit-review` runs in `.claude/worktrees/orchestrator-review` at the head. It gets `AUDIT_EVIDENCE`, `ACCEPTANCE_EVIDENCE`, `PR_FEEDBACK_EVIDENCE`, `AGENT_REVIEWED=1`, `REVIEW_EVIDENCE` and `BASE=origin/main`, with `AUDIT_DISPOSITIONS` unset (the input passed the retired variable).
+- A failed `cd` exits the subshell instead of gating another tree.
+- The gate's status is the script's. Its whole output is shown, not the input's `tail -15`.
+- The review worktree is restored with `clean -fdq -- .orchestration` and `checkout -qf --detach origin/main`. The input's `checkout -- .` fails on a tree with no tracked files, which the test fixture has.
+
+### Tests (`tests/unit/test_orchestrator_tools.py`)
+
+The `make` stub now also records its environment and working directory (`make-env`, `make-cwd`); `make.log` is unchanged. Item 2's PR-B rows map to these tests:
+
+- `test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record` covers:
+  - `head` is the fixture HEAD and `pr` the sweep's;
+  - the `dispatch` list and the text after the block are kept;
+  - a present ledger id is kept;
+  - a class at three gets a `searches` entry from a fixture mistakes directory, and a class at one gets none;
+  - the gate's own loader (`gate_block`, duplicate keys refused) and the gate module's `record_field_errors` pass on the output;
+  - three refusals that write nothing: a row the field checks refuse, a sweep of another head, and a record with a duplicate key.
+- `test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit` covers:
+  - an incorrect summary without `--audit-dispositions` is refused;
+  - with dispositions that skip finding 1, it is refused;
+  - with the right row it is written (`n` is `"1"`);
+  - a correct summary refuses the option and writes `[]`.
+- `test_orch_gate_passes_the_gate_inputs_from_the_review_worktree`: the six variables reach the stub `make`, `ACCEPTANCE_EVIDENCE` included; `AUDIT_DISPOSITIONS` set by the caller does not; and make runs in the review worktree.
+- `test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree`: a failing make gives exit 2, and the review worktree is clean at `origin/main`.
+- `test_orch_gate_refuses_a_sweep_of_another_pr_before_the_review_worktree_moves`: exit 2, and make is never called.
+
+### Mutation proofs and size
+
+- Validation §9 lists 15 mutants, all killed: 9 in `acceptance-front-matter.py` and 6 in `orch-gate.sh`.
+- The first run killed 14 of 15. AF6 raised a KeyError rather than an assertion failure. The G1 failure message also printed the captured environment, values included. `362a9c2b` makes both assertions plain: `.get`, and the sorted key names only.
+- INV-2: 3 files outside `.orchestration`, 187 added lines outside tests and 151 under tests.

@@ -129,6 +129,12 @@ class OrchestratorToolsTest(unittest.TestCase):
             ("hello task_id=t", 2, "not an AGMSG-TASK"),
             (f"AGMSG-ACCEPTANCE v1 task_id=t amended_task_sha256={sha('x')}", 1, "amended_task_sha256 has no"),
             ("AGMSG-ACCEPTANCE v1 task_id=t design=d.md design_sha256=abc", 1, "not 64 lowercase hex"),
+            # Thread 4254494989: a repeated source key leaves an unhashed second path in the line.
+            (
+                f"AGMSG-TASK v1 task_id=t task_file=.orchestration/tasks/t.md task_file=other.md task_sha256={sha('task' + chr(10))}",
+                1,
+                "task_file= appears more than once",
+            ),
             # Thread 4254399800: a line naming the file both ways could bind the wrong artifact.
             (
                 f"AGMSG-ACCEPTANCE v1 task_id=t design=d.md design_file=e.md design_sha256={sha('x')}",

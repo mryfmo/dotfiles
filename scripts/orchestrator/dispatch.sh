@@ -7,7 +7,7 @@
 #   recomputed from the file its sibling token names, `<name>_file=` or else
 #   `<name>=` (`task_sha256` from `task_file=`, `design_sha256` from `design=`,
 #   `amended_task_sha256` from `amended_task=`; a line naming the file both
-#   ways is refused); an AGMSG-TASK line must carry
+#   ways, or repeating one of these keys, is refused); an AGMSG-TASK line must carry
 #   `task_file=` and `task_sha256=`. A relative path is read from the root of
 #   the checkout this script lives in (`git rev-parse --show-toplevel` there),
 #   never from the caller's directory. A missing field or file, a malformed value
@@ -72,6 +72,15 @@ value_of() {
     done
     return 1
 }
+# @description Print how many tokens carry `<key>=`.
+# @arg $1 string Key.
+count_of() {
+    local t n=0
+    for t in "${tokens[@]}"; do
+        [[ ${t} == "$1="* ]] && n=$((n + 1))
+    done
+    printf '%s' "${n}"
+}
 # Thread 4254163604: a TASK whose file is not hash-bound is never sent.
 if [[ ${line} == "AGMSG-TASK "* ]]; then
     for field in task_file task_sha256; do
@@ -89,6 +98,13 @@ for t in "${tokens[@]}"; do
         echo "dispatch: ${field} is not 64 lowercase hex digits" >&2
         exit 1
     }
+    # Thread 4254494989: a repeated key leaves a second, unhashed value in the line.
+    for key in "${field}" "${name}_file" "${name}"; do
+        (($(count_of "${key}") <= 1)) || {
+            echo "dispatch: ${field}: ${key}= appears more than once" >&2
+            exit 1
+        }
+    done
     if value_of "${name}_file" > /dev/null && value_of "${name}" > /dev/null; then
         echo "dispatch: ${field}: both ${name}_file= and ${name}= name a file" >&2
         exit 1

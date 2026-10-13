@@ -13,7 +13,7 @@ Drafted 2026-10-13 01:40Z by the orchestrator seat under plan 012 option B: the 
 
 1. No contradiction with the design (`kind: code`; `scripts/orchestrator/` on no design-tier list; INV-2 caps in Validation; the gate and the audit runner untouched: `orch-gate.sh` and `orch-audit.sh` only assemble inputs and call `make require-crit-review` and the audit runner).
 2. The premises hold when replayed (the `command:` lines, executor's binaries; C-18).
-3. `allowed_files` covers every touch point of the nine scripts and their tests; nothing of the first slice's three scripts is re-specified here, and the counters' S1 line is touched only by item 3's ledger-shape guard (added in round 5 after PR #336 thread 4255079204).
+3. `allowed_files` covers every touch point of the nine scripts and their tests; of the first slice's three scripts only `dispatch.sh` is touched, by item 4's three record-path fixes (plan 015 option B), and the counters' S1 line only by item 3's ledger-shape guard.
 4. Threat rows at the SKILL row unit (C7, C7b), the closed row's test name verbatim in item 2, and the environment-inputs row names every host binary and package the nine scripts use (git, gh, make, codex, shasum, uv; `fill_sweep.py` and `acceptance-front-matter.py` read and write the acceptance record's JSON block with the standard library, as amendment 1 of `dotfiles-T128-gate-evidence-a03` defines it; C-26).
 5. C1 to C10 pass (the orchestrator pasted `OK`); `acceptance-front-matter.py` is specified against the amended a03 contract (JSON block, identity triple), not the superseded YAML wording.
 
@@ -54,3 +54,17 @@ Round 7 note, continued (05:4xZ): the Codex half's round 9 (P1): `acceptance-fro
 ## Round 8 (orchestrator, 2026-10-13 05:4xZ)
 
 The seat confirmed round 7 (`cac9a9f1…`) with one P3; the Codex half (rounds 10 and 11) asked for a reason slug for an absent or non-string `id`. Both applied: the fixed slugs are `block-not-json`, `ledger-row-not-object`, `id-not-string`, `class-not-slug`; `acceptance-front-matter.py` imports the gate module's record validator (no re-implementation) and the in-process effects row names that import. Same stop condition; the TASK line carries the file's sha256.
+
+## Round 9 (orchestrator, 2026-10-13 06:1xZ)
+
+Both halves confirmed `b48f32cb…` (round 8). Plan 015 option B (the operator, 06:1xZ): the first slice merges as accepted and the Bot's three P2 threads on its update-branch head (4255272793 tokenization, 4255272797 lost update, 4255272803 capped history) become item 4 here, with `scripts/orchestrator/dispatch.sh` in `allowed_files`, a closed threat row, the line's input-grammar table (C-31) and one test. Stop condition item 3 reworded above. Same stop condition otherwise; the TASK line carries the file's sha256.
+
+Round 10 note (06:1xZ): the Codex half's round 13 asked that the grammar table's rejection rows be enumerated by tests, not only the three fixes; item 4 now names the first slice's existing refusals and adds the table-driven `test_dispatch_line_grammar_table` (one refused line per remaining row, the stub never called, plus the accepted tab-separated form); item 2 names it. The TASK line carries the file's sha256.
+
+Round 10 note, continued (06:2xZ): the Codex half's round 14 asked for a closed enumeration of host binaries instead of "whatever else the scripts call"; the environment row now lists exactly the binaries the attached inputs and the first slice call (scanned 06:1xZ: git, gh, make, codex, uv, python3, shasum, jq, env, bash, agmsg-dispatch, history.sh, and twenty-two coreutils), and says a new one is added by amendment. The TASK line carries the file's sha256.
+
+## Round 10 (orchestrator, 2026-10-13 06:2xZ)
+
+The seat's round 9 (receipt e22d3a9d…): P1 the new dispatch.sh row's control carried `: ` unquoted and broke the YAML (now quoted; PyYAML parses the front matter); P2 the grammar table forbade `previous_design_sha256=`, which the design-review lines carry without a source file (now an exempted reference row, 64 hex only); P3 the value grammar (a token without `=` exits 2; `note=` values carry no whitespace). Codex rounds 13 to 15 (grammar-row tests; the closed binary list) are in. The TASK line carries the file's sha256.
+
+Round 11 note (06:2xZ): the Codex half's round 16 found `python` missing from the closed list (the attached inputs run `uv run --no-project python`); the row now names the interpreter uv resolves as `python` under `uv run --no-project`, the first slice's `python3 -I` as the other accepted form, and forbids a bare `python` outside uv. The TASK line carries the file's sha256.

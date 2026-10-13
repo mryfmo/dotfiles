@@ -4,7 +4,7 @@
   "task": "test",
   "head": "HEAD",
   "pr": 1,
-  "ledger": [],
+  "ledger": [{ "id": "audit:HEAD7:1", "class": "evidence" }],
   "searches": [],
   "audit_findings":
     [

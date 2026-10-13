@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -409,7 +410,7 @@ class ReviewGuardTest(unittest.TestCase):
         """Write .orchestration/acceptance/test.md: a fixture, raw text, or a front matter of fields.
 
         Fields default to a passing record with no ledger; a field set to None is left out.
-        `"head": "HEAD"` is replaced with this repository's HEAD.
+        `"head": "HEAD"` is replaced with this repository's HEAD, and `audit:HEAD7:` with `audit:<its first seven>:`.
         """
         if fixture is not None:
             text = (FIXTURES / fixture).read_text()
@@ -418,7 +419,7 @@ class ReviewGuardTest(unittest.TestCase):
             block = json.dumps({key: value for key, value in data.items() if value is not None}, indent=2)
             text = f"---\n{block}\n---\n\n# prose\n"
         head = self.head_commit()
-        text = text.replace('"head": "HEAD"', f'"head": "{head}"')
+        text = text.replace('"head": "HEAD"', f'"head": "{head}"').replace('"audit:HEAD7:', f'"audit:{head[:7]}:')
         self.write_review_file(".orchestration/acceptance/test.md", text)
         return ".orchestration/acceptance/test.md"
 
@@ -1092,7 +1093,7 @@ class ReviewGuardTest(unittest.TestCase):
         sha: str | None = None,
         audit_path: str | None = None,
         findings: list | None = None,
-        fixture: str = "acceptance-s6-present.md",
+        fixture: str | None = None,
         last_symlink: Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
         """Run --base on a reviewed lifecycle change whose feedback and review evidence pass.
@@ -1125,11 +1126,16 @@ class ReviewGuardTest(unittest.TestCase):
             else:
                 self.write_review_file(f"{audit}.last.md", audit_text)
             env["AUDIT_EVIDENCE"] = audit
-        # The record is written at the audited head; findings become its audit_findings.
-        if findings is None:
+        # The record is written at the audited head: its ledger covers each [P0]-[P3] line of audit_text, and
+        # findings become its audit_findings; a fixture brings its own ledger.
+        rows = [
+            {"id": f"audit:HEAD7:{n}", "class": "audit-finding"}
+            for n in range(1, len(re.findall(r"^\s*(?:[-*+]\s+)?\[P[0-3]\]", audit_text or "", re.MULTILINE)) + 1)
+        ]
+        if fixture is not None:
             env["ACCEPTANCE_EVIDENCE"] = self.write_record(fixture)
         else:
-            env["ACCEPTANCE_EVIDENCE"] = self.write_record(audit_findings=findings)
+            env["ACCEPTANCE_EVIDENCE"] = self.write_record(ledger=rows, audit_findings=findings)
         return self.guard_base(env)
 
     def test_base_requires_audit_evidence_for_a_reviewed_change(self) -> None:
@@ -1293,7 +1299,14 @@ class ReviewGuardTest(unittest.TestCase):
     def test_dispositions_with_an_evidence_command_are_accepted(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback(json.loads((FIXTURES / "pr-feedback-right.json").read_text())["items"])
-        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        # Both items are Codex review comments, so the ledger covers them (a04's coverage rule).
+        ledger = [
+            {"id": 4244248692, "class": "threat-row-outside-paths"},
+            {"id": 4244378809, "class": "result-head-binding"},
+        ]
+        result = self.guard_base(
+            {"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": self.write_record(ledger=ledger)}
+        )
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn(f"PR feedback evidence accepted: {feedback}", result.stdout)
 
@@ -1494,6 +1507,115 @@ class ReviewGuardTest(unittest.TestCase):
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("acceptance record: non-finite number", result.stdout)
+
+    def right_items_with_reviews(self) -> list[dict]:
+        """pr-feedback-right.json's two Codex review comments plus three Codex review bodies: badged, plain, near."""
+        bot = "chatgpt-codex-connector[bot]"
+        url = "https://github.com/mryfmo/dotfiles/pull/329#pullrequestreview-"
+        disposition = "not-applicable:a review body, dispositioned for the test; evidence=gh pr checks 1"
+        return json.loads((FIXTURES / "pr-feedback-right.json").read_text())["items"] + [
+            {
+                "source": "review",
+                "author": bot,
+                "level": "comment",
+                "url": f"{url}5498081103",
+                "disposition": disposition,
+                "body": "**Bind ledger rows** ![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)",
+            },
+            {
+                "source": "review",
+                "author": bot,
+                "level": "comment",
+                "url": f"{url}5498081104",
+                "disposition": disposition,
+                "body": "### Codex Review\nHere are some automated review suggestions for this pull request.",
+            },
+            {
+                "source": "review",
+                "author": bot,
+                "level": "comment",
+                "url": f"{url}5498081105",
+                "disposition": disposition,
+                "body": "Mentions P1 Badge and [P1] without the badge markup.",
+            },
+        ]
+
+    def test_acceptance_record_ledger_must_cover_swept_findings(self) -> None:
+        # Thread 4254092805: the ledger's ids include every swept Codex review comment and every audit finding.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback(json.loads((FIXTURES / "pr-feedback-right.json").read_text())["items"])
+        record = self.write_record("acceptance-ledger-incomplete.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("S6: ledger lacks 4244378809", result.stdout)
+        # The audit half: a summary with one more [P0]-[P3] line than the record's audit: rows.
+        head7 = self.head_commit()[:7]
+        audit = f".orchestration/validation/test-audit-{head7}.md"
+        self.write_review_file(audit, "transcript\n")
+        self.write_review_file(
+            f"{audit}.last.md", "[P2] high impl a:1 one\n- [P3] low impl b:2 two\nVerdict: incorrect\n"
+        )
+        ledger = [
+            {"id": 4244248692, "class": "threat-row-outside-paths"},
+            {"id": 4244378809, "class": "result-head-binding"},
+            {"id": "audit:HEAD7:1", "class": "audit-finding"},
+        ]
+        record = self.write_record(ledger=ledger)
+        result = self.guard_base(
+            {"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record, "AUDIT_EVIDENCE": audit}
+        )
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn(f"S6: ledger lacks audit:{head7}:2", result.stdout)
+
+    def test_acceptance_record_ledger_must_cover_a_badged_review_body(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback(self.right_items_with_reviews())
+        record = self.write_record("acceptance-ledger-review-body.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("S6: ledger lacks 5498081103", result.stdout)
+        # The same sweep passes once the badged body is a row; the plain and the near-match bodies need none.
+        ledger = [
+            {"id": 4244248692, "class": "threat-row-outside-paths"},
+            {"id": 4244378809, "class": "result-head-binding"},
+            {"id": 5498081103, "class": "ledger-completeness"},
+        ]
+        result = self.guard_base(
+            {"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": self.write_record(ledger=ledger)}
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Acceptance evidence accepted", result.stdout)
+
+    def test_swept_ids_are_exactly_the_review_comments_and_the_badged_review_body(self) -> None:
+        spec = importlib.util.spec_from_file_location("require_crit_review", GUARD)
+        guard = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(guard)
+        swept = guard.swept_finding_ids(self.right_items_with_reviews(), None, "a" * 40)
+        self.assertEqual(swept, {"4244248692", "4244378809", "5498081103"})
+        self.assertEqual(
+            guard.swept_finding_ids([], "[P1] x\n  - [P2] y\nVerdict: incorrect\n", "abcdef0" + "0" * 33),
+            {"audit:abcdef0:1", "audit:abcdef0:2"},
+        )
+
+    def test_acceptance_record_accepts_a_dispatch_list(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-dispatch-key.md")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
+        record = self.write_record(dispatch=["a line", 7])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("dispatch must be a list of strings", result.stdout)
+
+    def test_acceptance_record_refuses_an_unknown_key(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record(decision="accepted")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("acceptance record: unknown key decision", result.stdout)
 
     def test_audit_finding_reason_may_quote_the_grammar(self) -> None:
         # Thread 4249544748: a reason is a field, so quoting `not-applicable:` in it is no disposition.

@@ -36,6 +36,10 @@ RECORD_FORMAT = 1
 LEDGER_ID = re.compile(r"\d{10,}|audit:[0-9a-f]{7}:\d+")
 CLASS_SLUG = re.compile(r"[a-z0-9-]+")
 AUDIT_FINDING_KEYS = {"n", "reason", "evidence"}
+RECORD_KEYS = {"format", "task", "head", "pr", "ledger", "searches", "audit_findings", "dispatch"}
+# The swept finding ids the ledger must cover: Codex review comments, and Codex review bodies carrying a badge.
+CODEX_BOT = "chatgpt-codex-connector[bot]"
+BADGE_TOKENS = ("![P0 Badge]", "![P1 Badge]", "![P2 Badge]", "![P3 Badge]")
 S6_CLASS_LIMIT = 3
 MISTAKE_RECORDS = ".orchestration/learning/mistakes/"
 # herdr-agents --audit names and concludes the task-level audit this way.
@@ -774,6 +778,11 @@ def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[
         )
     if errors:
         return errors
+    errors += [f"acceptance record: unknown key {key}" for key in sorted(set(record) - RECORD_KEYS)]
+    if "dispatch" in record and (
+        not isinstance(record["dispatch"], list) or not all(isinstance(line, str) for line in record["dispatch"])
+    ):
+        errors.append("dispatch must be a list of strings")
     if not is_int(record.get("format")) or record["format"] != RECORD_FORMAT:
         errors.append(f"format must be {RECORD_FORMAT}")
     ledger = record.get("ledger")
@@ -839,8 +848,40 @@ def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[
     return errors
 
 
+def swept_finding_ids(items: object, audit_summary: str | None, head: str) -> set[str]:
+    """The ids a ledger must cover: the sweep's Codex findings and the audit's numbered findings (a set, no regex)."""
+    ids: set[str] = set()
+    for item in items if isinstance(items, list) else []:
+        if not isinstance(item, dict) or item.get("author") != CODEX_BOT:
+            continue
+        url = item["url"] if isinstance(item.get("url"), str) else ""
+        body = item["body"] if isinstance(item.get("body"), str) else ""
+        if item.get("source") == "review_comment":
+            ids.add(url.rpartition("_r")[2])
+        elif item.get("source") == "review" and any(token in body for token in BADGE_TOKENS):
+            ids.add(url.rpartition("pullrequestreview-")[2])
+    if audit_summary is not None:
+        ids.update(f"audit:{head[:7]}:{n}" for n in range(1, len(AUDIT_FINDING.findall(audit_summary)) + 1))
+    return ids
+
+
+def audit_summary(root: Path) -> tuple[str | None, str | None]:
+    """The text of AUDIT_EVIDENCE's .last.md summary when AUDIT_EVIDENCE is set, which then requires it."""
+    value = os.environ.get(AUDIT_ENV, "").strip()
+    if not value:
+        return None, None
+    path = Path(value) if Path(value).is_absolute() else root / value
+    source = path.with_name(f"{path.name}.last.md")
+    if not source.is_file():
+        return (
+            None,
+            f"{AUDIT_ENV} verdict is missing: {source.name} must exist with codex's final message; re-run the audit",
+        )
+    return source.read_text(), None
+
+
 def acceptance_errors(
-    root: Path, required: bool, task: str | None, head: str, pr: object = None
+    root: Path, required: bool, task: str | None, head: str, pr: object = None, items: object = None
 ) -> tuple[list[str], dict | None]:
     """The acceptance-record contract (plan 013 option A′): a JSON block bound to the task, HEAD and the swept PR."""
     value = os.environ.get(ACCEPTANCE_ENV, "").strip()
@@ -869,6 +910,12 @@ def acceptance_errors(
     errors = record_field_errors(record, path.name.removesuffix(".md"), head, pr)
     if errors:
         return errors, record
+    summary, summary_error = audit_summary(root)
+    if summary_error is not None:
+        return [summary_error], record
+    missing = swept_finding_ids(items, summary, head) - {str(row["id"]) for row in record["ledger"]}
+    if missing:
+        errors.append(f"S6: ledger lacks {', '.join(sorted(missing))}")
     classes = Counter(row["class"] for row in record["ledger"])
     stated = {entry["class"]: set(entry["records"]) for entry in record["searches"]}
     for cls, count in classes.items():
@@ -962,10 +1009,16 @@ def main() -> None:
     feedback = os.environ.get(PR_FEEDBACK_ENV, "").strip()
     task = Path(feedback).name.removesuffix("-pr-feedback.json") if feedback else None
     # Bound to the swept PR: pr_feedback_errors already loaded this document and checked its `items`.
-    feedback_pr = json.loads((root / feedback).read_text()).get("pr") if feedback else None
+    feedback_document = json.loads((root / feedback).read_text()) if feedback else {}
+    feedback_pr = feedback_document.get("pr") if feedback else None
     current_head = head or run_git(["rev-parse", "HEAD"], root).stdout.strip()
     acceptance, record = acceptance_errors(
-        root, required=args.base is not None, task=task, head=current_head, pr=feedback_pr
+        root,
+        required=args.base is not None,
+        task=task,
+        head=current_head,
+        pr=feedback_pr,
+        items=feedback_document.get("items"),
     )
     if acceptance:
         print("Acceptance record evidence is incomplete:")

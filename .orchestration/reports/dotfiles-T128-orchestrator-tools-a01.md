@@ -94,3 +94,63 @@ A slip without effect: while checking a file without a final newline, I ran the 
 | 4254163604 (P1, `dispatch.sh:55`) | an AGMSG-TASK line without `task_sha256=` has no sha token, so the loop checks nothing and the task is sent with its file never authenticated; the closed test covers only a present-but-wrong hash | `open:4254163604`. The finding holds: `dispatch.sh` checks only the sha fields a line carries. Proposed fix, about five lines and one test case: for an AGMSG-TASK line, require `task_file=` and a 64-hex `task_sha256=` before the loop (exit 1 naming the missing field); a test case in `test_dispatch_refuses_malformed_lines` with a TASK line that carries neither |
 
 All five Codex Bot threads on PR #336, by id (validation §11): 4253994697 `fixed:e6f2bdc0`; 4254107304 `fixed:17d3735d`; 4253994704 `open` (the task's threat row, an amendment: the proposed per-script split above); 4254107312 `open` (the `dispatch:` record line, the orchestrator's call above); 4254163604 `open:4254163604` (third round). The worker resolves no thread.
+
+## Amendment 1 (TASK 03:13:58Z, sha256 `91eb1ebe…`; commits `2dddff84`, `0a5ae302`)
+
+The amendment answers threads 4253994704, 4254107312 and 4254163604 and confirms `e6f2bdc0` for 4253994697. The task copy was recommitted byte-identical (validation §12).
+
+- **`dispatch.sh`**
+  - An AGMSG-TASK line without `task_file=` or `task_sha256=` exits 1 naming the missing field, and nothing is sent (thread 4254163604).
+  - It takes an optional sixth argument, the acceptance record (thread 4254107312). The record's JSON block is parsed before the send, so a malformed record means no send. After `agmsg-dispatch`, the script finds the sent line in `history.sh <team> <to> 200` and appends `<line> read_at=read` (marker `○`) or `read_at=unread` (marker `●`) to the block's `dispatch` list. It writes with Python's standard json (duplicate keys and NaN refused, `sort_keys`, `indent=2`, non-ASCII kept) and keeps the prose byte for byte. A prose-only or missing record gets a block holding only `dispatch`.
+  - The read state is the marker. `history.sh` prints no read_at time, and `agmsg-dispatch` polls `read_at` without printing it; the orchestrator chose that option (A) in its PONG of 03:16Z, and messages.db is never read.
+  - When `agmsg-dispatch` exits non-zero (unread at its timeout), the line is still recorded as unread and the script exits with that status. If the line is not on the bus at all, the record is left unchanged and the script exits 1.
+  - New host binary: `python3 -I` (standard library only), which the amendment's "standard library's json" implies.
+- **`three-repeat.sh`**: it already resolved its root from its own checkout (`e6f2bdc0`). It now also passes the CLI to `uv` by its absolute path there, which the new closed-row test asserts.
+- **Tests** carry the four closed-row names. Two-line and blank-line files move into the new TASK test, and the ACCEPTANCE case for a missing `amended_task=` remains. The new record test loads the block as the gate's contract says (standard json, duplicate keys and NaN refused, since the gate's loader is not on `main`) and covers both markers, a prose-only record and a duplicate key.
+- **Results** (§12): 9 tests OK; 26 + 51 neighbouring tests OK; shellcheck clean; 23 mutants, 23 failures. The new mutants put back the unbound TASK, skip the pre-send check, invert the marker, drop the prose, accept duplicate keys, use the caller root, or pass a relative CLI path.
+
+## Amendment 1, fix round 1 (`b80b03ee`)
+
+On head `374fc171` (validation §13): Bot review 5498425049 found two P1s and a P2, and CI's `Run shfmt` failed on a backslash-continued pipe (`test (ubuntu-24.04, client)` and `test (ubuntu-26.04, client)`). This round removes that pipe, and the CI command `shfmt -i 4 -sr -d` (v3.14.1) is clean locally on all four scripts.
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4254399805 (P1, `dispatch.sh:152`) | `history.sh <team> <agent>` renames the calling pane after the agent, so recording a dispatch would relabel the orchestrator's pane as the worker | `fixed:b80b03ee`: the marker is read team-wide, `history.sh <team> "" 100000`. `agmsg_self_rename_on_action` returns at once for an empty agent (§13 quotes it), and `bus-read.sh` already used that form. The record test asserts the history call's argv; with `${to}` put back it fails (mutant D12) |
+| 4254399807 (P2, `dispatch.sh:152`) | after a failed send, an older identical row satisfied the match and was recorded | `fixed:b80b03ee`: matching rows are counted before and after the send, and only a send that added a row is recorded; otherwise the record is unchanged and the script exits 1. The stub bus now gains a row per successful send; the test keeps an identical older row on the bus and fails a send (mutant D13) |
+| 4254399800 (P1, `dispatch.sh:87`) | `design=` with `design_file=` let `_file` win and bind a different artifact | `fixed:b80b03ee`: a line naming the file both ways is refused, exit 1 naming the field; a new case in `test_dispatch_refuses_malformed_lines` (mutant D11) |
+
+Results (§13): 9 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 26 mutants, 26 failures. Size: 6 files outside `.orchestration/`; added lines outside and under `tests/`: 295 and 310 (caps 500 and 1000).
+
+## Amendment 1, fix round 2 (`77e75595`)
+
+On head `e707c764` (validation §14): every `test` job passed, so the shfmt fix of the last round held. Bot review 5498546256 found two P1s:
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4254494989 (P1, `dispatch.sh:72`) | `value_of` took the first of a repeated key, so `task_file=safe.md task_file=other.md task_sha256=<hash of safe.md>` passed with the second path never hashed | `fixed:77e75595`: a repeated `<name>_sha256=`, `<name>_file=` or `<name>=` key is refused, naming the key; a new case in `test_dispatch_refuses_malformed_lines` (mutant D14) |
+| 4254494999 (P1, task.md:21) | amendment 1 made `dispatch.sh` read and rewrite a caller-given acceptance record and parse bus output, and no threat row covers that path | not fixable by the worker: it is the task's threat table (task text, an amendment). Proposed row: control "dispatch.sh reads a caller-given acceptance record, parses the team history's output, and rewrites the record's JSON block after the send", disposition `closed: tests/unit/test_orchestrator_tools.py::test_dispatch_records_the_sent_line_with_its_read_marker`. That test covers the pre-send refusal of a malformed record, the prose kept byte for byte, the team-wide read, and only a row this send created being recorded; the selector exists in this head |
+
+Results (§14): 9 tests OK; shfmt, shellcheck and ruff clean; 27 mutants, 27 failures. Size: added lines outside and under `tests/`: 311 and 316 (caps 500 and 1000).
+
+## The final head `5ec05d8d` (main-checkout copy)
+
+- CI: all 12 check runs are `completed success`, and the watcher exited 0 (validation §15).
+- Bot: no review of `5ec05d8d` within 15 minutes of the 03:56:26Z push, though `@codex review` went out at 04:06:53Z (`bot: none`). The recheck at 04:11:56Z lists five Codex reviews, none of this head (§15).
+- Counts: Codex Bot reviews on PR #336 = 5. Before amendment 1, two worker fix rounds (`e6f2bdc0`, `17d3735d`) and the third round left unfixed. Under amendment 1, two fix rounds (`b80b03ee`, `77e75595`) and no third review.
+
+All ten Codex Bot threads, by id (§15):
+
+| Thread | Disposition |
+|---|---|
+| 4253994697 | `fixed:e6f2bdc0` |
+| 4253994704 | `fixed:2dddff84` (amendment 1's per-script closed rows, task copy) |
+| 4254107304 | `fixed:17d3735d` |
+| 4254107312 | `fixed:0a5ae302` (the record's `dispatch` list) |
+| 4254163604 | `fixed:0a5ae302` (a TASK needs `task_file=` and `task_sha256=`) |
+| 4254399800 | `fixed:b80b03ee` |
+| 4254399805 | `fixed:b80b03ee` |
+| 4254399807 | `fixed:b80b03ee` |
+| 4254494989 | `fixed:77e75595` |
+| 4254494999 | open: a threat row for the record path is task text (an amendment); the proposed row and its existing selector are in the fix round 2 section above |
+
+The worker resolves no thread.

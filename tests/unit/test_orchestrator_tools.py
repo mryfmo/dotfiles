@@ -37,7 +37,10 @@ STUBS = {
     # codex reads its stdin to the end (empty when the caller closed it) and writes its -o file.
     "codex": "#!/usr/bin/env bash\n"
     + RECORD.format(name="codex")
-    + 'cat > "$CALLS/codex-stdin"\nwhile (($#)); do [[ $1 != -o ]] || echo "Verdict: correct" > "$2"; shift; done\n'
+    + 'cat > "$CALLS/codex-stdin"\nwhile (($#)); do [[ $1 != -o ]] || out=$2; shift; done\n'
+    # codex-silent writes no -o file; codex-stale writes one dated 2000.
+    + '[[ -z ${out:-} || -f "$CALLS/codex-silent" ]] || echo "Verdict: correct" > "$out"\n'
+    + '[[ -z ${out:-} || ! -f "$CALLS/codex-stale" ]] || touch -t 200001010000 "$out"\n'
     + 'echo transcript\nexit "$(cat "$CALLS/codex-status" 2> /dev/null || echo 0)"\n',
 }
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
@@ -710,31 +713,32 @@ class OrchestratorToolsTest(unittest.TestCase):
         )
         self.assertEqual("invariants ['INV-6']\n", result.stdout)
 
+    def sweep(self, items):
+        return self.write("sweep.json", json.dumps({"pr": 9, "items": [{**i, "disposition": ""} for i in items]}))
+
+    def fill_sweep(self, *args, code=0):
+        script = str(self.repo / "scripts/orchestrator/fill_sweep.py")
+        result = subprocess.run(
+            [sys.executable, "-I", script, *map(str, args)], capture_output=True, text=True, check=False
+        )
+        self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+        return result.stdout
+
     def test_fill_sweep_refuses_a_not_applicable_without_evidence(self):
         url = "https://github.test/pull/9"
-        items = [
-            {"source": "review_comment", "bot": True, "url": f"{url}#discussion_r11", "body": "P2", "level": "P2"},
-            {
-                "source": "issue_comment",
-                "bot": True,
-                "url": f"{url}#issuecomment-12",
-                "body": "Summary",
-                "level": "info",
-            },
-        ]
-        sweep = self.write("sweep.json", json.dumps({"pr": 9, "items": [{**i, "disposition": ""} for i in items]}))
+        sweep = self.sweep(
+            [
+                {"source": "review_comment", "bot": True, "url": f"{url}#discussion_r11", "body": "P2", "level": "P2"},
+                {"source": "issue_comment", "bot": True, "url": f"{url}#issuecomment-12", "body": "Summary"},
+            ]
+        )
         before = sweep.read_text()
 
         def fill(reply, code):
-            comments = self.write(
-                "comments.json", json.dumps([{"user": {"login": "o"}, "in_reply_to_id": 11, "body": reply}])
+            reply = {"id": 21, "user": {"login": "o"}, "in_reply_to_id": 11, "body": reply}
+            return self.fill_sweep(
+                sweep, self.write("c.json", json.dumps([reply])), "--orchestrator-login", "o", code=code
             )
-            script = str(self.repo / "scripts/orchestrator/fill_sweep.py")
-            result = subprocess.run(
-                [sys.executable, "-I", script, sweep, comments], capture_output=True, text=True, check=False
-            )
-            self.assertEqual(code, result.returncode, result.stdout + result.stderr)
-            return result.stdout
 
         self.assertIn(
             "GAP discussion_r11 review_comment P2 not-applicable:the line is gone",
@@ -755,21 +759,123 @@ class OrchestratorToolsTest(unittest.TestCase):
         url = "https://github.test/pull/9/checks"
         levels = [("annotation", lv) for lv in ("notice", "warning", "failure")]
         levels += [("status", lv) for lv in ("success", "failure", "error", "pending")]
-        items = [{"source": s, "bot": True, "url": f"{url}#{s}-{lv}", "body": lv, "level": lv} for s, lv in levels]
-        sweep = self.write("sweep.json", json.dumps({"pr": 9, "items": [{**i, "disposition": ""} for i in items]}))
-        before = sweep.read_text()
-        comments = self.write("comments.json", "[]")
-        script = str(self.repo / "scripts/orchestrator/fill_sweep.py")
-        result = subprocess.run(
-            [sys.executable, "-I", script, sweep, comments], capture_output=True, text=True, check=False
+        sweep = self.sweep(
+            [{"source": s, "bot": True, "url": f"{url}#{s}-{lv}", "body": lv, "level": lv} for s, lv in levels]
         )
-        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        before = sweep.read_text()
+        out = self.fill_sweep(sweep, self.write("c.json", "[]"), "--orchestrator-login", "o", code=1)
         self.assertEqual(
             ["annotation-warning", "annotation-failure", "status-failure", "status-error", "status-pending"],
-            re.findall(r"^GAP (\S+)", result.stdout, re.MULTILINE),
+            re.findall(r"^GAP (\S+)", out, re.MULTILINE),
         )
-        self.assertIn("items 7 filled 2 gaps 5", result.stdout)
+        self.assertIn("items 7 filled 2 gaps 5", out)
         self.assertEqual(before, sweep.read_text())
+
+    def test_fill_sweep_ignores_a_disposition_reply_from_another_login(self):
+        # a05 item 7: only a reply by --orchestrator-login supplies a disposition, and only that login's
+        # "Disposition (orchestrator" comment takes the own-reply rule.
+        url = "https://github.test/pull/9"
+        own = {"source": "review_comment", "bot": False, "body": "Disposition (orchestrator): fixed"}
+        sweep = self.sweep(
+            [
+                {"source": "review_comment", "bot": True, "url": f"{url}#discussion_r11", "body": "P1", "level": "P1"},
+                {**own, "author": "mallory", "url": f"{url}#discussion_r22"},
+                {**own, "author": "orch", "url": f"{url}#discussion_r23"},
+            ]
+        )
+        before = sweep.read_text()
+
+        def comments(login):
+            reply = {"id": 21, "user": {"login": login}, "in_reply_to_id": 11, "body": "`fixed:abcdef1`"}
+            return self.write("c.json", json.dumps([reply]))
+
+        out = self.fill_sweep(sweep, comments("mallory"), "--orchestrator-login", "orch", code=1)
+        self.assertIn("ignored-reply 21 mallory\n", out)
+        self.assertEqual(["discussion_r11", "discussion_r22"], re.findall(r"^GAP (\S+)", out, re.MULTILINE))
+        self.assertEqual(before, sweep.read_text())
+        # The option's grammar: absent, without a value, malformed, or given twice is exit 2 before any write;
+        # the last row repeats it where the comments path belongs, so the positional count alone would pass.
+        c = comments("orch")
+        for args in (
+            (c,),
+            (c, "--orchestrator-login"),
+            (c, "--orchestrator-login", "has space"),
+            (c, "--orchestrator-login", "x" * 40),
+            (c, "--orchestrator-login", "o/r"),
+            (c, "--orchestrator-login", "orch", "--orchestrator-login", "orch"),
+            ("--orchestrator-login", "orch", "--orchestrator-login", "orch"),
+        ):
+            with self.subTest(args=args):
+                self.assertEqual("", self.fill_sweep(sweep, *args, code=2))
+                self.assertEqual(before, sweep.read_text())
+        out = self.fill_sweep(sweep, comments("orch"), "--orchestrator-login", "orch", code=1)
+        self.assertEqual(["discussion_r22"], re.findall(r"^GAP (\S+)", out, re.MULTILINE))
+        self.fill_sweep(
+            sweep, comments("orch"), self.write("x.tsv", "22\tfixed:abcdef2\n"), "--orchestrator-login", "orch"
+        )
+        dispositions = [i["disposition"] for i in json.loads(sweep.read_text())["items"]]
+        self.assertEqual(["fixed:abcdef1", "fixed:abcdef2"], dispositions[:2])
+        self.assertTrue(dispositions[2].startswith("not-applicable:the orchestrator disposition reply"), dispositions)
+
+    def test_fill_sweep_leaves_a_badged_review_body_a_gap(self):
+        # a05 item 8: a P0 to P3 badge in the Bot's image form makes a body a finding; a bare P0 is not a badge.
+        url = "https://github.test/pull/9"
+        sweep = self.sweep(
+            [
+                {"source": "review", "url": f"{url}#pullrequestreview-31", "body": "![P1 Badge](https://b.test/p1) x"},
+                {"source": "review", "url": f"{url}#pullrequestreview-32", "body": "x"},
+                {
+                    "source": "issue_comment",
+                    "url": f"{url}#issuecomment-33",
+                    "body": '{"blockingSeverityThreshold":"P0"}',
+                },
+                {"source": "annotation", "url": f"{url}#annotation-34", "body": "![P3 Badge](x)", "level": "notice"},
+            ]
+        )
+        comments = self.write("c.json", "[]")
+        out = self.fill_sweep(sweep, comments, "--orchestrator-login", "o", code=1)
+        self.assertEqual(["pullrequestreview-31", "annotation-34"], re.findall(r"^GAP (\S+)", out, re.MULTILINE))
+        extra = self.write("x.tsv", "pullrequestreview-31\tfixed:abcdef1\nannotation-34\tfixed:abcdef2\n")
+        self.fill_sweep(sweep, comments, extra, "--orchestrator-login", "o")
+        self.assertEqual(
+            [
+                "fixed:abcdef1",
+                "not-applicable:review object without a finding",
+                "not-applicable:bot summary or onboarding comment, no finding",
+                "fixed:abcdef2",
+            ],
+            [i["disposition"].split("; evidence=")[0] for i in json.loads(sweep.read_text())["items"]],
+        )
+
+    # orch-audit.sh
+
+    def test_orch_audit_refuses_a_run_that_leaves_no_fresh_receipt(self):
+        # a05 item 9: an earlier receipt of the audited head, here and tracked on main (so in the review
+        # checkout too), never stands in for a run that wrote no new one.
+        self.write("scripts/validate-agent-assets.py", "")
+        self.origin("scripts/validate-agent-assets.py")
+        pr = self.temp / "pr"
+        self.git("worktree", "add", "-q", "-b", "pr", str(pr), "main")
+        self.git("commit", "-q", "--allow-empty", "-m", "change", cwd=pr)
+        receipt = f".orchestration/validation/t-a01-audit-{self.git('rev-parse', 'HEAD', cwd=pr)[:7]}.md.last.md"
+        self.write(receipt, "Verdict: correct\n")
+        self.git("add", "--", receipt)
+        self.git("commit", "-q", "-m", "earlier audit")
+        self.git("push", "-q", "origin", "main")
+        self.git("fetch", "-q", "origin")
+        review = self.repo / ".claude/worktrees/orchestrator-review"
+        self.git("worktree", "add", "-q", "--detach", str(review), "origin/main")
+        (self.calls / "uv-output").write_text("")
+        for mode in ("codex-silent", "codex-stale"):
+            with self.subTest(mode=mode):
+                (self.calls / mode).write_text("")
+                result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, code=3)
+                (self.calls / mode).unlink()
+                self.assertIn("wrote no new", result.stderr)
+                self.assertNotIn("Verdict", result.stdout)
+                self.assertEqual("", self.git("status", "--porcelain", cwd=review))
+        out = self.run_tool("orch-audit.sh", "t-a01", pr, 9).stdout
+        self.assertTrue(out.endswith(": Verdict: correct\n"), out)
 
 
 if __name__ == "__main__":

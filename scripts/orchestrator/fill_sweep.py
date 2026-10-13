@@ -1,11 +1,11 @@
-"""fill_sweep.py <sweep.json> <pr-comments.json> [extra.tsv]: fill every sweep item's disposition (plan 007 T718).
+"""fill_sweep.py <sweep.json> <pr-comments.json> [extra.tsv] --orchestrator-login <login>: fill the dispositions.
 
-A Bot thread takes the disposition of the orchestrator's latest reply in it (`fixed:<sha>` or
-`not-applicable:<reason>; evidence=<command>` in backticks); extra.tsv (`id<TAB>disposition`) overrides or
-adds; other items get the fixed rules below, each with a jq command that shows the item. An annotation or a
-status gets its rule only at its NEUTRAL level, so a warning, a failure or a pending status is a gap. A not-applicable
-without the gate's grammar (one `; evidence=` between a non-empty reason and command) is never emitted but
-listed as a gap. The sweep JSON is rewritten only when every item has a disposition; otherwise exit 1.
+A Bot thread takes the disposition of the latest reply in it by <login> (`fixed:<sha>` or `not-applicable:<reason>;
+evidence=<command>` in backticks); a reply by another login is printed as ignored-reply. extra.tsv
+(`id<TAB>disposition`) overrides or adds; other items get the fixed rules below, each with a jq command that shows
+the item, except an annotation or a status off its NEUTRAL level and any item whose body has a P0 to P3 BADGE. A
+not-applicable without the gate's grammar (one `; evidence=` between a non-empty reason and command) is never
+emitted but listed as a gap. The sweep JSON is rewritten only when every item has a disposition; otherwise exit 1.
 """
 
 import collections
@@ -25,6 +25,8 @@ RULES = {
     "status": "CI status, no finding",
 }
 NEUTRAL = {"annotation": "notice", "status": "success"}
+BADGE = re.compile(r"!\[P[0-3] Badge\]\(")  # the Bot's image form; a bare P0 in hidden metadata is not one
+FLAG = "--orchestrator-login"
 
 
 def valid(disposition):
@@ -37,27 +39,32 @@ def valid(disposition):
 
 
 def main(argv):
-    if len(argv) not in (2, 3):
-        sys.exit(__doc__.splitlines()[0])
+    at = argv.index(FLAG) if FLAG in argv else len(argv)
+    login, argv = "".join(argv[at + 1 : at + 2]), argv[:at] + argv[at + 2 :]
+    if len(argv) not in (2, 3) or FLAG in argv or not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login):
+        print(__doc__.splitlines()[0], file=sys.stderr)
+        sys.exit(2)
     sweep_path = argv[0]
     lines = Path(argv[2]).read_text().splitlines() if len(argv) == 3 else []
     extra = dict(line.split("\t")[:2] for line in lines if line.strip() and not line.startswith("#"))
     sweep = json.loads(Path(sweep_path).read_text())
     reply = {}
     for c in json.loads(Path(argv[1]).read_text()):
-        bot = c["user"]["login"] == "chatgpt-codex-connector[bot]"
-        if not bot and c.get("in_reply_to_id") and (m := REPLY.search(c["body"])):
+        if c.get("in_reply_to_id") and c["user"]["login"] != login:
+            print("ignored-reply", c["id"], c["user"]["login"])
+        elif c.get("in_reply_to_id") and (m := REPLY.search(c["body"])):
             reply[str(c["in_reply_to_id"])] = m.group(1)  # the latest reply wins
     gaps = []
     for item in sweep["items"]:
         key = (item.get("url") or "").rsplit("#", 1)[-1]
         cid, source, body = key.replace("discussion_r", ""), item["source"], item.get("body") or ""
-        if source == "review_comment" and not item.get("bot") and body.startswith("Disposition (orchestrator"):
+        if source == "review_comment" and item.get("author") == login and body.startswith("Disposition (orchestrator"):
             source = "own_reply"
         elif source == "review" and "Codex Review" in body:
             source = "codex_review"
         show = f"{EVIDENCE}jq '.items[] | select(.url == \"{item.get('url')}\")' {sweep_path}"
-        rule = RULES.get(source) if NEUTRAL.get(source, item.get("level")) == item.get("level") else None
+        level = item.get("level")
+        rule = None if NEUTRAL.get(source, level) != level or BADGE.search(body) else RULES.get(source)
         d = extra.get(cid) or (
             reply.get(cid) if source == "review_comment" else rule and f"not-applicable:{rule}{show}"
         )
@@ -68,10 +75,8 @@ def main(argv):
     print("items", len(sweep["items"]), "filled", len(sweep["items"]) - len(gaps), "gaps", len(gaps))
     for gap in gaps:
         print("GAP", *gap)
-    print(
-        "dispositions",
-        collections.Counter(i["disposition"].split(":")[0] for i in sweep["items"] if i.get("disposition")),
-    )
+    counts = collections.Counter(i["disposition"].split(":")[0] for i in sweep["items"] if i.get("disposition"))
+    print("dispositions", counts)
     if gaps:
         sys.exit(1)
     Path(sweep_path).write_text(json.dumps(sweep, indent=2, ensure_ascii=False) + "\n")

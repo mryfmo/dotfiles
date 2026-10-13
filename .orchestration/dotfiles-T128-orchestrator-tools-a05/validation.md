@@ -177,3 +177,45 @@ $ git checkout -- scripts/orchestrator/orch-audit.sh
 At `7b574d32` both modes exit 0 and print the earlier verdict: the audit's P1 at `orch-audit.sh:62` to 72.
 
 The full `tests/unit` discover is not rerun here. The seat sandbox fails eight untouched modules on commit signing (a02's validation, its revise-round section), and CI runs the discover on the pushed head.
+
+## 7. Revise round on `8576645c` (`5582fa3c`)
+
+Sections 5 and 6 are in the main-checkout copy only. The task copy still hashes to `eaac8e4b…`.
+
+```text
+$ git log --oneline -3
+5582fa3c fix(regime-counters): tokenize history bodies on whitespace runs as dispatch.sh does
+8576645c Merge branch 'main' into tools/orchestrator-scripts-2
+1089ed24 chore(orchestration): dotfiles-T128-orchestrator-tools-a05 task copy and evidence
+$ git merge-base --is-ancestor 8576645c HEAD && echo "8576645c (the update-branch merge) is the base"
+8576645c (the update-branch merge) is the base
+$ git diff --stat 8576645c HEAD
+ scripts/regime-counters.sh         |  4 ++--
+ tests/unit/test_regime_counters.py | 14 ++++++++++++++
+ 2 files changed, 16 insertions(+), 2 deletions(-)
+$ shasum -a 256 .orchestration/dotfiles-T128-orchestrator-tools-a05/task.md
+eaac8e4bd03cda154273097736944b3762581f872d5f5fbcdca67650b43236ea  .orchestration/dotfiles-T128-orchestrator-tools-a05/task.md
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests.unit.test_regime_counters tests.unit.test_orchestrator_tools tests.unit.test_check_regime_boundary tests.unit.test_agmsg_orchestration_docs 2>&1 | tail -3
+Ran 114 tests in 31.988s
+
+OK
+$ shellcheck scripts/regime-counters.sh && echo shellcheck-clean
+shellcheck-clean
+$ (cd "$TMPDIR" && shfmt --indent 4 --space-redirects --diff <worktree>/scripts/regime-counters.sh) && echo shfmt-clean
+shfmt-clean
+$ ruff format --check tests/unit/test_regime_counters.py && ruff check tests/unit/test_regime_counters.py
+1 file already formatted
+All checks passed!
+$ git diff --numstat origin/main...HEAD | awk (files and added lines outside .orchestration)
+files 12 added-non-test 499 added-test 507
+```
+
+Mutation proofs. `mutate-a05r.py` (scratchpad) edits `scripts/regime-counters.sh`, runs `tests.unit.test_regime_counters.RegimeCountersTest.test_a_tab_separated_task_counts_as_an_amendment`, counts a kill only on an AssertionError, and restores the file with `git checkout --`. R1 is the code at `8576645c`, so it also shows the test fails against the audited head.
+
+```text
+R1 single-space split: KILLED rc=1 ["AssertionError: Tuples differ: ('3', '2', '1', '1') != ('1', '0', '0', '0')"]
+R2 no @tsv unescape: KILLED rc=1 ["AssertionError: Tuples differ: ('3', '2', '1', '1') != ('1', '0', '0', '0')"]
+R3 empty tokens kept: KILLED rc=1 ["AssertionError: Tuples differ: ('3', '2', '1', '1') != ('3', '2', '0', '1')"]
+R4 naive tab unescape: KILLED rc=1 ["AssertionError: Tuples differ: ('3', '2', '1', '1') != ('3', '2', '1', '2')"]
+restored: 0 OK
+```

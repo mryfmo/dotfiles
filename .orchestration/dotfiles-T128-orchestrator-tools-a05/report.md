@@ -59,3 +59,26 @@ The main-checkout copy lists every Bot thread with its disposition, read after t
 - Understand-Anything hook: did not fire. plan-mode-used: no.
 
 cost: n/a
+
+## Revise round on `8576645c` (`5582fa3c`)
+
+- The audit's P1 (`dispatch.sh:80` against `regime-counters.sh:115`): dispatch.sh accepts a tab or a whitespace run between tokens (`[[:blank:]]+` in its header check, `read -ra` for the tokens). The counters split each history body on one space, so such AGMSG-TASK, RESULT and PONG lines escaped the INV-6 counts.
+- The fix, `scripts/regime-counters.sh:115`, has two steps:
+  1. It undoes the escapes that `read_history`'s `jq @tsv` adds: `\t`, `\n`, `\r` and `\\`, in one left-to-right pass, so an escaped backslash before a `t` stays a backslash and a `t`. Without this step a tab read from the store arrives as the two characters `\t` and never splits.
+  2. It splits on runs of whitespace (`\s+`) and drops empty tokens, as `read -ra` does.
+
+  Line 9 of the description says so. `--list-tasks` uses the same `rows` definition.
+- The test is `tests/unit/test_regime_counters.py::RegimeCountersTest::test_a_tab_separated_task_counts_as_an_amendment`. It runs through the storage facade (`store()`), the path a live read takes, and expects tasks 3, amendments 2, results 1, questions 1. Its history holds:
+  - a TASK with a tab between the kind and `v1`;
+  - a TASK with two spaces and a tab;
+  - a RESULT with a leading tab;
+  - a PONG with two tabs and a trailing tab;
+  - a PONG whose `\tstatus=question` is a backslash and a `t`, not a tab.
+- Mutation proofs (validation §7): four mutants, all killed:
+  - the single-space split, which is the code at `8576645c`;
+  - no unescape;
+  - empty tokens kept;
+  - an unescape of `\t` alone.
+- Size, against the INV-2 caps: 499 added lines outside tests (cap 500), 507 under tests (cap 1000), and 12 files outside `.orchestration` (cap 15). The fix edits two existing lines in place.
+- The three P2 (the fill_sweep URL key, the record, the report claim): no change, per the ACCEPTANCE.
+- Seen, not changed: `scripts/agent-stop-gate.sh:277` also splits each history body on one space (`split($3, w, " ")`). It is not in allowed_files and it is a Claude-boundary hook, so routing it is the orchestrator's call.

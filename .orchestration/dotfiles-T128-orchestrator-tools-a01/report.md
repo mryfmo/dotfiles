@@ -109,3 +109,14 @@ On head `374fc171` (validation §13): Bot review 5498425049 found two P1s and a 
 | 4254399800 (P1, `dispatch.sh:87`) | `design=` with `design_file=` let `_file` win and bind a different artifact | `fixed:b80b03ee`: a line naming the file both ways is refused, exit 1 naming the field; a new case in `test_dispatch_refuses_malformed_lines` (mutant D11) |
 
 Results (§13): 9 tests OK; the counters, boundary and docs modules 77 OK; shfmt, shellcheck and ruff clean; 26 mutants, 26 failures. Size: 6 files outside `.orchestration/`; added lines outside and under `tests/`: 295 and 310 (caps 500 and 1000).
+
+## Amendment 1, fix round 2 (`77e75595`)
+
+On head `e707c764` (validation §14): every `test` job passed, so the shfmt fix of the last round held. Bot review 5498546256 found two P1s:
+
+| Thread | Finding | Disposition |
+|---|---|---|
+| 4254494989 (P1, `dispatch.sh:72`) | `value_of` took the first of a repeated key, so `task_file=safe.md task_file=other.md task_sha256=<hash of safe.md>` passed with the second path never hashed | `fixed:77e75595`: a repeated `<name>_sha256=`, `<name>_file=` or `<name>=` key is refused, naming the key; a new case in `test_dispatch_refuses_malformed_lines` (mutant D14) |
+| 4254494999 (P1, task.md:21) | amendment 1 made `dispatch.sh` read and rewrite a caller-given acceptance record and parse bus output, and no threat row covers that path | not fixable by the worker: it is the task's threat table (task text, an amendment). Proposed row: control "dispatch.sh reads a caller-given acceptance record, parses the team history's output, and rewrites the record's JSON block after the send", disposition `closed: tests/unit/test_orchestrator_tools.py::test_dispatch_records_the_sent_line_with_its_read_marker`. That test covers the pre-send refusal of a malformed record, the prose kept byte for byte, the team-wide read, and only a row this send created being recorded; the selector exists in this head |
+
+Results (§14): 9 tests OK; shfmt, shellcheck and ruff clean; 27 mutants, 27 failures. Size: added lines outside and under `tests/`: 311 and 316 (caps 500 and 1000).

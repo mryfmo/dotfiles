@@ -440,3 +440,84 @@ $ git diff --numstat origin/main...HEAD -- . ":!.orchestration"
 $ git log --oneline 374fc171..HEAD
 b80b03ee fix(orchestrator): read the dispatch marker team-wide, record only this send's row, refuse a doubly named file
 ```
+
+## 14. Amendment 1, fix round 2: the Bot on `e707c764`
+
+Bot review 5498546256 of `e707c764` (03:45:31Z): two P1s.
+
+```text
+$ gh api --paginate …/pulls/336/comments --jq '.[]|select(.in_reply_to_id == null and .original_commit_id=="e707c764…")|[.id,.path,(.original_line|tostring),<badge>]|@tsv'
+4254494989	scripts/orchestrator/dispatch.sh	72	P1
+4254494999	.orchestration/dotfiles-T128-orchestrator-tools-a01/task.md	21	P1
+$ gh api …/commits/e707c764…/check-runs --jq '.check_runs[]|[.name,.status,(.conclusion//"-")]|@tsv' | sort   # the previous head, superseded by this push
+GitGuardian Security Checks	completed	success
+private-bootstrap (macos-14, client)	completed	success
+private-bootstrap (ubuntu-24.04, client)	completed	success
+private-bootstrap (ubuntu-24.04, server)	completed	success
+public-bootstrap (macos-14, client)	completed	success
+public-bootstrap (ubuntu-24.04, client)	in_progress	-
+public-bootstrap (ubuntu-24.04, server)	completed	success
+test (macos-14, client)	completed	success
+test (ubuntu-24.04, client)	completed	success
+test (ubuntu-24.04, server)	completed	success
+test (ubuntu-26.04, client)	completed	success
+validate	completed	success
+$ uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v
+test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event ... ok
+test_bus_read_refuses_a_read_that_reaches_its_limit ... ok
+test_dispatch_passes_the_line_byte_identical ... ok
+test_dispatch_records_the_sent_line_with_its_read_marker ... ok
+test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file ... ok
+test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line ... ok
+test_dispatch_refuses_malformed_lines ... ok
+test_three_repeat_prints_the_records_search_line ... ok
+test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 2.388s
+
+OK
+$ shfmt -i 4 -sr -d scripts/orchestrator/*.sh scripts/regime-counters.sh; echo "shfmt exit $?"
+shfmt exit 0
+$ shellcheck -x scripts/orchestrator/*.sh scripts/regime-counters.sh; echo "shellcheck exit $?"
+shellcheck exit 0
+$ ruff format --config ruff.toml --check tests/unit/test_orchestrator_tools.py
+1 file already formatted
+$ uv run --no-project python "$TMPDIR/mutate-am1.py" "$PWD"; git status --short
+mutant D1 mismatch check off: test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file -> rc=1 FAILED (failures=1)
+mutant D2 line word-split: test_dispatch_passes_the_line_byte_identical -> rc=1 FAILED (failures=1)
+mutant D3 multi-line check off: test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line -> rc=1 FAILED (failures=2)
+mutant D4 the $( ) read put back: test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line -> rc=1 FAILED (failures=1)
+mutant D5 TASK binding check off: test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line -> rc=1 FAILED (failures=4)
+mutant D6 record not checked before the send: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D7 read marker inverted: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D8 prose dropped: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D9 duplicate keys accepted: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D10 caller root: test_dispatch_passes_the_line_byte_identical -> rc=1 FAILED (failures=1)
+mutant D11 doubly named file accepted: test_dispatch_refuses_malformed_lines -> rc=1 FAILED (failures=1)
+mutant D12 history read with the agent: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D13 no before-count: test_dispatch_records_the_sent_line_with_its_read_marker -> rc=1 FAILED (failures=1)
+mutant D14 repeated keys accepted: test_dispatch_refuses_malformed_lines -> rc=1 FAILED (failures=1)
+mutant T1 slug check loosened: test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout -> rc=1 FAILED (failures=2)
+mutant T2 records match unanchored: test_three_repeat_prints_the_records_search_line -> rc=1 FAILED (failures=1)
+mutant T3 class not one argument: test_three_repeat_prints_the_records_search_line -> rc=1 FAILED (failures=1)
+mutant T4 caller root: test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout -> rc=1 FAILED (failures=1)
+mutant T5 relative CLI path: test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout -> rc=1 FAILED (failures=1)
+mutant B1 revise does not reopen: test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event -> rc=1 FAILED (failures=1)
+mutant B2 withdrawn does not close: test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event -> rc=1 FAILED (failures=1)
+mutant B3 silence at sixty minutes: test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event -> rc=1 FAILED (failures=1)
+mutant B4 limit guard off: test_bus_read_refuses_a_read_that_reaches_its_limit -> rc=1 FAILED (failures=1)
+mutant B5 the --limit flag form: test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event -> rc=1 FAILED (failures=1)
+mutant R1 record mode off: test_s1_reads_the_ledger_classes_of_the_acceptance_record -> rc=1 FAILED (failures=1)
+mutant R2 title not JSON-quoted: test_s1_quotes_a_title_with_shell_metacharacters -> rc=1 FAILED (failures=1)
+mutant R3 slug check off: test_s1_reads_the_ledger_classes_of_the_acceptance_record -> rc=1 FAILED (failures=1)
+$ git diff --numstat origin/main...HEAD -- . ":!.orchestration"
+57	0	scripts/orchestrator/bus-read.sh
+181	0	scripts/orchestrator/dispatch.sh
+44	0	scripts/orchestrator/three-repeat.sh
+29	9	scripts/regime-counters.sh
+284	0	tests/unit/test_orchestrator_tools.py
+32	1	tests/unit/test_regime_counters.py
+$ git log --oneline e707c764..HEAD
+77e75595 fix(orchestrator): refuse a dispatch line that repeats a hash or source key
+```

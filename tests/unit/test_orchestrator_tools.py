@@ -103,6 +103,8 @@ class OrchestratorToolsTest(unittest.TestCase):
     def test_dispatch_refuses_malformed_lines(self):
         for line, code, needle in (
             ("AGMSG-TASK v1 task_id=t\nAGMSG-TASK v1 task_id=u", 2, "more than one line"),
+            # Thread 4254107304: a blank line after the message is a second line, not a trailing newline.
+            ("AGMSG-TASK v1 task_id=t\n", 2, "more than one line"),
             ("hello task_id=t", 2, "not an AGMSG-TASK"),
             (f"AGMSG-TASK v1 task_id=t amended_task_sha256={sha('x')}", 1, "amended_task_sha256 has no"),
             ("AGMSG-ACCEPTANCE v1 task_id=t design=d.md design_sha256=abc", 1, "not 64 lowercase hex"),

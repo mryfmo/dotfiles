@@ -30,7 +30,8 @@ usage() {
 (($# == 5)) || usage
 team=$1 from=$2 to=$3 pane=$4 file=$5
 [[ -f ${file} ]] || usage
-line="$(< "${file}")" # $( ) drops the trailing newline
+# The sentinel keeps every trailing newline, which $( ) alone would drop (thread 4254107304).
+line="$(cat -- "${file}" && printf x)" && line=${line%x} && line=${line%$'\n'}
 [[ ${line} != *$'\n'* ]] || {
     echo "dispatch: ${file} holds more than one line" >&2
     exit 2

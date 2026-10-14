@@ -407,6 +407,13 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
                 "command": hooks["format_edited_files_hook"],
             }
         )
+    if hooks.get("project_map_reload_hook"):
+        post_hooks.append(
+            {
+                "type": "command",
+                "command": hooks["project_map_reload_hook"],
+            }
+        )
     profile_claude = interactive_profile(manifest)["claude"]
     permission_request = hooks.get("permission_request")
     settings: dict[str, Any] = {

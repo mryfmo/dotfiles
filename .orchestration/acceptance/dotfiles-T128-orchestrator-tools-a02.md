@@ -53,3 +53,11 @@ $ uv run --no-project .claude/hooks/contextdb_cli.py memory search --limit 1000 
 
 (The three `input-validation` rows: 4260535901 and the two local P1 of 9ad0c150, all fixed in 3544d195; the matching record is M-20261012-32 / C-31, this lineage's own; the plan 020 path applies: no S7 ask, the rule's stop.)
 - 16:52Z a05 pair-confirmed at `eaac8e4bd03cda154273097736944b3762581f872d5f5fbcdca67650b43236ea` (seat round 1 RESULT bus 957; Codex on the same hash): reset record `dotfiles-T128-orchestrator-tools-a02-design-reset.md` written (anchor 957); ACCEPTANCE accepted sent to the seat. PR #346 continues under a05 from 7b574d32. Boundary (13) follows, then the a05 line to a003.
+local:8576645:1	advisory-p2
+local:8576645:2	advisory-p2
+audit:8576645:2	disposition-key
+audit:8576645:2	disposition-key
+local:046901b:1	advisory-after-last-round
+local:046901b:2	advisory-after-last-round
+audit:046901b:1	trust-boundary-dispositions
+audit:046901b:2	disposition-key

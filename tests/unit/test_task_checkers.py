@@ -1,7 +1,7 @@
 """Run scripts/orchestrator/task-consistency-check.py and ledger-check.py as subprocesses (plan 007 T704).
 
-Each checker runs under `uv run --no-project --with pyyaml python -I` with a stub `git` first on PATH that answers
-only the checks' two probes: `cat-file -e` succeeds when STUB_CAT_FILE is `present`, `grep -q` when STUB_GREP is
+Each checker runs under `uv run --no-project --with pyyaml python -I` with a stub `git` first on PATH (set inside
+`uv run`, which prepends its own directories) that answers only the checks' two probes: `cat-file -e` succeeds when STUB_CAT_FILE is `present`, `grep -q` when STUB_GREP is
 `found`; the subprocess pattern of tests/unit/test_orchestrator_tools.py. tests/fixtures/lessons/ holds copies from
 origin/main: the front matter of the ten historical task files and the pre-fix record triple of process-rules-a05.
 """
@@ -35,13 +35,15 @@ class TaskCheckersTest(unittest.TestCase):
         (self.temp / "bin/git").chmod(0o755)
 
     def run_check(self, script, *args, code, cat_file="present", grep="found"):
-        env = {**os.environ, "PATH": f"{self.temp / 'bin'}{os.pathsep}{os.environ['PATH']}"}
+        # uv run puts its environment's and its base interpreter's bin directories before PATH (on the macOS runner
+        # Homebrew's, which holds a git), so the stub goes first inside uv run, right before python starts.
+        stub_first = ["sh", "-c", 'PATH="$STUB_BIN:$PATH" exec python -I "$@"', "sh"]
         result = subprocess.run(
-            [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", "python", "-I"]
+            [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", *stub_first]
             + [str(ROOT / "scripts/orchestrator" / script), *map(str, args)],
             capture_output=True,
             text=True,
-            env={**env, "STUB_CAT_FILE": cat_file, "STUB_GREP": grep},
+            env={**os.environ, "STUB_BIN": str(self.temp / "bin"), "STUB_CAT_FILE": cat_file, "STUB_GREP": grep},
             timeout=120,
             check=False,
         )

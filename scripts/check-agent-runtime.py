@@ -824,6 +824,13 @@ def check() -> list[str]:
             "Claude format-edited-files hook",
         )
     )
+    failures.extend(
+        check_executable_hook(
+            SOURCE_ROOT / "dot_claude/hooks/executable_project-map-reload.sh",
+            HOME / ".claude/hooks/project-map-reload.sh",
+            "Claude project-map-reload hook",
+        )
+    )
     manifest_path = HOME / ".agents/.installed-manifest.json"
     manifest_error = installed_manifest_error(manifest_path)
     if manifest_error is not None:

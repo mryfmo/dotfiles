@@ -98,6 +98,7 @@ def sample_manifest() -> dict:
             "hooks": {
                 "enforce_uv_hook": "~/.claude/hooks/enforce-uv.sh",
                 "format_edited_files_hook": "~/.claude/hooks/format-edited-files.py",
+                "project_map_reload_hook": "~/.claude/hooks/project-map-reload.sh",
                 "permission_request": {
                     "command": "permgate claude",
                     "timeout": 10,
@@ -1480,15 +1481,95 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             [
                 {
                     "matcher": "Write|Edit|MultiEdit",
-                    "hooks": [{"type": "command", "command": "~/.claude/hooks/format-edited-files.py"}],
+                    "hooks": [
+                        {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"},
+                        {"type": "command", "command": "~/.claude/hooks/project-map-reload.sh"},
+                    ],
                 }
             ],
         )
 
         manifest = sample_manifest()
         del manifest["claude"]["hooks"]["format_edited_files_hook"]
+        del manifest["claude"]["hooks"]["project_map_reload_hook"]
         settings = self.module.json.loads(self.module.render_claude_settings(manifest))
         self.assertEqual(settings["hooks"]["PostToolUse"], [{"matcher": "Write|Edit|MultiEdit", "hooks": []}])
+
+    def test_project_map_reload_hook_renders_into_post_tool_use(self) -> None:
+        manifest = sample_manifest()
+        settings = json.loads(self.module.render_claude_settings(manifest))
+        self.assertEqual(
+            settings["hooks"]["PostToolUse"],
+            [
+                {
+                    "matcher": "Write|Edit|MultiEdit",
+                    "hooks": [
+                        {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"},
+                        {"type": "command", "command": "~/.claude/hooks/project-map-reload.sh"},
+                    ],
+                }
+            ],
+        )
+        del manifest["claude"]["hooks"]["project_map_reload_hook"]
+        settings = json.loads(self.module.render_claude_settings(manifest))
+        self.assertEqual(
+            settings["hooks"]["PostToolUse"],
+            [
+                {
+                    "matcher": "Write|Edit|MultiEdit",
+                    "hooks": [
+                        {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"},
+                    ],
+                }
+            ],
+        )
+
+    def test_project_map_reload_hook_acts_only_on_the_map_and_never_fails(self) -> None:
+        hook = ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh"
+        reload_script = 'location.pathname.endsWith("/.project-map/index.html") && location.reload()'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            calls = root / "calls"
+            browser = root / "terminal-browser"
+            browser.write_text(
+                '#!/bin/bash\nprintf \'%s\\n\' "$@" >> "$CALLS"\n'
+                'if [[ "$BROWSER_FAIL" == 1 ]]; then echo "no browser" >&2; exit 1; fi\n'
+            )
+            browser.chmod(0o755)
+            jq = shutil.which("jq")
+            self.assertIsNotNone(jq)
+            (root / "jq").symlink_to(jq)
+            map_path = str(root / ".project-map/index.html")
+            cases = [
+                ("Write", {"file_path": map_path}, False, True, True),
+                ("Edit", {"file_path": map_path}, False, True, True),
+                ("MultiEdit", {"file_path": map_path}, False, True, True),
+                ("Write", {"file_path": str(root / "other.html")}, False, True, False),
+                ("Write", {}, False, True, False),
+                ("Write", {"file_path": map_path}, True, True, True),
+                ("Write", {"file_path": map_path}, False, False, False),
+            ]
+            for tool, tool_input, fail, tools_available, called in cases:
+                with self.subTest(tool=tool, tool_input=tool_input, fail=fail, tools_available=tools_available):
+                    calls.unlink(missing_ok=True)
+                    result = subprocess.run(
+                        ["/bin/bash", str(hook)],
+                        input=json.dumps({"tool_name": tool, "tool_input": tool_input}),
+                        text=True,
+                        capture_output=True,
+                        env={
+                            **os.environ,
+                            "PATH": str(root) if tools_available else "",
+                            "CALLS": str(calls),
+                            "BROWSER_FAIL": str(int(fail)),
+                        },
+                        check=False,
+                    )
+                    self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+                    self.assertEqual(
+                        calls.read_text().splitlines() if calls.exists() else [],
+                        ["action", "--", "eval", reload_script] if called else [],
+                    )
 
     def test_claude_settings_renders_session_start_hooks(self) -> None:
         manifest = sample_manifest()

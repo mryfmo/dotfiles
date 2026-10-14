@@ -34,7 +34,7 @@ The script keeps the input's behaviour, adds an shdoc header and a usage check (
 
 ### Two changes from the input
 
-1. **Per-page counts are summed.** With `--paginate`, gh applies `--jq` to each page, so a PR with more than one page of reviews, comments or commits printed one count per page into one field. That happens at 30 items, a count the Bot's threads plus the orchestrator's replies reach. The input as it is (mutant P1) breaks on the test's two pages of reviews. `count()` pipes the per-page counts through `awk` and sums them.
+1. **Per-page counts are summed.** With `--paginate`, gh applies `--jq` to each page, so a PR with more than one page of reviews, comments or commits printed one count per page into one field. That happens at 30 items, a count the Bot's threads plus the orchestrator's replies reach. A live call with pages of two prints `2 2 2` (validation §4). The input as it is (mutant P1) breaks on the test's two pages of reviews. `count()` pipes the per-page counts through `awk` and sums them.
 2. **The wall hours come from `jq` (`fromdate`) and `awk` (`%.1f`)**, where the input ran a `uv run --no-project python` one-liner. The two forms print the same on eight cases: whole hours, ties at .x5, zero and long spans (validation §5).
 
 The threat table's environment row names `uv run --no-project python` among the scripts' binaries. After these changes, they run only `gh`, `jq`, `awk`, `git`, `/usr/bin/grep`, `wc`, `tr`, `date` and `tail`.

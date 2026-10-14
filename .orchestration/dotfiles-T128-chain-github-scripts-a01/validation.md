@@ -116,6 +116,19 @@ scripts clean
 - **R1 and R2: the input's loop.** Its gh calls inherit the loop's stdin, and the stub reads stdin as the task's stub must. In the first case the reply for thread 101 therefore swallowed thread 202's line. The run reported `missing rows: 0` and exited 0, but thread 202 has no disposition, so it should have exited 3. Reading the threads on fd 3 closes that. The test's own check, that no logged call read anything on stdin, catches it too.
 - **P1 and P2: the input's counts.** With `--paginate`, gh applies `--jq` to each page. Two pages of reviews printed two counts into one field, and the line broke. pr-cost.sh sums the per-page counts.
 
+That gh prints one `--jq` result per page is gh's documented behaviour ("Each page is a separate JSON array or object", `gh api --help`). Two live calls on PR #350, outside the sandbox (sandbox record, calls 1 and 2), show it. The first uses the default page size; the second forces pages of two:
+
+```text
+$ gh api repos/mryfmo/dotfiles/pulls/350/comments --paginate --jq 'length'
+6
+rc=0
+$ gh api 'repos/mryfmo/dotfiles/pulls/350/comments?per_page=2' --paginate --jq 'length'
+2
+2
+2
+rc=0
+```
+
 ## 5. Wall hours: jq and awk against the input's Python
 
 pr-cost.sh computes the wall hours with `jq` (`fromdate`) and `awk` (`%.1f`), where the input ran a `uv run --no-project python` one-liner. The two agree on whole hours, ties at .x5, zero and long spans:

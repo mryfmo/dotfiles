@@ -522,7 +522,12 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         step = self.section(self.section(SKILL.read_text(), "## Orchestrator Playbook"), "\n6. ", "\n7. ")
         for token in (
             "Every dispatch (TASK, ACCEPTANCE, PING) is recorded in the current acceptance record under a "
-            "`dispatch:` key as the bus line with its read marker; a seat is reported as working only from such a "
+            "`dispatch:` key as the bus line with its read marker, "
+            # Row local:65a3d71:1 (the a04 record's owned section): dispatch.sh refuses a missing record, so the rule
+            # says who creates it and when.
+            "so the orchestrator creates that record, `.orchestration/acceptance/<task>.md`, before the task's first "
+            "dispatch (`scripts/orchestrator/dispatch.sh` refuses a record that does not exist or that names another "
+            "task); a seat is reported as working only from such a "
             # The local review of 7771082f: the merged bus-read.sh refuses a read at its limit; nothing reads all.
             "line, and after a context compaction the open TASK list is re-derived from a bus read that is refused "
             "when it reaches its limit (`bus-read.sh` exits when the history reaches `BUS_READ_LIMIT`; the "
@@ -629,11 +634,50 @@ class AgmsgRegimePatternTest(unittest.TestCase):
     def test_the_gate_reads_the_acceptance_record(self) -> None:
         # Plan 007 T703 item 6: the gate reads the record's ledger and `search:` line once gate-evidence-a02 lands.
         step = self.section(self.section(SKILL.read_text(), "## Orchestrator Playbook"), "\n10. ", "\n11. ")
-        self.assertIn(
-            "REVIEW_EVIDENCE=<receipt> ACCEPTANCE_EVIDENCE=<acceptance record> BASE=origin/main "
-            "PR_FEEDBACK_EVIDENCE=<json> make require-crit-review",
-            step,
+        # Row audit:71eb920:1 (the a04 record's owned section): the gate retired AUDIT_DISPOSITIONS and reads an
+        # incorrect audit's dispositions from the record's audit_findings, so step 10 no longer names the variable.
+        for token in (
+            "`AUDIT_EVIDENCE=<audit> AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> ACCEPTANCE_EVIDENCE=<acceptance record> "
+            "BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review`",
+            "with every audit finding dispositioned as the task-level audit bullet says: for an `incorrect` verdict "
+            "the record's JSON `audit_findings`, which the gate reads through `ACCEPTANCE_EVIDENCE` (it never reads "
+            "`AUDIT_DISPOSITIONS`, which is retired).",
+            "must be `correct`, or `incorrect` with an `audit_findings` entry in the acceptance record for each of its "
+            "findings.",
+        ):
+            with self.subTest(token=token[:40]):
+                self.assertIn(token, step)
+        for stale in ("[AUDIT_DISPOSITIONS=", "through `AUDIT_DISPOSITIONS`", "`incorrect` with `AUDIT_DISPOSITIONS`"):
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, step)
+
+    def test_an_incorrect_audit_is_dispositioned_in_audit_findings(self) -> None:
+        # Row audit:71eb920:1, amendment 1: the task-level audit bullet and AGENTS.md's gate sentence named the retired
+        # gate input (the audit-finding: prose the gate read through AUDIT_DISPOSITIONS); the gate reads audit_findings.
+        bullet = self.section(
+            self.invariants(), "\n  - The orchestrator dispositions every `[P0-P3]` finding", "\n  - "
         )
+        for token in (
+            "For an `incorrect` verdict the dispositions are the record's JSON `audit_findings`, the only form the gate "
+            "reads: one `{n, reason, evidence}` entry per finding, `n` the number as a string and `reason` at least 20 "
+            "characters, written with `scripts/orchestrator/acceptance-front-matter.py --audit-dispositions <tsv>`; an "
+            "entry never cites a fix, since a fix moves the head and needs its own audit.",
+            "A finding under `Verdict: correct` is dispositioned all the same, as an `audit-finding: <n> …` line in the "
+            "record's prose: `fixed:<sha>` with a fresh audit of that sha, otherwise `not-applicable:<reason of at "
+            "least 20 characters>`.",
+        ):
+            with self.subTest(token=token[:40]):
+                self.assertIn(token, bullet)
+        for stale in ("The gate enforces these lines only for an `incorrect` verdict", "or the gate skips it"):
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, bullet)
+        agents = (ROOT / "AGENTS.md").read_text()
+        self.assertIn(
+            "then the gate with `PR_FEEDBACK_EVIDENCE`, `AUDIT_EVIDENCE` and `ACCEPTANCE_EVIDENCE` (the record's "
+            "`audit_findings` disposition an `incorrect` verdict).",
+            agents,
+        )
+        self.assertNotIn("`AUDIT_DISPOSITIONS` for an `incorrect` verdict", agents)
 
 
 class AgmsgOrchestrationSingleSourceTest(unittest.TestCase):

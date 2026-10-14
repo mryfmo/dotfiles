@@ -1082,7 +1082,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         # Names only, so a failure prints no value.
         self.assertEqual(sorted(allowed | own), sorted(env))
         # PATH is one private directory of links to gh and git, not the caller's PATH.
-        self.assertNotIn(os.pathsep, env["PATH"])
+        self.assertEqual(1, len(env["PATH"].split(os.pathsep)))
         listed = (self.calls / "gate-python-bin").read_text().split()
         self.assertEqual([f"{env['PATH']}/gh", f"{env['PATH']}/git"], listed)
         expected = (self.env["HOME"], "1", "1")

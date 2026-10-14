@@ -77,7 +77,7 @@ class OrchGatePathTest(unittest.TestCase):
     def test_orch_gate_runs_the_gate_with_a_private_path_of_resolved_binaries(self):
         log = self.run_gate(0)
         private = self.gate_path()
-        self.assertNotIn(os.pathsep, private)
+        self.assertEqual(1, len(private.split(os.pathsep)))
         # Compare the intersection only, so a failure prints no caller PATH.
         self.assertEqual(set(), {private} & {str(self.t / "bin"), *os.environ["PATH"].split(os.pathsep)})
         links = dict(line.split(" ", 1) for line in (self.t / "calls/gate-path").read_text().splitlines())
@@ -102,7 +102,7 @@ class OrchGatePathTest(unittest.TestCase):
 
     def test_orch_gate_removes_the_private_bin_on_exit(self):
         self.run_gate(0)
-        self.assertEqual(self.t / "tmp", Path(self.gate_path()).parent)
+        self.assertTrue(Path(self.gate_path()).parent == self.t / "tmp")
         self.assertEqual([], os.listdir(self.t / "tmp"))
         self.stub("bin/mise", 'printf "%s\\n" "{t}/mise/shims/$2"\n')
         self.run_gate(2)

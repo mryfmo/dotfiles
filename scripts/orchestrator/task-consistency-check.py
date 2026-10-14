@@ -6,7 +6,7 @@ toplevel), prints `<file name>: OK` or `: FAIL` with one `  C<n> ...` line per f
 C1 task_id equals the file name.
 C2 allowed_files covers .orchestration/<task_id>/** and names no other task's .orchestration/<id>/ directory.
 C3 when reset_of is non-empty, a threat_table row names every reset_of id's task.md and the task's own.
-C4 every allowed_files entry (its path before any glob) is named by a threat_table row.
+C4 every allowed_files entry (its path before any glob) is named in a row's control, followed by its end, a space, / " ' ( ) , or a glob.
 C5 no residual binds a predecessor's hash ("names the <aNN> file's hash") instead of the task's own.
 C6 design_review.receipt is the design file's current design_review.receipt.
 C7 one row per non-path control name and per orchestrator effect name (the SKILL row unit).
@@ -65,7 +65,9 @@ def check(p, root):
         if not re.search(rf"(?:{re.escape(rid)}|-{rid.rsplit('-', 1)[-1]})/task\.md", rowtext):
             fails.append(f"C3 no threat_table row names {rid} task.md")
     for a in allowed:
-        if rows and a.split("*")[0].rstrip("/") not in rowtext:
+        # a row's control names the entry only at a path boundary: scripts/foo.py.bak does not name scripts/foo.py
+        named = re.compile(re.escape(a.split("*")[0].rstrip("/")) + r"(?=$|[ /\"'(),*?\[])")
+        if rows and not any(named.search(r.get("control") or "") for r in rows):
             fails.append(f"C4 allowed path has no threat_table row naming it: {a}")
     dr = fm.get("design_review") or {}
     if dr.get("design") and dr.get("receipt") and (design := root / dr["design"]).exists():

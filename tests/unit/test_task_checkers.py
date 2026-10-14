@@ -61,10 +61,11 @@ class TaskCheckersTest(unittest.TestCase):
                 found[name] = set()
         return found
 
-    def task(self, tid="t-a01", kind="code", body="", allowed=("scripts/x.py",), rows=(), name=None):
-        """A complete task file under self.temp: one row per allowed_files entry and per ROW_UNIT name."""
+    def task(self, tid="t-a01", kind="code", body="", allowed=("scripts/x.py",), rows=(), name=None, uncovered=()):
+        """A complete task file under self.temp: one row per allowed_files entry (but `uncovered`) and ROW_UNIT name."""
         allowed = [*allowed, f".orchestration/{tid}/**"]
         controls = [f"the PR adds {a}" for a in allowed] + ROW_UNIT.split("|")
+        allowed += uncovered
         table = [{"control": c, "disposition": "residual: a compensating control"} for c in controls] + list(rows)
         front = {"format": 2, "task_id": tid, "kind": kind, "allowed_files": allowed, "threat_table": table}
         front["design_review"] = {"design": "design.md", "receipt": "receipt.md"}
@@ -133,6 +134,30 @@ class TaskCheckersTest(unittest.TestCase):
         record.write_text("\n".join(rows[:3]) + "\n")
         gap = ["ledger rows 3; findings 4; gaps 1", "GAP audit:abcdef0:2"]
         self.assertEqual(gap, self.ledger(record, sweep, audit, code=1))
+
+    def test_ledger_check_counts_what_the_gate_counts(self):
+        # Amendment 2: a badged Codex Bot review body and a bulleted audit line are findings, as the gate counts them;
+        # an unbadged Bot review and another author's badged review are not.
+        review = {"source": "review", "author": "chatgpt-codex-connector[bot]", "body": "![P1 Badge](x) y"}
+        items = [{**review, "url": "https://github.test/pull/9#pullrequestreview-5510000001"}]
+        items += [{**review, "author": "o", "url": "#pullrequestreview-5510000002"}]
+        items += [{**review, "body": "no badge", "url": "#pullrequestreview-5510000003"}]
+        (sweep := self.temp / "sweep.json").write_text(json.dumps({"items": items}))
+        (audit := self.temp / "t-a01-audit-abcdef0.md.last.md").write_text("- [P1] high evidence x.py:1 one\n")
+        (record := self.temp / "record.md").write_text("---\n{}\n---\n")
+        gaps = ["ledger rows 0; findings 2; gaps 2", "GAP 5510000001", "GAP audit:abcdef0:1"]
+        self.assertEqual(gaps, self.ledger(record, sweep, audit, code=1))
+
+    def test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary(self):
+        # Amendment 2: the prefix counts when the control text goes on with its end, a space, a slash, a parenthesis,
+        # a quote, a comma or a glob character, and not when it goes on with more of a path.
+        for after in (".bak", "", " and its test", "/task.md", ") and more", '" and more', ", and more", "* and more"):
+            with self.subTest(after=after):
+                path = self.task(
+                    uncovered=("scripts/foo.py",), rows=[{"control": f"the PR adds scripts/foo.py{after}"}]
+                )
+                found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
+                self.assertEqual({"C4"} if after == ".bak" else set(), found)
 
 
 if __name__ == "__main__":

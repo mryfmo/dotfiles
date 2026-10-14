@@ -5,7 +5,7 @@
 #   Plan 007 T718, the parameterised form of the orchestrator's audit wrapper. The head is always `git -C
 #   <pr-worktree> rev-parse HEAD`. From the checkout this script lives in, never one at the audited head and
 #   only with its tracked, unchanged validator, it refuses a sweep JSON with an item lacking a disposition, runs
-#   the ledger check only when `--ledger-check` names a script tracked in this repository, then checks the clean
+#   the ledger check (ledger-check.py beside it, or the tracked script `--ledger-check` names), then checks the clean
 #   review worktree `.claude/worktrees/orchestrator-review` out at `origin/main`, copies the task's evidence and
 #   its lineage's records but this head's audit files in, removes those in both checkouts, and runs `codex
 #   --profile audit exec --sandbox read-only -c approval_policy=never -o <out>.last.md` with stdin closed and
@@ -15,7 +15,7 @@
 # @arg $1 string Task id.
 # @arg $2 path The PR's checkout (its HEAD is the audited head).
 # @arg $3 int PR number.
-# @option --ledger-check <script> A ledger check tracked in this repository (none until plan 007 T704).
+# @option --ledger-check <script> A ledger check tracked in this repository, run instead of ledger-check.py.
 # @exitcode 0 The audit is written; its verdict line is printed.
 # @exitcode 2 Usage error, or a refused precondition.
 # @exitcode 3 The sweep has gaps, the ledger check failed, or codex produced no fresh audit.
@@ -36,7 +36,7 @@ refuse() {
 if (($# != 3)) && [[ $# -ne 5 || $4 != --ledger-check ]]; then
     usage
 fi
-task=$1 pr=$3 check=${5:-}
+task=$1 pr=$3 check=${5:-$(cd -- "$(dirname -- "$0")" && pwd)/ledger-check.py}
 [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && ${pr} =~ ^[0-9]+$ ]] || usage
 head="$(git -C "$2" rev-parse HEAD)"
 root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -49,11 +49,9 @@ git diff --quiet HEAD -- scripts/validate-agent-assets.py || refuse "the validat
 [[ -z $(git -C "${review}" status --porcelain --untracked-files=all) ]] || refuse "the review worktree is not clean"
 base="$(git merge-base origin/main "${head}")"
 uv run --no-project python -I -c 'import json, sys; gaps = [i for i in json.load(open(sys.argv[1]))["items"] if not i.get("disposition")]; print("sweep gaps", len(gaps)); sys.exit(1 if gaps else 0)' "${v}/${task}-pr-feedback.json" || refuse "the sweep has gaps" 3
-if [[ -n ${check} ]]; then
-    [[ -n $(git ls-files -- "${check}") ]] || refuse "${check} is not a script tracked in this repository"
-    lineage=("${v}/${family}"-a0*-audit-*.md.last.md)
-    uv run --no-project python "${check}" ".orchestration/acceptance/${task}.md" "${v}/${task}-pr-feedback.json" ${lineage[@]+"${lineage[@]}"} || refuse "the ledger is incomplete" 3
-fi
+(($# == 3)) || [[ -n $(git ls-files -- "${check}") ]] || refuse "${check} is not a script tracked in this repository"
+lineage=("${v}/${family}"-a0*-audit-*.md.last.md)
+uv run --no-project python "${check}" ".orchestration/acceptance/${task}.md" "${v}/${task}-pr-feedback.json" ${lineage[@]+"${lineage[@]}"} || refuse "the ledger is incomplete" 3
 git -C "${review}" checkout -q --detach origin/main
 out="${v}/${task}-audit-${head:0:7}.md"
 for f in ".orchestration/tasks/${task}.md" ".orchestration/reports/${task}.md" "${v}/${task}.md" "${v}/${task}-pr-feedback.json" \

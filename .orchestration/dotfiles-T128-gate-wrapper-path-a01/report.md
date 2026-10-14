@@ -11,7 +11,9 @@
   - `1483fef2`: two PATH assertions rewritten so a failure prints no environment value.
   - `8d3f6fca`: the task copy and evidence.
   - `eb959ac9`: the path test's temporary root renamed from `root` to `repo`. In pasted failure output, unittest shortens that path to a bare root segment after `[50 chars]`, which the evidence scan reads as root's home directory.
-  - Then this evidence, refreshed, with the copy masked.
+  - `3f0ead31` and `49549520`: the evidence refreshed, with the copy masked. PR #355 opened at `49549520`.
+  - `a8a0ffed`: the Bot's P1 fixed. `mise which` runs under `env -i` ("PR #355 and the Bot's one round" below).
+  - Then this evidence.
 - cost: n/a (the runtime exposes no token or cost figures to the seat).
 
 ## Item 1 (`cb1f9cc4`): the gate's PATH is a private bin
@@ -22,7 +24,7 @@ The steps in `scripts/orchestrator/orch-gate.sh`, after `uv python find` and the
 
 1. **The EXIT trap is set first.** It removes `${bin}` when set, then cleans and restores the review worktree as before. It stays an inline string; a trap-only function would draw shellcheck SC2329. The string spans two lines, to keep the 120-column width.
 2. **The private directory is created:** `bin="$(mktemp -d "${TMPDIR:-/tmp}/orch-gate.XXXXXX")"`.
-3. **Each name in `gh git` is resolved in the trusted root** (the cwd is `${root}`) with `found="$(mise which "${name}" 2> /dev/null || command -v "${name}")"`.
+3. **Each name in `gh git` is resolved in the trusted root** (the cwd is `${root}`) with `found="$(env -i PATH="${PATH}" HOME="${HOME}" mise which "${name}" 2> /dev/null || command -v "${name}")"`. The `env -i` came in `a8a0ffed`.
 4. **The answer is checked.** orch-gate.sh refuses with exit 2 unless the answer is absolute and not under a `shims` directory. That covers an empty answer too.
 5. **The answer is linked** as `${bin}/${name}`.
 6. **Only then is the head checked out.**
@@ -30,7 +32,7 @@ The steps in `scripts/orchestrator/orch-gate.sh`, after `uv python find` and the
 
 Other details:
 
-- **Comments.** One comment names the audit finding. The shdoc header now describes the private PATH and the trap's removal of it.
+- **Comments.** One comment names the audit finding, and one names the Bot's thread. The shdoc header now describes the private PATH and the trap's removal of it.
 - **The list of names.** The pasted grep (validation §2) finds only `gh` and `git`. The collector starts as `sys.executable`, the pinned interpreter given by an absolute path. The list stays `gh git`.
 - **The resolution expression matches the task's rule** in every case:
   - **mise is on PATH and knows the name.** Both use `mise which`.
@@ -56,7 +58,7 @@ orch-gate.sh runs from its copy in a temporary root, with the stubs first on PAT
 - **The stubs.**
   - Every stub has the shebang `#!/bin/bash`.
   - Every stub appends one line `<name> <argv> <cwd>` to a shared log. It records with `printf` and `pwd -P` (builtins), `/usr/bin/env` and `/usr/bin/readlink`, and runs nothing else.
-  - **`mise`** answers `<temp>/installs/<name>` for `mise which <name>`.
+  - **`mise`** answers `<temp>/installs/<name>` for `mise which <name>`. It answers `<temp>/payload/<name>` if it sees a `MISE_CONFIG_FILE` or `MISE_TRUSTED_CONFIG_PATHS`, and every run exports both.
   - **`git`** answers `rev-parse --show-toplevel` with the root and `rev-parse HEAD` with a fixed head, and succeeds silently otherwise.
   - **`gh`** only logs.
   - **`uv`** answers the gate stub's path. The task's list omits `uv`, but orch-gate.sh runs `uv python find`, so the module stubs it too.
@@ -91,22 +93,23 @@ Either way the test sees two links.
 
 ## Proofs and size
 
-- **Tests.** 43 tests across both modules are green, and shellcheck, shfmt and ruff are clean (validation §4).
-- **Mutation proofs.** 7 mutants of `orch-gate.sh`, all killed (validation §5):
+- **Tests.** 43 tests across both modules are green on `a8a0ffed`, and shellcheck, shfmt and ruff are clean (validation §4).
+- **Mutation proofs.** 8 mutants of `orch-gate.sh` at `a8a0ffed`, all killed (validation §5):
   - M1, the caller's PATH;
   - M2, the head checked out before the resolution;
   - M3, no shims check;
   - M4, no empty-or-relative check;
   - M5, a trap that keeps the directory;
   - M6, `command -v` only;
-  - M7, `mise which` run from the review worktree.
-- **Caps.** 25 changed lines outside `tests/` (of 200), 126 added under `tests/` (of 1000), and 3 files outside `.orchestration` (validation §6).
+  - M7, `mise which` run from the review worktree;
+  - M8, `mise which` run with this shell's environment.
+- **Caps.** 27 changed lines outside `tests/` (of 200), 129 added under `tests/` (of 1000), and 3 files outside `.orchestration` (validation §6).
 
 ## Threat table
 
 | Row | Where it is closed or bounded |
 |---|---|
-| behaviour one, the private PATH | `test_orch_gate_runs_the_gate_with_a_private_path_of_resolved_binaries`; M1, M2, M6 and M7 die there |
+| behaviour one, the private PATH | `test_orch_gate_runs_the_gate_with_a_private_path_of_resolved_binaries`; M1, M2, M6, M7 and M8 die there |
 | behaviour two, the shims or empty refusal | `test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory`; M3 and M4 die there |
 | behaviour three, the removal on every exit | `test_orch_gate_removes_the_private_bin_on_exit`; M5 dies there |
 | item 3's three edits | the diff of `tests/unit/test_orchestrator_tools.py` against `origin/main`: 13 added and 6 deleted lines, all in the three places |
@@ -127,9 +130,21 @@ Either way the test sees two links.
 
 The main-checkout `memory add` runs after CI, with the masked main-checkout copy. The exact command and its output go into the main-checkout copy of this report.
 
-- [memory:decision] orch-gate.sh gives the integration gate a PATH of one private directory holding links to `gh` and `git`. Each is resolved in the trusted root before the review worktree is entered: `mise which`, else `command -v`. A path under a `shims` directory, an empty answer or a relative one is refused with exit 2. The EXIT trap removes the directory. A mise shim run from the PR head can no longer choose the binary that runs with the orchestrator's credentials (the audit of 6847aa9f, P1).
+- [memory:decision] orch-gate.sh gives the integration gate a PATH of one private directory holding links to `gh` and `git`. Each is resolved in the trusted root before the review worktree is entered: `mise which` under `env -i PATH HOME`, so no caller `MISE_*` override steers it, else `command -v`. A path under a `shims` directory, an empty answer or a relative one is refused with exit 2. The EXIT trap removes the directory. A mise shim run from the PR head can no longer choose the binary that runs with the orchestrator's credentials (the audit of 6847aa9f, P1).
 - [memory:failure] On macOS, `mktemp -d` without a template ignores `TMPDIR`, and the Claude sandbox denies the default `/var/folders/…/T`. Use `mktemp -d "${TMPDIR:-/tmp}/<name>.XXXXXX"`.
 
-## Bot and CI
+## PR #355 and the Bot's one round
 
-The PR opens after this evidence commit. The CI result and the Bot's review of the final head are recorded in the main-checkout copy and the RESULT.
+- **The PR.** PR #355 opened as a draft at `49549520`, and was marked ready at 07:20:03Z.
+- **CI on `49549520`.** Every check passed, the required ones included (validation §8). `mergeStateStatus` is `BEHIND`, because main moved after `c15ba668`.
+- **The Bot.** The Code Review and the Security Review both finished at 07:23Z. Review `5514396696` has one inline comment and no finding in its body. Issue comment `6163096917` is the Bot's status summary, not a finding.
+
+| Thread | Priority | Finding | Disposition |
+|---|---|---|---|
+| 4267889542 (`orch-gate.sh:68`) | P1 | `mise which` inherits the caller's `MISE_CONFIG_FILE` and `MISE_TRUSTED_CONFIG_PATHS`, which can make it answer an arbitrary absolute path outside `shims` | `fixed:a8a0ffed` |
+
+- **Reproduced first.** A caller's `MISE_CONFIG_FILE` named a trusted configuration with `"github:cli/cli" = "path:<D>/payload"`, and `mise which gh` answered `<D>/payload/bin/gh`. Under `env -i PATH HOME`, it answered the installed gh (validation §8).
+- **The fix.** The resolution runs `env -i PATH="${PATH}" HOME="${HOME}" mise which`. Every run of the path test exports both overrides, and the stub mise answers a payload path when it sees either one. The test still requires links to the installed binaries. M8, without the `env -i`, is killed.
+- **Fallback.** A host whose mise needs a `MISE_*` or `XDG_*` variable to find its installs gets no `mise which` answer. Then `command -v` decides, and a shim is refused (fail closed).
+- **No further round.** This is the task's one fix round. The Bot reviews only at PR open, so `a8a0ffed` gets no Bot review. CI on it is in the main-checkout copy and the RESULT.
+- **Left to the orchestrator.** I resolved no thread.

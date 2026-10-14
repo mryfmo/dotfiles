@@ -23,7 +23,8 @@ task_sha256: db9ff03a5eb720a4778fc357fb351926e7ecbb1d5af7a5f6cf11266232ba060b
 | Commit | What |
 |---|---|
 | `1f307a6e` | Items 1 to 4 with amendment 1 |
-| this commit | Task copy at `db9ff03a` and this evidence |
+| `0da6be3e` | Task copy at `db9ff03a` and the first evidence; the Bot's one review was of this head |
+| this commit | The evidence update: the Bot's threads, CI and the sandbox rows |
 
 ## What landed
 
@@ -84,7 +85,16 @@ Validation §6:
 
 ## CI and the Bot
 
-- PR #357 opened as a draft and marked ready after the evidence commit, so the Bot's one review sees the whole PR. Its threads, with each disposition, and CI on the final head are in the evidence update and the RESULT.
+- **The Bot:** PR #357 was opened as a draft and marked ready (12:42:37Z) after the evidence commit, so the Bot's one review saw the whole PR. That review, 5518077170 at 12:45:21Z of `0da6be3e`, raised two inline threads, both P2, and its body holds no badge (validation §9). No P0 or P1, so there is no fix round. Each P2 is advisory, proposed for `dotfiles-T128-chain-review-scripts-followup-a01`:
+
+  | Thread | Where | Finding | Proposed disposition |
+  |---|---|---|---|
+  | 4270918132 | `local-review.sh:61` | A non-zero review-binary exit still writes the file, with `findings: 0` when no finding came back, and the next run on that head reuses it as a review. | advisory P2: the input's continuation, which item 1 states (`the file is still written from whatever transcript came back`) |
+  | 4270918140 | `local-review.sh:28` | The reuse is keyed by the head's first seven characters; the file's full `head:` is never compared, so a second head with the same prefix is not reviewed. | advisory P2: the input's file name and reuse, which item 1 states (`<task>-local-review-<sha7>.md` is reused) |
+
+  The worker resolves no thread.
+- **CI on `0da6be3e`:** 13 of 13 checks pass, the four `test` jobs (`make unit-test` and the bats suites) among them (validation §9). The suite's failures under the Claude sandbox (validation intro) are therefore environmental.
+- **CI on the final head (this commit):** in the RESULT.
 
 ## Not done, or outside scope
 

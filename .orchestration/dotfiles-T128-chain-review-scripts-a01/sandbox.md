@@ -26,3 +26,15 @@ The table lists every call that ran outside the sandbox: `gh` through the permis
 | 2 | `agmsg-dispatch … AGMSG-PONG v1 … status=working …` (09:05Z, the `mktemp` template) | `agmsg-dispatch` |
 | 3 | `agmsg-dispatch … AGMSG-PONG v1 … status=working …` (12:15Z, the branch state) | `agmsg-dispatch` |
 | 4 | `gh pr create --draft --repo mryfmo/dotfiles --base main --head regime/chain-review-scripts …` (PR #357) | `gh` |
+| 5 | `gh pr ready 357 --repo mryfmo/dotfiles; date +%s; date -u +%FT%TZ` (12:42:37Z) | `gh` |
+| 6 | the Bot wait on `0da6be3e` (`scratchpad/bot-wait.sh`, background; `gh pr view` and `gh api` reads every 30 seconds) | `gh` |
+| 7 | `gh pr checks 357 --watch` (background, after a `gh pr checks` poll for the first check; exit 0) | `gh` |
+| 8 | `gh api` reads of the two Bot comments and of review 5518077170's body | `gh` |
+| 9 | `gh api` re-list of the Bot's top-level comments (validation §9) | `gh` |
+| 10 | `agmsg-dispatch … AGMSG-PONG v1 … status=alive …` (12:47Z, the Bot's two P2 threads) | `agmsg-dispatch` |
+| 11 | `gh pr checks 357 --watch` on the final head (background, exit status joined) | `gh` |
+| 12 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-review-scripts-a01 …` | `agmsg-dispatch` |
+
+One command was denied at the permission gate and not pursued: a re-list that ran four reads in one call, the Bot's comment count, the PR's reviews, its issue comments and a GraphQL listing of its review threads. The GraphQL thread listing is not needed, since the worker resolves no thread. Row 9 ran the comment re-list alone, the same `gh api …/pulls/357/comments` read that row 8 had already run.
+
+The pushes of `1f307a6e`, `0da6be3e` and the evidence update ran inside the sandbox over HTTPS.

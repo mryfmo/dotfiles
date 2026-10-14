@@ -11,3 +11,8 @@ These are candidates only; nothing is promoted.
    - A mutation's pattern also matched the shdoc header, so the runner skipped it (R12, R13).
 
    Mechanism candidate: the mutation runner refuses a pattern that does not occur exactly once, which it already does, and the report lists every skip. A fixture line for a filter carries every token that the earlier filters require.
+4. [memory:failure] Two behaviours that item 1 freezes from the input fail open, and neither my reading of the task nor the mutation pass flagged them. The Bot raised both, as P2s:
+   - a failed review run is still written, with `findings: 0` when nothing came back, and then reused as a review;
+   - the reuse is keyed by seven hex characters, and the recorded full head is never compared.
+
+   A mutation pass checks that the tests pin the behaviour; it cannot ask whether the behaviour is safe. Mechanism candidate: before a port's PR opens, read each frozen behaviour for a fail-open path (an error that still fills a cache, a lossy key, a default that passes) and name each one in the early question. The owning follow-up task then exists before the Bot raises them.

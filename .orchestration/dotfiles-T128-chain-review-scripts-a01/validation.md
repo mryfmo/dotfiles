@@ -6,7 +6,7 @@ code_commit: 1f307a6e
 
 # Validation: dotfiles-T128-chain-review-scripts-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox. `MAIN` names the main checkout, `IN` the task's input directory there, and `S` a scratch directory under `/tmp/claude-501`. `UV_OFFLINE=1` was set, since uv cannot reach pypi from the sandbox. The output is verbatim, with the main checkout's path removed, and each block ends with the command's exit status. Captured at `1f307a6e`, before the PR was opened.
+Every command in §1 to §8 ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; §9's ran outside it, and `scratchpad/` there names the session scratchpad. `MAIN` names the main checkout, `IN` the task's input directory there, and `S` a scratch directory under `/tmp/claude-501`. `UV_OFFLINE=1` was set, since uv cannot reach pypi from the sandbox. The output is verbatim, with the main checkout's path removed, and each block ends with the command's exit status. §1 to §8 were captured at `1f307a6e`, before the PR was opened, and §9 after the Bot's review of `0da6be3e`.
 
 The whole unit suite, `make unit-test`'s `uv run python -m unittest discover -s tests/unit`, ran once in the sandbox and ended with `Ran 1082 tests in 471.510s` and `FAILED (failures=168, errors=103, skipped=2)`. No `origin/main` baseline was taken in the sandbox, so that run is evidence neither way; CI's `make unit-test` on the PR is. §7 runs the modules that exercise `scripts/orchestrator/`, and they all pass.
 
@@ -332,3 +332,44 @@ scripts/orchestrator/local-review.sh: OK
 scripts/orchestrator/sandbox-scan.sh: OK
 [exit 0]
 ```
+
+## 9. CI and the Bot on `0da6be3e`
+
+Run outside the sandbox through the permission gate (sandbox record, rows 6 to 9).
+
+```console
+$ gh pr checks 357 --repo mryfmo/dotfiles --watch --interval 30 > /dev/null 2>&1; echo "checks-watch-exit=$?"; gh pr checks 357 --repo mryfmo/dotfiles
+checks-watch-exit=0
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/38565876286/job/115858280156	
+private-bootstrap (ubuntu-24.04, client)	pass	13s	https://github.com/mryfmo/dotfiles/actions/runs/38565876286/job/115858280272	
+private-bootstrap (ubuntu-24.04, server)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/38565876286/job/115858279807	
+public-bootstrap (macos-14, client)	pass	10m44s	https://github.com/mryfmo/dotfiles/actions/runs/38565876286/job/115858280484	
+public-bootstrap (ubuntu-24.04, client)	pass	10m28s	https://github.com/mryfmo/dotfiles/actions/runs/38565876286/job/115858280216	
+public-bootstrap (ubuntu-24.04, server)	pass	6m16s	https://github.com/mryfmo/dotfiles/actions/runs/38565876286/job/115858280329	
+test (macos-14, client)	pass	6m47s	https://github.com/mryfmo/dotfiles/actions/runs/38565876361/job/115858280528	
+test (ubuntu-24.04, client)	pass	8m29s	https://github.com/mryfmo/dotfiles/actions/runs/38565876361/job/115858280070	
+test (ubuntu-24.04, server)	pass	5m42s	https://github.com/mryfmo/dotfiles/actions/runs/38565876361/job/115858280743	
+test (ubuntu-26.04, client)	pass	7m41s	https://github.com/mryfmo/dotfiles/actions/runs/38565876361/job/115858280869	
+validate	pass	1m12s	https://github.com/mryfmo/dotfiles/actions/runs/38565876334/job/115858279537	
+[exit 0]
+```
+```console
+$ bash scratchpad/bot-wait.sh 357 0da6be3e10964ff744262e835806fa8081e93ed7 1791981757
+elapsed=165s
+reviews:
+5518077170	0da6be3e10964ff744262e835806fa8081e93ed7	2026-10-14T12:45:21Z	COMMENTED
+comments:
+4270918132	0da6be3e10964ff744262e835806fa8081e93ed7	scripts/orchestrator/local-review.sh
+4270918140	0da6be3e10964ff744262e835806fa8081e93ed7	scripts/orchestrator/local-review.sh
+[exit 0]
+```
+```console
+$ gh api repos/mryfmo/dotfiles/pulls/357/comments --paginate --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .in_reply_to_id==null)|[.id,.original_commit_id[0:8],.path,.line]|@tsv'
+4270918132	0da6be3e	scripts/orchestrator/local-review.sh	61
+4270918140	0da6be3e	scripts/orchestrator/local-review.sh	28
+[exit 0]
+```
+
+The two threads' titles, from row 8's read: 4270918132 `P2 Badge … Reject failed review runs instead of caching them`; 4270918140 `P2 Badge … Validate the full head before reusing a cached review`. Review 5518077170's body holds the summary text and `**Reviewed commit:** \`0da6be3e10\``, and no badge.

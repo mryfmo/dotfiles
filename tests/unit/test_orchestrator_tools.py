@@ -25,8 +25,8 @@ ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "scripts/orchestrator"
 RECORD = 'printf \'%s\\0\' "$@" > "$CALLS/{name}"\n'
 # A run records its argv, cwd and environment, prints {name}-output and fails while {name}-fails exists.
-RUN = RECORD + 'pwd -P > "$CALLS/{name}-cwd"\nenv > "$CALLS/{name}-env"\ncat "$CALLS/{name}-output" 2> /dev/null\n'
-RUN += '[[ ! -f "$CALLS/{name}-fails" ]] || exit 2\n'
+RUN = RECORD + 'pwd -P > "$CALLS/{name}-cwd"\n/usr/bin/env > "$CALLS/{name}-env"\n'
+RUN += '/bin/cat "$CALLS/{name}-output" 2> /dev/null\n[[ ! -f "$CALLS/{name}-fails" ]] || exit 2\n'
 STUBS = {
     "agmsg-dispatch": "#!/usr/bin/env bash\n"
     + RECORD.format(name="agmsg-dispatch")
@@ -36,10 +36,10 @@ STUBS = {
     + '"$(cat "$CALLS/dispatch-marker")" "$2" "$3" "$5" >> "$CALLS/history"\nexit 0\n',
     "shasum": '#!/usr/bin/env python3\nimport hashlib, sys\np = sys.argv[-1]\nprint(hashlib.sha256(open(p, "rb").read()).hexdigest() + "  " + p)\n',
     # As uv does, a .python-version in the cwd that names an executable runs it.
-    "uv": "#!/usr/bin/env bash\n"
+    "uv": "#!/bin/bash\n"
     + 'pv="$(cat .python-version 2> /dev/null)" && [[ -x ${pv} ]] && exec "${pv}" "$@"\n'
     + RUN.format(name="uv"),
-    "gate-python": "#!/usr/bin/env bash\n" + RUN.format(name="gate-python"),
+    "gate-python": "#!/bin/bash\n" + RUN.format(name="gate-python"),
     "gh": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/gh.log"\n[[ "$1 $2" != "pr create" ]] || echo https://github.test/pull/9\n',
     "make": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/make.log"\n[[ ! -f "$CALLS/make-fails" ]] || exit 2\n',
     # codex reads its stdin to the end (empty when the caller closed it) and writes its -o file.
@@ -1067,6 +1067,9 @@ class OrchestratorToolsTest(unittest.TestCase):
 
     def test_orch_gate_runs_the_gate_under_an_explicit_environment(self):
         worktree, _ = self.gate()
+        # The private PATH is gone after the run, so the gate stub lists it while it runs.
+        gate = self.temp / "bin/gate-python"
+        gate.write_text(gate.read_text() + f'printf "%s\\n" "$PATH"/* > "{self.calls}/gate-python-bin"\n')
         startup = self.write("startup.py", "")
         leaked = {"PYTHONPATH": ".", "PYTHONSTARTUP": str(startup), "PYTHONHOME": str(self.temp)}
         self.run_tool("orch-gate.sh", "t-a01", worktree, 9, env={**leaked, "CRIT_REVIEW": "off", "CRIT_REVIEWED": "1"})
@@ -1078,8 +1081,12 @@ class OrchestratorToolsTest(unittest.TestCase):
         own = {"SHLVL", "_", "PWD"}
         # Names only, so a failure prints no value.
         self.assertEqual(sorted(allowed | own), sorted(env))
-        expected = (self.env["PATH"], self.env["HOME"], "1", "1")
-        self.assertEqual(expected, (env["PATH"], env["HOME"], env["PYTHONSAFEPATH"], env["AGENT_REVIEWED"]))
+        # PATH is one private directory of links to gh and git, not the caller's PATH.
+        self.assertNotIn(os.pathsep, env["PATH"])
+        listed = (self.calls / "gate-python-bin").read_text().split()
+        self.assertEqual([f"{env['PATH']}/gh", f"{env['PATH']}/git"], listed)
+        expected = (self.env["HOME"], "1", "1")
+        self.assertEqual(expected, (env["HOME"], env["PYTHONSAFEPATH"], env["AGENT_REVIEWED"]))
         self.assertEqual(["-I", "-P"], self.call("gate-python")[:2])
 
     def test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree(self):

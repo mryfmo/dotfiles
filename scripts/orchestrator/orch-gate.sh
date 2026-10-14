@@ -14,8 +14,8 @@
 #   the review worktree is entered and run directly, so no uv reads the head's `.python-version` or `uv.toml`
 #   (uv runs an executable a `.python-version` names; the audit of f48593d6). The gate runs under `env -i` with
 #   HOME as this shell has it, a PATH of one private directory of links to `gh` and `git` as this checkout resolves
-#   them (`mise which`, else `command -v`; a path under a `shims` directory or none is refused), its inputs
-#   AUDIT_EVIDENCE, ACCEPTANCE_EVIDENCE, PR_FEEDBACK_EVIDENCE, REVIEW_EVIDENCE and AGENT_REVIEWED=1, and
+#   them (`mise which` under `env -i`, else `command -v`; a path under a `shims` directory or none is refused), its
+#   inputs AUDIT_EVIDENCE, ACCEPTANCE_EVIDENCE, PR_FEEDBACK_EVIDENCE, REVIEW_EVIDENCE and AGENT_REVIEWED=1, and
 #   PYTHONSAFEPATH=1, as `-I -P <gate> --base origin/main`: nothing else of this shell or of the head reaches the
 #   gate or the collector and gh it starts (the audits of a06c874e and 6847aa9f). A trap set before the private
 #   directory is made and the head checked out removes it and restores the review worktree to origin/main whatever
@@ -64,8 +64,10 @@ git -C "${review}" clean -fdq -- .orchestration; git -C "${review}" checkout -qf
 bin="$(mktemp -d "${TMPDIR:-/tmp}/orch-gate.XXXXXX")"
 # The gate's PATH is these links alone: through the caller's PATH, gh resolved to a mise shim, which picks the binary
 # from the review worktree's mise.toml (the audit of 6847aa9f). gh and git are what the gate and its collector run.
+# mise resolves under env -i, so no MISE_CONFIG_FILE or MISE_TRUSTED_CONFIG_PATHS of this shell picks the binary
+# (PR #355 thread 4267889542).
 for name in gh git; do
-    found="$(mise which "${name}" 2> /dev/null || command -v "${name}")" || found=
+    found="$(env -i PATH="${PATH}" HOME="${HOME}" mise which "${name}" 2> /dev/null || command -v "${name}")" || found=
     [[ ${found} == /* && ${found} != */shims/* ]] || refuse "no binary for ${name} outside a shims directory ('${found}')"
     ln -s -- "${found}" "${bin}/${name}"
 done

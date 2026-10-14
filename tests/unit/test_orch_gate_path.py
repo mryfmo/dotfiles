@@ -2,8 +2,8 @@
 
 orch-gate.sh runs from its copy in a temporary root with `uv`, `mise`, `gh` and `git` stubbed first on PATH. Every stub
 appends one line `<name> <argv> <cwd>` to one log and runs nothing else: `uv` answers the gate stub's path, `mise
-which <name>` answers `installs/<name>`, and `git` answers `rev-parse` with the root or the head and succeeds silently
-otherwise. The gate stub also records its environment and its PATH's entries with their link targets. Shebangs are
+which <name>` answers `installs/<name>` (`payload/<name>` under the mise overrides every run exports, as a real mise
+does), and `git` answers `rev-parse` with the root or the head and succeeds silently otherwise. The gate stub also records its environment and its PATH's entries with their link targets. Shebangs are
 absolute and the stubs record with builtins or absolute paths, as the private PATH holds neither bash nor env.
 """
 
@@ -19,7 +19,8 @@ HEAD = "0123456789abcdef0123456789abcdef01234567"
 LOG = '#!/bin/bash\nprintf "%s\\n" "{name} $* $(pwd -P)" >> "{t}/calls/log"\n'
 STUBS = {
     "bin/uv": 'printf "%s\\n" "{t}/gate/python"\n',
-    "bin/mise": 'printf "%s\\n" "{t}/installs/$2"\n',
+    "bin/mise": '[[ -z "$MISE_CONFIG_FILE$MISE_TRUSTED_CONFIG_PATHS" ]] && d=installs || d=payload\n'
+    + 'printf "%s\\n" "{t}/$d/$2"\n',
     "bin/gh": "",
     "bin/git": 'case "$*" in\n*"rev-parse --show-toplevel") printf "%s\\n" "{t}/repo" ;;\n'
     + '*"rev-parse HEAD") printf "%s\\n" {head} ;;\nesac\n',
@@ -56,6 +57,8 @@ class OrchGatePathTest(unittest.TestCase):
         """Run the gate from outside the root; return the stub log as (command, cwd) pairs."""
         (self.t / "calls/log").unlink(missing_ok=True)
         env = {**os.environ, "PATH": f"{self.t}/bin{os.pathsep}{os.environ['PATH']}", "TMPDIR": str(self.t / "tmp")}
+        # A caller's mise overrides that would point mise which at a payload (PR #355 thread 4267889542).
+        env |= {"MISE_CONFIG_FILE": f"{self.t}/payload.toml", "MISE_TRUSTED_CONFIG_PATHS": str(self.t)}
         script = self.root / "scripts/orchestrator/orch-gate.sh"
         result = subprocess.run(
             ["bash", str(script), "t-a01", str(self.t / "pr"), "9"],

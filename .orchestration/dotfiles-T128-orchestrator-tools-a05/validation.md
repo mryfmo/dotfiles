@@ -219,3 +219,204 @@ R3 empty tokens kept: KILLED rc=1 ["AssertionError: Tuples differ: ('3', '2', '1
 R4 naive tab unescape: KILLED rc=1 ["AssertionError: Tuples differ: ('3', '2', '1', '1') != ('3', '2', '1', '2')"]
 restored: 0 OK
 ```
+
+## 9. PR-B on `tools/orchestrator-scripts-3`
+
+```text
+$ git log --oneline -4
+362a9c2b test(orchestrator): assert the dispatch list and the absent key without a KeyError or an env dump
+d19ed9be feat(orchestrator): acceptance-front-matter.py and orch-gate.sh (T718 a05, PR-B)
+c586f20d feat(orchestrator): the second slice's scripts and the first slice's residual fixes (T718 a02, PR-A) (#346)
+df044557 chore(orchestration): boundary commit 2026-10-13 (13): plan 020 step 5 (T703 #328 and T702 #329 merged, Phase 1 closed; a02 PR-A #346 stopped by the one-round rule and reset to a05), records and the cost ledger (#349)
+$ git merge-base HEAD origin/main
+c586f20dbc7627a16c2e900a094083f31a55f34f
+$ shasum -a 256 .orchestration/dotfiles-T128-orchestrator-tools-a05/task.md
+eaac8e4bd03cda154273097736944b3762581f872d5f5fbcdca67650b43236ea  .orchestration/dotfiles-T128-orchestrator-tools-a05/task.md
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v 2>&1 | tail -n 4
+----------------------------------------------------------------------
+Ran 35 tests in 18.486s
+
+OK
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v 2>&1 | grep -E "front_matter|orch_gate"
+test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record) ... ok
+test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit) ... ok
+test_orch_gate_passes_the_gate_inputs_from_the_review_worktree (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_passes_the_gate_inputs_from_the_review_worktree) ... ok
+test_orch_gate_refuses_a_sweep_of_another_pr_before_the_review_worktree_moves (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_refuses_a_sweep_of_another_pr_before_the_review_worktree_moves) ... ok
+test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree) ... ok
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_regime_counters.py 2>&1 | tail -n 3
+Ran 28 tests in 3.855s
+
+OK
+$ shellcheck --version | sed -n 2p; shellcheck scripts/orchestrator/*.sh && echo shellcheck-clean
+version: 0.11.0
+shellcheck-clean
+$ (cd "$TMPDIR" && shfmt --indent 4 --space-redirects --diff <worktree>/scripts/orchestrator/orch-gate.sh) && echo shfmt-clean
+shfmt-clean
+$ ruff format --check scripts/orchestrator/acceptance-front-matter.py tests/unit/test_orchestrator_tools.py && ruff check scripts/orchestrator tests/unit/test_orchestrator_tools.py
+2 files already formatted
+All checks passed!
+$ git diff --numstat origin/main...HEAD
+124	0	scripts/orchestrator/acceptance-front-matter.py
+63	0	scripts/orchestrator/orch-gate.sh
+151	1	tests/unit/test_orchestrator_tools.py
+$ (the INV-2 sums outside .orchestration)
+files 3 added-non-test 187 added-test 151
+```
+
+Mutation proofs. `mutate-prb.py` (scratchpad) edits one span, runs the named test of `tests.unit.test_orchestrator_tools.OrchestratorToolsTest`, counts a kill only on an AssertionError, and restores the file with `git checkout --`.
+
+```text
+AF1 no head check: KILLED rc=1 AssertionError: 1 != 0 : written .orchestration/acceptance/t-a01.md head 2126e5d pr 9 ledger 4
+AF2 duplicate keys read: KILLED rc=1 AssertionError: 1 != 0 : written .orchestration/acceptance/t-a01.md head 694e94f pr 9 ledger 0
+AF3 present ids re-added: KILLED rc=1 AssertionError: 'kept-ledger-row 4250000001' not found in 'written .orchestration/acceptance/t-a01.md head e35186d pr 9 ledger 5\n'
+AF4 searches for every class: KILLED rc=1 AssertionError: Lists differ: [{'class': 'stale-path', 'records': ['M-1.md']}] != [{'class': 'other', 'records': ['M-1.md', 'M-2.md']},[43 chars]d']}]
+AF5 text after the block dropped: KILLED rc=1 AssertionError: Tuples differ: ('t-a01', '4d473acc281f02941f7be4ed5ce74992965c9f95', 9, 1, '\n# Record\n') != ('t-a01', '4d473acc281f02941f7be4ed5ce74
+AF6 dispatch list dropped: KILLED rc=1 AssertionError: ['AGMSG-TASK v1 task_id=t-a01'] != None
+AF7 field checks skipped: KILLED rc=1 AssertionError: 1 != 0 : written .orchestration/acceptance/t-a01.md head f52b1bc pr 9 ledger 5
+AF8 dispositions not required: KILLED rc=1 AssertionError: '--audit-dispositions is required' not found in "acceptance-front-matter: AUDIT_EVIDENCE verdict is incorrect: the acceptance record's
+AF9 completeness skipped: KILLED rc=1 AssertionError: 1 != 0 : written .orchestration/acceptance/t-a01.md head b73c5ec pr 9 ledger 0
+G1 AUDIT_DISPOSITIONS kept: KILLED rc=1 AssertionError: 'AUDIT_DISPOSITIONS' unexpectedly found in ['ACCEPTANCE_EVIDENCE', 'AGENT_REVIEWED', 'AGMSG_SCRIPTS', 'AGMSG_SPAWNED', 'AI_AGENT', 'AL
+G2 no ACCEPTANCE_EVIDENCE: KILLED rc=1 AssertionError: {'ACC[14 chars]CE': '.orchestration/acceptance/t-a01.md', 'AU[255 chars]ain'} != {'ACC[14 chars]CE': None, 'AUDIT_EVIDENCE': '.orchest
+G3 make in the main checkout: KILLED rc=1 AssertionError: '/private/tmp/claude-501/tmptralagwa/repo/.claude/worktrees/orchestrator-review' != '/private/tmp/claude-501/tmptralagwa/repo'
+G4 gate status dropped: KILLED rc=1 AssertionError: 0 != 2 : 
+G5 review worktree left at the head: KILLED rc=1 AssertionError: '8ba1a18e7249f2eaeb3ffbd7a1b330ab3858133f' != 'f485bdd5723eac97d8b38e3207f95e2b8c0ba55f'
+G6 no PR binding: KILLED rc=1 AssertionError: 0 != 2 : 
+restored: 0 OK
+```
+
+## 10. PR-B fix round (`e30cbed0`)
+
+```text
+$ git log --oneline -3
+e30cbed0 fix(orchestrator): orch-gate.sh runs the trusted gate, refuses tracked symlinks, clears overrides
+0749e931 chore(orchestration): dotfiles-T128-orchestrator-tools-a05 PR-B evidence
+362a9c2b test(orchestrator): assert the dispatch list and the absent key without a KeyError or an env dump
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v 2>&1 | grep -E "orch_gate|front_matter|ERROR|FAIL|^Ran|^OK"
+test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record) ... ok
+test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit) ... ok
+test_design_keydiff_names_the_changed_invariant (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_design_keydiff_names_the_changed_invariant) ... ERROR
+test_orch_gate_refuses_a_head_that_tracks_a_symlink_under_orchestration (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_refuses_a_head_that_tracks_a_symlink_under_orchestration) ... ok
+test_orch_gate_refuses_another_prs_sweep_or_a_changed_gate_before_the_review_worktree_moves (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_refuses_another_prs_sweep_or_a_changed_gate_before_the_review_worktree_moves) ... ok
+test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree) ... ok
+test_orch_gate_runs_this_checkouts_gate_on_the_review_worktree_with_the_gate_inputs (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_runs_this_checkouts_gate_on_the_review_worktree_with_the_gate_inputs) ... ok
+Ran 36 tests in 20.715s
+FAILED (errors=1)
+$ (cd "$TMPDIR" && UV_OFFLINE=1 uv run --no-project --with pyyaml python -I -c 'import yaml' 2>&1 | tail -2)
+error: Failed to download and build `pyyaml==6.0.3`
+  cause: Network connectivity is disabled, but the requested data wasn't found in the cache: https://files.pythonhosted.org/packages/05/8e/961c0007c59b8dd7729d542c61a4d537767a59645b82a0b521206e1e25c2/pyyaml-6.0.3.tar.gz
+$ shellcheck scripts/orchestrator/*.sh && echo shellcheck-clean
+shellcheck-clean
+$ (cd "$TMPDIR" && shfmt --indent 4 --space-redirects --diff <worktree>/scripts/orchestrator/orch-gate.sh) && echo shfmt-clean
+shfmt-clean
+$ ruff format --check tests/unit/test_orchestrator_tools.py && ruff check tests/unit/test_orchestrator_tools.py
+1 file already formatted
+All checks passed!
+$ git diff --numstat origin/main...HEAD | awk (files and added lines outside .orchestration)
+files 3 added-non-test 196 added-test 174
+```
+
+After `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets …` fetched PyYAML into the cache (the masker of these records, run with pypi.org and files.pythonhosted.org allowed), the module passes offline:
+
+```text
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py 2>&1 | tail -3
+Ran 36 tests in 21.011s
+
+OK
+```
+
+Mutation proofs. `mutate-prb2.py` (scratchpad) uses the same rules as §9.
+
+```text
+F1 the head's gate runs: KILLED rc=1 AssertionError: Lists differ: ['run[31 chars]I', '/private/tmp/claude-501/tmpnso2ai87/repo/[52 chars]ain'] != ['run[31 chars]I', 'scripts/re
+F2 no gate equality check: KILLED rc=1 AssertionError: 0 != 2 : 
+F3 tracked symlinks allowed: KILLED rc=1 AssertionError: 0 != 2 : 
+F4 CRIT_REVIEW inherited: KILLED rc=1 AssertionError: Lists differ: [] != ['CRIT_REVIEW']
+F5 CRIT_REVIEWED inherited: KILLED rc=1 AssertionError: Lists differ: [] != ['CRIT_REVIEWED']
+G1 AUDIT_DISPOSITIONS inherited: KILLED rc=1 AssertionError: Lists differ: [] != ['AUDIT_DISPOSITIONS']
+G2 no ACCEPTANCE_EVIDENCE: KILLED rc=1 AssertionError: {'ACC[14 chars]CE': '.orchestration/acceptance/t-a01.md', 'AU[232 chars] '1'} != {'ACC[14 chars]CE': None, 'AUDIT_EVIDENCE':
+G3 the gate in the main checkout: KILLED rc=1 AssertionError: '/private/tmp/claude-501/tmp5juebzi8/repo/.claude/worktrees/orchestrator-review' != '/private/tmp/claude-501/tmp5juebzi8/rep
+G4 gate status dropped: KILLED rc=1 AssertionError: 0 != 2 : 
+G5 review worktree left at the head: KILLED rc=1 AssertionError: '7525355595ba59d72065367ba38d83ec85a83874' != '15456cf2590c836208cf7a6f47c9dc2bae69f3ca'
+G6 no PR binding: KILLED rc=1 AssertionError: 0 != 2 : 
+restored: 0 OK
+```
+
+## 12. PR-B revise 1 (`ced110dd`, amendment 1)
+
+### The probe (`scratchpad/pv-probe.sh`; the scratch directory is a fresh `mktemp -d` under `$TMPDIR`, its `.python-version` is `./pwn`, and `pwn` touches `ran-$$` and exits 1; the last argument is this worktree)
+
+```text
+$ bash pv-probe.sh <worker-c>
+find:
+error: Failed to inspect Python interpreter from provided path at `./pwn`
+  cause: Querying Python at `./pwn` failed with exit status exit status: 1
+ran after find:        1
+run:
+error: Failed to inspect Python interpreter from provided path at `./pwn`
+  cause: Querying Python at `./pwn` failed with exit status exit status: 1
+ran after run:        2
+root files:
+none
+root find: ~/.local/share/mise/installs/python/latest/bin/python rc=0
+trap 1:
+restore
+rc=1
+trap 2:
+rc=1
+trap 3:
+sub rc=3
+trap-ran
+rc=0
+```
+
+- "trap 1": an EXIT trap runs when `set -e` stops the script.
+- "trap 2": a failing command in the trap makes the exit non-zero after an `exit 0`.
+- "trap 3": a `( … ) || rc=$?` subshell does not fire the parent's trap.
+
+### Tests, lint, size
+
+```text
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests.unit.test_orchestrator_tools
+Ran 38 tests in 25.265s
+
+OK
+rc 0
+$ ruff check / ruff format --check tests/unit/test_orchestrator_tools.py; shellcheck and shfmt --indent 4 --space-redirects -d on scripts/orchestrator/orch-gate.sh
+All checks passed!
+1 file already formatted
+shellcheck rc 0
+shfmt rc 0
+$ git diff --numstat origin/main...HEAD (outside .orchestration)
+files 3 added_non_test 198 added_test 205
+$ UV_OFFLINE=1 make validate-agent-assets
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+agent asset validation ok
+$ shasum -a 256 .orchestration/dotfiles-T128-orchestrator-tools-a05/task.md
+6b238e5a958ed5124d997e129391a4e10cc2b61b7b9f57052e8b463b4f549f23  .orchestration/dotfiles-T128-orchestrator-tools-a05/task.md
+```
+
+The two WARN lines are another task's counters. The validator's run also tried `cafe.github.com:443`, which the sandbox refused; the validation still ended ok.
+
+### Mutation proofs (`scratchpad/mutate-fix.py`)
+
+The method is the one used before:
+
+- edit one span of `orch-gate.sh` at `ced110dd`;
+- run the full dotted test;
+- count a kill only on an AssertionError;
+- restore with `git checkout --`.
+
+```text
+KILLED P1 the pre-fix gate run (uv run in the review worktree) :: test_orch_gate_pins_the_interpreter_before_entering_the_review_worktree :: AssertionError: True is not false : the head's .python-version executable ran
+KILLED P2 the interpreter resolved in the review worktree :: test_orch_gate_pins_the_interpreter_before_entering_the_review_worktree :: AssertionError: 127 != 0 : /private/tmp/claude-501/tmpg6zqiq5h/repo/scripts/orchestrator/orch-gate.sh: line 70: : command not found
+KILLED P3 the gate run by name from PATH, not the resolved path :: test_orch_gate_runs_this_checkouts_gate_on_the_review_worktree_with_the_gate_inputs :: NameError: name 'gate' is not defined
+KILLED R1 no trap (the pre-fix code) :: test_orch_gate_restores_the_review_worktree_when_setup_fails :: AssertionError: '' != '?? .orchestration/'
+KILLED R2 the trap set after the evidence copy :: test_orch_gate_restores_the_review_worktree_when_setup_fails :: AssertionError: '' != '?? .orchestration/'
+kills 5/5
+clean
+```
+
+- P3's last error line comes from the stub gate file (`gate`) run under the real `python3`. The assertion that failed is the exit status (`AssertionError: 1 != 0`, rerun of P3 alone).
+- R1 is the pre-fix code without the trap. P1 is the pre-fix gate line.
+

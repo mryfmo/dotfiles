@@ -1,13 +1,14 @@
 """Exercise the scripts under scripts/orchestrator/ with stubbed host binaries.
 
 Each script runs as a subprocess from its copy in a temporary git repository, with `agmsg-dispatch`, `shasum`,
-`uv`, `gh`, `make` and `codex` stubbed on PATH and `history.sh` stubbed in the directory `AGMSG_SCRIPTS` names;
+`uv`, `gh`, `make`, `codex` and an interpreter `gate-python` stubbed on PATH and `history.sh` stubbed in the directory `AGMSG_SCRIPTS` names;
 git is the real one, against a bare repository standing in for `origin`. A stub records its argv NUL-separated,
 so an argument is compared byte for byte (`gh` and `make` append one line per call).
 """
 
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -23,6 +24,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "scripts/orchestrator"
 RECORD = 'printf \'%s\\0\' "$@" > "$CALLS/{name}"\n'
+# A run records its argv, cwd and environment, prints {name}-output and fails while {name}-fails exists.
+RUN = RECORD + 'pwd -P > "$CALLS/{name}-cwd"\nenv > "$CALLS/{name}-env"\ncat "$CALLS/{name}-output" 2> /dev/null\n'
+RUN += '[[ ! -f "$CALLS/{name}-fails" ]] || exit 2\n'
 STUBS = {
     "agmsg-dispatch": "#!/usr/bin/env bash\n"
     + RECORD.format(name="agmsg-dispatch")
@@ -31,7 +35,11 @@ STUBS = {
     + '[[ -f "$CALLS/dispatch-marker" ]] && printf "  %s [2026-10-13T03:00:00Z] %s → %s: %s\\n" '
     + '"$(cat "$CALLS/dispatch-marker")" "$2" "$3" "$5" >> "$CALLS/history"\nexit 0\n',
     "shasum": '#!/usr/bin/env python3\nimport hashlib, sys\np = sys.argv[-1]\nprint(hashlib.sha256(open(p, "rb").read()).hexdigest() + "  " + p)\n',
-    "uv": "#!/usr/bin/env bash\n" + RECORD.format(name="uv") + 'pwd -P > "$CALLS/uv-cwd"\ncat "$CALLS/uv-output"\n',
+    # As uv does, a .python-version in the cwd that names an executable runs it.
+    "uv": "#!/usr/bin/env bash\n"
+    + 'pv="$(cat .python-version 2> /dev/null)" && [[ -x ${pv} ]] && exec "${pv}" "$@"\n'
+    + RUN.format(name="uv"),
+    "gate-python": "#!/usr/bin/env bash\n" + RUN.format(name="gate-python"),
     "gh": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/gh.log"\n[[ "$1 $2" != "pr create" ]] || echo https://github.test/pull/9\n',
     "make": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/make.log"\n[[ ! -f "$CALLS/make-fails" ]] || exit 2\n',
     # codex reads its stdin to the end (empty when the caller closed it) and writes its -o file.
@@ -876,6 +884,220 @@ class OrchestratorToolsTest(unittest.TestCase):
                 self.assertEqual("", self.git("status", "--porcelain", cwd=review))
         out = self.run_tool("orch-audit.sh", "t-a01", pr, 9).stdout
         self.assertTrue(out.endswith(": Verdict: correct\n"), out)
+
+    # acceptance-front-matter.py, orch-gate.sh
+
+    def front_matter(self, *args, code=0):
+        script = str(self.repo / "scripts/orchestrator/acceptance-front-matter.py")
+        result = subprocess.run(
+            [sys.executable, "-I", script, "t-a01", "sweep.json", self.repo, *map(str, args)],
+            cwd=self.repo,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+        return result.stdout + result.stderr
+
+    def gate_module(self):
+        spec = importlib.util.spec_from_file_location("gate", ROOT / "scripts/require-crit-review.py")
+        gate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gate)
+        return gate
+
+    def test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record(self):
+        shutil.copy(ROOT / "scripts/require-crit-review.py", self.repo / "scripts/require-crit-review.py")
+        self.write(".orchestration/learning/mistakes/M-1.md", "---\nclasses: [stale-path, other]\n---\n")
+        self.write(".orchestration/learning/mistakes/M-2.md", "---\nclasses: [other]\n---\n")
+        self.origin()
+        head = self.git("rev-parse", "HEAD")
+        self.write("sweep.json", json.dumps({"pr": 9, "head_sha": head, "items": []}))
+        old = {
+            "task": "t-a01",
+            "dispatch": ["AGMSG-TASK v1 task_id=t-a01"],
+            "ledger": [{"id": "4250000001", "class": "stale-path"}],
+        }
+        record = self.write(".orchestration/acceptance/t-a01.md", "---\n" + json.dumps(old) + "\n---\n\n# Record\n")
+        rows = ["4250000001\tother", "4250000002\tstale-path", "audit:abcdef1:1\tstale-path", "4250000003\tother"]
+        out = self.front_matter("--ledger", self.write("ledger.tsv", "\n".join(rows) + "\n"))
+        self.assertIn("kept-ledger-row 4250000001", out)
+        block, rest = self.gate_block(record)
+        self.assertEqual(
+            ("t-a01", head, 9, 1, "\n# Record\n"), (block["task"], block["head"], block["pr"], block["format"], rest)
+        )
+        self.assertEqual(old["dispatch"], block.get("dispatch"))
+        self.assertEqual(["stale-path", "stale-path", "stale-path", "other"], [r["class"] for r in block["ledger"]])
+        self.assertEqual([{"class": "stale-path", "records": ["M-1.md"]}], block["searches"])
+        self.assertEqual([], block["audit_findings"])
+        self.assertEqual([], self.gate_module().record_field_errors(block, "t-a01", head, 9))
+        written = record.read_text()
+        # A row the gate's field checks refuse, a sweep of another head and a record with a duplicate key are
+        # refused, and nothing is written.
+        self.assertIn("ledger row 4", self.front_matter("--ledger", self.write("bad.tsv", "42\tother\n"), code=1))
+        self.assertEqual(written, record.read_text())
+        self.write("sweep.json", json.dumps({"pr": 9, "head_sha": "0" * 40, "items": []}))
+        self.assertIn("the sweep was collected for head", self.front_matter(code=1))
+        self.assertEqual(written, record.read_text())
+        self.write("sweep.json", json.dumps({"pr": 9, "head_sha": head, "items": []}))
+        record.write_text('---\n{"task": "t-a01", "task": "t-a02"}\n---\n')
+        self.assertIn("duplicate key task", self.front_matter(code=1))
+        self.assertEqual('---\n{"task": "t-a01", "task": "t-a02"}\n---\n', record.read_text())
+
+    def test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit(self):
+        shutil.copy(ROOT / "scripts/require-crit-review.py", self.repo / "scripts/require-crit-review.py")
+        self.origin()
+        head = self.git("rev-parse", "HEAD")
+        self.write("sweep.json", json.dumps({"pr": 9, "head_sha": head, "items": []}))
+        summary = self.write(
+            f".orchestration/validation/t-a01-audit-{head[:7]}.md.last.md", "- [P1] high a.sh:1 x\nVerdict: incorrect\n"
+        )
+        record = self.repo / ".orchestration/acceptance/t-a01.md"
+        reason = "advisory, owned by the follow-up task"
+        dispositions = self.write("audit.tsv", f"1\t{reason}\tgrep -n x a.sh\n")
+        self.assertIn("--audit-dispositions is required", self.front_matter(code=1))
+        self.assertFalse(record.exists())
+        wrong = self.write("wrong.tsv", f"2\t{reason}\tgrep -n x a.sh\n")
+        self.assertIn("names finding 2", self.front_matter("--audit-dispositions", wrong, code=1))
+        self.assertFalse(record.exists())
+        self.front_matter("--audit-dispositions", dispositions)
+        findings = self.gate_block(record)[0]["audit_findings"]
+        self.assertEqual([{"n": "1", "reason": reason, "evidence": "grep -n x a.sh"}], findings)
+        summary.write_text("Verdict: correct\n")
+        self.assertIn(
+            "--audit-dispositions is refused", self.front_matter("--audit-dispositions", dispositions, code=1)
+        )
+        self.front_matter()
+        self.assertEqual([], self.gate_block(record)[0]["audit_findings"])
+
+    def gate(self, link=False, plant=False):
+        """origin/main with the gate files, a PR head, the review worktree, evidence; the head tracks a symlink when
+        `link`, and when `plant` a `.python-version` naming its own executable `pwn`, which touches `pwned`."""
+        for rel in ("scripts/require-crit-review.py", "scripts/validate-agent-assets.py"):
+            self.write(rel, "gate\n")
+        self.origin("scripts/require-crit-review.py", "scripts/validate-agent-assets.py")
+        worktree = self.temp / "pr"
+        self.git("worktree", "add", "-q", "-b", "pr", str(worktree), "main")
+        v = ".orchestration/validation/t-a01"
+        if link:
+            (worktree / ".orchestration/validation").mkdir(parents=True)
+            (worktree / f"{v}-crit.json").symlink_to(self.temp / "outside.txt")
+            self.git("add", ".orchestration", cwd=worktree)
+        if plant:
+            (worktree / "pwn").write_text('#!/usr/bin/env bash\ntouch "$CALLS/pwned"\n')
+            (worktree / "pwn").chmod(0o755)
+            (worktree / ".python-version").write_text("./pwn\n")
+            self.git("add", "pwn", ".python-version", cwd=worktree)
+        self.git("commit", "-q", "--allow-empty", "-m", "change", cwd=worktree)
+        head = self.git("rev-parse", "HEAD", cwd=worktree)
+        self.git(
+            "worktree", "add", "-q", "--detach", str(self.repo / ".claude/worktrees/orchestrator-review"), "origin/main"
+        )
+        self.write(f"{v}-pr-feedback.json", json.dumps({"pr": 9, "head_sha": head, "items": []}))
+        for rel in (
+            f"{v}-audit-{head[:7]}.md",
+            f"{v}-audit-{head[:7]}.md.last.md",
+            f"{v}-review-receipt.md",
+            f"{v}-crit.json",
+        ):
+            self.write(rel, "x\n")
+        self.write(".orchestration/acceptance/t-a01.md", "---\n{}\n---\n")
+        (self.calls / "uv-output").write_text(f"{self.temp}/bin/gate-python\n")
+        # env -i drops CALLS, so the gate interpreter's stub carries the calls directory itself.
+        (self.temp / "bin/gate-python").write_text(STUBS["gate-python"].replace("$CALLS", str(self.calls)))
+        return worktree, head
+
+    def run_gate(self, worktree, code=0):
+        # The overrides a caller's shell may hold must not reach the gate.
+        env = {"AUDIT_DISPOSITIONS": "retired.md", "CRIT_REVIEW": "off", "CRIT_REVIEWED": "1"}
+        result = self.run_tool("orch-gate.sh", "t-a01", worktree, 9, code=code, env=env)
+        review = self.repo / ".claude/worktrees/orchestrator-review"
+        self.assertEqual("", self.git("status", "--porcelain", cwd=review))
+        self.assertEqual(self.git("rev-parse", "origin/main"), self.git("rev-parse", "HEAD", cwd=review))
+        return result
+
+    def test_orch_gate_runs_this_checkouts_gate_on_the_review_worktree_with_the_gate_inputs(self):
+        worktree, head = self.gate()
+        self.run_gate(worktree)
+        gate = str(self.repo / "scripts/require-crit-review.py")
+        self.assertEqual(["-I", "-P", gate, "--base", "origin/main"], self.call("gate-python"))
+        self.assertEqual(
+            str(self.repo / ".claude/worktrees/orchestrator-review"),
+            (self.calls / "gate-python-cwd").read_text().strip(),
+        )
+        env = (self.calls / "gate-python-env").read_text().splitlines()
+        env = dict(line.split("=", 1) for line in env if "=" in line)
+        v = ".orchestration/validation/t-a01"
+        expected = {
+            "ACCEPTANCE_EVIDENCE": ".orchestration/acceptance/t-a01.md",
+            "AUDIT_EVIDENCE": f"{v}-audit-{head[:7]}.md",
+            "PR_FEEDBACK_EVIDENCE": f"{v}-pr-feedback.json",
+            "REVIEW_EVIDENCE": f"{v}-review-receipt.md",
+            "AGENT_REVIEWED": "1",
+        }
+        self.assertEqual(expected, {k: env.get(k) for k in expected})
+        # Names only: a failure must not print the environment's values.
+        self.assertEqual([], [k for k in sorted(env) if k in ("AUDIT_DISPOSITIONS", "CRIT_REVIEW", "CRIT_REVIEWED")])
+
+    def test_orch_gate_runs_the_gate_under_an_explicit_environment(self):
+        worktree, _ = self.gate()
+        startup = self.write("startup.py", "")
+        leaked = {"PYTHONPATH": ".", "PYTHONSTARTUP": str(startup), "PYTHONHOME": str(self.temp)}
+        self.run_tool("orch-gate.sh", "t-a01", worktree, 9, env={**leaked, "CRIT_REVIEW": "off", "CRIT_REVIEWED": "1"})
+        env = (self.calls / "gate-python-env").read_text().splitlines()
+        env = dict(line.split("=", 1) for line in env if "=" in line)
+        allowed = {"PATH", "HOME", "PYTHONSAFEPATH", "AGENT_REVIEWED", "REVIEW_EVIDENCE", "PR_FEEDBACK_EVIDENCE"}
+        allowed |= {"AUDIT_EVIDENCE", "ACCEPTANCE_EVIDENCE"}
+        # The names the stub's own bash exports; PWD last, as GitGuardian reads a string literal after it as a password.
+        own = {"SHLVL", "_", "PWD"}
+        # Names only, so a failure prints no value.
+        self.assertEqual(sorted(allowed | own), sorted(env))
+        expected = (self.env["PATH"], self.env["HOME"], "1", "1")
+        self.assertEqual(expected, (env["PATH"], env["HOME"], env["PYTHONSAFEPATH"], env["AGENT_REVIEWED"]))
+        self.assertEqual(["-I", "-P"], self.call("gate-python")[:2])
+
+    def test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree(self):
+        worktree, _ = self.gate()
+        (self.calls / "gate-python-fails").write_text("")
+        self.assertIn("gate rc=2", self.run_gate(worktree, code=2).stdout)
+
+    def test_orch_gate_pins_the_interpreter_before_entering_the_review_worktree(self):
+        worktree, _ = self.gate(plant=True)
+        self.run_gate(worktree)
+        self.assertFalse((self.calls / "pwned").exists(), "the head's .python-version executable ran")
+        self.assertEqual(["python", "find"], self.call("uv"))
+        self.assertEqual(str(self.repo), (self.calls / "uv-cwd").read_text().strip())
+        self.assertEqual("-I", self.call("gate-python")[0])
+
+    def test_orch_gate_restores_the_review_worktree_when_setup_fails(self):
+        worktree, _ = self.gate()
+        # cp copies, then fails: the review worktree is at the head with partial evidence when the run stops.
+        (self.temp / "bin/cp").write_text("#!/usr/bin/env bash\n" + RECORD.format(name="cp") + '/bin/cp "$@"\nexit 1\n')
+        (self.temp / "bin/cp").chmod(0o755)
+        self.run_gate(worktree, code=1)
+        self.assertTrue(self.call("cp")[-1].startswith(str(self.repo / ".claude/worktrees/orchestrator-review")))
+        self.assertIsNone(self.call("gate-python"))
+
+    def test_orch_gate_refuses_another_prs_sweep_or_a_changed_gate_before_the_review_worktree_moves(self):
+        worktree, head = self.gate()
+        sweep = self.repo / ".orchestration/validation/t-a01-pr-feedback.json"
+        gate = self.repo / "scripts/require-crit-review.py"
+        for needle, path, text in (
+            ("is not the sweep of PR 9", sweep, json.dumps({"pr": 8, "head_sha": head, "items": []})),
+            ("the gate here differs from origin/main's", gate, "def main(): pass\n"),
+        ):
+            with self.subTest(needle=needle):
+                kept = path.read_text()
+                path.write_text(text)
+                self.assertIn(needle, self.run_gate(worktree, code=2).stderr)
+                path.write_text(kept)
+                self.assertIsNone(self.call("uv"))
+
+    def test_orch_gate_refuses_a_head_that_tracks_a_symlink_under_orchestration(self):
+        (self.temp / "outside.txt").write_text("outside\n")
+        worktree, _ = self.gate(link=True)
+        self.assertIn("tracks a symlink under .orchestration", self.run_gate(worktree, code=2).stderr)
+        self.assertEqual("outside\n", (self.temp / "outside.txt").read_text())
+        self.assertIsNone(self.call("uv"))
 
 
 if __name__ == "__main__":

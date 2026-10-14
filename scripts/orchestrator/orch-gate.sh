@@ -10,10 +10,12 @@
 #   is refused, so no copy follows a link out of the worktree. It copies them in and runs, with the review worktree
 #   as its working tree, the gate `make require-crit-review` runs, but this checkout's copy: the head's Makefile
 #   and gate are PR-controlled (PR #350 thread 4265190252), so `scripts/require-crit-review.py` and the validator
-#   it loads must equal origin/main's here. The gate gets exactly its inputs: AUDIT_EVIDENCE, ACCEPTANCE_EVIDENCE,
-#   PR_FEEDBACK_EVIDENCE, AGENT_REVIEWED=1, REVIEW_EVIDENCE and `--base origin/main`, with the retired
-#   AUDIT_DISPOSITIONS and the overrides CRIT_REVIEW and CRIT_REVIEWED unset. The review worktree is restored to
-#   origin/main whatever the gate says.
+#   it loads must equal origin/main's here. The interpreter is `uv python find` in this checkout, resolved before
+#   the review worktree is entered and run directly, so no uv reads the head's `.python-version` or `uv.toml`
+#   (uv runs an executable a `.python-version` names; the audit of f48593d6). The gate gets exactly its inputs:
+#   AUDIT_EVIDENCE, ACCEPTANCE_EVIDENCE, PR_FEEDBACK_EVIDENCE, AGENT_REVIEWED=1, REVIEW_EVIDENCE and `--base
+#   origin/main`, with the retired AUDIT_DISPOSITIONS and the overrides CRIT_REVIEW and CRIT_REVIEWED unset. A trap
+#   set before the head checkout restores the review worktree to origin/main whatever fails or the gate says.
 # @arg $1 string Task id.
 # @arg $2 path The PR's checkout (its HEAD is the gated head).
 # @arg $3 int PR number.
@@ -51,7 +53,9 @@ done
 [[ $(jq -r .pr "${sweep}") == "${pr}" ]] || refuse "${sweep} is not the sweep of PR ${pr}"
 [[ -z $(git ls-tree -r "${head}" -- .orchestration | awk '$1 == "120000"') ]] ||
     refuse "${head:0:7} tracks a symlink under .orchestration (PR #350 thread 4265190259)"
+python="$(uv python find)" || refuse "uv found no interpreter in ${root}"
 [[ -z $(git -C "${review}" status --porcelain --untracked-files=all) ]] || refuse "the review worktree is not clean"
+trap 'git -C "${review}" clean -fdq -- .orchestration; git -C "${review}" checkout -qf --detach origin/main' EXIT
 git -C "${review}" checkout -q --detach "${head}"
 for f in "${evidence[@]}"; do
     mkdir -p "${review}/$(dirname -- "${f}")"
@@ -64,9 +68,7 @@ rc=0
     # CRIT_REVIEW=off would skip the gate and CRIT_REVIEWED=1 would swap its review marker (thread 4265190267).
     unset AUDIT_DISPOSITIONS CRIT_REVIEW CRIT_REVIEWED
     AUDIT_EVIDENCE="${audit}" ACCEPTANCE_EVIDENCE="${record}" PR_FEEDBACK_EVIDENCE="${sweep}" AGENT_REVIEWED=1 \
-        REVIEW_EVIDENCE="${receipt}" uv run --no-project python -I "${root}/scripts/require-crit-review.py" --base origin/main
+        REVIEW_EVIDENCE="${receipt}" "${python}" -I "${root}/scripts/require-crit-review.py" --base origin/main
 ) || rc=$?
-git -C "${review}" clean -fdq -- .orchestration
-git -C "${review}" checkout -qf --detach origin/main
 echo "orch-gate: ${task} at ${head:0:7} for PR ${pr}: gate rc=${rc}"
 exit "${rc}"

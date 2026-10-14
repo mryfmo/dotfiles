@@ -1,7 +1,7 @@
 """Exercise the scripts under scripts/orchestrator/ with stubbed host binaries.
 
 Each script runs as a subprocess from its copy in a temporary git repository, with `agmsg-dispatch`, `shasum`,
-`uv`, `gh`, `make` and `codex` stubbed on PATH and `history.sh` stubbed in the directory `AGMSG_SCRIPTS` names;
+`uv`, `gh`, `make`, `codex` and an interpreter `gate-python` stubbed on PATH and `history.sh` stubbed in the directory `AGMSG_SCRIPTS` names;
 git is the real one, against a bare repository standing in for `origin`. A stub records its argv NUL-separated,
 so an argument is compared byte for byte (`gh` and `make` append one line per call).
 """
@@ -24,6 +24,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "scripts/orchestrator"
 RECORD = 'printf \'%s\\0\' "$@" > "$CALLS/{name}"\n'
+# A run records its argv, cwd and environment, prints {name}-output and fails while {name}-fails exists.
+RUN = RECORD + 'pwd -P > "$CALLS/{name}-cwd"\nenv > "$CALLS/{name}-env"\ncat "$CALLS/{name}-output" 2> /dev/null\n'
+RUN += '[[ ! -f "$CALLS/{name}-fails" ]] || exit 2\n'
 STUBS = {
     "agmsg-dispatch": "#!/usr/bin/env bash\n"
     + RECORD.format(name="agmsg-dispatch")
@@ -32,9 +35,11 @@ STUBS = {
     + '[[ -f "$CALLS/dispatch-marker" ]] && printf "  %s [2026-10-13T03:00:00Z] %s → %s: %s\\n" '
     + '"$(cat "$CALLS/dispatch-marker")" "$2" "$3" "$5" >> "$CALLS/history"\nexit 0\n',
     "shasum": '#!/usr/bin/env python3\nimport hashlib, sys\np = sys.argv[-1]\nprint(hashlib.sha256(open(p, "rb").read()).hexdigest() + "  " + p)\n',
+    # As uv does, a .python-version in the cwd that names an executable runs it.
     "uv": "#!/usr/bin/env bash\n"
-    + RECORD.format(name="uv")
-    + 'pwd -P > "$CALLS/uv-cwd"\nenv > "$CALLS/uv-env"\ncat "$CALLS/uv-output"\n[[ ! -f "$CALLS/uv-fails" ]] || exit 2\n',
+    + 'pv="$(cat .python-version 2> /dev/null)" && [[ -x ${pv} ]] && exec "${pv}" "$@"\n'
+    + RUN.format(name="uv"),
+    "gate-python": "#!/usr/bin/env bash\n" + RUN.format(name="gate-python"),
     "gh": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/gh.log"\n[[ "$1 $2" != "pr create" ]] || echo https://github.test/pull/9\n',
     "make": '#!/usr/bin/env bash\necho "$*" >> "$CALLS/make.log"\n[[ ! -f "$CALLS/make-fails" ]] || exit 2\n',
     # codex reads its stdin to the end (empty when the caller closed it) and writes its -o file.
@@ -964,8 +969,9 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.front_matter()
         self.assertEqual([], self.gate_block(record)[0]["audit_findings"])
 
-    def gate(self, link=False):
-        """origin/main with the gate files, a PR head (tracking a symlink when `link`), the review worktree, evidence."""
+    def gate(self, link=False, plant=False):
+        """origin/main with the gate files, a PR head, the review worktree, evidence; the head tracks a symlink when
+        `link`, and when `plant` a `.python-version` naming its own executable `pwn`, which touches `pwned`."""
         for rel in ("scripts/require-crit-review.py", "scripts/validate-agent-assets.py"):
             self.write(rel, "gate\n")
         self.origin("scripts/require-crit-review.py", "scripts/validate-agent-assets.py")
@@ -976,6 +982,11 @@ class OrchestratorToolsTest(unittest.TestCase):
             (worktree / ".orchestration/validation").mkdir(parents=True)
             (worktree / f"{v}-crit.json").symlink_to(self.temp / "outside.txt")
             self.git("add", ".orchestration", cwd=worktree)
+        if plant:
+            (worktree / "pwn").write_text('#!/usr/bin/env bash\ntouch "$CALLS/pwned"\n')
+            (worktree / "pwn").chmod(0o755)
+            (worktree / ".python-version").write_text("./pwn\n")
+            self.git("add", "pwn", ".python-version", cwd=worktree)
         self.git("commit", "-q", "--allow-empty", "-m", "change", cwd=worktree)
         head = self.git("rev-parse", "HEAD", cwd=worktree)
         self.git(
@@ -990,7 +1001,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         ):
             self.write(rel, "x\n")
         self.write(".orchestration/acceptance/t-a01.md", "---\n{}\n---\n")
-        (self.calls / "uv-output").write_text("")
+        (self.calls / "uv-output").write_text(f"{self.temp}/bin/gate-python\n")
         return worktree, head
 
     def run_gate(self, worktree, code=0):
@@ -1006,11 +1017,13 @@ class OrchestratorToolsTest(unittest.TestCase):
         worktree, head = self.gate()
         self.run_gate(worktree)
         gate = str(self.repo / "scripts/require-crit-review.py")
-        self.assertEqual(["run", "--no-project", "python", "-I", gate, "--base", "origin/main"], self.call("uv"))
+        self.assertEqual(["-I", gate, "--base", "origin/main"], self.call("gate-python"))
         self.assertEqual(
-            str(self.repo / ".claude/worktrees/orchestrator-review"), (self.calls / "uv-cwd").read_text().strip()
+            str(self.repo / ".claude/worktrees/orchestrator-review"),
+            (self.calls / "gate-python-cwd").read_text().strip(),
         )
-        env = dict(line.split("=", 1) for line in (self.calls / "uv-env").read_text().splitlines() if "=" in line)
+        env = (self.calls / "gate-python-env").read_text().splitlines()
+        env = dict(line.split("=", 1) for line in env if "=" in line)
         v = ".orchestration/validation/t-a01"
         expected = {
             "ACCEPTANCE_EVIDENCE": ".orchestration/acceptance/t-a01.md",
@@ -1025,8 +1038,25 @@ class OrchestratorToolsTest(unittest.TestCase):
 
     def test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree(self):
         worktree, _ = self.gate()
-        (self.calls / "uv-fails").write_text("")
+        (self.calls / "gate-python-fails").write_text("")
         self.assertIn("gate rc=2", self.run_gate(worktree, code=2).stdout)
+
+    def test_orch_gate_pins_the_interpreter_before_entering_the_review_worktree(self):
+        worktree, _ = self.gate(plant=True)
+        self.run_gate(worktree)
+        self.assertFalse((self.calls / "pwned").exists(), "the head's .python-version executable ran")
+        self.assertEqual(["python", "find"], self.call("uv"))
+        self.assertEqual(str(self.repo), (self.calls / "uv-cwd").read_text().strip())
+        self.assertEqual("-I", self.call("gate-python")[0])
+
+    def test_orch_gate_restores_the_review_worktree_when_setup_fails(self):
+        worktree, _ = self.gate()
+        # cp copies, then fails: the review worktree is at the head with partial evidence when the run stops.
+        (self.temp / "bin/cp").write_text("#!/usr/bin/env bash\n" + RECORD.format(name="cp") + '/bin/cp "$@"\nexit 1\n')
+        (self.temp / "bin/cp").chmod(0o755)
+        self.run_gate(worktree, code=1)
+        self.assertTrue(self.call("cp")[-1].startswith(str(self.repo / ".claude/worktrees/orchestrator-review")))
+        self.assertIsNone(self.call("gate-python"))
 
     def test_orch_gate_refuses_another_prs_sweep_or_a_changed_gate_before_the_review_worktree_moves(self):
         worktree, head = self.gate()

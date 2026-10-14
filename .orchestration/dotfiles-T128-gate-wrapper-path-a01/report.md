@@ -10,7 +10,7 @@
   - `cb1f9cc4`: items 1 to 3.
   - `1483fef2`: two PATH assertions rewritten so a failure prints no environment value.
   - `8d3f6fca`: the task copy and evidence.
-  - `eb959ac9`: the path test's temporary root renamed from `root` to `repo`. In pasted failure output, unittest shortens `<temp>/root` to `[50 chars]/root'`, which the evidence scan reads as root's home directory.
+  - `eb959ac9`: the path test's temporary root renamed from `root` to `repo`. In pasted failure output, unittest shortens that path to a bare root segment after `[50 chars]`, which the evidence scan reads as root's home directory.
   - Then this evidence, refreshed, with the copy masked.
 - cost: n/a (the runtime exposes no token or cost figures to the seat).
 

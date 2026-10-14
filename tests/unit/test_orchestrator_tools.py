@@ -885,6 +885,33 @@ class OrchestratorToolsTest(unittest.TestCase):
         out = self.run_tool("orch-audit.sh", "t-a01", pr, 9).stdout
         self.assertTrue(out.endswith(": Verdict: correct\n"), out)
 
+    def test_orch_audit_runs_the_ledger_check_by_default_and_refuses_a_gap(self):
+        # Plan 007 T704 item 3: without --ledger-check, ledger-check.py beside the script runs on every audit.
+        self.write("scripts/validate-agent-assets.py", "")
+        self.origin("scripts/validate-agent-assets.py")
+        pr = self.temp / "pr"
+        self.git("worktree", "add", "-q", "-b", "pr", str(pr), "main")
+        self.git("commit", "-q", "--allow-empty", "-m", "change", cwd=pr)
+        self.git("worktree", "add", "-q", "--detach", str(self.repo / ".claude/worktrees/orchestrator-review"), "main")
+        # The uv stub runs a .python-version executable: this one drops `run --no-project` and runs python.
+        shim = self.write("python-shim", f'#!/usr/bin/env bash\nshift 3\nexec "{sys.executable}" "$@"\n')
+        shim.chmod(0o755)
+        self.write(".python-version", f"{shim}\n")
+        url = "https://github.test/pull/9#discussion_r"
+        items = [
+            {"source": "review_comment", "bot": True, "url": f"{url}{n}", "disposition": "fixed:abcdef1"}
+            for n in (4250000001, 4250000002)
+        ]
+        self.write(".orchestration/validation/t-a01-pr-feedback.json", json.dumps({"pr": 9, "items": items}))
+        self.write(".orchestration/acceptance/t-a01.md", "4250000001\tother\n")
+        result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, code=3)
+        self.assertIn("sweep gaps 0\nledger rows 1; findings 2; gaps 1\nGAP 4250000002\n", result.stdout)
+        self.assertIn("the ledger is incomplete; refused", result.stderr)
+        self.assertIsNone(self.call("codex"))
+        # --ledger-check keeps its meaning: an override must name a script tracked in this repository.
+        result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, "--ledger-check", shim, code=2)
+        self.assertIn(f"{shim} is not a script tracked in this repository; refused", result.stderr)
+
     # acceptance-front-matter.py, orch-gate.sh
 
     def front_matter(self, *args, code=0):

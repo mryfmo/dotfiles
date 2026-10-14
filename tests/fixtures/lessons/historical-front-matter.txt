@@ -1,0 +1,490 @@
+# dotfiles-T128-process-rules-a01
+---
+format: 2
+task_id: dotfiles-T128-process-rules-a01
+kind: docs
+security: false
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  - AGENTS.md
+  - tests/unit/test_agmsg_orchestration_docs.py
+after: []
+premises:
+  - claim: "the T128 design phase produced over twenty design-review RESULTs (the count below is stamped with its time, it grows with every round) and the Codex Bot reviewed seven heads of PR 317 in one afternoon, one per fix round, six of them after the RESULT head 32fe9a36 (RESULT at 02:19Z), because no convergence rule, round cap or threat table existed; the operator directed on 2026-10-11 that the pattern be established before any further feature wave"
+    command: "date -u +%FT%TZ; ~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep -c 'AGMSG-RESULT v1 task_id=dotfiles-T128-design-review-a01'; gh api --paginate repos/mryfmo/dotfiles/pulls/317/reviews --jq '.[]|select(.user.type==\"Bot\")|[.commit_id[0:8],.submitted_at]|@tsv'"
+    output: |-
+      2026-10-11T04:13:28Z
+      26
+      32fe9a36	2026-10-11T02:37:13Z
+      56ca6c69	2026-10-11T02:52:38Z
+      de138f65	2026-10-11T03:03:00Z
+      f6528bba	2026-10-11T03:10:28Z
+      98f1d250	2026-10-11T03:24:14Z
+      2602f575	2026-10-11T03:43:58Z
+      e314c502	2026-10-11T04:04:13Z
+  - claim: "the Codex Bot reviews non-draft PRs (its first review of PR 317 came 17 minutes after gh pr ready at 02:20Z and none during the draft hours before; a draft is reviewed only on an explicit @codex review comment), and it reads the Code Review Rules section of AGENTS.md"
+    command: "gh api --paginate repos/mryfmo/dotfiles/pulls/317/reviews --jq '.[0].submitted_at'; grep -n 'Code Review Rules' AGENTS.md"
+    output: |-
+      2026-10-11T02:37:13Z
+      67:## Code Review Rules
+  - claim: "the regime rule file is at its 450-word budget, so the pattern's text lives in the SKILL and AGENTS.md"
+    command: "wc -w home/dot_config/claude/rules/agmsg-orchestration.md"
+    output: "     447 home/dot_config/claude/rules/agmsg-orchestration.md"
+
+---
+# dotfiles-T128-process-rules-a02
+---
+format: 2
+task_id: dotfiles-T128-process-rules-a02
+kind: docs
+security: false
+reset_of: [dotfiles-T128-process-rules-a01]
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  - AGENTS.md
+  - tests/unit/test_agmsg_orchestration_docs.py
+after: []
+threat_table:
+  - control: the PR edits AGENTS.md "Code Review Rules", which the Codex Bot reads from the PR tree, so a PR can rewrite the Bot's rules for its own review
+    disposition: "residual: the Bot's review of a PR that edits its own rules is swept feedback with no gate authority (design R8, trust anchor 4); the task-level audit runs with main's AGENTS.md as its instruction root (INV-5) and the orchestrator's review reads the diff; a change to Code Review Rules is review tier with one schema audit (INV-1)"
+  - control: the PR edits the SKILL that Claude seats follow once it is applied
+    disposition: "residual: the applied copy changes only after the merge and the operator's make update; before the merge the orchestrator's diff review and the audit from main judge every sentence, and tests/unit/test_agmsg_orchestration_docs.py pins each rule sentence with a token that fails when the sentence is removed"
+  - control: the task-file copies on the branch (.orchestration/dotfiles-T128-process-rules-a01/task.md and -a02/task.md)
+    disposition: "residual: each copy is byte-identical to the dispatched task file (sha256 in the worker's validation file, compared by the orchestrator at acceptance); the reset record names the a02 file's hash and the review seat's verdict=accept on it"
+premises:
+  - claim: "on PR 318 the Codex Bot raised the same finding class on three heads (4240290387 on 9a46c3c4: the disposition regex accepts an empty payload; 4240321113 on ac3794f9: residual none; 4240334094 on 6635030f: out-of-scope none or a wrong owner), which is plan 006 S1, and P1 on two heads after the first RESULT 9a46c3c4, which is INV-6; the other three ids in the output are the first revise round's P2s (fixed) and the stop-criteria P2"
+    command: "gh api --paginate repos/mryfmo/dotfiles/pulls/318/comments --jq '.[]|select(.in_reply_to_id==null and (.original_commit_id[0:8]|IN(\"9a46c3c4\",\"ac3794f9\",\"6635030f\")) and (.body|test(\"P0 Badge|P1 Badge|P2 Badge\")))|[.id,.original_commit_id[0:8]]|@tsv'"
+    output: |-
+      4240290382	9a46c3c4
+      4240290387	9a46c3c4
+      4240290391	9a46c3c4
+      4240321113	ac3794f9
+      4240334094	6635030f
+      4240334098	6635030f
+  - claim: "the redesign RESULT INV-6 names comes from an identity other than the abandoned task's author (the orchestrator claude-deep-dot wrote dotfiles-T128-process-rules-a01)"
+    command: "~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep 'AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01' | cut -c1-140"
+    output: "  ○ [2026-10-11T05:10:11Z] claude-review-dot-a001 → claude-deep-dot: AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01 status"
+  - claim: "the redesign receipt is the file whose hash the RESULT names"
+    command: "sha256sum .orchestration/validation/dotfiles-T128-process-rules-redesign-a01.md"
+    output: "b95b4eacb3b7ef3f8cc8f0da438062e4a794a1e96139268b9cecc6b4df0b40e4  .orchestration/validation/dotfiles-T128-process-rules-redesign-a01.md"
+---
+# dotfiles-T128-process-rules-a03
+---
+format: 2
+task_id: dotfiles-T128-process-rules-a03
+kind: docs
+security: false
+reset_of: [dotfiles-T128-process-rules-a01, dotfiles-T128-process-rules-a02]
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  - AGENTS.md
+  - tests/unit/test_agmsg_orchestration_docs.py
+after: []
+threat_table:
+  - control: the PR edits AGENTS.md "Code Review Rules", which the Codex Bot reads from the PR tree, so a PR can rewrite the Bot's rules for its own review
+    disposition: "residual: the Bot's review of a PR that edits its own rules is swept feedback with no gate authority (INV-7: the Bot's review of a PR is swept feedback, never a design receipt; design R8); the task-level audit runs with main's AGENTS.md as its instruction root (INV-5) and the orchestrator's review reads the diff; a change to Code Review Rules is review tier with one schema audit (INV-1)"
+  - control: the PR edits the SKILL that Claude seats follow once it is applied
+    disposition: "residual: the applied copy changes only after the merge and the operator's make update; before the merge the orchestrator's diff review and the audit from main judge every sentence, and tests/unit/test_agmsg_orchestration_docs.py pins each rule sentence with a token that fails when the sentence is removed"
+  - control: the task-file copies on the branch (.orchestration/dotfiles-T128-process-rules-a01/task.md, -a02/task.md and -a03/task.md)
+    disposition: "residual: each copy is byte-identical to the dispatched task file (sha256 in the worker's validation file, compared by the orchestrator at acceptance); the reset record names the a03 file's hash and the review seat's verdict=accept on it"
+  - control: the PR edits tests/unit/test_agmsg_orchestration_docs.py, the module that pins its own rule sentences, so it controls the oracle as well as the text
+    disposition: "residual: the orchestrator's diff review and the task-level audit from main read the test diff beside the prose diff; main-tests is no control here, because the module is declared in allowed_files and would run only in dormant-contract mode"
+premises:
+  - claim: "on PR 318 the Codex Bot raised the same finding class on three heads (4240290387 on 9a46c3c4: the disposition regex accepts an empty payload; 4240321113 on ac3794f9: residual none; 4240334094 on 6635030f: out-of-scope none or a wrong owner), which is plan 006 S1, and P1 on two heads after the first RESULT 9a46c3c4, which is INV-6; the other three ids in the output are the first revise round's P2s (fixed) and the stop-criteria P2"
+    command: "gh api --paginate repos/mryfmo/dotfiles/pulls/318/comments --jq '.[]|select(.in_reply_to_id==null and (.original_commit_id[0:8]|IN(\"9a46c3c4\",\"ac3794f9\",\"6635030f\")) and (.body|test(\"P0 Badge|P1 Badge|P2 Badge\")))|[.id,.original_commit_id[0:8]]|@tsv'"
+    output: |-
+      4240290382	9a46c3c4
+      4240290387	9a46c3c4
+      4240290391	9a46c3c4
+      4240321113	ac3794f9
+      4240334094	6635030f
+      4240334098	6635030f
+  - claim: "the redesign RESULT INV-6 names comes from an identity other than the abandoned task's author (the orchestrator claude-deep-dot wrote dotfiles-T128-process-rules-a01)"
+    command: "~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep 'AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01' | cut -c1-140"
+    output: "  ○ [2026-10-11T05:10:11Z] claude-review-dot-a001 → claude-deep-dot: AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01 status"
+  - claim: "the redesign receipt is the file whose hash the RESULT names"
+    command: "sha256sum .orchestration/validation/dotfiles-T128-process-rules-redesign-a01.md"
+    output: "b95b4eacb3b7ef3f8cc8f0da438062e4a794a1e96139268b9cecc6b4df0b40e4  .orchestration/validation/dotfiles-T128-process-rules-redesign-a01.md"
+---
+# dotfiles-T128-process-rules-a04
+---
+format: 2
+task_id: dotfiles-T128-process-rules-a04
+kind: docs
+security: false
+reset_of: [dotfiles-T128-process-rules-a01, dotfiles-T128-process-rules-a02, dotfiles-T128-process-rules-a03]
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  - AGENTS.md
+  - tests/unit/test_agmsg_orchestration_docs.py
+after: []
+threat_table:
+  - control: the PR edits AGENTS.md "Code Review Rules", which the Codex Bot reads from the PR tree, so a PR can rewrite the Bot's rules for its own review
+    disposition: "residual: the Bot's review of a PR that edits its own rules is swept feedback with no gate authority (INV-7: the Bot's review of a PR is swept feedback, never a design receipt; design R8); the task-level audit runs with main's AGENTS.md as its instruction root (INV-5) and the orchestrator's review reads the diff; a change to Code Review Rules is review tier with one schema audit (INV-1)"
+  - control: the PR edits the SKILL that Claude seats follow once it is applied
+    disposition: "residual: the applied copy changes only after the merge and the operator's make update; before the merge the orchestrator's diff review and the audit from main judge every sentence, and tests/unit/test_agmsg_orchestration_docs.py pins each rule sentence with a token that fails when the sentence is removed"
+  - control: the task-file copies on the branch (.orchestration/dotfiles-T128-process-rules-a01/task.md, -a02/task.md, -a03/task.md and -a04/task.md)
+    disposition: "residual: each copy is byte-identical to the dispatched task file (sha256 in the worker's validation file, compared by the orchestrator at acceptance); the reset record names the a04 file's hash and the review seat's verdict=accept on it"
+  - control: the PR edits tests/unit/test_agmsg_orchestration_docs.py, the module that pins its own rule sentences, so it controls the oracle as well as the text
+    disposition: "residual: the orchestrator's diff review and the task-level audit from main read the test diff beside the prose diff; main-tests is no control here, because the module is declared in allowed_files and would run only in dormant-contract mode"
+premises:
+  - claim: "on PR 318 the Codex Bot raised the same finding class on three heads (4240290387 on 9a46c3c4: the disposition regex accepts an empty payload; 4240321113 on ac3794f9: residual none; 4240334094 on 6635030f: out-of-scope none or a wrong owner), which is plan 006 S1, and P1 on two heads after the first RESULT 9a46c3c4, which is INV-6; the other three ids in the output are the first revise round's P2s (fixed) and the stop-criteria P2"
+    command: "gh api --paginate repos/mryfmo/dotfiles/pulls/318/comments --jq '.[]|select(.in_reply_to_id==null and (.original_commit_id[0:8]|IN(\"9a46c3c4\",\"ac3794f9\",\"6635030f\")) and (.body|test(\"P0 Badge|P1 Badge|P2 Badge\")))|[.id,.original_commit_id[0:8]]|@tsv'"
+    output: |-
+      4240290382	9a46c3c4
+      4240290387	9a46c3c4
+      4240290391	9a46c3c4
+      4240321113	ac3794f9
+      4240334094	6635030f
+      4240334098	6635030f
+  - claim: "the redesign RESULT INV-6 names comes from an identity other than the abandoned task's author (the orchestrator claude-deep-dot wrote dotfiles-T128-process-rules-a01)"
+    command: "~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep 'AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01' | cut -c1-140"
+    output: "  ○ [2026-10-11T05:10:11Z] claude-review-dot-a001 → claude-deep-dot: AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01 status"
+  - claim: "the redesign receipt is the file whose hash the RESULT names"
+    command: "sha256sum .orchestration/validation/dotfiles-T128-process-rules-redesign-a01.md"
+    output: "b95b4eacb3b7ef3f8cc8f0da438062e4a794a1e96139268b9cecc6b4df0b40e4  .orchestration/validation/dotfiles-T128-process-rules-redesign-a01.md"
+---
+# dotfiles-T128-process-rules-a05
+---
+format: 2
+task_id: dotfiles-T128-process-rules-a05
+kind: docs
+security: false
+reset_of: [dotfiles-T128-process-rules-a01, dotfiles-T128-process-rules-a02, dotfiles-T128-process-rules-a03, dotfiles-T128-process-rules-a04]
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  - AGENTS.md
+  - tests/unit/test_agmsg_orchestration_docs.py
+  - tests/fixtures/regime/*.md
+  - .orchestration/dotfiles-T128-process-rules-a05/**
+after: []
+threat_table:
+  - control: the PR edits AGENTS.md "Code Review Rules", which the Codex Bot reads from the PR tree, so a PR can rewrite the Bot's rules for its own review
+    disposition: "residual: the Bot's review of a PR that edits its own rules is swept feedback with no gate authority (INV-7: the Bot's review of a PR is swept feedback, never a design receipt; design R8); the task-level audit runs with main's AGENTS.md as its instruction root (INV-5) and the orchestrator's review reads the diff; a change to Code Review Rules is review tier with one schema audit (INV-1)"
+  - control: the PR edits the SKILL that Claude seats follow once it is applied
+    disposition: "residual: the applied copy changes only after the merge and the operator's make update; before the merge the orchestrator's diff review and the audit from main judge every sentence, and tests/unit/test_agmsg_orchestration_docs.py pins each rule sentence with a token that fails when the sentence is removed"
+  - control: the task-file copies on the branch (.orchestration/dotfiles-T128-process-rules-a01/task.md, -a02/task.md, -a03/task.md, -a04/task.md and -a05/task.md)
+    disposition: "residual: each copy is byte-identical to the dispatched task file (sha256 in the worker's validation file, compared by the orchestrator at acceptance); the reset record names the a05 file's hash and the review seat's verdict=accept on it"
+  - control: the PR edits tests/unit/test_agmsg_orchestration_docs.py, the module that pins its own rule sentences, so it controls the oracle as well as the text
+    disposition: "residual: the orchestrator's diff review and the task-level audit from main read the test diff beside the prose diff; main-tests is no control here, because the module is declared in allowed_files and would run only in dormant-contract mode"
+premises:
+  - claim: "on PR 318 the Codex Bot raised the same finding class on three heads (4240290387 on 9a46c3c4: the disposition regex accepts an empty payload; 4240321113 on ac3794f9: residual none; 4240334094 on 6635030f: out-of-scope none or a wrong owner), which is plan 006 S1, and P1 on two heads after the first RESULT 9a46c3c4, which is INV-6; the other three ids in the output are the first revise round's P2s (fixed) and the stop-criteria P2"
+    command: "gh api --paginate repos/mryfmo/dotfiles/pulls/318/comments --jq '.[]|select(.in_reply_to_id==null and (.original_commit_id[0:8]|IN(\"9a46c3c4\",\"ac3794f9\",\"6635030f\")) and (.body|test(\"P0 Badge|P1 Badge|P2 Badge\")))|[.id,.original_commit_id[0:8]]|@tsv'"
+    output: |-
+      4240290382	9a46c3c4
+      4240290387	9a46c3c4
+      4240290391	9a46c3c4
+      4240321113	ac3794f9
+      4240334094	6635030f
+      4240334098	6635030f
+  - claim: "the redesign RESULT INV-6 names comes from an identity other than the abandoned task's author (the orchestrator claude-deep-dot wrote dotfiles-T128-process-rules-a01)"
+    command: "~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep 'AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01' | cut -c1-140"
+    output: "  ○ [2026-10-11T05:10:11Z] claude-review-dot-a001 → claude-deep-dot: AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01 status"
+  - claim: "the redesign receipt is the file whose hash the RESULT names"
+    command: "sha256sum .orchestration/validation/dotfiles-T128-process-rules-redesign-a01.md"
+    output: "b95b4eacb3b7ef3f8cc8f0da438062e4a794a1e96139268b9cecc6b4df0b40e4  .orchestration/validation/dotfiles-T128-process-rules-redesign-a01.md"
+---
+# dotfiles-T128-process-rules-a06
+---
+format: 2
+task_id: dotfiles-T128-process-rules-a06
+kind: docs
+security: false
+reset_of: [dotfiles-T128-process-rules-a01, dotfiles-T128-process-rules-a02, dotfiles-T128-process-rules-a03, dotfiles-T128-process-rules-a04, dotfiles-T128-process-rules-a05]
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  - AGENTS.md
+  - tests/unit/test_agmsg_orchestration_docs.py
+  - tests/fixtures/regime/*.md
+  - .orchestration/dotfiles-T128-process-rules-a06/**
+after: []
+threat_table:
+  - control: the PR edits AGENTS.md "Code Review Rules", which the Codex Bot reads from the PR tree, so a PR can rewrite the Bot's rules for its own review
+    disposition: "residual: the Bot's review of a PR that edits its own rules is swept feedback with no gate authority (INV-7: the Bot's review of a PR is swept feedback, never a design receipt; design R8); the task-level audit runs with main's AGENTS.md as its instruction root (INV-5) and the orchestrator's review reads the diff; a change to Code Review Rules is review tier with one schema audit (INV-1)"
+  - control: the PR edits the SKILL that Claude seats follow once it is applied
+    disposition: "residual: the applied copy changes only after the merge and the operator's make update; before the merge the orchestrator's diff review and the audit from main judge every sentence, and tests/unit/test_agmsg_orchestration_docs.py pins each rule sentence with a token that fails when the sentence is removed"
+  - control: the task-file copies on the branch (.orchestration/dotfiles-T128-process-rules-a01/task.md, -a02/task.md, -a03/task.md, -a04/task.md, -a05/task.md and -a06/task.md)
+    disposition: "residual: each copy is byte-identical to the dispatched task file (sha256 in the worker's validation file, compared by the orchestrator at acceptance); the reset record names the a06 file's hash and the review seat's verdict=accept on it"
+  - control: the PR edits tests/unit/test_agmsg_orchestration_docs.py, the module that pins its own rule sentences, so it controls the oracle as well as the text
+    disposition: "residual: the orchestrator's diff review and the task-level audit from main read the test diff beside the prose diff; main-tests is no control here, because the module is declared in allowed_files and would run only in dormant-contract mode"
+  - control: the PR edits tests/fixtures/regime/*.md, the expected values of test_regime_rule_sections_are_pinned_whole, so a rule and its fixture can change together
+    disposition: "residual: a fixture diff is the declared change itself (the test's message requires listing it in the RESULT, INV-12); the orchestrator's diff review and the task-level audit from main read each fixture diff beside the prose diff, and main keeps the previous fixture to compare against"
+premises:
+  - claim: "on PR 318 the Codex Bot raised the same finding class on three heads (4240290387 on 9a46c3c4: the disposition regex accepts an empty payload; 4240321113 on ac3794f9: residual none; 4240334094 on 6635030f: out-of-scope none or a wrong owner), which is plan 006 S1, and P1 on two heads after the first RESULT 9a46c3c4, which is INV-6; the other three ids in the output are the first revise round's P2s (fixed) and the stop-criteria P2"
+    command: "gh api --paginate repos/mryfmo/dotfiles/pulls/318/comments --jq '.[]|select(.in_reply_to_id==null and (.original_commit_id[0:8]|IN(\"9a46c3c4\",\"ac3794f9\",\"6635030f\")) and (.body|test(\"P0 Badge|P1 Badge|P2 Badge\")))|[.id,.original_commit_id[0:8]]|@tsv'"
+    output: |-
+      4240290382	9a46c3c4
+      4240290387	9a46c3c4
+      4240290391	9a46c3c4
+      4240321113	ac3794f9
+      4240334094	6635030f
+      4240334098	6635030f
+  - claim: "the redesign RESULT INV-6 names comes from an identity other than the abandoned task's author (the orchestrator claude-deep-dot wrote dotfiles-T128-process-rules-a01)"
+    command: "~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep 'AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01' | cut -c1-140"
+    output: "  ○ [2026-10-11T05:10:11Z] claude-review-dot-a001 → claude-deep-dot: AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01 status"
+  - claim: "the redesign receipt is the file whose hash the RESULT names"
+    command: "sha256sum .orchestration/validation/dotfiles-T128-process-rules-redesign-a01.md"
+    output: "b95b4eacb3b7ef3f8cc8f0da438062e4a794a1e96139268b9cecc6b4df0b40e4  .orchestration/validation/dotfiles-T128-process-rules-redesign-a01.md"
+---
+# dotfiles-T128-regime-counters-a01
+---
+format: 2
+task_id: dotfiles-T128-regime-counters-a01
+kind: code
+security: true
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - scripts/regime-counters.sh
+  - scripts/check-regime-boundary.sh
+  - tests/unit/test_regime_counters.py
+  - tests/unit/test_check_regime_boundary.py
+  - tests/fixtures/regime-counters/**
+after: []
+invariants:
+  INV-6: "the reset rule's mandatory point is the merge backstop in scripts/require-crit-review.py, with the orchestrator's Stop hook (Claude Stop hook, Codex [hooks].Stop) as the early signal, soft on both runtimes by their documented caps; counts come from history for the hook and the gate (revises = RESULTs for the task_id minus one, threshold 2; amendments = AGMSG-TASKs after the first, threshold 2; AGMSG-PONG status=question, threshold 2) and from GitHub and main-checkout files for the gate and the boundary check only (Codex Bot P0 or P1 on two heads after the first RESULT, from original_commit_id on review_comment items recorded by pr-feedback.py; an audit implementation or specification finding at P0-P1 on two heads, from .orchestration/validation/<task>-audit-<sha7>.json in the main checkout, each counted only when its sha256 matches its AGMSG-AUDIT record); when a count is reached the gate refuses the merge until a reset record names a redesign task whose design RESULT comes from an identity other than the task's author, or a waiver written by scripts/regime-waive.sh under the INV-1 ask-rule discipline into the state directory outside the sandbox write roots (the only release path besides a redesign; the one-account residual of INV-1 applies); check-regime-boundary.sh reports a closed-unmerged PR whose task has no reset record and a task over any count with neither an accepted acceptance record nor a reset record"
+threat_table:
+  - control: the orchestrator edits .orchestration files
+    disposition: "closed: every count comes from agmsg history or GitHub only; .orchestration files select which task ids the boundary check reports and can never raise or lower a count; test: a forged acceptance record changes no count"
+  - control: the orchestrator writes the acceptance, reset or waiver record that would silence a boundary report
+    disposition: "closed: a record silences the report only through INV-6's anchor for it: an accepted acceptance record only when GitHub shows the task's PR merged (gh api pulls/<n>, merged_at non-null; the PR number comes from the record's pr= line); a reset record only when history holds an AGMSG-RESULT verdict=accept naming the redesign design hash the record names, sent by an identity other than the abandoned task's author (the TASK sender); a waiver only from the state directory outside the sandbox write roots that scripts/regime-waive.sh (V3a) writes, so before V3a no waiver silences anything and a DESIGN_RESET_WAIVED_BY= line is printed as regime-boundary: <id> waiver-unanchored (visible, not prevented: trust anchor 4); tests: a forged accepted record with an unmerged PR, a reset record whose hash has no foreign RESULT, and a waiver line in an acceptance record each leave the report in place"
+  - control: the PR authors scripts/regime-counters.sh, its tests and its fixtures (R8)
+    disposition: "residual: a PR-authored test cannot close its own author's undercount or a forged source= label; compensating controls: the design-tier audit of the final head from main as instruction root (INV-5 form, headless now), and the orchestrator's acceptance replay, which runs the branch's script live without any fixture flag on dotfiles-T119-rolling-release-assets-a01 and on dotfiles-T128-v0-main-tests-a01 --pr 317 and compares the output with the figures INV-6's sentence gives for this task's premises (T119: 10 TASKs, 9 amendments because the ninth TASK after the first carries no amendment= token, 8 questions; PR 317: the first RESULT head is adcf783b, 01:42Z, and six P0/P1 heads follow it) in the acceptance record; main-tests' undeclared-change guard applies after V0 lands; dormant contracts are withdrawn by plan 006"
+  - control: history.sh truncates to 20 rows by default
+    disposition: "closed: the script reads the whole team history through lib/storage.sh's storage_history, as scripts/agent-stop-gate.sh read_history does; test: a 600-row fixture counts fully"
+  - control: a worker sends extra RESULTs or PONGs
+    disposition: "closed: revises = RESULTs for the task_id minus one, exactly INV-6's sentence (the message contract has no withdrawn or superseded status; an ACCEPTANCE status=parked changes no count), every counted message id printed; questions = PONG status=question; tests per status the contract has (ready_for_review, blocked)"
+  - control: the Bot head count depends on live GitHub state
+    disposition: "closed: review_comment items carrying a P0 or P1 badge, grouped by original_commit_id (the field pr-feedback.py records, read live with gh api because the feedback JSON exists only at acceptance), counted only for heads after the first RESULT's head= taken from history; a gh failure, a first RESULT without a head= token, or review_comment items without original_commit_id print unknown, never 0; test with a recorded API fixture and one negative case each"
+  - control: a task without a pull request (review, design and redesign tasks) can never anchor an accepted record on a merge, so the probe would report it forever and the report would become noise
+    disposition: "closed: an accepted acceptance record silences a PR-less task only when none of the task's RESULTs carries a pr= token and the record carries a pr=none line; a RESULT with pr= makes pr=none a forgery that silences nothing; every accepted record carries pr=<n> or pr=none (the orchestrator adds the line to existing records in the boundary commit); tests: a PR-less review task with pr=none is silenced, the same record on a task whose RESULT names a PR is not"
+  - control: the test seams --history-file and --github-file could feed forged inputs
+    disposition: "closed: the seams are flags, scripts/check-regime-boundary.sh never passes them, and every output line ends in source=live or source=fixture so a pasted output shows which was used; test asserts the marker"
+  - control: audit findings per head
+    disposition: "out-of-scope: V2 (INV-6 counts audit findings from .orchestration/validation/<task>-audit-<sha7>.json whose sha256 matches an AGMSG-AUDIT record; neither exists before V2); until then the script prints audits=unknown and the orchestrator counts audit classes by hand in the acceptance record"
+  - control: the thresholds could be edited in the script
+    disposition: "residual: the thresholds are INV-6's constants (revises 2, amendments 2, questions 2, Bot P0/P1 heads 2); changing them is a hashed design change under INV-7; compensating control: the design review, and V3a's gate reads the same constants"
+premises:
+  - claim: "the counts the plan needs are derivable from history (TASK, amendment=, PONG status=question, RESULT, ACCEPTANCE status=revise, timestamps) and GitHub (review_comment original_commit_id, P badge); T119 has 10 TASKs, 8 of them tagged amendment=, and INV-6 counts the nine after the first; the PR 313 figure is the Bot thread count, not INV-6's head count"
+    command: "~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep -c 'AGMSG-TASK v1 task_id=dotfiles-T119-rolling-release-assets-a01'; gh api --paginate repos/mryfmo/dotfiles/pulls/313/comments --jq '[.[]|select(.in_reply_to_id==null)]|length'"
+    output: |-
+      10
+      52
+  - claim: "scripts/agent-stop-gate.sh already reads the whole team history through the storage facade; the counters reuse that read, not history.sh's 20-row default"
+    command: "grep -n 'storage_history\\|read_history\\|lib/storage' scripts/agent-stop-gate.sh | head -6"
+    output: |-
+      51:# shortens each wait on a contended store. storage_history runs storage_init, which writes unless
+      56:# SQLITE_BUSY; only a non-initializing storage_history upstream would close that.
+      57:read_history() {
+      60:    source "${scripts}/lib/storage.sh" && agmsg_storage_load || return 1
+      65:    storage_history "$1" | jq -r '[.from, .to, .body] | @tsv'
+      71:    read_history "$2"
+  - claim: "PR 317's Bot-reviewed heads, one per fix round, are the V0 fixture's expected Bot heads; V0's first RESULT is the 01:42Z one at head adcf783b (the 02:19Z RESULT at 32fe9a36 is its second), so the six P0/P1 heads after adcf783b count under INV-6"
+    command: "gh api --paginate repos/mryfmo/dotfiles/pulls/317/reviews --jq '.[]|select(.user.type==\"Bot\")|[.commit_id[0:8],.submitted_at]|@tsv'"
+    output: |-
+      32fe9a36	2026-10-11T02:37:13Z
+      56ca6c69	2026-10-11T02:52:38Z
+      de138f65	2026-10-11T03:03:00Z
+      f6528bba	2026-10-11T03:10:28Z
+      98f1d250	2026-10-11T03:24:14Z
+      2602f575	2026-10-11T03:43:58Z
+      e314c502	2026-10-11T04:04:13Z
+---
+# dotfiles-T128-regime-counters-a02
+---
+format: 2
+task_id: dotfiles-T128-regime-counters-a02
+kind: code
+security: true
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round18.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - scripts/regime-counters.sh
+  - scripts/check-regime-boundary.sh
+  - tests/unit/test_regime_counters.py
+  - tests/unit/test_check_regime_boundary.py
+  - tests/fixtures/regime-counters/**
+after: []
+reset_of: [dotfiles-T128-regime-counters-a01]
+invariants:
+  INV-6: "the reset rule's mandatory point is the merge backstop in scripts/require-crit-review.py, with the orchestrator's Stop hook (Claude Stop hook, Codex [hooks].Stop) as the early signal, soft on both runtimes by their documented caps; counts come from history for the hook and the gate (revises = RESULTs for the task_id minus one, threshold 2; amendments = AGMSG-TASKs after the first, threshold 2; AGMSG-PONG status=question, threshold 2) and from GitHub and main-checkout files for the gate and the boundary check only (Codex Bot P0 or P1 on two heads after the first RESULT, from original_commit_id on review_comment items recorded by pr-feedback.py; an audit implementation or specification finding at P0-P1 on two heads, from .orchestration/validation/<task>-audit-<sha7>.json in the main checkout, each counted only when its sha256 matches its AGMSG-AUDIT record); when a count is reached the gate refuses the merge until a reset record names a redesign task whose design RESULT comes from an identity other than the task's author, or a waiver written by scripts/regime-waive.sh under the INV-1 ask-rule discipline into the state directory outside the sandbox write roots (the only release path besides a redesign; the one-account residual of INV-1 applies); check-regime-boundary.sh reports a closed-unmerged PR whose task has no reset record and a task over any count with neither an accepted acceptance record nor a reset record"
+threat_table:
+  - control: the orchestrator edits .orchestration files
+    disposition: "closed: every count comes from agmsg history or GitHub only; .orchestration files select which task ids the boundary check reports and can never raise or lower a count; test: a forged acceptance record changes no count"
+  - control: the orchestrator writes the acceptance, reset or waiver record that would silence a boundary report
+    disposition: "closed: a record silences the report only through INV-6's anchor for it: an accepted acceptance record only when GitHub shows the task's PR merged (gh api pulls/<n>, merged_at non-null; the PR number comes from the record's pr= line); a reset record only when history holds an AGMSG-RESULT verdict=accept naming the redesign design hash the record names, sent by an identity other than the abandoned task's author (the TASK sender); a waiver only from the state directory outside the sandbox write roots that scripts/regime-waive.sh (V3a) writes, so before V3a no waiver silences anything and a DESIGN_RESET_WAIVED_BY= line is printed as regime-boundary: <id> waiver-unanchored (visible, not prevented: trust anchor 4); tests: a forged accepted record with an unmerged PR, a reset record whose hash has no foreign RESULT, and a waiver line in an acceptance record each leave the report in place"
+  - control: a reset record names an unrelated, already accepted design and its genuine hash (the audit of 72764f05, P1)
+    disposition: "closed: the accepting AGMSG-RESULT must carry task_id equal to the reset record's redesign_source (the review-seat task that produced the successor), verdict=accept and design_sha256 equal to the successor file's hash, and come from an identity other than the task's TASK senders; a foreign accept from any other task id anchors nothing (test: an unrelated review task's accept on the same hash); a reset record anchors only when the redesign task file it names carries a reset_of list that names the task being reset, and history holds the foreign verdict=accept on that file's hash; a record naming any other accepted design anchors nothing; test: a reset record naming an unrelated accepted design leaves the report in place"
+  - control: the PR authors scripts/regime-counters.sh, its tests and its fixtures (R8)
+    disposition: "residual: a PR-authored test cannot close its own author's undercount or a forged source= label; compensating controls: the design-tier audit of the final head from main as instruction root (INV-5 form, headless now), and the orchestrator's acceptance replay, which runs the branch's script live without any fixture flag on dotfiles-T119-rolling-release-assets-a01 and on dotfiles-T128-v0-main-tests-a01 --pr 317 and compares the output with the figures INV-6's sentence gives for this task's premises (T119: 10 TASKs, 9 amendments because the ninth TASK after the first carries no amendment= token, 8 questions; PR 317: the first RESULT head is adcf783b, 01:42Z, and six P0/P1 heads follow it) in the acceptance record; main-tests' undeclared-change guard applies after V0 lands; dormant contracts are withdrawn by plan 006"
+  - control: history.sh truncates to 20 rows by default
+    disposition: "closed: the script reads the whole team history through lib/storage.sh's storage_history, as scripts/agent-stop-gate.sh read_history does; test: a 600-row fixture counts fully"
+  - control: a worker sends extra RESULTs or PONGs
+    disposition: "closed: revises = RESULTs for the task_id minus one, exactly INV-6's sentence (the message contract has no withdrawn or superseded status; an ACCEPTANCE status=parked changes no count), every counted message id printed; questions = PONG status=question; a status or a verdict is read from the first status= or verdict= token of the body, the way tok() reads task_id, never from free text (the audit of 72764f05, P1: has() anywhere in the body); tests per status the contract has (ready_for_review, blocked), plus a PONG status=blocked whose note mentions status=question that counts no question and a RESULT verdict=revise whose note mentions verdict=accept that anchors no reset"
+  - control: the Bot head count depends on live GitHub state
+    disposition: "closed: review_comment items carrying a P0 or P1 badge, grouped by original_commit_id (the field pr-feedback.py records, read live with gh api because the feedback JSON exists only at acceptance), counted only for heads after the first RESULT's head= taken from history; a gh failure, a first RESULT without a head= token, or review_comment items without original_commit_id print unknown, never 0; test with a recorded API fixture and one negative case each"
+  - control: a task without a pull request (review, design and redesign tasks) can never anchor an accepted record on a merge, so the probe would report it forever and the report would become noise; and a code task whose RESULT omits pr= must not slip through the same door
+    disposition: "closed: an accepted acceptance record silences a PR-less task only when the task file's kind is review or design (read with PyYAML; a missing or other kind, code and docs included, never qualifies), none of the task's RESULTs carries a pr= token, and the record carries a pr=none line; a RESULT with pr= makes pr=none a forgery that silences nothing; every accepted record carries pr=<n> or pr=none; every PR-less task file carries format-2 front matter with kind review or design (the orchestrator added it to the existing design-review, task-review and redesign files); tests: a review task with pr=none is silenced; the same record on a code task whose RESULT omits pr= is not; a task whose RESULT names a PR is not; a PR-less task file without front matter is not"
+  - control: the test seams --history-file and --github-file could feed forged inputs
+    disposition: "closed: the seams are flags, scripts/check-regime-boundary.sh never passes them, and every output line ends in source=live or source=fixture so a pasted output shows which was used; test asserts the marker"
+  - control: audit findings per head
+    disposition: "out-of-scope: V2 (INV-6 counts audit findings from .orchestration/validation/<task>-audit-<sha7>.json whose sha256 matches an AGMSG-AUDIT record; neither exists before V2); until then the script prints audits=unknown and the orchestrator counts audit classes by hand in the acceptance record"
+  - control: the thresholds could be edited in the script
+    disposition: "residual: the thresholds are INV-6's constants (revises 2, amendments 2, questions 2, Bot P0/P1 heads 2); changing them is a hashed design change under INV-7; compensating control: the design review, and V3a's gate reads the same constants"
+  - control: "the PR's fixtures count against INV-2's 1000-line cap under tests/ (the audit of 72764f05, P2: 697 unit-test lines plus 1038 fixture lines on the a01 head)"
+    disposition: "closed: tests/fixtures/regime-counters/* hold only the rows and fields the tests read (PR 313: the P0/P1 top-level comments and the commits; message TSVs cut to the task's rows), so git diff --numstat origin/main -- tests/ adds at most 1000 lines; test: none, the acceptance measures it from the pasted numstat"
+premises:
+  - claim: "the counts the plan needs are derivable from history (TASK, amendment=, PONG status=question, RESULT, ACCEPTANCE status=revise, timestamps) and GitHub (review_comment original_commit_id, P badge); T119 has 10 TASKs, 8 of them tagged amendment=, and INV-6 counts the nine after the first; the PR 313 figure is the Bot thread count, not INV-6's head count"
+    command: "~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep -c 'AGMSG-TASK v1 task_id=dotfiles-T119-rolling-release-assets-a01'; gh api --paginate repos/mryfmo/dotfiles/pulls/313/comments --jq '[.[]|select(.in_reply_to_id==null)]|length'"
+    output: |-
+      10
+      52
+  - claim: "scripts/agent-stop-gate.sh already reads the whole team history through the storage facade; the counters reuse that read, not history.sh's 20-row default"
+    command: "grep -n 'storage_history\\|read_history\\|lib/storage' scripts/agent-stop-gate.sh | head -6"
+    output: |-
+      51:# shortens each wait on a contended store. storage_history runs storage_init, which writes unless
+      56:# SQLITE_BUSY; only a non-initializing storage_history upstream would close that.
+      57:read_history() {
+      60:    source "${scripts}/lib/storage.sh" && agmsg_storage_load || return 1
+      65:    storage_history "$1" | jq -r '[.from, .to, .body] | @tsv'
+      71:    read_history "$2"
+  - claim: "PR 317's Bot-reviewed heads, one per fix round, are the V0 fixture's expected Bot heads; V0's first RESULT is the 01:42Z one at head adcf783b (the 02:19Z RESULT at 32fe9a36 is its second), so the six P0/P1 heads after adcf783b count under INV-6"
+    command: "gh api --paginate repos/mryfmo/dotfiles/pulls/317/reviews --jq '.[]|select(.user.type==\"Bot\")|[.commit_id[0:8],.submitted_at]|@tsv'"
+    output: |-
+      32fe9a36	2026-10-11T02:37:13Z
+      56ca6c69	2026-10-11T02:52:38Z
+      de138f65	2026-10-11T03:03:00Z
+      f6528bba	2026-10-11T03:10:28Z
+      98f1d250	2026-10-11T03:24:14Z
+      2602f575	2026-10-11T03:43:58Z
+      e314c502	2026-10-11T04:04:13Z
+---
+# dotfiles-T128-ci-skip-orchestration-a01
+---
+format: 2
+task_id: dotfiles-T128-ci-skip-orchestration-a01
+kind: code
+security: true
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - .github/workflows/remote.yaml
+  - .github/workflows/test.yaml
+  - tests/unit/test_workflow_orchestration_skip.py
+invariants:
+  INV-2: "a PR is mergeable only within the caps the CI regime job enforces from main's workflow (at most 15 changed files outside .orchestration/, 500 added lines outside tests/, .orchestration/ and the data list scripts/legacy-task-ids.txt, and 1000 added lines under tests/), and its task.md invariants equal the design's as a set of ids and byte-for-byte as sentences (the design read from main, never from the PR; a task id ending in -contract-a01 is compared with its implementing task's entry); the design file must be on main (through a boundary PR) before the implementing TASK is dispatched and the regime job fails closed when the design named by task.md is absent from main; an .orchestration-only PR runs no bootstrap or test matrix and every required check context still reports success (each required workflow decides inside its jobs, as test.yaml's changes job does), so a boundary PR merges in minutes; exceeding a cap is a split, never a finding to disposition (the cap changes the unit of work: T116 +529 and T118 +881 would have been split)"
+threat_table:
+  - control: the PR edits the workflow files themselves
+    disposition: "residual: a pull_request workflow is PR-controlled (design R8); compensating control: V1c's regime job refuses workflow edits outside a design-tier task, operator routing of workflow changes, the design-tier audit; tests/unit/test_workflow_security.py pins SHAs, permissions and persist-credentials"
+  - control: the decision step misclassifies a diff as .orchestration-only
+    disposition: "closed: the classification is one git diff --name-only over the merge-base range with a single grep for a path outside .orchestration/; tests: a mixed diff, a pure .orchestration diff, a renamed file, a deleted file"
+  - control: a required job is skipped (a job-level if, or needs on a job that failed or was skipped)
+    disposition: "closed: GitHub reports a skipped job as Success even for a required check (fail-open: actions docs, control-jobs-with-conditions and workflow-syntax jobs.needs), so no required job carries a job-level if or a needs; each bootstrap job, and test.yaml's test job, decides in its own first step and gates its heavy steps on that step's output; test asserts no job-level if and no needs on any required context's job"
+  - control: the decision step itself fails (git fetch, a script error)
+    disposition: "closed: an in-job decision step that fails fails the required context (fail-closed) instead of skipping it; test asserts the decision step has no continue-on-error and that every heavy step's if reads its output"
+  - control: push and schedule events have no PR range
+    disposition: "closed: should_run is true for every event but pull_request; test asserts it"
+after: []
+premises:
+  - claim: "the seven required checks are validate, test (3 legs) and public-bootstrap (3 legs); a required check skipped at the workflow level stays pending and blocks the merge, while a job skipped by a job-level if or by needs on a failed or skipped job reports Success even when required (fail-open), so each required job decides inside itself with a step that fails closed"
+    command: "gh api repos/mryfmo/dotfiles/rulesets/24397953 --jq '[.rules[]|select(.type==\"required_status_checks\")|.parameters.required_status_checks[].context]|join(\"; \")'; sed -n 1,12p .github/workflows/test.yaml"
+    output: |-
+      validate; test (ubuntu-24.04, server); test (ubuntu-24.04, client); test (macos-14, client); public-bootstrap (ubuntu-24.04, server); public-bootstrap (ubuntu-24.04, client); public-bootstrap (macos-14, client)
+      name: Unit test
+      
+      on:
+        # Required checks must always report a final status for PRs into `main`.
+        # Do not add workflow-level path or branch filters here: GitHub can leave
+        # skipped required checks in a pending state and block merges.
+        # Keep this workflow unconditional and decide inside jobs whether the full
+        # test matrix is necessary for the current diff.
+        push:
+          branches: [main]
+        pull_request:
+          branches: [main]
+  - claim: "boundary PR 316 (.orchestration files only) ran the three public-bootstrap legs on each of its six heads, 7 to 9 minutes per leg on the final head c264c7d1 plus queue time; an .orchestration-only PR needs none of them"
+    command: "gh api repos/mryfmo/dotfiles/commits/c264c7d1/check-runs --paginate --jq '.check_runs[]|select(.name|startswith(\"public-bootstrap\"))|[.name,.started_at,.completed_at]|@tsv'; gh api repos/mryfmo/dotfiles/pulls/316/commits --paginate --jq 'length'"
+    output: |-
+      public-bootstrap (macos-14, client)	2026-10-10T23:51:13Z	2026-10-10T23:58:20Z
+      public-bootstrap (ubuntu-24.04, client)	2026-10-10T23:51:09Z	2026-10-11T00:00:07Z
+      public-bootstrap (ubuntu-24.04, server)	2026-10-10T23:51:09Z	2026-10-10T23:58:50Z
+      6
+---
+# dotfiles-T128-ci-skip-orchestration-a02
+---
+format: 2
+task_id: dotfiles-T128-ci-skip-orchestration-a02
+kind: code
+security: true
+design_review:
+  receipt: .orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round18.md
+  design: .orchestration/tasks/dotfiles-T128-regime-v3-a01.md
+allowed_files:
+  - .github/workflows/remote.yaml
+  - .github/workflows/test.yaml
+  - tests/unit/test_workflow_orchestration_skip.py
+invariants:
+  INV-2: "a PR is mergeable only within the caps the CI regime job enforces from main's workflow (at most 15 changed files outside .orchestration/, 500 added lines outside tests/, .orchestration/ and the data list scripts/legacy-task-ids.txt, and 1000 added lines under tests/), and its task.md invariants equal the design's as a set of ids and byte-for-byte as sentences (the design read from main, never from the PR; a task id ending in -contract-a01 is compared with its implementing task's entry); the design file must be on main (through a boundary PR) before the implementing TASK is dispatched and the regime job fails closed when the design named by task.md is absent from main; an .orchestration-only PR runs no bootstrap or test matrix and every required check context still reports success (each required workflow decides inside its jobs, as test.yaml's changes job does), so a boundary PR merges in minutes; exceeding a cap is a split, never a finding to disposition (the cap changes the unit of work: T116 +529 and T118 +881 would have been split)"
+threat_table:
+  - control: the PR edits the workflow files themselves
+    disposition: "residual: a pull_request workflow is PR-controlled (design R8); compensating control: V1c's regime job refuses workflow edits outside a design-tier task, operator routing of workflow changes, the design-tier audit; tests/unit/test_workflow_security.py pins SHAs, permissions and persist-credentials"
+  - control: the decision step misclassifies a diff as .orchestration-only
+    disposition: "closed: the classification is one git diff --name-only over the merge-base range with a single grep for a path outside .orchestration/; tests: a mixed diff, a pure .orchestration diff, a renamed file, a deleted file"
+  - control: a required job is skipped (a job-level if, or needs on a job that failed or was skipped)
+    disposition: "closed: GitHub reports a skipped job as Success even for a required check (fail-open: actions docs, control-jobs-with-conditions and workflow-syntax jobs.needs), so no required job carries a job-level if or a needs; each bootstrap job, and test.yaml's test job, decides in its own first step and gates its heavy steps on that step's output; test asserts no job-level if and no needs on any required context's job, read by the fail-closed reader of the row below (an unsupported key form fails the test instead of reading as absent)"
+  - control: the decision step itself fails (git fetch, a script error)
+    disposition: "closed: an in-job decision step that fails fails the required context (fail-closed) instead of skipping it; test asserts the decision step has no continue-on-error and that every heavy step's if reads its output, read by the same fail-closed reader"
+  - control: the hand-written workflow reader misses a valid YAML form (quoted, escaped or spaced keys, flow mappings)
+    disposition: "closed: the reader fails closed: inside jobs:, a job name, a job key or a step key that is not the plain form name: (lower-case letters, digits, _ and -, the colon immediately after; no quotes, no escapes, no flow mapping; comments and blank lines aside) raises and fails every structural test, so an unsupported form can never read as no if; tests: if : false, \"\\x69f\": false, continue-on-error : true and a step written as the flow mapping { if: false } each fail the structural tests (a real YAML parser replaces the reader only if the test environment gains one; this task adds no dependency)"
+  - control: the task's invariant sentence and map entry are not on main at dispatch (INV-2)
+    disposition: "closed: INV-2 requires the design on main before the implementing TASK is dispatched; the design that names this task id (dotfiles-T128-ci-skip-orchestration-a02: [INV-2]) lands on main through the boundary PR orchestration/boundary-2026-10-11-2, and the TASK the worker acts on is the amendment TASK the orchestrator sends after that merge (the 07:38Z TASK predates it and is superseded; the acceptance record names both); this PR takes that main with gh pr update-branch and merges only after its final audit on that head; test: none (the acceptance record pastes git show origin/main:.orchestration/tasks/dotfiles-T128-regime-v3-a01.md | sha256sum and the two TASK ids)"
+  - control: push and schedule events have no PR range
+    disposition: "closed: should_run is true for every event but pull_request; test asserts it"
+after: []
+reset_of: [dotfiles-T128-ci-skip-orchestration-a01]
+premises:
+  - claim: "the seven required checks are validate, test (3 legs) and public-bootstrap (3 legs); a required check skipped at the workflow level stays pending and blocks the merge, while a job skipped by a job-level if or by needs on a failed or skipped job reports Success even when required (fail-open), so each required job decides inside itself with a step that fails closed"
+    command: "gh api repos/mryfmo/dotfiles/rulesets/24397953 --jq '[.rules[]|select(.type==\"required_status_checks\")|.parameters.required_status_checks[].context]|join(\"; \")'; sed -n 1,12p .github/workflows/test.yaml"
+    output: |-
+      validate; test (ubuntu-24.04, server); test (ubuntu-24.04, client); test (macos-14, client); public-bootstrap (ubuntu-24.04, server); public-bootstrap (ubuntu-24.04, client); public-bootstrap (macos-14, client)
+      name: Unit test
+      
+      on:
+        # Required checks must always report a final status for PRs into `main`.
+        # Do not add workflow-level path or branch filters here: GitHub can leave
+        # skipped required checks in a pending state and block merges.
+        # Keep this workflow unconditional and decide inside jobs whether the full
+        # test matrix is necessary for the current diff.
+        push:
+          branches: [main]
+        pull_request:
+          branches: [main]
+  - claim: "boundary PR 316 (.orchestration files only) ran the three public-bootstrap legs on each of its six heads, 7 to 9 minutes per leg on the final head c264c7d1 plus queue time; an .orchestration-only PR needs none of them"
+    command: "gh api repos/mryfmo/dotfiles/commits/c264c7d1/check-runs --paginate --jq '.check_runs[]|select(.name|startswith(\"public-bootstrap\"))|[.name,.started_at,.completed_at]|@tsv'; gh api repos/mryfmo/dotfiles/pulls/316/commits --paginate --jq 'length'"
+    output: |-
+      public-bootstrap (macos-14, client)	2026-10-10T23:51:13Z	2026-10-10T23:58:20Z
+      public-bootstrap (ubuntu-24.04, client)	2026-10-10T23:51:09Z	2026-10-11T00:00:07Z
+      public-bootstrap (ubuntu-24.04, server)	2026-10-10T23:51:09Z	2026-10-10T23:58:50Z
+      6
+---

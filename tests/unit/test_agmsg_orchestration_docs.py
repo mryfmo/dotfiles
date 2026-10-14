@@ -553,13 +553,14 @@ class AgmsgRegimePatternTest(unittest.TestCase):
 
     def test_rule_changes_travel_as_task_amendments(self) -> None:
         # Plan 007 Phase 0: a rule sentence changed through a PONG answer bypasses the hash and C1 to C6;
-        # plan 009 option A: the checker is not on main yet, so the sentence names its landing condition.
+        # plan 007 T704: the checker has landed, so the sentence names it instead of its landing condition.
         self.assertIn(
             "A change to a rule sentence requested of a worker travels as a task amendment (hashed, checked by "
-            "the task-consistency check C1 to C6 once plan 007 T704 lands it and by hand until then, confirmed by "
-            "the review seat), never as a PONG answer.",
+            "`scripts/orchestrator/task-consistency-check.py` (C1 to C10 and C7b) before dispatch and at acceptance, "
+            "confirmed by the review seat), never as a PONG answer.",
             self.invariants(),
         )
+        self.assertNotIn("C1 to C6 once plan 007 T704 lands it and by hand until then", self.invariants())
 
     def test_three_repeats_start_with_a_pasted_correction_search(self) -> None:
         # Plan 007 S6: the third repeat of a class is answered by a recorded correction, never by another fix round;
@@ -601,15 +602,21 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "that is not a path (task metadata, workflow and interpreter or environment inputs, in-process effects, "
             "new or renamed scripts, metadata separators), carried by the declared test module's row where that is "
             "where the control acts, and one row per orchestrator effect from the fixed list (forced removal, merge, "
-            # Thread 4248711371: C4 is not on main yet, so the sentence names its landing condition.
             # Thread 4257278276: an executed wildcard entry gets a row per changed file; a data wildcard keeps one.
+            # Plan 007 T704: C4 and C7b have landed, so the clause names the script instead of its landing condition.
             "update-branch); under a wildcard `allowed_files` entry whose files are executed or applied (scripts, "
             "workflows, hooks, settings, the rules seats follow), one row per concrete file the PR changes; a "
-            "wildcard over test fixtures or other data files keeps one row; C4 of the task-consistency check (plan "
-            "007 T704) verifies the path half once it lands, and the task-file review checks it by hand until then.",
+            "wildcard over test fixtures or other data files keeps one row; C4 and C7b of "
+            "`scripts/orchestrator/task-consistency-check.py` verify the path half before dispatch, and the task-file "
+            "review checks the rest.",
             bullet,
         )
-        self.assertNotIn("C4 verifies the path half before dispatch", bullet)
+        for stale in (
+            "C4 verifies the path half before dispatch",
+            "C4 of the task-consistency check (plan 007 T704) verifies the path half once it lands",
+        ):
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, bullet)
         rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
         subsection = self.section(rules, "### Orchestration records and trust-boundary code", "\n### ")
         self.assertIn(

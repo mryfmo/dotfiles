@@ -36,3 +36,12 @@ The task-level audit of `a06c874e` found one P1 at `orch-gate.sh:69`. The wrappe
 - **`-P` needs Python 3.11 or later.** The interpreter `uv python find` names here is 3.15. An older one would refuse `-P` and the gate would fail, so the wrapper fails closed.
 - **No `TMPDIR`.** `TMPDIR` is outside the allowlist, so the gate's `tempfile` uses Python's default `/tmp`. That is writable for the unsandboxed run the gate needs for `gh`.
 - **The collector fallback** at `require-crit-review.py:604-608` is a06's residual row: the gate lineage owns it, and under orch-gate.sh the base is in this repository's object store. It is unchanged here.
+
+## GitGuardian on `e7ac873e` (`2401c431`)
+
+CI on `e7ac873e` passed every check except GitGuardian, which is not a required check on main. GitGuardian reported incident 38186850, a "Generic Password" in `dd2f3af1` at `tests/unit/test_orchestrator_tools.py:1051`.
+
+- **The flagged text** is the set literal of the stub bash's own variable names with `PWD` first. `PWD` is bash's working-directory variable, not a credential (validation §5).
+- **The change.** `2401c431` names the set with `PWD` last. The assertion and its mutants are unchanged: still 5/5 killed on the new head. A squash merge therefore carries no such line to main.
+- **The incident stays open.** `dd2f3af1` remains in the PR's history, so the PR check can keep reporting it until the incident is resolved in GitGuardian's dashboard. The proposed disposition for the sweep is `not-applicable: a false positive, the flagged literal is bash's PWD variable name in a test assertion, rewritten in 2401c431; evidence=git show dd2f3af1:tests/unit/test_orchestrator_tools.py | sed -n 1051p`. Rewriting the PR's history instead is the orchestrator's call; I did not force-push.
+

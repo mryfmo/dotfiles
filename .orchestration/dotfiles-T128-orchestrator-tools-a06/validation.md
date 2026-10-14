@@ -175,3 +175,53 @@ clean
 
 - E1 is the a05 code at `a06c874e`: it inherits this shell and unsets three names.
 - The failure messages list variable names only, never values. E1's list shows the test environment's own names; the values do not appear.
+
+## 5. GitGuardian on `e7ac873e`, and the rewritten line (`2401c431`)
+
+### CI on `e7ac873e`
+
+The 12 other checks passed. GitGuardian failed:
+
+```text
+$ gh api repos/mryfmo/dotfiles/commits/e7ac873e…/check-runs   (GitGuardian's output, abridged)
+failure
+1 secret uncovered!
+| GitGuardian id | GitGuardian status | Secret | Commit | Filename |
+| 38186850 | Triggered | Generic Password | dd2f3af1b45bf4f1d2a5d97f69e07f368df6680b | tests/unit/test_orchestrator_tools.py |   (the link points at line R1051)
+$ git show dd2f3af1:tests/unit/test_orchestrator_tools.py | sed -n 1050,1051p
+        # Names only, so a failure prints no value; PWD, SHLVL and _ are the ones the stub's own bash exports.
+        self.assertEqual(sorted(allowed | <the set literal of PWD, SHLVL and _, PWD first>), sorted(env))
+$ gh api repos/mryfmo/dotfiles/rules/branches/main   (required_status_checks contexts)
+validate
+test (ubuntu-24.04, server)
+test (ubuntu-24.04, client)
+test (macos-14, client)
+public-bootstrap (ubuntu-24.04, server)
+public-bootstrap (ubuntu-24.04, client)
+public-bootstrap (macos-14, client)
+```
+
+- **What was flagged.** The "secret" is the set literal of the three names the stub's own bash exports (§2). `PWD` is bash's working-directory variable, and GitGuardian's generic-password rule read the string literal after it as a value. No credential is in the file.
+- **The required checks.** GitGuardian is not among main's required checks.
+- **Why the line still changed.** A squash merge would carry it to main, where the same rule would fire. `2401c431` names the set (`own = {"SHLVL", "_", "PWD"}`), with `PWD` last so no string literal follows it. The assertion is unchanged. The commit message describes the literal without repeating it.
+- **What stays.** `dd2f3af1` stays in the PR's history, so the PR check can keep reporting incident 38186850 until the incident is resolved in GitGuardian (validation §6 in the main-checkout copy has the check on the new head).
+
+### Tests, mutants and size on `2401c431`
+
+```text
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v   (tail)
+Ran 39 tests in 24.477s
+
+OK
+tools rc 0
+$ uv run --no-project python scratchpad/mutate-a06.py <worker-c>
+KILLED E1 the a05 code (inherit the shell, unset three names) :: AssertionError: Lists differ: ['ACC[34 chars]', 'AUDIT_EVIDENCE', 'HOME', 'PATH', 'PR_FEEDB[67 chars] '_'] != ['ACC[34 chars]', 'AGMSG_SCRIPTS', 'AGMSG_SPAWNED', 'AI_AGENT[2255 chars]oxy']
+KILLED E2 no PYTHONSAFEPATH=1 :: AssertionError: Lists differ: ['ACC[89 chars]NCE', 'PWD', 'PYTHONSAFEPATH', 'REVIEW_EVIDENCE', 'SHLVL', '_'] != ['ACC[89 chars]NCE', 'PWD', 'REVIEW_EVIDENCE', 'SHLVL', '_']
+KILLED E3 no -P :: AssertionError: Lists differ: ['-I', '-P'] != ['-I', '/private/tmp/claude-501/tmp4qybhimu/repo/[27 chars].py']
+KILLED E4 no HOME :: AssertionError: Lists differ: ['ACC[51 chars]E', 'HOME', 'PATH', 'PR_FEEDBACK_EVIDENCE', 'P[50 chars] '_'] != ['ACC[51 chars]E', 'PATH', 'PR_FEEDBACK_EVIDENCE', 'PWD', 'PY[42 chars] '_']
+KILLED E5 one inherited name passed through (PYTHONPATH) :: AssertionError: Lists differ: ['ACC[103 chars]PYTHONSAFEPATH', 'REVIEW_EVIDENCE', 'SHLVL', '_'] != ['ACC[103 chars]PYTHONPATH', 'PYTHONSAFEPATH', 'REVIEW_EVIDENCE', 'SHLVL', '_']
+kills 5/5
+clean
+$ git diff --numstat origin/main...HEAD   (outside .orchestration)
+files 3 added_non_test 201 added_test 224
+```

@@ -1002,6 +1002,8 @@ class OrchestratorToolsTest(unittest.TestCase):
             self.write(rel, "x\n")
         self.write(".orchestration/acceptance/t-a01.md", "---\n{}\n---\n")
         (self.calls / "uv-output").write_text(f"{self.temp}/bin/gate-python\n")
+        # env -i drops CALLS, so the gate interpreter's stub carries the calls directory itself.
+        (self.temp / "bin/gate-python").write_text(STUBS["gate-python"].replace("$CALLS", str(self.calls)))
         return worktree, head
 
     def run_gate(self, worktree, code=0):
@@ -1017,7 +1019,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         worktree, head = self.gate()
         self.run_gate(worktree)
         gate = str(self.repo / "scripts/require-crit-review.py")
-        self.assertEqual(["-I", gate, "--base", "origin/main"], self.call("gate-python"))
+        self.assertEqual(["-I", "-P", gate, "--base", "origin/main"], self.call("gate-python"))
         self.assertEqual(
             str(self.repo / ".claude/worktrees/orchestrator-review"),
             (self.calls / "gate-python-cwd").read_text().strip(),
@@ -1035,6 +1037,21 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.assertEqual(expected, {k: env.get(k) for k in expected})
         # Names only: a failure must not print the environment's values.
         self.assertEqual([], [k for k in sorted(env) if k in ("AUDIT_DISPOSITIONS", "CRIT_REVIEW", "CRIT_REVIEWED")])
+
+    def test_orch_gate_runs_the_gate_under_an_explicit_environment(self):
+        worktree, _ = self.gate()
+        startup = self.write("startup.py", "")
+        leaked = {"PYTHONPATH": ".", "PYTHONSTARTUP": str(startup), "PYTHONHOME": str(self.temp)}
+        self.run_tool("orch-gate.sh", "t-a01", worktree, 9, env={**leaked, "CRIT_REVIEW": "off", "CRIT_REVIEWED": "1"})
+        env = (self.calls / "gate-python-env").read_text().splitlines()
+        env = dict(line.split("=", 1) for line in env if "=" in line)
+        allowed = {"PATH", "HOME", "PYTHONSAFEPATH", "AGENT_REVIEWED", "REVIEW_EVIDENCE", "PR_FEEDBACK_EVIDENCE"}
+        allowed |= {"AUDIT_EVIDENCE", "ACCEPTANCE_EVIDENCE"}
+        # Names only, so a failure prints no value; PWD, SHLVL and _ are the ones the stub's own bash exports.
+        self.assertEqual(sorted(allowed | {"PWD", "SHLVL", "_"}), sorted(env))
+        expected = (self.env["PATH"], self.env["HOME"], "1", "1")
+        self.assertEqual(expected, (env["PATH"], env["HOME"], env["PYTHONSAFEPATH"], env["AGENT_REVIEWED"]))
+        self.assertEqual(["-I", "-P"], self.call("gate-python")[:2])
 
     def test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree(self):
         worktree, _ = self.gate()

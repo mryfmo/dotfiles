@@ -1,11 +1,17 @@
 # Report: dotfiles-T128-gate-wrapper-path-a01
 
 - **Seat and branch.** `claude-standard-dot-a003` in `.claude/worktrees/worker-c`, on the fresh branch `tools/gate-wrapper-path`. It was cut with `--no-track` from `origin/main` at `c15ba668`, after T704 (#352) merged (validation §1).
-- **Task copy.** The task file's sha256 `3ccbc7bf…` matches the TASK's `task_sha256`. It is copied byte-identical to `.orchestration/dotfiles-T128-gate-wrapper-path-a01/task.md`.
+- **Task copy: masked, so not byte-identical.**
+  - The task file's sha256 `3ccbc7bf…` matches the TASK's `task_sha256`.
+  - Its lines 54 to 56 are premise output holding a home path. The repository validator refuses that under `.orchestration/`, and `validate` is a required check on main.
+  - So the copy at `.orchestration/dotfiles-T128-gate-wrapper-path-a01/task.md` is the repository masker's output for the dispatched file, byte for byte: sha256 `f88f60865dfe0c1a8e4abccea4ac2aced9df7283bad8e9a40c141f8879a2ac42`. Only those three lines differ, where the home directory reads `~` (validation §1).
+  - To check: mask a copy of the dispatched file with `scripts/validate-agent-assets.py --mask-secrets`, then compare.
 - **Commits.**
   - `cb1f9cc4`: items 1 to 3.
   - `1483fef2`: two PATH assertions rewritten so a failure prints no environment value.
-  - Then this evidence.
+  - `8d3f6fca`: the task copy and evidence.
+  - `eb959ac9`: the path test's temporary root renamed from `root` to `repo`. In pasted failure output, unittest shortens `<temp>/root` to `[50 chars]/root'`, which the evidence scan reads as root's home directory.
+  - Then this evidence, refreshed, with the copy masked.
 - cost: n/a (the runtime exposes no token or cost figures to the seat).
 
 ## Item 1 (`cb1f9cc4`): the gate's PATH is a private bin
@@ -105,11 +111,13 @@ Either way the test sees two links.
 | behaviour three, the removal on every exit | `test_orch_gate_removes_the_private_bin_on_exit`; M5 dies there |
 | item 3's three edits | the diff of `tests/unit/test_orchestrator_tools.py` against `origin/main`: 13 added and 6 deleted lines, all in the three places |
 | the new module's stubs | they record names and paths and run nothing else (item 2 above) |
-| the task copy | byte-identical, sha256 `3ccbc7bf…` (validation §1) |
+| the task copy | not byte-identical: the masker's output for the dispatched `3ccbc7bf…`, sha256 `f88f6086…`, differing on lines 54 to 56 only (validation §1) |
 | evidence records | this directory; the sandbox record lists every permission-gated command |
 
 ## Notes for the orchestrator
 
+- **The main-checkout task file.** `.orchestration/tasks/dotfiles-T128-gate-wrapper-path-a01.md` is untracked there. The same validator refuses it at the next boundary commit, for the same three lines. Masking it with the same masker yields this branch copy byte for byte.
+- **The repository validator passes on this branch** (validation §7).
 - **The wrapper's own commands.** orch-gate.sh itself still runs `git`, `uv`, `jq` and `mise` by name through the caller's PATH. The trap's `git` does too. They run with the trusted root as cwd (`git -C <review>` changes git's repository, not the process cwd). Item 1 covers the gate and the processes it starts, so these are unchanged.
 - **HOME still passes.** gh reads its configuration and keyring entry under the orchestrator's HOME.
 - **A mise-managed git** on another host would resolve through `mise which` the same way.

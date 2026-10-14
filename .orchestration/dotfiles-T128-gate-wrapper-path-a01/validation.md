@@ -12,7 +12,9 @@ fix_commit: cb1f9cc4
 $ shasum -a 256 <main checkout>/.orchestration/tasks/dotfiles-T128-gate-wrapper-path-a01.md .orchestration/dotfiles-T128-gate-wrapper-path-a01/task.md
 3ccbc7bf90f4318cc807a2e14759d60e67ede8d7a0a0ae2d561a9b4c46fb0977  <main checkout>/.orchestration/tasks/dotfiles-T128-gate-wrapper-path-a01.md
 3ccbc7bf90f4318cc807a2e14759d60e67ede8d7a0a0ae2d561a9b4c46fb0977  .orchestration/dotfiles-T128-gate-wrapper-path-a01/task.md
-$ git log --oneline -3 && git merge-base origin/main HEAD && git log --oneline -1 origin/main
+$ git log --oneline -5 && git merge-base origin/main HEAD && git log --oneline -1 origin/main
+eb959ac9 test(orchestrator): the path test's trusted root is a directory named repo
+8d3f6fca chore(orchestration): dotfiles-T128-gate-wrapper-path-a01 task copy and evidence
 1483fef2 test(orchestrator): the PATH assertions print no environment value on failure
 cb1f9cc4 fix(orchestrator): orch-gate.sh runs the gate with a private PATH of gh and git resolved in the trusted root
 c15ba668 feat(orchestrator): task-consistency-check.py and ledger-check.py land with their tests (T704 a01) (#352)
@@ -20,17 +22,45 @@ c15ba668da20dc2956220077cb0f20054ab352c7
 c15ba668 feat(orchestrator): task-consistency-check.py and ledger-check.py land with their tests (T704 a01) (#352)
 ```
 
-- The TASK's `task_sha256` is `3ccbc7bf90f4318cc807a2e14759d60e67ede8d7a0a0ae2d561a9b4c46fb0977`, and the branch copy hashes to it.
+- The TASK's `task_sha256` is `3ccbc7bf90f4318cc807a2e14759d60e67ede8d7a0a0ae2d561a9b4c46fb0977`, and the branch copy hashed to it when it was copied.
 - The branch starts from `c15ba668`, the merge of T704 (#352), as the task's `after:` requires.
+
+### The task copy is masked (`validate` refuses it otherwise)
+
+The repository validator refuses the byte-identical copy, because lines 54 to 56 of the dispatched file are premise output holding a home path:
+
+```text
+$ UV_OFFLINE=1 uv run --no-project --with pyyaml scripts/validate-agent-assets.py
+ERROR: .orchestration/dotfiles-T128-gate-wrapper-path-a01/task.md names a home directory; normalise it with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`
+```
+
+`validate` is a required check on main, so the copy is masked with the repository masker the error names. `scratchpad/mask-task-copy.sh` masks the branch copy and a temporary copy of the dispatched file, compares them, and only reads the dispatched file:
+
+```text
+$ validate-agent-assets.py --mask-secrets <branch copy> <a copy of the dispatched file>
+masked 3 match(es) in .orchestration/dotfiles-T128-gate-wrapper-path-a01/task.md
+masked 3 match(es) in <tmp>/dispatched.md
+$ shasum -a 256 <dispatched> <masked dispatched> <branch copy>
+3ccbc7bf90f4318cc807a2e14759d60e67ede8d7a0a0ae2d561a9b4c46fb0977  <dispatched>
+f88f60865dfe0c1a8e4abccea4ac2aced9df7283bad8e9a40c141f8879a2ac42  <masked dispatched>
+f88f60865dfe0c1a8e4abccea4ac2aced9df7283bad8e9a40c141f8879a2ac42  .orchestration/dotfiles-T128-gate-wrapper-path-a01/task.md
+$ cmp <masked dispatched> <branch copy> && echo identical
+identical
+$ diff <dispatched> <branch copy> | grep -c "^<"; diff <dispatched> <branch copy> | grep -c "^>"
+3
+3
+$ diff <dispatched> <branch copy> | grep "^[0-9]"   (line numbers only)
+54,56c54,56
+```
+
+- **The branch copy equals the masker's output for the dispatched file**, byte for byte: sha256 `f88f60865dfe0c1a8e4abccea4ac2aced9df7283bad8e9a40c141f8879a2ac42`.
+- **It differs from the dispatched file (`3ccbc7bf…`)** only on lines 54 to 56. There the home directory reads `~`.
+- **The orchestrator's own copy** is the untracked `.orchestration/tasks/dotfiles-T128-gate-wrapper-path-a01.md`. The same validator refuses it at the next boundary commit. The same masker turns it into this branch copy byte for byte.
 
 ## 2. The names the gate and its collector run (item 1's list)
 
 ```text
 $ grep -n 'subprocess\|run_git\|\["gh"\|"git"' scripts/require-crit-review.py scripts/pr-feedback.py
-scripts/pr-feedback.py:21:import subprocess
-scripts/pr-feedback.py:74:    result = subprocess.run(["gh", *args], capture_output=True, text=True, check=False, env=gh_env())
-scripts/pr-feedback.py:96:    result = subprocess.run(
-scripts/pr-feedback.py:97:        ["gh", "auth", "status"],
 scripts/require-crit-review.py:11:import subprocess
 scripts/require-crit-review.py:133:def run_git(args: list[str], root: Path | None = None) -> subprocess.CompletedProcess[str]:
 scripts/require-crit-review.py:134:    return subprocess.run(
@@ -63,6 +93,10 @@ scripts/require-crit-review.py:938:    The same match as `grep -rl 'classes:.*<c
 scripts/require-crit-review.py:973:    verify = run_git(["rev-parse", "--verify", "--quiet", "--end-of-options", f"{base}^{{commit}}"], root)
 scripts/require-crit-review.py:996:    head = run_git(["rev-parse", "HEAD"], root).stdout.strip() if args.base else None
 scripts/require-crit-review.py:1017:    current_head = head or run_git(["rev-parse", "HEAD"], root).stdout.strip()
+scripts/pr-feedback.py:21:import subprocess
+scripts/pr-feedback.py:74:    result = subprocess.run(["gh", *args], capture_output=True, text=True, check=False, env=gh_env())
+scripts/pr-feedback.py:96:    result = subprocess.run(
+scripts/pr-feedback.py:97:        ["gh", "auth", "status"],
 ```
 
 Every external program is `gh` or `git`. Line 609 starts the collector as `sys.executable` (the pinned interpreter, an absolute path), so it needs no PATH lookup. The list stays `gh git`.
@@ -152,7 +186,7 @@ test_three_repeat_prints_the_records_search_line (tests.unit.test_orchestrator_t
 test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout) ... ok
 
 ----------------------------------------------------------------------
-Ran 43 tests in 33.427s
+Ran 43 tests in 34.287s
 
 OK
 ```
@@ -171,7 +205,7 @@ All checks passed!
 
 The method:
 
-- edit one span of `orch-gate.sh` at `1483fef2`;
+- edit one span of `orch-gate.sh` at `eb959ac9`, the final code head;
 - run `tests.unit.test_orch_gate_path` and `test_orch_gate_runs_the_gate_under_an_explicit_environment` by their dotted names;
 - count a kill only when the run fails on an `AssertionError`;
 - restore the file with `git checkout --`.
@@ -189,23 +223,29 @@ The mutants:
 ```text
 $ uv run --no-project python scratchpad/mutate-path.py <worktree>
 KILLED M1 the caller's PATH (the pre-fix line) :: FAIL: test_orch_gate_removes_the_private_bin_on_exit, FAIL: test_orch_gate_runs_the_gate_with_a_private_path_of_resolved_binaries, FAIL: test_orch_gate_runs_the_gate_under_an_explicit_environment :: AssertionError: False is not true
-KILLED M2 the head checked out before the resolution :: FAIL: test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory, FAIL: test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory, FAIL: test_orch_gate_runs_the_gate_with_a_private_path_of_resolved_binaries :: AssertionError: Lists differ: [] != ['git -C /private/tmp/claude-501/tmp9poq_e[104 chars]567']
+KILLED M2 the head checked out before the resolution :: FAIL: test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory, FAIL: test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory, FAIL: test_orch_gate_runs_the_gate_with_a_private_path_of_resolved_binaries :: AssertionError: Lists differ: [] != ['git -C /private/tmp/claude-501/tmplsst4s[104 chars]567']
 KILLED M3 no shims check :: FAIL: test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory, FAIL: test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory, FAIL: test_orch_gate_removes_the_private_bin_on_exit :: AssertionError: 2 != 0 : 
 KILLED M4 no empty-or-relative check :: FAIL: test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory :: AssertionError: 2 != 0 : 
-KILLED M5 the trap keeps the private directory :: FAIL: test_orch_gate_removes_the_private_bin_on_exit :: AssertionError: Lists differ: [] != ['orch-gate.uCV7xF']
+KILLED M5 the trap keeps the private directory :: FAIL: test_orch_gate_removes_the_private_bin_on_exit :: AssertionError: Lists differ: [] != ['orch-gate.IGiXon']
 KILLED M6 command -v only, no mise :: FAIL: test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory, FAIL: test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory, FAIL: test_orch_gate_removes_the_private_bin_on_exit, FAIL: test_orch_gate_runs_the_gate_with_a_private_path_of_resolved_binaries :: AssertionError: 2 != 0 : 
-KILLED M7 mise run from the review worktree :: FAIL: test_orch_gate_runs_the_gate_with_a_private_path_of_resolved_binaries :: AssertionError: Lists differ: [('mi[50 chars]/root'), ('mise which git', '/private/tmp/clau[21 chars]ot')] != [('mi[50 chars]/root/.claude/worktrees/orchestrato
+KILLED M7 mise run from the review worktree :: FAIL: test_orch_gate_runs_the_gate_with_a_private_path_of_resolved_binaries :: AssertionError: Lists differ: [('mi[50 chars]/repo'), ('mise which git', '/private/tmp/clau[21 chars]po')] != [('mi[50 chars]/repo/.claude/worktrees/orchestrato
 kills 7/7
-DIRTY
+clean
 ```
 
-- **The result: 7/7 killed.** `DIRTY` is the untracked evidence directory, which was not yet committed then. `git checkout --` restored `orch-gate.sh` after each mutant.
+- **The result: 7/7 killed.** `clean` means `git checkout --` restored `orch-gate.sh` after each mutant.
 - **M4 on macOS.** BSD `ln -s` accepts an empty target, so the gate ran and exited 0 where the test expected 2. GNU `ln -s` refuses an empty target and exits 1. The test fails either way.
 
 ## 6. Caps
 
 ```text
 $ git diff --numstat origin/main...HEAD
+3	0	.orchestration/dotfiles-T128-gate-wrapper-path-a01/autoskill.md
+10	0	.orchestration/dotfiles-T128-gate-wrapper-path-a01/learning.md
+127	0	.orchestration/dotfiles-T128-gate-wrapper-path-a01/report.md
+26	0	.orchestration/dotfiles-T128-gate-wrapper-path-a01/sandbox.md
+95	0	.orchestration/dotfiles-T128-gate-wrapper-path-a01/task.md
+220	0	.orchestration/dotfiles-T128-gate-wrapper-path-a01/validation.md
 18	7	scripts/orchestrator/orch-gate.sh
 113	0	tests/unit/test_orch_gate_path.py
 13	6	tests/unit/test_orchestrator_tools.py
@@ -218,3 +258,16 @@ Step 7.2 and INV-2 hold:
 - **Outside `tests/`:** 25 changed lines (18 added, 7 deleted) of 200.
 - **Under `tests/`:** 126 added lines of 1000.
 - **Files:** 3 outside `.orchestration`.
+
+## 7. The repository validator
+
+The WARN lines are not pasted: they are this host's regime-boundary notes, and they print the main checkout's path. Nine of them name this task: seven untracked orchestrator files in the main checkout, and two S2 counts of its review task.
+
+```text
+$ UV_OFFLINE=1 uv run --no-project --with pyyaml scripts/validate-agent-assets.py > "$TMPDIR/v.out" 2>&1; echo "rc=$?"; grep -vc "^WARN: " "$TMPDIR/v.out"; grep -v "^WARN: " "$TMPDIR/v.out"; grep -c "^WARN: " "$TMPDIR/v.out"; grep -c "^WARN: .*gate-wrapper-path" "$TMPDIR/v.out"
+rc=0
+1
+agent asset validation ok
+171
+9
+```

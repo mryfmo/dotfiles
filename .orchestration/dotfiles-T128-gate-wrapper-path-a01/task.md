@@ -51,9 +51,9 @@ premises:
   - claim: "what PATH resolves gh to depends only on PATH order: with the installs directory first it is the binary, with mise's shims directory first it is the shim; mise names the installed binary either way, and git is Homebrew's; so the wrapper must resolve through mise and refuse a shims path (the orchestrator shell holds the installs first, the Codex review sandbox the shims first)"
     command: "PATH=\"$HOME/.local/share/mise/installs/github-cli-cli/latest/bin:$PATH\" command -v gh; PATH=\"$HOME/.local/share/mise/shims:$PATH\" command -v gh; mise which gh; mise which git 2>/dev/null || command -v git"
     output: |-
-      /Users/a0004262/.local/share/mise/installs/github-cli-cli/latest/bin/gh
-      /Users/a0004262/.local/share/mise/shims/gh
-      /Users/a0004262/.local/share/mise/installs/github-cli-cli/latest/bin/gh
+      ~/.local/share/mise/installs/github-cli-cli/latest/bin/gh
+      ~/.local/share/mise/shims/gh
+      ~/.local/share/mise/installs/github-cli-cli/latest/bin/gh
       /opt/homebrew/bin/git
   - claim: "a private PATH of two symlinks to those binaries is enough for gh to authenticate (the keyring under HOME), so item 1 loses nothing the gate needs"
     command: "B=$(mktemp -d \"$TMPDIR/gatebin.XXXX\"); ln -s \"$(mise which gh)\" \"$B/gh\"; ln -s \"$(mise which git 2>/dev/null || command -v git)\" \"$B/git\"; env -i PATH=\"$B\" HOME=\"$HOME\" gh auth status 2>&1 | grep -c 'Logged in to github.com'"

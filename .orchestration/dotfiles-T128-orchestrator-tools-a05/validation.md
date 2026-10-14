@@ -340,3 +340,83 @@ G5 review worktree left at the head: KILLED rc=1 AssertionError: '7525355595ba59
 G6 no PR binding: KILLED rc=1 AssertionError: 0 != 2 : 
 restored: 0 OK
 ```
+
+## 12. PR-B revise 1 (`ced110dd`, amendment 1)
+
+### The probe (`scratchpad/pv-probe.sh`; the scratch directory is a fresh `mktemp -d` under `$TMPDIR`, its `.python-version` is `./pwn`, and `pwn` touches `ran-$$` and exits 1; the last argument is this worktree)
+
+```text
+$ bash pv-probe.sh <worker-c>
+find:
+error: Failed to inspect Python interpreter from provided path at `./pwn`
+  cause: Querying Python at `./pwn` failed with exit status exit status: 1
+ran after find:        1
+run:
+error: Failed to inspect Python interpreter from provided path at `./pwn`
+  cause: Querying Python at `./pwn` failed with exit status exit status: 1
+ran after run:        2
+root files:
+none
+root find: ~/.local/share/mise/installs/python/latest/bin/python rc=0
+trap 1:
+restore
+rc=1
+trap 2:
+rc=1
+trap 3:
+sub rc=3
+trap-ran
+rc=0
+```
+
+- "trap 1": an EXIT trap runs when `set -e` stops the script.
+- "trap 2": a failing command in the trap makes the exit non-zero after an `exit 0`.
+- "trap 3": a `( … ) || rc=$?` subshell does not fire the parent's trap.
+
+### Tests, lint, size
+
+```text
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests.unit.test_orchestrator_tools
+Ran 38 tests in 25.265s
+
+OK
+rc 0
+$ ruff check / ruff format --check tests/unit/test_orchestrator_tools.py; shellcheck and shfmt --indent 4 --space-redirects -d on scripts/orchestrator/orch-gate.sh
+All checks passed!
+1 file already formatted
+shellcheck rc 0
+shfmt rc 0
+$ git diff --numstat origin/main...HEAD (outside .orchestration)
+files 3 added_non_test 198 added_test 205
+$ UV_OFFLINE=1 make validate-agent-assets
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+agent asset validation ok
+$ shasum -a 256 .orchestration/dotfiles-T128-orchestrator-tools-a05/task.md
+6b238e5a958ed5124d997e129391a4e10cc2b61b7b9f57052e8b463b4f549f23  .orchestration/dotfiles-T128-orchestrator-tools-a05/task.md
+```
+
+The two WARN lines are another task's counters. The validator's run also tried `cafe.github.com:443`, which the sandbox refused; the validation still ended ok.
+
+### Mutation proofs (`scratchpad/mutate-fix.py`)
+
+The method is the one used before:
+
+- edit one span of `orch-gate.sh` at `ced110dd`;
+- run the full dotted test;
+- count a kill only on an AssertionError;
+- restore with `git checkout --`.
+
+```text
+KILLED P1 the pre-fix gate run (uv run in the review worktree) :: test_orch_gate_pins_the_interpreter_before_entering_the_review_worktree :: AssertionError: True is not false : the head's .python-version executable ran
+KILLED P2 the interpreter resolved in the review worktree :: test_orch_gate_pins_the_interpreter_before_entering_the_review_worktree :: AssertionError: 127 != 0 : /private/tmp/claude-501/tmpg6zqiq5h/repo/scripts/orchestrator/orch-gate.sh: line 70: : command not found
+KILLED P3 the gate run by name from PATH, not the resolved path :: test_orch_gate_runs_this_checkouts_gate_on_the_review_worktree_with_the_gate_inputs :: NameError: name 'gate' is not defined
+KILLED R1 no trap (the pre-fix code) :: test_orch_gate_restores_the_review_worktree_when_setup_fails :: AssertionError: '' != '?? .orchestration/'
+KILLED R2 the trap set after the evidence copy :: test_orch_gate_restores_the_review_worktree_when_setup_fails :: AssertionError: '' != '?? .orchestration/'
+kills 5/5
+clean
+```
+
+- P3's last error line comes from the stub gate file (`gate`) run under the real `python3`. The assertion that failed is the exit status (`AssertionError: 1 != 0`, rerun of P3 alone).
+- R1 is the pre-fix code without the trap. P1 is the pre-fix gate line.
+

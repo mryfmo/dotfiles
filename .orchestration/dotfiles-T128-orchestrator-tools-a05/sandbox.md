@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-orchestrator-tools-a05
 seat: claude-standard-dot-a003
-permission_gated_commands: 24
+permission_gated_commands: 29
 ---
 
 # Sandbox record: dotfiles-T128-orchestrator-tools-a05
@@ -12,21 +12,20 @@ permission_gated_commands: 24
   - the commits.
 - In the sandbox uv cannot reach pypi, so the tests ran with `UV_OFFLINE=1` from the uv cache. CI runs them online.
 
-`permission_gated_commands` counts every Bash call made with `dangerouslyDisableSandbox`, one per call. This copy was written before the push, so all seven are counted in advance; the main-checkout copy gives the final count.
+`permission_gated_commands` counts every Bash call made with `dangerouslyDisableSandbox`, one per call. This is the main-checkout copy with the final count: six calls, all run. The branch copy counted seven in advance. The thread list was read inside the Bot wait's own call, so no separate read ran (its row #4 is gone).
 
 | # | Command | Step 4 case |
 |--:|---|---|
 | 1 | the HTTPS push | `git push` |
 | 2 | `gh pr checks 346 --watch` (background, exit status joined) | `gh` |
-| 3 | Bot wait from the push (its `gh api` reads) | `gh` |
-| 4 | reading PR 346's review comments (REST) for the thread list | `gh` |
-| 5 | main-checkout `memory add` | main-checkout `memory add` |
-| 6 | the masked copy of the five evidence files to the main checkout | artifact copy with the repository masker |
-| 7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a05 …` | `agmsg-dispatch` |
+| 3 | Bot wait from the push and the thread list (one call of `gh api` reads) | `gh` |
+| 4 | main-checkout `memory add` | main-checkout `memory add` |
+| 5 | the masked copy of the five evidence files to the main checkout | artifact copy with the repository masker |
+| 6 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a05 …` | `agmsg-dispatch` |
 
 ## Revise round on `8576645c`
 
-The round ran these inside the sandbox: the fetch and reset, the edit, the tests, the lint, the mutation proofs and the commits. It makes five permission-gated calls, counted here in advance; the main-checkout copy gives the final count. There is no Bot wait in this round.
+The round ran these inside the sandbox: the fetch and reset, the edit, the tests, the lint, the mutation proofs and the commits. It makes five permission-gated calls, all run; this is the final count. There is no Bot wait in this round.
 
 | # | Command | Step 4 case |
 |--:|---|---|
@@ -51,22 +50,42 @@ These ran inside the sandbox: the fetch, the branch, the edits, the tests, the l
 | 7 | the masked copy of the PR-B sections to the main checkout | artifact copy with the repository masker |
 | 8 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-a05 part=PR-B …` | `agmsg-dispatch` |
 
-### PR-B as run so far, with the fix round
+### PR-B as run, with the fix round (final count)
 
-The table above predicted eight calls. Machine sleep cut in after the push, and the review took a second wait, so PR-B makes thirteen calls in all. The front matter counts twenty-four: eleven from earlier rounds and these thirteen. Calls 1 to 8 have run; 9 to 13 follow this commit, and the main-checkout copy gives the final count.
+The PR-B table above predicted eight calls. Machine sleep cut in after the push, and the review needed a second wait, so PR-B made thirteen calls; with the eleven of earlier rounds the front matter counts twenty-four. All thirteen have run, and this list is in the order they ran. The wake PONG and the `gh pr list` check were one call. The masker of the fix-round records ran inside the sandbox with pypi.org and files.pythonhosted.org allowed for that command, so it is not counted here.
 
 | # | Command | Step 4 case |
 |--:|---|---|
 | 1 | `agmsg-dispatch … AGMSG-PONG … part=PR-B` (PING 966) | `agmsg-dispatch` |
 | 2 | the HTTPS push of `0749e931` | `git push` |
-| 3 | `agmsg-dispatch … AGMSG-PONG … status=alive` (the wake PING after the sleep) | `agmsg-dispatch` |
-| 4 | `gh pr list --head tools/orchestrator-scripts-3` (no PR yet) | `gh` |
-| 5 | `gh pr create` (#350) | `gh` |
-| 6 | `gh pr checks 350 --watch` (13/13 pass on `0749e931`) | `gh` |
-| 7 | the first Bot wait; it stopped on the summary comment posted at PR open with `"status":"running"` | `gh` |
-| 8 | the second Bot wait, until the summary's status left `running` | `gh` |
-| 9 | the HTTPS push of the fix round | `git push` |
-| 10 | `gh pr checks 350 --watch` on the new head | `gh` |
+| 3 | `agmsg-dispatch … AGMSG-PONG … status=alive` (the wake PING after the sleep) and `gh pr list --head tools/orchestrator-scripts-3`, in one call | `agmsg-dispatch`, `gh` |
+| 4 | `gh pr create` (#350) | `gh` |
+| 5 | `gh pr checks 350 --watch` (13/13 pass on `0749e931`) | `gh` |
+| 6 | the first Bot wait; it stopped on the summary comment posted at PR open with `"status":"running"` | `gh` |
+| 7 | the second Bot wait, until the summary's status left `running` | `gh` |
+| 8 | the HTTPS push of `1f3abb55` | `git push` |
+| 9 | `gh pr checks 350 --watch` (13/13 pass on `1f3abb55`) and the comment and review lists | `gh` |
+| 10 | the masked copy of the PR-B sections to the main checkout | artifact copy with the repository masker |
 | 11 | main-checkout `memory add` | main-checkout `memory add` |
-| 12 | the masked copy of the PR-B sections to the main checkout | artifact copy with the repository masker |
+| 12 | this table's correction in the main checkout | artifact edit in the main checkout |
 | 13 | `agmsg-dispatch … AGMSG-RESULT … part=PR-B` | `agmsg-dispatch` |
+
+## PR-B revise 1 (amendment 1, the audit of `f48593d6`)
+
+The branch copy above is now the main-checkout copy's final text for the earlier rounds. This round ran these inside the sandbox:
+
+- the fetch and fast-forward to `f48593d6`;
+- the uv and EXIT-trap probe in a `mktemp -d` directory under `$TMPDIR`;
+- the edits, the tests, ruff, shellcheck, shfmt and the mutation proofs;
+- `make validate-agent-assets`, the task copy and its hash;
+- the commits.
+
+The task makes no Bot wait (the Bot reviews on PR open only). The five calls below are counted in advance; the main-checkout copy gives the final count. With the twenty-four of earlier rounds, the front matter counts twenty-nine.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| 1 | the HTTPS push of this round's head | `git push` |
+| 2 | `gh pr checks 350 --watch` on the new head | `gh` |
+| 3 | main-checkout `memory add` | main-checkout `memory add` |
+| 4 | the masked copy of this round's sections to the main checkout | artifact copy with the repository masker |
+| 5 | `agmsg-dispatch … AGMSG-RESULT … part=PR-B round=revise-1` | `agmsg-dispatch` |

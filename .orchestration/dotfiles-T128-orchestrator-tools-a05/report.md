@@ -175,3 +175,41 @@ The Bot's one review (23:33:44Z code review, 23:40:27Z security review) left thr
 - **Mutation proofs.** Validation §10 lists 11 mutants, all killed: F1 to F5 for the fix, and G1 to G6 for the earlier orch-gate rows.
 - **Size.** INV-2: 3 files outside `.orchestration`, 196 added lines outside tests and 174 under tests.
 - **Locally,** `test_design_keydiff_names_the_changed_invariant` errors because the real `uv` it runs, offline, finds no PyYAML 6.0.3 in its cache (validation §10). Once the masker fetched PyYAML into the cache, the module passes offline, 36 tests OK (validation §10).
+
+### PR-B revise 1 (`ced110dd`): amendment 1, after the audit of `f48593d6`
+
+The task-level audit of `f48593d6` (PR #350 after `update-branch`) returned `incorrect`. The operator's decision A released one fix round, and amendment 1 (task hash `6b238e5a…`) names its two changes. This round makes those two changes and nothing else.
+
+| Audit finding | Change |
+|---|---|
+| P1 at `orch-gate.sh:67`: `uv run` with the review worktree as its cwd reads the head's `.python-version`, and uv executes a path it names before the trusted gate runs | (a) the interpreter is resolved in this checkout and run directly |
+| P2 at `orch-gate.sh:55`: a failing `mkdir` or `cp` after the head checkout leaves the review worktree at the head with partial evidence | (b) an EXIT trap set before the head checkout |
+
+- **The exploit shape, run rather than recalled** (validation §12):
+  - In a scratch directory whose `.python-version` reads `./pwn`, the real uv executed `pwn` for `uv python find` and again for `uv run --no-project python`. Each run left a marker, and each reported `Failed to inspect Python interpreter from provided path at ./pwn`.
+  - `--no-project` does not stop it.
+- **(a) The interpreter.**
+  - `python="$(uv python find)" || refuse …` runs with this checkout as its cwd. It comes after the refusals and before the review worktree's clean check, which is the first command that touches the review worktree. The real root has no `.python-version`, `uv.toml` or `.venv`; there `uv python find` names the mise Python (validation §12).
+  - The gate then runs as `"${python}" -I <root>/scripts/require-crit-review.py --base origin/main` in the review worktree. No uv runs with the head as its cwd.
+  - The gate's own subprocess that runs Python (the `pr-feedback.py` collector) uses `sys.executable`, so it inherits the pinned interpreter.
+- **(b) The trap.**
+  - `trap 'git -C "${review}" clean -fdq -- .orchestration; git -C "${review}" checkout -qf --detach origin/main' EXIT` is set right after the clean check and before `git -C "${review}" checkout -q --detach "${head}"`. It replaces the two restore lines that ran after the gate.
+  - The gate's subshell does not inherit it.
+  - Under `set -e`, a failing restore in the trap ends the script non-zero even after a passing gate, so the wrapper fails closed (probe, validation §12).
+  - The trap is an inline string, not a function: shellcheck 0.11.0 reports a trap-only function as SC2329 (info), and CI runs shellcheck at its default severity over `scripts/*.sh`, a git pathspec that also matches `scripts/orchestrator/` (`.github/workflows/test.yaml:310`). `scripts/update-agent-assets.sh` uses the same form.
+  - Signals stay outside the row, as amendment 1 says.
+- **Tests** (`tests/unit/test_orchestrator_tools.py`):
+  - A `RUN` stub template records argv, cwd and environment, prints `<name>-output` and fails on `<name>-fails`. `uv` and the new interpreter stub `gate-python` use it.
+  - As the probe shows the real uv does, the `uv` stub runs the executable that a `.python-version` in its cwd names.
+  - `gate()` makes `uv python find` print the `gate-python` path. `gate(plant=True)` commits `./pwn` (mode 755, it touches `pwned`) and a `.python-version` naming it into the PR head.
+  - The four existing orch-gate tests now assert on `gate-python` where they asserted on `uv`. The status test switches `gate-python-fails`.
+  - `test_orch_gate_pins_the_interpreter_before_entering_the_review_worktree`: `pwned` never appears; uv's only call is `python find`, with the root as its cwd; the gate runs under `gate-python`.
+  - `test_orch_gate_restores_the_review_worktree_when_setup_fails`: a `cp` stub copies the first evidence file into the review worktree, then exits 1. The wrapper exits 1, `run_gate` finds the review worktree clean and at origin/main, and the gate never ran.
+- **Mutation proofs.** Validation §12 lists 5 mutants, all killed. P1 is the pre-fix gate line: the PR's `pwn` runs. R1 is the pre-fix code without the trap.
+- **Size.** INV-2: 3 files outside `.orchestration`, 198 added lines outside tests and 205 under tests.
+- **Task copy.** `.orchestration/dotfiles-T128-orchestrator-tools-a05/task.md` is the amended task, sha256 `6b238e5a958ed5124d997e129391a4e10cc2b61b7b9f57052e8b463b4f549f23`.
+- **Observation for the orchestrator** (not changed, outside `allowed_files`):
+  - The case: when `git show <base_sha>:scripts/pr-feedback.py` fails (`require-crit-review.py:604-608`), the gate runs the collector at `root / "scripts/pr-feedback.py"`.
+  - Why it matters: the root comes from the gate's cwd. Under orch-gate.sh that cwd is the review worktree at the PR head, so the collector that runs is the head's own.
+  - What limits it: `pr_base_errors` binds `base_sha` to GitHub's base first, so the fallback runs only when that commit or its collector is missing locally.
+

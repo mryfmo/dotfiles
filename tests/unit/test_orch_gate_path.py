@@ -21,7 +21,7 @@ STUBS = {
     "bin/uv": 'printf "%s\\n" "{t}/gate/python"\n',
     "bin/mise": 'printf "%s\\n" "{t}/installs/$2"\n',
     "bin/gh": "",
-    "bin/git": 'case "$*" in\n*"rev-parse --show-toplevel") printf "%s\\n" "{t}/root" ;;\n'
+    "bin/git": 'case "$*" in\n*"rev-parse --show-toplevel") printf "%s\\n" "{t}/repo" ;;\n'
     + '*"rev-parse HEAD") printf "%s\\n" {head} ;;\nesac\n',
     "gate/python": '/usr/bin/env > "{t}/calls/gate-env"\n'
     + 'for f in "$PATH"/*; do printf "%s %s\\n" "$f" "$(/usr/bin/readlink "$f")"; done > "{t}/calls/gate-path"\n',
@@ -33,8 +33,8 @@ class OrchGatePathTest(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.t = Path(temp.name).resolve()
-        self.root, self.review = self.t / "root", self.t / "root/.claude/worktrees/orchestrator-review"
-        for directory in ("bin", "calls", "gate", "pr", "tmp", "root/scripts/orchestrator", self.review):
+        self.root, self.review = self.t / "repo", self.t / "repo/.claude/worktrees/orchestrator-review"
+        for directory in ("bin", "calls", "gate", "pr", "tmp", "repo/scripts/orchestrator", self.review):
             (self.t / directory).mkdir(parents=True, exist_ok=True)
         shutil.copy(ROOT / "scripts/orchestrator/orch-gate.sh", self.root / "scripts/orchestrator")
         v = self.root / ".orchestration/validation"

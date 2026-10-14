@@ -713,3 +713,612 @@ Exit status: 0. Regime-boundary warnings describe the shared live regime; no out
 ```text
 452a344479136254b1cfa266204827e4a715a4e26489bc751c5b7ee33d8e2b07  .orchestration/dotfiles-T128-project-map-reload-hook-a01/task.md
 ```
+
+## amendment2 hook test before implementation (expected exit 1)
+
+```text
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... 
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='Write', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='Edit', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='MultiEdit', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='listing failure', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='no browser', listing={'browsers': []}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='no map tab', listing={'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='null target', listing={'browsers': [{'cdpPort': 9222, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': None}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='missing agent', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='tab failure', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='eval failure', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid port', listing={'browsers': [{'cdpPort': None, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid port', listing={'browsers': [{'cdpPort': '9222', 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid port', listing={'browsers': [{'cdpPort': 0, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid port', listing={'browsers': [{'cdpPort': 65536, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid port', listing={'browsers': [{'cdpPort': 1.5, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]}) ... FAIL
+  test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid target', listing={'browsers': [{'cdpPort': 9222, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': '--all'}]}]}) ... FAIL
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='Write', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='Edit', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='MultiEdit', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='listing failure', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='no browser', listing={'browsers': []})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='no map tab', listing={'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='null target', listing={'browsers': [{'cdpPort': 9222, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': None}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='missing agent', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='tab failure', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='eval failure', listing={'self': None, 'browsers': [{'key': 'other-browser', 'cdpPort': 1111, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}]}, {'key': 'map-browser', 'cdpPort': 9222, 'tabs': [{'id': 1, 'url': 'https://example.com/', 'active': True, 'targetId': 'OTHER-TARGET'}, {'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid port', listing={'browsers': [{'cdpPort': None, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid port', listing={'browsers': [{'cdpPort': '9222', 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid port', listing={'browsers': [{'cdpPort': 0, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid port', listing={'browsers': [{'cdpPort': 65536, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid port', listing={'browsers': [{'cdpPort': 1.5, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': 'MAP-CDP-TARGET'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+======================================================================
+FAIL: test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) (case='invalid target', listing={'browsers': [{'cdpPort': 9222, 'tabs': [{'id': 7, 'url': 'file:///var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmppz5lg_if/.project-map/index.html', 'active': False, 'targetId': '--all'}]}]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1643, in test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ["ls --all --json"] if listed else [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: ['action -- eval location.pathname.endsWith[46 chars]d()'] != ['ls --all --json']
+
+First differing element 0:
+'action -- eval location.pathname.endsWith[45 chars]ad()'
+'ls --all --json'
+
++ ['ls --all --json']
+- ['action -- eval location.pathname.endsWith("/.project-map/index.html") && '
+-  'location.reload()']
+
+----------------------------------------------------------------------
+Ran 1 test in 1.060s
+
+FAILED (failures=16)
+```
+
+## UV_CACHE_DIR=/private/tmp/codex-dot-a004-uv uv run python -m unittest tests/unit/test_generate_agent_configs.py -v (amendment2, exit 0)
+
+```text
+test_a_declare_r_assignment_must_appear_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver) ... ok
+test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+test_asset_constant_must_be_assigned_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_command_hooks_render_after_permission_request_in_manifest_order (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_command_hooks_render_after_permission_request_in_manifest_order) ... ok
+test_codex_config_renders_permgate_permission_request (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_empty_or_missing_codex_command_hooks_render_no_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_empty_or_missing_codex_command_hooks_render_no_table) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_hook_trust_hash_reproduces_codex_current_hashes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_hook_trust_hash_reproduces_codex_current_hashes) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb) ... ok
+test_managed_codex_path_includes_installed_common_bin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_orchestrator_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_orchestrator_kind) ... ok
+test_model_profiles_env_renders_worker_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_env_selects_no_github_store (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_selects_no_github_store) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_orchestrator_kind_defaults_to_claude (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_orchestrator_kind_defaults_to_claude) ... ok
+test_plugin_versions_order_build_metadata_like_the_semver_crate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_plugin_versions_order_build_metadata_like_the_semver_crate) ... ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_handle_table_headers_with_trailing_comments (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_handle_table_headers_with_trailing_comments) ... ok
+test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin) ... ok
+test_profile_modify_scripts_hash_the_plugin_version_codex_loads (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_the_plugin_version_codex_loads) ... ok
+test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings) ... ok
+test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_replace_a_single_quoted_declared_entry (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_a_single_quoted_declared_entry) ... ok
+test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root) ... ok
+test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared) ... ok
+test_profile_modify_scripts_replace_inline_table_and_dotted_forms (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_inline_table_and_dotted_forms) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_reaches_the_fallback_pin_and_its_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_reaches_the_fallback_pin_and_its_checksums) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_orchestrator_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_orchestrator_kind_fails) ... ok
+test_unknown_worker_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+
+----------------------------------------------------------------------
+Ran 76 tests in 5.197s
+
+OK
+```
+
+## shellcheck home/dot_claude/hooks/executable_project-map-reload.sh (amendment2, exit 0)
+
+```text
+```
+
+## UV_CACHE_DIR=/private/tmp/codex-dot-a004-uv make render-check (amendment2, exit 0)
+
+```text
+uv run --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+```
+
+## bundled agent-browser tab --help (CDP target id and fallback semantics)
+
+```text
+agent-browser tab - Manage browser tabs
+
+Usage: agent-browser tab [operation] [args]
+
+Manage browser tabs in the current window. Stable tab ids look like `t1`,
+`t2`, `t3`. An id is never reused within a session, so scripts can keep
+referring to the same tab across commands. Optional user-assigned labels
+(e.g. `docs`, `app`) are interchangeable with ids everywhere a tab ref is
+accepted. CDP target ids (from `tab list --json`) are also accepted as tab
+refs; unlike `t<N>` ids they stay stable across daemon restarts.
+
+Tabs opened with `tab new` or `click --new-tab` inherit the session's user
+agent, headers, HTTP credentials, init scripts, routes, and emulation
+overrides before their first document loads.
+
+Each session remembers its active tab (bound by CDP target id) and returns
+to it after a daemon restart. With --pin-tab, commands fail with a
+`tab_gone` error instead of falling back to another tab when the bound tab
+is closed. JSON output includes code=tab_gone, data.targetId, and an
+optional sanitized data.lastUrl; batch output uses result for the recovery
+object. Recover with `tab new` or `tab list`. The pin is sticky per session;
+pass --no-pin-tab to turn it off again.
+
+Operations:
+  list                       List open tabs with their ids and labels (default)
+  new [url]                  Open a new tab
+  new --label <name> [url]   Open a new tab with a label like `docs` or `app`
+  close [t<N>|label|target]  Close a tab (current if no ref given)
+  <t<N>|label|target>        Switch to a tab by id, label, or CDP target id
+
+Global Options:
+  --json               Output as JSON (includes each tab's targetId)
+  --session <name>     Use specific session
+
+Examples:
+  agent-browser tab
+  agent-browser tab list
+  agent-browser tab new
+  agent-browser tab new https://example.com
+  agent-browser tab new --label docs https://docs.example.com
+  agent-browser tab t2
+  agent-browser tab docs
+  agent-browser tab close
+  agent-browser tab close t1
+  agent-browser tab close docs
+  agent-browser tab list --json                        # Includes CDP target ids
+  agent-browser tab close 4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3  # Close by target id
+```
+
+## git diff --numstat origin/main -- home/ scripts/ tests/ (working tree before fix commit)
+
+```text
+4	0	home/.chezmoitemplates/claude-settings-managed.json
+1	0	home/dot_agents/agent-config.yaml
+1	1	home/dot_agents/skills/project-map/SKILL.md
+27	0	home/dot_claude/hooks/executable_project-map-reload.sh
+1	1	home/dot_config/claude/rules/project-map.md
+7	0	scripts/check-agent-runtime.py
+7	0	scripts/generate-agent-configs.py
+160	1	tests/unit/test_generate_agent_configs.py
+```
+
+## make require-crit-review (amendment2, before evidence; expected exit2)
+
+```text
+Native agent review required before completion.
+- review-sensitive path changed: .orchestration/dotfiles-T128-project-map-reload-hook-a01/20261014_053000_plan.md
+- broad diff touches 10 files
+- broad diff changes 2551 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+```
+
+## AGENT_REVIEWED=1 REVIEW_EVIDENCE=<worker receipt> make require-crit-review (amendment2, exit0)
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+## Advisory handling instruction received through agmsg
+
+```text
+2026-10-14T06:38:37Z claude-deep-dot: no new authorization and no amendment3; argv stays exactly amendment2, tab targetId then eval location.reload(); P2 is advisory under the task P2 clause and owned by dotfiles-T128-project-map-reload-hook-followup-a01; paste tab help lines16-22 in report evidence; no code change for it; push and RESULT.
+```
+
+## caps assert-based check
+
+```text
+source changed lines: 50 <= 200
+test added lines: 160 <= 1000
+```

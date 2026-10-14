@@ -1,8 +1,15 @@
 [
   {
-    "id": "dotfiles-T128-project-map-reload-hook-a01-independent-review",
-    "body": "Independent review found no defects in the eight allowed source/test paths. The hook uses a fixed browser script without interpolating event input, suppresses failures, and matches the task specification. Manifest wiring, generated settings, optional-key behavior, runtime parity registration and documentation are consistent. Validation logs show 76 generator tests and 52 runtime tests passing, including both required new tests; render-check reports no drift. The reviewer independently ran shellcheck and git diff --check successfully. Live Claude subagent delivery and browser reload latency remain for the orchestrator's post-install verification.",
+    "id": "dotfiles-T128-project-map-reload-hook-a01-amendment2-p1",
     "scope": "review",
-    "resolved": true
+    "resolved": true,
+    "body": "Independent amendment2 review confirms the original P1 4267187098 root cause is fixed in the working tree: both direct agent-browser calls receive explicit --cdp, and tab selection uses the stable CDP targetId. Port and target-token validation prevent option injection; arguments are quoted. The revised tests cover every prescribed failure path; 76 generator tests, ShellCheck and render-check pass. Real browser refresh latency remains for post-install verification."
+  },
+  {
+    "id": "dotfiles-T128-project-map-reload-hook-a01-amendment2-p2",
+    "scope": "file",
+    "path": "home/dot_claude/hooks/executable_project-map-reload.sh",
+    "resolved": true,
+    "body": "P2: if the selected map tab closes between tab and eval, agent-browser may fall back to another tab and reload it, potentially losing unsaved input. Independent reviewer cited bundled tab help lines16-22. This local review comment is closed as an explicitly acknowledged advisory, not a code fix: orchestrator PING of2026-10-14T06:38:37Z directs exact amendment2 argv, no amendment3, and assigns this open code risk to dotfiles-T128-project-map-reload-hook-followup-a01 under the task P2 clause. The risk is preserved in report.md; integration and follow-up authority remain with the orchestrator."
   }
 ]

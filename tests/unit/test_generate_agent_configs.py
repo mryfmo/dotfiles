@@ -1526,49 +1526,127 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_project_map_reload_hook_acts_only_on_the_map_and_never_fails(self) -> None:
         hook = ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh"
-        reload_script = 'location.pathname.endsWith("/.project-map/index.html") && location.reload()'
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            calls = root / "calls"
+            browser_calls = root / "browser-calls"
+            agent_calls = root / "agent-calls"
+            listing_file = root / "listing.json"
             browser = root / "terminal-browser"
             browser.write_text(
-                '#!/bin/bash\nprintf \'%s\\n\' "$@" >> "$CALLS"\n'
-                'if [[ "$BROWSER_FAIL" == 1 ]]; then echo "no browser" >&2; exit 1; fi\n'
+                "#!/bin/bash\n"
+                'printf \'%s\\n\' "$*" >> "$BROWSER_CALLS"\n'
+                'if [[ "$LIST_FAIL" == 1 ]]; then echo "listing failed" >&2; exit 1; fi\n'
+                '/bin/cat "$LISTING"\n'
             )
             browser.chmod(0o755)
+            agent = root / "agent-browser"
+            agent.write_text(
+                "#!/bin/bash\n"
+                'printf \'%s\\n\' "$@" >> "$AGENT_CALLS"\n'
+                'if [[ "$5" == "$AGENT_FAIL_ON" ]]; then echo "agent failed" >&2; exit 1; fi\n'
+                'echo "agent output"\n'
+            )
+            agent.chmod(0o755)
             jq = shutil.which("jq")
             self.assertIsNotNone(jq)
             (root / "jq").symlink_to(jq)
+            jq_only = root / "jq-only"
+            jq_only.mkdir()
+            (jq_only / "jq").symlink_to(jq)
             map_path = str(root / ".project-map/index.html")
+            map_tab = {"id": 7, "url": "file://" + map_path, "active": False, "targetId": "MAP-CDP-TARGET"}
+            other_tab = {"id": 1, "url": "https://example.com/", "active": True, "targetId": "OTHER-TARGET"}
+            listing = {
+                "self": None,
+                "browsers": [
+                    {"key": "other-browser", "cdpPort": 1111, "tabs": [other_tab]},
+                    {"key": "map-browser", "cdpPort": 9222, "tabs": [other_tab, map_tab]},
+                ],
+            }
+            tab_call = ["--cdp", "9222", "--session", "project-map-reload", "tab", "MAP-CDP-TARGET"]
+            eval_call = ["--cdp", "9222", "--session", "project-map-reload", "eval", "location.reload()"]
             cases = [
-                ("Write", {"file_path": map_path}, False, True, True),
-                ("Edit", {"file_path": map_path}, False, True, True),
-                ("MultiEdit", {"file_path": map_path}, False, True, True),
-                ("Write", {"file_path": str(root / "other.html")}, False, True, False),
-                ("Write", {}, False, True, False),
-                ("Write", {"file_path": map_path}, True, True, True),
-                ("Write", {"file_path": map_path}, False, False, False),
+                ("Write", {"file_path": map_path}, listing, {}, 2, True),
+                ("Edit", {"file_path": map_path}, listing, {}, 2, True),
+                ("MultiEdit", {"file_path": map_path}, listing, {}, 2, True),
+                ("missing file_path", {}, listing, {}, 0, False),
+                ("other path", {"file_path": str(root / "other.html")}, listing, {}, 0, False),
+                ("missing jq", {"file_path": map_path}, listing, {"PATH": ""}, 0, False),
+                ("missing terminal-browser", {"file_path": map_path}, listing, {"PATH": str(jq_only)}, 0, False),
+                ("listing failure", {"file_path": map_path}, listing, {"LIST_FAIL": "1"}, 0, True),
+                ("no browser", {"file_path": map_path}, {"browsers": []}, {}, 0, True),
+                ("no map tab", {"file_path": map_path}, {"browsers": [listing["browsers"][0]]}, {}, 0, True),
+                (
+                    "null target",
+                    {"file_path": map_path},
+                    {"browsers": [{"cdpPort": 9222, "tabs": [dict(map_tab, targetId=None)]}]},
+                    {},
+                    0,
+                    True,
+                ),
+                (
+                    "missing agent",
+                    {"file_path": map_path},
+                    listing,
+                    {"TERMINAL_BROWSER_AGENT": str(root / "missing")},
+                    0,
+                    True,
+                ),
+                ("tab failure", {"file_path": map_path}, listing, {"AGENT_FAIL_ON": "tab"}, 1, True),
+                ("eval failure", {"file_path": map_path}, listing, {"AGENT_FAIL_ON": "eval"}, 2, True),
             ]
-            for tool, tool_input, fail, tools_available, called in cases:
-                with self.subTest(tool=tool, tool_input=tool_input, fail=fail, tools_available=tools_available):
-                    calls.unlink(missing_ok=True)
+            for port in (None, "9222", 0, 65536, 1.5):
+                cases.append(
+                    (
+                        "invalid port",
+                        {"file_path": map_path},
+                        {"browsers": [{"cdpPort": port, "tabs": [map_tab]}]},
+                        {},
+                        0,
+                        True,
+                    )
+                )
+            cases.append(
+                (
+                    "invalid target",
+                    {"file_path": map_path},
+                    {"browsers": [{"cdpPort": 9222, "tabs": [dict(map_tab, targetId="--all")]}]},
+                    {},
+                    0,
+                    True,
+                )
+            )
+            for name, tool_input, browser_listing, overrides, call_count, listed in cases:
+                with self.subTest(case=name, listing=browser_listing):
+                    browser_calls.unlink(missing_ok=True)
+                    agent_calls.unlink(missing_ok=True)
+                    listing_file.write_text(json.dumps(browser_listing))
                     result = subprocess.run(
                         ["/bin/bash", str(hook)],
-                        input=json.dumps({"tool_name": tool, "tool_input": tool_input}),
+                        input=json.dumps({"tool_name": name, "tool_input": tool_input}),
                         text=True,
                         capture_output=True,
                         env={
                             **os.environ,
-                            "PATH": str(root) if tools_available else "",
-                            "CALLS": str(calls),
-                            "BROWSER_FAIL": str(int(fail)),
+                            "PATH": str(root),
+                            "BROWSER_CALLS": str(browser_calls),
+                            "AGENT_CALLS": str(agent_calls),
+                            "LISTING": str(listing_file),
+                            "TERMINAL_BROWSER_AGENT": str(agent),
+                            "LIST_FAIL": "0",
+                            "AGENT_FAIL_ON": "",
+                            **overrides,
                         },
                         check=False,
                     )
                     self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
                     self.assertEqual(
-                        calls.read_text().splitlines() if calls.exists() else [],
-                        ["action", "--", "eval", reload_script] if called else [],
+                        browser_calls.read_text().splitlines() if browser_calls.exists() else [],
+                        ["ls --all --json"] if listed else [],
+                    )
+                    self.assertEqual(
+                        agent_calls.read_text().splitlines() if agent_calls.exists() else [],
+                        (tab_call + eval_call)[: call_count * 6],
                     )
 
     def test_claude_settings_renders_session_start_hooks(self) -> None:

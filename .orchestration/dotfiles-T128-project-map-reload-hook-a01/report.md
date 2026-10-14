@@ -1,36 +1,32 @@
-# RESULT report: dotfiles-T128-project-map-reload-hook-a01
+# RESULT report: dotfiles-T128-project-map-reload-hook-a01, amendment 2
 
-Implementation commit: `576528758297631ae85ec5ea1e2163594bdc82a0`
-Base: `28eec93c9a78e6a56d1f5f60ded675f521edb96f`
-Branch: `feat/project-map-reload-hook`
+PR: https://github.com/mryfmo/dotfiles/pull/353
+Branch: feat/project-map-reload-hook
+Base: 28eec93c9a78e6a56d1f5f60ded675f521edb96f
+Task-copy SHA256: a7c4d65b4ce3a79f54f08a8dec80e65586c6fbe3e53e4196f4aa8dde3d085530
 
-[memory:decision] Claude PostToolUse now runs project-map-reload after the existing formatter for Write/Edit/MultiEdit. The new eleven-line Bash hook reads file_path via jq, requests one terminal-browser action only for /.project-map/index.html, guards the active page's pathname, and silently exits 0 when tools or the browser are unavailable.
+[memory:decision] The hook discovers the map browser through terminal-browser ls --all --json, validates its loopback port and CDP target token, and passes --cdp and the fixed project-map-reload session on both direct agent-browser calls: tab <targetId>, then eval location.reload(). It does not call the affected terminal-browser action wrapper. TERMINAL_BROWSER_AGENT is the existing upstream override used as the test seam; the default is the installed bundled binary.
 
 ## Files
 
-- `home/dot_claude/hooks/executable_project-map-reload.sh`: new executable hook with English shdoc annotations; no event data enters JavaScript or shell execution.
-- `home/dot_agents/agent-config.yaml`: one claude.hooks key; no Codex configuration changed.
-- `scripts/generate-agent-configs.py`: optional hook rendered after formatter; absent key preserves previous output.
-- `home/.chezmoitemplates/claude-settings-managed.json`: regenerated through the renderer.
-- `tests/unit/test_generate_agent_configs.py`: two new behavioral tests and existing PostToolUse assertions updated.
-- Item 7, `home/dot_agents/skills/project-map/SKILL.md`: the requested Write/Edit-only sentence; its Claude symlink mirror requires no edit.
-- `home/dot_config/claude/rules/project-map.md`: the requested automatic-reload sentence.
-- Item 8, `scripts/check-agent-runtime.py`: existing check_executable_hook pattern registers deployed-hook parity for doctor.
+The eight source/test paths are home/dot_claude/hooks/executable_project-map-reload.sh (new27-line executable with English shdoc annotations), home/dot_agents/agent-config.yaml (one Claude hook key), scripts/generate-agent-configs.py (optional hook after formatter), home/.chezmoitemplates/claude-settings-managed.json (generated), tests/unit/test_generate_agent_configs.py (two named tests and updated assertions), home/dot_config/claude/rules/project-map.md (automatic reload sentence), item7 home/dot_agents/skills/project-map/SKILL.md (Write/Edit-only sentence; no Claude mirror edit), and item8 scripts/check-agent-runtime.py (deployed executable parity).
 
-## Validation and review
+## Tests and caps
 
-The two required tests are `test_project_map_reload_hook_renders_into_post_tool_use` and `test_project_map_reload_hook_acts_only_on_the_map_and_never_fails`. The latter covers Write, Edit, MultiEdit, unrelated paths, missing file_path, browser failure and empty PATH, with exact argv and silent exit assertions. Tests were written first and failed before implementation. All 76 generator tests and 52 runtime tests then passed; render-check, ShellCheck, Ruff formatting and Prettier formatting passed. All outputs are in validation.md.
+The required tests are test_project_map_reload_hook_renders_into_post_tool_use and test_project_map_reload_hook_acts_only_on_the_map_and_never_fails. Revised tests first failed against the old action call, then all76 generator tests passed. The hook test covers Write, Edit and MultiEdit success, exact stable-target argv, each failure (a)-(j), invalid ports and an option-like target. The tab failure permits one agent call only; the eval failure permits two, with no extra calls. Missing tools, browsers, map tabs and target ids remain silent exit0. ShellCheck, render-check, Ruff formatting and source diff-check pass. The52 runtime tests passed before amendment2; that runtime checker block is unchanged. Full outputs are in validation.md.
 
-Source cap: 34 added-plus-deleted lines outside tests/ and .orchestration/, including regenerated settings; limit 200. Test cap: 82 added lines; limit 1000. Amendment 1 confirms the evidence exclusion; task_copy SHA256 is 452a344479136254b1cfa266204827e4a715a4e26489bc751c5b7ee33d8e2b07.
+The current source cap is50 changed lines outside tests/ and .orchestration/ including generated settings (limit200); test additions are160 (limit1000). CI on the original head2c444b08 passed every check. CI on the fix head is checked after push; the final local report and validation capture those observations without moving the pushed head.
 
-Crit status pointed to a missing review file and comments export confirmed it was unavailable. Independent read-only reviewer /root/hook_review approved the eight source/test paths; its resolved JSON and receipt are saved beside this report. AGENT_REVIEWED=1 with the receipt passed make require-crit-review. No browser Crit session or publication was used.
+## Findings
 
-## Limitations and acceptance work
+P1 Bot comment4267187098, threadPRRT_kwDOSMyAV86sLZvx: fixed by this one fix round. The final RESULT and local final report identify the actual fix commit. The direct calls carry CDP on every invocation and select the map by CDP targetId, closing the root cause documented in upstream issue60 and pinned v0.13.4 action.ts.
 
-The real Claude subagent hook dispatch and terminal-browser refresh latency were not exercised in this sandbox. The task assigns the post-merge make update and live project-map-agent verification to the orchestrator/operator. Browser launching, browser selection changes, home installation, local bats runs, dependency additions and merging were skipped.
+P2 (independent review, high confidence), hook line26: if the selected map tab closes between tab selection and eval, agent-browser can fall back to another tab and reload it, potentially discarding unsaved input. The bundled tab --help lines16-22 are pasted in validation.md. It is NOT fixed here. Orchestrator PING2026-10-14T06:38:37Z expressly directs no amendment3, the exact amendment2 argv, no code change for this advisory, and ownership by dotfiles-T128-project-map-reload-hook-followup-a01. That follow-up task is to be written and landed by the next boundary before integration, per this task's P2 clause. No not-applicable claim is made for P2; acceptance and integration decisions remain with the orchestrator.
 
-Project CompactionDB memory add was not executed because the main-checkout state database is outside this worker's writable roots. No memory ID is claimed. Consolidate the two learning.md decisions at acceptance.
+Crit data remains absent. Independent review and the acknowledged P2 disposition are saved in worker-crit.json and the worker receipt. The local resolved record for P2 records workflow disposition only, not that the code risk is fixed. No browser Crit server was started; Plan Mode was not used.
 
-Plan Mode was not used; no Crit review server was started. Understand-Anything's graph is stale, so scoped rg was used; no graph update was performed.
+## Remaining checks and effects
+
+Live Claude subagent dispatch and real browser reload latency are untested here and remain for the post-install check named by the task. The production hook may start or reuse one host daemon for the fixed project-map-reload session; its default idle timeout is one hour, per the amended threat table. Tests use a stub and start no daemon. Browser launching, dependency changes, home installation, local bats and merging were not performed. Project CompactionDB consolidation remains with the orchestrator because the main state database is outside this sandbox's writable roots. No memory ID is claimed.
 
 cost: n/a

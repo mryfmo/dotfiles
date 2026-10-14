@@ -1047,8 +1047,10 @@ class OrchestratorToolsTest(unittest.TestCase):
         env = dict(line.split("=", 1) for line in env if "=" in line)
         allowed = {"PATH", "HOME", "PYTHONSAFEPATH", "AGENT_REVIEWED", "REVIEW_EVIDENCE", "PR_FEEDBACK_EVIDENCE"}
         allowed |= {"AUDIT_EVIDENCE", "ACCEPTANCE_EVIDENCE"}
-        # Names only, so a failure prints no value; PWD, SHLVL and _ are the ones the stub's own bash exports.
-        self.assertEqual(sorted(allowed | {"PWD", "SHLVL", "_"}), sorted(env))
+        # The names the stub's own bash exports; PWD last, as GitGuardian reads a string literal after it as a password.
+        own = {"SHLVL", "_", "PWD"}
+        # Names only, so a failure prints no value.
+        self.assertEqual(sorted(allowed | own), sorted(env))
         expected = (self.env["PATH"], self.env["HOME"], "1", "1")
         self.assertEqual(expected, (env["PATH"], env["HOME"], env["PYTHONSAFEPATH"], env["AGENT_REVIEWED"]))
         self.assertEqual(["-I", "-P"], self.call("gate-python")[:2])

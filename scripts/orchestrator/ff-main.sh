@@ -5,12 +5,14 @@
 #   Plan 007 T718, the sequence M-20261012-26's fourth instance records. In the
 #   checkout this script lives in: the untracked files under `.orchestration`
 #   that `origin/main` now holds, and the locally modified tracked files (`git
-#   diff --name-only`), are moved aside under `$TMPDIR`; the tracked ones are
-#   restored with `git checkout --`; then `git merge --ff-only origin/main`;
-#   then each aside file that still differs from the fast-forwarded one is
-#   copied back and listed. A refused fast-forward copies every aside file back
-#   and exits 1. `rm` touches only its own directory under `$TMPDIR`. One
-#   command per step under `set -e`, never an `&&` list across steps.
+#   diff --name-only`), are moved aside under `$TMPDIR`; the tracked ones, and
+#   the locally deleted ones, are restored with `git checkout --`; then `git
+#   merge --ff-only origin/main`; then each aside file that still differs from
+#   the fast-forwarded one is copied back and listed, and each locally deleted
+#   file is deleted again and listed. A refused fast-forward copies every aside
+#   file back, deletes the deleted ones again and exits 1. `rm` touches only its
+#   own directory under `$TMPDIR` and the locally deleted files. One command per
+#   step under `set -e`, never an `&&` list across steps.
 # @exitcode 0 Fast-forwarded; the restored files are listed.
 # @exitcode 1 The fetch or the fast-forward failed; every local file is back in place.
 # @example
@@ -22,10 +24,14 @@ cd -- "${root}"
 git fetch -q origin main
 aside="$(mktemp -d "${TMPDIR:-/tmp}/ff-aside.XXXXXX")"
 # A step that fails before the copy-back leaves the moved files where this line says.
-trap 'echo "ff-main: stopped; the moved files are in ${aside}" >&2' ERR
-modified=()
+trap 'echo "ff-main: stopped; the moved files are in ${aside}, the deleted ones restored: ${deleted[*]:-none}" >&2' ERR
+modified=() deleted=()
 while IFS= read -r -d '' f; do
-    modified+=("${f}")
+    if [[ -e ${f} || -L ${f} ]]; then
+        modified+=("${f}")
+    else
+        deleted+=("${f}")
+    fi
 done < <(git diff -z --name-only)
 while IFS= read -r -d '' f; do
     if git cat-file -e "origin/main:${f}" 2> /dev/null; then
@@ -42,6 +48,7 @@ for f in ${modified[@]+"${modified[@]}"}; do
         tracked+=("${f}")
     fi
 done
+tracked+=(${deleted[@]+"${deleted[@]}"})
 if ((${#tracked[@]} > 0)); then
     git checkout -- "${tracked[@]}"
 fi
@@ -53,6 +60,12 @@ for f in ${modified[@]+"${modified[@]}"}; do
         mkdir -p "$(dirname -- "${f}")"
         cp -p -- "${aside}/${f}" "${f}"
         echo "restored: ${f}"
+    fi
+done
+for f in ${deleted[@]+"${deleted[@]}"}; do
+    if [[ -e ${f} || -L ${f} ]]; then
+        rm -- "${f}"
+        echo "deleted: ${f}"
     fi
 done
 rm -r -- "${aside}"

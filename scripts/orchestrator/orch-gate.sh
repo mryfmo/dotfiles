@@ -18,8 +18,9 @@
 #   inputs AUDIT_EVIDENCE, ACCEPTANCE_EVIDENCE, PR_FEEDBACK_EVIDENCE, REVIEW_EVIDENCE and AGENT_REVIEWED=1, and
 #   PYTHONSAFEPATH=1, as `-I -P <gate> --base origin/main`: nothing else of this shell or of the head reaches the
 #   gate or the collector and gh it starts (the audits of a06c874e and 6847aa9f). A trap set before the private
-#   directory is made and the head checked out removes it and restores the review worktree to origin/main whatever
-#   fails or the gate says.
+#   directory is made removes it whatever fails or the gate says, and once the head's checkout has started restores
+#   the review worktree to origin/main; a refusal before that leaves the review worktree as it was (the audit of
+#   a235637).
 # @arg $1 string Task id.
 # @arg $2 path The PR's checkout (its HEAD is the gated head).
 # @arg $3 int PR number.
@@ -60,7 +61,7 @@ done
 python="$(uv python find)" || refuse "uv found no interpreter in ${root}"
 [[ -z $(git -C "${review}" status --porcelain --untracked-files=all) ]] || refuse "the review worktree is not clean"
 trap '[[ -z ${bin:-} ]] || rm -rf -- "${bin}"
-git -C "${review}" clean -fdq -- .orchestration; git -C "${review}" checkout -qf --detach origin/main' EXIT
+[[ -z ${moved:-} ]] || { git -C "${review}" clean -fdq -- .orchestration; git -C "${review}" checkout -qf --detach origin/main; }' EXIT
 bin="$(mktemp -d "${TMPDIR:-/tmp}/orch-gate.XXXXXX")"
 # The gate's PATH is these links alone: through the caller's PATH, gh resolved to a mise shim, which picks the binary
 # from the review worktree's mise.toml (the audit of 6847aa9f). gh and git are what the gate and its collector run.
@@ -71,6 +72,7 @@ for name in gh git; do
     [[ ${found} == /* && ${found} != */shims/* ]] || refuse "no binary for ${name} outside a shims directory ('${found}')"
     ln -s -- "${found}" "${bin}/${name}"
 done
+moved=1
 git -C "${review}" checkout -q --detach "${head}"
 for f in "${evidence[@]}"; do
     mkdir -p "${review}/$(dirname -- "${f}")"

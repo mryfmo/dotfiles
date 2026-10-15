@@ -51,7 +51,7 @@ for f in "${files[@]}"; do
         cp -- "${f}" "${tree}/${f}"
         copied+=("${f}")
     else
-        git -C "${tree}" rm -q --ignore-unmatch -- "${f}"
+        git -C "${tree}" rm -q --ignore-unmatch -- ":(literal)${f}"
     fi
 done
 cd -- "${tree}"

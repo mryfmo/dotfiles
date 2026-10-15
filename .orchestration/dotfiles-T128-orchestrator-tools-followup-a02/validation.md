@@ -1,12 +1,12 @@
 ---
 task_id: dotfiles-T128-orchestrator-tools-followup-a02
 seat: claude-standard-dot-a002
-code_commit: bf0fe7ab
+code_commit: afe7f1eb
 ---
 
 # Validation: dotfiles-T128-orchestrator-tools-followup-a02
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (the capture script's `PIPESTATUS`; §6's block shows the script and its output, and each mutant line carries its own `rc`). Captured at `bf0fe7ab`.
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (the capture script's `PIPESTATUS`; §6's block shows the script and its output, and each mutant line carries its own `rc`). Captured at `afe7f1eb` (round 1 code `bf0fe7ab`, the Bot P1 fix `afe7f1eb`).
 
 ## 1. Task file and task copy
 ```console
@@ -32,6 +32,8 @@ fc57b78efdda6ae5fde3816cfb403f3b866bacf7cd19c819747f84fc88cda6be  $MAIN/.orchest
 ## 2. Branch and the three premises
 ```console
 $ git log --oneline origin/main..HEAD; git rev-parse origin/main
+afe7f1eb fix(orchestrator): fill_sweep.py passes a null-url item's source and check to jq as shell-quoted --argjson values (PR #368 thread 4280648512)
+3657d672 docs(orchestration): orchestrator-tools followup a02 task copy and evidence (bf0fe7ab)
 bf0fe7ab fix(orchestrator): boundary.sh deletes each name literally, fill_sweep.py sees collisions on its lookup keys and selects a null-url status by source and check (T128 orchestrator-tools followup a02)
 907522c2ac89c2096a91e70d9effb512886df681
 [exit 0]
@@ -77,10 +79,18 @@ index ba92b8c2..26e367d7 100755
  done
  cd -- "${tree}"
 diff --git a/scripts/orchestrator/fill_sweep.py b/scripts/orchestrator/fill_sweep.py
-index affb6302..261a0fb7 100644
+index affb6302..1489cd8e 100644
 --- a/scripts/orchestrator/fill_sweep.py
 +++ b/scripts/orchestrator/fill_sweep.py
-@@ -60,10 +60,11 @@ def main(argv):
+@@ -14,6 +14,7 @@ disposition; otherwise exit 1.
+ import collections
+ import json
+ import re
++import shlex
+ import sys
+ from pathlib import Path
+ 
+@@ -60,10 +61,11 @@ def main(argv):
              reply[str(c["in_reply_to_id"])] = m.group(1)  # the latest reply wins
      gaps = []
      keys = [(item.get("url") or "").rsplit("#", 1)[-1] for item in sweep["items"]]
@@ -96,15 +106,14 @@ index affb6302..261a0fb7 100644
              if cid in extra:
                  print("shared-key", cid, f"item#{n}")
              key, cid = f"item#{n}", None
-@@ -72,6 +73,11 @@ def main(argv):
+@@ -72,6 +74,10 @@ def main(argv):
          elif source == "review" and "Codex Review" in body:
              source = "codex_review"
          show = f"{EVIDENCE}jq '.items[] | select(.url == \"{item.get('url')}\")' {sweep_path}"
 +        if item.get("url") is None:  # a JSON null url (a status without a target): select by source and check
-+            check = json.dumps(item.get("check"))
-+            show = (
-+                f"{EVIDENCE}jq '.items[] | select(.source == {json.dumps(source)} and .check == {check})' {sweep_path}"
-+            )
++            # The values are external, so they reach jq as shell-quoted --argjson values, never as shell or jq code.
++            s, c = (shlex.quote(json.dumps(item.get(k))) for k in ("source", "check"))
++            show = f"{EVIDENCE}jq --argjson s {s} --argjson c {c} '.items[] | select(.source == $s and .check == $c)' {sweep_path}"
          if cid is None:
              show = f"{EVIDENCE}jq '.items[{n}]' {sweep_path}"
          level = item.get("level")
@@ -166,7 +175,7 @@ test_three_repeat_prints_the_records_search_line (tests.unit.test_orchestrator_t
 test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout) ... ok
 
 ----------------------------------------------------------------------
-Ran 51 tests in 33.344s
+Ran 51 tests in 32.563s
 
 OK
 [exit 0]
@@ -197,6 +206,8 @@ run literal-off scripts/orchestrator/boundary.sh 's|":(literal)${f}"|"${f}"|' te
 run raw-keys scripts/orchestrator/fill_sweep.py 's|Counter(cids)|Counter(keys)|' test_fill_sweep_sees_a_collision_after_the_discussion_r_strip
 run null-url-off scripts/orchestrator/fill_sweep.py 's|if item.get("url") is None:|if False:|' test_fill_sweep_selects_a_null_url_status_by_source_and_check
 git status --short -- scripts/
+run unquoted scripts/orchestrator/fill_sweep.py 's|(shlex.quote(json.dumps(item.get(k)))|(json.dumps(item.get(k))|' test_fill_sweep_selects_a_null_url_status_by_source_and_check
+git status --short -- scripts/
 --- output
 -        git -C "${tree}" rm -q --ignore-unmatch -- ":(literal)${f}"
 +        git -C "${tree}" rm -q --ignore-unmatch -- "${f}"
@@ -207,13 +218,22 @@ mutant=raw-keys test=test_fill_sweep_sees_a_collision_after_the_discussion_r_str
 -        if item.get("url") is None:  # a JSON null url (a status without a target): select by source and check
 +        if False:  # a JSON null url (a status without a target): select by source and check
 mutant=null-url-off test=test_fill_sweep_selects_a_null_url_status_by_source_and_check rc=1 FAILED (failures=1)
+-            s, c = (shlex.quote(json.dumps(item.get(k))) for k in ("source", "check"))
++            s, c = (json.dumps(item.get(k)) for k in ("source", "check"))
+mutant=unquoted test=test_fill_sweep_selects_a_null_url_status_by_source_and_check rc=1 FAILED (errors=1)
 [exit 0]
 ```
 ## 7. Caps
 ```console
 $ git diff --numstat origin/main...HEAD
+3	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a02/autoskill.md
+6	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a02/learning.md
+48	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a02/report.md
+27	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a02/sandbox.md
+82	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a02/task.md
+219	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a02/validation.md
 1	1	scripts/orchestrator/boundary.sh
 10	4	scripts/orchestrator/fill_sweep.py
-67	0	tests/unit/test_orchestrator_tools.py
+70	0	tests/unit/test_orchestrator_tools.py
 [exit 0]
 ```

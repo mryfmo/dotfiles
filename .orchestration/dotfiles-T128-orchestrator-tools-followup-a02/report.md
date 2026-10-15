@@ -4,6 +4,8 @@ seat: claude-standard-dot-a002
 branch: tools/orchestrator-tools-followup-a02
 base: 907522c2
 code_commit: bf0fe7ab
+fix_commit: afe7f1eb
+pr: 368
 task_sha256: 5fab7eb8076bb83f23f094cbbcd3be5e8881dd3b6ece707a4db14a96c119b3bb
 ---
 
@@ -20,14 +22,14 @@ Read from the attached copy of the record (validation §3): four ids, three defe
 |---|---|---|---|
 | `audit:2e77a33:1` (P1) | pathspec-globbing | `boundary.sh` passes each deleted name to `git rm` as `":(literal)${f}"`, so a `*`, `?` or `[` in it is a character, not a pattern. `--ignore-unmatch` and `--` stay. | `test_boundary_deletes_a_name_with_glob_characters_literally`: origin holds `a*.md`, `ab.md`, `[x].md`, `x.md`; the first and third are deleted; the boundary commit deletes exactly those two, and `ab.md` and `x.md` stay in its tree. |
 | `audit:2e77a33:2` (P1) | collision-key-order | `fill_sweep.py` builds the collision set from `cids`, the fragments after the `discussion_r` strip, which is the key the lookup uses. The raw fragment `key` stays only for the GAP line, as before. | `test_fill_sweep_sees_a_collision_after_the_discussion_r_strip`: a review fragment `discussion_r123` and a status fragment `123` with one TSV row `123`: both items print `shared-key 123 item#<n>`, both stay gaps and the sweep is not written; rows `item#0` and `item#1` then fill them. |
-| `audit:e9404a6:2`, `audit:39c186a:2` (P3) | evidence-command-null-url | For an item whose `url` is JSON null, the evidence command is `jq '.items[] \| select(.source == "<source>" and .check == "<check>")' <sweep>`, both values written as JSON literals. Only the disposition string changes; no other field of the item is touched, so the gate's comparison of the masked bodies sees the same items. | `test_fill_sweep_selects_a_null_url_status_by_source_and_check`: a null-url CodeRabbit status gets that exact command, and the command, replayed with the real `jq`, prints the item. |
+| `audit:e9404a6:2`, `audit:39c186a:2` (P3) | evidence-command-null-url | For an item whose `url` is JSON null, the evidence command is `jq --argjson s <source> --argjson c <check> '.items[] \| select(.source == $s and .check == $c)' <sweep>`: each value is its JSON literal, shell-quoted with `shlex.quote` (the Bot's P1, thread `4280648512`, fixed in `afe7f1eb`: the check is an external status context, and interpolated into the single-quoted program a `'` in it ended the argument and ran the rest as shell code). Only the disposition string changes; no other field of the item is touched, so the gate's comparison of the masked bodies sees the same items. | `test_fill_sweep_selects_a_null_url_status_by_source_and_check`: a null-url status whose check is ``Code'Rabbit" $(touch pwned); touch pwned`` gets a `jq --argjson` command, and the command, replayed with `bash -c` and the real `jq`, prints the item and creates no `pwned` file. |
 
-Each fix reverted alone fails its test, and the file was restored afterwards (validation §6: 3 mutants, 3 caught).
+Each fix reverted alone fails its test, and the file was restored afterwards (validation §6: 4 mutants, 4 caught; the fourth drops the `shlex.quote`).
 
 Readings, declared:
 
 - **The null-url branch is generic:** it keys on `url is None`, not on `source == "status"`, so any null-url item gets a command that selects it. Two null-url items share the empty fragment and already take the `item#<n>` path with `jq '.items[<n>]'`, which still wins.
-- **Quoting:** the new command, like the url form before it, sits in single quotes, so a `'` inside a check name would break the replay. No row names that, so it is unchanged.
+- **The url form is unchanged:** `select(.url == "<url>")` still interpolates the url; no row names it, and a url is a GitHub link the sweep builds. A next owner may want the same `--argjson` form there.
 
 ## Tests
 
@@ -35,11 +37,12 @@ The Check: 51 tests OK, the three new ones named (validation §5); `shellcheck` 
 
 ## Caps
 
-Validation §7: outside `tests/` and `.orchestration/`, 2 files, 11 added + 5 deleted = 16 changed lines (cap 200); under `tests/`, 67 added lines (cap 1000).
+Validation §7: outside `tests/` and `.orchestration/`, 2 files, 11 added + 5 deleted = 16 changed lines (cap 200); under `tests/`, 70 added lines (cap 1000).
 
 ## CI and the Bot
 
-In the RESULT (the post-ready calls are planned in sandbox.md, so no evidence update moves the head after the Bot's review).
+- **The Bot:** PR #368 was opened as a draft and marked ready at 08:14:42Z. The Bot reviewed `3657d672` at 08:18:10Z (review `5530116843`) with one inline P1, thread `4280648512` on `fill_sweep.py:79`, "Shell-quote status contexts in evidence commands". The one fix round: `afe7f1eb`, with the test above extended to that input. No other thread.
+- **CI:** in the RESULT for the final head.
 
 ## Not done, or outside scope
 

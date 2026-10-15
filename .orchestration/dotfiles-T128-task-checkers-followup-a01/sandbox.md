@@ -32,3 +32,5 @@ The table lists every call that ran outside the sandbox: `gh` through the permis
 | 11 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-task-checkers-followup-a01 …` | `agmsg-dispatch` |
 
 The pushes of `d99b6458`, `4cc9d206` and the evidence update ran inside the sandbox over HTTPS.
+
+Round 2: the fix and its evidence were committed in the sandbox and pushed over HTTPS. Outside the sandbox ran `gh pr checks 365 --watch` on the round-2 head (background, exit status joined) and the `agmsg-dispatch` of the round-2 RESULT.

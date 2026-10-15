@@ -231,3 +231,46 @@ test (ubuntu-26.04, client)	pass	8m42s	https://github.com/mryfmo/dotfiles/action
 validate	pass	1m41s	https://github.com/mryfmo/dotfiles/actions/runs/38684185722/job/116255173773	
 [exit 0]
 ```
+
+## 9. Round 2 (`70614e7a`, on the update-branch head `b84e81f0`)
+
+```console
+$ git diff b84e81f0..70614e7a -- scripts/
+diff --git a/scripts/orchestrator/orch-audit.sh b/scripts/orchestrator/orch-audit.sh
+index 45426f2c..92121df5 100755
+--- a/scripts/orchestrator/orch-audit.sh
++++ b/scripts/orchestrator/orch-audit.sh
+@@ -6,7 +6,7 @@
+ #   <pr-worktree> rev-parse HEAD`. From the checkout this script lives in, never one at the audited head and
+ #   only with its tracked, unchanged validator, it refuses a sweep JSON with an item lacking a disposition, runs
+ #   the ledger check (ledger-check.py beside it, or the script `--ledger-check` names; tracked and unchanged from HEAD,
+-#   as the validator is), then checks the clean
++#   as the validator is, and run with python -I, so no module beside it is imported), then checks the clean
+ #   review worktree `.claude/worktrees/orchestrator-review` out at `origin/main`, copies the task's evidence and
+ #   its lineage's records but this head's audit files in, removes those in both checkouts, and runs `codex
+ #   --profile audit exec --sandbox read-only -c approval_policy=never -o <out>.last.md` with stdin closed and
+@@ -54,7 +54,7 @@ uv run --no-project python -I -c 'import json, sys; gaps = [i for i in json.load
+ [[ -n $(git ls-files -- "${check}") ]] || refuse "${check} is not a script tracked in this repository"
+ git diff --quiet HEAD -- "${check}" || refuse "${check} differs from HEAD"
+ lineage=("${v}/${family}"-a0*-audit-*.md.last.md)
+-uv run --no-project python "${check}" ".orchestration/acceptance/${task}.md" "${v}/${task}-pr-feedback.json" ${lineage[@]+"${lineage[@]}"} || refuse "the ledger is incomplete" 3
++uv run --no-project python -I "${check}" ".orchestration/acceptance/${task}.md" "${v}/${task}-pr-feedback.json" ${lineage[@]+"${lineage[@]}"} || refuse "the ledger is incomplete" 3
+ git -C "${review}" checkout -q --detach origin/main
+ out="${v}/${task}-audit-${head:0:7}.md"
+ for f in ".orchestration/tasks/${task}.md" ".orchestration/reports/${task}.md" "${v}/${task}.md" "${v}/${task}-pr-feedback.json" \
+[exit 0]
+```
+```console
+$ uv run python -m unittest tests/unit/test_task_checkers.py tests/unit/test_orchestrator_tools.py tests/unit/test_agmsg_orchestration_docs.py -v 2>&1 | /usr/bin/grep -E "isolated_from_sibling|^Ran|^OK|^FAILED"
+test_orch_audit_runs_the_ledger_check_isolated_from_sibling_modules (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_audit_runs_the_ledger_check_isolated_from_sibling_modules) ... ok
+Ran 104 tests in 42.570s
+OK
+[exit 0]
+```
+```console
+$ git diff --numstat origin/main...HEAD | awk '<the cap sum of §6>'
+outside tests/ and .orchestration/: 19 changed lines (cap 200), 3 files; under tests/: 82 added lines (cap 1000)
+[exit 0]
+```
+
+The mutant without `-I` fails the new test (run in the sandbox before this commit; output not saved beyond `mutant (no -I) caught`).

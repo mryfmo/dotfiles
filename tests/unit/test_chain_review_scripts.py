@@ -275,13 +275,17 @@ class ChainReviewScriptsTest(unittest.TestCase):
         self.stub(binary, "codex")
         binary.write_text(binary.read_text().replace("#!/usr/bin/env bash\n", "#!/usr/bin/env -S interp --flag\n"))
         interp = self.temp / "installs/interp"
-        interp.write_text(f'#!/bin/bash\nprintf "%s\\n" "$*" > "{self.calls}/interp.argv"\nexec /bin/bash "$@"\n')
+        interp.write_text(
+            f'#!/bin/bash\nprintf "%s\\n" "$*" > "{self.calls}/interp.argv"\nshift\nexec /bin/bash "$@"\n'
+        )
         interp.chmod(0o755)
         out = self.repo / f".orchestration/validation/t-a-local-review-{head[:7]}.md"
         with self.subTest("the interpreter mise answers runs the binary"):
             self.mise(f'printf "%s\\n" "{self.temp}/installs/$2"\n')
             self.run_tool("local-review.sh", "t-a", head, 9, env=env)
-            self.assertEqual(f"{binary} {ARGV.removeprefix('argv: ')}\n", (self.calls / "interp.argv").read_text())
+            self.assertEqual(
+                f"--flag {binary} {ARGV.removeprefix('argv: ')}\n", (self.calls / "interp.argv").read_text()
+            )
             self.assertEqual(1, self.log("codex").count(ARGV))
         out.unlink()
         (self.calls / "interp.argv").unlink()
@@ -294,6 +298,27 @@ class ChainReviewScriptsTest(unittest.TestCase):
             self.assertEqual(self.git("rev-parse", "main"), self.git("rev-parse", "HEAD", cwd=review))
             self.assertFalse(out.exists())
             self.assertFalse((self.calls / "interp.argv").exists())
+
+    def test_local_review_keeps_env_S_shebang_arguments(self):
+        # The local review of 850fc54e: env -S passes the rest of its line to the interpreter, so those words
+        # come between the interpreter and the binary.
+        _, head, env = self.review_head()
+        (self.calls / "transcript").write_text("codex\nNo findings.\n")
+        binary = self.temp / "installs/codex"
+        self.stub(binary, "codex")
+        binary.write_text(
+            binary.read_text().replace("#!/usr/bin/env bash\n", "#!/usr/bin/env -S fakeinterp --flag x\n")
+        )
+        interp = self.temp / "installs/fakeinterp"
+        interp.write_text(
+            f'#!/bin/bash\nprintf "%s %s\\n" "$0" "$*" > "{self.calls}/fakeinterp.argv"\nshift 2\nexec /bin/bash "$@"\n'
+        )
+        interp.chmod(0o755)
+        self.mise(f'printf "%s\\n" "{self.temp}/installs/$2"\n')
+        self.run_tool("local-review.sh", "t-a", head, 9, env=env)
+        expected = f"{interp} --flag x {binary} {ARGV.removeprefix('argv: ')}\n"
+        self.assertEqual(expected, (self.calls / "fakeinterp.argv").read_text())
+        self.assertEqual(1, self.log("codex").count(ARGV))
 
     def test_local_advisory_records_p2_rows_and_stops_on_p0_p1(self):
         head, owner = "abcdef0" + "1" * 33, "t-followup-a01"

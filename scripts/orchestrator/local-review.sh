@@ -9,8 +9,9 @@
 #   entry, is checked out detached at the head and left there, and the review binary runs in it as `--profile review
 #   -s read-only review --base main`. The binary is `$CODEX_BIN`, else codex as `mise which` answers it under `env
 #   -i` in the root, else `command -v`; it is resolved before the checkout, and a path under a `shims` directory is
-#   refused. When its first line is an env shebang (`#!/usr/bin/env NAME` or `env -S NAME …`), NAME is resolved the
-#   same way and runs the binary as its first argument, so no interpreter comes from PATH in the PR worktree. When the
+#   refused. When its first line is an env shebang (`#!/usr/bin/env NAME` or `env -S NAME ARG…`), NAME is resolved the
+#   same way and runs with the `-S` form's ARG words, then the binary, so no interpreter comes from PATH in the PR
+#   worktree. When the
 #   binary fails, no file is written. Otherwise the file gets the front matter, the unique `-
 #   [P0-3]` findings of the transcript's final message, and that message with the worktree prefix stripped; the
 #   findings are printed, then `local-review: <n> findings (<file>)`.
@@ -88,9 +89,13 @@ run=("$found")
 # An env shebang would find its interpreter on PATH at exec time, in the PR worktree (the audit of c45f9b5).
 first=
 IFS= read -r first < "${run[0]}" || true
-if [[ $first =~ ^\#![[:space:]]*[^[:space:]]*/env[[:space:]]+(-S[[:space:]]+)?([^[:space:]-][^[:space:]]*) ]]; then
-    resolve "${BASH_REMATCH[2]}" "review binary's interpreter"
-    run=("$found" "${run[0]}")
+if [[ $first =~ ^\#![[:space:]]*[^[:space:]]*/env[[:space:]]+(-S[[:space:]]+)?([^[:space:]-][^[:space:]]*)(.*)$ ]]; then
+    interpreter=${BASH_REMATCH[2]}
+    # env -S splits the rest of the line into the interpreter's own arguments (the local review of 850fc54e).
+    words=()
+    [ -z "${BASH_REMATCH[1]}" ] || read -r -a words <<< "${BASH_REMATCH[3]}"
+    resolve "$interpreter" "review binary's interpreter"
+    run=("$found" ${words[@]+"${words[@]}"} "${run[0]}")
 fi
 git -C "$W" checkout -q --detach "$head"
 base=$(git -C "$W" merge-base main HEAD)

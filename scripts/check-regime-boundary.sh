@@ -8,7 +8,8 @@
 #   (`git worktree list`); exactly one agmsg identity name across claude-code
 #   and codex at the only active seat, the main checkout (an empty seat is
 #   reported too); any identity at a linked worktree under `.claude/worktrees/`
-#   (a worker still seated: `herdr-agents --remove-worker <worktree>`), and
+#   (a worker still seated: `herdr-agents --remove-worker <worktree>`, or, when
+#   its pane is gone, `herdr-agents --remove-worker <worktree> --stale`), and
 #   more than one name per type at any other checkout; a seated main checkout whose HEAD is
 #   not the `main` branch (a detached HEAD or another branch; a checkout with
 #   no identity, such as a CI checkout, is never flagged); running
@@ -64,6 +65,28 @@ count_names() {
     AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "$1" "$2" 2> /dev/null | cut -f 2 | sort -u | grep -c . || true
 }
 
+# @description Print a seated member's pane state, `present`, `gone` or
+#   `unknown`, through its placement record (upstream agmsg_spawn_path) and the
+#   terminal driver's terminal_pane_state, which reads herdr's agent list and
+#   never a pane's content (M-20261015-01). Any failing step, or an answer other
+#   than present or gone, prints unknown, which never names the stale removal.
+# @arg $1 string Team.
+# @arg $2 string Member identity.
+seat_pane_state() {
+    local state
+    # shellcheck disable=SC2016 # the inner script expands its own positional args
+    state="$(env SKILL_DIR="${HOME}/.agents/skills/agmsg" bash -c '
+        source "$1/lib/actas-lock.sh" && source "$1/lib/terminal-registry.sh" || exit 1
+        record="$(agmsg_spawn_path "$2" "$3")" && [[ -r ${record} ]] || exit 1
+        ref="$(head -n 1 "${record}" | cut -f 1)"
+        terminal="$(agmsg_terminal_ref_terminal "${ref}")" && id="$(agmsg_terminal_ref_id "${ref}")" || exit 1
+        agmsg_terminal_load "${terminal}" > /dev/null && terminal_pane_state "${id}"' _ "${scripts}" "$1" "$2" 2> /dev/null)" || state=""
+    case "${state}" in
+    present | gone) printf '%s\n' "${state}" ;;
+    *) printf 'unknown\n' ;;
+    esac
+}
+
 if [[ -x ${scripts}/identities.sh ]]; then
     # The only active seat is the main checkout (orchestrator): it holds
     # exactly one identity across both runtime types. Workers are seated on
@@ -101,7 +124,16 @@ if [[ -x ${scripts}/identities.sh ]]; then
         done
         if ((seated > 0)) && [[ ${resolved} == "${resolved_main}/.claude/worktrees/"* ]]; then
             worktree=".claude/worktrees/${resolved#"${resolved_main}/.claude/worktrees/"}"
-            violations+=("worker still seated at ${worktree} (herdr-agents --remove-worker ${worktree})")
+            # The first identity row decides whether the seat's pane is gone.
+            row="$({
+                AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${checkout}" claude-code
+                AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${checkout}" codex
+            } 2> /dev/null | head -n 1)" || row=""
+            if [[ -n ${row} && $(seat_pane_state "$(cut -f 1 <<< "${row}")" "$(cut -f 2 <<< "${row}")") == gone ]]; then
+                violations+=("worker seated but its pane is gone at ${worktree} (herdr-agents --remove-worker ${worktree} --stale)")
+            else
+                violations+=("worker still seated at ${worktree} (herdr-agents --remove-worker ${worktree})")
+            fi
         fi
     done
 fi

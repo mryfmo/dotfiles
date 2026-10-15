@@ -184,9 +184,12 @@ format:
 unit-test:
 	uv run python -m unittest discover -s tests/unit -v
 
+# The index form fails inside the Claude sandbox even while the uv cache holds PyYAML, so a probe picks the cache first.
+UV_PYYAML = $(if $(shell uv run --offline --with pyyaml python -c 'import yaml' 2> /dev/null && echo y),uv run --offline --with pyyaml,uv run --with pyyaml)
+
 .PHONY: validate-agent-assets
 validate-agent-assets:
-	uv run --with pyyaml scripts/validate-agent-assets.py
+	$(UV_PYYAML) scripts/validate-agent-assets.py
 
 .PHONY: check-regime-boundary
 check-regime-boundary:
@@ -200,7 +203,7 @@ codex-hook-trust:
 
 .PHONY: render-check
 render-check:
-	uv run --with pyyaml scripts/generate-agent-configs.py --check
+	$(UV_PYYAML) scripts/generate-agent-configs.py --check
 
 .PHONY: require-crit-review
 # BASE=<ref> adds the committed <ref>...HEAD changes and requires PR_FEEDBACK_EVIDENCE and

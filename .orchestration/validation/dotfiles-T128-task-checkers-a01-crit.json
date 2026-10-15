@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-task-checkers-a01-pr352-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "c1f60f7358b84e28d74f19bb8b1506da6179ab77",
+    "pr": "352",
+    "reviewed_at": "2026-10-14T06:21:57Z",
+    "body": "Orchestrator review of PR #352 (dotfiles-T128-task-checkers-a01, plan 007 T704 in plan 021 step 7's short form: scripts/orchestrator/task-consistency-check.py (C1 to C10 and C7b, with C4's path-boundary rule), scripts/orchestrator/ledger-check.py (counting what the gate counts: badged Codex review bodies and bulleted audit lines), orch-audit.sh running the ledger check by default, tests/unit/test_task_checkers.py with the ten historical front matters and the pre-fix record triple under tests/fixtures/lessons/, one case in tests/unit/test_orchestrator_tools.py, the two SKILL sentences with their docs tests and the whole-section fixture) at its final head: outside .orchestration/, 12 files, 204 changed lines outside tests (the 200-line practice cap yielded to the Bot's four P1 fixes, as amendment 2 says, within INV-2's 500). The Bot's single review (on PR ready, head 63433cf1) raised four P1, all fixed in 612931f3 with the tests named in the task; CI green on the final head; the local review's and the audit's findings on the final head are each fixed in the head or advisory, owned by the lineage's follow-up on main; no check changed meaning beyond the three alignments the amendment names. Approved for the gate at the audited head."
+  }
+]

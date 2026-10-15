@@ -1,0 +1,3 @@
+[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02.md:22 The named pair-confirmed comparison copy `hook-task-before-amend2.md` is unavailable and the task is absent from `main`, so stop condition 1 cannot be verified.
+[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02.md:29 The required RESULT still binds amendment hash `1b9a382d…` instead of the verified round-2 hash `51ee72fc…`, allowing review evidence to authenticate the superseded text.
+Amendment verdict: dotfiles-T128-project-map-reload-hook-a01: revise

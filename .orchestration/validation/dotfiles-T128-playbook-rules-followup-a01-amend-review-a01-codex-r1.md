@@ -1,0 +1,1 @@
+Amendment verdict: dotfiles-T128-playbook-rules-followup-a01: confirm

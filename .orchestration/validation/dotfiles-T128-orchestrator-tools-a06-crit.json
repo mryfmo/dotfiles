@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-orchestrator-tools-a06-pr350-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "6847aa9f5f6e04badf529bfb5ea969029220a15b",
+    "pr": "350",
+    "reviewed_at": "2026-10-14T03:56:23Z",
+    "body": "Orchestrator review of PR #350 (dotfiles-T128-orchestrator-tools-a06, the INV-6 successor of a05; PR-B of the T718 second slice: scripts/orchestrator/acceptance-front-matter.py, the writer of the acceptance record's JSON block the gate reads since 73f56c15 (identity triple task/head/pr derived from the sweep JSON and the PR worktree, the ledger, the recomputed searches, the audit findings of an incorrect audit only), scripts/orchestrator/orch-gate.sh, the wrapper that runs this checkout's gate on the review worktree with the gate's inputs, and their tests in tests/unit/test_orchestrator_tools.py) at its final head: outside .orchestration/, 3 files, 201 added lines outside tests; a05's released round pinned the interpreter and the restore trap, a06's round put the gate under env -i with the fixed allowlist, -I -P and PYTHONSAFEPATH. Each script does what a05's PR-B items say and nothing else; the Bot's single review (on PR open, head 0749e931) raised three P1 (the wrapper ran the PR head's own gate instead of this checkout's; a tracked symlink let the evidence copy write outside the worktree; an inherited CRIT_REVIEW=off), all fixed in e30cbed0 with tests before the RESULT, the PR's one fix round; no P2; the local review's and the audit's findings on the final head are each fixed in the head or advisory, owned by dotfiles-T128-orchestrator-tools-followup-a01 on main; INV-2 caps hold. Approved for the gate at the audited head."
+  }
+]

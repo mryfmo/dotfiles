@@ -1,12 +1,12 @@
 [
   {
-    "id": "dotfiles-T128-orchestrator-tools-a05-pr346-review-1",
+    "id": "dotfiles-T128-orchestrator-tools-a05-pr350-review-1",
     "scope": "review",
     "resolved": true,
     "author": "claude-code",
-    "head": "046901bcdc92301fac2f81b0ea4f9ca802e1a695",
-    "pr": "346",
-    "reviewed_at": "2026-10-13T22:25:23Z",
-    "body": "Orchestrator review of PR #346 (dotfiles-T128-orchestrator-tools-a02, PR-A of the T718 second slice: items 3, 4 and 6 and the seven scripts without a gate dependency: boundary.sh, ff-main.sh, orch-audit.sh, codex-review.sh, design-keydiff.py, replay.sh, fill_sweep.py; acceptance-front-matter.py and orch-gate.sh wait for PR #329 as PR-B) at its final head: the scripts and tests under scripts/orchestrator/, scripts/regime-counters.sh and the two test modules, outside .orchestration/. Each script does what a02's items say and nothing else: the ledger-shape guard of the counters (item 3), the three record-path fixes of dispatch.sh with the line's grammar table (item 4), the owned residual rows of a04's acceptance ledger (item 6: bus-read.sh's limit checked before the shape filter, the silence clock bound to the assigned seat, dispatch.sh preserving CRLF, the whitespace tokenization of the row body), and the seven scripts with their closed-row tests; the Bot's single review on ready-for-review and the local review's findings are each fixed in the head (P0/P1, one round at most) or advisory and owned by dotfiles-T128-orchestrator-tools-followup-a01 on main; INV-2 caps hold (489 lines outside tests, 11 of headroom). Approved for the gate at the audited head."
+    "head": "a06c874ed37d01c6effaaae59eeec1a15510d80b",
+    "pr": "350",
+    "reviewed_at": "2026-10-14T02:39:28Z",
+    "body": "Orchestrator review of PR #350 (dotfiles-T128-orchestrator-tools-a05, PR-B of the T718 second slice: scripts/orchestrator/acceptance-front-matter.py, the writer of the acceptance record's JSON block the gate reads since 73f56c15 (identity triple task/head/pr derived from the sweep JSON and the PR worktree, the ledger, the recomputed searches, the audit findings of an incorrect audit only), scripts/orchestrator/orch-gate.sh, the wrapper that runs this checkout's gate on the review worktree with the gate's inputs, and their tests in tests/unit/test_orchestrator_tools.py) at its final head: outside .orchestration/, 3 files, 196 lines outside tests. Each script does what a05's PR-B items say and nothing else; the Bot's single review (on PR open, head 0749e931) raised three P1 (the wrapper ran the PR head's own gate instead of this checkout's; a tracked symlink let the evidence copy write outside the worktree; an inherited CRIT_REVIEW=off), all fixed in e30cbed0 with tests before the RESULT, the PR's one fix round; no P2; the local review's and the audit's findings on the final head are each fixed in the head or advisory, owned by dotfiles-T128-orchestrator-tools-followup-a01 on main; INV-2 caps hold. Approved for the gate at the audited head."
   }
 ]

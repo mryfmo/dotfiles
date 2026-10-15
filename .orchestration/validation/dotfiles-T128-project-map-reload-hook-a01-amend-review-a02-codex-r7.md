@@ -1,0 +1,2 @@
+[P2] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:131 The closed hook-row test does not exercise a failure of the second `eval` call or a missing agent binary, so it does not close the row’s promise that every failing command and missing executable exits 0 silently.
+Amendment verdict: dotfiles-T128-project-map-reload-hook-a01: revise

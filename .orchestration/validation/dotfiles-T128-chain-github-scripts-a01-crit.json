@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-chain-github-scripts-a01-pr356-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "d15fa8779c298a841fe2791316f022228232a402",
+    "pr": "356",
+    "reviewed_at": "2026-10-14T12:39:30Z",
+    "body": "Orchestrator review of the PR of dotfiles-T128-chain-github-scripts-a01 (plan 021 step 6.3, the GitHub-side chain scripts: scripts/orchestrator/resolve-threads.sh replies to a PR's unresolved review threads with the orchestrator's dispositions from the table or the sweep JSON and resolves them, leaves a thread without a row open with exit 3, writes nothing under --dry-run; pr-cost.sh appends one ledger line per PR to .orchestration/metrics/pr-cost.tsv from the API with the header once; tests/unit/test_chain_github_scripts.py with its two tests on a stub gh keyed on the API path plus the --jq expression) at its final head: every item of the task's Files section is implemented and nothing else; the attached inputs' behaviour is kept except the changes the items name (repository root, shdoc headers); the Bot's single review (on PR open) and the local review and the audit of the final head are each fixed in the head or advisory, owned by dotfiles-T128-chain-github-scripts-followup-a01 (written at the first advisory P2); the caps (200 changed lines outside tests/ and .orchestration/, 1000 under tests/) hold. Approved for the gate at the audited head."
+  }
+]

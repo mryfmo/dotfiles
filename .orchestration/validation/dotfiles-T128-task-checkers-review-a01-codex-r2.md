@@ -1,0 +1,3 @@
+[P1] high .orchestration/tasks/dotfiles-T128-task-checkers-a01.md:107 The JSON-block coverage addition changes ledger-check semantics despite stop condition 1 requiring both input checkers to remain unchanged in meaning.
+[P1] high .orchestration/tasks/dotfiles-T128-task-checkers-a01.md:122 The two closed SKILL-row test names appear only in item 6, while stop condition 3 requires every closed-row test name to appear verbatim in item 4.
+Task-file verdict: dotfiles-T128-task-checkers-a01: revise

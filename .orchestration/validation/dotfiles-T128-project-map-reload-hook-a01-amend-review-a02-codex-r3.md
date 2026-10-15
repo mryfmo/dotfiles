@@ -1,0 +1,4 @@
+[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:21 The two agent-browser calls avoid issue 60 by repeating `--cdp`, but `--session project-map-reload` creates a host daemon that can persist for the default one-hour idle timeout, and this new host effect has neither its own threat row nor a closing test as stop condition 2 requires.
+[P2] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:48 `TERMINAL_BROWSER_AGENT` is the correct test seam and terminal-browser honours it, but the row incorrectly calls the selected executable a pinned installed tool even though the inherited environment may point it at any executable path.
+[P3] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:91 The premise claim omits `targetId`, although its command/output and the implementation specification rely on that key from `instances.ts`.
+Amendment verdict: dotfiles-T128-project-map-reload-hook-a01: revise

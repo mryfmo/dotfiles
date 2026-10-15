@@ -1,0 +1,2 @@
+[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:42 The trust statement incorrectly claims `terminal-browser` is the only PATH-resolved binary, while the hook also runs `jq`; name both executables and their trust assumptions.
+Task-file verdict: dotfiles-T128-project-map-reload-hook-a01: revise

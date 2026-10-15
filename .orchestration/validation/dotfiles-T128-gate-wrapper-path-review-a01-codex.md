@@ -1,0 +1,2 @@
+[P2] high .orchestration/tasks/dotfiles-T128-gate-wrapper-path-a01.md:44 Premise 2 does not hold as recorded: `command -v gh` currently returns `~/.local/share/mise/shims/gh`, not the pasted installed-binary path, so stop conditions 1 and 4 require revision even though the proposed shim-resolution rule itself is sound.
+Task-file verdict: dotfiles-T128-gate-wrapper-path-a01: revise

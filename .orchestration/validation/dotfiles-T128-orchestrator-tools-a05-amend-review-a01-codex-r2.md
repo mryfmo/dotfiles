@@ -1,0 +1,2 @@
+[P2] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-a05.md:39 The closed row covers interruption as well as setup failure, but its named test exercises only a failing `cp`, so it does not close the interruption risk required by stop condition 3.
+Amendment verdict: dotfiles-T128-orchestrator-tools-a05: revise

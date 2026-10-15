@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-playbook-rules-followup-a01-pr354-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "3a8f809b36944b0cb778da53104f9b3c54f67355",
+    "pr": "354",
+    "reviewed_at": "2026-10-14T07:37:40Z",
+    "body": "Orchestrator review of PR #354 (dotfiles-T128-playbook-rules-followup-a01: the owner task of T703 a04's residual rows; the four rows under `## Owned by dotfiles-T128-playbook-rules-followup-a01` in the a04 record on origin/main: local:65a3d71:1 and audit:65a3d71:2 rule-gap (Orchestrator Playbook step 6: the acceptance record is created before the task's first dispatch, and dispatch.sh refuses a missing or another task's record), audit:71eb920:1 procedure-migration (every sentence stating the retired gate input AUDIT_DISPOSITIONS or the audit-finding: prose as what the gate reads, per amendment 1: the task-level audit bullet, step 10.3 and 10.4, AGENTS.md's gate sentence, the pinned fixtures), audit:65a3d71:1 disposition-range (names no rule sentence; no change); files AGENTS.md, the agmsg-orchestration SKILL, tests/unit/test_agmsg_orchestration_docs.py, tests/fixtures/regime/orchestrator-step-6.md and invariants.md) at its final head: each owned row is implemented in its one sentence with a token test, nothing outside the rows changes, the sentences state only mechanisms on main; the Bot's single review (on PR open) found no issue; the local review and the audit of the final head are each fixed in the head or advisory, owned by the lineage's next owner task; the caps (200 changed lines outside tests/ and .orchestration/, 1000 under tests/) hold. Approved for the gate at the audited head."
+  }
+]

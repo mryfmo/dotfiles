@@ -111,6 +111,51 @@ mistakes:
   - id: M-20261012-35
     corrections: [C-34]
     status: open
+  - id: M-20261014-01
+    corrections: [C-35]
+    status: open
+  - id: M-20261014-02
+    corrections: [C-36]
+    status: open
+  - id: M-20261014-03
+    corrections: [C-37]
+    status: open
+  - id: M-20261014-04
+    corrections: [C-38]
+    status: open
+  - id: M-20261014-05
+    corrections: [C-39]
+    status: open
+  - id: M-20261014-06
+    corrections: [C-40]
+    status: open
+  - id: M-20261014-07
+    corrections: [C-41]
+    status: open
+  - id: M-20261014-08
+    corrections: [C-42]
+    status: open
+  - id: M-20261014-09
+    corrections: [C-43]
+    status: open
+  - id: M-20261014-10
+    corrections: [C-44]
+    status: open
+  - id: M-20261014-11
+    corrections: [C-45]
+    status: open
+  - id: M-20261014-12
+    corrections: [C-46]
+    status: open
+  - id: M-20261014-13
+    corrections: [C-47]
+    status: open
+  - id: M-20261014-14
+    corrections: [C-48]
+    status: open
+  - id: M-20261015-01
+    corrections: [C-49]
+    status: open
 corrections:
   - id: C-1
     closes: [M-20261012-1]
@@ -247,4 +292,64 @@ corrections:
   - id: C-34
     closes: [M-20261012-35]
     mechanism: ['script:finish-336c.sh exact verdict match (2026-10-13)', 'rule:chain-scripts#exact-string-decisions (standing)', 'task:tools task after a02 (chain scripts with stop-branch tests, proposed)']
+    status: "pending"
+  - id: C-35
+    closes: [M-20261014-01]
+    mechanism: ['script:premise-run.py (scratchpad 2026-10-14)', 'rule:dispatch-scripts#premise-run-before-send (standing)', 'validator:task-consistency-check#C11 (plan 021 step 7.1 template task, proposed)']
+    status: "pending"
+  - id: C-36
+    closes: [M-20261014-02]
+    mechanism: ['rule:dispatch-commands#previous-hash-from-origin-main (standing)', 'script:dispatch.sh previous-token recomputation (proposed, owner follow-up)', 'record:acceptance a05 correction PING']
+    status: "pending"
+  - id: C-37
+    closes: [M-20261014-03]
+    mechanism: ['rule:orchestrator-edit-scripts#count-assert-and-line-edits (standing)', 'script:brief-check.sh count lines (proposed, step 7.1)']
+    status: "pending"
+  - id: C-38
+    closes: [M-20261014-04]
+    mechanism: ['rule:orchestrator-edit-and-dispatch#set-e-and-count-assert (standing)', 'script:brief-check.sh expected-count argument (proposed, step 7.1)']
+    status: "superseded by C-40"
+  - id: C-39
+    closes: [M-20261014-05]
+    mechanism: ['rule:chain-scripts#no-edit-while-running (standing)', 'script:orch-audit.sh copy-out before cleanup (proposed, step 6.3)']
+    status: "pending"
+  - id: C-40
+    closes: [M-20261014-06, M-20261014-04]
+    mechanism: ['rule:orchestrator-commands#explicit-exit-on-every-assertion (standing)', 'rule:orchestrator-commands#probe-a-new-guard-once (standing)', 'script:chain scripts as their own bash process with set -euo pipefail (proposed, steps 6.3 and 7.1)']
+    status: "pending"
+  - id: C-41
+    closes: [M-20261014-07]
+    mechanism: ['script:owner-rows.sh (scratchpad 2026-10-14)', 'rule:record-figures#grammar-counter-named-beside-the-figure (standing)', 'script:ledger-check.py --owner (proposed, task-checkers follow-up or step 7.1)']
+    status: "pending"
+  - id: C-42
+    closes: [M-20261014-08]
+    mechanism: ['rule:result-step#thread-rows-with-extra-tsv (standing)', 'script:fill_sweep.py class column + chain row writer (proposed, tools follow-up / step 6.3)']
+    status: "pending"
+  - id: C-43
+    closes: [M-20261014-09]
+    mechanism: ['script:record-block.py dispatch-to-prose before the block write (scratchpad, 2026-10-14)', 'record:five records restored from messages.db (2026-10-14 07:46Z)', 'script:dispatch.sh prose section + gate block grammar dispatch key (proposed, step 6.3 / step 8)']
+    status: "pending"
+  - id: C-44
+    closes: [M-20261014-10]
+    mechanism: ['script:brief-check.sh mask step (scratchpad, 2026-10-14)', 'rule:task-authoring#premise-outputs-masked-before-the-hash (standing)', 'validator:task-consistency-check#C11 masker check mode (proposed, step 7.1)']
+    status: "pending"
+  - id: C-45
+    closes: [M-20261014-11]
+    mechanism: ['rule:premises#section-scoped-source-and-freeze-during-review (standing)', 'script:brief-check.sh premise-source listing (proposed, step 7.1)']
+    status: "pending"
+  - id: C-46
+    closes: [M-20261014-12]
+    mechanism: ['rule:record-times#clock-in-the-writing-command (standing)', 'script:brief-check.sh mtime-versus-latest-time (proposed, step 7.1)']
+    status: "pending"
+  - id: C-47
+    closes: [M-20261014-13]
+    mechanism: ['rule:dispositions#no-semicolon-in-a-reason (standing)', 'script:extra-row grammar check before the chain (standing one-liner)', 'script:glue calls the repository fill_sweep.py (proposed, step 6.3)']
+    status: "pending"
+  - id: C-48
+    closes: [M-20261014-14]
+    mechanism: ['script:disposition inserts inside the owner section (standing)', 'rule:record-lines#count-from-owner-rows-sh (standing)', 'validator:task-consistency-check#C15 (proposed, step 7.1)']
+    status: "pending"
+  - id: C-49
+    closes: [M-20261015-01]
+    mechanism: ['procedure:re-seat the same identity with --add-worker (standing)', 'launcher:herdr-agents --remove-worker --stale (proposed, plan 022 T6 item 3)', 'test:tests/unit/test_herdr_agents.py::test_remove_worker_stale_retires_a_seat_whose_workspace_is_gone (proposed)']
     status: "pending"

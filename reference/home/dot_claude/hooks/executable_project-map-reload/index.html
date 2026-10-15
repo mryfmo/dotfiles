@@ -4170,6 +4170,7 @@
 
 
 <h1 id="homedot_claudehooksexecutable_project-map-reloadsh">home/dot_claude/hooks/executable_project-map-reload.sh<a class="headerlink" href="#homedot_claudehooksexecutable_project-map-reloadsh" title="Permanent link">&para;</a></h1>
+<p>Pass CDP on both calls to avoid terminal-browser issue 60. Open a separate right split using half the width when the parsed listing yields no map tab. shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_claude/hooks/executable_project-map-reload.sh</code></li>
@@ -4181,7 +4182,10 @@
 
 <span class="c1"># @file home/dot_claude/hooks/executable_project-map-reload.sh</span>
 <span class="c1"># @brief Reload the visible project map after a Claude file edit.</span>
-<span class="c1"># @description Pass CDP on both calls to avoid terminal-browser issue 60.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Pass CDP on both calls to avoid terminal-browser issue 60.</span>
+<span class="c1">#   Open a separate right split using half the width when the parsed listing yields no map tab.</span>
+<span class="c1">#   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.</span>
 <span class="c1"># @exitcode 0 Always, including unavailable tools or browsers.</span>
 
 <span class="nv">file_path</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.tool_input.file_path // empty'</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
@@ -4197,7 +4201,10 @@
 <span class="s1">     | select(.targetId | strings | test("^[A-Za-z0-9][A-Za-z0-9_-]*$"))</span>
 <span class="s1">     | [$port, .targetId]] | .[0] // empty | @tsv</span>
 <span class="s1">'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$listing</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
-<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="nv">$selection</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="nv">$selection</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>terminal-browser<span class="w"> </span>open<span class="w"> </span><span class="s2">"</span><span class="nv">$file_path</span><span class="s2">"</span><span class="w"> </span>--split<span class="w"> </span>right<span class="w"> </span>--size<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--no-merge<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
 <span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>port<span class="w"> </span>target_id<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$selection</span><span class="s2">"</span>
 
 <span class="nv">agent</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_BROWSER_AGENT</span><span class="k">:-</span><span class="nv">$HOME</span><span class="p">/.local/share/terminal-browser/app/agent-browser/bin/agent-browser</span><span class="si">}</span><span class="s2">"</span>

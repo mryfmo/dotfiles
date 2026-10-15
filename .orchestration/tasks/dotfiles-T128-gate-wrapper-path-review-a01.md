@@ -1,0 +1,29 @@
+---
+format: 2
+task_id: dotfiles-T128-gate-wrapper-path-review-a01
+kind: review
+security: false
+---
+
+# AGMSG-TASK dotfiles-T128-gate-wrapper-path-review-a01 — confirm the task text `dotfiles-T128-gate-wrapper-path-a01` (review seat half; Codex headless runs the same check in parallel)
+
+Drafted 2026-10-14 by the orchestrator seat (the bus time of the TASK line is the dispatch time). The reviewed file is `.orchestration/tasks/dotfiles-T128-gate-wrapper-path-a01.md` (untracked; its sha256 is the `path_task_sha256` of the TASK line), a step-7 short-form task (goal, files, out of scope, one check command, a hand-written threat table) for the P1 the audit of PR #350's head 6847aa9f left (`.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-audit-6847aa9.md.last.md`, line 1) under the operator's decision C (a06 acceptance record, 04:08Z: merge, the P1 to this task, orch-gate.sh out of the chain until it lands). Sources: that audit line, `scripts/orchestrator/orch-gate.sh` on `origin/main` 28eec93c (lines 56 to 76: the resolved interpreter, the EXIT trap, the `env -i` line), `scripts/require-crit-review.py` and `scripts/pr-feedback.py` (what they run by name: `grep -n 'subprocess\|run_git\|\["gh"\|"git"'`), a06's item 10 and its rows (`.orchestration/tasks/dotfiles-T128-orchestrator-tools-a06.md`), plan 020 step 4, plan 021 step 7 (the unit and the caps), the design INV-2. One round, fixed stop condition.
+
+## Stop condition
+
+1. Nothing contradicts the audit finding, decision C, a06 item 10 or plan 021 step 7: one mechanism (the private PATH), its own test module, no rule text; the premises hold (re-run the four commands; premise 3 creates a temporary directory under `$TMPDIR` and runs `gh auth status` under `env -i`, so run it from a shell with the keyring, and compare the outputs).
+2. `allowed_files` covers every touch point the items name and nothing else; the files are pairwise-disjoint from the in-flight `dotfiles-T128-task-checkers-a01` (`scripts/orchestrator/task-consistency-check.py`, `ledger-check.py`, `orch-audit.sh`, `tests/unit/test_task_checkers.py`, `tests/unit/test_orchestrator_tools.py`, `tests/unit/test_agmsg_orchestration_docs.py`, `tests/fixtures/lessons/**`, the SKILL): confirm by listing both.
+3. Each `closed` row's test name appears verbatim in item 2 and closes the row's risk (the gate stub's PATH is exactly the private directory; a shims path is refused before the checkout; the directory is removed); the resolution rule in item 1 (`mise which` for a shim or a mise-known name, else `command -v`, a `shims` result refused) is sound on a host where PATH holds the installs (premise 2) and on one where it holds the shims; the Completion clause matches plan 020 step 4 (the Bot's single review, one fix round, a surviving P0/P1 to the operator, P2 advisory under the named owner).
+4. The file passes C1 to C10 and C7b (the orchestrator pasted `dotfiles-T128-gate-wrapper-path-a01.md: OK`) and the brief check (premises OK, no count word out of line); the caps hold by construction (one script, one test module).
+
+## Output
+
+`.orchestration/validation/dotfiles-T128-gate-wrapper-path-review-a01.md`: the usual header with both sha256, findings (`P0`–`P3`, confidence, `file:line`, one line each), one line `Task-file verdict: dotfiles-T128-gate-wrapper-path-a01: confirm|revise`. Forbidden: editing tracked files, branches, commits, pushes, PRs. RESULT: `AGMSG-RESULT v1 task_id=dotfiles-T128-gate-wrapper-path-review-a01 round=1 verdict=confirm|revise path_task_sha256=<sha> validation=<path>`.
+
+## Round 2 (orchestrator, after the round-1 RESULTs of 04:16Z and 04:27Z)
+
+Round 1: the Codex half's one P2 (premise 2 recorded only the installs case; a shims-first shell gives the shim) and your P1, P2 and two P3. All applied: premise 2 now states and shows both cases (`command -v gh` in this shell, under a shims-first PATH, and `mise which gh`); `tests/unit/test_orchestrator_tools.py` joins `allowed_files` for exactly two edits (item 3: absolute shebangs for the orch-gate stubs; the explicit-environment test expects the private PATH), so `after:` names T704 and the parallel claim is gone; the one closed row is three closed rows, one per behaviour, each with its test; item 1 sets the EXIT trap before `mktemp -d` and the trap removes `${bin:-}` on every exit, and the shims test asserts the directory is gone; item 2's stubs use absolute shebangs. Input checker `OK`, premises OK x4. Same four stop conditions on the new hash (`path_task_sha256` of the round-2 TASK line); stop condition 2 now reads: disjoint from T704 except `tests/unit/test_orchestrator_tools.py`, allowed by `after:`.
+
+## Round 3 (orchestrator, after the round-2 RESULTs of 04:33Z and 04:37Z)
+
+Round 2: the Codex half's P1 (the success test observed only the final PATH, not that the resolution ran in the trusted root before the checkout) and P2 (premise 2 depended on the caller's PATH order; premises 3 and 4 need a temp dir and the keyring); your P2 (item 3's two edits leave the shared stub body `RUN` calling `env` and `cat` by name, so the environment file comes out empty under the private PATH) and P3 (the new module's stub must record with builtins or absolute paths). All applied: the stubs log `<name> <argv> <cwd>` and the success test asserts the `mise which` lines carry the trusted root and precede the stub git's checkout; premise 2's command sets both PATH orders explicitly (the pasted four lines are the same in this shell and in a shims-first shell); item 3 names three edits (shebangs, the `RUN` body with `export -p` or `/usr/bin/env` and `/bin/cat`, the explicit-environment test's PATH expectation) and the row says three places; item 2's stubs record with builtins or absolute paths. Premises 3 and 4 are the seat's to replay; the Codex half judges their form. Input checker `OK`, premises OK x4. Same four stop conditions on the new hash.

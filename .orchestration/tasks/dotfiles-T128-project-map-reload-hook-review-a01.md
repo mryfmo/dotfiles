@@ -1,0 +1,29 @@
+---
+format: 2
+task_id: dotfiles-T128-project-map-reload-hook-review-a01
+kind: review
+security: false
+---
+
+# AGMSG-TASK dotfiles-T128-project-map-reload-hook-review-a01 — confirm the task text `dotfiles-T128-project-map-reload-hook-a01` (review seat half; Codex headless runs the same check in parallel)
+
+Drafted 2026-10-14 by the orchestrator seat (the bus time of the TASK line is the dispatch time). The reviewed file is `.orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md` (untracked; its sha256 is the `hook_task_sha256` of the TASK line), a step-7 short-form task: a Claude Code PostToolUse hook that reloads the terminal-browser tab showing `.project-map/index.html` whenever that file is written, rendered from the manifest's `claude.hooks`. The operator's direction (04:5xZ): the refresh is a rule in dotfiles, nothing is left to a human or to the orchestrator's habit. Sources: `scripts/generate-agent-configs.py` lines 400 to 445 (how `claude.hooks` keys render), `home/.chezmoitemplates/claude-settings-managed.json` (the rendered PostToolUse entry), `tests/unit/test_generate_agent_configs.py` (the assertions that pin PostToolUse), `home/dot_claude/hooks/executable_format-edited-files.py` (the sibling hook's stdin handling), the SKILL's Orchestrator Playbook step 3 (routing: `claude.hooks` and the Claude-rendering parts are Claude's boundary, so a Codex seat lands this), plan 021 step 7 (one mechanism, the caps). One round, fixed stop condition.
+
+## Stop condition
+
+1. Nothing contradicts the renderer, the rendered settings, the routing rule or plan 021 step 7; the premises hold (re-run the three commands; premise 1 needs terminal-browser on PATH, which the orchestrator shell has; compare the outputs).
+2. `allowed_files` covers every touch point: grep the repository for `format_edited_files_hook`, `PostToolUse` and `project-map` and confirm every file the items must touch is listed and nothing else (in particular whether `make render-check` or `make validate-agent-assets` reads another file that pins the hooks list); the files are disjoint from the in-flight tasks `dotfiles-T128-task-checkers-a01` and `dotfiles-T128-gate-wrapper-path-a01` (list both).
+3. Each `closed` row's test name appears verbatim in item 5 and closes the row's risk (the hook acts only on the map path and exits 0 on every other path; the renderer emits the second command hook only when the key is set); the hook's threat is stated right (it runs as the user outside the sandbox, after every Write/Edit, and runs one named binary only); the Completion matches plan 020 step 4.
+4. The file passes C1 to C10 and C7b (the orchestrator pasted `dotfiles-T128-project-map-reload-hook-a01.md: OK`) and the brief check (premises OK).
+
+## Output
+
+`.orchestration/validation/dotfiles-T128-project-map-reload-hook-review-a01.md`: the usual header with both sha256, findings (`P0`–`P3`, confidence, `file:line`, one line each), one line `Task-file verdict: dotfiles-T128-project-map-reload-hook-a01: confirm|revise`. Forbidden: editing tracked files, branches, commits, pushes, PRs. RESULT: `AGMSG-RESULT v1 task_id=dotfiles-T128-project-map-reload-hook-review-a01 round=1 verdict=confirm|revise hook_task_sha256=<sha> validation=<path>`.
+
+## Round 2 (orchestrator, after the round-1 RESULTs of 05:02Z and 05:08Z)
+
+Round 1: the Codex half's P1 (the trust row named only terminal-browser; the hook also runs jq) and your P1, two P2 and P3. All applied: the row names both binaries and their provenance; item 7 adds one sentence to the project-map SKILL's Writes section binding the map and state writes to the Write or Edit tool (the Claude copy is a symlink template), with the file in `allowed_files` and a row; item 1 selects the map tab from `terminal-browser ls --all --json` (premise 4 pastes the JSON's shape; the listing with a tab open goes into the worker's validation file, taken from the orchestrator's pane when the worker's sandbox has no browser) and reloads it with `--browser <key> --tab <id>`; item 8 adds the `check_executable_hook` block to `scripts/check-agent-runtime.py`, with the file in `allowed_files` and a row. Input checker `OK`, premises OK x4. Same four stop conditions on the new hash; stop condition 2's grep now covers the two added files.
+
+## Round 3 (orchestrator, after the round-2 RESULTs of 05:17Z and 05:18Z)
+
+Round 2 converged on the same point from both halves: the two-command design (`ls --all --json`, then `action --browser --tab`) rested on a listing whose tab shape no seat could paste (no browser runs in any seat's sandbox; the empty listing shows no entry), and the test could not close it. Item 1 is now one selector-less command: `terminal-browser action -- eval 'location.pathname.endsWith("/.project-map/index.html") && location.reload()'`. Why that is right by construction: the hook runs in the orchestrator's Claude session, so its process carries that pane's terminal tab (your derivation 1 shows `self` = the caller's own tab and pane); the operator opens the map with `terminal-browser open … --split right` from that same pane, so the browser lives in that terminal tab, which is exactly what a selector-less `action` targets ("the browser in this terminal tab and that browser's active tab"); the script guards on the active tab's path, so a browser showing another page is left alone; several browsers in the tab make the action error, which the hook swallows. A browser pane in another terminal tab is named out of scope. Premise 4 is gone with the listing. The test (item 5) names the single call, the Edit case, and the failure modes (no `file_path`; a stub exiting 1 with stderr text; empty PATH) each ending in exit 0 with empty output. Input checker `OK`, premises OK x3. Same four stop conditions on the new hash (`hook_task_sha256` of the round-3 TASK line).

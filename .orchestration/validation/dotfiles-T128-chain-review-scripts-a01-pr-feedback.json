@@ -1,0 +1,230 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 357,
+  "head_sha": "b6ce4ffabe0e66a102e224e75be575a501c5a793",
+  "base_ref": "main",
+  "base_sha": "ec94dc56305f55df470a4b1d4215ad272418beac",
+  "generated_at": "2026-10-14T13:46:19+00:00",
+  "checks": [
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353137/job/115870143037"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353137/job/115870142793"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353190/job/115870142550"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353120/job/115870142531"
+    },
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353137/job/115870142461"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353120/job/115870142369"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353120/job/115870142276"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353120/job/115870142265"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353120/job/115870142251"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353137/job/115870142077"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353120/job/115870141871"
+    },
+    {
+      "name": "GitGuardian Security Checks",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/runs/115870136403"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary><strong>⚙️ Run configuration</strong></summary>\n> <dl>\n> <dd>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `594cddb7-b017-40ee-bf8d-ca4224d24cca`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autofix</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=357)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary><strong>❤️ Share</strong></summary>\n<dl>\n<dd>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</dd>\n</dl>\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/357#issuecomment-6168583881",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6168583881 --jq '.user.login,.body'"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"0da6be3e10964ff744262e835806fa8081e93ed7\",\"mergeGateEnabled\":false,\"pullRequestNumber\":357,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-14T12:45:24.915155Z\">2026-10-14T12:45:24.915155Z</relative-time> | `0da6be3` | Draft marked ready |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-14T12:55:10.117456Z\">2026-10-14T12:55:10.117456Z</relative-time> | `0da6be3` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/357#issuecomment-6168603632",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=gh api repos/mryfmo/dotfiles/issues/comments/6168603632 --jq '.user.login,.body'"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `0da6be3e10`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/357#pullrequestreview-5518077170",
+      "commit": "0da6be3e10964ff744262e835806fa8081e93ed7",
+      "disposition": "not-applicable:review object, its findings are the inline threads, each dispositioned on its own; evidence=gh api repos/mryfmo/dotfiles/pulls/357/reviews/5518077170 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/357#pullrequestreview-5518928459",
+      "commit": "b6ce4ffabe0e66a102e224e75be575a501c5a793",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/357/reviews/5518928459 --jq '.state,.body'"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/357#pullrequestreview-5518929040",
+      "commit": "b6ce4ffabe0e66a102e224e75be575a501c5a793",
+      "disposition": "not-applicable:review object without a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/357/reviews/5518929040 --jq '.state,.body'"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/local-review.sh",
+      "line": 61,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject failed review runs instead of caching them**\n\nWhen Codex exits nonzero because of authentication, configuration, or runtime failure before producing findings, this handler discards that status and writes a `findings: 0` validation file; subsequent invocations then reuse it as a successful review. The new test explicitly accepts exit 0 for a status-5 reviewer, so the local-review threat-table row does not fail closed. Preserve the reviewer failure status and do not cache the transcript as a completed review.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/0da6be3e10964ff744262e835806fa8081e93ed7/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/357#discussion_r4270918132",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:advisory P2 owned by dotfiles-T128-chain-review-scripts-followup-a01 (local-review.sh:61 writes a findings-0 file on a non-zero review-binary exit and the next run reuses it, the input continuation item 1 states); evidence=grep -n 'Owned by dotfiles-T128-chain-review-scripts-followup-a01' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-a01.md"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/local-review.sh",
+      "line": 28,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Validate the full head before reusing a cached review**\n\nWhen two heads for the same task share their first seven hexadecimal characters, this branch reuses the earlier file without comparing its recorded full `head:` value to the requested commit; the newer head is therefore never reviewed. The closed test only repeats the identical head and does not establish the promised one-review-per-PR-head behavior. Key the file by the full hash or verify the stored full hash before reuse.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/0da6be3e10964ff744262e835806fa8081e93ed7/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/357#discussion_r4270918140",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:advisory P2 owned by dotfiles-T128-chain-review-scripts-followup-a01 (local-review.sh:28 keys the reuse on the sha7 prefix and never compares the recorded full head, the input file name item 1 states); evidence=grep -n 'Owned by dotfiles-T128-chain-review-scripts-followup-a01' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-a01.md"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/orchestrator/local-review.sh",
+      "line": 61,
+      "body": "Disposition (orchestrator): not-applicable:advisory P2 owned by dotfiles-T128-chain-review-scripts-followup-a01 (local-review.sh:61 writes a findings-0 file on a non-zero review-binary exit and the next run reuses it, the input continuation item 1 states); evidence=grep -n 'Owned by dotfiles-T128-chain-review-scripts-followup-a01' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-a01.md. Resolving; the owning task on main carries it.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/357#discussion_r4271598621",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4271598621 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/orchestrator/local-review.sh",
+      "line": 28,
+      "body": "Disposition (orchestrator): not-applicable:advisory P2 owned by dotfiles-T128-chain-review-scripts-followup-a01 (local-review.sh:28 keys the reuse on the sha7 prefix and never compares the recorded full head, the input file name item 1 states); evidence=grep -n 'Owned by dotfiles-T128-chain-review-scripts-followup-a01' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-a01.md. Resolving; the owning task on main carries it.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/357#discussion_r4271599124",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=gh api repos/mryfmo/dotfiles/pulls/comments/4271599124 --jq '.in_reply_to_id,.user.login'"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353137/job/115870143037",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=gh run view 38569353137 --repo mryfmo/dotfiles --job 115870143037"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353120/job/115870142276",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=gh run view 38569353120 --repo mryfmo/dotfiles --job 115870142276"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38569353120/job/115870142265",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=gh run view 38569353120 --repo mryfmo/dotfiles --job 115870142265"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CI status, no finding; evidence=gh pr checks 357 --repo mryfmo/dotfiles"
+    }
+  ]
+}

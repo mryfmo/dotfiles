@@ -1,0 +1,3 @@
+[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:21 The two direct `--cdp` calls avoid issue 60’s `terminal-browser action` path, but `--session project-map-reload` starts persistent agent-browser daemon/socket state and the required host-effect threat row and closing test described by the brief are absent.
+[P2] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:48 The environment-inputs row says agent-browser talks only to the loopback CDP port, omitting its local daemon and socket-directory effects, so it does not accurately describe the runtime environment.
+Amendment verdict: dotfiles-T128-project-map-reload-hook-a01: revise

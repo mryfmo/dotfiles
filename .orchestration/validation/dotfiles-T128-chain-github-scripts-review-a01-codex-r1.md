@@ -1,0 +1,2 @@
+[P1] high .orchestration/tasks/dotfiles-T128-chain-github-scripts-a01.md:76 Item 3 contradicts plan 021 step 6.3 inventory, which explicitly keeps `review-receipt.sh` as glue (“one printf”) rather than adding it as a repository script.
+Task-file verdict: dotfiles-T128-chain-github-scripts-a01: revise

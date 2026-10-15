@@ -56,8 +56,10 @@ $ uv run --no-project .claude/hooks/contextdb_cli.py memory search --limit 1000 
 local:8576645:1	advisory-p2
 local:8576645:2	advisory-p2
 audit:8576645:2	disposition-key
-audit:8576645:2	disposition-key
 local:046901b:1	advisory-after-last-round
 local:046901b:2	advisory-after-last-round
 audit:046901b:1	trust-boundary-dispositions
 audit:046901b:2	disposition-key
+local:f48593d:2	advisory-p2
+audit:6847aa9:1	path-shim-discovery
+audit:a235637:1	trap-restores-on-refusal

@@ -60,7 +60,9 @@ Validation §7:
 
 ## CI and the Bot
 
-- PR #360 was opened as a draft. It was marked ready after the evidence commit, so the Bot's one review sees the whole PR. Its threads, with each disposition, and CI are in the evidence update and the RESULT.
+- **The Bot:** PR #360 was opened as a draft and marked ready (00:32:22Z) after the evidence commit `9b90ab6b`. No Bot review came within 10 minutes, so `@codex review` was posted at 610 seconds (issue comment 6181708706). The Bot answered with issue comment 6181729129 at 00:44:14Z: `Codex Review: Didn't find any major issues`, `**Reviewed commit:** 9b90ab6b9d`, the head. There is no review object and no inline thread, so there is nothing to disposition (validation §10).
+- **CI on `9b90ab6b`:** 13 of 13 checks pass (validation §10).
+- **CI on the final head (this commit, the evidence update):** in the RESULT.
 
 ## Not done, or outside scope
 

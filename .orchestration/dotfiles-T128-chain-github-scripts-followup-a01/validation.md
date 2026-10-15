@@ -6,7 +6,7 @@ code_commit: 1650bfb9
 
 # Validation: dotfiles-T128-chain-github-scripts-followup-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox. `MAIN` names the main checkout, and `S` a scratch directory under `/tmp/claude-501` that holds the mutation runner. `UV_OFFLINE=1` was set, since uv cannot reach pypi from the sandbox. The output is verbatim, with the main checkout's path removed, and each block ends with the command's exit status. Captured at `1650bfb9`, before the PR was marked ready.
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox. `MAIN` names the main checkout, and `S` a scratch directory under `/tmp/claude-501` that holds the mutation runner. `UV_OFFLINE=1` was set, since uv cannot reach pypi from the sandbox. The output is verbatim, with the main checkout's path removed, and each block ends with the command's exit status. §1 to §9 were captured at `1650bfb9`, before the PR was marked ready. §10 ran outside the sandbox after the Bot's answer on `9b90ab6b`, and `scratchpad/` there names the session scratchpad.
 
 ## 1. Task file and task copy
 
@@ -200,5 +200,55 @@ M7 empty answer unnamed: caught
 M8 old operation name: caught
 mutations: 8, caught 8, survived 0
 scripts/orchestrator/resolve-threads.sh: OK
+[exit 0]
+```
+
+## 10. CI and the Bot on `9b90ab6b`
+
+Run outside the sandbox through the permission gate (sandbox record, rows 4 to 6).
+
+```console
+$ bash scratchpad/bot-wait.sh 360 9b90ab6b9deb71ac988d929920676448e73c71b7 1792024342
+https://github.com/mryfmo/dotfiles/pull/360#issuecomment-6181708706
+posted @codex review at 610s
+elapsed=738s
+no-findings comment:
+6181729129	2026-10-15T00:44:14Z
+[exit 0]
+```
+```console
+$ gh api repos/mryfmo/dotfiles/issues/comments/6181729129 --jq '.user.login, .created_at, .body'
+chatgpt-codex-connector[bot]
+2026-10-15T00:44:14Z
+Codex Review: Didn't find any major issues. Delightful!
+
+**Reviewed commit:** `9b90ab6b9d`
+[exit 0]
+```
+
+The body's remaining lines, the Bot's standard "About Codex in GitHub" details block, are left out above.
+```console
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/360/reviews --jq '.[]|[.id,.user.login,.commit_id[0:8],.state]|@tsv'; gh api --paginate repos/mryfmo/dotfiles/pulls/360/comments --jq '.[]|[.id,.user.login,.path]|@tsv'
+[exit 0]
+```
+
+Both lists are empty: no review object and no review comment.
+
+```console
+$ gh pr checks 360 --repo mryfmo/dotfiles --watch --interval 30 > /dev/null 2>&1; echo "checks-watch-exit=$?"; gh pr checks 360 --repo mryfmo/dotfiles
+checks-watch-exit=0
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	13s	https://github.com/mryfmo/dotfiles/actions/runs/38660592774/job/116180634719	
+private-bootstrap (ubuntu-24.04, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/38660592774/job/116180634406	
+private-bootstrap (ubuntu-24.04, server)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/38660592774/job/116180634751	
+public-bootstrap (macos-14, client)	pass	9m14s	https://github.com/mryfmo/dotfiles/actions/runs/38660592774/job/116180634736	
+public-bootstrap (ubuntu-24.04, client)	pass	9m57s	https://github.com/mryfmo/dotfiles/actions/runs/38660592774/job/116180634561	
+public-bootstrap (ubuntu-24.04, server)	pass	7m9s	https://github.com/mryfmo/dotfiles/actions/runs/38660592774/job/116180634778	
+test (macos-14, client)	pass	7m13s	https://github.com/mryfmo/dotfiles/actions/runs/38660592888/job/116180635427	
+test (ubuntu-24.04, client)	pass	7m40s	https://github.com/mryfmo/dotfiles/actions/runs/38660592888/job/116180635083	
+test (ubuntu-24.04, server)	pass	5m28s	https://github.com/mryfmo/dotfiles/actions/runs/38660592888/job/116180635467	
+test (ubuntu-26.04, client)	pass	8m32s	https://github.com/mryfmo/dotfiles/actions/runs/38660592888/job/116180635415	
+validate	pass	1m51s	https://github.com/mryfmo/dotfiles/actions/runs/38660592923/job/116180634997	
 [exit 0]
 ```

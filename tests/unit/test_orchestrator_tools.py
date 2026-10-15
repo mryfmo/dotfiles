@@ -647,6 +647,23 @@ class OrchestratorToolsTest(unittest.TestCase):
         masker = self.call("uv")
         self.assertEqual([".orchestration/new.md"], masker[masker.index("--mask-secrets") + 1 :])
 
+    def test_boundary_keeps_a_name_with_a_newline_one_path(self):
+        # PR #361 thread 4277862535: a newline in a name does not split it; the part after it, three bytes cut,
+        # would name a file outside the repository for the masker to rewrite.
+        self.origin()
+        victim = self.temp / "victim.md"
+        victim.write_text("victim\n")
+        name = f".orchestration/d\n   {victim}"
+        self.write(name, "x\n")
+        message = self.write("msg.txt", "chore(orchestration): boundary\n")
+        (self.calls / "uv-output").write_text("")
+        self.run_tool("boundary.sh", "2026-10-13-1", message)
+        masker = self.call("uv")
+        self.assertEqual([name], masker[masker.index("--mask-secrets") + 1 :])
+        tree = self.git("ls-tree", "-r", "-z", "--name-only", "orchestration/boundary-2026-10-13-1", ".orchestration")
+        self.assertEqual([name], [path for path in tree.split("\0") if path])
+        self.assertEqual("victim\n", victim.read_text())
+
     def test_ff_main_keeps_local_edits_across_the_fast_forward(self):
         self.write(".orchestration/a.md", "a\n")
         self.origin(".orchestration/a.md")
@@ -917,26 +934,33 @@ class OrchestratorToolsTest(unittest.TestCase):
 
     def test_fill_sweep_refuses_a_shared_url_key_and_takes_an_item_id(self):
         # The a02 record's owned rows audit:8576645:2 and audit:046901b:2: the annotations of one check run share
-        # its URL, so a row for that URL fills none of them; `item-<n>` names one.
+        # its URL, so a row for that URL fills none of them; `item#<n>` names one, and never an item whose fragment
+        # is `item-0` (PR #361 thread 4277862537).
         url = "https://github.test/runs/7"
-        sweep = self.sweep(
-            [{"source": "annotation", "url": url, "body": lv, "level": lv} for lv in ("warning", "failure", "notice")]
-        )
+        items = [
+            {"source": "annotation", "url": url, "body": lv, "level": lv} for lv in ("warning", "failure", "notice")
+        ]
+        items.append({"source": "status", "url": "https://ci.test/x#item-0", "body": "ci", "level": "failure"})
+        sweep = self.sweep(items)
         comments = self.write("c.json", "[]")
-        out = self.fill_sweep(
-            sweep, comments, self.write("x.tsv", f"{url}\tfixed:abcdef1\n"), "--orchestrator-login", "o", code=1
-        )
+
+        def fill(rows, code):
+            return self.fill_sweep(sweep, comments, self.write("x.tsv", rows), "--orchestrator-login", "o", code=code)
+
+        out = fill(f"{url}\tfixed:abcdef1\n", 1)
         self.assertEqual(
-            [f"shared-key {url} item-{n}" for n in range(3)], re.findall(r"^shared-key .*", out, re.MULTILINE)
+            [f"shared-key {url} item#{n}" for n in range(3)], re.findall(r"^shared-key .*", out, re.MULTILINE)
         )
-        self.assertEqual(["item-0", "item-1"], re.findall(r"^GAP (\S+)", out, re.MULTILINE))
-        extra = self.write("x.tsv", "item-0\tfixed:abcdef1\nitem-1\tfixed:abcdef2\n")
-        self.fill_sweep(sweep, comments, extra, "--orchestrator-login", "o")
+        self.assertEqual(["item#0", "item#1", "item-0"], re.findall(r"^GAP (\S+)", out, re.MULTILINE))
+        rows = "item#0\tfixed:abcdef1\nitem#1\tfixed:abcdef2\n"
+        self.assertEqual(["item-0"], re.findall(r"^GAP (\S+)", fill(rows, 1), re.MULTILINE))
+        fill(rows + "item-0\tfixed:abcdef3\n", 0)
         self.assertEqual(
             [
                 "fixed:abcdef1",
                 "fixed:abcdef2",
                 f"not-applicable:runner capacity notice, no finding; evidence=jq '.items[2]' {sweep}",
+                "fixed:abcdef3",
             ],
             [i["disposition"] for i in json.loads(sweep.read_text())["items"]],
         )

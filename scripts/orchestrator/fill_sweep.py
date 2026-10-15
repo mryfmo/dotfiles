@@ -2,12 +2,13 @@
 
 A Bot thread takes the disposition of the latest reply in it by <login> (`fixed:<sha>` or `not-applicable:<reason>;
 evidence=<command>` in backticks); a reply by another login is printed as ignored-reply. extra.tsv
-(`id<TAB>disposition`) overrides or adds, where the id is the URL's fragment or `item-<n>` (the item's index); a
-fragment that more than one item shares (the annotations of one check run) takes no row and is named by its
-`item-<n>`. Other items get the fixed rules below, each with a jq command that shows the item, except an annotation,
-a status or a review off its NEUTRAL level and any item whose body has a P0 to P3 BADGE. A not-applicable without
-the gate's grammar (one `; evidence=` between a non-empty reason and command) is never emitted but listed as a gap.
-The sweep JSON is rewritten only when every item has a disposition; otherwise exit 1.
+(`id<TAB>disposition`) overrides or adds, where the id is the URL's fragment or `item#<n>` (the item's index; a
+fragment never holds a `#`, so the two cannot collide); a fragment that more than one item shares (the annotations
+of one check run) takes no row and is named by its `item#<n>`. Other items get the fixed rules below, each with a jq
+command that shows the item, except an annotation, a status or a review off its NEUTRAL level and any item whose
+body has a P0 to P3 BADGE. A not-applicable without the gate's grammar (one `; evidence=` between a non-empty reason
+and command) is never emitted but listed as a gap. The sweep JSON is rewritten only when every item has a
+disposition; otherwise exit 1.
 """
 
 import collections
@@ -64,8 +65,8 @@ def main(argv):
         cid, source, body = key.replace("discussion_r", ""), item["source"], item.get("body") or ""
         if key in shared:
             if cid in extra:
-                print("shared-key", cid, f"item-{n}")
-            key, cid = f"item-{n}", None
+                print("shared-key", cid, f"item#{n}")
+            key, cid = f"item#{n}", None
         if source == "review_comment" and item.get("author") == login and body.startswith("Disposition (orchestrator"):
             source = "own_reply"
         elif source == "review" and "Codex Review" in body:
@@ -76,7 +77,7 @@ def main(argv):
         level = item.get("level")
         rule = None if NEUTRAL.get(source, level) != level or BADGE.search(body) else RULES.get(source)
         d = (
-            extra.get(f"item-{n}")
+            extra.get(f"item#{n}")
             or extra.get(cid)
             or (reply.get(cid) if source == "review_comment" else rule and f"not-applicable:{rule}{show}")
         )

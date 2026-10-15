@@ -4,7 +4,8 @@
 # @description
 #   Plan 007 T718 (C-13). Lists the changed files with `git status --porcelain
 #   -z --no-renames --untracked-files=all -- .orchestration` in the checkout this
-#   script lives in, copies the present ones into a new worktree of `origin/main`
+#   script lives in, read NUL-delimited into an array so a newline in a name stays
+#   in its path, copies the present ones into a new worktree of `origin/main`
 #   under `$TMPDIR` on the branch `orchestration/boundary-<date-suffix>` and
 #   deletes the missing ones there with `git rm` (a rename is its old path's
 #   deletion and its new path's copy), masks the copies with the
@@ -33,23 +34,26 @@ message="$(cd -- "$(dirname -- "$2")" && pwd -P)/${2##*/}"
 root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 cd -- "${root}"
 git fetch -q origin main
-files="$(git status --porcelain -z --no-renames --untracked-files=all -- .orchestration | tr '\0' '\n' | cut -c4- | LC_ALL=C sort -u)"
-if [[ -z ${files} ]]; then
+files=()
+while IFS= read -r -d '' entry; do
+    files+=("${entry:3}")
+done < <(git status --porcelain -z --no-renames --untracked-files=all -- .orchestration)
+if ((${#files[@]} == 0)); then
     echo "boundary: no .orchestration change to commit" >&2
     exit 1
 fi
 tree="$(mktemp -d "${TMPDIR:-/tmp}/boundary-$1.XXXXXX")/tree"
 git worktree add -q --no-track -b "${branch}" "${tree}" origin/main
 copied=()
-while IFS= read -r f; do
+for f in "${files[@]}"; do
     if [[ -e ${f} || -L ${f} ]]; then
-        mkdir -p "${tree}/$(dirname -- "${f}")"
+        mkdir -p "${tree}/${f%/*}"
         cp -- "${f}" "${tree}/${f}"
         copied+=("${f}")
     else
         git -C "${tree}" rm -q --ignore-unmatch -- "${f}"
     fi
-done <<< "${files}"
+done
 cd -- "${tree}"
 if ((${#copied[@]} > 0)); then
     uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets "${copied[@]}"
@@ -57,7 +61,7 @@ fi
 make validate-agent-assets
 git add -A .orchestration
 git -c commit.gpgsign=false commit -q -F "${message}"
-echo "boundary: ${branch} $(git rev-parse --short HEAD), $(wc -l <<< "${files}" | tr -d ' ') files"
+echo "boundary: ${branch} $(git rev-parse --short HEAD), ${#files[@]} files"
 GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push -q origin "${branch}"
 gh pr create --base main --head "${branch}" --title "$(head -n 1 -- "${message}")" --body-file "${message}"
 gh pr merge "${branch}" --squash --auto

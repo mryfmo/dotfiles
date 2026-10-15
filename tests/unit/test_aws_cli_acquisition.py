@@ -15,6 +15,47 @@ AWS_CLI_VERSION = "2.37.6"
 FINGERPRINT = re.search(r'^readonly AWS_CLI_FINGERPRINT="([0-9A-F]{40})"$', INSTALLER.read_text(), re.MULTILINE).group(
     1
 )
+# The macOS prelude: uname answers Darwin and arm64; curl logs each URL to $CALLS/urls, answers a HEAD with
+# ETag "pkg-2", fails the URL ending in $FAIL_URL, prints version.txt (" $RELEASE ", trimmed by the script) and
+# writes "payload" to an --output; gpgv logs its argv and fails when $GPGV_FAIL is set; bash, the installer
+# call, logs the XDG roots and its argv, exits $INSTALLER_STATUS when that is set, and otherwise leaves an aws
+# reporting $NEW_VERSION when that is set.
+MACOS_PRELUDE = r"""
+uname() { case "$1" in -s) printf 'Darwin\n' ;; *) printf 'arm64\n' ;; esac; }
+curl() {
+    local output="" url="" head=""
+    while [ "$#" -gt 0 ]; do
+        case "$1" in --output) output="$2"; shift 2 ;; --head) head=1; shift ;; -*) shift ;; *) url="$1"; shift ;; esac
+    done
+    printf '%s\n' "${url}" >> "${CALLS}/urls"
+    if [ -n "${head}" ]; then printf 'HTTP/2 200\r\nETag: "pkg-2"\r\n\r\n'; return; fi
+    case "${url}" in *"${FAIL_URL:-none}") return 22 ;; esac
+    if [ -n "${output}" ]; then printf payload > "${output}"; else printf ' %s \n' "${RELEASE}"; fi
+}
+gpg() {
+    case " $* " in
+        *" --with-colons "*)
+            printf 'pub:-:4096:1:A6310ACC4672475C:1568845749:1814472778::::::sc::::::23::0:\n'
+            printf 'fpr:::::::::@FINGERPRINT@:\n'
+            ;;
+        *" --dearmor "*)
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = --output ]; then printf keyring > "$2"; return; else shift; fi
+            done
+            ;;
+    esac
+}
+gpgv() { printf '%s\n' "$@" > "${CALLS}/gpgv"; [ -z "${GPGV_FAIL:-}" ]; }
+bash() {
+    printf '%s\n' "XDG_DATA_HOME=${XDG_DATA_HOME:-}" "XDG_BIN_HOME=${XDG_BIN_HOME:-}" "$@" > "${CALLS}/bash"
+    [ -z "${INSTALLER_STATUS:-}" ] || return "${INSTALLER_STATUS}"
+    [ -n "${NEW_VERSION:-}" ] || return 0
+    mkdir -p "${XDG_DATA_HOME}/aws-cli" "${XDG_BIN_HOME}"
+    printf '#!/bin/sh\nprintf "aws-cli/%s Python/3.13 Darwin/25\\n"\n' "${NEW_VERSION}" > "${XDG_DATA_HOME}/aws-cli/aws"
+    chmod +x "${XDG_DATA_HOME}/aws-cli/aws"
+    ln -sf "${XDG_DATA_HOME}/aws-cli/aws" "${XDG_BIN_HOME}/aws"
+}
+""".replace("@FINGERPRINT@", FINGERPRINT)
 
 
 class AwsCliAcquisitionTest(unittest.TestCase):
@@ -632,9 +673,114 @@ main
         self.assertEqual("-", public_keys[0][1])
         self.assertGreater(int(public_keys[0][6]), int(time.time()))
 
+    def run_macos(self, body, existing_aws=None, **env):
+        """Run body after MACOS_PRELUDE in a fresh HOME; return the result, the HOME, the call log and the temp dir."""
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        home, calls, temp, shim = root / "home", root / "calls", root / "tmp", root / "shim"
+        for path in (home / ".local/bin", calls, temp, shim):
+            path.mkdir(parents=True)
+        # macOS mktemp -d ignores TMPDIR; the shim keeps every temporary directory under the test.
+        (shim / "mktemp").write_text(
+            '#!/bin/sh\nif [ "$*" = -d ]; then exec /usr/bin/mktemp -d "$TMPDIR/tmp.XXXXXX"; fi\nexec /usr/bin/mktemp "$@"\n'
+        )
+        (shim / "mktemp").chmod(0o755)
+        if existing_aws is not None:
+            (home / ".local/bin/aws").write_text(existing_aws)
+            (home / ".local/bin/aws").chmod(0o755)
+        key = root / "key.asc"
+        key.write_text("fixture\n")
+        result = self.run_shell(
+            MACOS_PRELUDE + body,
+            {
+                "AWS_CLI_KEY_PATH": str(key),
+                "CALLS": str(calls),
+                "HOME": str(home),
+                "PATH": f"{shim}:{os.environ['PATH']}",
+                "RELEASE": AWS_CLI_VERSION,
+                "TMPDIR": str(temp),
+                "XDG_STATE_HOME": "",
+                **env,
+            },
+        )
+        return result, home, calls, temp
+
+    def test_macos_signature_failure_preserves_existing_aws_and_runs_no_installer(self):
+        result, home, calls, temp = self.run_macos("install_aws_cli", existing_aws="existing\n", GPGV_FAIL="1")
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual("existing\n", (home / ".local/bin/aws").read_text())
+        verified = (calls / "gpgv").read_text().splitlines()
+        self.assertEqual("--keyring", verified[0])
+        self.assertTrue(verified[2].endswith("/install.sh.sig"))
+        self.assertTrue(verified[3].endswith("/install.sh"))
+        self.assertFalse((calls / "bash").exists())
+        self.assertEqual([], list(temp.iterdir()))
+
+    def test_macos_verified_install_runs_install_sh_with_xdg_roots(self):
+        result, home, calls, temp = self.run_macos("install_aws_cli", NEW_VERSION=AWS_CLI_VERSION)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(f"Installed aws-cli/{AWS_CLI_VERSION}.", result.stdout)
+        ran = (calls / "bash").read_text().splitlines()
+        self.assertEqual([f"XDG_DATA_HOME={home / '.local/share'}", f"XDG_BIN_HOME={home / '.local/bin'}"], ran[:2])
+        self.assertEqual(1, len(ran[2:]))
+        self.assertTrue(ran[2].endswith("/install.sh"))
+        base = "https://awscli.amazonaws.com/v2/"
+        self.assertEqual(
+            [f"{base}install.sh", f"{base}install.sh.sig", f"{base}version.txt"],
+            (calls / "urls").read_text().splitlines(),
+        )
+        self.assertEqual([], list(temp.iterdir()))
+        # The postcondition compares the installed CLI with version.txt: an older one left active fails.
+        result, _home, _calls, _temp = self.run_macos("install_aws_cli", NEW_VERSION="2.35.20")
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(f"aws-cli/2.35.20 is active, not the staged aws-cli/{AWS_CLI_VERSION}", result.stderr)
+        # An installer that fails returns its status through main, which records no ETag.
+        result, home, _calls, _temp = self.run_macos("main", INSTALLER_STATUS="2")
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertFalse((home / ".local/state/dotfiles/aws-cli-archive.etag").exists())
+
+    def test_macos_etag_skip_uses_the_pkg_url(self):
+        result, _home, calls, _temp = self.run_macos("aws_cli_archive_etag")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('"pkg-2"\n', result.stdout)
+        self.assertEqual(["https://awscli.amazonaws.com/AWSCLIV2.pkg"], (calls / "urls").read_text().splitlines())
+        # The same probe on Linux reads the archive URL.
+        result, _home, calls, _temp = self.run_macos('uname() { printf "x86_64\\n"; }\naws_cli_archive_etag')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(
+            ["https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"], (calls / "urls").read_text().splitlines()
+        )
+        # A recorded ETag equal to the pkg's, with a working CLI, skips the install.
+        working = "#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Darwin/25\\n'\n"
+        body = 'mkdir -p "$(dirname "${AWS_CLI_ETAG_FILE}")"; printf \'"pkg-2"\\n\' > "${AWS_CLI_ETAG_FILE}"\nmain'
+        result, _home, calls, _temp = self.run_macos(body, existing_aws=working)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["https://awscli.amazonaws.com/AWSCLIV2.pkg"], (calls / "urls").read_text().splitlines())
+
+    def test_macos_download_failure_keeps_a_working_aws_and_runs_no_gpgv(self):
+        working = "#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Darwin/25\\n'\n"
+        for failing in ("/v2/install.sh", "/v2/install.sh.sig", "/v2/version.txt"):
+            with self.subTest(failing=failing):
+                result, _home, calls, temp = self.run_macos("install_aws_cli", FAIL_URL=failing)
+                self.assertEqual(3, result.returncode, result.stderr)
+                self.assertFalse((calls / "gpgv").exists())
+                self.assertFalse((calls / "bash").exists())
+                self.assertEqual([], list(temp.iterdir()))
+        result, home, calls, _temp = self.run_macos("main", existing_aws=working, FAIL_URL="/v2/install.sh")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("could not download the AWS CLI archive; the installed AWS CLI stays", result.stderr)
+        self.assertFalse((calls / "gpgv").exists())
+        self.assertFalse((home / ".local/state/dotfiles/aws-cli-archive.etag").exists())
+        result, _home, calls, _temp = self.run_macos("main", FAIL_URL="/v2/install.sh")
+        self.assertEqual(3, result.returncode, result.stderr)
+        self.assertFalse((calls / "bash").exists())
+
     def test_platform_package_managers_and_wrapper_own_aws_cli(self):
         mac_dependencies = (ROOT / "install/macos/common/dependencies.sh").read_text()
-        self.assertIn("readonly BREW_PACKAGES=(\n    awscli\n", mac_dependencies)
+        brew_packages = re.search(r"^readonly BREW_PACKAGES=\(\n(.*?)^\)$", mac_dependencies, re.MULTILINE | re.DOTALL)
+        self.assertNotIn("awscli", brew_packages[1].split())
+        self.assertIn("gpg", brew_packages[1].split())
         self.assertNotIn("awscli.amazonaws.com", mac_dependencies)
         for forbidden in (".pkg", "brew tap", "git clone", "make install"):
             self.assertNotIn(forbidden, mac_dependencies)

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
 # @file install/ubuntu/common/aws_cli.sh
-# @brief Install the current AWS CLI from its official Linux archive, verified with AWS's GPG signature.
+# @brief Install the current AWS CLI from AWS's official distribution, verified with AWS's GPG signature.
+# @description
+#   On Linux the archive is verified and installed. On macOS AWS's install.sh is verified, then run under the
+#   XDG roots; it downloads the pkg and checks its Apple Developer team id before Apple's installer runs.
 
 set -Eeuo pipefail
 
@@ -18,13 +21,18 @@ readonly AWS_CLI_BIN_DIR="${HOME}/.local/bin"
 readonly AWS_CLI_ETAG_FILE="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/aws-cli-archive.etag"
 
 #
-# @description Print the AWS CLI archive URL for the current supported architecture.
-#   The unversioned archive is AWS's current release; its .sig is checked against the pinned key.
-# @stdout The official x86_64 or aarch64 archive URL.
+# @description Print the URL of AWS's current release: the archive for the current supported architecture
+#   on Linux, whose .sig is checked against the pinned key, and the pkg on macOS, whose ETag main reads.
+# @stdout The official x86_64 or aarch64 archive URL, or the macOS pkg URL.
 #
 function aws_cli_url() {
     local architecture
 
+    # The macOS pkg serves every architecture.
+    if [ "$(uname -s)" = Darwin ]; then
+        printf 'https://awscli.amazonaws.com/AWSCLIV2.pkg\n'
+        return
+    fi
     architecture="$(uname -m)"
     case "${architecture}" in
     x86_64 | aarch64)
@@ -79,6 +87,7 @@ function verify_aws_cli_install() {
 
 #
 # @description Verify and install the current AWS CLI without modifying a working install on verification failure.
+#   On macOS the verified file is install.sh, and version.txt names the release the postcondition expects.
 # @exitcode 3 A download failed, so nothing was installed.
 #
 function install_aws_cli() (
@@ -95,18 +104,30 @@ function install_aws_cli() (
     local temporary_dir
     local staged_version
     local same_version_dir
+    local macos=""
 
-    archive_url="$(aws_cli_url)" || return
+    if [ "$(uname -s)" = Darwin ]; then
+        macos=1
+        archive_url="https://awscli.amazonaws.com/v2/install.sh"
+    else
+        archive_url="$(aws_cli_url)" || return
+    fi
     temporary_dir="$(mktemp -d)" || return
     trap 'rm -rf "${temporary_dir}"' EXIT
 
     archive_path="${temporary_dir}/awscliv2.zip"
+    [ -z "${macos}" ] || archive_path="${temporary_dir}/install.sh"
     signature_path="${archive_path}.sig"
     inspection_home="${temporary_dir}/gnupg-inspection"
     keyring_path="${temporary_dir}/aws-cli-keyring.gpg"
 
     curl --fail --location --silent --show-error "${archive_url}" --output "${archive_path}" || return 3
     curl --fail --location --silent --show-error "${archive_url}.sig" --output "${signature_path}" || return 3
+    if [ -n "${macos}" ]; then
+        # install.sh installs the release version.txt names, so the postcondition expects that one.
+        staged_version="$(curl --fail --location --silent --show-error https://awscli.amazonaws.com/v2/version.txt)" || return 3
+        staged_version="${staged_version//[[:space:]]/}"
+    fi
 
     mkdir -m 700 "${inspection_home}" || return
     key_data="$(gpg --homedir "${inspection_home}" --batch --with-colons --import-options show-only --import "${AWS_CLI_KEY_PATH}")" || return
@@ -122,6 +143,12 @@ function install_aws_cli() (
     gpg --batch --yes --dearmor --output "${keyring_path}" "${AWS_CLI_KEY_PATH}" || return
     gpgv --keyring "${keyring_path}" "${signature_path}" "${archive_path}" || return
 
+    if [ -n "${macos}" ]; then
+        mkdir -p "${AWS_CLI_BIN_DIR}" "$(dirname "${AWS_CLI_INSTALL_DIR}")" || return
+        XDG_DATA_HOME="$(dirname "${AWS_CLI_INSTALL_DIR}")" XDG_BIN_HOME="${AWS_CLI_BIN_DIR}" bash "${archive_path}" || return
+        verify_aws_cli_install "${staged_version}"
+        return
+    fi
     unzip -q "${archive_path}" -d "${temporary_dir}" || return
     staged_version="$(verify_aws_cli_version "${temporary_dir}/aws/dist/aws" "AWS CLI staged artifact verification failed")" || return
     staged_version="${staged_version#aws-cli/}"

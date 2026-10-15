@@ -6,7 +6,7 @@
 #   <pr-worktree> rev-parse HEAD`. From the checkout this script lives in, never one at the audited head and
 #   only with its tracked, unchanged validator, it refuses a sweep JSON with an item lacking a disposition, runs
 #   the ledger check (ledger-check.py beside it, or the script `--ledger-check` names; tracked and unchanged from HEAD,
-#   as the validator is), then checks the clean
+#   as the validator is, and run with python -I, so no module beside it is imported), then checks the clean
 #   review worktree `.claude/worktrees/orchestrator-review` out at `origin/main`, copies the task's evidence and
 #   its lineage's records but this head's audit files in, removes those in both checkouts, and runs `codex
 #   --profile audit exec --sandbox read-only -c approval_policy=never -o <out>.last.md` with stdin closed and
@@ -54,7 +54,7 @@ uv run --no-project python -I -c 'import json, sys; gaps = [i for i in json.load
 [[ -n $(git ls-files -- "${check}") ]] || refuse "${check} is not a script tracked in this repository"
 git diff --quiet HEAD -- "${check}" || refuse "${check} differs from HEAD"
 lineage=("${v}/${family}"-a0*-audit-*.md.last.md)
-uv run --no-project python "${check}" ".orchestration/acceptance/${task}.md" "${v}/${task}-pr-feedback.json" ${lineage[@]+"${lineage[@]}"} || refuse "the ledger is incomplete" 3
+uv run --no-project python -I "${check}" ".orchestration/acceptance/${task}.md" "${v}/${task}-pr-feedback.json" ${lineage[@]+"${lineage[@]}"} || refuse "the ledger is incomplete" 3
 git -C "${review}" checkout -q --detach origin/main
 out="${v}/${task}-audit-${head:0:7}.md"
 for f in ".orchestration/tasks/${task}.md" ".orchestration/reports/${task}.md" "${v}/${task}.md" "${v}/${task}-pr-feedback.json" \

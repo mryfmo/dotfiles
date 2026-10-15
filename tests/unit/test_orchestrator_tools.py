@@ -1020,6 +1020,29 @@ class OrchestratorToolsTest(unittest.TestCase):
         result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, "--ledger-check", shim, code=2)
         self.assertIn(f"{shim} is not a script tracked in this repository; refused", result.stderr)
 
+    def test_orch_audit_runs_the_ledger_check_isolated_from_sibling_modules(self):
+        # Round 2 (Bot thread 4279174373, the audit of b84e81f0): the ledger check runs under python -I, so an
+        # untracked json.py beside it, which exits 9 when imported, is never imported and the audit passes.
+        self.write("scripts/validate-agent-assets.py", "")
+        self.origin("scripts/validate-agent-assets.py", "scripts/orchestrator/ledger-check.py")
+        self.write("scripts/orchestrator/json.py", "raise SystemExit(9)\n")
+        pr = self.temp / "pr"
+        self.git("worktree", "add", "-q", "-b", "pr", str(pr), "main")
+        self.git("commit", "-q", "--allow-empty", "-m", "change", cwd=pr)
+        self.git("worktree", "add", "-q", "--detach", str(self.repo / ".claude/worktrees/orchestrator-review"), "main")
+        shim = self.write("python-shim", f'#!/usr/bin/env bash\nshift 3\nexec "{sys.executable}" "$@"\n')
+        shim.chmod(0o755)
+        self.write(".python-version", f"{shim}\n")
+        codex = {"source": "review_comment", "bot": True, "author": "chatgpt-codex-connector[bot]"}
+        url = "https://github.test/pull/9#discussion_r4250000001"
+        items = [{**codex, "url": url, "disposition": "fixed:abcdef1"}]
+        self.write(".orchestration/validation/t-a01-pr-feedback.json", json.dumps({"pr": 9, "items": items}))
+        self.write(".orchestration/acceptance/t-a01.md", "4250000001\tother\n")
+        # The run stops later at this fixture's masker call; the ledger check before it has run and passed.
+        result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, code=3)
+        self.assertIn("sweep gaps 0\nledger rows 1; findings 1; gaps 0\n", result.stdout)
+        self.assertNotIn("the ledger is incomplete", result.stderr)
+
     def test_orch_audit_refuses_a_ledger_check_that_differs_from_head(self):
         # Owned row audit:c1f60f7:2: the default ledger-check.py and an override are each run only when tracked and
         # unchanged from HEAD, as the validator is; a refusal runs neither the check nor codex.

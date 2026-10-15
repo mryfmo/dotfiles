@@ -4,7 +4,9 @@
 - **Task copy.** The task file's sha256 `ae208bef…` matches the TASK's `task_sha256`. It is copied byte-identical to `.orchestration/dotfiles-T128-orchestrator-tools-followup-a01/task.md` and holds no home path. Both premises replay as `present` (validation §1).
 - **Commits.**
   - `0bb86ab8`: the five fixes and their tests.
-  - Then this evidence.
+  - `4b15fab0`: this evidence, the PR's first head.
+  - `d414e86c`: the fix round for the Bot's two P1 findings.
+  - Then this evidence, updated.
 - cost: n/a (the runtime exposes no token or cost figures to the seat).
 
 ## The owned rows
@@ -101,13 +103,14 @@ In a row id `<source>:<head>:<n>`, n is the n-th finding in that review's header
 ### D4: `scripts/orchestrator/fill_sweep.py`, the shared keys (rows 15, 19)
 
 - **The root cause.** The extra.tsv key was the URL's fragment. The annotations of one check run share the run's URL, and so do the run's own `check_run` item and statuses with a null URL. One row therefore filled every one of them.
-- **A shared key takes no row.** A fragment that more than one item shares now takes no extra.tsv row. The script prints `shared-key <key> item-<n>` for each item a row would have matched.
-- **The item id.** Every item also answers to `item-<n>`, its index in the sweep. A shared item's GAP line is named by that id, and its evidence command is `jq '.items[<n>]'`.
+- **A shared key takes no row.** A fragment that more than one item shares now takes no extra.tsv row. The script prints `shared-key <key> item#<n>` for each item a row would have matched.
+- **The item id.** Every item also answers to `item#<n>`, its index in the sweep (`item-<n>` at `0bb86ab8`; the fix round below). A shared item's GAP line is named by that id, and its evidence command is `jq '.items[<n>]'`.
 - **Unchanged.** Items with a unique URL behave as before.
 - **The test** is `test_fill_sweep_refuses_a_shared_url_key_and_takes_an_item_id`.
   - **The fixture.** There are three annotations on one run URL: warning, failure and notice.
   - **A URL row.** It fills none of them, and the script names all three. The warning and the failure stay gaps, and the notice takes its rule with `.items[2]`.
-  - **Two `item-<n>` rows** fill the warning and the failure.
+  - **Two `item#<n>` rows** fill the warning and the failure.
+  - **A status whose fragment is `item-0`** stays a gap under those rows, and only the row `item-0` fills it (the fix round).
 
 ### D5: `scripts/orchestrator/orch-gate.sh` (row 22)
 
@@ -120,18 +123,31 @@ In a row id `<source>:<head>:<n>`, n is the n-th finding in that review's header
   - **The gate** never ran.
 - **The other module.** The task does not allow `tests/unit/test_orch_gate_path.py`, so I left it unchanged. Its three tests still pass (validation §5).
 
+## PR #361: the Bot's review and the fix round
+
+The Bot's one review came at 00:53:46Z, on the first head `4b15fab0`. It raised two P1 inline findings and none in its body, and its security review completed with no further comment. CI passed on that head (validation §9).
+
+| Thread | Priority | Finding | Disposition |
+|---|---|---|---|
+| 4277862535 (`boundary.sh:36`) | P1 | `tr '\0' '\n' \| cut -c4-` split a name holding a newline into two records, so a crafted tail could reach the masker as a host path | `fixed:d414e86c`: the `-z` entries go into an array with `read -r -d ''` and `${entry:3}`, and the copy directory is `${f%/*}`; `test_boundary_keeps_a_name_with_a_newline_one_path` (M13, the first head's boundary.sh, dies there) |
+| 4277862537 (`fill_sweep.py:80`) | P1 | the index ids `item-<n>` shared a namespace with URL fragments, so `item-0` could disposition an item whose fragment is `item-0` | `fixed:d414e86c`: the ids are `item#<n>`, which no fragment can be; the shared-key test adds a status with fragment `item-0` (M12, the old namespace, dies there) |
+
+- **One round.** This was the one fix round. The TASK has the Bot review once, at PR open, so there is no `@codex review` on the fix head.
+- **Left to the orchestrator.** I resolved no thread.
+
 ## Proofs and size
 
 - **Tests.**
-  - `test_orchestrator_tools.py`: 45 tests OK, the 40 of `origin/main` plus the five new ones.
+  - `test_orchestrator_tools.py`: 46 tests OK, the 40 of `origin/main` plus six new ones (five for the owned rows, one for thread 4277862535).
   - The neighbouring modules `test_orch_gate_path.py`, `test_regime_counters.py` and `test_chain_github_scripts.py`: 33 tests OK.
 - **Linters.** shellcheck, shfmt, ruff check and ruff format are clean (validation §5).
-- **Mutation proofs.** 11 mutants, all killed (validation §6).
+- **Mutation proofs.** 13 mutants, all killed (validation §6).
   - M1, M2 and M5 are `origin/main`'s scripts.
   - M3, M4, M6, M7, M8, M10 and M11 each undo one part of a fix.
   - M9 sets the flag before the binaries are resolved.
-- **Caps (INV-2).** 5 files outside `.orchestration/` (of 15), 66 added lines outside `tests/` (of 500), 102 under `tests/` (of 1000) (validation §7).
-- **The repository validator** passes on `0bb86ab8` (validation §8).
+  - M12 and M13 undo the fix round.
+- **Caps (INV-2).** 5 files outside `.orchestration/` (of 15), 75 added lines outside `tests/` (of 500), 126 under `tests/` (of 1000) (validation §7).
+- **The repository validator** passes on `d414e86c` (validation §8).
 
 ## Threat table
 
@@ -139,7 +155,7 @@ In a row id `<source>:<head>:<n>`, n is the n-th finding in that review's header
 |---|---|
 | boundary.sh, ff-main.sh, fill_sweep.py, orch-gate.sh | exactly the owned rows above: D1 to D5, each with its test and its mutants |
 | the other allowed scripts (orch-audit.sh, acceptance-front-matter.py, codex-review.sh, design-keydiff.py, replay.sh, dispatch.sh, bus-read.sh, three-repeat.sh, regime-counters.sh) | unchanged; no owned row names a defect in them that is still present |
-| tests/unit/test_orchestrator_tools.py | five new tests and two fixture fields (D3); nothing else |
+| tests/unit/test_orchestrator_tools.py | six new tests and two fixture fields (D3); nothing else |
 | tests/unit/test_regime_counters.py | unchanged |
 | the task copy | byte-identical, sha256 `ae208bef…` (validation §1) |
 | environment inputs | no new binary. boundary.sh adds `git rm` and `cut`, both in the row's list (git, coreutils), and drops `xargs` from that line |
@@ -148,8 +164,8 @@ In a row id `<source>:<head>:<n>`, n is the n-th finding in that review's header
 ## Notes for the orchestrator
 
 - **fill_sweep.py's output gains two forms.**
-  - `shared-key <key> item-<n>` is printed when an extra.tsv row matches a shared fragment.
-  - A GAP line for a shared item is named `item-<n>`.
+  - `shared-key <key> item#<n>` is printed when an extra.tsv row matches a shared fragment.
+  - A GAP line for a shared item is named `item#<n>`.
   - **A tighter rule.** An `approved` or `dismissed` review is now a gap, just as a `changes_requested` one is.
 - **ff-main.sh prints `deleted: <path>`** for each local deletion it keeps.
 - **Two rows wait on your decision.** Rows 11 and 12 carry proposed dispositions only, because the files they name are outside this task's `allowed_files`.
@@ -162,10 +178,10 @@ The main-checkout `memory add` runs after CI, with the masked main-checkout copy
 - [memory:decision] The tools lineage's owned rows close in `0bb86ab8`:
   - boundary.sh lists `git status --porcelain -z --no-renames` and `git rm`s missing paths in the boundary worktree;
   - ff-main.sh restores local deletions for the fast-forward and deletes them again;
-  - fill_sweep.py fills a review only at `commented`, and a URL fragment shared by several items takes no extra.tsv row (`item-<n>` names one);
+  - fill_sweep.py fills a review only at `commented`, and a URL fragment shared by several items takes no extra.tsv row (`item#<n>` names one, a namespace no fragment can enter);
   - orch-gate.sh's trap restores the review worktree only after the head's checkout started.
 - [memory:failure] `git status --short | awk '{print $NF}'` drops what an entry is. A deletion then reaches `cp` and aborts, and a rename leaves its old path behind. List with `--porcelain -z --no-renames` and split present from missing paths.
 
 ## Bot and CI
 
-The PR opens after this evidence commit. The CI result and the Bot's review of the final head go into the main-checkout copy and the RESULT.
+The Bot's review of the first head and the fix round are above. CI on the final head, the fix round's evidence commit, goes into the main-checkout copy and the RESULT.

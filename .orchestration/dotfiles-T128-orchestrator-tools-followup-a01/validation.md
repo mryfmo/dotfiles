@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-orchestrator-tools-followup-a01
 seat: claude-standard-dot-a003
-commit: 0bb86ab8
+commit: d414e86c
 ---
 
 # Validation: dotfiles-T128-orchestrator-tools-followup-a01
@@ -69,15 +69,6 @@ $ git show origin/main:.orchestration/acceptance/dotfiles-T128-orchestrator-tool
 21: audit:6847aa9:1	path-shim-discovery
 22: audit:a235637:1	trap-restores-on-refusal
 rows=22
-(rc=0)
-$ git log --format="%h %s" -S audit:6847aa9:1$'\t'path-shim-discovery origin/main -- .orchestration/acceptance/dotfiles-T128-orchestrator-tools-a02.md | cut -c1-100
-727180db chore(orchestration): boundary commit 2026-10-15 (15): six PRs merged on 2026-10-14 (#352 t
-(rc=0)
-$ git log --format="%h %s" -S audit:a235637:1$'\t'trap-restores-on-refusal origin/main -- .orchestration/acceptance/dotfiles-T128-orchestrator-tools-a02.md | cut -c1-100
-727180db chore(orchestration): boundary commit 2026-10-15 (15): six PRs merged on 2026-10-14 (#352 t
-(rc=0)
-$ git log --format="%h %s" -S local:f48593d:2$'\t'advisory-p2 origin/main -- .orchestration/acceptance/dotfiles-T128-orchestrator-tools-a02.md | cut -c1-100
-727180db chore(orchestration): boundary commit 2026-10-15 (15): six PRs merged on 2026-10-14 (#352 t
 (rc=0)
 ```
 
@@ -230,21 +221,22 @@ contextdb: [Errno 1] Operation not permitted
 
 ## 5. Tests and linters
 
-The lineage's test module, `tests/unit/test_orchestrator_tools.py`, with the five new tests and the changed fixture's test named. Then the neighbouring modules, among them `test_orch_gate_path.py`, which also runs orch-gate.sh:
+The lineage's test module, `tests/unit/test_orchestrator_tools.py`, with the six new tests and the changed fixture's test named. Then the neighbouring modules, among them `test_orch_gate_path.py`, which also runs orch-gate.sh:
 
 ```text
-$ UV_OFFLINE=1 uv run --no-project python -m unittest -v tests.unit.test_orchestrator_tools 2>&1 | /usr/bin/grep -E 'deletes_a_deleted|keeps_a_local_deletion|fills_only_a_commented|shared_url_key|as_it_was_on_a_refusal|badged_review|^Ran |^OK|FAILED'
+$ UV_OFFLINE=1 uv run --no-project python -m unittest -v tests.unit.test_orchestrator_tools 2>&1 | /usr/bin/grep -E 'deletes_a_deleted|newline_one_path|keeps_a_local_deletion|fills_only_a_commented|shared_url_key|as_it_was_on_a_refusal|badged_review|^Ran |^OK|FAILED'
 test_boundary_deletes_a_deleted_file_and_a_renamed_files_old_path (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_boundary_deletes_a_deleted_file_and_a_renamed_files_old_path) ... ok
+test_boundary_keeps_a_name_with_a_newline_one_path (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_boundary_keeps_a_name_with_a_newline_one_path) ... ok
 test_ff_main_keeps_a_local_deletion_across_the_fast_forward (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_ff_main_keeps_a_local_deletion_across_the_fast_forward) ... ok
 test_fill_sweep_fills_only_a_commented_review (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_fill_sweep_fills_only_a_commented_review) ... ok
 test_fill_sweep_leaves_a_badged_review_body_a_gap (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_fill_sweep_leaves_a_badged_review_body_a_gap) ... ok
 test_fill_sweep_refuses_a_shared_url_key_and_takes_an_item_id (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_fill_sweep_refuses_a_shared_url_key_and_takes_an_item_id) ... ok
 test_orch_gate_leaves_the_review_worktree_as_it_was_on_a_refusal_before_the_checkout (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_leaves_the_review_worktree_as_it_was_on_a_refusal_before_the_checkout) ... ok
-Ran 45 tests in 29.312s
+Ran 46 tests in 30.915s
 OK
 (rc=0)
 $ UV_OFFLINE=1 uv run --no-project python -m unittest tests.unit.test_orch_gate_path tests.unit.test_regime_counters tests.unit.test_chain_github_scripts 2>&1 | tail -3
-Ran 33 tests in 8.840s
+Ran 33 tests in 9.949s
 
 OK
 (rc=0)
@@ -265,7 +257,7 @@ $ uv run --no-project ruff format --check scripts/orchestrator/fill_sweep.py tes
 
 ## 6. Mutation proofs
 
-Each mutant is applied to the working file, the named test runs, and the file is restored byte for byte. M1, M2 and M5 are `origin/main`'s script, the defect as the rows found it:
+Each mutant is applied to the working file, the named test runs, and the file is restored byte for byte. M1, M2 and M5 are `origin/main`'s script, the defect as the rows found it; M12 and M13 undo the fix round (M13 is the first head `4b15fab0`'s boundary.sh):
 
 ```text
 M1 scripts/orchestrator/boundary.sh -> test_boundary_deletes_a_deleted_file_and_a_renamed_files_old_path: killed (FAILED (failures=1))
@@ -279,30 +271,111 @@ M8 scripts/orchestrator/fill_sweep.py -> test_fill_sweep_refuses_a_shared_url_ke
 M9 scripts/orchestrator/orch-gate.sh -> test_orch_gate_leaves_the_review_worktree_as_it_was_on_a_refusal_before_the_checkout: killed (FAILED (failures=1))
 M10 scripts/orchestrator/fill_sweep.py -> test_fill_sweep_fills_only_a_commented_review: killed (FAILED (failures=1))
 M11 scripts/orchestrator/boundary.sh -> test_boundary_deletes_a_deleted_file_and_a_renamed_files_old_path: killed (FAILED (failures=1))
-mutants 11/11 killed; tree restored
+M12 scripts/orchestrator/fill_sweep.py -> test_fill_sweep_refuses_a_shared_url_key_and_takes_an_item_id: killed (FAILED (failures=1))
+M13 scripts/orchestrator/boundary.sh -> test_boundary_keeps_a_name_with_a_newline_one_path: killed (FAILED (failures=1))
+mutants 13/13 killed; tree restored
 ```
 
 ## 7. Size (INV-2)
 
 ```text
 $ git diff --numstat origin/main...HEAD
-18	8	scripts/orchestrator/boundary.sh
+3	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a01/autoskill.md
+23	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a01/learning.md
+171	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a01/report.md
+29	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a01/sandbox.md
+104	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a01/task.md
+308	0	.orchestration/dotfiles-T128-orchestrator-tools-followup-a01/validation.md
+26	12	scripts/orchestrator/boundary.sh
 22	9	scripts/orchestrator/ff-main.sh
-21	9	scripts/orchestrator/fill_sweep.py
+22	9	scripts/orchestrator/fill_sweep.py
 5	3	scripts/orchestrator/orch-gate.sh
-102	2	tests/unit/test_orchestrator_tools.py
+126	2	tests/unit/test_orchestrator_tools.py
 (rc=0)
 $ git diff --numstat origin/main...HEAD -- . ':!.orchestration' | awk '$3 !~ /^tests\// {a += $1; f++} $3 ~ /^tests\// {t += $1; f++} END {print "files outside .orchestration: " f "; added outside tests/: " a "; added under tests/: " t}'
-files outside .orchestration: 5; added outside tests/: 66; added under tests/: 102
+files outside .orchestration: 5; added outside tests/: 75; added under tests/: 126
 (rc=0)
 ```
 
-5 files outside `.orchestration/` (cap 15), 66 added lines outside `tests/` (cap 500), 102 under `tests/` (cap 1000).
+5 files outside `.orchestration/` (cap 15), 75 added lines outside `tests/` (cap 500), 126 under `tests/` (cap 1000).
 
 ## 8. The repository validator
 
 ```text
-$ UV_OFFLINE=1 uv run --no-project --with pyyaml scripts/validate-agent-assets.py 2>&1 | tail -1  # on 0bb86ab8, with the task copy untracked beside it
+$ UV_OFFLINE=1 uv run --no-project --with pyyaml scripts/validate-agent-assets.py 2>&1 | tail -1  # on d414e86c, before the commit
 agent asset validation ok
 (rc=0)
 ```
+
+## 9. PR #361: the Bot's review of the first head `4b15fab0`, and the fix round `d414e86c`
+
+PR #361 was marked ready at 2026-10-15T00:50:41Z with head `4b15fab0`. The Bot's one review came at 00:53:46Z, with two P1 inline comments and no finding in its body. CI passed on that head (every check; the main-checkout copy holds the final head's).
+
+```text
+$ scratchpad/wait-ci-bot.sh 361 4b15fab096fb00138badc0cb966804e4c2001531 <out> <ready epoch>  # bot.txt, from its first line to the issue comments
+bot-wait end 2026-10-15T00:54:24Z asked=0
+# reviews of the head
+5526640758	4b15fab096fb00138badc0cb966804e4c2001531	2026-10-15T00:53:46Z	COMMENTED
+# review bodies
+--- review 5526640758 4b15fab096fb00138badc0cb966804e4c2001531
+
+### 💡 Codex Review
+
+Here are some automated review suggestions for this pull request.
+
+**Reviewed commit:** `4b15fab096`
+    
+
+<details> <summary>ℹ️ About Codex in GitHub</summary>
+<br/>
+
+Codex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you
+- Open a pull request for review
+- Mark a draft as ready
+- Comment "@codex review".
+
+If Codex has suggestions, it will comment; otherwise it will react with 👍.
+
+
+
+
+When you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like "@codex address that feedback".
+            
+</details>
+# top-level review comments on the head
+--- comment 4277862535 4b15fab096fb00138badc0cb966804e4c2001531 scripts/orchestrator/boundary.sh:36
+**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Preserve NUL-delimited boundary paths**
+
+When an untracked `.orchestration` filename contains a newline, converting NUL separators to newlines turns the remainder into another record, and `cut -c4-` then removes three bytes of the actual filename. For example, a nested filename whose post-newline segment is `   /tmp/x` causes `/tmp/x` to enter `copied`, after which `--mask-secrets` can rewrite that host file rather than only a boundary-worktree copy. Keep paths NUL-delimited through array iteration instead of serializing them into `files`.
+
+AGENTS.md reference: [AGENTS.md:L75-L78](https://github.com/mryfmo/dotfiles/blob/4b15fab096fb00138badc0cb966804e4c2001531/AGENTS.md#L75-L78)
+
+Useful? React with 👍 / 👎.
+--- comment 4277862537 4b15fab096fb00138badc0cb966804e4c2001531 scripts/orchestrator/fill_sweep.py:80
+**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Separate synthetic item IDs from URL fragments**
+
+When a collected URL ends in `#item-N`—which a commit-status target URL can do—the synthetic index key and URL-fragment key share a namespace. An `item-0\tfixed:...` row intended for index 0 therefore also dispositions an unrelated item whose literal fragment is `item-0`; the script reports no gap, so the integration gate can accept that unrelated failure without review. Reject such collisions or give index keys a namespace that cannot be interpreted as a URL key.
+
+AGENTS.md reference: [AGENTS.md:L75-L78](https://github.com/mryfmo/dotfiles/blob/4b15fab096fb00138badc0cb966804e4c2001531/AGENTS.md#L75-L78)
+
+Useful? React with 👍 / 👎.
+```
+
+The re-check after CI shows both of the Bot's reviews completed, and no other comment:
+
+```text
+re-check 2026-10-15T01:02:00Z
+# reviews of the head
+5526640758	4b15fab096fb00138badc0cb966804e4c2001531	2026-10-15T00:53:46Z	COMMENTED
+# top-level review comments on the head
+4277862535	4b15fab096fb00138badc0cb966804e4c2001531	scripts/orchestrator/boundary.sh	36
+4277862537	4b15fab096fb00138badc0cb966804e4c2001531	scripts/orchestrator/fill_sweep.py	80
+# summary status
+"status":"completed"
+Security Review** | ✅ **Completed** <relative-time datetime="2026-10-15T00:55:44.350790Z">2026-10-15T00:55:44.350790Z</relative-time> 
+```
+
+Both P1 findings are fixed at their root in `d414e86c`, the one fix round:
+
+- **4277862535.** boundary.sh read the NUL-delimited status through `tr '\0' '\n' | cut -c4-`, so a newline in a name split it into two records. The tail of one could then reach the masker as a path outside the repository. The entries are now read with `read -r -d ''` into an array and cut with `${entry:3}`. The copy directory is now `${f%/*}`, because `$(dirname)` would strip trailing newlines. The test is `test_boundary_keeps_a_name_with_a_newline_one_path`, which boundaries `.orchestration/d<newline>   <temp>/victim.md`; M13 (the first head's boundary.sh) dies there.
+- **4277862537.** fill_sweep.py's index ids were `item-<n>`, which is also a possible URL fragment. They are now `item#<n>`. A key is the text after the URL's last `#` and so never holds one, and `item#<n>` does not start with the `#` that marks a comment line in extra.tsv. The shared-key test adds a status whose fragment is `item-0`. Rows `item#0` and `item#1` leave it a gap, and the row `item-0` fills only it. M12, the `item-<n>` namespace, dies there.

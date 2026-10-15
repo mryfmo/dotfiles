@@ -4,6 +4,7 @@
 # @brief Reload the visible project map after a Claude file edit.
 # @description
 #   Pass CDP on both calls to avoid terminal-browser issue 60.
+#   Pin tab selection and guard reloads against navigation away from a project map.
 #   Open a separate right split using half the width when the parsed listing yields no map tab.
 #   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.
 # @exitcode 0 Always, including unavailable tools or browsers.
@@ -18,7 +19,7 @@ selection=$(jq -r '
      | select($port >= 1 and $port <= 65535 and $port == ($port | floor))
      | .tabs[]?
      | select(.url | strings | endswith("/.project-map/index.html"))
-     | select(.targetId | strings | test("^[A-Za-z0-9][A-Za-z0-9_-]*$"))
+     | select(.targetId | strings | test("^[A-Fa-f0-9]{32}\\z"))
      | [$port, .targetId]] | .[0] // empty | @tsv
 ' <<< "$listing" 2>/dev/null) || exit 0
 if [[ -z "$selection" ]]; then
@@ -28,6 +29,6 @@ fi
 IFS=$'\t' read -r port target_id <<< "$selection"
 
 agent="${TERMINAL_BROWSER_AGENT:-$HOME/.local/share/terminal-browser/app/agent-browser/bin/agent-browser}"
-"$agent" --cdp "$port" --session project-map-reload tab "$target_id" >/dev/null 2>&1 || exit 0
-"$agent" --cdp "$port" --session project-map-reload eval 'location.reload()' >/dev/null 2>&1
+"$agent" --cdp "$port" --session project-map-reload --pin-tab tab "$target_id" >/dev/null 2>&1 || exit 0
+"$agent" --cdp "$port" --session project-map-reload --pin-tab eval 'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()' >/dev/null 2>&1
 exit 0

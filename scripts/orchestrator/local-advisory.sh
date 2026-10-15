@@ -7,16 +7,21 @@
 #   other appends the row `local:<sha7>:<n><TAB>advisory-p2` under the heading `## Owned by <owner>` of
 #   `.orchestration/acceptance/<task>.md` (created when missing) and a `local-finding: <sha7>:<n>
 #   not-applicable:advisory P2 owned by <owner> (…); evidence=…` line, each only when the record lacks it.
-# @arg $1 string Task id.
+# @arg $1 string Task id, letters, digits, `.`, `_` and `-`.
 # @arg $2 string The reviewed head, 40 hex characters.
 # @arg $3 string The task id that owns the advisory findings.
 # @exitcode 0 No P0/P1 finding.
-# @exitcode 2 No local review file.
+# @exitcode 2 No local review file, or a malformed task id or head.
 # @exitcode 3 A P0/P1 finding.
 # @example
 #   scripts/orchestrator/local-advisory.sh dotfiles-T128-x-a01 "$head" dotfiles-T128-x-followup-a01
 set -euo pipefail
 task=$1 head=$2 owner=$3
+# Both name the files read and appended, so a / in either would reach outside .orchestration (the audit of b6ce4ff).
+[[ $task =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && $head =~ ^[0-9a-f]{40}$ ]] || {
+    echo "usage: local-advisory.sh <task> <40-hex head> <owner task>"
+    exit 2
+}
 cd "$(git rev-parse --show-toplevel)"
 h7=${head:0:7}
 LR=".orchestration/validation/$task-local-review-$h7.md"

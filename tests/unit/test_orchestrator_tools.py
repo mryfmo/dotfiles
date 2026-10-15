@@ -628,6 +628,42 @@ class OrchestratorToolsTest(unittest.TestCase):
         )
         self.assertEqual(1, len(self.git("worktree", "list").splitlines()))
 
+    def test_boundary_deletes_a_deleted_file_and_a_renamed_files_old_path(self):
+        # The a02 record's owned rows (4260535916, local:7b574d3:1): a deletion and a rename reach the boundary commit.
+        for name in ("gone", "old", "kept"):
+            self.write(f".orchestration/{name}.md", f"{name}\n")
+        self.origin(".orchestration")
+        os.remove(self.repo / ".orchestration/gone.md")
+        self.git("mv", ".orchestration/old.md", ".orchestration/new.md")
+        message = self.write("msg.txt", "chore(orchestration): boundary\n")
+        (self.calls / "uv-output").write_text("")
+        self.run_tool("boundary.sh", "2026-10-13-1", message)
+        branch = "orchestration/boundary-2026-10-13-1"
+        changed = self.git("show", "--no-renames", "--name-status", "--format=", branch).splitlines()
+        self.assertEqual(["D\t.orchestration/gone.md", "A\t.orchestration/new.md", "D\t.orchestration/old.md"], changed)
+        tree = self.git("ls-tree", "-r", "--name-only", branch, ".orchestration").splitlines()
+        self.assertEqual([".orchestration/kept.md", ".orchestration/new.md"], tree)
+        # The masker gets the copies only.
+        masker = self.call("uv")
+        self.assertEqual([".orchestration/new.md"], masker[masker.index("--mask-secrets") + 1 :])
+
+    def test_boundary_keeps_a_name_with_a_newline_one_path(self):
+        # PR #361 thread 4277862535: a newline in a name does not split it; the part after it, three bytes cut,
+        # would name a file outside the repository for the masker to rewrite.
+        self.origin()
+        victim = self.temp / "victim.md"
+        victim.write_text("victim\n")
+        name = f".orchestration/d\n   {victim}"
+        self.write(name, "x\n")
+        message = self.write("msg.txt", "chore(orchestration): boundary\n")
+        (self.calls / "uv-output").write_text("")
+        self.run_tool("boundary.sh", "2026-10-13-1", message)
+        masker = self.call("uv")
+        self.assertEqual([name], masker[masker.index("--mask-secrets") + 1 :])
+        tree = self.git("ls-tree", "-r", "-z", "--name-only", "orchestration/boundary-2026-10-13-1", ".orchestration")
+        self.assertEqual([name], [path for path in tree.split("\0") if path])
+        self.assertEqual("victim\n", victim.read_text())
+
     def test_ff_main_keeps_local_edits_across_the_fast_forward(self):
         self.write(".orchestration/a.md", "a\n")
         self.origin(".orchestration/a.md")
@@ -652,6 +688,27 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.git("push", "-q", "origin", "main", cwd=other)
         self.assertIn("refused", self.run_tool("ff-main.sh", code=1).stderr)
         self.assertEqual(["a local\n", "b\n", "c local\n"], [self.write_back(n) for n in "abc"])
+
+    def test_ff_main_keeps_a_local_deletion_across_the_fast_forward(self):
+        # The a02 record's owned rows (4260535924, local:9ad0c15:4): a locally deleted tracked file stays deleted,
+        # here one that origin/main also changes, so the fast-forward needs it restored first.
+        self.write(".orchestration/d.md", "d\n")
+        self.origin(".orchestration/d.md")
+        other = self.temp / "other"
+        self.git("clone", "-q", "-b", "main", str(self.temp / "origin.git"), str(other))
+        (other / ".orchestration/d.md").write_text("d upstream\n")
+        self.git("commit", "-q", "-am", "boundary", cwd=other)
+        self.git("push", "-q", "origin", "main", cwd=other)
+        os.remove(self.repo / ".orchestration/d.md")
+        self.assertIn("deleted: .orchestration/d.md", self.run_tool("ff-main.sh").stdout.splitlines())
+        self.assertEqual(self.git("rev-parse", "origin/main"), self.git("rev-parse", "HEAD"))
+        self.assertFalse((self.repo / ".orchestration/d.md").exists())
+        # A refused fast-forward leaves it deleted too.
+        self.git("commit", "-q", "--allow-empty", "-m", "diverge")
+        self.git("commit", "-q", "--allow-empty", "-m", "ahead", cwd=other)
+        self.git("push", "-q", "origin", "main", cwd=other)
+        self.assertIn("refused", self.run_tool("ff-main.sh", code=1).stderr)
+        self.assertFalse((self.repo / ".orchestration/d.md").exists())
 
     def write_back(self, name):
         return (self.repo / f".orchestration/{name}.md").read_text()
@@ -830,8 +887,13 @@ class OrchestratorToolsTest(unittest.TestCase):
         url = "https://github.test/pull/9"
         sweep = self.sweep(
             [
-                {"source": "review", "url": f"{url}#pullrequestreview-31", "body": "![P1 Badge](https://b.test/p1) x"},
-                {"source": "review", "url": f"{url}#pullrequestreview-32", "body": "x"},
+                {
+                    "source": "review",
+                    "url": f"{url}#pullrequestreview-31",
+                    "body": "![P1 Badge](https://b.test/p1) x",
+                    "level": "commented",
+                },
+                {"source": "review", "url": f"{url}#pullrequestreview-32", "body": "x", "level": "commented"},
                 {
                     "source": "issue_comment",
                     "url": f"{url}#issuecomment-33",
@@ -853,6 +915,54 @@ class OrchestratorToolsTest(unittest.TestCase):
                 "fixed:abcdef2",
             ],
             [i["disposition"].split("; evidence=")[0] for i in json.loads(sweep.read_text())["items"]],
+        )
+
+    def test_fill_sweep_fills_only_a_commented_review(self):
+        # The a02 record's owned row audit:046901b:1: a review that requests changes, approves or was dismissed
+        # stays a gap, the Bot's own review too.
+        url = "https://github.test/pull/9#pullrequestreview"
+        levels = [("x", "commented"), ("x", "changes_requested"), ("x", "approved"), ("x", "dismissed")]
+        levels += [("Codex Review", "commented"), ("Codex Review", "changes_requested")]
+        sweep = self.sweep(
+            [{"source": "review", "url": f"{url}-{n}", "body": b, "level": lv} for n, (b, lv) in enumerate(levels)]
+        )
+        out = self.fill_sweep(sweep, self.write("c.json", "[]"), "--orchestrator-login", "o", code=1)
+        gaps = re.findall(r"^GAP (\S+)", out, re.MULTILINE)
+        self.assertEqual(
+            ["pullrequestreview-1", "pullrequestreview-2", "pullrequestreview-3", "pullrequestreview-5"], gaps
+        )
+
+    def test_fill_sweep_refuses_a_shared_url_key_and_takes_an_item_id(self):
+        # The a02 record's owned rows audit:8576645:2 and audit:046901b:2: the annotations of one check run share
+        # its URL, so a row for that URL fills none of them; `item#<n>` names one, and never an item whose fragment
+        # is `item-0` (PR #361 thread 4277862537).
+        url = "https://github.test/runs/7"
+        items = [
+            {"source": "annotation", "url": url, "body": lv, "level": lv} for lv in ("warning", "failure", "notice")
+        ]
+        items.append({"source": "status", "url": "https://ci.test/x#item-0", "body": "ci", "level": "failure"})
+        sweep = self.sweep(items)
+        comments = self.write("c.json", "[]")
+
+        def fill(rows, code):
+            return self.fill_sweep(sweep, comments, self.write("x.tsv", rows), "--orchestrator-login", "o", code=code)
+
+        out = fill(f"{url}\tfixed:abcdef1\n", 1)
+        self.assertEqual(
+            [f"shared-key {url} item#{n}" for n in range(3)], re.findall(r"^shared-key .*", out, re.MULTILINE)
+        )
+        self.assertEqual(["item#0", "item#1", "item-0"], re.findall(r"^GAP (\S+)", out, re.MULTILINE))
+        rows = "item#0\tfixed:abcdef1\nitem#1\tfixed:abcdef2\n"
+        self.assertEqual(["item-0"], re.findall(r"^GAP (\S+)", fill(rows, 1), re.MULTILINE))
+        fill(rows + "item-0\tfixed:abcdef3\n", 0)
+        self.assertEqual(
+            [
+                "fixed:abcdef1",
+                "fixed:abcdef2",
+                f"not-applicable:runner capacity notice, no finding; evidence=jq '.items[2]' {sweep}",
+                "fixed:abcdef3",
+            ],
+            [i["disposition"] for i in json.loads(sweep.read_text())["items"]],
         )
 
     # orch-audit.sh
@@ -1132,6 +1242,20 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.assertIn("tracks a symlink under .orchestration", self.run_gate(worktree, code=2).stderr)
         self.assertEqual("outside\n", (self.temp / "outside.txt").read_text())
         self.assertIsNone(self.call("uv"))
+
+    def test_orch_gate_leaves_the_review_worktree_as_it_was_on_a_refusal_before_the_checkout(self):
+        # The a02 record's owned row audit:a235637:1: the shims refusal comes before the head's checkout, so the
+        # trap moves nothing, here a review worktree that is clean but not at origin/main.
+        worktree, head = self.gate()
+        review = self.repo / ".claude/worktrees/orchestrator-review"
+        self.git("checkout", "-q", "--detach", head, cwd=review)
+        (self.temp / "bin/mise").write_text('#!/bin/bash\nprintf "%s\\n" "/opt/mise/shims/$2"\n')
+        (self.temp / "bin/mise").chmod(0o755)
+        result = self.run_tool("orch-gate.sh", "t-a01", worktree, 9, code=2)
+        self.assertIn("no binary for gh outside a shims directory", result.stderr)
+        self.assertEqual(head, self.git("rev-parse", "HEAD", cwd=review))
+        self.assertEqual("", self.git("status", "--porcelain", cwd=review))
+        self.assertIsNone(self.call("gate-python"))
 
 
 if __name__ == "__main__":

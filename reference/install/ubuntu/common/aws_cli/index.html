@@ -4192,6 +4192,7 @@
 
 
 <h1 id="installubuntucommonaws_clish">install/ubuntu/common/aws_cli.sh<a class="headerlink" href="#installubuntucommonaws_clish" title="Permanent link">&para;</a></h1>
+<p>On Linux the archive is verified and installed. On macOS AWS's install.sh is verified, then run under the XDG roots; it downloads the pkg and checks its Apple Developer team id before Apple's installer runs.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/ubuntu/common/aws_cli.sh</code></li>
@@ -4210,7 +4211,10 @@
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
 <span class="c1"># @file install/ubuntu/common/aws_cli.sh</span>
-<span class="c1"># @brief Install the current AWS CLI from its official Linux archive, verified with AWS's GPG signature.</span>
+<span class="c1"># @brief Install the current AWS CLI from AWS's official distribution, verified with AWS's GPG signature.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   On Linux the archive is verified and installed. On macOS AWS's install.sh is verified, then run under the</span>
+<span class="c1">#   XDG roots; it downloads the pkg and checks its Apple Developer team id before Apple's installer runs.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -4227,13 +4231,18 @@
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">AWS_CLI_ETAG_FILE</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">XDG_STATE_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.local/state</span><span class="si">}</span><span class="s2">/dotfiles/aws-cli-archive.etag"</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Print the AWS CLI archive URL for the current supported architecture.</span>
-<span class="c1">#   The unversioned archive is AWS's current release; its .sig is checked against the pinned key.</span>
-<span class="c1"># @stdout The official x86_64 or aarch64 archive URL.</span>
+<span class="c1"># @description Print the URL of AWS's current release: the archive for the current supported architecture</span>
+<span class="c1">#   on Linux, whose .sig is checked against the pinned key, and the pkg on macOS, whose ETag main reads.</span>
+<span class="c1"># @stdout The official x86_64 or aarch64 archive URL, or the macOS pkg URL.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>aws_cli_url<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>architecture
 
+<span class="w">    </span><span class="c1"># The macOS pkg serves every architecture.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Darwin<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'https://awscli.amazonaws.com/AWSCLIV2.pkg\n'</span>
+<span class="w">        </span><span class="k">return</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">architecture</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">architecture</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>x86_64<span class="w"> </span><span class="p">|</span><span class="w"> </span>aarch64<span class="o">)</span>
@@ -4288,6 +4297,7 @@
 
 <span class="c1">#</span>
 <span class="c1"># @description Verify and install the current AWS CLI without modifying a working install on verification failure.</span>
+<span class="c1">#   On macOS the verified file is install.sh, and version.txt names the release the postcondition expects.</span>
 <span class="c1"># @exitcode 3 A download failed, so nothing was installed.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_aws_cli<span class="o">()</span><span class="w"> </span><span class="o">(</span>
@@ -4304,18 +4314,30 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>temporary_dir
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>staged_version
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>same_version_dir
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">macos</span><span class="o">=</span><span class="s2">""</span>
 
-<span class="w">    </span><span class="nv">archive_url</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>aws_cli_url<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Darwin<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">macos</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="nv">archive_url</span><span class="o">=</span><span class="s2">"https://awscli.amazonaws.com/v2/install.sh"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">archive_url</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>aws_cli_url<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">temporary_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -rf "${temporary_dir}"'</span><span class="w"> </span>EXIT
 
 <span class="w">    </span><span class="nv">archive_path</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_dir</span><span class="si">}</span><span class="s2">/awscliv2.zip"</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">macos</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">archive_path</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_dir</span><span class="si">}</span><span class="s2">/install.sh"</span>
 <span class="w">    </span><span class="nv">signature_path</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_path</span><span class="si">}</span><span class="s2">.sig"</span>
 <span class="w">    </span><span class="nv">inspection_home</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_dir</span><span class="si">}</span><span class="s2">/gnupg-inspection"</span>
 <span class="w">    </span><span class="nv">keyring_path</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_dir</span><span class="si">}</span><span class="s2">/aws-cli-keyring.gpg"</span>
 
 <span class="w">    </span>curl<span class="w"> </span>--fail<span class="w"> </span>--location<span class="w"> </span>--silent<span class="w"> </span>--show-error<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--output<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">3</span>
 <span class="w">    </span>curl<span class="w"> </span>--fail<span class="w"> </span>--location<span class="w"> </span>--silent<span class="w"> </span>--show-error<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_url</span><span class="si">}</span><span class="s2">.sig"</span><span class="w"> </span>--output<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">signature_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">3</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">macos</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># install.sh installs the release version.txt names, so the postcondition expects that one.</span>
+<span class="w">        </span><span class="nv">staged_version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>curl<span class="w"> </span>--fail<span class="w"> </span>--location<span class="w"> </span>--silent<span class="w"> </span>--show-error<span class="w"> </span>https://awscli.amazonaws.com/v2/version.txt<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">3</span>
+<span class="w">        </span><span class="nv">staged_version</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">staged_version</span><span class="p">//[[:</span><span class="nv">space</span><span class="p">:]]/</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span>mkdir<span class="w"> </span>-m<span class="w"> </span><span class="m">700</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">inspection_home</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nv">key_data</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>gpg<span class="w"> </span>--homedir<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">inspection_home</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--batch<span class="w"> </span>--with-colons<span class="w"> </span>--import-options<span class="w"> </span>show-only<span class="w"> </span>--import<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_KEY_PATH</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
@@ -4331,6 +4353,12 @@
 <span class="w">    </span>gpg<span class="w"> </span>--batch<span class="w"> </span>--yes<span class="w"> </span>--dearmor<span class="w"> </span>--output<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">keyring_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_KEY_PATH</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span>gpgv<span class="w"> </span>--keyring<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">keyring_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">signature_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">macos</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_BIN_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_INSTALL_DIR</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">        </span><span class="nv">XDG_DATA_HOME</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_INSTALL_DIR</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="nv">XDG_BIN_HOME</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_BIN_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>bash<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">        </span>verify_aws_cli_install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged_version</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>unzip<span class="w"> </span>-q<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nv">staged_version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>verify_aws_cli_version<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_dir</span><span class="si">}</span><span class="s2">/aws/dist/aws"</span><span class="w"> </span><span class="s2">"AWS CLI staged artifact verification failed"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nv">staged_version</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">staged_version</span><span class="p">#aws-cli/</span><span class="si">}</span><span class="s2">"</span>

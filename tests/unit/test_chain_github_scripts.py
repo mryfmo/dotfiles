@@ -5,11 +5,11 @@ on PATH and stdin closed. The stub appends each call's argv and stdin to a log a
 writes. A REST call is keyed on its API path and its --jq expression, and the map holds the post-filter output. A
 GraphQL call is keyed on `graphql` and the operation (`query` or `mutation`). A call with no answer fails. jq, awk and
 git are the real ones; the tests compute each filtered answer with the real jq from the fixture the case describes.
+The round-trip test also runs this checkout's fill_sweep.py, with `python -I`, on the replies the stub recorded.
 """
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -59,6 +59,12 @@ def jq(expression, document):
 
 def query(call):
     return next((arg[len("query=") :] for arg in call["argv"] if arg.startswith("query=")), "")
+
+
+def thread_ids(calls):
+    """The threadId variable of each resolve mutation, in call order."""
+    mutations = [call["argv"] for call in calls if query(call).startswith("mutation")]
+    return [next(arg[len("threadId=") :] for arg in argv if arg.startswith("threadId=")) for argv in mutations]
 
 
 class ChainGithubScriptsTest(unittest.TestCase):
@@ -112,7 +118,7 @@ class ChainGithubScriptsTest(unittest.TestCase):
         sweep = self.t / "sweep.json"
         sweep.write_text(json.dumps({"pr": 9, "items": items}))
         fixed = (
-            "Disposition (orchestrator): fixed:abc1234 evidence=git show abc1234. Fixed at root cause in that commit"
+            "Disposition (orchestrator): `fixed:abc1234 evidence=git show abc1234`. Fixed at root cause in that commit"
             " on this branch; verified by the task's tests and CI on the final head. Resolving."
         )
         out, calls = self.run_script("resolve-threads.sh", 9, table, "-", sweep, code=3)
@@ -120,8 +126,7 @@ class ChainGithubScriptsTest(unittest.TestCase):
         self.assertEqual(
             [["api", "-X", "POST", f"{API}/comments/101/replies", "-f", f"body={fixed}", "--jq", ".id"]], replies
         )
-        mutations = [query(call) for call in calls if query(call).startswith("mutation")]
-        self.assertEqual(["T_one"], [re.search(r'threadId: "([^"]+)"', m)[1] for m in mutations])
+        self.assertEqual(["T_one"], thread_ids(calls))
         self.assertIn("no disposition row for thread 202 (table or sweep); left open\n", out)
         self.assertEqual("resolved 1 thread(s); missing rows: 1", out.splitlines()[-1])
 
@@ -131,12 +136,11 @@ class ChainGithubScriptsTest(unittest.TestCase):
         out, calls = self.run_script("resolve-threads.sh", 9, table, "-", sweep)
         bodies = [arg[len("body=") :] for call in calls for arg in call["argv"] if arg.startswith("body=")]
         not_applicable = (
-            "Disposition (orchestrator): not-applicable: owned by t-followup-a01; evidence=y."
+            "Disposition (orchestrator): `not-applicable: owned by t-followup-a01; evidence=y`."
             " Resolving; the owning task on main carries it."
         )
         self.assertEqual([fixed, not_applicable], bodies)
-        mutations = [query(call) for call in calls if query(call).startswith("mutation")]
-        self.assertEqual(["T_one", "T_two"], [re.search(r'threadId: "([^"]+)"', m)[1] for m in mutations])
+        self.assertEqual(["T_one", "T_two"], thread_ids(calls))
         self.assertEqual("resolved 2 thread(s); missing rows: 0", out.splitlines()[-1])
 
         # --dry-run reads the threads and writes nothing.
@@ -144,6 +148,84 @@ class ChainGithubScriptsTest(unittest.TestCase):
         self.assertEqual([["api", "graphql"]], [call["argv"][:2] for call in calls])
         self.assertIn("would reply+resolve 101: fixed:abc1234 evidence=git show abc1234\n", out)
         self.assertIn("would reply+resolve 202: not-applicable: owned by t-followup-a01; evidence=y\n", out)
+
+    def test_resolve_threads_counts_a_thread_resolved_only_when_the_mutation_answers_true(self):
+        # Owned rows 4270684630 and audit:d15fa87:1: a successful call that answers anything but true leaves it open.
+        table = self.t / "extra.tsv"
+        table.write_text("101\tfixed:abc1234\n")
+        for answer, shown in (("false\n", "false"), ("null\n", "null"), ("", "none")):
+            with self.subTest(answer=answer):
+                self.canned = {
+                    "graphql query": "101 T_one\n",
+                    "graphql mutation": answer,
+                    f"{API}/comments/101/replies .id": "9001\n",
+                }
+                out, calls = self.run_script("resolve-threads.sh", 9, table, "-", code=3)
+                self.assertEqual(["T_one"], thread_ids(calls))
+                self.assertIn(f"thread 101 not resolved (isResolved: {shown}); left open\n", out)
+                self.assertNotIn("resolved 101", out)
+                self.assertEqual("resolved 0 thread(s); missing rows: 1", out.splitlines()[-1])
+
+    def test_resolve_threads_passes_the_thread_id_as_a_graphql_variable(self):
+        # Owned row audit:d15fa87:2: a thread id with quotes and braces stays a variable, never query text.
+        evil = 'T_x"}) { thread { id } } zz: addComment(input: {subjectId: "U", body: "y"}) { clientMutationId } } #'
+        self.canned = {
+            "graphql query": f"101 {evil}\n",
+            "graphql mutation": "true\n",
+            f"{API}/comments/101/replies .id": "9001\n",
+        }
+        table = self.t / "extra.tsv"
+        table.write_text("101\tfixed:abc1234\n")
+        out, calls = self.run_script("resolve-threads.sh", 9, table, "-")
+        mutation = (
+            "mutation ($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }"
+        )
+        self.assertEqual([mutation], [query(call) for call in calls if query(call).startswith("mutation")])
+        self.assertEqual([evil], thread_ids(calls))
+        self.assertEqual("resolved 1 thread(s); missing rows: 0", out.splitlines()[-1])
+
+    def test_resolve_threads_replies_round_trip_through_fill_sweep(self):
+        # Owned rows local:d15fa87:1 and audit:d15fa87:3: fill_sweep.py reads each posted reply's disposition back,
+        # including one that lived only in the sweep JSON.
+        fixed, owned = "fixed:abc1234", "not-applicable:owned by t-followup-a01; evidence=git show origin/main:x"
+        self.canned = {
+            "graphql query": "101 T_one\n202 T_two\n",
+            "graphql mutation": "true\n",
+            f"{API}/comments/101/replies .id": "9001\n",
+            f"{API}/comments/202/replies .id": "9002\n",
+        }
+        table = self.t / "extra.tsv"
+        table.write_text(f"101\t{fixed}\n")
+        url = "https://github.com/mryfmo/dotfiles/pull/9#discussion_r"
+        sweep = self.t / "sweep.json"
+        sweep.write_text(json.dumps({"pr": 9, "items": [{"url": f"{url}202", "disposition": owned}]}))
+        _, calls = self.run_script("resolve-threads.sh", 9, table, "-", sweep)
+        posts = [call["argv"] for call in calls if call["argv"][1:3] == ["-X", "POST"]]
+        self.assertEqual([f"{API}/comments/{cid}/replies" for cid in (101, 202)], [argv[3] for argv in posts])
+        bodies = [next(arg[len("body=") :] for arg in argv if arg.startswith("body=")) for argv in posts]
+        login = {"login": "orchestrator"}
+        replies = [{"id": 9001, "in_reply_to_id": 101, "user": login, "body": bodies[0]}]
+        replies.append({"id": 9002, "in_reply_to_id": 202, "user": login, "body": bodies[1]})
+        comments = self.t / "pr-comments.json"
+        comments.write_text(json.dumps(replies))
+        # The sweep collected again after the replies: the Bot's two findings and the two replies, no disposition.
+        finding = {"source": "review_comment", "author": BOT["login"], "body": "![P2 Badge](https://x) a finding"}
+        items = [{**finding, "url": f"{url}{cid}"} for cid in (101, 202)]
+        items += [
+            {"source": "review_comment", "author": "orchestrator", "url": f"{url}{r['id']}", "body": r["body"]}
+            for r in replies
+        ]
+        sweep.write_text(json.dumps({"pr": 9, "items": items}))
+        script = str(ROOT / "scripts/orchestrator/fill_sweep.py")
+        result = subprocess.run(
+            [sys.executable, "-I", script, str(sweep), str(comments), "--orchestrator-login", "orchestrator"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        filled = {item["url"]: item["disposition"] for item in json.loads(sweep.read_text())["items"]}
+        self.assertEqual([fixed, owned], [filled[f"{url}101"], filled[f"{url}202"]])
 
     def test_pr_cost_appends_one_ledger_line_from_the_api(self):
         pr = {"head": {"ref": "tools/x"}, "created_at": "2026-10-14T00:00:00Z", "commits": 4}

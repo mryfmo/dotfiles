@@ -971,7 +971,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         # a05 item 9: an earlier receipt of the audited head, here and tracked on main (so in the review
         # checkout too), never stands in for a run that wrote no new one.
         self.write("scripts/validate-agent-assets.py", "")
-        self.origin("scripts/validate-agent-assets.py")
+        self.origin("scripts/validate-agent-assets.py", "scripts/orchestrator/ledger-check.py")
         pr = self.temp / "pr"
         self.git("worktree", "add", "-q", "-b", "pr", str(pr), "main")
         self.git("commit", "-q", "--allow-empty", "-m", "change", cwd=pr)
@@ -998,7 +998,7 @@ class OrchestratorToolsTest(unittest.TestCase):
     def test_orch_audit_runs_the_ledger_check_by_default_and_refuses_a_gap(self):
         # Plan 007 T704 item 3: without --ledger-check, ledger-check.py beside the script runs on every audit.
         self.write("scripts/validate-agent-assets.py", "")
-        self.origin("scripts/validate-agent-assets.py")
+        self.origin("scripts/validate-agent-assets.py", "scripts/orchestrator/ledger-check.py")
         pr = self.temp / "pr"
         self.git("worktree", "add", "-q", "-b", "pr", str(pr), "main")
         self.git("commit", "-q", "--allow-empty", "-m", "change", cwd=pr)
@@ -1008,10 +1008,8 @@ class OrchestratorToolsTest(unittest.TestCase):
         shim.chmod(0o755)
         self.write(".python-version", f"{shim}\n")
         url = "https://github.test/pull/9#discussion_r"
-        items = [
-            {"source": "review_comment", "bot": True, "url": f"{url}{n}", "disposition": "fixed:abcdef1"}
-            for n in (4250000001, 4250000002)
-        ]
+        codex = {"source": "review_comment", "bot": True, "author": "chatgpt-codex-connector[bot]"}
+        items = [{**codex, "url": f"{url}{n}", "disposition": "fixed:abcdef1"} for n in (4250000001, 4250000002)]
         self.write(".orchestration/validation/t-a01-pr-feedback.json", json.dumps({"pr": 9, "items": items}))
         self.write(".orchestration/acceptance/t-a01.md", "4250000001\tother\n")
         result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, code=3)
@@ -1021,6 +1019,61 @@ class OrchestratorToolsTest(unittest.TestCase):
         # --ledger-check keeps its meaning: an override must name a script tracked in this repository.
         result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, "--ledger-check", shim, code=2)
         self.assertIn(f"{shim} is not a script tracked in this repository; refused", result.stderr)
+
+    def test_orch_audit_runs_the_ledger_check_isolated_from_sibling_modules(self):
+        # Round 2 (Bot thread 4279174373, the audit of b84e81f0): the ledger check runs under python -I, so an
+        # untracked json.py beside it, which exits 9 when imported, is never imported and the audit passes.
+        self.write("scripts/validate-agent-assets.py", "")
+        self.origin("scripts/validate-agent-assets.py", "scripts/orchestrator/ledger-check.py")
+        self.write("scripts/orchestrator/json.py", "raise SystemExit(9)\n")
+        pr = self.temp / "pr"
+        self.git("worktree", "add", "-q", "-b", "pr", str(pr), "main")
+        self.git("commit", "-q", "--allow-empty", "-m", "change", cwd=pr)
+        self.git("worktree", "add", "-q", "--detach", str(self.repo / ".claude/worktrees/orchestrator-review"), "main")
+        shim = self.write("python-shim", f'#!/usr/bin/env bash\nshift 3\nexec "{sys.executable}" "$@"\n')
+        shim.chmod(0o755)
+        self.write(".python-version", f"{shim}\n")
+        codex = {"source": "review_comment", "bot": True, "author": "chatgpt-codex-connector[bot]"}
+        url = "https://github.test/pull/9#discussion_r4250000001"
+        items = [{**codex, "url": url, "disposition": "fixed:abcdef1"}]
+        self.write(".orchestration/validation/t-a01-pr-feedback.json", json.dumps({"pr": 9, "items": items}))
+        self.write(".orchestration/acceptance/t-a01.md", "4250000001\tother\n")
+        # The run stops later at this fixture's masker call; the ledger check before it has run and passed.
+        result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, code=3)
+        self.assertIn("sweep gaps 0\nledger rows 1; findings 1; gaps 0\n", result.stdout)
+        self.assertNotIn("the ledger is incomplete", result.stderr)
+
+    def test_orch_audit_refuses_a_ledger_check_that_differs_from_head(self):
+        # Owned row audit:c1f60f7:2: the default ledger-check.py and an override are each run only when tracked and
+        # unchanged from HEAD, as the validator is; a refusal runs neither the check nor codex.
+        self.write("scripts/validate-agent-assets.py", "")
+        self.write("other-check.py", "import sys\nsys.exit(0)\n")
+        self.origin("scripts/validate-agent-assets.py", "scripts/orchestrator/ledger-check.py", "other-check.py")
+        pr = self.temp / "pr"
+        self.git("worktree", "add", "-q", "-b", "pr", str(pr), "main")
+        self.git("commit", "-q", "--allow-empty", "-m", "change", cwd=pr)
+        self.git("worktree", "add", "-q", "--detach", str(self.repo / ".claude/worktrees/orchestrator-review"), "main")
+        shim = self.write("python-shim", f'#!/usr/bin/env bash\nshift 3\nexec "{sys.executable}" "$@"\n')
+        shim.chmod(0o755)
+        self.write(".python-version", f"{shim}\n")
+        self.write(".orchestration/validation/t-a01-pr-feedback.json", json.dumps({"pr": 9, "items": []}))
+        self.write(".orchestration/acceptance/t-a01.md", "")
+        default = self.repo / "scripts/orchestrator/ledger-check.py"
+        # Untracked: the default is checked as an override is.
+        self.git("rm", "-q", "--cached", "--", "scripts/orchestrator/ledger-check.py")
+        result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, code=2)
+        self.assertIn(f"{default} is not a script tracked in this repository; refused", result.stderr)
+        self.git("reset", "-q", "--", "scripts/orchestrator/ledger-check.py")
+        with default.open("a") as edited:
+            edited.write("# a local edit\n")
+        result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, code=2)
+        self.assertIn(f"{default} differs from HEAD; refused", result.stderr)
+        self.assertNotIn("ledger rows", result.stdout)
+        self.git("checkout", "-q", "--", "scripts/orchestrator/ledger-check.py")
+        other = self.write("other-check.py", "import sys\nsys.exit(0)  # a local edit\n")
+        result = self.run_tool("orch-audit.sh", "t-a01", pr, 9, "--ledger-check", other, code=2)
+        self.assertIn(f"{other} differs from HEAD; refused", result.stderr)
+        self.assertIsNone(self.call("codex"))
 
     # acceptance-front-matter.py, orch-gate.sh
 

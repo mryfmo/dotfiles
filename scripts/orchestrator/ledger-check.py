@@ -1,7 +1,7 @@
 """Read-only: the acceptance record has a ledger row for each Bot finding of the sweep and each audit finding.
 
 `ledger-check.py <record.md> <sweep.json> <audit .last.md>...` (plan 007 T704; orch-audit.sh runs it on every audit):
-a row is a record line `<id><TAB><class>`, the id a Bot review comment or badged Bot review of the sweep, or
+a row is a record line `<id><TAB><class>`, the id a Codex Bot review comment or badged review of the sweep, or
 `audit:<sha7>:<n>` for the n-th `[P0]` to `[P3]` line, bulleted or not, of an audit named `*-audit-<sha7>.md*`. Prints `ledger rows <n>; findings <n>; gaps <n>`
 and one `GAP <id>` line per missing row; exit 1 when a row is missing.
 """
@@ -20,7 +20,8 @@ def main(record, sweep, *audits):
     need = []
     for item in json.loads(Path(sweep).read_text())["items"]:
         url, body = item.get("url") or "", item.get("body") or ""
-        if item["source"] == "review_comment" and item.get("bot") and "discussion_r" in url:
+        # The Codex Bot only, as the gate's swept_finding_ids() counts: another bot's comment is not a finding.
+        if item["source"] == "review_comment" and item.get("author") == BOT and "discussion_r" in url:
             need.append(url.rsplit("discussion_r", 1)[-1])
         elif item["source"] == "review" and item.get("author") == BOT and any(t in body for t in BADGES):
             need.append(url.rpartition("pullrequestreview-")[2])  # a badged review body, as the gate counts it

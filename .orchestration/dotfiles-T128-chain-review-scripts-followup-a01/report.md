@@ -84,6 +84,14 @@ The main-checkout `memory add` runs after CI. Its command and output go into the
 - [memory:decision] local-review.sh resolves codex like orch-gate.sh resolves gh: `mise which` under `env -i` in the trusted root before the checkout, a shims path refused. A failed review writes no file (exit 4). A review file is reused only when its `head:` is the full requested head. The task id and the head are path-checked in local-review.sh and local-advisory.sh.
 - [memory:failure] `/bin/bash` 3.2 mis-parses a quoted pattern written inline in `${var//"$x/"/}`. Put the literal in a variable and write `${var//"$p"/}`.
 
+## Revise round 2 (`35f76e7d`)
+
+- **The finding.** The audit's P1 on `c45f9b5` (local-review.sh:86): the binary `mise which` answers can be a launcher whose first line is an env shebang for node, so the interpreter was still found on PATH at exec time, in the PR worktree. The binary was pinned, its interpreter was not, a gap of row `audit:b6ce4ff:1`.
+- **The fix.** After the binary is resolved and before the checkout, local-review.sh reads its first line. For `#!/usr/bin/env NAME`, or `env -S NAME …`, it resolves NAME exactly as the binary is resolved (`mise which` under `env -i` in the root, else `command -v`, a shims path refused with exit 2), and runs the interpreter with the binary as its first argument, then the review arguments. Any other first line runs the binary as before. The resolution is one function, `resolve`, used for both; the header's binary sentence says so.
+- **The test.** `test_local_review_pins_the_review_binary_interpreter`, the revise's check, with its two cases (validation §8). Three mutants of the round are killed: no interpreter step, the interpreter resolved after the checkout, and no `-S` form.
+- **Size after the round.** 95 changed lines outside `tests/` and `.orchestration/` (of 200), 145 added under `tests/` (of 1000), 3 files.
+- **No new Bot wait**, as the revise says.
+
 ## Bot and CI
 
 The PR opens after this evidence commit. The CI result and the Bot's review go into the main-checkout copy and the RESULT.

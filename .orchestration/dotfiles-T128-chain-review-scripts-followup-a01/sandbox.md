@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-chain-review-scripts-followup-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 9
+permission_gated_commands: 15
 ---
 
 # Sandbox record: dotfiles-T128-chain-review-scripts-followup-a01
@@ -26,3 +26,13 @@ Period: from the AGMSG-TASK (2026-10-15T04:24:59Z) to the RESULT. These ran insi
 | 7 | main-checkout `memory add` | main-checkout `memory add` |
 | 8 | the masked copy of the evidence files to the main checkout | artifact copy with the repository masker |
 | 9 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-review-scripts-followup-a01 …` | `agmsg-dispatch` |
+
+**Revise round 2.** This copy is updated after round 2's commit, before its push. Round 1 ran calls 1 to 9 and two more that the main-checkout copy records: 5a, a first wait run that exited 127 because a session restart had emptied the scratchpad of its wait script, and 8b, the correction of that copy. Round 2 adds rows 10 to 13, counted in advance; the main-checkout copy gives the final count.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| 10 | the HTTPS push of round 2's head | `git push` |
+| 11 | `gh pr checks 364 --watch` on that head (no Bot wait, as the revise says) | `gh` |
+| 12 | the round-2 sections copied into the main-checkout records, masked again | artifact copy with the repository masker |
+| 13 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-review-scripts-followup-a01 round=2 …` | `agmsg-dispatch` |
+

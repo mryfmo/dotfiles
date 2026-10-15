@@ -176,3 +176,51 @@ $ UV_OFFLINE=1 uv run --no-project --with pyyaml scripts/validate-agent-assets.p
 agent asset validation ok
 (rc=0)
 ```
+
+## 8. Revise round 2 (`35f76e7d`): the review binary's interpreter
+
+The ACCEPTANCE `status=revise` of 05:32:04Z (previous head `c45f9b53`, the orchestrator's update-branch merge) carries the audit's P1 on `c45f9b5` at local-review.sh:86. The binary `mise which` answers can be a launcher whose first line is an env shebang, so its interpreter was still found on PATH at exec time, with the PR worktree as cwd. `revise.yaml` records the previous head and the check.
+
+```text
+$ UV_OFFLINE=1 uv run --no-project python -m unittest -v tests.unit.test_chain_review_scripts
+test_local_advisory_records_p2_rows_and_stops_on_p0_p1 ... ok
+test_local_review_and_local_advisory_refuse_a_task_or_head_that_leaves_their_directory ... ok
+test_local_review_pins_the_review_binary_interpreter ... ok
+test_local_review_resolves_codex_through_mise_and_refuses_a_shim ... ok
+test_local_review_resolves_the_review_binary_before_the_checkout ... ok
+test_local_review_reuses_only_a_file_that_records_this_head ... ok
+test_local_review_runs_the_review_binary_read_only_at_the_head_and_writes_one_file ... ok
+test_local_review_strips_a_worktree_path_holding_sed_syntax_literally ... ok
+test_local_review_writes_no_file_when_the_review_binary_fails ... ok
+test_sandbox_scan_prints_the_unsandboxed_mutation_calls ... ok
+Ran 10 tests in 7.475s
+OK
+(rc=0)
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests.unit.test_chain_github_scripts tests.unit.test_orchestrator_tools tests.unit.test_orch_gate_path
+Ran 54 tests in 39.890s
+
+OK
+(rc=0)
+$ shellcheck scripts/orchestrator/local-review.sh; shfmt --indent 4 --space-redirects -d scripts/orchestrator/local-review.sh
+(rc=0)
+$ ruff check tests/unit/test_chain_review_scripts.py; ruff format --check tests/unit/test_chain_review_scripts.py
+All checks passed!
+1 file already formatted
+(rc=0)
+$ git diff --numstat origin/main...HEAD -- . ':!.orchestration'
+7	2	scripts/orchestrator/local-advisory.sh
+67	19	scripts/orchestrator/local-review.sh
+145	6	tests/unit/test_chain_review_scripts.py
+files: 3; changed lines outside tests/ and .orchestration/: 95; added under tests/: 145
+```
+
+The check `test_local_review_pins_the_review_binary_interpreter` has two cases. In the first, the stub binary's first line is `#!/usr/bin/env -S interp --flag`, and the interpreter the mise stub answers runs with argv `<binary> --profile review -s read-only review --base main`. In the second, mise answers a shims path for the interpreter: the run exits 2, the review worktree stays at `main`, and no file is written. The two earlier tests whose mise stub answered every name now answer only `codex`, so their stub binaries' `#!/usr/bin/env bash` falls back to `command -v bash`; the shim test's mise log gains the `which bash` call.
+
+Mutants of the round, against that test:
+
+```text
+R1 no interpreter step: killed (FAILED (failures=1, errors=1))
+R2 interpreter resolved after the checkout: killed (FAILED (failures=1))
+R3 no env -S: killed (FAILED (failures=1, errors=1))
+mutants 3/3 killed; file restored: True
+```

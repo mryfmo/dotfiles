@@ -60,10 +60,11 @@ def main(argv):
             reply[str(c["in_reply_to_id"])] = m.group(1)  # the latest reply wins
     gaps = []
     keys = [(item.get("url") or "").rsplit("#", 1)[-1] for item in sweep["items"]]
-    shared = {k for k, n in collections.Counter(keys).items() if n > 1}
-    for n, (item, key) in enumerate(zip(sweep["items"], keys, strict=True)):
-        cid, source, body = key.replace("discussion_r", ""), item["source"], item.get("body") or ""
-        if key in shared:
+    cids = [key.replace("discussion_r", "") for key in keys]  # the lookup keys, so a collision is seen after the strip
+    shared = {k for k, n in collections.Counter(cids).items() if n > 1}
+    for n, (item, key, cid) in enumerate(zip(sweep["items"], keys, cids, strict=True)):
+        source, body = item["source"], item.get("body") or ""
+        if cid in shared:
             if cid in extra:
                 print("shared-key", cid, f"item#{n}")
             key, cid = f"item#{n}", None
@@ -72,6 +73,11 @@ def main(argv):
         elif source == "review" and "Codex Review" in body:
             source = "codex_review"
         show = f"{EVIDENCE}jq '.items[] | select(.url == \"{item.get('url')}\")' {sweep_path}"
+        if item.get("url") is None:  # a JSON null url (a status without a target): select by source and check
+            check = json.dumps(item.get("check"))
+            show = (
+                f"{EVIDENCE}jq '.items[] | select(.source == {json.dumps(source)} and .check == {check})' {sweep_path}"
+            )
         if cid is None:
             show = f"{EVIDENCE}jq '.items[{n}]' {sweep_path}"
         level = item.get("level")

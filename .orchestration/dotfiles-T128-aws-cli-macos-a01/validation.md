@@ -6,7 +6,7 @@ code_commit: fe392450
 
 # Validation: dotfiles-T128-aws-cli-macos-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox. `MAIN` names the main checkout, and `S` a scratch directory under `/tmp/claude-501` that holds the mutation runner and, for §5 only, a scratch worktree of `origin/main`. `UV_OFFLINE=1` was set, since uv cannot reach pypi from the sandbox. The output is verbatim, with the main checkout's path removed, and each block ends with the exit status of its command line's last command. Captured at `fe392450`, before the PR was marked ready.
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox. `MAIN` names the main checkout, and `S` a scratch directory under `/tmp/claude-501` that holds the mutation runner and, for §5 only, a scratch worktree of `origin/main`. `UV_OFFLINE=1` was set, since uv cannot reach pypi from the sandbox. The output is verbatim, with the main checkout's path removed, and each block ends with the exit status of its command line's last command. §1 to §8 were captured at `fe392450`, before the PR was marked ready. §9 ran outside the sandbox after the Bot's answer on `c2638b32`, and `scratchpad/` there names the session scratchpad.
 
 Premises 1 and 2 need the network: the orchestrator replayed them outside the sandbox, and their output is in the task file's front matter. §2 replays premises 3 and 4.
 
@@ -262,4 +262,78 @@ N12 Darwin not detected in install: caught
 mutations: 12, caught 12, survived 0
 install/ubuntu/common/aws_cli.sh: OK
 [exit 0]
+```
+
+## 9. CI and the Bot on `c2638b32`, and the real macOS install
+
+Run outside the sandbox through the permission gate (sandbox record, rows 4, 5, 7 and 8).
+
+```console
+$ bash scratchpad/bot-wait.sh 363 c2638b329277dc1fe1ec51419c9532bd64af4387 1792027418
+error connecting to api.github.com
+check your internet connection or https://githubstatus.com
+https://github.com/mryfmo/dotfiles/pull/363#issuecomment-6182834286
+posted @codex review at 2741s
+elapsed=2741s bot: none
+[exit 0]
+```
+```console
+$ gh api --paginate repos/mryfmo/dotfiles/issues/363/comments --jq '.[]|[.id,.user.login,.created_at,(.body|split("\n")[0])]|@tsv'; echo reviews:; gh api --paginate repos/mryfmo/dotfiles/pulls/363/reviews --jq '.[]|[.id,.user.login,.commit_id[0:8],.submitted_at,.state]|@tsv'; echo comments:; gh api --paginate repos/mryfmo/dotfiles/pulls/363/comments --jq '.[]|[.id,.user.login,.original_commit_id[0:8],.path,.line]|@tsv'; gh pr view 363 --repo mryfmo/dotfiles --json headRefOid,mergeStateStatus --jq '[.headRefOid,.mergeStateStatus]|@tsv'
+6182195957	coderabbitai[bot]	2026-10-15T01:22:08Z	<!-- This is an auto-generated comment: summarize by coderabbit.ai -->
+6182215280	chatgpt-codex-connector[bot]	2026-10-15T01:23:47Z	<!-- codex-pull-request-review-summary -->
+6182834286	moriya-fumio-thd	2026-10-15T02:12:59Z	@codex review
+6182875026	chatgpt-codex-connector[bot]	2026-10-15T02:16:04Z	Codex Review: Didn't find any major issues. :tada:
+reviews:
+comments:
+c2638b329277dc1fe1ec51419c9532bd64af4387	UNKNOWN
+[exit 0]
+```
+```console
+$ gh api repos/mryfmo/dotfiles/issues/comments/6182875026 --jq '.body' | head -4
+Codex Review: Didn't find any major issues. :tada:
+
+**Reviewed commit:** `c2638b3292`
+
+[exit 0]
+```
+
+Comment 6182215280, the Bot's summary table, lists the Code Review as completed at 02:16:05Z on `c2638b3` (a manual request) and the Security Review as completed at 01:28:01Z on `c2638b3` (draft marked ready).
+
+```console
+$ gh pr checks 363 --repo mryfmo/dotfiles --watch --interval 30 > /dev/null 2>&1; echo "checks-watch-exit=$?"; gh pr checks 363 --repo mryfmo/dotfiles
+checks-watch-exit=1
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+build	pass	4s	https://github.com/mryfmo/dotfiles/actions/runs/38665395276/job/116196068641	
+build (client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/38665395288/job/116196068993	
+build (server)	pass	4s	https://github.com/mryfmo/dotfiles/actions/runs/38665395288/job/116196068684	
+private-bootstrap (macos-14, client)	pass	14s	https://github.com/mryfmo/dotfiles/actions/runs/38665395268/job/116196069202	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/38665395268/job/116196069018	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/38665395268/job/116196069211	
+public-bootstrap (macos-14, client)	pass	8m44s	https://github.com/mryfmo/dotfiles/actions/runs/38665395268/job/116196069142	
+public-bootstrap (ubuntu-24.04, client)	pass	10m27s	https://github.com/mryfmo/dotfiles/actions/runs/38665395268/job/116196069268	
+public-bootstrap (ubuntu-24.04, server)	pass	8m5s	https://github.com/mryfmo/dotfiles/actions/runs/38665395268/job/116196069093	
+test (macos-14, client)	pass	7m6s	https://github.com/mryfmo/dotfiles/actions/runs/38665395303/job/116196069126	
+test (ubuntu-24.04, client)	pass	8m49s	https://github.com/mryfmo/dotfiles/actions/runs/38665395303/job/116196068735	
+test (ubuntu-24.04, server)	pass	5m46s	https://github.com/mryfmo/dotfiles/actions/runs/38665395303/job/116196069045	
+test (ubuntu-26.04, client)	pass	8m33s	https://github.com/mryfmo/dotfiles/actions/runs/38665395303/job/116196068943	
+validate	pass	1m48s	https://github.com/mryfmo/dotfiles/actions/runs/38665395298/job/116196068543	
+[exit 0]
+```
+
+The job log of `public-bootstrap (macos-14, client)` (job 116196069142), saved with `gh run view --repo mryfmo/dotfiles --job 116196069142 --log`, has 178259 lines. Line 176266 starts the rendered wrapper, `diff --git a/.chezmoiscripts/macos/04-install-aws-cli.sh b/.chezmoiscripts/macos/04-install-aws-cli.sh`. The excerpt below is the script's run, cut to the time of day: the runner's `HOME` is written `$HOME`, its user directory `<runner home>`, and the installer's temporary directory `<tmp>`.
+
+```text
+T01:34:05.6684640Z gpgv: Signature made Wed Oct 14 18:12:39 2026 UTC
+T01:34:05.6686000Z gpgv:                using RSA key FB5DB77FD5C118B80511ADA8A6310ACC4672475C
+T01:34:05.6690390Z gpgv: Good signature from "AWS CLI Team <aws-cli@amazon.com>"
+T01:34:05.8537350Z Installing AWS CLI 2.38.1
+T01:34:05.8589160Z Downloading AWS CLI installer from https://awscli.amazonaws.com/AWSCLIV2-2.38.1.pkg?src=script-exe
+T01:34:13.8645260Z installer: Package name is AWS Command Line Interface
+T01:34:13.8666240Z installer: choices changes file '<tmp>/choices.xml' applied
+T01:34:13.8728790Z installer: Upgrading at base path <runner home>
+T01:34:13.8729240Z installer: The upgrade was successful.
+T01:34:14.5058060Z AWS CLI 2.38.1 installed to $HOME/.local/share/aws-cli
+T01:34:14.5060190Z Ensure $HOME/.local/bin is on your PATH. When multiple installs exist, PATH order determines which 'aws' runs.
+T01:34:14.8302790Z Installed aws-cli/2.38.1.
 ```

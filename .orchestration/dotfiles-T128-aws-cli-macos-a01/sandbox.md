@@ -24,3 +24,14 @@ The table lists every call that ran outside the sandbox: `gh` through the permis
 |--:|---|---|
 | 1 | `gh pr create --draft --repo mryfmo/dotfiles --base main --head tools/aws-cli-macos …` (PR #363) | `gh` |
 | 2 | `agmsg-dispatch … AGMSG-PONG v1 task_id=dotfiles-T128-aws-cli-macos-a01 status=alive …` (01:22:11Z, the candidates) | `agmsg-dispatch` |
+| 3 | `gh pr ready 363 --repo mryfmo/dotfiles; date +%s; date -u +%FT%TZ` (01:23:38Z) | `gh` |
+| 4 | the Bot wait on `c2638b32` (`scratchpad/bot-wait.sh`, background: `gh pr view` and `gh api` reads every 30 seconds, one failing on the host's sleep, and its `gh pr comment 363 --body '@codex review'` at 2741 seconds) | `gh` |
+| 5 | `gh pr checks 363 --watch` (background, after a `gh pr checks` poll for the first check; exit 1 on the network drop, listing all pass) | `gh` |
+| 6 | `agmsg-dispatch … AGMSG-PONG v1 … status=alive …` (03:54:56Z, the answer to the 03:54:05Z PING) | `agmsg-dispatch` |
+| 7 | `gh api` reads of the PR's issue comments, reviews and review comments, of `gh pr view 363 --json headRefOid,mergeStateStatus`, and of the two Bot comments' bodies | `gh` |
+| 8 | `gh run view --repo mryfmo/dotfiles --job 116196069142 --log`, saved to a scratch file and read with grep (validation §9) | `gh` |
+| 9 | `gh pr checks 363 --watch` on the final head, after a `gh pr checks` poll (background, exit status joined) | `gh` |
+| 10 | `gh api` reads of the PR's reviews and review comments on the final head | `gh` |
+| 11 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-aws-cli-macos-a01 …` | `agmsg-dispatch` |
+
+The pushes of `fe392450`, `c2638b32` and the evidence update ran inside the sandbox over HTTPS.

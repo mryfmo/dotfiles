@@ -78,8 +78,19 @@ Validation §7:
 
 ## CI and the Bot
 
-- PR #363 was opened as a draft. It was marked ready after the evidence commit, so the Bot's one review sees the whole PR. Its threads, with each disposition, and CI are in the evidence update and the RESULT.
-- Two macOS jobs run a full apply, so the real `install.sh` path runs on GitHub's runner: the `MacOS` workflow (triggered by `install/macos/**` and `home/.chezmoiscripts/macos/**`) and `public-bootstrap (macos-14, client)`.
+- **The Bot:**
+  - PR #363 was opened as a draft and marked ready (01:23:38Z) after the evidence commit `c2638b32`. The Bot's Security Review of `c2638b3` completed at 01:28:01Z, with no finding.
+  - The host slept during the Bot wait. The wait's next poll came at 2741 seconds, after one failed `gh` call ("error connecting to api.github.com"). It posted `@codex review` then (02:12:59Z, issue comment 6182834286) and stopped at its 15-minute bound.
+  - The Bot answered with issue comment 6182875026 at 02:16:04Z: `Codex Review: Didn't find any major issues`, `**Reviewed commit:** c2638b3292`, the head.
+  - There is no review object and no inline thread, so there is nothing to disposition (validation §9).
+- **CI on `c2638b32`:** 15 of 15 checks pass. The `--watch` exited 1 on the same network drop, and the listing it printed afterwards shows every check passing (validation §9).
+- **The real macOS install ran on GitHub's runner.** `public-bootstrap (macos-14, client)` runs `setup.sh`, so `chezmoi apply` ran the new `run_after_04` wrapper (rendered as `.chezmoiscripts/macos/04-install-aws-cli.sh`):
+  - `gpgv` reported a good signature from the AWS CLI Team key `FB5DB77F…` on `install.sh`;
+  - `install.sh` installed AWS CLI 2.38.1 from the pkg into `$HOME/.local/share/aws-cli`;
+  - the postcondition printed `Installed aws-cli/2.38.1.` (validation §9, the log excerpt).
+
+  The `MacOS` workflow's `build` job passed in 4 seconds: its steps run only when the private-dotfiles secrets are configured, so it applied nothing.
+- **CI on the final head (this commit, the evidence update):** in the RESULT.
 
 ## For the operator, after the merge and `make update`
 

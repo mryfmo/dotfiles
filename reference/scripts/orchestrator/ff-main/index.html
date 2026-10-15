@@ -4168,7 +4168,7 @@
 
 
 <h1 id="scriptsorchestratorff-mainsh">scripts/orchestrator/ff-main.sh<a class="headerlink" href="#scriptsorchestratorff-mainsh" title="Permanent link">&para;</a></h1>
-<p>Plan 007 T718, the sequence M-20261012-26's fourth instance records. In the checkout this script lives in: the untracked files under <code>.orchestration</code> that <code>origin/main</code> now holds, and the locally modified tracked files (<code>git diff --name-only</code>), are moved aside under <code>$TMPDIR</code>; the tracked ones are restored with <code>git checkout --</code>; then <code>git merge --ff-only origin/main</code>; then each aside file that still differs from the fast-forwarded one is copied back and listed. A refused fast-forward copies every aside file back and exits 1. <code>rm</code> touches only its own directory under <code>$TMPDIR</code>. One command per step under <code>set -e</code>, never an <code>&amp;&amp;</code> list across steps.</p>
+<p>Plan 007 T718, the sequence M-20261012-26's fourth instance records. In the checkout this script lives in: the untracked files under <code>.orchestration</code> that <code>origin/main</code> now holds, and the locally modified tracked files (<code>git diff --name-only</code>), are moved aside under <code>$TMPDIR</code>; the tracked ones, and the locally deleted ones, are restored with <code>git checkout --</code>; then <code>git merge --ff-only origin/main</code>; then each aside file that still differs from the fast-forwarded one is copied back and listed, and each locally deleted file is deleted again and listed. A refused fast-forward copies every aside file back, deletes the deleted ones again and exits 1. <code>rm</code> touches only its own directory under <code>$TMPDIR</code> and the locally deleted files. One command per step under <code>set -e</code>, never an <code>&amp;&amp;</code> list across steps.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/orchestrator/ff-main.sh</code></li>
@@ -4183,12 +4183,14 @@
 <span class="c1">#   Plan 007 T718, the sequence M-20261012-26's fourth instance records. In the</span>
 <span class="c1">#   checkout this script lives in: the untracked files under `.orchestration`</span>
 <span class="c1">#   that `origin/main` now holds, and the locally modified tracked files (`git</span>
-<span class="c1">#   diff --name-only`), are moved aside under `$TMPDIR`; the tracked ones are</span>
-<span class="c1">#   restored with `git checkout --`; then `git merge --ff-only origin/main`;</span>
-<span class="c1">#   then each aside file that still differs from the fast-forwarded one is</span>
-<span class="c1">#   copied back and listed. A refused fast-forward copies every aside file back</span>
-<span class="c1">#   and exits 1. `rm` touches only its own directory under `$TMPDIR`. One</span>
-<span class="c1">#   command per step under `set -e`, never an `&amp;&amp;` list across steps.</span>
+<span class="c1">#   diff --name-only`), are moved aside under `$TMPDIR`; the tracked ones, and</span>
+<span class="c1">#   the locally deleted ones, are restored with `git checkout --`; then `git</span>
+<span class="c1">#   merge --ff-only origin/main`; then each aside file that still differs from</span>
+<span class="c1">#   the fast-forwarded one is copied back and listed, and each locally deleted</span>
+<span class="c1">#   file is deleted again and listed. A refused fast-forward copies every aside</span>
+<span class="c1">#   file back, deletes the deleted ones again and exits 1. `rm` touches only its</span>
+<span class="c1">#   own directory under `$TMPDIR` and the locally deleted files. One command per</span>
+<span class="c1">#   step under `set -e`, never an `&amp;&amp;` list across steps.</span>
 <span class="c1"># @exitcode 0 Fast-forwarded; the restored files are listed.</span>
 <span class="c1"># @exitcode 1 The fetch or the fast-forward failed; every local file is back in place.</span>
 <span class="c1"># @example</span>
@@ -4200,10 +4202,14 @@
 git<span class="w"> </span>fetch<span class="w"> </span>-q<span class="w"> </span>origin<span class="w"> </span>main
 <span class="nv">aside</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TMPDIR</span><span class="k">:-</span><span class="p">/tmp</span><span class="si">}</span><span class="s2">/ff-aside.XXXXXX"</span><span class="k">)</span><span class="s2">"</span>
 <span class="c1"># A step that fails before the copy-back leaves the moved files where this line says.</span>
-<span class="nb">trap</span><span class="w"> </span><span class="s1">'echo "ff-main: stopped; the moved files are in ${aside}" &gt;&amp;2'</span><span class="w"> </span>ERR
-<span class="nv">modified</span><span class="o">=()</span>
+<span class="nb">trap</span><span class="w"> </span><span class="s1">'echo "ff-main: stopped; the moved files are in ${aside}, the deleted ones restored: ${deleted[*]:-none}" &gt;&amp;2'</span><span class="w"> </span>ERR
+<span class="nv">modified</span><span class="o">=()</span><span class="w"> </span><span class="nv">deleted</span><span class="o">=()</span>
 <span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-d<span class="w"> </span><span class="s1">''</span><span class="w"> </span>f<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="nv">modified</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">modified</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">deleted</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>git<span class="w"> </span>diff<span class="w"> </span>-z<span class="w"> </span>--name-only<span class="o">)</span>
 <span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-d<span class="w"> </span><span class="s1">''</span><span class="w"> </span>f<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>git<span class="w"> </span>cat-file<span class="w"> </span>-e<span class="w"> </span><span class="s2">"origin/main:</span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -4220,6 +4226,7 @@ git<span class="w"> </span>fetch<span class="w"> </span>-q<span class="w"> </spa
 <span class="w">        </span><span class="nv">tracked</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="k">done</span>
+<span class="nv">tracked</span><span class="o">+=(</span><span class="si">${</span><span class="nv">deleted</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">deleted</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="o">)</span>
 <span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${#</span><span class="nv">tracked</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>git<span class="w"> </span>checkout<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tracked</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="k">fi</span>
@@ -4231,6 +4238,12 @@ git<span class="w"> </span>merge<span class="w"> </span>-q<span class="w"> </spa
 <span class="w">        </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">        </span>cp<span class="w"> </span>-p<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">aside</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"restored: </span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="k">done</span>
+<span class="k">for</span><span class="w"> </span>f<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">deleted</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">deleted</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>rm<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"deleted: </span><span class="si">${</span><span class="nv">f</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="k">done</span>
 rm<span class="w"> </span>-r<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">aside</span><span class="si">}</span><span class="s2">"</span>

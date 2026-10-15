@@ -1015,22 +1015,25 @@ class OrchestratorToolsTest(unittest.TestCase):
 
     def test_fill_sweep_selects_a_null_url_status_by_source_and_check(self):
         # The a05 record's owned rows audit:e9404a6:2 and audit:39c186a:2: a status whose url is JSON null gets an
-        # evidence command that selects it, not `select(.url == "None")`.
+        # evidence command that selects it, not `select(.url == "None")`; PR #368 thread 4280648512: its context is
+        # external, so a quote in it neither ends the jq argument nor runs the rest as shell code.
         item = {
             "source": "status",
             "url": None,
-            "check": "CodeRabbit",
+            "check": "Code'Rabbit\" $(touch pwned); touch pwned",
             "body": "CodeRabbit: skipped",
             "level": "success",
         }
         sweep = self.sweep([item])
         self.fill_sweep(sweep, self.write("c.json", "[]"), "--orchestrator-login", "o")
         [filled] = json.loads(sweep.read_text())["items"]
-        command = f"""jq '.items[] | select(.source == "status" and .check == "CodeRabbit")' {sweep}"""
-        self.assertEqual(f"not-applicable:CI status, no finding; evidence={command}", filled["disposition"])
-        # The command, replayed, shows the item.
-        shown = subprocess.run(["bash", "-c", command], capture_output=True, text=True, check=True).stdout
-        self.assertEqual(filled, json.loads(shown))
+        reason, command = filled["disposition"].split("; evidence=")
+        self.assertEqual("not-applicable:CI status, no finding", reason)
+        self.assertTrue(command.startswith("jq --argjson s "), command)
+        # The command, replayed, shows the item and nothing else runs.
+        shown = subprocess.run(["bash", "-c", command], cwd=self.temp, capture_output=True, text=True, check=True)
+        self.assertEqual(filled, json.loads(shown.stdout))
+        self.assertFalse((self.temp / "pwned").exists())
 
     # orch-audit.sh
 

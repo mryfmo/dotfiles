@@ -14,6 +14,7 @@ disposition; otherwise exit 1.
 import collections
 import json
 import re
+import shlex
 import sys
 from pathlib import Path
 
@@ -74,10 +75,9 @@ def main(argv):
             source = "codex_review"
         show = f"{EVIDENCE}jq '.items[] | select(.url == \"{item.get('url')}\")' {sweep_path}"
         if item.get("url") is None:  # a JSON null url (a status without a target): select by source and check
-            check = json.dumps(item.get("check"))
-            show = (
-                f"{EVIDENCE}jq '.items[] | select(.source == {json.dumps(source)} and .check == {check})' {sweep_path}"
-            )
+            # The values are external, so they reach jq as shell-quoted --argjson values, never as shell or jq code.
+            s, c = (shlex.quote(json.dumps(item.get(k))) for k in ("source", "check"))
+            show = f"{EVIDENCE}jq --argjson s {s} --argjson c {c} '.items[] | select(.source == $s and .check == $c)' {sweep_path}"
         if cid is None:
             show = f"{EVIDENCE}jq '.items[{n}]' {sweep_path}"
         level = item.get("level")

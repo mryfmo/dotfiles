@@ -15,7 +15,7 @@ You draw one thing: the project map. Nothing else.
 
 ## Writes
 
-- Write only inside `<repo>/.project-map/`: `index.html` and `state.json`. Write `index.html` and `state.json` with the Write or Edit tool, never through Bash (a heredoc or a redirect), so the session's PostToolUse hook sees the write and reloads the pane.
+- Write only inside `<repo>/.project-map/`: `index.html` and `state.json`. Write `index.html` and `state.json` with the Write or Edit tool, never through Bash (a heredoc or a redirect), so the session's PostToolUse hook opens its own pane in a right split using half the width at the first map write when absent, never merging it into a neighbouring terminal-browser, and reloads it at every later write; no seat and no human opens or refreshes it.
 - One exception: when `.gitignore` has no `.project-map/` line, append one.
 - Your own agent memory (MEMORY.md and the files beside it, outside the repository) is the other permitted write; nothing else.
 - Never launch a browser, take a screenshot, or start any process that writes elsewhere; verify the HTML by reading it.

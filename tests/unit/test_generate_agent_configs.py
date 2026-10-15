@@ -1640,13 +1640,116 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         check=False,
                     )
                     self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+                    expected_browser_calls = ["ls --all --json"] if listed else []
+                    if name in {"no browser", "no map tab", "null target", "invalid port", "invalid target"}:
+                        expected_browser_calls.append(f"open {map_path} --split right --size 0.5 --no-merge")
                     self.assertEqual(
                         browser_calls.read_text().splitlines() if browser_calls.exists() else [],
-                        ["ls --all --json"] if listed else [],
+                        expected_browser_calls,
                     )
                     self.assertEqual(
                         agent_calls.read_text().splitlines() if agent_calls.exists() else [],
                         (tab_call + eval_call)[: call_count * 6],
+                    )
+
+    def test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map(self) -> None:
+        hook = ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            browser_calls = root / "browser-calls"
+            agent_calls = root / "agent-calls"
+            browser = root / "terminal-browser"
+            browser.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys\n"
+                "with open(os.environ['BROWSER_CALLS'], 'a') as out:\n"
+                "    out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                "if sys.argv[1:] == ['ls', '--all', '--json']:\n"
+                "    print(os.environ['BROWSER_LISTING'])\n"
+                "else:\n"
+                "    print('open stdout')\n"
+                "    print('open stderr', file=sys.stderr)\n"
+                "    sys.exit(int(os.environ['OPEN_EXIT']))\n"
+            )
+            browser.chmod(0o755)
+            agent = root / "agent-browser"
+            agent.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys\n"
+                "with open(os.environ['AGENT_CALLS'], 'a') as out:\n"
+                "    out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+            )
+            agent.chmod(0o755)
+            jq = shutil.which("jq")
+            self.assertIsNotNone(jq)
+            (root / "jq").symlink_to(jq)
+            map_path = str(root / "map with spaces/.project-map/index.html")
+            no_map = {
+                "self": {},
+                "browsers": [
+                    {
+                        "cdpPort": 9222,
+                        "tabs": [
+                            {"url": "https://example.com/", "targetId": "OTHER-TARGET"},
+                        ],
+                    }
+                ],
+            }
+            map_listing = {
+                "self": {},
+                "browsers": [
+                    {
+                        "cdpPort": 9222,
+                        "tabs": [
+                            {"url": "file://" + map_path, "targetId": "MAP-CDP-TARGET"},
+                        ],
+                    }
+                ],
+            }
+            cases = [
+                ("no map", json.dumps(no_map), "0", True, False),
+                ("open failure", json.dumps(no_map), "1", True, False),
+                ("map tab", json.dumps(map_listing), "0", False, True),
+                ("no browser", json.dumps({"self": {}, "browsers": []}), "0", True, False),
+                ("malformed listing", "{", "0", False, False),
+            ]
+            for name, listing, open_exit, opened, reloaded in cases:
+                with self.subTest(case=name):
+                    browser_calls.unlink(missing_ok=True)
+                    agent_calls.unlink(missing_ok=True)
+                    result = subprocess.run(
+                        ["/bin/bash", str(hook)],
+                        input=json.dumps({"tool_name": "Write", "tool_input": {"file_path": map_path}}),
+                        text=True,
+                        capture_output=True,
+                        env={
+                            **os.environ,
+                            "PATH": str(root),
+                            "BROWSER_CALLS": str(browser_calls),
+                            "AGENT_CALLS": str(agent_calls),
+                            "BROWSER_LISTING": listing,
+                            "OPEN_EXIT": open_exit,
+                            "TERMINAL_BROWSER_AGENT": str(agent),
+                        },
+                        check=False,
+                    )
+                    self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+                    expected_browser = [["ls", "--all", "--json"]]
+                    if opened:
+                        expected_browser.append(["open", map_path, "--split", "right", "--size", "0.5", "--no-merge"])
+                    self.assertEqual(
+                        [json.loads(line) for line in browser_calls.read_text().splitlines()], expected_browser
+                    )
+                    self.assertEqual(
+                        [json.loads(line) for line in agent_calls.read_text().splitlines()]
+                        if agent_calls.exists()
+                        else [],
+                        [
+                            ["--cdp", "9222", "--session", "project-map-reload", "tab", "MAP-CDP-TARGET"],
+                            ["--cdp", "9222", "--session", "project-map-reload", "eval", "location.reload()"],
+                        ]
+                        if reloaded
+                        else [],
                     )
 
     def test_claude_settings_renders_session_start_hooks(self) -> None:

@@ -2,7 +2,10 @@
 
 # @file home/dot_claude/hooks/executable_project-map-reload.sh
 # @brief Reload the visible project map after a Claude file edit.
-# @description Pass CDP on both calls to avoid terminal-browser issue 60.
+# @description
+#   Pass CDP on both calls to avoid terminal-browser issue 60.
+#   Open a separate right split using half the width when the parsed listing yields no map tab.
+#   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.
 # @exitcode 0 Always, including unavailable tools or browsers.
 
 file_path=$(jq -r '.tool_input.file_path // empty' 2>/dev/null) || exit 0
@@ -18,7 +21,10 @@ selection=$(jq -r '
      | select(.targetId | strings | test("^[A-Za-z0-9][A-Za-z0-9_-]*$"))
      | [$port, .targetId]] | .[0] // empty | @tsv
 ' <<< "$listing" 2>/dev/null) || exit 0
-[[ -n "$selection" ]] || exit 0
+if [[ -z "$selection" ]]; then
+    terminal-browser open "$file_path" --split right --size 0.5 --no-merge >/dev/null 2>&1
+    exit 0
+fi
 IFS=$'\t' read -r port target_id <<< "$selection"
 
 agent="${TERMINAL_BROWSER_AGENT:-$HOME/.local/share/terminal-browser/app/agent-browser/bin/agent-browser}"

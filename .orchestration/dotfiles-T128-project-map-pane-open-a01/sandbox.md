@@ -1,0 +1,5 @@
+# Sandbox
+
+All work ran inside this Codex seat's existing workspace-write sandbox with no escalation. Only the four allowed source/test paths and this task evidence directory changed. The prior merged hook branch was left untouched; git fetch and git switch -c feat/project-map-pane-open --no-track origin/main succeeded from a clean tree, and e3006da7 ancestry was checked. Git printed shared packed-refs.lock permission messages during the successful switch; shared config was not edited.
+
+The dispatched task is read from the main checkout and copied byte-for-byte here. .agents is read-only, so timestamped plan/todo files are uncommitted under this allowed directory, as notified to the orchestrator. uv uses the supported UV_CACHE_DIR=/private/tmp/codex-dot-a004-uv setting. Browser and agent subprocesses in tests are temporary stubs; terminal-browser was only invoked for open --help, not to open a real pane. No permission-gated commands, browser Crit server, model change or global configuration changes occurred.

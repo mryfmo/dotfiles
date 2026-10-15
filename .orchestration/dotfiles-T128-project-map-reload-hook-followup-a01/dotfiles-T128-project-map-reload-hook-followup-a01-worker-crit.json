@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T128-project-map-reload-hook-followup-a01-independent-review",
+    "body": "Independent read-only review found no remaining defects in the hook and generator-test diff against base04590ae9a032372a7eb6e06650ac96bf3eb05c67. Both calls pin the session, closing eval-only ordering race; strengthened regression test proves prior implementation fails. Actual JavaScript guard executed with Node; target validation rejects command names, invalid lengths, nonhex and trailing newlines. Pane-open behavior preserved. Final80 tests, ShellCheck and source diff whitespace checks pass. Approval covers three owned rows, excluding separately owned exact-map selection. Fresh pinned attach without saved binding creates blank tab and pin persists; report discloses both. No live browser, daemon recovery, Claude delivery or CI was reviewed.",
+    "scope": "review",
+    "resolved": true
+  }
+]

@@ -224,3 +224,47 @@ R2 interpreter resolved after the checkout: killed (FAILED (failures=1))
 R3 no env -S: killed (FAILED (failures=1, errors=1))
 mutants 3/3 killed; file restored: True
 ```
+
+## 9. Revise round 3 (`afd36bb8`): the env -S arguments
+
+The ACCEPTANCE `status=revise` of 06:12:13Z (previous head `850fc54e`) carries the local review's P2 at local-review.sh:91-92: the shebang branch kept only the first word after `env -S`. The rest of the line is now split into words, and the run is the interpreter, those words, the binary, then the review arguments. A plain `env NAME` shebang is unchanged.
+
+```text
+$ UV_OFFLINE=1 uv run --no-project python -m unittest -v tests.unit.test_chain_review_scripts
+test_local_advisory_records_p2_rows_and_stops_on_p0_p1 ... ok
+test_local_review_and_local_advisory_refuse_a_task_or_head_that_leaves_their_directory ... ok
+test_local_review_keeps_env_S_shebang_arguments ... ok
+test_local_review_pins_the_review_binary_interpreter ... ok
+test_local_review_resolves_codex_through_mise_and_refuses_a_shim ... ok
+test_local_review_resolves_the_review_binary_before_the_checkout ... ok
+test_local_review_reuses_only_a_file_that_records_this_head ... ok
+test_local_review_runs_the_review_binary_read_only_at_the_head_and_writes_one_file ... ok
+test_local_review_strips_a_worktree_path_holding_sed_syntax_literally ... ok
+test_local_review_writes_no_file_when_the_review_binary_fails ... ok
+test_sandbox_scan_prints_the_unsandboxed_mutation_calls ... ok
+Ran 11 tests in 7.691s
+OK
+(rc=0)
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests.unit.test_chain_github_scripts tests.unit.test_orchestrator_tools tests.unit.test_orch_gate_path
+Ran 54 tests in 36.306s
+
+OK
+(rc=0)
+$ shellcheck scripts/orchestrator/local-review.sh; shfmt --indent 4 --space-redirects -d scripts/orchestrator/local-review.sh
+(rc=0)
+$ ruff check tests/unit/test_chain_review_scripts.py; ruff format --check tests/unit/test_chain_review_scripts.py
+All checks passed!
+1 file already formatted
+(rc=0)
+$ git diff --numstat origin/main...HEAD -- . ':!.orchestration'
+7	2	scripts/orchestrator/local-advisory.sh
+72	19	scripts/orchestrator/local-review.sh
+170	6	tests/unit/test_chain_review_scripts.py
+files: 3; changed lines outside tests/ and .orchestration/: 100; added under tests/: 170
+```
+
+The check `test_local_review_keeps_env_S_shebang_arguments` uses a stub binary whose first line is `#!/usr/bin/env -S fakeinterp --flag x`. The stub interpreter records `<its path> --flag x <binary> --profile review -s read-only review --base main`. The round-2 test's `-S interp --flag` stub now receives `--flag`, as env -S passes it, and its expectation says so.
+
+```text
+T1 the -S words dropped (round 2's behaviour) -> test_local_review_keeps_env_S_shebang_arguments: killed (FAILED (failures=1)); file restored: True
+```

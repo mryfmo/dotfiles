@@ -92,6 +92,13 @@ The main-checkout `memory add` runs after CI. Its command and output go into the
 - **Size after the round.** 95 changed lines outside `tests/` and `.orchestration/` (of 200), 145 added under `tests/` (of 1000), 3 files.
 - **No new Bot wait**, as the revise says.
 
+## Revise round 3 (`afd36bb8`)
+
+- **The finding.** The local review's P2 on `850fc54e` (local-review.sh:91-92): `env -S NAME ARG` ran without `ARG`.
+- **The fix.** The rest of the shebang line after NAME is split into words when the `-S` form is used. The run becomes the interpreter, those words, the binary, then the review arguments. A plain `env NAME` is unchanged. The header sentence says so.
+- **The test.** `test_local_review_keeps_env_S_shebang_arguments`, the revise's check. The round-2 test's expectation now includes the `--flag` word its `-S` stub passes. The mutant restoring round 2's behaviour is killed (validation §9).
+- **Size after the round.** 100 changed lines outside `tests/` and `.orchestration/` (of 200), 170 added under `tests/`, 3 files.
+
 ## Bot and CI
 
 The PR opens after this evidence commit. The CI result and the Bot's review go into the main-checkout copy and the RESULT.

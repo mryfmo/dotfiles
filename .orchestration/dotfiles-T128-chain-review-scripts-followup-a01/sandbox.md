@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-chain-review-scripts-followup-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 15
+permission_gated_commands: 19
 ---
 
 # Sandbox record: dotfiles-T128-chain-review-scripts-followup-a01
@@ -36,3 +36,11 @@ Period: from the AGMSG-TASK (2026-10-15T04:24:59Z) to the RESULT. These ran insi
 | 12 | the round-2 sections copied into the main-checkout records, masked again | artifact copy with the repository masker |
 | 13 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-review-scripts-followup-a01 round=2 …` | `agmsg-dispatch` |
 
+**Revise round 3.** It adds rows 14 to 17, counted in advance. Round 2's main-checkout copy records its own extra call, 11a, the second CI watch.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| 14 | the HTTPS push of round 3's head | `git push` |
+| 15 | `gh pr checks 364 --watch` on that head (no Bot wait) | `gh` |
+| 16 | the round-3 sections copied into the main-checkout records, masked again | artifact copy with the repository masker |
+| 17 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-review-scripts-followup-a01 round=3 …` | `agmsg-dispatch` |

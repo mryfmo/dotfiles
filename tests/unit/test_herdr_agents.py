@@ -3208,6 +3208,134 @@ exit {exit_code}
         self.assertEqual(indexes, sorted(indexes), calls)
         self.assertTrue(worktree.is_dir())
 
+    def write_pane_state_fakes(self, record: Path, state: str) -> None:
+        """Fake agmsg_spawn_path (appended to lib/actas-lock.sh) and lib/terminal-registry.sh.
+
+        The record names pane wA:p9 of a herdr socket; terminal_pane_state prints the chosen state.
+        """
+        lib = self.home_dir / ".agents/skills/agmsg/scripts/lib"
+        lib.mkdir(parents=True, exist_ok=True)
+        record.parent.mkdir(parents=True, exist_ok=True)
+        record.write_text(f"herdr:{self.temp_dir}/herdr.sock:wA:p9\tworktree\tclaude-code\n")
+        actas = lib / "actas-lock.sh"
+        actas.write_text(
+            (actas.read_text() if actas.exists() else "") + f'agmsg_spawn_path() {{ printf "%s\\n" "{record}"; }}\n'
+        )
+        (lib / "terminal-registry.sh").write_text(
+            'agmsg_terminal_ref_terminal() { printf "%s\\n" "${1%%:*}"; }\n'
+            'agmsg_terminal_ref_id() { printf "%s\\n" "${1#*:}"; }\n'
+            "agmsg_terminal_load() { [[ $1 == herdr ]]; }\n"
+            f'terminal_pane_state() {{ printf "%s\\n" "{state}"; }}\n'
+        )
+
+    def test_attach_names_stale_seats(self) -> None:
+        # M-20261015-01: the orchestrator's attach names a seated worker whose pane is gone.
+        self.install_orchestrator_seat_fakes()
+        git = ["git", "-C", str(self.workdir), "-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "init"], check=True, capture_output=True)
+        worktree = self.workdir.resolve() / ".claude/worktrees/b1"
+        subprocess.run([*git, "worktree", "add", "-q", "--detach", str(worktree)], check=True, capture_output=True)
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        (scripts / "identities.sh").write_text(
+            f"""#!/usr/bin/env bash
+[[ $2 == claude-code ]] || exit 0
+case "$1" in
+{worktree}) printf 'dotfiles\\tclaude-standard-dot-a007\\n' ;;
+{self.workdir.resolve()}) printf 'dotfiles\\tclaude-remediation-dot\\n' ;;
+esac
+"""
+        )
+        env = {"CLAUDE_CODE_SESSION_ID": "sid-self", "CLAUDE_PID": "777", "AGMSG_AGENT_PID": ""}
+        for state, expected in (
+            ("gone", ["seat_claim=ok owner=sid-self.777", "seat_stale=.claude/worktrees/b1"]),
+            ("present", ["seat_claim=ok owner=sid-self.777"]),
+            ("unknown", ["seat_claim=ok owner=sid-self.777"]),
+        ):
+            with self.subTest(state=state):
+                self.write_pane_state_fakes(self.home_dir / ".agents/skills/agmsg/run/spawn.b1", state)
+                result = self.run_attach_helper(in_herdr=True, managed_layout=True, extra_env=env)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(expected, result.stdout.splitlines())
+        with self.subTest("a worker pane's SessionStart stays quiet"):
+            self.write_pane_state_fakes(self.home_dir / ".agents/skills/agmsg/run/spawn.b1", "gone")
+            self.pane_list_path.write_text(
+                json.dumps(
+                    {"result": {"panes": [{"pane_id": "w-attach:p1", "label": "dotfiles:claude-standard-dot-a007"}]}}
+                )
+                + "\n"
+            )
+            result = self.run_attach_helper(in_herdr=True, managed_layout=True, extra_env=env)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(["seat_claim=skipped reason=not-orchestrator-pane"], result.stdout.splitlines())
+
+    def test_remove_worker_stale_retires_a_seat_whose_pane_is_gone(self) -> None:
+        # M-20261015-01: --stale skips the despawn for a gone pane and moves the record aside; any other
+        # state is refused with nothing changed.
+        self.write_worktree_seat(
+            main_identities="dotfiles\tclaude-remediation-dot",
+            worktree_identities="dotfiles\tclaude-standard-dot-a007",
+        )
+        self.write_seat_lifecycle_fakes()
+        worktree = self.add_seat_worktree("b1")
+        run = self.home_dir / ".agents/skills/agmsg/run"
+        record = run / "spawn.dotfiles__claude-standard-dot-a007"
+        self.write_pane_state_fakes(record, "present")
+        refused = self.run_helper("--remove-worker", ".claude/worktrees/b1", "--stale")
+        self.assertEqual(refused.returncode, 2, refused.stdout + refused.stderr)
+        self.assertIn(f"claude-standard-dot-a007 at {worktree} is present, not gone", refused.stderr)
+        main = self.workdir.resolve()
+        looked_up = [
+            "workspace list",
+            f"identities {main} claude-code resolve=0",
+            f"identities {main} claude-code resolve=0",
+            "workspace list",
+            f"identities {main} claude-code resolve=0",
+            f"identities {worktree} claude-code resolve=0",
+            f"identities {worktree} codex resolve=0",
+        ]
+        self.assertEqual(looked_up, self.calls_path.read_text().splitlines())
+        self.assertTrue(record.is_file())
+        self.calls_path.write_text("")
+        self.write_pane_state_fakes(record, "gone")
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1", "--stale")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"Herdr agents worker retired (stale): claude-standard-dot-a007 ({worktree})", result.stdout)
+        retired = [f"delivery set off claude-code {worktree}", "leave dotfiles claude-standard-dot-a007"]
+        self.assertEqual(looked_up + retired, self.calls_path.read_text().splitlines())
+        self.assertFalse(record.exists())
+        moved = list((run / "stale").iterdir())
+        self.assertEqual(1, len(moved), moved)
+        self.assertRegex(moved[0].name, r"^spawn\.dotfiles__claude-standard-dot-a007\.[0-9]{8}T[0-9]{6}Z$")
+
+    def test_remove_worker_stale_keeps_the_record_when_cleanup_fails(self) -> None:
+        # The audit of cb9ea17: a failed leave.sh keeps the record, names the step and exits 1.
+        self.write_worktree_seat(
+            main_identities="dotfiles\tclaude-remediation-dot",
+            worktree_identities="dotfiles\tclaude-standard-dot-a007",
+        )
+        self.write_seat_lifecycle_fakes()
+        worktree = self.add_seat_worktree("b1")
+        leave = self.home_dir / ".agents/skills/agmsg/scripts/leave.sh"
+        leave.write_text(leave.read_text() + "exit 1\n")
+        record = self.home_dir / ".agents/skills/agmsg/run/spawn.dotfiles__claude-standard-dot-a007"
+        self.write_pane_state_fakes(record, "gone")
+        kept = record.read_text()
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1", "--stale")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(
+            "herdr-agents: leave.sh dotfiles claude-standard-dot-a007 failed; "
+            "claude-standard-dot-a007 keeps its placement record.",
+            result.stderr,
+        )
+        self.assertEqual(kept, record.read_text())
+        self.assertFalse((record.parent / "stale").exists())
+        self.assertNotIn("retired (stale)", result.stdout)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(
+            [f"delivery set off claude-code {worktree}", "leave dotfiles claude-standard-dot-a007"],
+            [call for call in calls if call.startswith(("delivery", "leave", "despawn"))],
+        )
+
     def test_remove_worker_closes_only_its_tab_in_the_pair_workspace(self) -> None:
         self.write_worktree_seat(
             main_identities="dotfiles\tclaude-remediation-dot",

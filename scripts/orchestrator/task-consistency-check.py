@@ -33,6 +33,7 @@ C7_NAMES = ROW_UNIT.split("|")
 NONPATH = ("in-process effects", "task metadata", "metadata separators", "workflow and interpreter")
 NONPATH += ("new or renamed scripts", "orchestrator effect")
 C9_NAMES = r"(scripts/[\w./-]+|\b[A-Z][A-Z_]{3,}_EVIDENCE\b|task-consistency-check C\d|\bC\d\b of the task-consistency check|\bclasses:)"
+CHECKER = "scripts/orchestrator/task-consistency-check.py"  # where `task-consistency-check C<n>` lands
 
 
 def front(text):
@@ -113,7 +114,7 @@ def check(p, root):
         if re.search(r"\b(once|until)\b", sent):
             continue
         for n in set(re.findall(C9_NAMES, sent)):
-            probe = n.replace("task-consistency-check ", "scripts/task-consistency-check.py#").split("#")[0]
+            probe = n.replace("task-consistency-check ", f"{CHECKER}#").split("#")[0]
             if probe.startswith("scripts/"):
                 ok = git(root, "cat-file", "-e", f"origin/main:{probe}").returncode == 0
             elif probe.endswith("_EVIDENCE"):

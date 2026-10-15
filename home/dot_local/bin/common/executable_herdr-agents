@@ -54,6 +54,7 @@
 # @option --profile <name> Add-worker model profile. Defaults to the manifest worker_profile.
 # @option --ready-timeout <seconds> Add-worker: spawn.sh readiness wait bound (spawn.sh default 90).
 # @option --force Remove-worker: tear down a dirty worktree's worker and despawn with --force.
+# @option --stale Remove-worker: retire a seat whose pane is gone (no despawn; delivery off, leave, the placement record moved to the run directory's stale/); refused for any other state.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
 # @arg HERDR_AGENTS_WORKER_KIND Add-worker agent kind, `codex` or `claude`. Defaults
 #   to `worker_kind` from the manifest via ~/.agents/model-profiles.env, then
@@ -88,7 +89,7 @@ Usage: herdr-agents [DIR]
        herdr-agents --bootstrap-agmsg [DIR]
        herdr-agents --audit <sha> [--task ID] [--out PATH] [--timeout SECONDS] [DIR]
        herdr-agents --add-worker [<worktree>] [--kind codex|claude] [--profile NAME] [--ready-timeout SECONDS] [DIR]
-       herdr-agents --remove-worker <worktree> [--force] [DIR]
+       herdr-agents --remove-worker <worktree> [--force] [--stale] [DIR]
        herdr-agents --directive
 
 Create a Herdr workspace for DIR with the Claude Code orchestrator pane only,
@@ -150,6 +151,10 @@ socket ~/.config/herdr/herdr.sock (the path the Claude sandbox allowlists), a cl
 waits, and --ready-timeout bounds that wait (spawn.sh default 90 seconds);
 remove-worker mode despawns it, turns its delivery off, leaves its team, and
 closes that tab (or that workspace), refusing a dirty worktree unless --force.
+With --stale it retires a seat whose pane is gone instead (no despawn; its
+placement record is moved under the run directory's stale/), and refuses any
+seat whose pane state is present or unknown; --attach names such seats with
+seat_stale= lines.
 USAGE
 }
 
@@ -704,7 +709,9 @@ function claim_seat_and_print_directive() {
     output="$(claim_orchestrator_seat "$1" "$2" --self)"
     [[ -n ${output} ]] || return 0
     printf '%s\n' "${output}"
-    [[ ${output} == seat_claim=skipped* ]] || print_regime_directive "$1"
+    [[ ${output} != seat_claim=skipped* ]] || return 0
+    print_stale_seats "$1"
+    print_regime_directive "$1"
 }
 
 # @description Derive and validate a herdr 0.8.2 agent registration name.
@@ -938,6 +945,59 @@ function accept_claude_workspace_trust_dialog() {
 
     herdr pane wait-output "${pane_id}" --match 'trust this folder' --timeout "${2:-3000}" > /dev/null 2>&1 || return 1
     herdr pane send-keys "${pane_id}" Down Enter > /dev/null
+}
+
+# @description Print a seated member's pane state, `present`, `gone` or
+#   `unknown`, through its placement record (upstream agmsg_spawn_path) and the
+#   terminal driver's terminal_pane_state, which reads herdr's agent list and
+#   never a pane's content (M-20261015-01). Any failing step, or an answer other
+#   than present or gone, prints unknown, which never retires a seat.
+# @arg $1 string Team.
+# @arg $2 string Member identity.
+function seat_pane_state() {
+    local scripts="${HOME}/.agents/skills/agmsg/scripts" state
+    # shellcheck disable=SC2016 # the inner script expands its own positional args
+    state="$(env SKILL_DIR="${HOME}/.agents/skills/agmsg" bash -c '
+        source "$1/lib/actas-lock.sh" && source "$1/lib/terminal-registry.sh" || exit 1
+        record="$(agmsg_spawn_path "$2" "$3")" && [[ -r ${record} ]] || exit 1
+        ref="$(head -n 1 "${record}" | cut -f 1)"
+        terminal="$(agmsg_terminal_ref_terminal "${ref}")" && id="$(agmsg_terminal_ref_id "${ref}")" || exit 1
+        agmsg_terminal_load "${terminal}" > /dev/null && terminal_pane_state "${id}"' _ "${scripts}" "$1" "$2" 2> /dev/null)" || state=""
+    case "${state}" in
+    present | gone) printf '%s\n' "${state}" ;;
+    *) printf 'unknown\n' ;;
+    esac
+}
+
+# @description Print the placement record path of a member (upstream
+#   agmsg_spawn_path), or nothing.
+# @arg $1 string Team.
+# @arg $2 string Member identity.
+function seat_record_path() {
+    # shellcheck disable=SC2016 # the inner script expands its own positional args
+    env SKILL_DIR="${HOME}/.agents/skills/agmsg" bash -c 'source "$1/lib/actas-lock.sh" && agmsg_spawn_path "$2" "$3"' \
+        _ "${HOME}/.agents/skills/agmsg/scripts" "$1" "$2" 2> /dev/null || true
+}
+
+# @description Print `seat_stale=<worktree>` for each linked worktree of the
+#   main checkout under `.claude/worktrees/` whose first agmsg identity row (of
+#   either type) has a pane that is gone; the despawn path stays the default
+#   for every other seat.
+# @arg $1 workdir Absolute main checkout path.
+function print_stale_seats() {
+    local identities="${HOME}/.agents/skills/agmsg/scripts/identities.sh" worktree row
+    [[ -x ${identities} ]] || return 0
+    while IFS= read -r worktree; do
+        [[ ${worktree} == "$1/.claude/worktrees/"* ]] || continue
+        row="$({
+            AGMSG_RESOLVE_PROJECT=0 "${identities}" "${worktree}" claude-code
+            AGMSG_RESOLVE_PROJECT=0 "${identities}" "${worktree}" codex
+        } 2> /dev/null | head -n 1)" || row=""
+        [[ -n ${row} ]] || continue
+        if [[ $(seat_pane_state "$(cut -f 1 <<< "${row}")" "$(cut -f 2 <<< "${row}")") == gone ]]; then
+            printf 'seat_stale=%s\n' "${worktree#"$1/"}"
+        fi
+    done < <(git -C "$1" worktree list --porcelain 2> /dev/null | sed -n 's/^worktree //p')
 }
 
 # @description Verify that a freshly seated worker is reachable, as the
@@ -1569,6 +1629,7 @@ seat_worktree=""
 seat_kind=""
 seat_profile=""
 seat_force=false
+seat_stale=false
 seat_ready_timeout=""
 if [[ ${1:-} == "--attach" ]]; then
     attach_mode=true
@@ -1617,7 +1678,7 @@ elif [[ ${1:-} == "--add-worker" || ${1:-} == "--remove-worker" ]]; then
         seat_worktree="$1"
         shift
     fi
-    while [[ ${1:-} == "--kind" || ${1:-} == "--profile" || ${1:-} == "--ready-timeout" || ${1:-} == "--force" ]]; do
+    while [[ ${1:-} == "--kind" || ${1:-} == "--profile" || ${1:-} == "--ready-timeout" || ${1:-} == "--force" || ${1:-} == "--stale" ]]; do
         case "$1" in
         --kind | --profile | --ready-timeout)
             if [[ ${add_worker_mode} != true || $# -lt 2 ]]; then
@@ -1637,6 +1698,14 @@ elif [[ ${1:-} == "--add-worker" || ${1:-} == "--remove-worker" ]]; then
                 exit 2
             fi
             seat_force=true
+            shift
+            ;;
+        --stale)
+            if [[ ${remove_worker_mode} != true ]]; then
+                usage >&2
+                exit 2
+            fi
+            seat_stale=true
             shift
             ;;
         esac
@@ -1844,22 +1913,64 @@ if [[ ${remove_worker_mode} == true ]]; then
     fi
     leader="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" "${orchestrator_agmsg_type}" 2> /dev/null |
         awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || leader=""
+    seat_rows=()
     for seat_type in claude-code codex; do
         while IFS=$'\t' read -r seat_team seat_name; do
-            [[ -n ${seat_name} ]] || continue
-            if [[ -z ${leader} || ${leader} == *$'\n'* ]]; then
-                printf 'herdr-agents: need exactly one orchestrator %s identity at %s to despawn %s.\n' "${orchestrator_agmsg_type}" "${workdir}" "${seat_name}" >&2
+            [[ -n ${seat_name} ]] && seat_rows+=("${seat_type}"$'\t'"${seat_team}"$'\t'"${seat_name}")
+        done < <(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat_dir}" "${seat_type}" 2> /dev/null | sort -u)
+    done
+    for row in ${seat_rows[@]+"${seat_rows[@]}"}; do
+        if [[ -z ${leader} || ${leader} == *$'\n'* ]]; then
+            printf 'herdr-agents: need exactly one orchestrator %s identity at %s to despawn %s.\n' "${orchestrator_agmsg_type}" "${workdir}" "${row##*$'\t'}" >&2
+            exit 2
+        fi
+    done
+    # --stale retires only seats whose panes are gone (M-20261015-01): every
+    # row's state is read before anything changes.
+    if [[ ${seat_stale} == true ]]; then
+        for row in ${seat_rows[@]+"${seat_rows[@]}"}; do
+            IFS=$'\t' read -r seat_type seat_team seat_name <<< "${row}"
+            state="$(seat_pane_state "${seat_team}" "${seat_name}")"
+            if [[ ${state} != gone ]]; then
+                printf 'herdr-agents: %s at %s is %s, not gone; use --remove-worker without --stale.\n' "${seat_name}" "${seat_dir}" "${state}" >&2
                 exit 2
             fi
-            if ! despawn_worker_seat "${seat_team}" "${leader}" "${seat_name}"; then
-                printf 'herdr-agents: despawn of %s did not complete; re-run with --force.\n' "${seat_name}" >&2
+        done
+    fi
+    for row in ${seat_rows[@]+"${seat_rows[@]}"}; do
+        IFS=$'\t' read -r seat_type seat_team seat_name <<< "${row}"
+        if [[ ${seat_stale} == true ]]; then
+            # The record moves out of the spawn.* scan, kept as evidence, never deleted.
+            record="$(seat_record_path "${seat_team}" "${seat_name}")"
+        elif ! despawn_worker_seat "${seat_team}" "${leader}" "${seat_name}"; then
+            printf 'herdr-agents: despawn of %s did not complete; re-run with --force.\n' "${seat_name}" >&2
+            exit 1
+        fi
+        if [[ ${seat_stale} == true ]]; then
+            # The record is the only trace of a dead seat, so it moves only after both steps succeed: a failed
+            # step keeps it for the retry (the audit of cb9ea17).
+            if ! "${scripts}/delivery.sh" set off "${seat_type}" "${seat_dir}" > /dev/null 2>&1; then
+                printf 'herdr-agents: delivery.sh set off %s %s failed; %s keeps its placement record.\n' "${seat_type}" "${seat_dir}" "${seat_name}" >&2
                 exit 1
             fi
+            if ! "${scripts}/leave.sh" "${seat_team}" "${seat_name}" > /dev/null 2>&1; then
+                printf 'herdr-agents: leave.sh %s %s failed; %s keeps its placement record.\n' "${seat_team}" "${seat_name}" "${seat_name}" >&2
+                exit 1
+            fi
+        else
             "${scripts}/delivery.sh" set off "${seat_type}" "${seat_dir}" > /dev/null 2>&1 || true
             "${scripts}/leave.sh" "${seat_team}" "${seat_name}" > /dev/null 2>&1 || true
-            [[ -z ${pair_workspace_id} ]] || close_worker_tab "${pair_workspace_id}" "${seat_team}:${seat_name}"
+        fi
+        if [[ ${seat_stale} == true && -n ${record} && -e ${record} ]]; then
+            mkdir -p "$(dirname -- "${record}")/stale"
+            mv -- "${record}" "$(dirname -- "${record}")/stale/$(basename -- "${record}").$(date -u +%Y%m%dT%H%M%SZ)"
+        fi
+        [[ -z ${pair_workspace_id} ]] || close_worker_tab "${pair_workspace_id}" "${seat_team}:${seat_name}"
+        if [[ ${seat_stale} == true ]]; then
+            printf 'Herdr agents worker retired (stale): %s (%s)\n' "${seat_name}" "${seat_dir}"
+        else
             printf 'Herdr agents worker removed: %s (%s)\n' "${seat_name}" "${seat_dir}"
-        done < <(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat_dir}" "${seat_type}" 2> /dev/null | sort -u)
+        fi
     done
     [[ -z ${seat_workspace_id} ]] || herdr workspace close "${seat_workspace_id}" > /dev/null
     exit 0

@@ -1,0 +1,5 @@
+task_id: dotfiles-T128-seat-liveness-a01
+round: 2
+previous_head: cb9ea17cd7aed296825b6641a4cb1fc18f9d8206
+check: tests/unit/test_herdr_agents.py::test_remove_worker_stale_keeps_the_record_when_cleanup_fails
+reason: the audit's P2 on cb9ea17 at executable_herdr-agents:1950 (a suppressed leave.sh or delivery.sh failure on the --stale path still moved the record) and its P3 on validation.md:33 (the baseline claim without the pasted names)

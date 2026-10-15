@@ -1,0 +1,67 @@
+[
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 42
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 38
+          },
+          "location": {
+            "column": 13,
+            "row": 38
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 40
+          },
+          "location": {
+            "column": 13,
+            "row": 39
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 34
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 34,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  }
+]

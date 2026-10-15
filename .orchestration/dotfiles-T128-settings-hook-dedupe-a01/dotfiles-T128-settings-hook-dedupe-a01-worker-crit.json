@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T128-settings-hook-dedupe-a01-independent-review",
+    "body": "Independent read-only review found no defects within the task-prescribed basename-matching contract. The two-file diff reuses existing managed-entry merging without changing shared functions. Tests cover stale-plus-managed duplicates, stale alone, mixed custom hooks, absent key, unrelated commands, malformed quoting and nonstring commands. Task SHA matches; all20 tests and diff whitespace check pass. Approval does not claim preservation of custom commands colliding with managed basenames or completion of render-check/formatting/CI at review time. Native Ruff format subsequently passed with two baseline-identical lint diagnostics and zero new; source did not change. No installed settings or remote CI was exercised.",
+    "scope": "review",
+    "resolved": true
+  }
+]

@@ -370,6 +370,35 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             ],
         )
 
+    def test_managed_post_tool_use_replaces_stale_format_only_entry(self) -> None:
+        format_hook = {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"}
+        reload_hook = {"type": "command", "command": "~/.claude/hooks/project-map-reload.sh"}
+        custom_hook = {"type": "command", "command": "~/bin/my-hook.sh"}
+        managed_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook, reload_hook]}
+        stale_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook]}
+        mixed_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook, custom_hook]}
+        cases = [
+            ("stale and managed", [stale_entry, managed_entry], [managed_entry]),
+            ("stale alone", [stale_entry], [managed_entry]),
+            (
+                "mixed custom command",
+                [mixed_entry],
+                [{"matcher": "Write|Edit|MultiEdit", "hooks": [custom_hook]}, managed_entry],
+            ),
+            ("absent key", None, [managed_entry]),
+        ]
+        for command in ("~/bin/my-hook.sh", "'unterminated", None):
+            unmanaged = {"matcher": "Bash", "hooks": [{"type": "command", "command": command}]}
+            cases.append(("unmanaged command", [unmanaged, stale_entry], [unmanaged, managed_entry]))
+        for name, current_entries, expected in cases:
+            with self.subTest(case=name, entries=current_entries):
+                current_hooks = {} if current_entries is None else {"PostToolUse": current_entries}
+                output = self.merge(
+                    {"hooks": {"PostToolUse": [managed_entry]}},
+                    json.dumps({"hooks": current_hooks}),
+                )
+                self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], expected)
+
     def test_managed_hook_object_key_order_is_preserved(self) -> None:
         managed = {
             "enabledPlugins": {},

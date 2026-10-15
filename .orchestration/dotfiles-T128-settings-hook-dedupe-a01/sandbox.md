@@ -1,0 +1,5 @@
+# Sandbox
+
+All work stayed in the current Codex workspace-write sandbox; no escalation. Only the two allowed source/test paths and this task evidence directory were written. The existing worktree is explicitly named by the task; prior completed tasks' untracked worklogs/result records and branch histories are preserved. Fresh branch fix/managed-post-tool-use-dedupe starts at shared origin/main59599783, which equals canonical main. Fetch failed DNS before branch creation; it did not change refs. Git packed-refs.lock warnings were nonfatal on the successful switch and shared config was not edited.
+
+.agents is read-only, so timestamped plan/todo remain uncommitted in this allowed evidence directory. uv uses UV_CACHE_DIR=/private/tmp/codex-dot-a004-uv; supported offline mode was attempted for unavailable dependencies. No cache fabrication, policy/config edits or network workaround. Native already-installed Ruff was invoked through uv without dependency installation. Herdr socket operations are denied under current permissions, so agmsg replies are stored with provided send.sh without wake. Installed settings/home state are unchanged.

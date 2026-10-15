@@ -4190,7 +4190,7 @@
 
 
 <h1 id="scriptsorchestratorresolve-threadssh">scripts/orchestrator/resolve-threads.sh<a class="headerlink" href="#scriptsorchestratorresolve-threadssh" title="Permanent link">&para;</a></h1>
-<p>Plan 021 step 6.3, the chain step behind the ruleset's required_review_thread_resolution. One GraphQL query reads the first 100 review threads of the PR. Each unresolved thread is keyed on its first comment's database id, and its disposition is the row of the table whose first column is that id, else, when a sweep JSON is given, the <code>disposition</code> of the sweep item whose <code>url</code> ends with <code>_r&lt;id&gt;</code>. A <code>fixed:</code> or <code>not-applicable:</code> disposition gets one reply in its fixed sentence and one resolveReviewThread mutation. A thread without a disposition, or with another form, is reported and left open. <code>--dry-run</code> prints what would be done and writes nothing. gh runs with the orchestrator's credentials, so this runs outside the sandbox.</p>
+<p>Plan 021 step 6.3, the chain step behind the ruleset's required_review_thread_resolution. One GraphQL query reads the first 100 review threads of the PR. Each unresolved thread is keyed on its first comment's database id, and its disposition is the row of the table whose first column is that id, else, when a sweep JSON is given, the <code>disposition</code> of the sweep item whose <code>url</code> ends with <code>_r&lt;id&gt;</code>. A <code>fixed:</code> or <code>not-applicable:</code> disposition gets one reply in its fixed sentence, the disposition in backticks as fill_sweep.py reads a reply back, and one resolveReviewThread mutation, the thread id passed as a GraphQL variable; the thread counts as resolved only when the mutation answers <code>isResolved</code> true. A thread without a disposition, with another form, or not answered true is reported and left open. <code>--dry-run</code> prints what would be done and writes nothing. gh runs with the orchestrator's credentials, so this runs outside the sandbox.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/orchestrator/resolve-threads.sh</code></li>
@@ -4210,16 +4210,18 @@
 <span class="c1">#   reads the first 100 review threads of the PR. Each unresolved thread is keyed on its first comment's database</span>
 <span class="c1">#   id, and its disposition is the row of the table whose first column is that id, else, when a sweep JSON is given,</span>
 <span class="c1">#   the `disposition` of the sweep item whose `url` ends with `_r&lt;id&gt;`. A `fixed:` or `not-applicable:` disposition</span>
-<span class="c1">#   gets one reply in its fixed sentence and one resolveReviewThread mutation. A thread without a disposition, or</span>
-<span class="c1">#   with another form, is reported and left open. `--dry-run` prints what would be done and writes nothing. gh runs</span>
-<span class="c1">#   with the orchestrator's credentials, so this runs outside the sandbox.</span>
+<span class="c1">#   gets one reply in its fixed sentence, the disposition in backticks as fill_sweep.py reads a reply back, and one</span>
+<span class="c1">#   resolveReviewThread mutation, the thread id passed as a GraphQL variable; the thread counts as resolved only when</span>
+<span class="c1">#   the mutation answers `isResolved` true. A thread without a disposition, with another form, or not answered true</span>
+<span class="c1">#   is reported and left open. `--dry-run` prints what would be done and writes nothing. gh runs with the</span>
+<span class="c1">#   orchestrator's credentials, so this runs outside the sandbox.</span>
 <span class="c1"># @arg $1 int PR number.</span>
 <span class="c1"># @arg $2 path The disposition table: TSV rows of a comment id and its disposition.</span>
 <span class="c1"># @arg $3 string `--dry-run`, or any placeholder such as `-`.</span>
 <span class="c1"># @arg $4 path The sweep JSON (optional).</span>
 <span class="c1"># @exitcode 0 Every unresolved thread was resolved (under `--dry-run`, would be).</span>
 <span class="c1"># @exitcode 2 Usage error.</span>
-<span class="c1"># @exitcode 3 A thread has no disposition, or one of another form; it is left open.</span>
+<span class="c1"># @exitcode 3 A thread has no disposition, one of another form, or a resolve answer other than true; it is left open.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   scripts/orchestrator/resolve-threads.sh 355 extra.tsv - .orchestration/validation/t-a01-pr-feedback.json</span>
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
@@ -4234,6 +4236,9 @@ usage<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="nv">query</span><span class="o">=</span><span class="s2">"query { repository(owner:\"mryfmo\", name:\"dotfiles\") { pullRequest(number:</span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2">) { reviewThreads(first:100) \</span>
 <span class="s2">{ nodes { id isResolved comments(first:1) { nodes { databaseId } } } } } } }"</span>
 <span class="nv">threads</span><span class="o">=</span><span class="k">$(</span>gh<span class="w"> </span>api<span class="w"> </span>graphql<span class="w"> </span>-f<span class="w"> </span><span class="nv">query</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">query</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--jq<span class="w"> </span><span class="s1">'.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not) | "\(.comments.nodes[0].databaseId) \(.id)"'</span><span class="k">)</span>
+<span class="c1"># The thread id travels as a GraphQL variable, never inside the query text.</span>
+<span class="c1"># shellcheck disable=SC2016 # $threadId is GraphQL's variable, not the shell's</span>
+<span class="nv">resolve</span><span class="o">=</span><span class="s1">'mutation ($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'</span>
 <span class="nv">missing</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">resolved</span><span class="o">=</span><span class="m">0</span>
 <span class="c1"># The threads come in on fd 3, so a command in the loop that reads stdin cannot swallow the rest of them.</span>
 <span class="k">while</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>cid<span class="w"> </span>tid<span class="w"> </span>&lt;<span class="p">&amp;</span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
@@ -4250,10 +4255,10 @@ usage<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>fixed:*<span class="o">)</span>
-<span class="w">        </span><span class="nv">body</span><span class="o">=</span><span class="s2">"Disposition (orchestrator): </span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">. Fixed at root cause in that commit on this branch; verified by \</span>
+<span class="w">        </span><span class="nv">body</span><span class="o">=</span><span class="s2">"Disposition (orchestrator): \`</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">\`. Fixed at root cause in that commit on this branch; verified by \</span>
 <span class="s2">the task's tests and CI on the final head. Resolving."</span>
 <span class="w">        </span><span class="p">;;</span>
-<span class="w">    </span>not-applicable:*<span class="o">)</span><span class="w"> </span><span class="nv">body</span><span class="o">=</span><span class="s2">"Disposition (orchestrator): </span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">. Resolving; the owning task on main carries it."</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>not-applicable:*<span class="o">)</span><span class="w"> </span><span class="nv">body</span><span class="o">=</span><span class="s2">"Disposition (orchestrator): \`</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">\`. Resolving; the owning task on main carries it."</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
 <span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"row for </span><span class="si">${</span><span class="nv">cid</span><span class="si">}</span><span class="s2"> has an unknown form: </span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="nv">missing</span><span class="o">=</span><span class="m">1</span>
@@ -4265,8 +4270,12 @@ usage<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">        </span><span class="k">continue</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>gh<span class="w"> </span>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"repos/mryfmo/dotfiles/pulls/</span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2">/comments/</span><span class="si">${</span><span class="nv">cid</span><span class="si">}</span><span class="s2">/replies"</span><span class="w"> </span>-f<span class="w"> </span><span class="nv">body</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--jq<span class="w"> </span><span class="s1">'.id'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
-<span class="w">    </span>gh<span class="w"> </span>api<span class="w"> </span>graphql<span class="w"> </span>-f<span class="w"> </span><span class="nv">query</span><span class="o">=</span><span class="s2">"mutation { resolveReviewThread(input: {threadId: \"</span><span class="si">${</span><span class="nv">tid</span><span class="si">}</span><span class="s2">\"}) { thread { isResolved } } }"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--jq<span class="w"> </span><span class="s1">'.data.resolveReviewThread.thread.isResolved'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span><span class="nv">state</span><span class="o">=</span><span class="k">$(</span>gh<span class="w"> </span>api<span class="w"> </span>graphql<span class="w"> </span>-f<span class="w"> </span><span class="nv">query</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">resolve</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-f<span class="w"> </span><span class="nv">threadId</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">tid</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--jq<span class="w"> </span><span class="s1">'.data.resolveReviewThread.thread.isResolved'</span><span class="k">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"thread </span><span class="si">${</span><span class="nv">cid</span><span class="si">}</span><span class="s2"> not resolved (isResolved: </span><span class="si">${</span><span class="nv">state</span><span class="k">:-</span><span class="nv">none</span><span class="si">}</span><span class="s2">); left open"</span>
+<span class="w">        </span><span class="nv">missing</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="k">continue</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">resolved</span><span class="o">=</span><span class="k">$((</span><span class="nv">resolved</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"resolved </span><span class="si">${</span><span class="nv">cid</span><span class="si">}</span><span class="s2"> (</span><span class="si">${</span><span class="nv">row</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="nv">60</span><span class="si">}</span><span class="s2">)"</span>
 <span class="k">done</span><span class="w"> </span><span class="m">3</span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">threads</span><span class="si">}</span><span class="s2">"</span>

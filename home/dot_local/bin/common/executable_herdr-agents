@@ -1946,8 +1946,21 @@ if [[ ${remove_worker_mode} == true ]]; then
             printf 'herdr-agents: despawn of %s did not complete; re-run with --force.\n' "${seat_name}" >&2
             exit 1
         fi
-        "${scripts}/delivery.sh" set off "${seat_type}" "${seat_dir}" > /dev/null 2>&1 || true
-        "${scripts}/leave.sh" "${seat_team}" "${seat_name}" > /dev/null 2>&1 || true
+        if [[ ${seat_stale} == true ]]; then
+            # The record is the only trace of a dead seat, so it moves only after both steps succeed: a failed
+            # step keeps it for the retry (the audit of cb9ea17).
+            if ! "${scripts}/delivery.sh" set off "${seat_type}" "${seat_dir}" > /dev/null 2>&1; then
+                printf 'herdr-agents: delivery.sh set off %s %s failed; %s keeps its placement record.\n' "${seat_type}" "${seat_dir}" "${seat_name}" >&2
+                exit 1
+            fi
+            if ! "${scripts}/leave.sh" "${seat_team}" "${seat_name}" > /dev/null 2>&1; then
+                printf 'herdr-agents: leave.sh %s %s failed; %s keeps its placement record.\n' "${seat_team}" "${seat_name}" "${seat_name}" >&2
+                exit 1
+            fi
+        else
+            "${scripts}/delivery.sh" set off "${seat_type}" "${seat_dir}" > /dev/null 2>&1 || true
+            "${scripts}/leave.sh" "${seat_team}" "${seat_name}" > /dev/null 2>&1 || true
+        fi
         if [[ ${seat_stale} == true && -n ${record} && -e ${record} ]]; then
             mkdir -p "$(dirname -- "${record}")/stale"
             mv -- "${record}" "$(dirname -- "${record}")/stale/$(basename -- "${record}").$(date -u +%Y%m%dT%H%M%SZ)"

@@ -3307,6 +3307,35 @@ esac
         self.assertEqual(1, len(moved), moved)
         self.assertRegex(moved[0].name, r"^spawn\.dotfiles__claude-standard-dot-a007\.[0-9]{8}T[0-9]{6}Z$")
 
+    def test_remove_worker_stale_keeps_the_record_when_cleanup_fails(self) -> None:
+        # The audit of cb9ea17: a failed leave.sh keeps the record, names the step and exits 1.
+        self.write_worktree_seat(
+            main_identities="dotfiles\tclaude-remediation-dot",
+            worktree_identities="dotfiles\tclaude-standard-dot-a007",
+        )
+        self.write_seat_lifecycle_fakes()
+        worktree = self.add_seat_worktree("b1")
+        leave = self.home_dir / ".agents/skills/agmsg/scripts/leave.sh"
+        leave.write_text(leave.read_text() + "exit 1\n")
+        record = self.home_dir / ".agents/skills/agmsg/run/spawn.dotfiles__claude-standard-dot-a007"
+        self.write_pane_state_fakes(record, "gone")
+        kept = record.read_text()
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1", "--stale")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(
+            "herdr-agents: leave.sh dotfiles claude-standard-dot-a007 failed; "
+            "claude-standard-dot-a007 keeps its placement record.",
+            result.stderr,
+        )
+        self.assertEqual(kept, record.read_text())
+        self.assertFalse((record.parent / "stale").exists())
+        self.assertNotIn("retired (stale)", result.stdout)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(
+            [f"delivery set off claude-code {worktree}", "leave dotfiles claude-standard-dot-a007"],
+            [call for call in calls if call.startswith(("delivery", "leave", "despawn"))],
+        )
+
     def test_remove_worker_closes_only_its_tab_in_the_pair_workspace(self) -> None:
         self.write_worktree_seat(
             main_identities="dotfiles\tclaude-remediation-dot",

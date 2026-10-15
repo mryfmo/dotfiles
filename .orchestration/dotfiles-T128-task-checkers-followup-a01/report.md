@@ -53,7 +53,13 @@ Validation §6:
 
 ## CI and the Bot
 
-- PR #365 was opened as a draft. It was marked ready after the evidence commit, so the Bot's one review sees the whole PR. Its threads, with each disposition, and CI are in the evidence update and the RESULT.
+- **The Bot:** PR #365 was opened as a draft and marked ready (04:57:25Z) after the evidence commit `4cc9d206`. Review 5528296451 at 05:00:08Z, of that head, raised one inline thread, a P2, and its body holds no badge (validation §8). No P0 or P1, so there is no fix round.
+
+  | Thread | Where | Finding | Proposed disposition |
+  |---|---|---|---|
+  | 4279174373 | `orch-audit.sh:55` | The tracked-and-unchanged check covers the checker file alone, while `python` without `-I` prepends the checker's directory to `sys.path`. An untracked module beside it, such as a `json.py`, would still be imported. Remedy named: run the checker with `-I`, or validate its import directory. | advisory P2, for the lineage's next owner task under the same heading (the Completion's rule); the worker resolves no thread |
+- **CI on `4cc9d206`:** 13 of 13 checks pass (validation §8).
+- **CI on the final head (this commit, the evidence update):** in the RESULT.
 
 ## Not done, or outside scope
 

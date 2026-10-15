@@ -6,7 +6,7 @@ code_commit: d99b6458
 
 # Validation: dotfiles-T128-task-checkers-followup-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox. `MAIN` names the main checkout, and `S` a scratch directory under `/tmp/claude-501` that holds the mutation runner. `UV_OFFLINE=1` was set. The output is verbatim, with the main checkout's path removed, and each block ends with the exit status of its command line's last command. Captured at `d99b6458`, before the PR was marked ready.
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox. `MAIN` names the main checkout, and `S` a scratch directory under `/tmp/claude-501` that holds the mutation runner. `UV_OFFLINE=1` was set. The output is verbatim, with the main checkout's path removed, and each block ends with the exit status of its command line's last command. §1 to §7 were captured at `d99b6458`, before the PR was marked ready. §8 ran outside the sandbox after the Bot's review of `4cc9d206`.
 
 ## 1. Task file and task copy
 
@@ -189,5 +189,45 @@ L1 any bot: caught
 A1 no HEAD check: caught
 A2 default skips tracking: caught
 mutations: 4, caught 4
+[exit 0]
+```
+
+## 8. CI and the Bot on `4cc9d206`
+
+Run outside the sandbox through the permission gate (sandbox record, rows 5 to 7).
+
+```console
+$ bash /tmp/claude-501/tcf/bot-wait.sh 365 4cc9d2061f3121952449b1d000edca69c7bb7888 1792040245
+elapsed=190s
+reviews:
+5528296451	4cc9d2061f3121952449b1d000edca69c7bb7888	2026-10-15T05:00:08Z	COMMENTED
+comments:
+4279174373	4cc9d2061f3121952449b1d000edca69c7bb7888	scripts/orchestrator/orch-audit.sh
+[exit 0]
+```
+```console
+$ gh api repos/mryfmo/dotfiles/pulls/365/comments --paginate --jq '[.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .in_reply_to_id==null)]|length'
+1
+[exit 0]
+```
+
+Comment 4279174373, `orch-audit.sh` line 55, is titled `P2 Badge … Isolate imports for the trusted ledger checker`. Review 5528296451's body holds the summary text and no badge.
+
+```console
+$ gh pr checks 365 --repo mryfmo/dotfiles --watch --interval 30 > /dev/null 2>&1; echo "checks-watch-exit=$?"; gh pr checks 365 --repo mryfmo/dotfiles
+checks-watch-exit=0
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	8s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	12s	https://github.com/mryfmo/dotfiles/actions/runs/38684185649/job/116255173781	
+private-bootstrap (ubuntu-24.04, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/38684185649/job/116255173710	
+private-bootstrap (ubuntu-24.04, server)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/38684185649/job/116255173740	
+public-bootstrap (macos-14, client)	pass	9m38s	https://github.com/mryfmo/dotfiles/actions/runs/38684185649/job/116255173584	
+public-bootstrap (ubuntu-24.04, client)	pass	9m38s	https://github.com/mryfmo/dotfiles/actions/runs/38684185649/job/116255173783	
+public-bootstrap (ubuntu-24.04, server)	pass	8m5s	https://github.com/mryfmo/dotfiles/actions/runs/38684185649/job/116255173733	
+test (macos-14, client)	pass	6m49s	https://github.com/mryfmo/dotfiles/actions/runs/38684185650/job/116255173596	
+test (ubuntu-24.04, client)	pass	8m23s	https://github.com/mryfmo/dotfiles/actions/runs/38684185650/job/116255173560	
+test (ubuntu-24.04, server)	pass	5m27s	https://github.com/mryfmo/dotfiles/actions/runs/38684185650/job/116255173243	
+test (ubuntu-26.04, client)	pass	8m42s	https://github.com/mryfmo/dotfiles/actions/runs/38684185650/job/116255173619	
+validate	pass	1m41s	https://github.com/mryfmo/dotfiles/actions/runs/38684185722/job/116255173773	
 [exit 0]
 ```

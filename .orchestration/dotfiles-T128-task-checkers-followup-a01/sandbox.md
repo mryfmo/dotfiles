@@ -22,3 +22,13 @@ The table lists every call that ran outside the sandbox: `gh` through the permis
 | 1 | `agmsg-dispatch … AGMSG-PONG v1 task_id=dotfiles-T128-task-checkers-followup-a01 status=alive …` (04:26:56Z, the plan and the reading of audit:c1f60f7:3) | `agmsg-dispatch` |
 | 2 | `gh pr create --draft --repo mryfmo/dotfiles --base main --head tools/task-checkers-followup …` (PR #365) | `gh` |
 | 3 | `agmsg-dispatch … AGMSG-PONG v1 … status=alive …` (the answer to the 04:53:36Z state PING) | `agmsg-dispatch` |
+| 4 | `gh pr ready 365 --repo mryfmo/dotfiles; date +%s; date -u +%FT%TZ` (04:57:25Z) | `gh` |
+| 5 | the Bot wait on `4cc9d206`: the first start failed with exit 127, because the session restart had emptied the scratchpad that held `bot-wait.sh`; the script was written again under `/tmp/claude-501/tcf/` and rerun (background; `gh pr view` and `gh api` reads) | `gh` |
+| 6 | `gh pr checks 365 --watch` (background, after a `gh pr checks` poll for the first check; exit 0) | `gh` |
+| 7 | `gh api` reads of comment 4279174373, review 5528296451's body and the count of the Bot's top-level comments | `gh` |
+| 8 | `agmsg-dispatch … AGMSG-PONG v1 … status=alive …` (the Bot's P2 thread) | `agmsg-dispatch` |
+| 9 | `gh pr checks 365 --watch` on the final head, after a `gh pr checks` poll (background, exit status joined) | `gh` |
+| 10 | `gh api` reads of the PR's reviews and review comments on the final head | `gh` |
+| 11 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-task-checkers-followup-a01 …` | `agmsg-dispatch` |
+
+The pushes of `d99b6458`, `4cc9d206` and the evidence update ran inside the sandbox over HTTPS.

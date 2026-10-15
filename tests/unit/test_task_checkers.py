@@ -113,6 +113,21 @@ class TaskCheckersTest(unittest.TestCase):
                 path = self.task(**args)
                 self.assertIn(check, self.failing_checks(path, root=self.temp, **stub)[path.name])
 
+    def test_task_consistency_check_c9_probes_the_landed_checker_path(self):
+        # Owned row local:c1f60f7:3: `task-consistency-check C<n>` names scripts/orchestrator/task-consistency-check.py,
+        # where the checker landed; a stub git that knows only that path answers present.
+        (self.temp / "bin/git").write_text(
+            '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$STUB_BIN/git.log"\n'
+            "case $1 in\ncat-file) [[ $3 == origin/main:scripts/orchestrator/task-consistency-check.py ]] ;;\n"
+            "grep) true ;;\n*) exit 99 ;;\nesac\n"
+        )
+        design = "---\ndesign_review:\n  receipt: receipt.md\n---\n\n# Design\n"
+        (self.temp / "design.md").write_text(design)
+        path = self.task(kind="docs", body='"every task file passes task-consistency-check C4 before its dispatch"')
+        self.assertEqual({"t-a01.md": set()}, self.failing_checks(path, root=self.temp, code=0))
+        probes = (self.temp / "bin/git.log").read_text().splitlines()
+        self.assertIn("cat-file -e origin/main:scripts/orchestrator/task-consistency-check.py", probes)
+
     def ledger(self, *args, code):
         return self.run_check("ledger-check.py", *args, code=code).splitlines()
 
@@ -123,7 +138,8 @@ class TaskCheckersTest(unittest.TestCase):
 
     def test_ledger_check_passes_a_complete_record(self):
         url = "https://github.test/pull/9#discussion_r"
-        items = [{"source": "review_comment", "bot": True, "url": f"{url}{n}"} for n in (4250000001, 4250000002)]
+        codex = {"source": "review_comment", "bot": True, "author": "chatgpt-codex-connector[bot]"}
+        items = [{**codex, "url": f"{url}{n}"} for n in (4250000001, 4250000002)]
         items += [{"source": "review_comment", "bot": False, "url": f"{url}4250000003"}, {"source": "issue_comment"}]
         (sweep := self.temp / "sweep.json").write_text(json.dumps({"items": items}))
         audit = self.temp / "t-a01-audit-abcdef0.md.last.md"
@@ -137,15 +153,19 @@ class TaskCheckersTest(unittest.TestCase):
 
     def test_ledger_check_counts_what_the_gate_counts(self):
         # Amendment 2: a badged Codex Bot review body and a bulleted audit line are findings, as the gate counts them;
-        # an unbadged Bot review and another author's badged review are not.
+        # an unbadged Bot review and another author's badged review are not. Owned row audit:c1f60f7:1: a Codex Bot
+        # inline comment is a finding, another bot's (CodeRabbit's) is not, as the gate's swept_finding_ids() counts.
         review = {"source": "review", "author": "chatgpt-codex-connector[bot]", "body": "![P1 Badge](x) y"}
         items = [{**review, "url": "https://github.test/pull/9#pullrequestreview-5510000001"}]
         items += [{**review, "author": "o", "url": "#pullrequestreview-5510000002"}]
         items += [{**review, "body": "no badge", "url": "#pullrequestreview-5510000003"}]
+        inline = {"source": "review_comment", "bot": True, "author": "chatgpt-codex-connector[bot]"}
+        items += [{**inline, "url": "https://github.test/pull/9#discussion_r4250000001"}]
+        items += [{**inline, "author": "coderabbitai[bot]", "url": "https://github.test/pull/9#discussion_r4250000002"}]
         (sweep := self.temp / "sweep.json").write_text(json.dumps({"items": items}))
         (audit := self.temp / "t-a01-audit-abcdef0.md.last.md").write_text("- [P1] high evidence x.py:1 one\n")
         (record := self.temp / "record.md").write_text("---\n{}\n---\n")
-        gaps = ["ledger rows 0; findings 2; gaps 2", "GAP 5510000001", "GAP audit:abcdef0:1"]
+        gaps = ["ledger rows 0; findings 3; gaps 3", "GAP 5510000001", "GAP 4250000001", "GAP audit:abcdef0:1"]
         self.assertEqual(gaps, self.ledger(record, sweep, audit, code=1))
 
     def test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary(self):

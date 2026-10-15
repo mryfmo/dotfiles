@@ -9,7 +9,9 @@
 #   entry, is checked out detached at the head and left there, and the review binary runs in it as `--profile review
 #   -s read-only review --base main`. The binary is `$CODEX_BIN`, else codex as `mise which` answers it under `env
 #   -i` in the root, else `command -v`; it is resolved before the checkout, and a path under a `shims` directory is
-#   refused. When the binary fails, no file is written. Otherwise the file gets the front matter, the unique `-
+#   refused. When its first line is an env shebang (`#!/usr/bin/env NAME` or `env -S NAME …`), NAME is resolved the
+#   same way and runs the binary as its first argument, so no interpreter comes from PATH in the PR worktree. When the
+#   binary fails, no file is written. Otherwise the file gets the front matter, the unique `-
 #   [P0-3]` findings of the transcript's final message, and that message with the worktree prefix stripped; the
 #   findings are printed, then `local-review: <n> findings (<file>)`.
 # @arg $1 string Task id, letters, digits, `.`, `_` and `-`.
@@ -62,28 +64,40 @@ git -C "$R" cat-file -e "$head^{commit}" 2> /dev/null || {
     exit 2
 }
 # Resolved in the root before the checkout and run by its absolute path, so no relative PATH entry (./bin) picks a
-# binary from the PR head. A mise shim would pick its binary from the PR worktree it runs in, so codex comes from
-# mise which under env -i, as orch-gate.sh resolves gh, and a shims path is refused (the audit of b6ce4ff).
-if [ -n "${CODEX_BIN:-}" ]; then
-    codex=$(command -v "$CODEX_BIN") || codex=
-else
-    codex=$(env -i PATH="$PATH" HOME="$HOME" mise which codex 2> /dev/null || command -v codex) || codex=
+# binary from the PR head. A mise shim would pick its binary from the PR worktree it runs in, so a name comes from
+# mise which under env -i, as orch-gate.sh resolves gh, and a shims path is refused (the audit of b6ce4ff). Sets
+# found; a refusal exits here, before the checkout.
+resolve() { # <name> <what> [<found by command -v alone>]
+    if [ -n "${3:-}" ]; then
+        found=$(command -v "$1") || found=
+    else
+        found=$(env -i PATH="$PATH" HOME="$HOME" mise which "$1" 2> /dev/null || command -v "$1") || found=
+    fi
+    [ -n "$found" ] || {
+        echo "local-review: no $2 $1"
+        exit 2
+    }
+    [[ $found == /* ]] || found=$R/$found
+    [[ $found != */shims/* ]] || {
+        echo "local-review: the $2 $found is under a shims directory; refused"
+        exit 2
+    }
+}
+resolve "${CODEX_BIN:-codex}" "review binary" "${CODEX_BIN:-}"
+run=("$found")
+# An env shebang would find its interpreter on PATH at exec time, in the PR worktree (the audit of c45f9b5).
+first=
+IFS= read -r first < "${run[0]}" || true
+if [[ $first =~ ^\#![[:space:]]*[^[:space:]]*/env[[:space:]]+(-S[[:space:]]+)?([^[:space:]-][^[:space:]]*) ]]; then
+    resolve "${BASH_REMATCH[2]}" "review binary's interpreter"
+    run=("$found" "${run[0]}")
 fi
-[ -n "$codex" ] || {
-    echo "local-review: no review binary ${CODEX_BIN:-codex}"
-    exit 2
-}
-[[ $codex == /* ]] || codex=$R/$codex
-[[ $codex != */shims/* ]] || {
-    echo "local-review: the review binary $codex is under a shims directory; refused"
-    exit 2
-}
 git -C "$W" checkout -q --detach "$head"
 base=$(git -C "$W" merge-base main HEAD)
 t0=$(date -u +%FT%TZ)
 tmp=$(mktemp "${TMPDIR:-/tmp}/local-review.XXXXXX")
 rc=0
-(cd "$W" && "$codex" --profile review -s read-only review --base main < /dev/null > "$tmp" 2>&1) || rc=$?
+(cd "$W" && "${run[@]}" --profile review -s read-only review --base main < /dev/null > "$tmp" 2>&1) || rc=$?
 if [ "$rc" != 0 ]; then
     # A failed review is no sample: no file, so the next run reviews again (PR #357 thread 4270918132).
     echo "local-review: codex exited $rc; no review file written (transcript $tmp)"

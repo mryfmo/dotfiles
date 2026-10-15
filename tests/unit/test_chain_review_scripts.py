@@ -219,11 +219,13 @@ class ChainReviewScriptsTest(unittest.TestCase):
             "is under a shims directory; refused", self.run_tool("local-review.sh", "t-a", head, 9, code=2, env=env)
         )
         self.assertEqual(self.git("rev-parse", "main"), self.git("rev-parse", "HEAD", cwd=review))
-        self.mise(f'printf "%s\\n" "{self.temp}/installs/$2"\n')
+        # mise knows codex only, so the stub's own env-shebang interpreter (bash) falls back to command -v.
+        self.mise(f'[[ $2 == codex ]] && printf "%s\\n" "{self.temp}/installs/$2"\n')
         self.run_tool("local-review.sh", "t-a", head, 9, env=env)
         self.assertEqual(1, self.log("installed").count(ARGV))
         self.assertEqual("", self.log("codex"))
-        self.assertEqual(["argv: which codex MISE_CONFIG_FILE=unset"] * 2, self.log("mise").splitlines())
+        asked = [f"argv: which {name} MISE_CONFIG_FILE=unset" for name in ("codex", "codex", "bash")]
+        self.assertEqual(asked, self.log("mise").splitlines())
 
     def test_local_review_resolves_the_review_binary_before_the_checkout(self):
         # audit:b6ce4ff:4: mise answers while the review worktree is still where the run found it, not at the head.
@@ -231,7 +233,8 @@ class ChainReviewScriptsTest(unittest.TestCase):
         (self.calls / "transcript").write_text("codex\nNo findings.\n")
         self.stub(self.temp / "installs/codex", "installed")
         self.mise(
-            f'git -C "{review}" rev-parse HEAD > "{self.calls}/mise-head"\nprintf "%s\\n" "{self.temp}/installs/$2"\n'
+            f'[[ $2 == codex ]] || exit 1\ngit -C "{review}" rev-parse HEAD > "{self.calls}/mise-head"\n'
+            f'printf "%s\\n" "{self.temp}/installs/$2"\n'
         )
         self.run_tool("local-review.sh", "t-a", head, 9, env=env)
         self.assertEqual(self.git("rev-parse", "main"), (self.calls / "mise-head").read_text().strip())
@@ -262,6 +265,35 @@ class ChainReviewScriptsTest(unittest.TestCase):
         stdout = self.run_tool("local-review.sh", "t-a", head, 9, code=3, env=env)
         self.assertEqual(f"- [P2] b.txt:1 b is new\nlocal-review: 1 findings ({out})\n", stdout)
         self.assertIn("```text\n- [P2] b.txt:1 b is new\n```\n", out.read_text())
+
+    def test_local_review_pins_the_review_binary_interpreter(self):
+        # The audit of c45f9b5: a binary whose first line is an env shebang runs under the interpreter mise which
+        # answers in the root, never one PATH finds in the PR worktree.
+        review, head, env = self.review_head()
+        (self.calls / "transcript").write_text("codex\nNo findings.\n")
+        binary = self.temp / "installs/codex"
+        self.stub(binary, "codex")
+        binary.write_text(binary.read_text().replace("#!/usr/bin/env bash\n", "#!/usr/bin/env -S interp --flag\n"))
+        interp = self.temp / "installs/interp"
+        interp.write_text(f'#!/bin/bash\nprintf "%s\\n" "$*" > "{self.calls}/interp.argv"\nexec /bin/bash "$@"\n')
+        interp.chmod(0o755)
+        out = self.repo / f".orchestration/validation/t-a-local-review-{head[:7]}.md"
+        with self.subTest("the interpreter mise answers runs the binary"):
+            self.mise(f'printf "%s\\n" "{self.temp}/installs/$2"\n')
+            self.run_tool("local-review.sh", "t-a", head, 9, env=env)
+            self.assertEqual(f"{binary} {ARGV.removeprefix('argv: ')}\n", (self.calls / "interp.argv").read_text())
+            self.assertEqual(1, self.log("codex").count(ARGV))
+        out.unlink()
+        (self.calls / "interp.argv").unlink()
+        self.git("checkout", "-q", "--detach", "main", cwd=review)
+        with self.subTest("an interpreter under a shims directory is refused before the checkout"):
+            self.mise(f'[[ $2 == codex ]] && printf "%s\\n" "{binary}" || printf "%s\\n" "{self.temp}/mise/shims/$2"\n')
+            stdout = self.run_tool("local-review.sh", "t-a", head, 9, code=2, env=env)
+            self.assertIn("review binary's interpreter", stdout)
+            self.assertIn("is under a shims directory; refused", stdout)
+            self.assertEqual(self.git("rev-parse", "main"), self.git("rev-parse", "HEAD", cwd=review))
+            self.assertFalse(out.exists())
+            self.assertFalse((self.calls / "interp.argv").exists())
 
     def test_local_advisory_records_p2_rows_and_stops_on_p0_p1(self):
         head, owner = "abcdef0" + "1" * 33, "t-followup-a01"

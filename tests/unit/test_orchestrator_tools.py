@@ -832,7 +832,7 @@ class OrchestratorToolsTest(unittest.TestCase):
             [
                 "not-applicable:the line is gone; evidence=git show HEAD:x",
                 "not-applicable:bot summary or onboarding comment, no finding; "
-                + f"""evidence=jq '.items[] | select(.url == "{url}#issuecomment-12")' {sweep}""",
+                + f"""evidence=jq --argjson u '"{url}#issuecomment-12"' '.items[] | select(.url == $u)' {sweep}""",
             ],
             [i["disposition"] for i in json.loads(sweep.read_text())["items"]],
         )
@@ -1030,6 +1030,27 @@ class OrchestratorToolsTest(unittest.TestCase):
         reason, command = filled["disposition"].split("; evidence=")
         self.assertEqual("not-applicable:CI status, no finding", reason)
         self.assertTrue(command.startswith("jq --argjson s "), command)
+        # The command, replayed, shows the item and nothing else runs.
+        shown = subprocess.run(["bash", "-c", command], cwd=self.temp, capture_output=True, text=True, check=True)
+        self.assertEqual(filled, json.loads(shown.stdout))
+        self.assertFalse((self.temp / "pwned").exists())
+
+    def test_fill_sweep_quotes_the_url_form_evidence(self):
+        # PR #368 revise round 2 (the audit of cfebc1f): a status's url is its external target_url, so a quote in it
+        # neither ends the jq argument nor runs the rest as shell or jq code when the evidence command is replayed.
+        item = {
+            "source": "status",
+            "url": 'https://ci.test/x\'" $(touch pwned); touch pwned; echo "#7',
+            "check": "ci",
+            "body": "ci",
+            "level": "success",
+        }
+        sweep = self.sweep([item])
+        self.fill_sweep(sweep, self.write("c.json", "[]"), "--orchestrator-login", "o")
+        [filled] = json.loads(sweep.read_text())["items"]
+        reason, command = filled["disposition"].split("; evidence=")
+        self.assertEqual("not-applicable:CI status, no finding", reason)
+        self.assertTrue(command.startswith("jq --argjson u "), command)
         # The command, replayed, shows the item and nothing else runs.
         shown = subprocess.run(["bash", "-c", command], cwd=self.temp, capture_output=True, text=True, check=True)
         self.assertEqual(filled, json.loads(shown.stdout))

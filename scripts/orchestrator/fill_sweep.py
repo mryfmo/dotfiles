@@ -73,9 +73,11 @@ def main(argv):
             source = "own_reply"
         elif source == "review" and "Codex Review" in body:
             source = "codex_review"
-        show = f"{EVIDENCE}jq '.items[] | select(.url == \"{item.get('url')}\")' {sweep_path}"
+        # The url, source and check are external (a status's target_url and context), so they reach jq as
+        # shell-quoted --argjson values, never as shell or jq code.
+        u = shlex.quote(json.dumps(item.get("url")))
+        show = f"{EVIDENCE}jq --argjson u {u} '.items[] | select(.url == $u)' {sweep_path}"
         if item.get("url") is None:  # a JSON null url (a status without a target): select by source and check
-            # The values are external, so they reach jq as shell-quoted --argjson values, never as shell or jq code.
             s, c = (shlex.quote(json.dumps(item.get(k))) for k in ("source", "check"))
             show = f"{EVIDENCE}jq --argjson s {s} --argjson c {c} '.items[] | select(.source == $s and .check == $c)' {sweep_path}"
         if cid is None:

@@ -30,9 +30,11 @@ STUB = (
 )
 GH = """#!/usr/bin/env bash
 { printf "argv:"; printf " %s" "$@"; printf "\\n"; } >> "$CALLS/gh.log"
+# gh colours its output when forced (a Herdr pane's CLICOLOR_FORCE=1, or GH_FORCE_TTY) unless NO_COLOR is set.
+paint() { if [ -z "${NO_COLOR:-}" ] && { [ "${CLICOLOR_FORCE:-0}" != 0 ] || [ -n "${GH_FORCE_TTY:-}" ]; }; then sed $'s/.*/\\e[32m&\\e[0m/'; else cat; fi; }
 jq=; prev=; for a; do [ "$prev" != --jq ] || jq=$a; prev=$a; done
 case "$1 $2" in
-"pr view") if [[ " $* " == *" isDraft "* ]]; then cat "$CALLS/draft" 2> /dev/null || echo false; else cat "$CALLS/head"; fi ;;
+"pr view") if [[ " $* " == *" isDraft "* ]]; then cat "$CALLS/draft" 2> /dev/null || echo false; else cat "$CALLS/head"; fi | paint ;;
 "pr checks")
     [ ! -x "$CALLS/checks-hook" ] || "$CALLS/checks-hook"
     exit "$(cat "$CALLS/checks-status" 2> /dev/null || echo 0)" ;;
@@ -43,10 +45,10 @@ case "$1 $2" in
     git -C "$SEED" push -q origin HEAD:refs/pull/7/head
     git -C "$SEED" rev-parse HEAD > "$CALLS/head"
     [ ! -x "$CALLS/update-hook" ] || "$CALLS/update-hook" ;;
-"api user") cat "$CALLS/login" ;;
+"api user") paint < "$CALLS/login" ;;
 "api "*)
     case $2 in *reviews) f=$CALLS/reviews.json ;; *) f=$CALLS/comments.json ;; esac
-    if [ -n "$jq" ]; then JQ -rc "$jq" "$f"; else cat "$f"; fi ;;
+    if [ -n "$jq" ]; then JQ -rc "$jq" "$f"; else cat "$f"; fi | paint ;;
 esac
 """
 UV = """#!/usr/bin/env bash
@@ -385,6 +387,16 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.assertFalse((self.calls / "decoy.log").exists())
         self.assertEqual([f"{TASK} {head} 7"], self.calls_of("local-review"))
         self.assertIn("bot review: absent", self.log(head))
+
+    def test_integrate_runs_gh_without_forced_colour(self):
+        # Revise round 3 (the local review of 6e4e9aa1, P1): a Herdr pane exports CLICOLOR_FORCE=1, and gh then
+        # colours its output, so the comments JSON fill_sweep.py reads (and every compared gh answer) would hold ANSI.
+        out = self.chain(env={"CLICOLOR_FORCE": "1", "GH_FORCE_TTY": "1"}).stdout
+        self.assertEqual(f"chain-integrate: {TASK} {self.head} Verdict: correct", out.splitlines()[-1])
+        fill = (self.calls / "fill_sweep.log").read_text()
+        self.assertEqual([{"id": 1, "body": "a"}, {"id": 2, "body": "b,\nc"}], json.loads(fill.split("\n", 4)[4]))
+        self.assertIn("--orchestrator-login orch\n", fill)
+        self.assertNotIn("\x1b", self.log())
 
     def test_integrate_refuses_an_absent_owner_task_before_the_advisory_step(self):
         (self.main / f".orchestration/tasks/{OWNER}.md").unlink()

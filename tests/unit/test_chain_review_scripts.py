@@ -62,6 +62,29 @@ class ChainReviewScriptsTest(unittest.TestCase):
         path.write_text(STUB.format(name=name))
         path.chmod(0o755)
 
+    def mise(self, body):
+        """A mise stub first on PATH; it runs under env -i, so it carries the calls directory itself."""
+        path = self.temp / "bin/mise"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        log = f'echo "argv: $* MISE_CONFIG_FILE=${{MISE_CONFIG_FILE:-unset}}" >> "{self.calls}/mise.log"\n'
+        path.write_text("#!/bin/bash\n" + log + body)
+        path.chmod(0o755)
+
+    def review_head(self, name="review"):
+        """A clean review worktree at main, a head commit made in it, codex stubbed and mise failing on PATH."""
+        review = self.temp / name
+        self.git("worktree", "add", "-q", "--detach", str(review), "main")
+        self.write("b.txt", "b\n", root=review)
+        self.git("add", "b.txt", cwd=review)
+        self.git("commit", "-q", "-m", "head", cwd=review)
+        head = self.git("rev-parse", "HEAD", cwd=review)
+        self.git("checkout", "-q", "--detach", "main", cwd=review)
+        self.stub(self.temp / "bin/codex", "codex")
+        self.mise("exit 1\n")
+        (self.repo / ".orchestration/validation").mkdir(parents=True, exist_ok=True)
+        path = f"{self.temp / 'bin'}{os.pathsep}{os.environ['PATH']}"
+        return review, head, {"ORCH_REVIEW_WORKTREE": str(review), "PATH": path}
+
     def log(self, name):
         path = self.calls / f"{name}.log"
         return path.read_text() if path.exists() else ""
@@ -92,6 +115,7 @@ class ChainReviewScriptsTest(unittest.TestCase):
         head, base = self.git("rev-parse", "HEAD", cwd=review), self.git("rev-parse", "main")
         self.git("checkout", "-q", "--detach", "main", cwd=review)
         self.stub(self.temp / "bin/codex", "codex")
+        self.mise("exit 1\n")
         (self.repo / ".orchestration/validation").mkdir(parents=True)
         path = f"./bin{os.pathsep}{self.temp / 'bin'}{os.pathsep}{os.environ['PATH']}"
         env = {"ORCH_REVIEW_WORKTREE": str(review), "PATH": path}
@@ -138,13 +162,9 @@ class ChainReviewScriptsTest(unittest.TestCase):
             self.assertEqual(f"{finding}\nlocal-review: 1 findings (existing {out('t-a')})\n", stdout)
             self.assertEqual(call, self.log("codex"))
         (self.calls / "transcript").write_text("codex\nNo findings.\n")
-        (self.calls / "status").write_text("5")
-        with self.subTest("no finding exits 0, also when the binary fails"):
+        with self.subTest("no finding exits 0"):
             stdout = self.run_tool("local-review.sh", "t-c", head, 9, env=env)
-            file = out("t-c")
-            self.assertEqual(
-                f"local-review: codex exited 5 (see {file})\n\nlocal-review: 0 findings ({file})\n", stdout
-            )
+            self.assertEqual(f"\nlocal-review: 0 findings ({out('t-c')})\n", stdout)
             self.assertIn("findings: 0\n", out("t-c").read_text())
         missing = {**env, "CODEX_BIN": "seam/missing"}
         self.assertIn("no review binary", self.run_tool("local-review.sh", "t-d", head, 9, code=2, env=missing))
@@ -155,6 +175,150 @@ class ChainReviewScriptsTest(unittest.TestCase):
             self.assertIn("is not a local commit", self.run_tool("local-review.sh", "t-d", unknown, 9, code=2, env=env))
             self.assertEqual(2, self.log("codex").count(ARGV))
             self.assertFalse(out("t-d").exists())
+
+    def test_local_review_writes_no_file_when_the_review_binary_fails(self):
+        # PR #357 thread 4270918132 and local:b6ce4ff:1: a failed review is no sample, so nothing is left to reuse.
+        _, head, env = self.review_head()
+        out = self.repo / f".orchestration/validation/t-a-local-review-{head[:7]}.md"
+        (self.calls / "transcript").write_text("codex\nNo findings.\n")
+        (self.calls / "status").write_text("5")
+        stdout = self.run_tool("local-review.sh", "t-a", head, 9, code=4, env=env)
+        self.assertIn("local-review: codex exited 5; no review file written (transcript ", stdout)
+        self.assertFalse(out.exists())
+        (self.calls / "status").unlink()
+        self.assertEqual(
+            f"\nlocal-review: 0 findings ({out})\n", self.run_tool("local-review.sh", "t-a", head, 9, env=env)
+        )
+        self.assertEqual(2, self.log("codex").count(ARGV))
+
+    def test_local_review_reuses_only_a_file_that_records_this_head(self):
+        # PR #357 thread 4270918140 and local:b6ce4ff:2: the file name keeps seven characters of the head.
+        review, head, env = self.review_head()
+        other = head[:7] + ("0" if head[7] != "0" else "1") * 33
+        out = self.write(
+            f".orchestration/validation/t-a-local-review-{head[:7]}.md", f"---\nhead: {other}\nfindings: 0\n---\n"
+        )
+        self.assertIn(
+            "records another head; not reused", self.run_tool("local-review.sh", "t-a", head, 9, code=2, env=env)
+        )
+        self.assertEqual("", self.log("codex"))
+        self.assertEqual(self.git("rev-parse", "main"), self.git("rev-parse", "HEAD", cwd=review))
+        out.write_text(f"---\nhead: {head}\nfindings: 0\n---\n")
+        stdout = self.run_tool("local-review.sh", "t-a", head, 9, env=env)
+        self.assertEqual(f"\nlocal-review: 0 findings (existing {out})\n", stdout)
+        self.assertEqual("", self.log("codex"))
+
+    def test_local_review_resolves_codex_through_mise_and_refuses_a_shim(self):
+        # audit:b6ce4ff:1 (operator decision A's P1): codex is what mise which answers under env -i, never a shim.
+        review, head, env = self.review_head()
+        (self.calls / "transcript").write_text("codex\nNo findings.\n")
+        self.stub(self.temp / "installs/codex", "installed")
+        env["MISE_CONFIG_FILE"] = str(self.temp / "payload.toml")
+        self.mise(f'printf "%s\\n" "{self.temp}/mise/shims/$2"\n')
+        self.assertIn(
+            "is under a shims directory; refused", self.run_tool("local-review.sh", "t-a", head, 9, code=2, env=env)
+        )
+        self.assertEqual(self.git("rev-parse", "main"), self.git("rev-parse", "HEAD", cwd=review))
+        # mise knows codex only, so the stub's own env-shebang interpreter (bash) falls back to command -v.
+        self.mise(f'[[ $2 == codex ]] && printf "%s\\n" "{self.temp}/installs/$2"\n')
+        self.run_tool("local-review.sh", "t-a", head, 9, env=env)
+        self.assertEqual(1, self.log("installed").count(ARGV))
+        self.assertEqual("", self.log("codex"))
+        asked = [f"argv: which {name} MISE_CONFIG_FILE=unset" for name in ("codex", "codex", "bash")]
+        self.assertEqual(asked, self.log("mise").splitlines())
+
+    def test_local_review_resolves_the_review_binary_before_the_checkout(self):
+        # audit:b6ce4ff:4: mise answers while the review worktree is still where the run found it, not at the head.
+        review, head, env = self.review_head()
+        (self.calls / "transcript").write_text("codex\nNo findings.\n")
+        self.stub(self.temp / "installs/codex", "installed")
+        self.mise(
+            f'[[ $2 == codex ]] || exit 1\ngit -C "{review}" rev-parse HEAD > "{self.calls}/mise-head"\n'
+            f'printf "%s\\n" "{self.temp}/installs/$2"\n'
+        )
+        self.run_tool("local-review.sh", "t-a", head, 9, env=env)
+        self.assertEqual(self.git("rev-parse", "main"), (self.calls / "mise-head").read_text().strip())
+        self.assertIn(f"head: {head}\n", self.log("installed"))
+
+    def test_local_review_and_local_advisory_refuse_a_task_or_head_that_leaves_their_directory(self):
+        # audit:b6ce4ff:2: a / in the task id or the head would place the file outside its directory.
+        _, head, env = self.review_head()
+        for task, commit in (("../escape", head), ("a/b", head), ("t-a", "../../x" + head[7:]), ("t-a", head[:7])):
+            with self.subTest(task=task, commit=commit):
+                self.assertIn("usage:", self.run_tool("local-review.sh", task, commit, 9, code=2, env=env))
+        self.assertEqual("", self.log("codex"))
+        self.assertEqual([], list(self.repo.glob(".orchestration/*.md")))
+        # A review file one level up, which ../x would read and whose rows it would append to .orchestration/x.md.
+        a40 = "a" * 40
+        self.write(".orchestration/x-local-review-aaaaaaa.md", "---\nfindings: 1\n---\n\n- [P2] x.sh:1 x\n")
+        for task, commit in (("../x", a40), ("t-a", "../" + a40[3:])):
+            with self.subTest(task=task, commit=commit):
+                self.assertIn("usage:", self.run_tool("local-advisory.sh", task, commit, "t-followup-a01", code=2))
+        self.assertFalse((self.repo / ".orchestration/x.md").exists())
+        self.assertFalse((self.repo / ".orchestration/acceptance").exists())
+
+    def test_local_review_strips_a_worktree_path_holding_sed_syntax_literally(self):
+        # audit:b6ce4ff:3: the worktree path is no part of a sed program.
+        review, head, env = self.review_head("re[1]#view")
+        (self.calls / "transcript").write_text(f"codex\n- [P2] {review}/b.txt:1 b is new\n")
+        out = self.repo / f".orchestration/validation/t-a-local-review-{head[:7]}.md"
+        stdout = self.run_tool("local-review.sh", "t-a", head, 9, code=3, env=env)
+        self.assertEqual(f"- [P2] b.txt:1 b is new\nlocal-review: 1 findings ({out})\n", stdout)
+        self.assertIn("```text\n- [P2] b.txt:1 b is new\n```\n", out.read_text())
+
+    def test_local_review_pins_the_review_binary_interpreter(self):
+        # The audit of c45f9b5: a binary whose first line is an env shebang runs under the interpreter mise which
+        # answers in the root, never one PATH finds in the PR worktree.
+        review, head, env = self.review_head()
+        (self.calls / "transcript").write_text("codex\nNo findings.\n")
+        binary = self.temp / "installs/codex"
+        self.stub(binary, "codex")
+        binary.write_text(binary.read_text().replace("#!/usr/bin/env bash\n", "#!/usr/bin/env -S interp --flag\n"))
+        interp = self.temp / "installs/interp"
+        interp.write_text(
+            f'#!/bin/bash\nprintf "%s\\n" "$*" > "{self.calls}/interp.argv"\nshift\nexec /bin/bash "$@"\n'
+        )
+        interp.chmod(0o755)
+        out = self.repo / f".orchestration/validation/t-a-local-review-{head[:7]}.md"
+        with self.subTest("the interpreter mise answers runs the binary"):
+            self.mise(f'printf "%s\\n" "{self.temp}/installs/$2"\n')
+            self.run_tool("local-review.sh", "t-a", head, 9, env=env)
+            self.assertEqual(
+                f"--flag {binary} {ARGV.removeprefix('argv: ')}\n", (self.calls / "interp.argv").read_text()
+            )
+            self.assertEqual(1, self.log("codex").count(ARGV))
+        out.unlink()
+        (self.calls / "interp.argv").unlink()
+        self.git("checkout", "-q", "--detach", "main", cwd=review)
+        with self.subTest("an interpreter under a shims directory is refused before the checkout"):
+            self.mise(f'[[ $2 == codex ]] && printf "%s\\n" "{binary}" || printf "%s\\n" "{self.temp}/mise/shims/$2"\n')
+            stdout = self.run_tool("local-review.sh", "t-a", head, 9, code=2, env=env)
+            self.assertIn("review binary's interpreter", stdout)
+            self.assertIn("is under a shims directory; refused", stdout)
+            self.assertEqual(self.git("rev-parse", "main"), self.git("rev-parse", "HEAD", cwd=review))
+            self.assertFalse(out.exists())
+            self.assertFalse((self.calls / "interp.argv").exists())
+
+    def test_local_review_keeps_env_S_shebang_arguments(self):
+        # The local review of 850fc54e: env -S passes the rest of its line to the interpreter, so those words
+        # come between the interpreter and the binary.
+        _, head, env = self.review_head()
+        (self.calls / "transcript").write_text("codex\nNo findings.\n")
+        binary = self.temp / "installs/codex"
+        self.stub(binary, "codex")
+        binary.write_text(
+            binary.read_text().replace("#!/usr/bin/env bash\n", "#!/usr/bin/env -S fakeinterp --flag x\n")
+        )
+        interp = self.temp / "installs/fakeinterp"
+        interp.write_text(
+            f'#!/bin/bash\nprintf "%s %s\\n" "$0" "$*" > "{self.calls}/fakeinterp.argv"\nshift 2\nexec /bin/bash "$@"\n'
+        )
+        interp.chmod(0o755)
+        self.mise(f'printf "%s\\n" "{self.temp}/installs/$2"\n')
+        self.run_tool("local-review.sh", "t-a", head, 9, env=env)
+        expected = f"{interp} --flag x {binary} {ARGV.removeprefix('argv: ')}\n"
+        self.assertEqual(expected, (self.calls / "fakeinterp.argv").read_text())
+        self.assertEqual(1, self.log("codex").count(ARGV))
 
     def test_local_advisory_records_p2_rows_and_stops_on_p0_p1(self):
         head, owner = "abcdef0" + "1" * 33, "t-followup-a01"
@@ -204,6 +368,27 @@ class ChainReviewScriptsTest(unittest.TestCase):
         )
         self.assertEqual("# record\n", record.read_text())
         self.assertIn("no local review file", self.run_tool("local-advisory.sh", "t-b01", head, owner, code=2))
+
+    def test_local_advisory_refuses_a_malformed_owner_id(self):
+        # The owner is a grep pattern and verbatim record text; a malformed one changes nothing.
+        head = "abcdef0" + "1" * 33
+        self.write(f".orchestration/validation/t-a01-local-review-{head[:7]}.md", "---\nfindings: 1\n---\n\n- [P2] x\n")
+        for owner in ("", "../x", "a b", "a\nb", ".*", "-a"):
+            with self.subTest(owner=owner):
+                self.assertIn("usage:", self.run_tool("local-advisory.sh", "t-a01", head, owner, code=2))
+        self.assertFalse((self.repo / ".orchestration/acceptance").exists())
+
+    def test_local_advisory_matches_the_owner_heading_literally(self):
+        # A dotted owner is no wildcard, and a longer id that starts with the owner is another owner.
+        head = "abcdef0" + "1" * 33
+        self.write(f".orchestration/validation/t-a01-local-review-{head[:7]}.md", "---\nfindings: 1\n---\n\n- [P2] x\n")
+        near = "# record\n## Owned by t-followupXa01 (x)\n## Owned by t.followup-a01b (x)\n"
+        record = self.write(".orchestration/acceptance/t-a01.md", near)
+        self.run_tool("local-advisory.sh", "t-a01", head, "t.followup-a01")
+        self.assertEqual(1, record.read_text().count("\n## Owned by t.followup-a01 (advisory P2"))
+        self.run_tool("local-advisory.sh", "t-a01", head, "t.followup-a01")
+        self.assertEqual(1, record.read_text().count("\n## Owned by t.followup-a01 (advisory P2"))
+        self.assertTrue(record.read_text().startswith(near))
 
     def test_sandbox_scan_prints_the_unsandboxed_mutation_calls(self):
         sandboxes = ".orchestration/sandboxes"

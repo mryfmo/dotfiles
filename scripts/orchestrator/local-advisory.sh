@@ -7,16 +7,23 @@
 #   other appends the row `local:<sha7>:<n><TAB>advisory-p2` under the heading `## Owned by <owner>` of
 #   `.orchestration/acceptance/<task>.md` (created when missing) and a `local-finding: <sha7>:<n>
 #   not-applicable:advisory P2 owned by <owner> (…); evidence=…` line, each only when the record lacks it.
-# @arg $1 string Task id.
+# @arg $1 string Task id, letters, digits, `.`, `_` and `-`.
 # @arg $2 string The reviewed head, 40 hex characters.
-# @arg $3 string The task id that owns the advisory findings.
+# @arg $3 string The task id that owns the advisory findings, in the task id's form.
 # @exitcode 0 No P0/P1 finding.
-# @exitcode 2 No local review file.
+# @exitcode 2 No local review file, or a malformed task id, head or owner task id.
 # @exitcode 3 A P0/P1 finding.
 # @example
 #   scripts/orchestrator/local-advisory.sh dotfiles-T128-x-a01 "$head" dotfiles-T128-x-followup-a01
 set -euo pipefail
 task=$1 head=$2 owner=$3
+# Both name the files read and appended, so a / in either would reach outside .orchestration (the audit of b6ce4ff).
+# The owner is written into the record verbatim, so it takes the task id's form too.
+id='^[A-Za-z0-9][A-Za-z0-9._-]*$'
+[[ $task =~ $id && $head =~ ^[0-9a-f]{40}$ && $owner =~ $id ]] || {
+    echo "usage: local-advisory.sh <task> <40-hex head> <owner task>"
+    exit 2
+}
 cd "$(git rev-parse --show-toplevel)"
 h7=${head:0:7}
 LR=".orchestration/validation/$task-local-review-$h7.md"
@@ -30,7 +37,8 @@ n=$(sed -n 's/^findings: //p' "$LR" | head -1)
     echo "local review of $h7: no findings"
     exit 0
 }
-/usr/bin/grep -q "^## Owned by $owner" "$A" || printf '\n## Owned by %s (advisory P2 of the final head; plan 020 step 1.2; rows id<TAB>class)\n\n' "$owner" >> "$A"
+# A literal heading match, ended by a space or the line's end: a . in the owner is no wildcard, a longer id no match.
+awk -v h="## Owned by $owner" 'substr($0, 1, length(h)) == h && substr($0, length(h) + 1, 1) ~ /^ ?$/ { f = 1 } END { exit !f }' "$A" 2> /dev/null || printf '\n## Owned by %s (advisory P2 of the final head; plan 020 step 1.2; rows id<TAB>class)\n\n' "$owner" >> "$A"
 i=0 stop=0
 while IFS= read -r line; do
     i=$((i + 1))

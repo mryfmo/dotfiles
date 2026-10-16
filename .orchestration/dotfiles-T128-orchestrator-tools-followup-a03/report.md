@@ -44,3 +44,12 @@
 - **The test.** `test_dispatch_refuses_a_task_file_failing_the_checker` plants a `.python-version` naming an executable in the caller's directory: it never runs, and the fake uv records the root as every call's directory. Mutant M9 (no `cd`) is killed; all nine mutants are killed, and 54 tests pass (validation §6).
 - **Size after the round.** 108 changed lines outside `tests/` and `.orchestration/` (of 200), 122 added under `tests/` (of 1000), 2 files.
 - **The Bot.** Its re-review is asked with `@codex review` on this round's head.
+
+## Revise round 3 (`411c7d68`)
+
+- **The P1.** The local review of `9df6b0c7`, `local:9df6b0c:1` (`dispatch.sh:183-185`): an inherited `VIRTUAL_ENV` still chose uv's interpreter after the `cd`. The third finding of one class, the interpreter chosen from caller state. The operator's decision D-S2-374-2 A: one round that closes the class (C-57).
+- **The fix.** `fixed:411c7d68`. Both uv forms name `--python`, `python3` as `mise which` answers it under `env -i` at the root (else `python3` on PATH; a non-absolute answer refuses), and run under `env -u` for `VIRTUAL_ENV`, `VIRTUAL_ENV_PROMPT`, `CONDA_PREFIX` and every inherited `UV_*` variable. `--no-project` and the `cd` to the root stay.
+- **The test.** `test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state` sets a caller project, a caller `.python-version`, `VIRTUAL_ENV`, `CONDA_PREFIX` and `UV_PYTHON` at once; none is used (validation §8). The checker test's setup is now the shared helper `checker_dispatch`, and its probe assertion expects the pinned `--python`.
+- **Checks.** 55 tests pass; twelve mutants, all killed (validation §8).
+- **Size after the round.** 120 changed lines outside `tests/` and `.orchestration/` (of 200), 145 added under `tests/` (of 1000), 2 files.
+- **The Bot.** Its re-review is asked with `@codex review` on this round's head.

@@ -1,5 +1,9 @@
 task_id: dotfiles-T128-orchestrator-tools-followup-a03
-round: 2
-previous_head: 57d3577ca780248f573fd26c4fa460e2b5e2d510
-check: tests/unit/test_orchestrator_tools.py::test_dispatch_refuses_a_task_file_failing_the_checker
-reason: the Bot's P1 4299651928 on 57d3577c, the operator's decision D-P1-374 A; with --no-project uv still let a .python-version or virtual environment in the caller's directory choose the interpreter, so both uv forms run from the trusted script root
+round: 3
+previous_head: 9df6b0c7594cef7f42e9a43faa3e08d0f035e329
+check: tests/unit/test_orchestrator_tools.py::test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+reason: the local review's P1 on 9df6b0c7 (local:9df6b0c:1), the operator's decision D-S2-374-2 A; an inherited VIRTUAL_ENV still chose uv's interpreter after the cd, the third finding of the class the interpreter chosen from caller state, so both uv forms name a pinned --python and run without VIRTUAL_ENV, VIRTUAL_ENV_PROMPT, CONDA_PREFIX and the UV_* variables
+earlier:
+  - round: 2
+    previous_head: 57d3577ca780248f573fd26c4fa460e2b5e2d510
+    check: tests/unit/test_orchestrator_tools.py::test_dispatch_refuses_a_task_file_failing_the_checker

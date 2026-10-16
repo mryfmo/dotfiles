@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-orchestrator-tools-followup-a03
 seat: claude-standard-dot-a003
-permission_gated_commands: 20
+permission_gated_commands: 24
 ---
 
 # Sandbox record: dotfiles-T128-orchestrator-tools-followup-a03
@@ -36,3 +36,13 @@ Period: from the AGMSG-TASK (2026-10-16T08:28:10Z) to the RESULT. These ran insi
 | 18 | the re-check of the Bot's review, its comments and its summary on the final head (`gh api`) | `gh` |
 | 19 | the round-2 sections copied into the main-checkout records, masked again | artifact copy with the repository masker |
 | 20 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=2 …` | `agmsg-dispatch` |
+
+**Revise round 3.** Round 2 ran five calls, not six: its re-check of the Bot ran inside the wait call, as its main-checkout copy records (rows 15 to 19, nineteen in all). Round 3 adds rows 20 to 24, counted in advance; the main-checkout copy gives the final count.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| 20 | the HTTPS push of round 3's head | `git push` |
+| 21 | `gh pr comment 374 --body '@codex review'` | `gh` |
+| 22 | `gh pr checks 374 --watch`, then the `gh api` wait until the Bot's code re-review completed, and the read of its reviews, comments and reactions (background) | `gh` |
+| 23 | the round-3 sections copied into the main-checkout records, masked again | artifact copy with the repository masker |
+| 24 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=3 …` | `agmsg-dispatch` |

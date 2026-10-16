@@ -278,7 +278,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         step = self.section(self.section(skill, "## Orchestrator Playbook"), "\n10. ", "\n11. ")
         self.assertEqual(step.count("not-applicable:advisory P2 owned by"), 1)
         self.assertEqual(step.count("while INV-6's counts allow it"), 1)
-        self.assertIn("bot_rounds=1", self.section(skill, "\n15. After the final push"))
+        self.assertIn("bot_rounds=2", self.section(skill, "\n15. After the final push"))
 
     def test_advisory_rows_are_excluded_from_the_class_counts(self) -> None:
         self.assertEqual(self.invariants().count("non-advisory rows only"), 1)
@@ -387,7 +387,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft",
             "within 10 minutes, post `@codex review`",
             "at most one worker-side fix round before RESULT",
-            "`AGMSG-RESULT … bot_rounds=1`",
+            "`AGMSG-RESULT … bot_rounds=2`",
             "in the background and the Bot wait below at the same time",
             "listed as `open:<thread id>`",
             "this stops the PR for the operator's decision",

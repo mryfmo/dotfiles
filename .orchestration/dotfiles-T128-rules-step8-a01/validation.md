@@ -1,24 +1,25 @@
-# T13 amendment 5 implementation validation
+# T13 amendment6 implementation validation
 
-Previous head: 4d3d639f452e12e22c434ce62f843e0e22dc39e0
-Task SHA256: 4610a9a7c064a5d93fb72b91df73c42390051a1fcb35703a6cf5aed305ef08a9
-Check: tests/unit/test_agmsg_orchestration_docs.py::AgmsgOrchestrationRuleTest::test_boundary_cadence_is_stated_between_integrations
+Previous head: 61dbd68e6bb72b1bc0420f3e1b93b7c064fdbce3
+Task SHA256: 03544af5abdfc292683383f0548109254e3928b92528dd3cb927126bb9f65c66
+Corrected ACCEPTANCE check: tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest::test_step_10_states_the_advisory_p2_policy
+regression_check: tests/unit/test_agmsg_orchestration_docs.py::AgmsgOrchestrationRuleTest::test_boundary_cadence_is_stated_between_integrations
 
-This is the implementation snapshot committed with the revised source. New-head CI/Bot and its commit SHA can only be collected after publication; RESULT records that successor proof separately. Outputs are home-masked and trailing whitespace is normalized.
+The initial ACCEPTANCE used the unchanged cadence selector; the worker reported this and the 03:47:05Z corrected ACCEPTANCE names the actual review-count test as check and cadence as regression_check. revise.yaml matches the corrected message. The count test below failed before prose changes and passes after; both selectors pass in the full53-test run. This snapshot is committed with source; publication commit/CI/Bot are necessarily collected afterward and reported separately by RESULT. Output home paths and trailing whitespace are normalized.
 
-## New required cadence test red before prose edits (exit 1)
+## Actual review-count regression red on61dbd68e before prose (exit1)
 
 ```text
-test_boundary_cadence_is_stated_between_integrations (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationRuleTest.test_boundary_cadence_is_stated_between_integrations) ... FAIL
+test_step_10_states_the_advisory_p2_policy (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_step_10_states_the_advisory_p2_policy) ... FAIL
 
 ======================================================================
-FAIL: test_boundary_cadence_is_stated_between_integrations (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationRuleTest.test_boundary_cadence_is_stated_between_integrations)
+FAIL: test_step_10_states_the_advisory_p2_policy (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_step_10_states_the_advisory_p2_policy)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agmsg_orchestration_docs.py", line 82, in test_boundary_cadence_is_stated_between_integrations
-    self.assertIn("records reach `main` only between integrations (plan 020 step 3)", RULE.read_text())
-    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 'records reach `main` only between integrations (plan 020 step 3)' not found in '## agmsg orchestration\n\nInvariants only; every procedure lives in the `agmsg-orchestration` skill, in the sections named below.\n\n- **Activation.** When the operator asks for agmsg collaboration, or the agmsg bus and a seated worker exist here, invoke the `agmsg-orchestration` skill. Only the operator opts out, for the current task. Without a seated worker, seat one (`herdr-agents --add-worker [<worktree>]`) before any repository mutation; "no worker" is never an implicit opt-out ("Regime activation and progress").\n- **Delegation.** Every repository mutation goes to a seated worker of the manifest\'s `worker_kind`. The orchestrator itself reads, judges, tasks, accepts and integrates, and acts directly only under a declared exemption: agmsg/herdr control plane, evidence-sync bookkeeping, final integration, or machine hygiene that touches no repository, or after the operator\'s explicit opt-out for the current task ("Parallel workers"). The canonical chezmoi clone is pull and apply only: no seat edits it, and nothing is applied from a dirty source tree.\n- **Acceptance.** Acceptance, adversarial RESULT review, review-profile work and `make require-crit-review` stay with the orchestrator and are never delegated. Every RESULT that changes repository code gets one task-level audit of its final head; audit findings are input, never approval (the "Task-level audit" bullet).\n- **Permissions.** A worker completes every command inside its sandbox, except the few commands Worker Playbook step 4 sends through the permission gate; any other action outside it fails and is reported as `AGMSG-PONG v1 status=blocked`. Agent-to-agent permission approval is forbidden; only the human operator answers a permission prompt (Worker Playbook step 4).\n- **`main`.** The orchestrator never pushes a repository change to `main` directly. Every change lands through a pull request the orchestrator merges on GitHub with `gh pr merge --squash --match-head-commit <audited head sha>` (Orchestrator Playbook step 10).\n- **Identity.** Each worker identity registers at its worktree path with `AGMSG_RESOLVE_PROJECT=0 join.sh <team> <name> <type> <worktree>`. Message and wake paths (`agmsg-dispatch`, `poke.sh` or `send.sh` with `--body-file`, `inbox.sh`; never retry a `poke.sh` exit 13 as `send.sh`) are in Orchestrator Playbook step 6 and "Identity, delivery, and storage".\n- **Parallelism.** Concurrent tasks need pairwise-disjoint `allowed_files`: disjoint code tasks run concurrently while overlapping code files run serially, shared prose files only in non-overlapping sections, and the later PR takes the new base with `gh pr update-branch` ("Parallel workers").\n- **Routing.** A seat never edits the source of its own execution boundary: Claude-boundary changes go to a Codex seat, Codex-boundary changes to a Claude seat, and shared sources or permgate to the operator (Orchestrator Playbook step 3).\n- **Boundaries.** At every regime or session boundary, run the Stop checklist ("Review and integration invariants"), which `make check-regime-boundary` checks; records reach `main` at most once a day (plan 020 step 3). Codify session lessons through a task, never auto-memory.\n'
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_agmsg_orchestration_docs.py", line 281, in test_step_10_states_the_advisory_p2_policy
+    self.assertIn("bot_rounds=2", self.section(skill, "\n15. After the final push"))
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'bot_rounds=2' not found in ', wait for CI and the Codex Bot before sending RESULT. The Bot reviews at PR open and, after the one P0/P1 fix round, once more on `@codex review`; the review count is 1 + the fix rounds (plan 020 step 2).\n    - Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft (`gh pr ready` exits non-zero on a PR that is already ready, so a later head\'s wait skips it): the Codex Bot reviews non-draft PRs, and a draft only on an explicit `@codex review` comment. When no Bot review of the final head arrives within 10 minutes, post `@codex review` on the PR and wait out the rest of the window.\n    - Run `gh pr checks <pr> --watch` in the background and the Bot wait below at the same time: the 10-minute and 15-minute marks count from `gh pr ready` (from the push, for a later head), never from the end of CI. Right after a push GitHub can report no checks yet, and the watcher then exits 1 with `no checks reported`: start it once a check is listed, and restart it on that message instead of reading it as a CI failure. Wait for that watcher\'s exit status before the RESULT: a non-zero exit means no RESULT until CI passes.\n    - Then list the Bot\'s reviews of the final head with `gh api --paginate repos/{owner}/{repo}/pulls/<n>/reviews --jq \'.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="<head-sha>")|[.commit_id,.submitted_at]|@tsv\'` and the Bot\'s top-level review comments raised on it with `gh api --paginate repos/{owner}/{repo}/pulls/<n>/comments --jq \'.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="<head-sha>")|[.id,.original_commit_id,.path]|@tsv\'`. A human comment, a CodeRabbit review or an earlier head\'s review never ends the wait. A comment\'s `commit_id` moves to the newest head, so findings are matched by `original_commit_id`. Repeat until a review of the final head appears or 15 minutes pass; the report records the latter as `bot: none`. The final head here is the diff head, the last commit that changes the PR\'s content: a head that only merges the new base with `gh pr update-branch` needs green CI but no new Bot wait. Both endpoints return 30 items per page by default, so keep `--paginate`.\n    - This bounded wait is the permitted exception to the no-polling rule in "Regime activation and progress", which governs detecting worker completion and pane status, not a worker\'s wait on CI and the Bot. List at most every 30 seconds, stop at 15 minutes, and run the loop as a background command or a foreground command with a timeout. Never use bare foreground `sleep`.\n    - A 👍 reaction alone is not evidence of a review.\n    - Read each listed review\'s body too: the Codex Bot sometimes places a finding (a `P0`–`P3` badge with a blob link) in the review body instead of an inline thread. Such a review-body finding is listed alongside the top-level inline comments and fixed or dispositioned the same way.\n    - Fix P0/P1 findings, inline or review-body, in at most one worker-side fix round before RESULT, then request `@codex review` and restart the wait from the push. A P0/P1 surviving that round is not fixed again: send `AGMSG-RESULT … bot_rounds=1` with each listed as `open:<thread id>` (`open:review-<review id>` for a review-body finding); this stops the PR for the operator\'s decision, and the next bullet\'s `fixed:`/`not-applicable:` rule does not override it.\n    - Apart from those surviving P0/P1 items, the RESULT names every unresolved thread id with `fixed:<sha>` or a proposed `not-applicable:<reason>` under Orchestrator Playbook step 10. The worker resolves no thread.\n'
 
 ----------------------------------------------------------------------
 Ran 1 test in 0.000s
@@ -26,7 +27,7 @@ Ran 1 test in 0.000s
 FAILED (failures=1)
 ```
 
-## uv run python -m unittest tests/unit/test_agmsg_orchestration_docs.py -v (exit 0)
+## uv run python -m unittest tests/unit/test_agmsg_orchestration_docs.py -v (exit0)
 
 ```text
 test_docs_no_longer_name_codex_review_commit (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationForbiddenPhrasesTest.test_docs_no_longer_name_codex_review_commit) ... ok
@@ -84,26 +85,31 @@ test_workers_commit_inside_the_sandbox (tests.unit.test_agmsg_orchestration_docs
 test_workers_open_the_pr_as_a_draft (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_workers_open_the_pr_as_a_draft) ... ok
 
 ----------------------------------------------------------------------
-Ran 53 tests in 0.016s
+Ran 53 tests in 0.010s
 
 OK
 ```
 
-## make render-check (exit 0)
+## make render-check and native format/diff checks (exit0)
 
 ```text
 uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
 mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
 generated agent configs are up to date
+1 file already formatted
 ```
 
-## git numstat, D6/retired name counts, words, caps, task hashes, diff-check and Crit status
+## Numstat/caps/D6/count/word/task-hash/Crit checks
 
 ```text
-15	0	.orchestration/dotfiles-T128-rules-step8-a01/dotfiles-T128-rules-step8-a01-worker-crit.json
+21	0	.orchestration/dotfiles-T128-rules-step8-a01/dotfiles-T128-rules-step8-a01-worker-crit.json
 6	0	.orchestration/dotfiles-T128-rules-step8-a01/dotfiles-T128-rules-step8-a01-worker-review-receipt.md
-4	0	.orchestration/dotfiles-T128-rules-step8-a01/revise.yaml
-157	0	.orchestration/dotfiles-T128-rules-step8-a01/task.md
+5	0	.orchestration/dotfiles-T128-rules-step8-a01/learning.md
+19	0	.orchestration/dotfiles-T128-rules-step8-a01/report.md
+6	0	.orchestration/dotfiles-T128-rules-step8-a01/revise.yaml
+3	0	.orchestration/dotfiles-T128-rules-step8-a01/sandbox.md
+161	0	.orchestration/dotfiles-T128-rules-step8-a01/task.md
+132	0	.orchestration/dotfiles-T128-rules-step8-a01/validation.md
 2	2	AGENTS.md
 20	17	home/dot_agents/skills/agmsg-orchestration/SKILL.md
 1	1	home/dot_config/claude/rules/agmsg-orchestration.md
@@ -117,8 +123,12 @@ home/dot_agents/skills/agmsg-orchestration/SKILL.md D6= 0 AUDIT_DISPOSITIONS= 0
 AGENTS.md D6= 0 AUDIT_DISPOSITIONS= 0
 rule words: 447
 source changed lines: 47 <=200; test additions: 67 <=1000
-4610a9a7c064a5d93fb72b91df73c42390051a1fcb35703a6cf5aed305ef08a9  .orchestration/dotfiles-T128-rules-step8-a01/task.md
-4610a9a7c064a5d93fb72b91df73c42390051a1fcb35703a6cf5aed305ef08a9  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-rules-step8-a01.md
+home/dot_agents/skills/agmsg-orchestration/SKILL.md bot_rounds1= 0 bot_rounds2= 2
+tests/fixtures/regime/worker-step-15.md bot_rounds1= 0 bot_rounds2= 1
+tests/fixtures/regime/message-contract.md bot_rounds1= 0 bot_rounds2= 1
+tests/unit/test_agmsg_orchestration_docs.py bot_rounds1= 0 bot_rounds2= 2
+03544af5abdfc292683383f0548109254e3928b92528dd3cb927126bb9f65c66  .orchestration/dotfiles-T128-rules-step8-a01/task.md
+03544af5abdfc292683383f0548109254e3928b92528dd3cb927126bb9f65c66  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-rules-step8-a01.md
 {
   "branch": "fix/regime-rules-step8",
   "daemon": {

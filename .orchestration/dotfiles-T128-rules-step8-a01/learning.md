@@ -1,5 +1,5 @@
-# T13 amendment 5 learning
+# T13 amendment6 learning
 
-[memory:failure] A daily merge heuristic conflicts with an unconditional boundary checklist and leaves ambiguous behavior at later boundaries. The operative rule is keeping main stationary while another PR is between its final head and merge.
+[memory:failure] A field named Bot rounds under-reports history when its value counts fix rounds while another clause defines reviews as1+fix rounds.
 
-[memory:decision] Commit records at every boundary, queue the boundary PR only between integrations, and pin both the rule-file clause and the SKILL's operative clause in test_boundary_cadence_is_stated_between_integrations. The old source fails that test; all53 pass after the exact amended clauses and fixture update. Keep the four audit-input evidence files committed with the implementation; distinguish post-publication head/CI/Bot proof explicitly.
+[memory:decision] Count initial review plus re-review as bot_rounds=2 after one fix round, preserving the one-fix limit. Pin both fixed sections and update existing assertions before prose: the review-count test fails on61dbd68e and all53 pass after. Report a supplied selector that checks unrelated unchanged text instead of claiming it failed. The orchestrator corrected check to the discriminating count test and regression_check to cadence before commit.

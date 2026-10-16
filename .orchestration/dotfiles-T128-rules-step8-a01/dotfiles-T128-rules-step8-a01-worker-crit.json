@@ -17,5 +17,11 @@
     "body": "Independent read-only peer review found no P0-P3 findings. Exact amended cadence clauses, pinned fixture, renamed test and revise selector agree; task hash4610a9a7 matches. Full PR caps47 source/67 test additions and447-word rule match the diff. Four nonempty report/validation/sandbox/learning records contain local proof and explicitly separate old-head review from post-publication checks. No secrets or unmasked home paths in reviewed records. No tests or edits performed by reviewer.",
     "scope": "review",
     "resolved": true
+  },
+  {
+    "id": "rules-step8-amendment6-review-count-approval",
+    "body": "Independent read-only peer review found no P0-P3 findings. Both SKILL literals, corresponding pinned fixtures and test assertions use bot_rounds=2; onefix limit and operator-stop remain unchanged. Task hash03544af5, caps47source/67test additions and447-word rule match. Records disclose supplied ACCEPTANCE cadence-selector mismatch and identify the actual review-count red/green test. Root evidence complete; new-head CI/Bot follow publication. No secrets or unmasked home paths; no reviewer edits/tests. After this review, the orchestrator corrected the selector by ACCEPTANCE03:47:05Z; records now match count-test check and cadence regression_check. This metadata correction changes no reviewed source/tests.",
+    "scope": "review",
+    "resolved": true
   }
 ]

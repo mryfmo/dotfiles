@@ -369,6 +369,27 @@ class ChainReviewScriptsTest(unittest.TestCase):
         self.assertEqual("# record\n", record.read_text())
         self.assertIn("no local review file", self.run_tool("local-advisory.sh", "t-b01", head, owner, code=2))
 
+    def test_local_advisory_refuses_a_malformed_owner_id(self):
+        # The owner is a grep pattern and verbatim record text; a malformed one changes nothing.
+        head = "abcdef0" + "1" * 33
+        self.write(f".orchestration/validation/t-a01-local-review-{head[:7]}.md", "---\nfindings: 1\n---\n\n- [P2] x\n")
+        for owner in ("", "../x", "a b", "a\nb", ".*", "-a"):
+            with self.subTest(owner=owner):
+                self.assertIn("usage:", self.run_tool("local-advisory.sh", "t-a01", head, owner, code=2))
+        self.assertFalse((self.repo / ".orchestration/acceptance").exists())
+
+    def test_local_advisory_matches_the_owner_heading_literally(self):
+        # A dotted owner is no wildcard, and a longer id that starts with the owner is another owner.
+        head = "abcdef0" + "1" * 33
+        self.write(f".orchestration/validation/t-a01-local-review-{head[:7]}.md", "---\nfindings: 1\n---\n\n- [P2] x\n")
+        near = "# record\n## Owned by t-followupXa01 (x)\n## Owned by t.followup-a01b (x)\n"
+        record = self.write(".orchestration/acceptance/t-a01.md", near)
+        self.run_tool("local-advisory.sh", "t-a01", head, "t.followup-a01")
+        self.assertEqual(1, record.read_text().count("\n## Owned by t.followup-a01 (advisory P2"))
+        self.run_tool("local-advisory.sh", "t-a01", head, "t.followup-a01")
+        self.assertEqual(1, record.read_text().count("\n## Owned by t.followup-a01 (advisory P2"))
+        self.assertTrue(record.read_text().startswith(near))
+
     def test_sandbox_scan_prints_the_unsandboxed_mutation_calls(self):
         sandboxes = ".orchestration/sandboxes"
         hit = "| 2 | dangerouslyDisableSandbox: git commit -m wip |"

@@ -78,6 +78,11 @@ class AgmsgOrchestrationRuleTest(unittest.TestCase):
         self.assertIn('the "Task-level audit" bullet', rule)
         self.assertIn("\n- Task-level audit:", skill)
 
+    def test_boundary_cadence_is_stated_between_integrations(self) -> None:
+        self.assertIn("records reach `main` only between integrations (plan 020 step 3)", RULE.read_text())
+        invariants = SKILL.read_text().split("## Review and integration invariants", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("queued only while no other PR is between its final head and its merge", invariants)
+
     def test_word_budgets(self) -> None:
         self.assertLessEqual(words(RULE), 450)
         self.assertLessEqual(sum(words(RULES / name) for name in ALWAYS_LOADED_RULES), 1800)
@@ -192,7 +197,7 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
         for token in (
             "WebFetch tool, not Bash `curl`",
             "Fetch and fast-forward inside the sandbox",
-            "So a Claude seat runs three commands outside the sandbox through the permission gate:",
+            "On both platforms a Claude seat runs three commands outside the sandbox through the permission gate:",
             "`gh`, `git push`, and an authenticated `git fetch`",
             "-worker-crit.json",
             "writing the task's artifacts at their expected main-checkout paths and masking them with the repository masker, through the permission gate because the main checkout is not writable from a worktree sandbox",
@@ -252,6 +257,32 @@ class AgmsgRegimePatternTest(unittest.TestCase):
                     f"tests/fixtures/regime/{name}.md in the same commit and listing it in the RESULT",
                 )
 
+    def test_skill_names_no_unlanded_mechanism(self) -> None:
+        pattern = (
+            r"Until .schemas/task.json. lands|Once plan 007 T718 lands|"
+            r"Once .dotfiles-T128-gate-evidence-a02. lands|until a checker lands|"
+            r"On Linux, .gh. backed by the host keyring|AUDIT_DISPOSITIONS"
+        )
+        for path in (SKILL, ROOT / "AGENTS.md"):
+            with self.subTest(path=path.name):
+                self.assertEqual(re.findall(pattern, path.read_text()), [])
+
+    def test_skill_sandbox_text_names_both_platforms(self) -> None:
+        step = self.section(self.section(SKILL.read_text(), "## Worker Playbook"), "\n4. ", "\n5. ")
+        for platform in ("Seatbelt", "bubblewrap"):
+            with self.subTest(platform=platform):
+                self.assertIn(platform, step)
+
+    def test_step_10_states_the_advisory_p2_policy(self) -> None:
+        skill = SKILL.read_text()
+        step = self.section(self.section(skill, "## Orchestrator Playbook"), "\n10. ", "\n11. ")
+        self.assertEqual(step.count("not-applicable:advisory P2 owned by"), 1)
+        self.assertEqual(step.count("while INV-6's counts allow it"), 1)
+        self.assertIn("bot_rounds=2", self.section(skill, "\n15. After the final push"))
+
+    def test_advisory_rows_are_excluded_from_the_class_counts(self) -> None:
+        self.assertEqual(self.invariants().count("non-advisory rows only"), 1)
+
     def test_design_review_runs_in_paired_rounds_with_a_cap(self) -> None:
         text = self.invariants()
         for token in (
@@ -281,7 +312,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             # thread 4257278283: matching ids is not enough, so each sentence is compared with the design's.
             "one invariant check (for a task that carries an `invariants` key: the task id maps to its "
             "`implementing_tasks` entry, the invariant ids match, and each invariant's sentence equals the design's "
-            "byte-for-byte, the design read from main (INV-2), checked by hand in the review until a checker lands; "
+            "byte-for-byte, the design read from main (INV-2), checked by hand in the review; "
             "a task without the key needs no entry)",
         ):
             with self.subTest(token=token):
@@ -314,7 +345,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "`closed: tests/<file>::<name>`",
             "`residual: <sentence>`",
             "`out-of-scope: <task id>`",
-            "Shape is `schemas/task.json`'s",
+            "The task-file review checks the three shape rules by hand",
             "Substance is the reviewers'",
             "The table is the task's completion condition",
             "a missing row is added once, counted as an amendment",
@@ -323,16 +354,19 @@ class AgmsgRegimePatternTest(unittest.TestCase):
                 self.assertIn(token, text)
 
     def test_threat_table_rule_carries_no_grammar(self) -> None:
-        # The reset of PR 318: shape lives in schemas/task.json, never as a pattern in prose.
+        # The reset of PR 318: shape checks carry no grammar pattern in prose.
         text = self.invariants()
         self.assertNotIn("^(closed|residual|out-of-scope)", text)
         self.assertNotIn("`none`", text)
 
     # Thread 4240348412 is closed by a05's counters bullet: the script reads the whole history (scripts/regime-counters.sh:85), no by-hand read remains.
-    def test_open_third_round_threads_have_an_integration_outcome(self) -> None:
+    def test_surviving_fix_round_threads_stop_for_the_operator(self) -> None:
         # Thread 4240348414: an open: item needs a path through steps 10.1 and 10.5.
         playbook = self.section(SKILL.read_text(), "## Orchestrator Playbook")
-        for token in ("is a sweep item like any other", "the PR is not merged, never with the thread open"):
+        for token in (
+            "follows Worker Playbook step 15's operator-decision path",
+            "the PR is not merged, never with the thread open",
+        ):
             with self.subTest(token=token):
                 self.assertIn(token, playbook)
 
@@ -352,11 +386,11 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             # Thread 4240646079: after a fix push the PR is already ready, and `gh pr ready` fails there.
             "Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft",
             "within 10 minutes, post `@codex review`",
-            "at most twice. The third Bot round is not fixed",
-            "`AGMSG-RESULT … bot_rounds=3`",
+            "at most one worker-side fix round before RESULT",
+            "`AGMSG-RESULT … bot_rounds=2`",
             "in the background and the Bot wait below at the same time",
             "listed as `open:<thread id>`",
-            "an escalated label that the next bullet's",
+            "this stops the PR for the operator's decision",
             "never from the end of CI",
         ):
             with self.subTest(token=token):
@@ -398,7 +432,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "a `residual` row whose control does not mitigate the risk",
             "an `out-of-scope` row whose owner does not own it",
             "Do not re-raise a `residual` row whose control mitigates the risk",
-            "Shape (the test selector, the sentence, the owning task id) is the schema's to check, not the review's",
+            "The task-file review checks the three shape rules (the test selector, the sentence, the owning task id) by hand",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, subsection)
@@ -416,11 +450,9 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, bullet)
 
-    def test_shape_is_checked_by_hand_until_the_schema_lands(self) -> None:
-        # Audit of 27ea99b2: neither schemas/task.json nor its validator exists yet.
-        sentence = (
-            "Until `schemas/task.json` lands in wave V1, the task-file review checks the three shape rules by hand."
-        )
+    def test_shape_is_checked_by_hand(self) -> None:
+        # Shape checks stay in the review; no unlanded schema is promised.
+        sentence = "The task-file review checks the three shape rules"
         rules = self.section((ROOT / "AGENTS.md").read_text(), "## Code Review Rules")
         for name, text in (
             ("SKILL invariants", self.invariants()),
@@ -448,7 +480,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         # Audit of b7ae2d54 and thread 4240646082: a closed row's test does not exist before implementation.
         text = self.invariants()
         for token in (
-            "a `closed` selector names a test present in the PR tree at acceptance and in the schema's validation of the PR",
+            "a `closed` selector names a test present in the PR tree at acceptance",
             "For a `closed` row it checks the selector's form only, since the test does not exist before implementation.",
         ):
             with self.subTest(token=token):
@@ -580,12 +612,12 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "dispatch; a class is a slug of `[a-z0-9-]` assigned at disposition time, never text taken from a review "
             "title.",
             # Thread 4249303433: review-derived text never reaches a shell.
-            "Once plan 007 T718 lands, `scripts/orchestrator/three-repeat.sh <class>` validates the slug, runs the "
-            "records search and the CompactionDB search without a shell and prints the line; until then the "
-            "orchestrator runs them by hand with a validated slug.",
-            # Thread 4248711363: the gate does not read the line yet, so the sentence names its landing condition.
-            "Once `dotfiles-T128-gate-evidence-a02` lands, the gate refuses the action without the line; until then "
-            "the orchestrator refuses it by rule.",
+            "`scripts/orchestrator/three-repeat.sh <class>` validates the slug, runs the records search and the "
+            "CompactionDB search without a shell and prints the line.",
+            "The gate (`scripts/require-crit-review.py`, S6) refuses the merge for a ledger class at three or more "
+            "rows whose `searches` entry does not equal the mistake records naming the class; "
+            "`acceptance-front-matter.py` writes the entry from the same lookup.",
+            "Pasting the `search:` line and applying the correction before any dispatch remain the orchestrator's rule.",
             "Every `not-applicable` disposition carries `; evidence=<command>` with the output pasted in the record.",
         ):
             with self.subTest(token=token[:40]):
@@ -632,7 +664,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         )
 
     def test_the_gate_reads_the_acceptance_record(self) -> None:
-        # Plan 007 T703 item 6: the gate reads the record's ledger and `search:` line once gate-evidence-a02 lands.
+        # Plan 007 T703 item 6: the gate reads the acceptance record's ledger and searches.
         step = self.section(self.section(SKILL.read_text(), "## Orchestrator Playbook"), "\n10. ", "\n11. ")
         # Row audit:71eb920:1 (the a04 record's owned section): the gate retired AUDIT_DISPOSITIONS and reads an
         # incorrect audit's dispositions from the record's audit_findings, so step 10 no longer names the variable.
@@ -640,8 +672,7 @@ class AgmsgRegimePatternTest(unittest.TestCase):
             "`AUDIT_EVIDENCE=<audit> AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> ACCEPTANCE_EVIDENCE=<acceptance record> "
             "BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review`",
             "with every audit finding dispositioned as the task-level audit bullet says: for an `incorrect` verdict "
-            "the record's JSON `audit_findings`, which the gate reads through `ACCEPTANCE_EVIDENCE` (it never reads "
-            "`AUDIT_DISPOSITIONS`, which is retired).",
+            "the record's JSON `audit_findings`, which the gate reads through `ACCEPTANCE_EVIDENCE`.",
             "must be `correct`, or `incorrect` with an `audit_findings` entry in the acceptance record for each of its "
             "findings.",
         ):

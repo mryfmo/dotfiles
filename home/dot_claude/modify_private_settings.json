@@ -20,6 +20,15 @@ MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
 # changes would leave its previous variant behind and fire the hook twice. Any
 # entry invoking this script is managed, whatever home path it was rendered with.
 MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents")
+MANAGED_POST_TOOL_USE_SCRIPTS = ("format-edited-files.py", "project-map-reload.sh")
+
+
+def managed_post_tool_use_paths() -> set[str]:
+    return {
+        path
+        for name in MANAGED_POST_TOOL_USE_SCRIPTS
+        for path in (f"~/.claude/hooks/{name}", str(home_dir() / ".claude" / "hooks" / name))
+    }
 
 
 def source_dir() -> Path:
@@ -72,6 +81,16 @@ def is_managed_session_start_hook(hook: Any) -> bool:
     return any(Path(part).name in MANAGED_SESSION_START_SCRIPTS for part in parts)
 
 
+def is_managed_post_tool_use_hook(hook: Any) -> bool:
+    if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
+        return False
+    try:
+        parts = shlex.split(hook["command"])
+    except ValueError:
+        return False
+    return len(parts) == 1 and parts[0] in managed_post_tool_use_paths()
+
+
 def entry_has_managed_hook(entry: Any, is_managed: Any) -> bool:
     if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
         return False
@@ -107,6 +126,7 @@ def merge_managed_entries(current_hooks: Any, managed_entries: list[Any], is_man
 MANAGED_HOOK_PREDICATES = {
     "PermissionRequest": is_managed_permission_hook,
     "SessionStart": is_managed_session_start_hook,
+    "PostToolUse": is_managed_post_tool_use_hook,
 }
 
 

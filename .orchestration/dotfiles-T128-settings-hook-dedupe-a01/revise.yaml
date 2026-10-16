@@ -1,5 +1,6 @@
 task_id: dotfiles-T128-settings-hook-dedupe-a01
-amendment: 3
-previous_head: 72d0e66dcf27bfdb1161f4f4f52b35ef3857b928
+amendment: 5
+previous_head: e5d0141bfe63f3bcb558631731785d6f92a92080
 check: tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_managed_post_tool_use_replaces_stale_format_only_entry
-findings: Bot-P1-4290664196-and-worker-P1-compact-chain
+findings: Bot-P1-4290805581-and-precommit-peer-P1-interpreter-chain
+operator_decision: D-P1-369-2-A

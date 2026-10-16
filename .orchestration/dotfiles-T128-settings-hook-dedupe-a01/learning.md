@@ -1,5 +1,5 @@
-# T15 amendment3 learning
+# T15 amendment5 learning
 
-[memory:failure] Basename-only classification loses unrelated same-name programs; shlex token count also misses shell punctuation glued without whitespace. Both shapes fail red on72d0e66d, including an interpreter variant.
+[memory:failure] Interpreter basename recognition admits a compound first token ending in /usr/bin/python3 and can consume a user's preceding chained command. Exact script-path equality alone did not close it; peer caught this before amendment4 commit.
 
-[memory:decision] Match the specified managed hook path with a fullmatch over a plain-character prefix and /.claude/hooks/<managed basename>, after requiring exact token count. Preserve other command shapes and retain stale absolute managed-home migration, covered in the same new regression method. All20 tests pass after this root fix. The additional round was explicitly operator-authorized; no worker waiver of the stop rule.
+[memory:decision] The managed template emits only a bare script path, so recognize exactly one token equal to tilde/current-home absolute managed paths and preserve all multi-token commands. Four interpreter forms and the compound chain fail before clause removal, then all20 tests pass. Reuse home_dir() and current merge logic; no shell-pattern ownership heuristics. This stays in the same operator-authorized fix round.

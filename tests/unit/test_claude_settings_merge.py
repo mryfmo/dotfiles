@@ -397,6 +397,10 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             "matcher": "Write|Edit|MultiEdit",
             "hooks": [{"type": "command", "command": str(self.home_dir / ".claude/hooks/format-edited-files.py")}],
         }
+        project_local_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": "/workspace/team/.claude/hooks/format-edited-files.py"}],
+        }
         cases = [
             ("stale and managed", [stale_entry, managed_entry], [managed_entry]),
             ("stale alone", [stale_entry], [managed_entry]),
@@ -411,6 +415,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             ("same basename", [same_basename_entry, stale_entry], [same_basename_entry, managed_entry]),
             ("compact chain", [compact_chain_entry, stale_entry], [compact_chain_entry, managed_entry]),
             ("absolute managed path", [absolute_entry], [managed_entry]),
+            ("project-local path", [project_local_entry, stale_entry], [project_local_entry, managed_entry]),
         ]
         for interpreter in ("python3", "python", "bash", "sh"):
             interpreted = {
@@ -419,7 +424,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
                     {"type": "command", "command": f"/usr/bin/{interpreter} ~/.claude/hooks/format-edited-files.py"}
                 ],
             }
-            cases.append(("interpreter", [interpreted], [managed_entry]))
+            cases.append(("unmanaged interpreter", [interpreted], [interpreted, managed_entry]))
         for command in (
             "~/bin/my-hook.sh",
             "'unterminated",
@@ -430,6 +435,9 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             "~/.claude/hooks/format-edited-files.py --custom",
             "python3 ~/.claude/hooks/format-edited-files.py --custom",
             "python3 /opt/team/format-edited-files.py",
+            "python3 /workspace/team/.claude/hooks/format-edited-files.py",
+            "~/bin/audit-edit.sh;/usr/bin/python3 ~/.claude/hooks/format-edited-files.py",
+            "/former-home/.claude/hooks/format-edited-files.py",
             "bash ~/.claude/hooks/project-map-reload.sh && ~/bin/audit-edit.sh",
         ):
             unmanaged = {"matcher": "Bash", "hooks": [{"type": "command", "command": command}]}

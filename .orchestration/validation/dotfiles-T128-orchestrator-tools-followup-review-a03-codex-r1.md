@@ -1,0 +1,3 @@
+[P1] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:68 Checking only files with a literal `kind: code` line is not fail-closed because valid YAML such as `kind: "code"` can bypass the checker; only a positively identified review brief should be exempt.
+[P2] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:68 `uv run --offline` disables network access, so the promise to use the index when cached PyYAML is absent is contradictory and cannot be implemented as written.
+Task-file verdict: dotfiles-T128-orchestrator-tools-followup-a03: revise

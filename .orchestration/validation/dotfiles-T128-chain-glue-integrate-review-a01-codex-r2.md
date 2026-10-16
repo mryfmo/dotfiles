@@ -1,0 +1,3 @@
+[P1] high .orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md:87 The base-moving test uses a separately cloned review checkout, but the specified chain fetches `origin/main` only in `<main>` before checking `<review>`’s stale `origin/main`, so the required update-branch and two-fetch restart cannot occur.
+[P2] high .orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md:87 The promised distinct exit-code contract overlaps `orch-audit.sh` statuses 2/3 with precondition and local-finding statuses 2/3, and arbitrary propagated command statuses can also collide with reserved codes 2–5.
+Task-file verdict: dotfiles-T128-chain-glue-integrate-a01: revise

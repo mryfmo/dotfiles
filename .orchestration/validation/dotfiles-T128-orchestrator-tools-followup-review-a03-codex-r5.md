@@ -1,0 +1,2 @@
+[P1] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:84 The k-th-oldest identical-row anchor shifts when an older identical row leaves the bounded window, so a successful send can be mistaken for the anchor and remain unrecorded; add this eviction-plus-collision case and require fail-closed identification.
+Task-file verdict: dotfiles-T128-orchestrator-tools-followup-a03: revise

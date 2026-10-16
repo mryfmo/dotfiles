@@ -1,0 +1,3 @@
+[P2] high .orchestration/tasks/dotfiles-T128-rules-step8-a01.md:22 The SKILL threat-table row omits item 1(g) and `test_boundary_cadence_is_stated_once_a_day`, so Amendment 3’s cadence edits lack the per-item test coverage required by stop condition 3.
+[P2] high .orchestration/tasks/dotfiles-T128-rules-step8-a01.md:30 The task still says “four new tests” here, at line 88, and in item 5 while listing five, contradicting Amendment 3 and failing stop condition 2’s test-accounting requirement.
+Task-file verdict: dotfiles-T128-rules-step8-a01: revise

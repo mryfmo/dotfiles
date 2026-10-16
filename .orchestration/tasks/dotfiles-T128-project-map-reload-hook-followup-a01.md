@@ -60,11 +60,11 @@ premises:
   - claim: 'the lineage task file is on origin/main at dispatch (absent today: it lands with the next boundary; this task never dispatches before)'
     command: 'git cat-file -e origin/main:.orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md && echo present || echo absent'
     output: |-
-      absent
+      present
   - claim: 'the lineage acceptance record''s Owned-by section is on origin/main at dispatch (absent today: the section is written at the lineage''s RESULT and lands with the boundary after PR #353 merges, before this task dispatches; a record on origin/main without the section is still absent here, so a dispatch before the section would read no rows)'
     command: 'git show origin/main:.orchestration/acceptance/dotfiles-T128-project-map-reload-hook-a01.md 2>/dev/null | /usr/bin/grep -q "^## Owned by dotfiles-T128-project-map-reload-hook-followup-a01" && echo present || echo absent'
     output: |-
-      absent
+      present
 ---
 
 # AGMSG-TASK dotfiles-T128-project-map-reload-hook-followup-a01 — the residual findings of the project-map reload hook PR (#353) (the owner task of the hook lineage; plan 020 step 1, C-32's owner-first pattern)

@@ -1,0 +1,21 @@
+---
+format: 2
+task_id: dotfiles-T128-validator-offline-review-a01
+kind: review
+security: false
+---
+
+# AGMSG-TASK dotfiles-T128-validator-offline-review-a01 — confirm the task text `dotfiles-T128-validator-offline-a01` (review seat half; Codex headless runs the same check in parallel)
+
+Drafted 2026-10-15 by the orchestrator seat (the bus time of the TASK line is the dispatch time). The reviewed file is `.orchestration/tasks/dotfiles-T128-validator-offline-a01.md` (untracked; its sha256 is the `validator_task_sha256` of the TASK line), plan 022 T5: the two validator recipes of the Makefile resolve PyYAML against the index on every run and fail inside the Claude sandbox although the cache holds PyYAML; the task makes them run from the cache when a probe shows it holds PyYAML and through the index otherwise. The plan had proposed falling back on uv's exit 2; the task corrects that after the orchestrator's replay (a cold cache under `--offline` exits 1, the same code as a validator finding). One round, fixed stop condition.
+
+## Stop condition
+
+1. Item 1 describes the one change correctly against the Makefile on `origin/main`: both recipes are today the bare `uv run --with pyyaml <script>` form (premise 1); the variable `UV_PYYAML` is a recursively expanded GNU make variable whose `$(if $(shell …),…,…)` runs the probe only when a recipe expands it; the probe runs no validator; the two recipe lines and the variable (with its one comment line) are the only edits; the three failure modes follow (a successful probe runs the cached form, a failed probe runs today's index form, the validator's exit status is returned as is and never retried). The exit-code facts the task rests on replay from the reviewer's own sandbox: `uv run --offline --with <a real package not in the cache> python -c pass` exits 1, `uv run --offline --with pyyaml python -c 'import yaml'` exits 0 (the cache holds PyYAML on this machine), and `uv run --with <that package> python -c pass` exits 2 where the index is denied (report what the reviewer's sandbox observes; the Codex half's sandbox may answer the third command differently).
+2. Item 2's two test names appear verbatim (the second in the closed row); the three cases of the second test distinguish the probe's two outcomes (the second argv line with and without `--offline`), show that a validator failure is not retried (case three: two lines, non-zero exit), and reach no network (the stub `uv` is first on PATH, so no real uv runs); `make` is present wherever the unit tests run, because `make test` is what runs them (`Makefile` line 185 on `origin/main`).
+3. The threat table has one row per `allowed_files` entry, the uv-cache-and-network row as the non-path control, the generic rows verbatim from `.orchestration/templates/task-short.md`, and the new-scripts row saying no new script; no sentence states an unlanded mechanism as present; the Completion clause is plan 020 step 4's (the Bot's single review, one fix round, a surviving P0/P1 to the operator, P2 advisory under the named owner) plus the D10 replay; the cap sentence reads outside `tests/` and outside `.orchestration/`; `allowed_files` is pairwise-disjoint from every in-flight task (the chain-review follow-up's `scripts/orchestrator/*`, the task-checkers follow-up's checkers and tests, the settings-hook dedupe task's modify script and test, the pane-open follow-up's hook and rule: none names `Makefile` or `tests/unit/test_makefile_offline.py`).
+4. The file passes C1 to C10 and C7b (the orchestrator pasted `dotfiles-T128-validator-offline-a01.md: OK`), the mask check (`masked 0 match(es)`), and its three premises replay from this checkout (`origin/main` fetched): `2`, `absent`, `0`.
+
+## Output
+
+`.orchestration/validation/dotfiles-T128-validator-offline-review-a01.md`: the usual header with the sha256, findings (`P0`–`P3`, confidence, `file:line`, one line each), one line `Task-file verdict: dotfiles-T128-validator-offline-a01: confirm|revise`. Forbidden: editing tracked files, branches, commits, pushes, PRs. RESULT: `AGMSG-RESULT v1 task_id=dotfiles-T128-validator-offline-review-a01 round=1 verdict=confirm|revise validator_task_sha256=<sha> validation=<path>`.

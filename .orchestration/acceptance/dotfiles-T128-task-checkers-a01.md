@@ -96,6 +96,8 @@ local-finding: c1f60f7:3 not-applicable:advisory P2 owned by dotfiles-T128-task-
 ## Owned by dotfiles-T128-task-checkers-followup-a01 (advisory P2 of the final head; plan 020 step 1.2; rows id<TAB>class)
 
 local:c1f60f7:3	advisory-p2
+4279174373	sys-path-shadowing
+- 4279174373 fixed:70614e7a in PR #365 round 2 (python -I for the ledger check); no owner work remains for this row.
 - 06:06Z the owner task `dotfiles-T128-task-checkers-followup-a01` written (the first advisory P2, local:c1f60f7:3, appeared; the Completion's rule); input checker `OK`; one-round paired review dispatched (seat + Codex); it lands with the next boundary.
 - 06:08Z Codex round 1 on the owner task: `revise`, P1 the Completion omitted plan 020 step 4's conditions. Added; hash 35c70c1aed3b64a243e599a155651acbe55cdddb09d5962820b50f63f871f873; round 2 to both halves.
 - 06:11:41Z Codex round 2 on the owner task: `confirm`, no finding; the seat's round-2 RESULT is awaited for the pair confirm (the file then waits for the next boundary and for PR #352's merge).

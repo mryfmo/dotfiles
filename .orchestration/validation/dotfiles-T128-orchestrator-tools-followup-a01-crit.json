@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-orchestrator-tools-followup-a01-pr361-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "2e77a333489c679316151d4536222a8f33bb4246",
+    "pr": "361",
+    "reviewed_at": "2026-10-15T04:09:04Z",
+    "body": "Orchestrator review of PR #361 (dotfiles-T128-orchestrator-tools-followup-a01, head 570a30a4 on base 727180db), read from the fetched head: four orchestrator scripts change where the 22 owned rows of the a02 record point. boundary.sh lists the changed .orchestration files NUL-delimited into an array (a newline in a name stays in its path), copies the present ones and deletes the missing ones in the boundary worktree with git rm (a rename is a deletion plus a copy), masks the copies by array, and counts files by array length; ff-main.sh restores locally deleted tracked files before the fast-forward and deletes them again after it, listing them, with the ERR trap naming them; fill_sweep.py reads review levels and keys its synthetic index ids as item#<n>, apart from URL fragments; orch-gate.sh's small change follows its rows. The Bot's single review (5526640758 on 4b15fab0) left two P1 threads (4277862535: a filename with a newline broke the NUL-to-newline conversion and cut -c4-; 4277862537: the synthetic item id shared the namespace of a URL fragment item-N), both fixed in the one round, d414e86c, with tests; no review on the final head. Rows: 15 fixed in 0bb86ab8, 2 in 0bb86ab8 and d414e86c, 5 already fixed on main (c586f20d, 28eec93c, 5ec86052), and 2 orchestration rows the worker proposes (audit:7b574d3:6 fixed:df044557, the a02 record's counters paste; audit:7b574d3:7 not-applicable, the a02 report is outside allowed_files), which the orchestrator decides in the record. Tests: test_orchestrator_tools 46 OK (6 new), neighbours 33 OK, mutants 13 of 13. Caps: 75 added and 33 deleted lines outside tests and .orchestration (108 of 200, four files), 126 added under tests. CI 13 of 13 on 570a30a4. The task copy equals the dispatched ae208bef; the evidence is in the main checkout as well as on the branch. Main moved to 5c3f8dd0 after the push, so the chain update-branches first (after #362). No finding."
+  }
+]

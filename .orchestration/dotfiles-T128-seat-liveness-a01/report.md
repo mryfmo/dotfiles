@@ -87,14 +87,6 @@ The main-checkout `memory add` runs after CI. Its command and output go into the
 - [memory:decision] A seated worker's liveness is its pane state from upstream's chain: `agmsg_spawn_path`, the record's first field, `agmsg_terminal_ref_terminal`/`_id`, `agmsg_terminal_load`, then `terminal_pane_state`, giving present, gone or unknown. `herdr-agents --remove-worker <wt> --stale` retires only gone seats and moves the record under `run/stale/`. `check-regime-boundary.sh` names that command, and `--attach` prints `seat_stale=`.
 - [memory:failure] In this Claude worker sandbox, `git commit` in tests exits 128 because of global commit signing, and 31 tests of `test_herdr_agents.py` fail on `origin/main` too. Compare the failure set against a baseline worktree before reading local failures as regressions.
 
-## Revise round 2 (`3cc248cb`)
-
-- **The P2** of the audit of `cb9ea17` (executable_herdr-agents:1950). On the `--stale` path a failed `leave.sh` or `delivery.sh` was suppressed, and the record still moved. The retirement reported success while an identity remained with no record, and a retry then read `unknown`.
-- **The fix.** On the `--stale` path, `delivery.sh set off` and `leave.sh` run before the record is touched. Either failure prints the step on stderr, keeps the record, and exits 1. The despawn path is unchanged.
-- **The test.** `test_remove_worker_stale_keeps_the_record_when_cleanup_fails`, the revise's check. Its mutant, the suppression restored, is killed (validation §4).
-- **The P3** (validation.md:33). The baseline comparison is now pasted in full in validation §4: the command, the 31 failing names on the branch, the 31 on `origin/main` `907522c2`, and their empty diff.
-- **Size after the round.** 167 changed lines outside `tests/` and `.orchestration/` (of 200), 169 added under `tests/` (of 1000), 4 files.
-
 ## Bot and CI
 
 The PR opens after this evidence commit. The CI result and the Bot's review go into the main-checkout copy and the RESULT.

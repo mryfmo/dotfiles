@@ -1,5 +1,5 @@
-# T15 amendment5 learning
+# Learning triage
 
-[memory:failure] Interpreter basename recognition admits a compound first token ending in /usr/bin/python3 and can consume a user's preceding chained command. Exact script-path equality alone did not close it; peer caught this before amendment4 commit.
+[memory:decision] PostToolUse needs an event predicate to use the existing managed-entry replacement path; otherwise additive merging retains an old managed entry beside a newer one. The regression must start from both stale and new entries to exercise queue exhaustion, plus stale-alone, mixed and absent-key cases. Validated by the red/green test outputs. The basename contract intentionally includes any parsed token, not only the executable; report that classification limit.
 
-[memory:decision] The managed template emits only a bare script path, so recognize exactly one token equal to tilde/current-home absolute managed paths and preserve all multi-token commands. Four interpreter forms and the compound chain fail before clause removal, then all20 tests pass. Reuse home_dir() and current merge logic; no shell-pattern ownership heuristics. This stays in the same operator-authorized fix round.
+No rule or skill promotion. Network/dependency availability failures are session constraints, not product changes. CompactionDB consolidation is left to orchestrator; no memory identifier is claimed.

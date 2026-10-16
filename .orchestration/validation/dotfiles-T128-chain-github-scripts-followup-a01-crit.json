@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-chain-github-scripts-followup-a01-pr360-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "e9404a6a68d30f56a1b48edef8e0736cd99f7128",
+    "pr": "360",
+    "reviewed_at": "2026-10-15T01:10:14Z",
+    "body": "Orchestrator review of PR #360 (dotfiles-T128-chain-github-scripts-followup-a01, diff head 9b90ab6b, evidence head 062f2b8a on base 727180db), read from the fetched head: scripts/orchestrator/resolve-threads.sh changes exactly where the five owned rows point: the resolve mutation's answer is read and a thread counts as resolved only when isResolved is true (otherwise reported, left open, exit 3; row 4270684630 and audit:d15fa87:1); the thread id travels as a GraphQL variable in a fixed mutation string, never interpolated into the query (audit:d15fa87:2); the two reply sentences carry the disposition in backticks so fill_sweep.py reads it back (local:d15fa87:1 and audit:d15fa87:3); the shdoc header and the exit-code line say so. pr-cost.sh is unchanged, as no owned row names it. Tests: three new tests named for the rows plus the existing test updated for the backticks and the variable, 5 OK, the orchestrator tools module 40 OK, mutation pass 8 of 8. Caps: 17 added and 8 deleted lines outside tests and .orchestration (25 of 200, one file), 89 added under tests (of 1000). The Bot left no review object on either head: no review within 10 minutes of gh pr ready, @codex review posted at 610 s, the Bot answered \"no findings\" as an issue comment (6181729129, reviewed commit 9b90ab6b); no threads. CI 13 of 13 on both heads. The task copy on the branch equals the dispatched c89f6dc8. Main moved to 04590ae9 after the push, so the chain update-branches first. No finding."
+  }
+]

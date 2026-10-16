@@ -1,0 +1,2 @@
+[P1] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:106 Choosing the smallest valid shift is not fail-closed: an unchanged full window of identical rows admits `j=1,e=1`, so a successful send that added no row can be recorded falsely; require unique alignment or add a collision-heavy no-new-row refusal case.
+Task-file verdict: dotfiles-T128-orchestrator-tools-followup-a03: revise

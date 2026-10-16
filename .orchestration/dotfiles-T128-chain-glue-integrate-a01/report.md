@@ -21,7 +21,7 @@ task_sha256: 62706b88c365e1c21ef7c8b58e10647629f528b3a18b04048eb41a646a016b64
 | File | What it does |
 |---|---|
 | `scripts/orchestrator/chain-integrate.sh` (new, 180 lines; the plan allows 180) | Item 1, in its order. Arguments checked first: task and owner ids by `^[A-Za-z0-9][A-Za-z0-9._-]*$`, whose leading class excludes `.` and `..`, the PR by digits, `<main>` made physical. The binaries are resolved with `mise which` under `env -i`, else `command -v`; a path not absolute or under `shims` is exit 10. Preconditions: on `main`; after `fetch origin main`, `HEAD` equals `origin/main` (else `ff-main.sh` named); the review worktree's `pwd -P` equals `$(git -C <main> rev-parse --show-toplevel)/.claude/worktrees/orchestrator-review`, with its own `.git` and clean; each called repository script tracked in the main checkout, with `scripts/` unchanged from `HEAD` there (the Bot's P1, below); the record present; `isDraft` is `false`; then `fetch origin main` in the review worktree, and an extra TSV, when given, must resolve inside the main checkout (revise round, thread `4291474891`). Steps 1 to 10 follow, each command logged by one `step` helper as `<utc> <step> rc=<n>: <command>` and echoed as `<step> rc=<n>`. The helper takes each step's accepted statuses, and any other status is `step <name> failed rc=<n>` and exit 1, so no called script's status is returned as the chain's. The chain's own refusals are 10 to 16. |
-| `tests/unit/test_chain_glue.py` (new, 423 lines) | Item 2: a bare origin with `main` and `refs/pull/7/head`, a main checkout and a review worktree at the canonical path, both clones of it; STUB-template repository scripts, tracked on the origin's `main`; `gh`, `uv`, `codex` and a failing `mise` first on `PATH=<stubs>:/usr/bin:/bin`. The six tests, one per closed row; a seventh for the Bot's P1; two for revise round 1; two for revise round 2; one for revise round 3. |
+| `tests/unit/test_chain_glue.py` (new, 420 lines) | Item 2: a bare origin with `main` and `refs/pull/7/head`, a main checkout and a review worktree at the canonical path, both clones of it; STUB-template repository scripts, tracked on the origin's `main`; `gh`, `uv`, `codex` and a failing `mise` first on `PATH=<stubs>:/usr/bin:/bin`. The six tests, one per closed row; a seventh for the Bot's P1; two for revise round 1; two for revise round 2; one for revise round 3. |
 
 ## The tests, by closed row
 
@@ -56,7 +56,7 @@ Mutation check (validation §4): 18 mutants, each applied alone, all 18 caught, 
 
 ## Caps
 
-Validation §5: outside `tests/` and `.orchestration/`, 1 file, 180 added lines (cap 200; the plan's 180 for the script); under `tests/`, 423 added lines (cap 1000).
+Validation §5: outside `tests/` and `.orchestration/`, 1 file, 180 added lines (cap 200; the plan's 180 for the script); under `tests/`, 420 added lines (cap 1000).
 
 ## CI and the Bot
 

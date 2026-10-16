@@ -5,7 +5,7 @@ branch: tools/chain-glue-integrate
 base: fdef3ceb
 code_commit: 24f8af19
 fix_commit: d8bc67d4
-revise_commits: d23cb50c 4a683891 bdb96c86
+revise_commits: d23cb50c 4a683891 bdb96c86 d49fbb61
 pr: 372
 task_sha256: 62706b88c365e1c21ef7c8b58e10647629f528b3a18b04048eb41a646a016b64
 ---
@@ -21,7 +21,7 @@ task_sha256: 62706b88c365e1c21ef7c8b58e10647629f528b3a18b04048eb41a646a016b64
 | File | What it does |
 |---|---|
 | `scripts/orchestrator/chain-integrate.sh` (new, 180 lines; the plan allows 180) | Item 1, in its order. Arguments checked first: task and owner ids by `^[A-Za-z0-9][A-Za-z0-9._-]*$`, whose leading class excludes `.` and `..`, the PR by digits, `<main>` made physical. The binaries are resolved with `mise which` under `env -i`, else `command -v`; a path not absolute or under `shims` is exit 10. Preconditions: on `main`; after `fetch origin main`, `HEAD` equals `origin/main` (else `ff-main.sh` named); the review worktree's `pwd -P` equals `$(git -C <main> rev-parse --show-toplevel)/.claude/worktrees/orchestrator-review`, with its own `.git` and clean; each called repository script tracked in the main checkout, with `scripts/` unchanged from `HEAD` there (the Bot's P1, below); the record present; `isDraft` is `false`; then `fetch origin main` in the review worktree, and an extra TSV, when given, must resolve inside the main checkout (revise round, thread `4291474891`). Steps 1 to 10 follow, each command logged by one `step` helper as `<utc> <step> rc=<n>: <command>` and echoed as `<step> rc=<n>`. The helper takes each step's accepted statuses, and any other status is `step <name> failed rc=<n>` and exit 1, so no called script's status is returned as the chain's. The chain's own refusals are 10 to 16. |
-| `tests/unit/test_chain_glue.py` (new, 408 lines) | Item 2: a bare origin with `main` and `refs/pull/7/head`, a main checkout and a review worktree at the canonical path, both clones of it; STUB-template repository scripts, tracked on the origin's `main`; `gh`, `uv`, `codex` and a failing `mise` first on `PATH=<stubs>:/usr/bin:/bin`. The six tests, one per closed row; a seventh for the Bot's P1; two for revise round 1; two for revise round 2. |
+| `tests/unit/test_chain_glue.py` (new, 423 lines) | Item 2: a bare origin with `main` and `refs/pull/7/head`, a main checkout and a review worktree at the canonical path, both clones of it; STUB-template repository scripts, tracked on the origin's `main`; `gh`, `uv`, `codex` and a failing `mise` first on `PATH=<stubs>:/usr/bin:/bin`. The six tests, one per closed row; a seventh for the Bot's P1; two for revise round 1; two for revise round 2; one for revise round 3. |
 
 ## The tests, by closed row
 
@@ -37,9 +37,10 @@ task_sha256: 62706b88c365e1c21ef7c8b58e10647629f528b3a18b04048eb41a646a016b64
 | (revise round, thread `4291474891`) | `test_integrate_refuses_an_extra_tsv_outside_the_main_checkout`. An extra TSV in the temporary tree, outside the main checkout: exit 10, with no stub run and no log. An extra TSV under `<main>/.orchestration/` runs; `fill_sweep.py` gets the absolute path, and the log names `.orchestration/extra.tsv` and no path of the temporary tree. |
 | (revise round 2, the local review of `2fe135c5`, P2) | `test_integrate_refuses_a_stale_main_checkout_after_the_restart`. The PR is behind, and a hook in the `gh` stub's `update-branch` pushes origin `main` again. After the restart the main checkout is behind, which `local-review.sh` would diff against: exit 10 with the `ff-main.sh` guidance. `update-branch` runs once, and no sandbox scan, local review or audit runs. The during-waits test's hook now also fast-forwards the main checkout, as the orchestrator's `ff-main.sh` would, so that test keeps covering the success path. |
 | (revise round 2, P1) | `test_integrate_restores_the_review_worktree_after_the_audit`. A hook in the audit stub checks the review worktree out at `origin/main`, as `orch-audit.sh` leaves it. After the chain the review worktree is at the audited head, and the log's last step line is `audit rc=0: git -C .claude/worktrees/orchestrator-review checkout -q --detach <head>`. |
+| (revise round 3, the local review of `6e4e9aa1`, P1) | `test_integrate_runs_gh_without_forced_colour`. The `gh` stub colours its answers when `CLICOLOR_FORCE` or `GH_FORCE_TTY` is set and `NO_COLOR` is not, as gh does. With both set, the chain completes: the head comparison and the login see plain text, the comments file is one valid JSON array, and the log holds no escape byte. |
 | sandbox-scan hit | `test_integrate_stops_on_a_sandbox_scan_hit`. A hit is exit 16 naming `CHAIN_SCAN_JUDGED=<sha7>`, and no later stub runs. The re-run with it proceeds and logs `sandbox scan: judged by the orchestrator`. |
 
-Mutation check (validation §4): 17 mutants, each applied alone, all 17 caught, then a baseline run of the six tests, OK. They remove, in turn: the off-main refusal, the draft refusal, the already-audited refusal, the checks step, the ten-digit ledger bound, the comment join, the restart, the log reset, the main-checkout script path, the owner check, the scan stop, the P1 fix's two checks (the `HEAD` diff and the tracked-file check), revise round 1's two (the re-check after the waits and the extra-TSV check), and revise round 2's two (the freshness re-check after a restart and the restore after the audit). The no-restart mutant now makes the first ancestry test always pass. The restart test catches it, because it asserts that a head behind the base waits for no CI (`4a683891`).
+Mutation check (validation §4): 18 mutants, each applied alone, all 18 caught, then a baseline run of the six tests, OK. They remove, in turn: the off-main refusal, the draft refusal, the already-audited refusal, the checks step, the ten-digit ledger bound, the comment join, the restart, the log reset, the main-checkout script path, the owner check, the scan stop, the P1 fix's two checks (the `HEAD` diff and the tracked-file check), revise round 1's two (the re-check after the waits and the extra-TSV check), revise round 2's two (the freshness re-check after a restart and the restore after the audit), and revise round 3's colour setting. The no-restart mutant now makes the first ancestry test always pass. The restart test catches it, because it asserts that a head behind the base waits for no CI (`4a683891`).
 
 ## Readings, declared
 
@@ -55,7 +56,7 @@ Mutation check (validation §4): 17 mutants, each applied alone, all 17 caught, 
 
 ## Caps
 
-Validation §5: outside `tests/` and `.orchestration/`, 1 file, 180 added lines (cap 200; the plan's 180 for the script); under `tests/`, 408 added lines (cap 1000).
+Validation §5: outside `tests/` and `.orchestration/`, 1 file, 180 added lines (cap 200; the plan's 180 for the script); under `tests/`, 423 added lines (cap 1000).
 
 ## CI and the Bot
 
@@ -72,7 +73,8 @@ Validation §5: outside `tests/` and `.orchestration/`, 1 file, 180 added lines 
 - **Revise round 2** (ACCEPTANCE `status=revise`, 2026-10-16T21:49:05Z; operator decision D-S2-372-A, INV-6 S2 waived for this PR) had the local review's two findings on `2fe135c5`, the orchestrator's update-branch head of `a6d6c1c9`:
   - P1, line 177: `fixed:bdb96c86`. `orch-audit.sh` checks the shared review worktree out at `origin/main` and does not restore it, so the gate would read the wrong head. The chain keeps the verdict line, checks the audited head out again as the last `audit` step, and only then prints the verdict.
   - P2, lines 121 to 126: `fixed:bdb96c86`. The main checkout's freshness check is now a function, `fresh` (the fetch, then `HEAD` against `origin/main`, else exit 10 naming `ff-main.sh`). It runs at the preconditions and again after every update-branch, before the restart. The chain does not fast-forward the main checkout itself; that stays the orchestrator's step, as item 1 says.
-  - No new Bot wait. CI is in the RESULT.
+  - No new Bot wait.
+- **Revise round 3** (ACCEPTANCE `status=revise`, 2026-10-16T22:26:15Z; operator decision D-S2-372-2-A) was the local review's P1 on `6e4e9aa1` only: `fixed:d49fbb61`. A Herdr pane exports `CLICOLOR_FORCE=1`, and the chain's `gh` calls inherited it, so ANSI reached the comments JSON. The script now exports `NO_COLOR=1` and unsets `CLICOLOR_FORCE` and `GH_FORCE_TTY` once, on its first line after `set`. That is the same table as `scripts/pr-feedback.py`'s `gh_env`, and it covers every `gh` call and every script the chain runs. The three P2s of that review are advisory under `dotfiles-T128-chain-glue-integrate-followup-a01`, and this round leaves them unchanged. No new Bot wait. CI is in the RESULT.
 
 ## Not done, or outside scope
 

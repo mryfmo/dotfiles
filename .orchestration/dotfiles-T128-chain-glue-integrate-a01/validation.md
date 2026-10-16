@@ -1,12 +1,12 @@
 ---
 task_id: dotfiles-T128-chain-glue-integrate-a01
 seat: claude-standard-dot-a002
-code_commit: bdb96c86
+code_commit: d49fbb61
 ---
 
 # Validation: dotfiles-T128-chain-glue-integrate-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (the capture script's `PIPESTATUS`; §4's block shows the mutant script and its output, and each mutant line carries its own `rc`). Captured at `bdb96c86` (the code `24f8af19`, the Bot P1 fix `d8bc67d4`, revise round 1 `d23cb50c` and `4a683891`, the orchestrator's update-branch merge `2fe135c5`, revise round 2 `bdb96c86`). A block whose command is a pipeline ends with the status of the pipeline's last command.
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (the capture script's `PIPESTATUS`; §4's block shows the mutant script and its output, and each mutant line carries its own `rc`). Captured at `d49fbb61` (the code `24f8af19`, the Bot P1 fix `d8bc67d4`, revise round 1 `d23cb50c` and `4a683891`, the orchestrator's update-branch merge `2fe135c5`, revise round 2 `bdb96c86`, revise round 3 `d49fbb61`). A block whose command is a pipeline ends with the status of the pipeline's last command.
 
 ## 1. Task file and task copy
 
@@ -14,16 +14,16 @@ The copy is the dispatched file, sha256 `62706b88…` as the TASK line names it.
 
 ```console
 $ shasum -a 256 "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md"; cmp "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md" && echo byte-identical
-df5eccd7bfad40b63b598ce48edb27f586f0fed33eda22af185052d353697cdd  $MAIN/.orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md
+764ee8f502fbf11f1d6fcfd1414ac2cbd3f00269210efc7ae8da13fae187b722  $MAIN/.orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md
 62706b88c365e1c21ef7c8b58e10647629f528b3a18b04048eb41a646a016b64  .orchestration/dotfiles-T128-chain-glue-integrate-a01/task.md
-cmp: EOF on .orchestration/dotfiles-T128-chain-glue-integrate-a01/task.md
+$MAIN/.orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md .orchestration/dotfiles-T128-chain-glue-integrate-a01/task.md differ: char 6766, line 45
 [exit 1]
 ```
 ```console
 $ diff ".orchestration/$T/task.md" "$MAIN/.orchestration/tasks/$T.md" | head -3
-142a143,147
-> 
-> ## Change (threat row, 2026-10-16T08:27:27Z, after the RESULT)
+44a45,46
+>   - control: "the scripts chain-integrate.sh calls from the main checkout (scripts/orchestrator/*.sh and *.py)"
+>     disposition: "residual: each called script must be tracked in main and byte-identical to HEAD's blob, checked before any fetch, else exit 10 (the fix d8bc67d4 after the Bot's P1 4291474880; test tests/unit/test_chain_glue.py::test_integrate_refuses_a_main_checkout_script_that_is_not_heads); the PR head's own copies are never executed, the chain reads the head only as data in the review worktree; added to the front matter after the local review of 6e4e9aa1 asked for a row (the Change note of 08:27Z said the same)"
 [exit 0]
 ```
 ```console
@@ -34,6 +34,8 @@ dotfiles-T128-chain-glue-integrate-a01.md: OK
 ## 2. Branch and the five premises
 ```console
 $ git log --oneline origin/main..HEAD; git rev-parse origin/main
+d49fbb61 fix(orchestrator): chain-integrate.sh runs gh without forced colour (T128 chain-glue integrate a01 revise round 3)
+6e4e9aa1 docs(orchestration): chain-glue integrate a01 revise round 2 evidence (bdb96c86)
 bdb96c86 fix(orchestrator): chain-integrate.sh restores the review worktree's head after the audit and re-checks the main checkout after a restart (T128 chain-glue integrate a01 revise round 2)
 2fe135c5 Merge branch 'main' into tools/chain-glue-integrate
 a6d6c1c9 docs(orchestration): chain-glue integrate a01 revise round 1 evidence (d23cb50c, 4a683891)
@@ -86,11 +88,12 @@ test_integrate_resolves_binaries_before_the_checkout (tests.unit.test_chain_glue
 test_integrate_restarts_after_update_branch (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_restarts_after_update_branch) ... ok
 test_integrate_restarts_when_the_base_moves_during_the_waits (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_restarts_when_the_base_moves_during_the_waits) ... ok
 test_integrate_restores_the_review_worktree_after_the_audit (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_restores_the_review_worktree_after_the_audit) ... ok
+test_integrate_runs_gh_without_forced_colour (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_runs_gh_without_forced_colour) ... ok
 test_integrate_runs_the_steps_in_order_and_logs_each (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_runs_the_steps_in_order_and_logs_each) ... ok
 test_integrate_stops_on_a_sandbox_scan_hit (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_stops_on_a_sandbox_scan_hit) ... ok
 
 ----------------------------------------------------------------------
-Ran 11 tests in 24.282s
+Ran 12 tests in 25.084s
 
 OK
 [exit 0]
@@ -144,89 +147,95 @@ run recheck-off '/a moved base is updated, then the fetch/,/((rc == 1)) || break
 run extra-check-off '/refuse 10 "extra dispositions TSV is not in the main checkout/d' test_integrate_refuses_an_extra_tsv_outside_the_main_checkout
 run restart-fresh-off '/^    fresh  # a moved base/d' test_integrate_refuses_a_stale_main_checkout_after_the_restart
 run restore-off '/orch-audit.sh leaves it at origin\/main/d' test_integrate_restores_the_review_worktree_after_the_audit
+run colour-forced 's/ && export NO_COLOR=1 && unset CLICOLOR_FORCE GH_FORCE_TTY//' test_integrate_runs_gh_without_forced_colour
 UV_OFFLINE=1 uv run python -m unittest "$T" > "$TMPDIR/cgi/m.log" 2>&1; echo "baseline rc=$? $(tail -1 "$TMPDIR/cgi/m.log")"
 git status --short -- scripts/
 --- output
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..d80422c2 100755
+index be0fed9f..07a52d7a 100755
 -[ "$("${git}" -C "${main}" symbolic-ref -q --short HEAD || true)" = main ] || refuse 10 "main checkout is not on main"
 +[ "$("${git}" -C "${main}" symbolic-ref -q --short HEAD || true)" = main ] || true
 mutant=main-check-off test=test_integrate_refuses_when_main_is_not_on_main rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..616d192e 100755
+index be0fed9f..8a2ebfa3 100755
 -[ "${out}" = false ] || refuse 10 "draft PR: the worker marks it ready"
 +true || refuse 10 "draft PR: the worker marks it ready"
 mutant=draft-check-off test=test_integrate_refuses_when_main_is_not_on_main rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..d80cc0dc 100755
+index be0fed9f..314f8b7b 100755
 -    [ ! -e "${v}/${task}-audit-${sha7}.md.last.md" ] || refuse 10 "head already audited: one chain per head"
 +    true || refuse 10 "head already audited: one chain per head"
 mutant=audited-check-off test=test_integrate_refuses_when_main_is_not_on_main rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..55da13f8 100755
+index be0fed9f..4293a6c6 100755
 -        step checks any "${gh}" pr checks "${pr}" --required --watch
 mutant=checks-step-gone test=test_integrate_runs_the_steps_in_order_and_logs_each rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..a1875be5 100755
+index be0fed9f..5b23a535 100755
 -step record 0,1 /usr/bin/grep -o -E $'^([0-9]{10,}|audit:[0-9a-f]{7}:[0-9]+)\t[a-z0-9-]+' "${record}"
 +step record 0,1 /usr/bin/grep -o -E $'^([0-9]{6,}|audit:[0-9a-f]{7}:[0-9]+)\t[a-z0-9-]+' "${record}"
 mutant=ledger-six-digits test=test_integrate_runs_the_steps_in_order_and_logs_each rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..5e8e9a02 100755
+index be0fed9f..f33c14ee 100755
 -printf '[%s]\n' "${out//$'\n'/,}" > "${comments}"
 +printf "%s\n" "${out}" > "${comments}"
 mutant=comments-not-joined test=test_integrate_runs_the_steps_in_order_and_logs_each rc=1 FAILED (errors=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..ee8fb323 100755
+index be0fed9f..06f79fbf 100755
 -    if ((rc == 0)); then
 +    if true; then
 mutant=no-restart test=test_integrate_restarts_after_update_branch rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..418ed68e 100755
+index be0fed9f..15731568 100755
 -    log='' # the next head's log takes every line; this one ends here
 mutant=old-log-kept test=test_integrate_restarts_after_update_branch rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..9b836af3 100755
+index be0fed9f..8768cc48 100755
 -step local-review 0,3 "${main}/scripts/orchestrator/local-review.sh" "${task}" "${head}" "${pr}"
 +step local-review 0,3 "${review}/scripts/orchestrator/local-review.sh" "${task}" "${head}" "${pr}"
 mutant=review-copy-runs test=test_integrate_resolves_binaries_before_the_checkout rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..188de7f3 100755
+index be0fed9f..bc768a9a 100755
 -    [ -f "${main}/.orchestration/tasks/${owner}.md" ] || refuse 15 "write the owner task ${owner} first"
 mutant=owner-check-off test=test_integrate_refuses_an_absent_owner_task_before_the_advisory_step rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..fac08b8a 100755
+index be0fed9f..3bafd709 100755
 -    [ "${CHAIN_SCAN_JUDGED:-}" = "${sha7}" ] || refuse 16 "sandbox scan hit: judge it, then re-run with CHAIN_SCAN_JUDGED=${sha7}"
 +    true || refuse 16 "sandbox scan hit: judge it, then re-run with CHAIN_SCAN_JUDGED=${sha7}"
 mutant=scan-stop-off test=test_integrate_stops_on_a_sandbox_scan_hit rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..53cf4e96 100755
+index be0fed9f..e6556656 100755
 -"${git}" -C "${main}" diff --quiet HEAD -- scripts || refuse 10 "scripts/ in the main checkout differs from HEAD"
 mutant=script-diff-off test=test_integrate_refuses_a_main_checkout_script_that_is_not_heads rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..65dced6b 100755
+index be0fed9f..847172d0 100755
 -    "${git}" -C "${main}" ls-files --error-unmatch -- "${s}" > /dev/null 2>&1 || refuse 10 "${s} is not tracked in the main checkout"
 +    "${git}" -C "${main}" ls-files -- "${s}" || refuse 10 "${s} is not tracked in the main checkout"
 mutant=script-tracked-off test=test_integrate_refuses_a_main_checkout_script_that_is_not_heads rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..cdf4f0eb 100755
+index be0fed9f..76d1e0d2 100755
 -        # origin/main can move during the waits (PR #372 thread 4291474885): a moved base is updated, then the fetch.
 -        step base 0 "${git}" -C "${review}" fetch -q origin main
 -        step base 0,1 "${git}" -C "${review}" merge-base --is-ancestor origin/main HEAD
 -        ((rc == 1)) || break
 mutant=recheck-off test=test_integrate_restarts_when_the_base_moves_during_the_waits rc=1 FAILED (errors=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..13972520 100755
+index be0fed9f..ecfa8321 100755
 -[[ -z ${extra} || ${extra} == "${main}"/* ]] || refuse 10 "extra dispositions TSV is not in the main checkout: $6"
 mutant=extra-check-off test=test_integrate_refuses_an_extra_tsv_outside_the_main_checkout rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..afe3c4c6 100755
+index be0fed9f..939fc7a9 100755
 -    fresh  # a moved base may have left the main checkout's main behind, which local-review.sh diffs against
 mutant=restart-fresh-off test=test_integrate_refuses_a_stale_main_checkout_after_the_restart rc=1 FAILED (failures=1)
 diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
-index b7c9b234..20a08f5a 100755
+index be0fed9f..62eaa6d2 100755
 -step audit 0 "${git}" -C "${review}" checkout -q --detach "${head}" # orch-audit.sh leaves it at origin/main; the gate reads it
 mutant=restore-off test=test_integrate_restores_the_review_worktree_after_the_audit rc=1 FAILED (failures=1)
+diff --git a/scripts/orchestrator/chain-integrate.sh b/scripts/orchestrator/chain-integrate.sh
+index be0fed9f..0a9f113c 100755
+-log='' lines=() && export NO_COLOR=1 && unset CLICOLOR_FORCE GH_FORCE_TTY # no ANSI from gh, as pr-feedback.py's gh_env
++log='' lines=() # no ANSI from gh, as pr-feedback.py's gh_env
+mutant=colour-forced test=test_integrate_runs_gh_without_forced_colour rc=1 FAILED (failures=1)
 baseline rc=0 OK
 [exit 0]
 ```
@@ -235,11 +244,11 @@ baseline rc=0 OK
 $ git diff --numstat origin/main...HEAD
 3	0	.orchestration/dotfiles-T128-chain-glue-integrate-a01/autoskill.md
 6	0	.orchestration/dotfiles-T128-chain-glue-integrate-a01/learning.md
-76	0	.orchestration/dotfiles-T128-chain-glue-integrate-a01/report.md
+82	0	.orchestration/dotfiles-T128-chain-glue-integrate-a01/report.md
 27	0	.orchestration/dotfiles-T128-chain-glue-integrate-a01/sandbox.md
 142	0	.orchestration/dotfiles-T128-chain-glue-integrate-a01/task.md
-230	0	.orchestration/dotfiles-T128-chain-glue-integrate-a01/validation.md
+245	0	.orchestration/dotfiles-T128-chain-glue-integrate-a01/validation.md
 180	0	scripts/orchestrator/chain-integrate.sh
-408	0	tests/unit/test_chain_glue.py
+420	0	tests/unit/test_chain_glue.py
 [exit 0]
 ```

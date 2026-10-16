@@ -1,12 +1,12 @@
 ---
 task_id: dotfiles-T128-chain-glue-finish-a01
 seat: claude-standard-dot-a002
-code_commit: af684dc2
+code_commit: 968d3439
 ---
 
 # Validation: dotfiles-T128-chain-glue-finish-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (a pipeline's is its last command's; §4's block shows the mutant script and its output, and each mutant line carries its own `rc`). Captured at `af684dc2`.
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (a pipeline's is its last command's; §4's block shows the mutant script and its output, and each mutant line carries its own `rc`). Captured at `968d3439` (the code `af684dc2`, the Bot P1 fix `968d3439`).
 
 ## 1. Task file and task copy
 ```console
@@ -24,6 +24,8 @@ dotfiles-T128-chain-glue-finish-a01.md: OK
 ## 2. Branch and the five premises
 ```console
 $ git log --oneline origin/main..HEAD; git rev-parse origin/main
+968d3439 fix(orchestrator): chain-finish.sh runs HEAD's pre-merge pr-cost.sh, not the merged head's (PR #378 thread 4300324931)
+a8d975c6 docs(orchestration): chain-glue finish a01 task copy and evidence (af684dc2)
 af684dc2 feat(orchestrator): chain-finish.sh finishes a PR after the audit's dispositions from the main checkout's scripts, logging every step (plan 022 T8, T128 chain-glue finish a01)
 5fd4fe0c32846f8e5ecbbbd027cb67f0a5be0398
 [exit 0]
@@ -61,6 +63,7 @@ test_finish_prints_the_acceptance_line_and_sends_nothing (tests.unit.test_chain_
 test_finish_refuses_a_head_that_differs_from_the_audit (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_refuses_a_head_that_differs_from_the_audit) ... ok
 test_finish_requires_an_audit_finding_line_per_incorrect_finding (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_requires_an_audit_finding_line_per_incorrect_finding) ... ok
 test_finish_runs_gate_before_merge_and_cost_after (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_runs_gate_before_merge_and_cost_after) ... ok
+test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward) ... ok
 test_integrate_refuses_a_main_checkout_script_that_is_not_heads (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_refuses_a_main_checkout_script_that_is_not_heads) ... ok
 test_integrate_refuses_a_stale_main_checkout_after_the_restart (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_refuses_a_stale_main_checkout_after_the_restart) ... ok
 test_integrate_refuses_an_absent_owner_task_before_the_advisory_step (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_refuses_an_absent_owner_task_before_the_advisory_step) ... ok
@@ -75,7 +78,7 @@ test_integrate_runs_the_steps_in_order_and_logs_each (tests.unit.test_chain_glue
 test_integrate_stops_on_a_sandbox_scan_hit (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_stops_on_a_sandbox_scan_hit) ... ok
 
 ----------------------------------------------------------------------
-Ran 16 tests in 31.849s
+Ran 17 tests in 33.574s
 
 OK
 [exit 0]
@@ -98,7 +101,7 @@ All checks passed!
 ```
 ```console
 $ wc -l scripts/orchestrator/chain-finish.sh
-     143 scripts/orchestrator/chain-finish.sh
+     148 scripts/orchestrator/chain-finish.sh
 [exit 0]
 ```
 ## 4. Mutation check (each mutant applied alone with sed, its test run, the file restored with git checkout; then a baseline run)
@@ -126,6 +129,7 @@ run unbound-merge 's|--match-head-commit "${head}" ||' $O
 run ff-gone '/^step ff-main 0/d' $O
 run sends 's|^echo "${accept}"|agmsg-dispatch x; echo "${accept}"|' $A
 run line-form 's|status=accepted reason=merged-as-|status=accepted reason=merged-|' $A
+run merged-pr-cost 's|^step pr-cost 0 "${BASH}" "${cost}" "${pr}"|step pr-cost 0 "${main}/scripts/orchestrator/pr-cost.sh" "${pr}"|' test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward
 UV_OFFLINE=1 uv run python -m unittest "$T" > "$TMPDIR/cgf/m.log" 2>&1; echo "baseline rc=$? $(tail -1 "$TMPDIR/cgf/m.log")"
 git status --short -- scripts/
 --- output
@@ -144,7 +148,7 @@ mutant=finding-line-off test=test_finish_requires_an_audit_finding_line_per_inco
 mutant=dispositions-never test=test_finish_requires_an_audit_finding_line_per_incorrect_finding rc=1 FAILED (failures=1)
 -[[ ${verdict} == "Verdict: correct" || ${verdict} == "Verdict: incorrect" ]] || refuse 12 "unexpected audit verdict: ${verdict}"
 mutant=verdict-check-off test=test_finish_requires_an_audit_finding_line_per_incorrect_finding rc=1 FAILED (failures=1)
--trap 'rm -f -- "${comments}" "${ledger}" "${dispositions}"' EXIT
+-trap 'rm -f -- "${comments}" "${ledger}" "${dispositions}" "${cost}"' EXIT
 mutant=trap-off test=test_finish_requires_an_audit_finding_line_per_incorrect_finding rc=1 FAILED (failures=1)
 -step gate 0 "${main}/scripts/orchestrator/orch-gate.sh" "${task}" "${review}" "${pr}"
 mutant=gate-gone test=test_finish_runs_gate_before_merge_and_cost_after rc=1 FAILED (failures=1)
@@ -159,13 +163,22 @@ mutant=sends test=test_finish_prints_the_acceptance_line_and_sends_nothing rc=1 
 -accept="AGMSG-ACCEPTANCE v1 task_id=${task} status=accepted reason=merged-as-${merged}-pr-${pr}-head-${sha7} next_action=<the orchestrator fills this before sending>"
 +accept="AGMSG-ACCEPTANCE v1 task_id=${task} status=accepted reason=merged-${merged}-pr-${pr}-head-${sha7} next_action=<the orchestrator fills this before sending>"
 mutant=line-form test=test_finish_prints_the_acceptance_line_and_sends_nothing rc=1 FAILED (failures=1)
+-step pr-cost 0 "${BASH}" "${cost}" "${pr}"
++step pr-cost 0 "${main}/scripts/orchestrator/pr-cost.sh" "${pr}"
+mutant=merged-pr-cost test=test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward rc=1 FAILED (failures=1)
 baseline rc=0 OK
 [exit 0]
 ```
 ## 5. Caps
 ```console
 $ git diff --numstat origin/main...HEAD
-143	0	scripts/orchestrator/chain-finish.sh
-155	0	tests/unit/test_chain_glue.py
+3	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/autoskill.md
+6	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/learning.md
+55	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/report.md
+27	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/sandbox.md
+121	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/task.md
+171	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/validation.md
+148	0	scripts/orchestrator/chain-finish.sh
+169	0	tests/unit/test_chain_glue.py
 [exit 0]
 ```

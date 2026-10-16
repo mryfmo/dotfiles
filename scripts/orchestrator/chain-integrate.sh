@@ -87,6 +87,9 @@ record=${main}/.orchestration/acceptance/${task}.md
 pre "${gh}" pr view "${pr}" --json isDraft --jq .isDraft
 [ "${out}" = false ] || refuse 10 "draft PR: the worker marks it ready"
 pre "${git}" -C "${review}" fetch -q origin main
+# The log names repository paths only, so an extra TSV must be in the main checkout (PR #372 thread 4291474891).
+[ -z "${extra}" ] || extra=$(cd -- "$(dirname -- "${extra}")" 2> /dev/null && pwd -P)/${extra##*/}
+[[ -z ${extra} || ${extra} == "${main}"/* ]] || refuse 10 "extra dispositions TSV is not in the main checkout: $6"
 export ORCH_REVIEW_WORKTREE=${review}
 v=${main}/.orchestration/validation
 for attempt in 1 2 3; do
@@ -98,12 +101,27 @@ for attempt in 1 2 3; do
     step fetch 0 "${gh}" pr view "${pr}" --json headRefOid --jq .headRefOid
     [ "${out}" = "${head}" ] || refuse 10 "head mismatch: re-run"
     sha7=${head:0:7}
-    # The log is named by the head, so the lines before it are written once it is known; a restart's log holds them all.
-    log=${v}/${task}-chain-${sha7}.log
-    printf '%s\n' "${lines[@]}" >> "${log}"
+    # The log is named by the head, so the lines before it are written once it is known; a new head's log holds them all.
+    [ "${log}" = "${v}/${task}-chain-${sha7}.log" ] || { log=${v}/${task}-chain-${sha7}.log && printf '%s\n' "${lines[@]}" >> "${log}"; }
     [ ! -e "${v}/${task}-audit-${sha7}.md.last.md" ] || refuse 10 "head already audited: one chain per head"
     step base 0,1 "${git}" -C "${review}" merge-base --is-ancestor origin/main HEAD
-    ((rc == 1)) || break
+    if ((rc == 0)); then
+        step checks any "${gh}" pr checks "${pr}" --required --watch
+        ((rc == 0)) || refuse 12 "required checks failed"
+        # Plan 020 step 4: the Bot wait is never gated, so it ends present or absent and the chain goes on.
+        q="[.[] | select(.user.login == \"chatgpt-codex-connector[bot]\" and .commit_id == \"${head}\")] | length"
+        t0=$("${date}" +%s)
+        while step bot 0 "${gh}" api "repos/{owner}/{repo}/pulls/${pr}/reviews" --paginate --jq "${q}"; do
+            n=$((${out//$'\n'/+})) # one count per page
+            ((n == 0 && $("${date}" +%s) - t0 < ${CHAIN_BOT_WAIT:-900})) || break
+            sleep 30
+        done
+        say "bot review: $( ((n > 0)) && echo present || echo absent)"
+        # origin/main can move during the waits (PR #372 thread 4291474885): a moved base is updated, then the fetch.
+        step base 0 "${git}" -C "${review}" fetch -q origin main
+        step base 0,1 "${git}" -C "${review}" merge-base --is-ancestor origin/main HEAD
+        ((rc == 1)) || break
+    fi
     ((attempt < 3)) || refuse 13 "base moved three times"
     step base 0 "${gh}" pr update-branch "${pr}"
     t0=$("${date}" +%s) # GitHub builds the merge commit asynchronously: poll the head check's query until it moves.
@@ -113,19 +131,6 @@ for attempt in 1 2 3; do
     done
     log='' # the next head's log takes every line; this one ends here
 done
-step checks any "${gh}" pr checks "${pr}" --required --watch
-((rc == 0)) || refuse 12 "required checks failed"
-# Plan 020 step 4: the Bot wait is never gated, so it ends present or absent and the chain goes on.
-q="[.[] | select(.user.login == \"chatgpt-codex-connector[bot]\" and .commit_id == \"${head}\")] | length"
-t0=$("${date}" +%s)
-while :; do
-    step bot 0 "${gh}" api "repos/{owner}/{repo}/pulls/${pr}/reviews" --paginate --jq "${q}"
-    n=$((${out//$'\n'/+})) # one count per page
-    ((n == 0)) || break
-    (($("${date}" +%s) - t0 < ${CHAIN_BOT_WAIT:-900})) || break
-    sleep 30
-done
-say "bot review: $( ((n > 0)) && echo present || echo absent)"
 # C-29: the scan reports and exits 0, so the chain is the stop its reader used to be.
 step sandbox-scan 0 "${main}/scripts/orchestrator/sandbox-scan.sh" "${task}"
 [ -z "${out}" ] || say "${out}"

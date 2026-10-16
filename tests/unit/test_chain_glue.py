@@ -32,7 +32,9 @@ GH = """#!/usr/bin/env bash
 jq=; prev=; for a; do [ "$prev" != --jq ] || jq=$a; prev=$a; done
 case "$1 $2" in
 "pr view") if [[ " $* " == *" isDraft "* ]]; then cat "$CALLS/draft" 2> /dev/null || echo false; else cat "$CALLS/head"; fi ;;
-"pr checks") exit "$(cat "$CALLS/checks-status" 2> /dev/null || echo 0)" ;;
+"pr checks")
+    [ ! -x "$CALLS/checks-hook" ] || "$CALLS/checks-hook"
+    exit "$(cat "$CALLS/checks-status" 2> /dev/null || echo 0)" ;;
 "pr update-branch")
     git -C "$SEED" fetch -q origin +refs/pull/7/head:refs/remotes/pr/7 main
     git -C "$SEED" checkout -q --detach pr/7
@@ -292,6 +294,44 @@ class ChainIntegrateTest(unittest.TestCase):
         self.git("cat-file", "-e", f"{merged}^{{commit}}")
         self.git("cat-file", "-e", f"{merged}^{{commit}}", cwd=self.review)
         self.assertEqual(merged, self.git("rev-parse", "HEAD", cwd=self.review))
+
+    def test_integrate_restarts_when_the_base_moves_during_the_waits(self):
+        # PR #372 thread 4291474885: origin/main advances during the required-checks wait, after the first ancestry
+        # test; the chain fetches it again before the local review, update-branches and restarts at the fetch.
+        hook = f"""#!/bin/bash
+rm -f "$CALLS/checks-hook"
+cd "{self.seed}" && echo d > d.txt && git add d.txt && git -c commit.gpgsign=false commit -q -m d
+git -C "{self.seed}" push -q origin HEAD:main
+"""
+        self.executable(self.calls / "checks-hook", hook)
+        out = self.chain().stdout
+        merged = (self.calls / "head").read_text().strip()
+        self.assertNotEqual(self.head, merged)
+        self.assertEqual(f"chain-integrate: {TASK} {merged} Verdict: correct", out.splitlines()[-1])
+        self.assertEqual(1, self.calls_of("gh").count("pr update-branch 7"))
+        first = re.findall(r"^\S+ (\S+) rc=\d+: ", self.log(), re.MULTILINE)
+        self.assertEqual(
+            ["checks", "bot", "base", "base", "base"], first[first.index("checks") : first.index("checks") + 5]
+        )
+        self.assertNotIn("sandbox-scan", first)
+        self.assertEqual(2, self.log(merged).count(" checks rc=0: "))
+        self.assertEqual([f"{TASK} {merged} 7"], self.calls_of("local-review"))
+        self.git("cat-file", "-e", f"{self.git('rev-parse', 'origin/main', cwd=self.seed)}^{{commit}}", cwd=self.review)
+
+    def test_integrate_refuses_an_extra_tsv_outside_the_main_checkout(self):
+        # PR #372 thread 4291474891: the log names repository paths only, so an extra TSV elsewhere is refused.
+        outside = self.temp / "extra.tsv"
+        outside.write_text("")
+        result = self.chain(TASK, "7", self.main, self.review, OWNER, outside, code=10)
+        self.assertIn("extra dispositions TSV is not in the main checkout", result.stderr)
+        self.assertEqual([], [p.name for p in self.calls.glob("*.log") if p.name != "gh.log"])
+        self.assertEqual([], list(self.v.glob("*.log")))
+        self.write(".orchestration/extra.tsv", "")
+        self.chain(TASK, "7", self.main, self.review, OWNER, self.main / ".orchestration/extra.tsv")
+        [fill] = self.calls_of("fill_sweep")
+        self.assertIn(f" {self.main}/.orchestration/extra.tsv --orchestrator-login orch", fill)
+        self.assertIn(" .orchestration/extra.tsv --orchestrator-login orch", self.log())
+        self.assertNotIn(str(self.temp), self.log())
 
     def test_integrate_resolves_binaries_before_the_checkout(self):
         decoy = '#!/bin/sh\necho decoy >> "$CALLS/decoy.log"\n'

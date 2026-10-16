@@ -425,7 +425,8 @@ class OrchestratorToolsTest(unittest.TestCase):
         fake = self.temp / "fake-uv/uv"
         fake.parent.mkdir()
         fake.write_text(
-            '#!/usr/bin/env bash\necho "$*" >> "$CALLS/uv.log"\nhere="$(cd "$(dirname "$0")" && pwd -P)"\n'
+            '#!/usr/bin/env bash\necho "$*" >> "$CALLS/uv.log"\npwd -P >> "$CALLS/uv-cwd.log"\n'
+            'here="$(cd "$(dirname "$0")" && pwd -P)"\n'
             'p=":${PATH}:" && p=${p//:${here}:/:}\nexec "$(PATH=${p} command -v uv)" "$@"\n'
         )
         fake.chmod(0o755)
@@ -460,7 +461,14 @@ class OrchestratorToolsTest(unittest.TestCase):
         (caller / "pyproject.toml").write_text(
             '[project]\nname = "caller"\nversion = "0"\ndependencies = ["no-such-package-dispatch-a03"]\n'
         )
+        # The Bot's P1 4299651928: nor does an interpreter its .python-version names; uv runs from the root.
+        pwn = self.write("pwn", '#!/bin/sh\ntouch "$CALLS/pwned"\nexit 1\n')
+        pwn.chmod(0o755)
+        (caller / ".python-version").write_text(f"{pwn}\n")
+        (self.calls / "uv-cwd.log").unlink(missing_ok=True)
         _, log = send("kind: review\n", 0, cwd=caller)
+        self.assertFalse((self.calls / "pwned").exists())
+        self.assertEqual({str(self.repo)}, set((self.calls / "uv-cwd.log").read_text().splitlines()))
         # The Makefile's UV_PYYAML probe comes first, then the brief parse in the form it chose.
         self.assertEqual("run --no-project --offline --with pyyaml python -c import yaml", log.splitlines()[0])
         self.assertNotIn("task-consistency-check.py", log)

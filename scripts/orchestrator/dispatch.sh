@@ -36,7 +36,7 @@
 #   before the send, and nothing is sent.
 #   An AGMSG-TASK line whose `task_file=` fails `task-consistency-check.py`
 #   (beside this script, run as `python -I` through the Makefile's `UV_PYYAML`
-#   uv form with `--no-project`) is refused with the checker's output, and nothing is sent (C-52).
+#   uv form with `--no-project`, from the root) is refused with the checker's output, and nothing is sent (C-52).
 #   Only a review brief is exempt: a front matter (the text between the first
 #   two `---` lines) that PyYAML parses, refusing a duplicate key, to a mapping
 #   whose `kind` is the string `review`; every other outcome runs the checker.
@@ -179,7 +179,10 @@ if [[ ${tokens[0]} == AGMSG-TASK ]]; then
     # The Makefile's UV_PYYAML: offline when the cache holds PyYAML, else through the index. --no-project: a
     # pyproject.toml in the caller's directory is never discovered, synced or built (the Bot's P1 4292675906).
     uvy=(uv run --no-project --offline --with pyyaml)
-    "${uvy[@]}" python -c 'import yaml' > /dev/null 2>&1 || uvy=(uv run --no-project --with pyyaml)
+    here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+    # Run from the trusted root, so a caller's .python-version or virtual environment picks no interpreter (4299651928).
+    uvr() { (cd -- "${root}" && "${uvy[@]}" "$@"); }
+    uvr python -c 'import yaml' > /dev/null 2>&1 || uvy=(uv run --no-project --with pyyaml)
     read -r -d '' brief << 'PY' || true
 import sys, yaml
 def unique(loader, node, deep=False):
@@ -196,8 +199,8 @@ front = yaml.load("\n".join(lines[1:end]), Loader) if end else None
 sys.exit(0 if isinstance(front, dict) and front.get("kind") == "review" else 1)
 PY
     # Fail-closed: only a parsed front matter whose kind is review skips the checker.
-    if ! "${uvy[@]}" python -I -c "${brief}" "${tf}" > /dev/null 2>&1; then
-        out="$("${uvy[@]}" python -I "$(dirname -- "${BASH_SOURCE[0]}")/task-consistency-check.py" --root "${root}" "${tf}" 2>&1)" || {
+    if ! uvr python -I -c "${brief}" "${tf}" > /dev/null 2>&1; then
+        out="$(uvr python -I "${here}/task-consistency-check.py" --root "${root}" "${tf}" 2>&1)" || {
             echo "dispatch: ${tf} fails the task-consistency check" >&2
             printf '%s\n' "${out}" >&2
             exit 1

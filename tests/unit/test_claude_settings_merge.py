@@ -370,6 +370,87 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             ],
         )
 
+    def test_managed_post_tool_use_replaces_stale_format_only_entry(self) -> None:
+        format_hook = {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"}
+        reload_hook = {"type": "command", "command": "~/.claude/hooks/project-map-reload.sh"}
+        custom_hook = {"type": "command", "command": "~/bin/my-hook.sh"}
+        managed_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook, reload_hook]}
+        stale_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook]}
+        mixed_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook, custom_hook]}
+        wrapper_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": "~/bin/log-hook.sh ~/.claude/hooks/format-edited-files.py"}],
+        }
+        chained_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": "~/.claude/hooks/format-edited-files.py && ~/bin/audit-edit.sh"}],
+        }
+        same_basename_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": "/opt/team/format-edited-files.py"}],
+        }
+        compact_chain_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": "~/bin/audit-edit.sh;~/.claude/hooks/format-edited-files.py"}],
+        }
+        absolute_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": str(self.home_dir / ".claude/hooks/format-edited-files.py")}],
+        }
+        project_local_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": "/workspace/team/.claude/hooks/format-edited-files.py"}],
+        }
+        cases = [
+            ("stale and managed", [stale_entry, managed_entry], [managed_entry]),
+            ("stale alone", [stale_entry], [managed_entry]),
+            (
+                "mixed custom command",
+                [mixed_entry],
+                [{"matcher": "Write|Edit|MultiEdit", "hooks": [custom_hook]}, managed_entry],
+            ),
+            ("absent key", None, [managed_entry]),
+            ("wrapper argument", [wrapper_entry, stale_entry], [wrapper_entry, managed_entry]),
+            ("chained user command", [chained_entry, stale_entry], [chained_entry, managed_entry]),
+            ("same basename", [same_basename_entry, stale_entry], [same_basename_entry, managed_entry]),
+            ("compact chain", [compact_chain_entry, stale_entry], [compact_chain_entry, managed_entry]),
+            ("absolute managed path", [absolute_entry], [managed_entry]),
+            ("project-local path", [project_local_entry, stale_entry], [project_local_entry, managed_entry]),
+        ]
+        for interpreter in ("python3", "python", "bash", "sh"):
+            interpreted = {
+                "matcher": "Write|Edit|MultiEdit",
+                "hooks": [
+                    {"type": "command", "command": f"/usr/bin/{interpreter} ~/.claude/hooks/format-edited-files.py"}
+                ],
+            }
+            cases.append(("unmanaged interpreter", [interpreted], [interpreted, managed_entry]))
+        for command in (
+            "~/bin/my-hook.sh",
+            "'unterminated",
+            None,
+            "",
+            "python3",
+            "bash",
+            "~/.claude/hooks/format-edited-files.py --custom",
+            "python3 ~/.claude/hooks/format-edited-files.py --custom",
+            "python3 /opt/team/format-edited-files.py",
+            "python3 /workspace/team/.claude/hooks/format-edited-files.py",
+            "~/bin/audit-edit.sh;/usr/bin/python3 ~/.claude/hooks/format-edited-files.py",
+            "/former-home/.claude/hooks/format-edited-files.py",
+            "bash ~/.claude/hooks/project-map-reload.sh && ~/bin/audit-edit.sh",
+        ):
+            unmanaged = {"matcher": "Bash", "hooks": [{"type": "command", "command": command}]}
+            cases.append(("unmanaged command", [unmanaged, stale_entry], [unmanaged, managed_entry]))
+        for name, current_entries, expected in cases:
+            with self.subTest(case=name, entries=current_entries):
+                current_hooks = {} if current_entries is None else {"PostToolUse": current_entries}
+                output = self.merge(
+                    {"hooks": {"PostToolUse": [managed_entry]}},
+                    json.dumps({"hooks": current_hooks}),
+                )
+                self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], expected)
+
     def test_managed_hook_object_key_order_is_preserved(self) -> None:
         managed = {
             "enabledPlugins": {},

@@ -796,5 +796,5 @@ Found 22 errors.
 [*] 1 fixable with `--fix` (20 unsafe fixes available with `--fix --unsafe-fixes`).
 Found 22 errors.
 [*] 1 fixable with `--fix` (20 unsafe fixes available with `--fix --unsafe-fixes`).
-[exit ]
+[exit 1] (ruff check of origin/main's copy, re-read under bash: the block above ran in zsh, which has no PIPESTATUS)
 ```

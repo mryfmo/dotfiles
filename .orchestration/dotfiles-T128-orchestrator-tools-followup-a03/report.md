@@ -2,7 +2,7 @@
 
 - **Seat and branch.** `claude-standard-dot-a003` in `.claude/worktrees/worker-c`, on the fresh branch `tools/dispatch-checker-window`, cut with `--no-track` from `origin/main` at `1d418126`. The earlier branches are left as they are.
 - **Task copy.** Byte-identical to the dispatched main-checkout file, sha256 `b291ba85…`, the TASK's `task_sha256` (validation §1).
-- **Commits.** `766c1491`: the change, its tests and the task copy; then this evidence.
+- **Commits.** `766c1491`: the change, its tests and the task copy; `aeb4a0fb`: this evidence; `c8e813ea`: the Bot's P1 fix; then this evidence's fix-round update.
 - cost: n/a (the runtime exposes no token or cost figures to the seat).
 
 ## Item 1a: the checker refusal (C-52)
@@ -23,10 +23,16 @@
 
 - `test_dispatch_refuses_a_task_file_failing_the_checker`: the stub checker beside the copied script, a fake `uv` that logs its argv and runs the real `uv` next on PATH. Refused, each with the checker call logged and the C2 line on stderr: `kind: code`, `kind: "code"`, no `kind`, the duplicate key in both orders, and a closed but unparsable front matter with one `kind: review` line. Sent with no checker call: a single `kind: review`. The log's first call is the `UV_PYYAML` probe.
 - `test_dispatch_reads_a_bounded_history_window`: the limit argument is 200 on both reads, 50 with `BUS_READ_WINDOW=50`. Recorded once with the right marker: eviction plus collision, same second, and another seat's newer row. Refused with the record unchanged: left the window, no new row, a periodic bus. No `dispatch-window.*` file is left after any case.
-- **The module.** 54 tests pass (validation §1). Seven mutants, all killed (validation §2).
+- **The module.** 54 tests pass (validation §1). Eight mutants, all killed (validation §2 and §4).
 - **Two of the 52 changed.** The cap's removal forced it; the names and edits are in validation §3. The module docstring names its new dependency on a real uv for the checker case.
 
 ## Notes
 
-- **The uv form.** It is the Makefile's form without `--no-project`, as the task names it three times. The repository has no root `pyproject.toml`; a caller standing in a directory with its own project would make uv consider that project, which the task's form accepts.
-- **Size.** 104 changed lines outside `tests/` and `.orchestration/` (of 200), 107 added under `tests/` (of 1000), 2 files.
+- **The uv form.** The Makefile's `UV_PYYAML` form plus `--no-project`, the Bot's P1 (below): a caller's `pyproject.toml` is never discovered, synced or built.
+- **Size.** 105 changed lines outside `tests/` and `.orchestration/` (of 200), 114 added under `tests/` (of 1000), 2 files (validation §4).
+
+## The Bot
+
+- **Code review of `aeb4a0fb`** (review 5545290170): one P1, thread 4292675906, `dispatch.sh:181`, "Isolate uv from the caller's project". `fixed:c8e813ea`: `--no-project` on both uv forms, and the checker test's review brief sent from a directory with an unresolvable `pyproject.toml` (validation §4). The fix round is the PR's one round; the Bot's re-review is asked with `@codex review` on the fix head.
+- **Security review of `aeb4a0fb`:** completed, no finding.
+- **The PING** of 2026-10-16T21:38:05Z (the host slept overnight) was answered with a PONG, `status=alive`.

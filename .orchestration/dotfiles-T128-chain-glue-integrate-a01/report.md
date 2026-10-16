@@ -4,6 +4,8 @@ seat: claude-standard-dot-a002
 branch: tools/chain-glue-integrate
 base: fdef3ceb
 code_commit: 24f8af19
+fix_commit: d8bc67d4
+pr: 372
 task_sha256: 62706b88c365e1c21ef7c8b58e10647629f528b3a18b04048eb41a646a016b64
 ---
 
@@ -17,10 +19,10 @@ task_sha256: 62706b88c365e1c21ef7c8b58e10647629f528b3a18b04048eb41a646a016b64
 
 | File | What it does |
 |---|---|
-| `scripts/orchestrator/chain-integrate.sh` (new, 180 lines, the plan's allowance) | Item 1, in its order. Arguments checked first: task and owner ids by `^[A-Za-z0-9][A-Za-z0-9._-]*$`, whose leading class excludes `.` and `..`, the PR by digits, `<main>` made physical. The binaries are resolved with `mise which` under `env -i`, else `command -v`; a path not absolute or under `shims` is exit 10. Preconditions: on `main`; after `fetch origin main`, `HEAD` equals `origin/main` (else `ff-main.sh` named); the review worktree's `pwd -P` equals `$(git -C <main> rev-parse --show-toplevel)/.claude/worktrees/orchestrator-review`, with its own `.git` and clean; the record present; `isDraft` is `false`; then `fetch origin main` in the review worktree. Steps 1 to 10 follow, each command logged by one `step` helper as `<utc> <step> rc=<n>: <command>` and echoed as `<step> rc=<n>`. The helper takes each step's accepted statuses, and any other status is `step <name> failed rc=<n>` and exit 1, so no called script's status is returned as the chain's. The chain's own refusals are 10 to 16. |
-| `tests/unit/test_chain_glue.py` (new, 317 lines) | Item 2: a bare origin with `main` and `refs/pull/7/head`, a main checkout and a review worktree at the canonical path, both clones of it; STUB-template repository scripts in the main checkout; `gh`, `uv`, `codex` and a failing `mise` first on `PATH=<stubs>:/usr/bin:/bin`. The six tests, one per closed row. |
+| `scripts/orchestrator/chain-integrate.sh` (new, 174 lines; the plan allows 180) | Item 1, in its order. Arguments checked first: task and owner ids by `^[A-Za-z0-9][A-Za-z0-9._-]*$`, whose leading class excludes `.` and `..`, the PR by digits, `<main>` made physical. The binaries are resolved with `mise which` under `env -i`, else `command -v`; a path not absolute or under `shims` is exit 10. Preconditions: on `main`; after `fetch origin main`, `HEAD` equals `origin/main` (else `ff-main.sh` named); the review worktree's `pwd -P` equals `$(git -C <main> rev-parse --show-toplevel)/.claude/worktrees/orchestrator-review`, with its own `.git` and clean; each called repository script tracked in the main checkout, with `scripts/` unchanged from `HEAD` there (the Bot's P1, below); the record present; `isDraft` is `false`; then `fetch origin main` in the review worktree. Steps 1 to 10 follow, each command logged by one `step` helper as `<utc> <step> rc=<n>: <command>` and echoed as `<step> rc=<n>`. The helper takes each step's accepted statuses, and any other status is `step <name> failed rc=<n>` and exit 1, so no called script's status is returned as the chain's. The chain's own refusals are 10 to 16. |
+| `tests/unit/test_chain_glue.py` (new, 330 lines) | Item 2: a bare origin with `main` and `refs/pull/7/head`, a main checkout and a review worktree at the canonical path, both clones of it; STUB-template repository scripts, tracked on the origin's `main`; `gh`, `uv`, `codex` and a failing `mise` first on `PATH=<stubs>:/usr/bin:/bin`. The six tests, one per closed row, and a seventh for the Bot's P1. |
 
-## The six tests, by closed row
+## The tests, by closed row
 
 | Closed row | Test |
 |---|---|
@@ -29,9 +31,10 @@ task_sha256: 62706b88c365e1c21ef7c8b58e10647629f528b3a18b04048eb41a646a016b64
 | restart after update-branch | `test_integrate_restarts_after_update_branch`. Origin `main` has advanced, the main checkout is at it, and only the review worktree lags. `pr update-branch 7` runs once, followed by a `pr view` poll. The merged head's log holds two pull fetches for each checkout, while the first head's log holds one. The merged head is in both object databases, is checked out in the review worktree, and is named on the last line. |
 | binaries resolved before the checkout | `test_integrate_resolves_binaries_before_the_checkout`. The head commits a decoy `gh` at the review worktree's root and a decoy `scripts/orchestrator/local-review.sh`, with `.` first on PATH. Neither decoy runs, and the main checkout's local-review stub does. The Bot wait ends `absent`. |
 | owner task absent | `test_integrate_refuses_an_absent_owner_task_before_the_advisory_step`. With local review exit 3 and no owner file: exit 15, `write the owner task <owner> first`, and no `local-advisory.sh` or later step. |
+| (the Bot's P1, thread `4291474880`: no closed row yet) | `test_integrate_refuses_a_main_checkout_script_that_is_not_heads`. A called stub changed in the main checkout: exit 10, `scripts/ in the main checkout differs from HEAD`. A stub removed from the index: exit 10, `<path> is not tracked in the main checkout`. In both, no stub runs and no log is written. |
 | sandbox-scan hit | `test_integrate_stops_on_a_sandbox_scan_hit`. A hit is exit 16 naming `CHAIN_SCAN_JUDGED=<sha7>`, and no later stub runs. The re-run with it proceeds and logs `sandbox scan: judged by the orchestrator`. |
 
-Mutation check (validation §4): 11 mutants, each applied alone, all 11 caught, then a baseline run of the six tests, OK. They remove, in turn: the off-main refusal, the draft refusal, the already-audited refusal, the checks step, the ten-digit ledger bound, the comment join, the restart, the log reset, the main-checkout script path, the owner check and the scan stop.
+Mutation check (validation §4): 13 mutants, each applied alone, all 13 caught, then a baseline run of the six tests, OK. They remove, in turn: the off-main refusal, the draft refusal, the already-audited refusal, the checks step, the ten-digit ledger bound, the comment join, the restart, the log reset, the main-checkout script path, the owner check, the scan stop, and the P1 fix's two checks (the `HEAD` diff and the tracked-file check).
 
 ## Readings, declared
 
@@ -47,11 +50,15 @@ Mutation check (validation §4): 11 mutants, each applied alone, all 11 caught, 
 
 ## Caps
 
-Validation §5: outside `tests/` and `.orchestration/`, 1 file, 180 added lines (cap 200; the plan's 180 for the script); under `tests/`, 317 added lines (cap 1000).
+Validation §5: outside `tests/` and `.orchestration/`, 1 file, 174 added lines (cap 200; the plan's 180 for the script); under `tests/`, 330 added lines (cap 1000).
 
 ## CI and the Bot
 
-In the RESULT (the post-ready calls are planned in sandbox.md).
+- **The Bot's first review** (`9f1cee1c`, review `5543747032`, 06:14:19Z) left three threads:
+  - `4291474880`, P1, "Refuse modified main-checkout scripts": fixed in `d8bc67d4` (the one fix round). Each called script must be tracked in the main checkout, and `scripts/` there must not differ from `HEAD`; otherwise exit 10 before any fetch. The tests' stubs are now tracked on the origin's `main`, so the other six tests run against `HEAD`'s copies. The Bot also asks for a main-worktree-content row in the threat table. The task file is the orchestrator's, so the row is proposed in the RESULT, not added here.
+  - `4291474885`, P2, "Recheck origin/main after the waits": `origin/main` can advance during the checks or Bot wait, after the ancestry test. The proposed disposition is a C-50 revise round: re-run the review worktree's `fetch origin main` and the ancestry test before the local review, restarting at the fetch. That is a few lines plus one test.
+  - `4291474891`, P2, "Redact external disposition paths from the log": an extra TSV outside the main checkout is logged by its absolute path. The proposed disposition is a C-50 revise round: refuse an extra TSV outside `<main>`, or log only its basename. One line plus one test.
+- **The Bot's re-review** of the fix head (`bot_rounds=2`) and **CI**: in the RESULT.
 
 ## Not done, or outside scope
 

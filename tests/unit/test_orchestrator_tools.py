@@ -4,6 +4,8 @@ Each script runs as a subprocess from its copy in a temporary git repository, wi
 `uv`, `gh`, `make`, `codex` and an interpreter `gate-python` stubbed on PATH and `history.sh` stubbed in the directory `AGMSG_SCRIPTS` names;
 git is the real one, against a bare repository standing in for `origin`. A stub records its argv NUL-separated,
 so an argument is compared byte for byte (`gh` and `make` append one line per call).
+The dispatch checker case alone replaces the `uv` stub with a logging wrapper around the real `uv` next on PATH, so
+the module needs a real uv with PyYAML in its cache or reachable index for that case.
 """
 
 import fcntl
@@ -257,7 +259,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.assertEqual({"dispatch": [f"{ping} read_at=read"], "format": 1, "ledger": [], "task": "t"}, block)
         self.assertEqual("\nProse.\n", prose)
         # Thread 4254399805: team-wide, never with an agent, which would rename the calling pane.
-        self.assertEqual(["team", "", "100000"], self.call("history.sh"))
+        self.assertEqual(["team", "", "200"], self.call("history.sh"))
         # A record without a block gets one holding only dispatch; an unread message says so.
         plain = self.write(".orchestration/acceptance/u.md", "Prose only.\n")
         (self.calls / "dispatch-marker").write_text("●")
@@ -367,7 +369,7 @@ class OrchestratorToolsTest(unittest.TestCase):
                 self.assertIn(needle, self.dispatch(line, code=1).stderr)
                 self.assertIsNone(self.call("agmsg-dispatch"))
 
-    def test_dispatch_record_path_tokenizes_locks_and_refuses_a_capped_history(self):
+    def test_dispatch_record_path_tokenizes_and_locks(self):
         record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
         (self.calls / "history").write_text("")
         (self.calls / "dispatch-marker").write_text("○")
@@ -409,15 +411,109 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.assertEqual(
             sorted(f"{line} read_at=read" for line in lines), sorted(self.gate_block(record)[0]["dispatch"])
         )
-        # Thread 4255272803: a read whose lines reach the limit may have lost its oldest rows; nothing is sent.
-        (self.calls / "agmsg-dispatch").unlink()
-        (self.calls / "history").write_text("  ○ [2026-10-13T00:00:00Z] a → b: AGMSG-PING v1 task_id=x\n" * 3)
-        before = record.read_text()
-        result = self.run_tool("dispatch.sh", *args, "line0.txt", str(record), code=1, env={"BUS_READ_LIMIT": "3"})
-        self.assertIn("the history read is capped at 3 rows; raise BUS_READ_LIMIT", result.stderr)
-        self.assertIsNone(self.call("agmsg-dispatch"))
-        self.assertEqual(["team", "", "3"], self.call("history.sh"))
-        self.assertEqual(before, record.read_text())
+
+    def test_dispatch_refuses_a_task_file_failing_the_checker(self):
+        # C-52: the checker beside the script is a stub that fails a file lacking its own evidence directory.
+        self.write(
+            "scripts/orchestrator/task-consistency-check.py",
+            "import re, sys\nf = sys.argv[-1]\ntid = re.search(r'^task_id: (\\S+)', open(f).read(), re.M)[1]\n"
+            "if f'.orchestration/{tid}/**' in open(f).read():\n    sys.exit(print(f'{f}: OK'))\n"
+            "print(f'{f}: FAIL')\nprint(f'  C2 allowed_files lacks .orchestration/{tid}/**')\nsys.exit(1)\n",
+        )
+        # The real uv (the next one on PATH) runs the brief parse with PyYAML; the fake logs each call.
+        (self.temp / "bin/uv").unlink()
+        fake = self.temp / "fake-uv/uv"
+        fake.parent.mkdir()
+        fake.write_text(
+            '#!/usr/bin/env bash\necho "$*" >> "$CALLS/uv.log"\nhere="$(cd "$(dirname "$0")" && pwd -P)"\n'
+            'p=":${PATH}:" && p=${p//:${here}:/:}\nexec "$(PATH=${p} command -v uv)" "$@"\n'
+        )
+        fake.chmod(0o755)
+        env = {"PATH": f"{fake.parent}{os.pathsep}{self.env['PATH']}"}
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        (self.calls / "history").write_text("")
+        (self.calls / "dispatch-marker").write_text("○")
+        rel = ".orchestration/tasks/t.md"
+
+        def send(front, code):
+            text = self.write(rel, f"---\nformat: 2\ntask_id: t\n{front}---\n\nBody.\n").read_text()
+            self.write("line.txt", f"AGMSG-TASK v1 task_id=t task_file={rel} task_sha256={sha(text)}\n")
+            (self.calls / "uv.log").unlink(missing_ok=True)
+            args = ["team", "orch", "worker", "w5:pA", "line.txt", record]
+            return self.run_tool("dispatch.sh", *args, code=code, env=env), (self.calls / "uv.log").read_text()
+
+        lacking = "allowed_files:\n  - scripts/x.sh\n"
+        # Both orders of the duplicate key: PyYAML alone would keep the last value, review in the second.
+        duplicates = ("kind: review\nkind: code\n", "kind: code\nkind: review\n")
+        for kind in ("kind: code\n", 'kind: "code"\n', "", *duplicates, "kind: review\n: broken\n"):
+            with self.subTest(kind=kind):
+                result, log = send(kind + lacking, 1)
+                self.assertIn(f"dispatch: {self.repo / rel} fails the task-consistency check", result.stderr)
+                self.assertIn("C2 allowed_files lacks .orchestration/t/**", result.stderr)
+                self.assertIn(f"task-consistency-check.py --root {self.repo} {self.repo / rel}", log)
+                self.assertIsNone(self.call("agmsg-dispatch"))
+                self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
+        _, log = send("kind: review\n", 0)
+        # The Makefile's UV_PYYAML probe comes first, then the brief parse in the form it chose.
+        self.assertEqual("run --offline --with pyyaml python -c import yaml", log.splitlines()[0])
+        self.assertNotIn("task-consistency-check.py", log)
+        self.assertIn("python -I -c", log)
+        self.assertEqual(1, len(self.gate_block(record)[0]["dispatch"]))
+
+    def test_dispatch_reads_a_bounded_history_window(self):
+        # C-53: each read answers the window the case writes, window-1 before the send and window-2 after it.
+        (self.temp / "agmsg/history.sh").write_text(
+            '#!/usr/bin/env bash\necho "$*" >> "$CALLS/history.log"\n'
+            'n=$(($(cat "$CALLS/reads" 2> /dev/null || echo 0) + 1)) && echo "${n}" > "$CALLS/reads"\n'
+            'cat "$CALLS/window-${n}"\n'
+        )
+        ping = "AGMSG-PING v1 task_id=t reason=check"
+        self.write("line.txt", ping + "\n")
+        empty = '---\n{"task": "t"}\n---\n'
+        record = self.write(".orchestration/acceptance/t.md", empty)
+
+        def row(ts, text=ping, mark="●", sender="orch", to="worker"):
+            return f"  {mark} [2026-10-15T00:{ts}Z] {sender} → {to}: {text}"
+
+        def send(pre, post, code=0, window=None):
+            for n, rows in ((1, pre), (2, post)):
+                (self.calls / f"window-{n}").write_text("".join(r + "\n" for r in rows))
+            for name in ("reads", "history.log"):
+                (self.calls / name).unlink(missing_ok=True)
+            record.write_text(empty)
+            env = {"BUS_READ_WINDOW": window} if window else None
+            result = self.run_tool(
+                "dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", record, code=code, env=env
+            )
+            self.assertEqual([], list(self.temp.glob("dispatch-window.*")))
+            return result
+
+        def recorded():
+            return self.gate_block(record)[0]["dispatch"]
+
+        # Eviction plus collision: the oldest row of a full window equals the line and leaves it.
+        full = [row("00:00")] + [row(f"{i // 60:02}:{i % 60:02}", f"x{i}") for i in range(1, 200)]
+        send(full, full[1:] + [row("59:00", mark="○")])
+        self.assertEqual([f"{ping} read_at=read"], recorded())
+        self.assertEqual(["team  200", "team  200"], (self.calls / "history.log").read_text().splitlines())
+        send(full[150:], full[151:] + [row("59:00", mark="○")], window="50")
+        self.assertEqual(["team  50", "team  50"], (self.calls / "history.log").read_text().splitlines())
+        # Same second: the newest pre-send row equals the line; the second such row is this send.
+        a, b = row("01:00", "a"), row("02:00", "b")
+        send([a, b, row("03:00")], [a, b, row("03:00"), row("03:00", mark="○")])
+        self.assertEqual([f"{ping} read_at=read"], recorded())
+        # Another seat's row lands after this send: the line's row is still the one recorded.
+        send([a, b], [a, b, row("03:00", mark="○"), row("03:01", "AGMSG-PONG v1 task_id=t", "●", "worker", "orch")])
+        self.assertEqual([f"{ping} read_at=read"], recorded())
+        refusals = (
+            ([a, b], [row("04:00", "c"), row("05:00", "d"), row("06:00")], "raise BUS_READ_WINDOW"),
+            ([a, b], [a, b], "this send added no bus row"),
+            ([row("07:00", "p")] * 200, [row("07:00", "p")] * 200, "does not align uniquely"),
+        )
+        for pre, post, message in refusals:
+            with self.subTest(message=message):
+                self.assertIn(message, send(pre, post, code=1).stderr)
+                self.assertEqual(empty, record.read_text())
 
     # three-repeat.sh
 

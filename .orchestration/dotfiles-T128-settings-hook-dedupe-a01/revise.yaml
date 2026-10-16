@@ -1,7 +1,5 @@
 task_id: dotfiles-T128-settings-hook-dedupe-a01
-amendment: 1
-revise_round: 2
-previous_head: bf6beb53aeb56d0392566f924303581d8f819b80
+amendment: 2
+previous_head: 5bcab1f98c60ff6043422794b1c1a72483edb1ac
 check: tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_managed_post_tool_use_replaces_stale_format_only_entry
-finding: audit-P3-stale-tracked-validation
-scope: evidence-only
+finding: Bot-P1-4290538244-chained-command-loss

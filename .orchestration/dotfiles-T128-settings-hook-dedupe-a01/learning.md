@@ -1,5 +1,5 @@
-# Learning triage
+# T15 amendment 2 learning
 
-[memory:decision] Classifying a hook from every shlex token mistakes a managed script argument for the executable program and can remove user wrappers. Restrict the task predicate to the program position (first token, or second after the four declared interpreters); preserve empty/malformed inputs. Wrapper regression failed on auditedbdefcbe4 and all20 tests pass after correction. Applies to this PostToolUse predicate; SessionStart classification is outside task scope.
+[memory:failure] Recognizing a managed program by its first token still drops user behavior chained after that program. Wrapper-only preservation is insufficient for a whole hook command object.
 
-No persistent memory promoted from the worker; orchestrator owns consolidation. Earlier blocked-publication observations are historical, not current seat status.
+[memory:decision] For the specified managed bare-script commands, require exactly one remaining token after optional interpreter stripping. Preserve any additional arguments or shell chain as unmanaged. The chain regression fails before that one-line correction and all20 tests pass afterward; keep the wrapper, argument and interpreter cases in the same regression method. Commit current source-validation proof in the task root and state post-publication CI/Bot separately.

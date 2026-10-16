@@ -11,5 +11,11 @@
     "scope": "file",
     "path": ".orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md",
     "resolved": true
+  },
+  {
+    "id": "settings-hook-amendment2-exact-invocation-approval",
+    "body": "Independent read-only review found no P0-P3 findings. One-line predicate change matches amendment2 exact token shape. Regression covers user chains, extra arguments and interpreter chains while retaining existing guards/cases and original19 methods. Task hash79d2af63 and14-source/57-test-addition caps agree; current root proof is complete, with post-publication CI/Bot explicitly separate. No secrets or unmasked home paths. Basename matching remains disclosed. Reviewer performed no edits/tests.",
+    "scope": "review",
+    "resolved": true
   }
 ]

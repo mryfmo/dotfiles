@@ -381,6 +381,10 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             "matcher": "Write|Edit|MultiEdit",
             "hooks": [{"type": "command", "command": "~/bin/log-hook.sh ~/.claude/hooks/format-edited-files.py"}],
         }
+        chained_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": "~/.claude/hooks/format-edited-files.py && ~/bin/audit-edit.sh"}],
+        }
         cases = [
             ("stale and managed", [stale_entry, managed_entry], [managed_entry]),
             ("stale alone", [stale_entry], [managed_entry]),
@@ -391,6 +395,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             ),
             ("absent key", None, [managed_entry]),
             ("wrapper argument", [wrapper_entry, stale_entry], [wrapper_entry, managed_entry]),
+            ("chained user command", [chained_entry, stale_entry], [chained_entry, managed_entry]),
         ]
         for interpreter in ("python3", "python", "bash", "sh"):
             interpreted = {
@@ -400,7 +405,17 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
                 ],
             }
             cases.append(("interpreter", [interpreted], [managed_entry]))
-        for command in ("~/bin/my-hook.sh", "'unterminated", None, "", "python3", "bash"):
+        for command in (
+            "~/bin/my-hook.sh",
+            "'unterminated",
+            None,
+            "",
+            "python3",
+            "bash",
+            "~/.claude/hooks/format-edited-files.py --custom",
+            "python3 ~/.claude/hooks/format-edited-files.py --custom",
+            "bash ~/.claude/hooks/project-map-reload.sh && ~/bin/audit-edit.sh",
+        ):
             unmanaged = {"matcher": "Bash", "hooks": [{"type": "command", "command": command}]}
             cases.append(("unmanaged command", [unmanaged, stale_entry], [unmanaged, managed_entry]))
         for name, current_entries, expected in cases:

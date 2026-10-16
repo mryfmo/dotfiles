@@ -82,7 +82,7 @@ def is_managed_post_tool_use_hook(hook: Any) -> bool:
         return False
     if parts and Path(parts[0]).name in ("python3", "python", "bash", "sh"):
         parts = parts[1:]
-    return bool(parts) and Path(parts[0]).name in MANAGED_POST_TOOL_USE_SCRIPTS
+    return len(parts) == 1 and Path(parts[0]).name in MANAGED_POST_TOOL_USE_SCRIPTS
 
 
 def entry_has_managed_hook(entry: Any, is_managed: Any) -> bool:

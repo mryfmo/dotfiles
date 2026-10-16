@@ -36,3 +36,11 @@
 - **Code review of `aeb4a0fb`** (review 5545290170): one P1, thread 4292675906, `dispatch.sh:181`, "Isolate uv from the caller's project". `fixed:c8e813ea`: `--no-project` on both uv forms, and the checker test's review brief sent from a directory with an unresolvable `pyproject.toml` (validation §4). The fix round is the PR's one round; the Bot's re-review is asked with `@codex review` on the fix head.
 - **Security review of `aeb4a0fb`:** completed, no finding.
 - **The PING** of 2026-10-16T21:38:05Z (the host slept overnight) was answered with a PONG, `status=alive`.
+
+## Revise round 2 (`8adf74bb`)
+
+- **The P1.** The Bot's re-review of `57d3577c`, thread 4299651928, `dispatch.sh:182`: `--no-project` keeps a caller's `pyproject.toml` out, but a `.python-version` or virtual environment in the caller's directory still chooses uv's interpreter. The operator's decision D-P1-374 A: one more fix round.
+- **The fix.** `fixed:8adf74bb`. Both uv forms run in a subshell that changes to the script's checkout root (`uvr`); the checker is named by the script directory's absolute path.
+- **The test.** `test_dispatch_refuses_a_task_file_failing_the_checker` plants a `.python-version` naming an executable in the caller's directory: it never runs, and the fake uv records the root as every call's directory. Mutant M9 (no `cd`) is killed; all nine mutants are killed, and 54 tests pass (validation §6).
+- **Size after the round.** 108 changed lines outside `tests/` and `.orchestration/` (of 200), 122 added under `tests/` (of 1000), 2 files.
+- **The Bot.** Its re-review is asked with `@codex review` on this round's head.

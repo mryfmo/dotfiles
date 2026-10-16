@@ -1,0 +1,5 @@
+task_id: dotfiles-T128-orchestrator-tools-followup-a03
+round: 2
+previous_head: 57d3577ca780248f573fd26c4fa460e2b5e2d510
+check: tests/unit/test_orchestrator_tools.py::test_dispatch_refuses_a_task_file_failing_the_checker
+reason: the Bot's P1 4299651928 on 57d3577c, the operator's decision D-P1-374 A; with --no-project uv still let a .python-version or virtual environment in the caller's directory choose the interpreter, so both uv forms run from the trusted script root

@@ -126,6 +126,18 @@ class ChainGithubScriptsTest(unittest.TestCase):
                 )
                 self.assertEqual([], calls)
 
+    def test_resolve_threads_skips_comment_rows_during_preflight(self):
+        self.canned = {
+            "graphql query": "101 T_one\n",
+            "graphql mutation": "true\n",
+            f"{API}/comments/101/replies .id": "9001\n",
+        }
+        table = self.t / "extra.tsv"
+        table.write_text("#\tnote about `code`\n101\tfixed:abc1234\n")
+        out, calls = self.run_script("resolve-threads.sh", 9, table)
+        self.assertEqual(["T_one"], thread_ids(calls))
+        self.assertEqual("resolved 1 thread(s); missing rows: 0", out.splitlines()[-1])
+
     def test_resolve_threads_replies_with_the_table_row_and_resolves_only_threads_with_rows(self):
         self.canned = {
             "graphql query": "101 T_one\n202 T_two\n",

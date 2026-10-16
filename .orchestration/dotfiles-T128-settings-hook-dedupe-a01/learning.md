@@ -1,5 +1,5 @@
 # Learning triage
 
-[memory:decision] PostToolUse needs an event predicate to use the existing managed-entry replacement path; otherwise additive merging retains an old managed entry beside a newer one. The regression must start from both stale and new entries to exercise queue exhaustion, plus stale-alone, mixed and absent-key cases. Validated by the red/green test outputs. The basename contract intentionally includes any parsed token, not only the executable; report that classification limit.
+[memory:decision] Classifying a hook from every shlex token mistakes a managed script argument for the executable program and can remove user wrappers. Restrict the task predicate to the program position (first token, or second after the four declared interpreters); preserve empty/malformed inputs. Wrapper regression failed on auditedbdefcbe4 and all20 tests pass after correction. Applies to this PostToolUse predicate; SessionStart classification is outside task scope.
 
-No rule or skill promotion. Network/dependency availability failures are session constraints, not product changes. CompactionDB consolidation is left to orchestrator; no memory identifier is claimed.
+No persistent memory promoted from the worker; orchestrator owns consolidation. Earlier blocked-publication observations are historical, not current seat status.

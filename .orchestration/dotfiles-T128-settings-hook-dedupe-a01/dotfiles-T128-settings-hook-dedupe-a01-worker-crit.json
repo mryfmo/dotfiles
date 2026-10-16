@@ -1,7 +1,7 @@
 [
   {
-    "id": "dotfiles-T128-settings-hook-dedupe-a01-independent-review",
-    "body": "Independent read-only review found no defects within the task-prescribed basename-matching contract. The two-file diff reuses existing managed-entry merging without changing shared functions. Tests cover stale-plus-managed duplicates, stale alone, mixed custom hooks, absent key, unrelated commands, malformed quoting and nonstring commands. Task SHA matches; all20 tests and diff whitespace check pass. Approval does not claim preservation of custom commands colliding with managed basenames or completion of render-check/formatting/CI at review time. Native Ruff format subsequently passed with two baseline-identical lint diagnostics and zero new; source did not change. No installed settings or remote CI was exercised.",
+    "id": "settings-hook-amend1-independent-review",
+    "body": "Independent read-only implementation review found no P0-P3 findings against amended task99fb3dc7. Managed PostToolUse recognition uses program position only, retaining dict/string/shlex guards and safely preserving empty/interpreter-only commands. Wrapper regression failed on auditedbdefcbe4 before the fix, then all20 tests passed, including all four interpreters. Shared merge and SessionStart behavior unchanged. Committed core report now describes publishedPR369 rather than blocked publication. Basename collisions and interpreter-option limits disclosed; final-head CI not claimed by this local review.",
     "scope": "review",
     "resolved": true
   }

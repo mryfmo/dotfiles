@@ -80,7 +80,9 @@ def is_managed_post_tool_use_hook(hook: Any) -> bool:
         parts = shlex.split(hook["command"])
     except ValueError:
         return False
-    return any(Path(part).name in MANAGED_POST_TOOL_USE_SCRIPTS for part in parts)
+    if parts and Path(parts[0]).name in ("python3", "python", "bash", "sh"):
+        parts = parts[1:]
+    return bool(parts) and Path(parts[0]).name in MANAGED_POST_TOOL_USE_SCRIPTS
 
 
 def entry_has_managed_hook(entry: Any, is_managed: Any) -> bool:

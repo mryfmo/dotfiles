@@ -1,0 +1,7 @@
+task_id: dotfiles-T128-settings-hook-dedupe-a01
+amendment: 1
+previous_head: bdefcbe402ecda1cd7376c2796ac8cc48777b38e
+check: tests/unit/test_claude_settings_merge.py
+findings:
+  - audit-P2-wrapper-argument
+  - audit-P3-stale-report

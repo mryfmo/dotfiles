@@ -435,12 +435,13 @@ class OrchestratorToolsTest(unittest.TestCase):
         (self.calls / "dispatch-marker").write_text("○")
         rel = ".orchestration/tasks/t.md"
 
-        def send(front, code):
+        def send(front, code, cwd=None):
             text = self.write(rel, f"---\nformat: 2\ntask_id: t\n{front}---\n\nBody.\n").read_text()
-            self.write("line.txt", f"AGMSG-TASK v1 task_id=t task_file={rel} task_sha256={sha(text)}\n")
+            line = self.write("line.txt", f"AGMSG-TASK v1 task_id=t task_file={rel} task_sha256={sha(text)}\n")
             (self.calls / "uv.log").unlink(missing_ok=True)
-            args = ["team", "orch", "worker", "w5:pA", "line.txt", record]
-            return self.run_tool("dispatch.sh", *args, code=code, env=env), (self.calls / "uv.log").read_text()
+            args = ["team", "orch", "worker", "w5:pA", line, record]
+            result = self.run_tool("dispatch.sh", *args, code=code, env=env, cwd=cwd)
+            return result, (self.calls / "uv.log").read_text()
 
         lacking = "allowed_files:\n  - scripts/x.sh\n"
         # Both orders of the duplicate key: PyYAML alone would keep the last value, review in the second.
@@ -453,9 +454,15 @@ class OrchestratorToolsTest(unittest.TestCase):
                 self.assertIn(f"task-consistency-check.py --root {self.repo} {self.repo / rel}", log)
                 self.assertIsNone(self.call("agmsg-dispatch"))
                 self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
-        _, log = send("kind: review\n", 0)
+        # The Bot's P1 4292675906: a caller's directory holding a project that cannot resolve changes nothing.
+        caller = self.temp / "caller"
+        caller.mkdir()
+        (caller / "pyproject.toml").write_text(
+            '[project]\nname = "caller"\nversion = "0"\ndependencies = ["no-such-package-dispatch-a03"]\n'
+        )
+        _, log = send("kind: review\n", 0, cwd=caller)
         # The Makefile's UV_PYYAML probe comes first, then the brief parse in the form it chose.
-        self.assertEqual("run --offline --with pyyaml python -c import yaml", log.splitlines()[0])
+        self.assertEqual("run --no-project --offline --with pyyaml python -c import yaml", log.splitlines()[0])
         self.assertNotIn("task-consistency-check.py", log)
         self.assertIn("python -I -c", log)
         self.assertEqual(1, len(self.gate_block(record)[0]["dispatch"]))

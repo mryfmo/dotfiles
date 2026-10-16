@@ -36,7 +36,7 @@
 #   before the send, and nothing is sent.
 #   An AGMSG-TASK line whose `task_file=` fails `task-consistency-check.py`
 #   (beside this script, run as `python -I` through the Makefile's `UV_PYYAML`
-#   uv form) is refused with the checker's output, and nothing is sent (C-52).
+#   uv form with `--no-project`) is refused with the checker's output, and nothing is sent (C-52).
 #   Only a review brief is exempt: a front matter (the text between the first
 #   two `---` lines) that PyYAML parses, refusing a duplicate key, to a mapping
 #   whose `kind` is the string `review`; every other outcome runs the checker.
@@ -176,9 +176,10 @@ for t in "${tokens[@]}"; do
 done
 if [[ ${tokens[0]} == AGMSG-TASK ]]; then
     tf="$(value_of task_file)" && [[ ${tf} == /* ]] || tf="${root}/${tf}"
-    # The Makefile's UV_PYYAML: offline when the cache holds PyYAML, else through the index.
-    uvy=(uv run --offline --with pyyaml)
-    "${uvy[@]}" python -c 'import yaml' > /dev/null 2>&1 || uvy=(uv run --with pyyaml)
+    # The Makefile's UV_PYYAML: offline when the cache holds PyYAML, else through the index. --no-project: a
+    # pyproject.toml in the caller's directory is never discovered, synced or built (the Bot's P1 4292675906).
+    uvy=(uv run --no-project --offline --with pyyaml)
+    "${uvy[@]}" python -c 'import yaml' > /dev/null 2>&1 || uvy=(uv run --no-project --with pyyaml)
     read -r -d '' brief << 'PY' || true
 import sys, yaml
 def unique(loader, node, deep=False):

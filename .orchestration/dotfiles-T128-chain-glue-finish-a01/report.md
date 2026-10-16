@@ -20,7 +20,7 @@ task_sha256: 8eb760cc25b1e44050b85366ac8baadafedb863eec6dcfa98e3839a512db7272
 | File | What it does |
 |---|---|
 | `scripts/orchestrator/chain-finish.sh` (new, 148 lines) | Item 1, in its order, with T7's helpers (`say`, `refuse`, `pre`, `step`, `pick`), log form and colour setting. **Preconditions**, each exit 10: the arguments; the binaries; the main checkout on `main` and at `origin/main`; the canonical review worktree, clean, with its own `.git`; the extra TSV a file; the head, the review worktree's `HEAD`, equal to the PR's head with its audit summary present; the record; and the gate inputs (the sweep JSON with `pr` equal to the PR, the audit transcript, the receipt, the crit JSON). **Steps:** (1) the verdict and one `audit-finding: <sha7>:<n> not-applicable:<reason>; evidence=<command>` line per finding, under either verdict, with the incorrect verdict's lines as a TSV; (2) `resolve-threads.sh`, exit 3 → 11; (3) the sweep re-run as T7's, `fill_sweep.py`'s exit 1 → 13; (4) the record block, `--audit-dispositions` only when the verdict is incorrect; (5) `orch-gate.sh`; (6) `gh pr merge --squash --match-head-commit <head> <pr>`, then the merge commit from a fresh `origin/main`; (7) `ff-main.sh`; (8) `pr-cost.sh`, run as `HEAD`'s pre-merge copy (the Bot's P1, below); (9) the AGMSG-ACCEPTANCE line printed. An `EXIT` trap removes the comments JSON and both TSVs. |
-| `tests/unit/test_chain_glue.py` (extended, 171 lines) | T7's tests are kept. The `SCRIPTS` stubs gain `resolve-threads.sh`, `orch-gate.sh`, `ff-main.sh` and `pr-cost.sh`. Every stub also appends its name to `<calls>/order.log`. The gh stub gains `pr merge` (answering from `<calls>/merge-status`, and logging `gh pr merge` to the order log). The uv stub runs `-c` code with the system `python3 -I`. `send.sh` and `agmsg-dispatch` stubs on PATH log to `<calls>/send.log`. There are four new tests, plus a fifth for the Bot's P1, and a `finish_ready` fixture: the review worktree at the PR head, the gate's inputs, and the record lines. |
+| `tests/unit/test_chain_glue.py` (extended, 169 lines) | T7's tests are kept. The `SCRIPTS` stubs gain `resolve-threads.sh`, `orch-gate.sh`, `ff-main.sh` and `pr-cost.sh`. Every stub also appends its name to `<calls>/order.log`. The gh stub gains `pr merge` (answering from `<calls>/merge-status`, and logging `gh pr merge` to the order log). The uv stub runs `-c` code with the system `python3 -I`. `send.sh` and `agmsg-dispatch` stubs on PATH log to `<calls>/send.log`. There are four new tests, plus a fifth for the Bot's P1, and a `finish_ready` fixture: the review worktree at the PR head, the gate's inputs, and the record lines. |
 
 ## The tests, by closed row
 
@@ -45,7 +45,7 @@ Mutation check (validation §4): 13 mutants, each applied alone and each caught 
 
 ## Caps
 
-Validation §5: outside `tests/` and `.orchestration/`, 1 file, 148 added lines (cap 200); under `tests/`, 171 added lines (cap 1000).
+Validation §5: outside `tests/` and `.orchestration/`, 1 file, 148 added lines (cap 200); under `tests/`, 169 added lines (cap 1000).
 
 ## CI and the Bot
 

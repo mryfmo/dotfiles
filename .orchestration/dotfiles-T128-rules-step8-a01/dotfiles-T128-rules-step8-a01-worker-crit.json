@@ -11,5 +11,11 @@
     "scope": "file",
     "path": "home/dot_config/claude/rules/agmsg-orchestration.md",
     "resolved": true
+  },
+  {
+    "id": "rules-step8-amendment5-peer-approval",
+    "body": "Independent read-only peer review found no P0-P3 findings. Exact amended cadence clauses, pinned fixture, renamed test and revise selector agree; task hash4610a9a7 matches. Full PR caps47 source/67 test additions and447-word rule match the diff. Four nonempty report/validation/sandbox/learning records contain local proof and explicitly separate old-head review from post-publication checks. No secrets or unmasked home paths in reviewed records. No tests or edits performed by reviewer.",
+    "scope": "review",
+    "resolved": true
   }
 ]

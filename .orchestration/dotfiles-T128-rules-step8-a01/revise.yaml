@@ -1,5 +1,4 @@
 task_id: dotfiles-T128-rules-step8-a01
-amendment: 2
-previous_head: becba33c616247057f2f75cf30ec5aefcbf00592
-check: tests/unit/test_agmsg_orchestration_docs.py
-finding: "4289271574"
+amendment: 5
+previous_head: 4d3d639f452e12e22c434ce62f843e0e22dc39e0
+check: tests/unit/test_agmsg_orchestration_docs.py::AgmsgOrchestrationRuleTest::test_boundary_cadence_is_stated_between_integrations

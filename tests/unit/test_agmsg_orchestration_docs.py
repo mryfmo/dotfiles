@@ -78,6 +78,11 @@ class AgmsgOrchestrationRuleTest(unittest.TestCase):
         self.assertIn('the "Task-level audit" bullet', rule)
         self.assertIn("\n- Task-level audit:", skill)
 
+    def test_boundary_cadence_is_stated_between_integrations(self) -> None:
+        self.assertIn("records reach `main` only between integrations (plan 020 step 3)", RULE.read_text())
+        invariants = SKILL.read_text().split("## Review and integration invariants", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("queued only while no other PR is between its final head and its merge", invariants)
+
     def test_word_budgets(self) -> None:
         self.assertLessEqual(words(RULE), 450)
         self.assertLessEqual(sum(words(RULES / name) for name in ALWAYS_LOADED_RULES), 1800)

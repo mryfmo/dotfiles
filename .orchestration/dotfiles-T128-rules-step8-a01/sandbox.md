@@ -1,0 +1,3 @@
+# T13 amendment 5 sandbox
+
+All commands run under the current managed sandbox; no approval escalation or sandbox-policy changes. Writes are limited to the task's allowed source/evidence paths and permitted Git state. The branch switch printed a nonfatal packed-refs.lock denial and succeeded at required4d3d639f. Python runs through uv with cache under /tmp. Tests read repository prose; they execute no hook or user command. No local bats, installed settings/rules update, restart, graph update or merge. GitHub publication and explicitly requested Bot review use the permitted in-sandbox CLI; final results are reported after publication. No gated command requested in this T13 round. Main-checkout CompactionDB writes remain orchestrator-owned.

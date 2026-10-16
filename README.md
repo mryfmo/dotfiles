@@ -359,10 +359,12 @@ launchers, and the low-cost `express-explorer` Claude subagent.
 name that one command, since a bare `python3` run fails without PyYAML.
 
 Agent work runs as a three-role constellation. The orchestrator uses the
-`deep` profile (Claude `claude-fable-5-1`, high effort, advisor fable) to
+`deep` profile (Claude `claude-fable-5-1`, xhigh effort, advisor fable) to
 author tasks, review results, and own acceptance. The worker uses the
 `standard` profile (Claude `claude-opus-5-5` at xhigh effort, or Codex
-`gpt-6.1-sol` at high) to implement one task at a time. The auditor uses the
+`gpt-6.1-sol` at xhigh) to implement one task at a time. Reviews of plans
+and task texts run on the `review` profile, the same model and effort as
+`deep` in a fresh context (INV-7). The auditor uses the
 `audit` profile (Codex `gpt-6-astra`, xhigh reasoning effort, read-only
 sandbox)
 for one independent task-level audit of each final head, run as the agmsg-orchestration SKILL's task-level audit bullet describes. The responsibility

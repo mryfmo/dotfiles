@@ -420,13 +420,14 @@ class OrchestratorToolsTest(unittest.TestCase):
             "if f'.orchestration/{tid}/**' in open(f).read():\n    sys.exit(print(f'{f}: OK'))\n"
             "print(f'{f}: FAIL')\nprint(f'  C2 allowed_files lacks .orchestration/{tid}/**')\nsys.exit(1)\n",
         )
-        # The fake records its argv, its directory and every VIRTUAL_ENV, CONDA_PREFIX or UV_* variable it inherits.
+        # The fake records its argv, its directory and the name of every variable it inherits; uv runs under env -i,
+        # so the calls directory is written into it.
         (self.temp / "bin/uv").unlink()
         fake = self.temp / "fake-uv/uv"
         fake.parent.mkdir()
         fake.write_text(
-            '#!/usr/bin/env bash\necho "$*" >> "$CALLS/uv.log"\npwd -P >> "$CALLS/uv-cwd.log"\n'
-            '/usr/bin/env | /usr/bin/grep -E "^(VIRTUAL_ENV|CONDA_PREFIX|UV_)" >> "$CALLS/uv-env.log"\n'
+            f'#!/usr/bin/env bash\necho "$*" >> "{self.calls}/uv.log"\npwd -P >> "{self.calls}/uv-cwd.log"\n'
+            f'/usr/bin/env | /usr/bin/sed -n "s/^\\([A-Za-z_][A-Za-z0-9_]*\\)=.*/\\1/p" >> "{self.calls}/uv-env.log"\n'
             'here="$(cd "$(dirname "$0")" && pwd -P)"\n'
             'p=":${PATH}:" && p=${p//:${here}:/:}\nexec "$(PATH=${p} command -v uv)" "$@"\n'
         )
@@ -465,17 +466,17 @@ class OrchestratorToolsTest(unittest.TestCase):
         _, log = send("kind: review\n", 0)
         # The Makefile's UV_PYYAML probe comes first, then the brief parse in the form it chose.
         self.assertRegex(
-            log.splitlines()[0], r"^run --no-project --offline --python /\S+ --with pyyaml python -c import yaml$"
+            log.splitlines()[0], r"^run --no-project --offline --python /\S+ --with pyyaml python -I -c import yaml$"
         )
         self.assertNotIn("task-consistency-check.py", log)
         self.assertIn("python -I -c", log)
         self.assertEqual(1, len(self.gate_block(record)[0]["dispatch"]))
 
     def test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state(self):
-        # local:9df6b0c:1 (C-57), with the Bot's P1s 4292675906 and 4299651928: a caller's project, its
-        # .python-version and an inherited virtual environment or uv override, all at once, choose nothing.
+        # local:9df6b0c:1 (C-57), with the Bot's P1s 4292675906, 4299651928 and 4300102967: a caller's project, its
+        # .python-version, an inherited virtual environment, uv override or PYTHONPATH, all at once, choose nothing.
         _, record, send = self.checker_dispatch()
-        pwn = self.write("pwn", '#!/bin/sh\ntouch "$CALLS/pwned"\nexit 1\n')
+        pwn = self.write("pwn", f'#!/bin/sh\ntouch "{self.calls}/pwned"\nexit 1\n')
         pwn.chmod(0o755)
         caller = self.temp / "caller"
         (caller / ".venv/bin").mkdir(parents=True)
@@ -485,11 +486,18 @@ class OrchestratorToolsTest(unittest.TestCase):
             '[project]\nname = "caller"\nversion = "0"\ndependencies = ["no-such-package-dispatch-a03"]\n'
         )
         (caller / ".python-version").write_text(f"{pwn}\n")
+        (caller / "pylib").mkdir()
+        (caller / "pylib/yaml.py").write_text(f"open({str(self.calls / 'pwned')!r}, 'w')\n")
         state = {"VIRTUAL_ENV": str(caller / ".venv"), "CONDA_PREFIX": str(caller / ".venv"), "UV_PYTHON": str(pwn)}
+        state |= {"PYTHONPATH": str(caller / "pylib"), "AGMSG_STORAGE_PATH": str(self.temp / "store")}
         _, log = send("kind: review\n", 0, cwd=caller, extra=state)
         self.assertFalse((self.calls / "pwned").exists())
         self.assertEqual({str(self.repo)}, set((self.calls / "uv-cwd.log").read_text().splitlines()))
-        self.assertEqual("", (self.calls / "uv-env.log").read_text())
+        # The allowlist (PATH, HOME, LANG, LC_ALL, AGMSG_*), plus what bash itself sets in the fake.
+        names = set((self.calls / "uv-env.log").read_text().split())
+        others = {n for n in names if not n.startswith("AGMSG_")}
+        self.assertLessEqual(others, {"PATH", "HOME", "LANG", "LC_ALL", "PWD", "SHLVL", "_", "OLDPWD"})
+        self.assertLessEqual({"PATH", "HOME", "AGMSG_STORAGE_PATH"}, names)
         # Each call starts a "run" line; the brief script it passes with -c spans the lines after it.
         calls = [line for line in log.splitlines() if line.startswith("run ")]
         self.assertEqual(2, len(calls))  # the probe and the brief parse; a brief runs no checker

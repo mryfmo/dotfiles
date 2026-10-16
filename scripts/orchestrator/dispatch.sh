@@ -36,8 +36,8 @@
 #   before the send, and nothing is sent.
 #   An AGMSG-TASK line whose `task_file=` fails `task-consistency-check.py`
 #   (beside this script, run as `python -I` through the Makefile's `UV_PYYAML`
-#   uv form with `--no-project` and a pinned `--python`, from the root, without an inherited `VIRTUAL_ENV`,
-#   `CONDA_PREFIX` or `UV_*` variable) is refused with the checker's output, and nothing is sent (C-52).
+#   uv form with `--no-project` and a pinned `--python`, from the root, under `env -i` with only `PATH`, `HOME`,
+#   `LANG`, `LC_ALL` and the `AGMSG_*` variables) is refused with the checker's output, and nothing is sent (C-52).
 #   Only a review brief is exempt: a front matter (the text between the first
 #   two `---` lines) that PyYAML parses, refusing a duplicate key, to a mapping
 #   whose `kind` is the string `review`; every other outcome runs the checker.
@@ -179,22 +179,26 @@ if [[ ${tokens[0]} == AGMSG-TASK ]]; then
     tf="$(value_of task_file)" && [[ ${tf} == /* ]] || tf="${root}/${tf}"
     # The Makefile's UV_PYYAML: offline when the cache holds PyYAML, else through the index. --no-project: a
     # pyproject.toml in the caller's directory is never discovered, synced or built (the Bot's P1 4292675906).
-    # The interpreter is named, python3 as mise answers it under env -i at the root, else python3 on PATH, and no
-    # inherited VIRTUAL_ENV, CONDA_PREFIX or UV_* override reaches uv (local:9df6b0c:1, C-57).
+    # The interpreter is named, python3 as mise answers it under env -i at the root, else python3 on PATH, and uv
+    # runs under env -i with an allowlist, so no VIRTUAL_ENV, CONDA_PREFIX, UV_* or PYTHON* variable reaches it
+    # (local:9df6b0c:1, C-57, the Bot's P1 4300102967).
     py="$(cd -- "${root}" && { env -i PATH="${PATH}" HOME="${HOME}" mise which python3 2> /dev/null || command -v python3; })" || py=
     [[ ${py} == /* ]] || {
         echo "dispatch: no python3 interpreter to pin for uv" >&2
         exit 1
     }
-    clean=(env -u VIRTUAL_ENV -u VIRTUAL_ENV_PROMPT -u CONDA_PREFIX)
+    clean=(env -i PATH="${PATH}" HOME="${HOME}")
+    for v in LANG LC_ALL; do
+        [[ -z ${!v:-} ]] || clean+=("${v}=${!v}")
+    done
     while IFS= read -r v; do
-        [[ ${v} != UV_* ]] || clean+=(-u "${v}")
+        [[ ${v} != AGMSG_* ]] || clean+=("${v}=${!v}")
     done < <(compgen -e)
     uvy=(uv run --no-project --offline --python "${py}" --with pyyaml)
     here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
     # Run from the trusted root, so a caller's .python-version or virtual environment picks no interpreter (4299651928).
     uvr() { (cd -- "${root}" && "${clean[@]}" "${uvy[@]}" "$@"); }
-    uvr python -c 'import yaml' > /dev/null 2>&1 || uvy=(uv run --no-project --python "${py}" --with pyyaml)
+    uvr python -I -c 'import yaml' > /dev/null 2>&1 || uvy=(uv run --no-project --python "${py}" --with pyyaml)
     read -r -d '' brief << 'PY' || true
 import sys, yaml
 def unique(loader, node, deep=False):

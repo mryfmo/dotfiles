@@ -61,11 +61,11 @@ premises:
   - claim: 'the lineage task file is on origin/main at dispatch (absent today: it lands with the next boundary; this task never dispatches before)'
     command: 'git cat-file -e origin/main:.orchestration/tasks/dotfiles-T128-task-checkers-a01.md && echo present || echo absent'
     output: |-
-      absent
+      present
   - claim: 'the lineage acceptance record with its Owned-by section is on origin/main at dispatch (absent today: the record lands with the boundary after PR #352 merges, before this task dispatches; a dispatch before that would read no section and end as no owned rows)'
     command: 'git cat-file -e origin/main:.orchestration/acceptance/dotfiles-T128-task-checkers-a01.md && echo present || echo absent'
     output: |-
-      absent
+      present
 ---
 
 # AGMSG-TASK dotfiles-T128-task-checkers-followup-a01 — the residual findings of the checkers PR (#352) (the owner task of the T704 lineage; plan 020 step 1, C-32's owner-first pattern)

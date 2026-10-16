@@ -156,6 +156,24 @@ mistakes:
   - id: M-20261015-01
     corrections: [C-49]
     status: open
+  - id: M-20261015-02
+    corrections: [C-50]
+    status: open
+  - id: M-20261015-03
+    corrections: [C-51]
+    status: open
+  - id: M-20261015-04
+    corrections: [C-52]
+    status: open
+  - id: M-20261015-05
+    corrections: [C-53]
+    status: open
+  - id: M-20261015-06
+    corrections: [C-54]
+    status: open
+  - id: M-20261016-01
+    corrections: [C-55]
+    status: open
 corrections:
   - id: C-1
     closes: [M-20261012-1]
@@ -351,5 +369,29 @@ corrections:
     status: "pending"
   - id: C-49
     closes: [M-20261015-01]
-    mechanism: ['procedure:re-seat the same identity with --add-worker (standing)', 'launcher:herdr-agents --remove-worker --stale (proposed, plan 022 T6 item 3)', 'test:tests/unit/test_herdr_agents.py::test_remove_worker_stale_retires_a_seat_whose_workspace_is_gone (proposed)']
+    mechanism: ['procedure:re-seat the same identity with --add-worker (standing)', 'launcher:herdr-agents --remove-worker --stale (task dotfiles-T128-seat-liveness-a01, plan 022 T6 item 2; the absence is the driver pane state gone through agmsg_spawn_path and terminal_pane_state, not the where capability or raw herdr listings, and the record is moved into the run directory stale/ subdirectory)', 'test:tests/unit/test_herdr_agents.py::test_remove_worker_stale_retires_a_seat_whose_pane_is_gone (proposed)']
+    status: "pending"
+  - id: C-50
+    closes: [M-20261015-02]
+    mechanism: ['procedure:revise round with check= for a small in-scope P2 (standing)', 'rule:plan 020 step 4 Completion clause and task-short.md template (pending, plan 022 T13)', 'tool:local-advisory.sh classes a repeat by the existing row of the same file:line (pending, dotfiles-T128-chain-review-scripts-followup-a03)']
+    status: "pending"
+  - id: C-51
+    closes: [M-20261015-03]
+    mechanism: ['procedure:write the owner task before a chain run that can produce a first advisory P2 (standing)', 'tool:local-advisory.sh refuses an advisory row whose owner task file is absent (pending, dotfiles-T128-chain-review-scripts-followup-a03)', 'tool:integrate-pr.sh glue refuses likewise (pending, plan 022 T7)']
+    status: "pending"
+  - id: C-52
+    closes: [M-20261015-04]
+    mechanism: ['tool:presend.sh glue runs the checker, the premises and the mask, then prints the hashes (standing)', 'tool:dispatch.sh refuses a line whose task_sha256 names a file failing the checker (pending, dotfiles-T128-orchestrator-tools-followup-a03)']
+    status: "pending"
+  - id: C-53
+    closes: [M-20261015-05]
+    mechanism: ['tool:dispatch-direct.sh glue sends and records with a bounded read (standing)', 'tool:dispatch.sh bounds its history reads (pending, dotfiles-T128-orchestrator-tools-followup-a03)', 'upstream:history.sh quote-doubling reported (pending, operator: D-history-upstream)']
+    status: "pending"
+  - id: C-54
+    closes: [M-20261015-06]
+    mechanism: ['procedure:Codex half first, the seat after its confirm (standing)', 'rule:task-short.md template sentence (done, orchestrator boundary edit)']
+    status: "pending"
+  - id: C-55
+    closes: [M-20261016-01]
+    mechanism: ['procedure:identity over shape for managed-content predicates; one class slug for over-match findings (standing)', 'task:dotfiles-T128-settings-hook-dedupe-followup-a01 row audit:ca892e4:1, the whole-command comparison (pending)']
     status: "pending"

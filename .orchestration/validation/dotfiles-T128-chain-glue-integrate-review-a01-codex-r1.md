@@ -1,0 +1,5 @@
+[P1] high .orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md:22 The threat row permits three update-branch writes, while item 1 permits only two restarts before the third ancestry failure exits 4, leaving the mutation bound ambiguous.
+[P1] high .orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md:40 The merge and update-branch generic threat rows are rewritten instead of appearing verbatim as stop condition 3 requires.
+[P1] high .orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md:79 The exit-code contract omits failures from fetch, PR-head lookup, GitHub API calls, pr-feedback.py, fill_sweep.py exit 2, and acceptance-front-matter.py, so “otherwise orch-audit.sh’s” does not make the codes complete.
+[P2] high .orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md:80 The gh stub answers PR-head queries from the temporary origin ref rather than from response files written by each case, contrary to stop condition 2’s offline-stub requirement.
+Task-file verdict: dotfiles-T128-chain-glue-integrate-a01: revise

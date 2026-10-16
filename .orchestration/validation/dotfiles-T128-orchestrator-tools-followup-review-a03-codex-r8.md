@@ -1,0 +1,2 @@
+[P1] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:96 The alignment permits `j = m` and `e = n`, making both compared slices empty, so a nonempty pre-send window that entirely left the post-send window can falsely align and record the newest matching row, contradicting the required fail-closed left-the-window case; require a nonempty overlap unless the pre-send window itself was empty.
+Task-file verdict: dotfiles-T128-orchestrator-tools-followup-a03: revise

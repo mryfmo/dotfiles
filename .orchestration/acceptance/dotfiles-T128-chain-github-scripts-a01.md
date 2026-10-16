@@ -87,13 +87,20 @@ audit-finding: d15fa87:4 not-applicable:plan 020 step 1 makes a P2 advisory unde
 ## Owned by dotfiles-T128-chain-github-scripts-followup-a01 (advisory findings of the final head; plan 020 step 1.2; rows id<TAB>class)
 
 4270684630	resolve-response-unchecked
+- 4270684630 fixed in PR #360 (dotfiles-T128-chain-review-scripts-followup-a01's sibling dotfiles-T128-chain-github-scripts-followup-a01, merged 5c3f8dd0); no owner work remains for this row.
 - 12:34Z the owner task `dotfiles-T128-chain-github-scripts-followup-a01` written (the hook owner's shape; 14 controls, 2 premises each `absent` today; checker OK; mask clean; hash 67731d3e…) so it exists before this PR's residual finding is dispositioned (C-32); its paired one-round review (brief `dotfiles-T128-chain-github-scripts-followup-a01-review-a01`) dispatched to the review seat and the Codex half.
 - 12:35:37Z the Codex half: `confirm` on the owner task 67731d3e (receipt `validation/dotfiles-T128-chain-github-scripts-followup-review-a01-codex-r1.md`); the seat's half pending.
 local:d15fa87:1	advisory-p2
+- local:d15fa87:1 fixed in PR #360 (dotfiles-T128-chain-review-scripts-followup-a01's sibling dotfiles-T128-chain-github-scripts-followup-a01, merged 5c3f8dd0); no owner work remains for this row.
 local-finding: d15fa87:1 not-applicable:advisory P2 owned by dotfiles-T128-chain-github-scripts-followup-a01 (- [P2] Make disposition replies parseable by fill_sweep — scripts/orchestrator/resolve-threads.sh:48-52); evidence=git show origin/main:.orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a01.md | grep -n 'item 1'
 audit:d15fa87:1	resolve-response-unchecked
+- audit:d15fa87:1 fixed in PR #360 (dotfiles-T128-chain-review-scripts-followup-a01's sibling dotfiles-T128-chain-github-scripts-followup-a01, merged 5c3f8dd0); no owner work remains for this row.
 audit:d15fa87:2	graphql-id-interpolation
+- audit:d15fa87:2 fixed in PR #360 (dotfiles-T128-chain-review-scripts-followup-a01's sibling dotfiles-T128-chain-github-scripts-followup-a01, merged 5c3f8dd0); no owner work remains for this row.
 audit:d15fa87:3	reply-template-unparseable
+- audit:d15fa87:3 fixed in PR #360 (dotfiles-T128-chain-review-scripts-followup-a01's sibling dotfiles-T128-chain-github-scripts-followup-a01, merged 5c3f8dd0); no owner work remains for this row.
+
+audit:e9404a6:1	disposition-backtick-truncation
 
 ## Dispatch (bus lines)
 

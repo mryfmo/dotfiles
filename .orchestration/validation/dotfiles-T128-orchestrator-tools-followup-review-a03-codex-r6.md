@@ -1,0 +1,3 @@
+[P1] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:88 A closed but syntactically invalid front matter containing exactly one literal `kind: review` line is exempted without YAML validation, contradicting the fail-closed requirement that malformed front matter run the checker; add such a test case and require successful duplicate-rejecting YAML parsing before exemption.
+
+Task-file verdict: dotfiles-T128-orchestrator-tools-followup-a03: revise

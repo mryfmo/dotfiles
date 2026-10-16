@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-model-profiles-xhigh-a01-pr370-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "707ed3a4c3f7967de977badb6ba1b4c34a3003b1",
+    "pr": "370",
+    "reviewed_at": "2026-10-16T06:06:52Z",
+    "body": "Independent orchestrator review of PR #370 at the head the chain fetches after the update-branch onto 4775f56a (the operator's two commits 429a6c55 and af7e9105 from the orchestrator's patches t717b.patch and t717c.patch, plan 007 T717 restated 2026-10-15 as D-model-roles): the diff touches the seven files the first patch names (the manifest home/dot_agents/agent-config.yaml and the six files scripts/generate-agent-configs.py renders from it) plus README.md, 21 added and 18 removed lines in all; the second commit sets review.claude to xhigh with an INV-7 comment (the audit's P2 on 429a6c55: the review profile is the same model and effort as deep), re-renders model-profiles.env, and corrects the README's role-effort paragraph (lines 361 to 367, the Bot's P2 4289170845, now fixed:af7e9105 instead of advisory); the manifest changes are the four fields the operator instructed (standard.codex effort xhigh; review.codex gpt-6.1-sol xhigh with the comment replaced by the 2026-10-13 decision; deep.claude effort xhigh; deep.codex gpt-6.1-sol xhigh), and the rendered files follow from the generator (make render-check green in the scratch worktree and CI's validate job). No code path, hook, permission policy or PATH order changes; the only user-visible impact is the reasoning effort and model of the three roles after make update and a re-seat. Review surface: the orchestrator's diff reading against the patch, the Bot review of the head and the task-level audit, recorded separately."
+  }
+]

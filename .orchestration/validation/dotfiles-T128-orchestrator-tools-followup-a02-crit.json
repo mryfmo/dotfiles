@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-orchestrator-tools-followup-a02-pr368-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "7ef55f0f6932db7beb7731968b684393ecf22ce5",
+    "pr": "368",
+    "reviewed_at": "2026-10-15T09:13:23Z",
+    "body": "Orchestrator review of PR #368 (dotfiles-T128-orchestrator-tools-followup-a02, head 7ef55f0f: code bf0fe7ab, the Bot-round fix afe7f1eb and the round-2 fix a07f0df4 on base 907522c2, update-branched onto 2c9b10e9), read from the fetched head: boundary.sh passes each deleted name to git rm as a :(literal) pathspec (audit:2e77a33:1, test_boundary_deletes_a_name_with_glob_characters_literally); fill_sweep.py builds its collision set from the stripped keys the lookup uses (audit:2e77a33:2, test_fill_sweep_sees_a_collision_after_the_discussion_r_strip) and, for a status item whose url is JSON null, writes an evidence command that selects by source and check with shell-quoted --argjson values, and, since round 2, the url-form evidence likewise passes the url as a shell-quoted --argjson value (the audit P2 of cfebc1f; test_fill_sweep_quotes_the_url_form_evidence), so an external value never reaches jq or the shell as code (audit:e9404a6:2 and audit:39c186a:2, test_fill_sweep_selects_a_null_url_status_by_source_and_check; the Bot's P1 thread 4280648512 on the first head's interpolation fixed by afe7f1eb in the one round); 20 changed lines outside tests and .orchestration, 92 added under tests; 52 tests, 5 of 5 mutants caught; no finding."
+  }
+]

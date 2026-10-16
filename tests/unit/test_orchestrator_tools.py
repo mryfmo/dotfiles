@@ -412,20 +412,21 @@ class OrchestratorToolsTest(unittest.TestCase):
             sorted(f"{line} read_at=read" for line in lines), sorted(self.gate_block(record)[0]["dispatch"])
         )
 
-    def test_dispatch_refuses_a_task_file_failing_the_checker(self):
-        # C-52: the checker beside the script is a stub that fails a file lacking its own evidence directory.
+    def checker_dispatch(self):
+        """A stub checker beside the copied dispatch.sh and a fake uv that logs, then runs the real uv next on PATH."""
         self.write(
             "scripts/orchestrator/task-consistency-check.py",
             "import re, sys\nf = sys.argv[-1]\ntid = re.search(r'^task_id: (\\S+)', open(f).read(), re.M)[1]\n"
             "if f'.orchestration/{tid}/**' in open(f).read():\n    sys.exit(print(f'{f}: OK'))\n"
             "print(f'{f}: FAIL')\nprint(f'  C2 allowed_files lacks .orchestration/{tid}/**')\nsys.exit(1)\n",
         )
-        # The real uv (the next one on PATH) runs the brief parse with PyYAML; the fake logs each call.
+        # The fake records its argv, its directory and every VIRTUAL_ENV, CONDA_PREFIX or UV_* variable it inherits.
         (self.temp / "bin/uv").unlink()
         fake = self.temp / "fake-uv/uv"
         fake.parent.mkdir()
         fake.write_text(
             '#!/usr/bin/env bash\necho "$*" >> "$CALLS/uv.log"\npwd -P >> "$CALLS/uv-cwd.log"\n'
+            '/usr/bin/env | /usr/bin/grep -E "^(VIRTUAL_ENV|CONDA_PREFIX|UV_)" >> "$CALLS/uv-env.log"\n'
             'here="$(cd "$(dirname "$0")" && pwd -P)"\n'
             'p=":${PATH}:" && p=${p//:${here}:/:}\nexec "$(PATH=${p} command -v uv)" "$@"\n'
         )
@@ -436,14 +437,20 @@ class OrchestratorToolsTest(unittest.TestCase):
         (self.calls / "dispatch-marker").write_text("○")
         rel = ".orchestration/tasks/t.md"
 
-        def send(front, code, cwd=None):
+        def send(front, code, cwd=None, extra=None):
             text = self.write(rel, f"---\nformat: 2\ntask_id: t\n{front}---\n\nBody.\n").read_text()
             line = self.write("line.txt", f"AGMSG-TASK v1 task_id=t task_file={rel} task_sha256={sha(text)}\n")
-            (self.calls / "uv.log").unlink(missing_ok=True)
+            for name in ("uv.log", "uv-cwd.log", "uv-env.log"):
+                (self.calls / name).unlink(missing_ok=True)
             args = ["team", "orch", "worker", "w5:pA", line, record]
-            result = self.run_tool("dispatch.sh", *args, code=code, env=env, cwd=cwd)
+            result = self.run_tool("dispatch.sh", *args, code=code, env={**env, **(extra or {})}, cwd=cwd)
             return result, (self.calls / "uv.log").read_text()
 
+        return rel, record, send
+
+    def test_dispatch_refuses_a_task_file_failing_the_checker(self):
+        # C-52: the checker beside the script is a stub that fails a file lacking its own evidence directory.
+        rel, record, send = self.checker_dispatch()
         lacking = "allowed_files:\n  - scripts/x.sh\n"
         # Both orders of the duplicate key: PyYAML alone would keep the last value, review in the second.
         duplicates = ("kind: review\nkind: code\n", "kind: code\nkind: review\n")
@@ -455,24 +462,40 @@ class OrchestratorToolsTest(unittest.TestCase):
                 self.assertIn(f"task-consistency-check.py --root {self.repo} {self.repo / rel}", log)
                 self.assertIsNone(self.call("agmsg-dispatch"))
                 self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
-        # The Bot's P1 4292675906: a caller's directory holding a project that cannot resolve changes nothing.
+        _, log = send("kind: review\n", 0)
+        # The Makefile's UV_PYYAML probe comes first, then the brief parse in the form it chose.
+        self.assertRegex(
+            log.splitlines()[0], r"^run --no-project --offline --python /\S+ --with pyyaml python -c import yaml$"
+        )
+        self.assertNotIn("task-consistency-check.py", log)
+        self.assertIn("python -I -c", log)
+        self.assertEqual(1, len(self.gate_block(record)[0]["dispatch"]))
+
+    def test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state(self):
+        # local:9df6b0c:1 (C-57), with the Bot's P1s 4292675906 and 4299651928: a caller's project, its
+        # .python-version and an inherited virtual environment or uv override, all at once, choose nothing.
+        _, record, send = self.checker_dispatch()
+        pwn = self.write("pwn", '#!/bin/sh\ntouch "$CALLS/pwned"\nexit 1\n')
+        pwn.chmod(0o755)
         caller = self.temp / "caller"
-        caller.mkdir()
+        (caller / ".venv/bin").mkdir(parents=True)
+        (caller / ".venv/bin/python").symlink_to(pwn)
+        (caller / ".venv/pyvenv.cfg").write_text("home = /nonexistent\n")
         (caller / "pyproject.toml").write_text(
             '[project]\nname = "caller"\nversion = "0"\ndependencies = ["no-such-package-dispatch-a03"]\n'
         )
-        # The Bot's P1 4299651928: nor does an interpreter its .python-version names; uv runs from the root.
-        pwn = self.write("pwn", '#!/bin/sh\ntouch "$CALLS/pwned"\nexit 1\n')
-        pwn.chmod(0o755)
         (caller / ".python-version").write_text(f"{pwn}\n")
-        (self.calls / "uv-cwd.log").unlink(missing_ok=True)
-        _, log = send("kind: review\n", 0, cwd=caller)
+        state = {"VIRTUAL_ENV": str(caller / ".venv"), "CONDA_PREFIX": str(caller / ".venv"), "UV_PYTHON": str(pwn)}
+        _, log = send("kind: review\n", 0, cwd=caller, extra=state)
         self.assertFalse((self.calls / "pwned").exists())
         self.assertEqual({str(self.repo)}, set((self.calls / "uv-cwd.log").read_text().splitlines()))
-        # The Makefile's UV_PYYAML probe comes first, then the brief parse in the form it chose.
-        self.assertEqual("run --no-project --offline --with pyyaml python -c import yaml", log.splitlines()[0])
-        self.assertNotIn("task-consistency-check.py", log)
-        self.assertIn("python -I -c", log)
+        self.assertEqual("", (self.calls / "uv-env.log").read_text())
+        # Each call starts a "run" line; the brief script it passes with -c spans the lines after it.
+        calls = [line for line in log.splitlines() if line.startswith("run ")]
+        self.assertEqual(2, len(calls))  # the probe and the brief parse; a brief runs no checker
+        pinned = {re.search(r" --python (/\S+) ", call)[1] for call in calls}
+        self.assertEqual(1, len(pinned))
+        self.assertNotEqual(str(pwn), pinned.pop())
         self.assertEqual(1, len(self.gate_block(record)[0]["dispatch"]))
 
     def test_dispatch_reads_a_bounded_history_window(self):

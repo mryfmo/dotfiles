@@ -1946,7 +1946,7 @@ if [[ ${remove_worker_mode} == true ]]; then
         for row in "${seat_rows[@]}"; do
             IFS=$'\t' read -r seat_type seat_team seat_name <<< "${row}"
             run_dir="$(dirname -- "$(seat_record_path "${seat_team}" "${seat_name}")")"
-            if [[ (-e ${run_dir}/stale && ! -d ${run_dir}/stale) || ! -w ${run_dir} ]]; then
+            if [[ (-e ${run_dir}/stale && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
                 printf 'herdr-agents: %s/stale is not a directory, or %s is not writable; nothing retired\n' "${run_dir}" "${run_dir}" >&2
                 exit 1
             fi

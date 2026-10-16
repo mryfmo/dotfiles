@@ -3361,6 +3361,16 @@ esac
             (run / "stale").write_text("not a directory\n")
             refused(1, unusable)
             (run / "stale").unlink()
+        with self.subTest("run/stale is a directory that is not writable"):
+            # PR #377 thread 4300117658: mv into it would fail under set -e after leave.sh dropped the identity.
+            (run / "stale").mkdir()
+            (run / "stale").chmod(0o500)
+            try:  # restored here: tearDown's rmtree runs before addCleanup callbacks
+                refused(1, unusable)
+                self.assertEqual([], list((run / "stale").iterdir()))
+            finally:
+                (run / "stale").chmod(0o700)
+            (run / "stale").rmdir()
         with self.subTest("no identity row for the worktree"):
             scripts = self.home_dir / ".agents/skills/agmsg/scripts"
             (scripts / "at-worktree.txt").write_text("")

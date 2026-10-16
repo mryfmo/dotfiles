@@ -10,13 +10,14 @@
 #   resolveReviewThread mutation, the thread id passed as a GraphQL variable; the thread counts as resolved only when
 #   the mutation answers `isResolved` true. A thread without a disposition, with another form, or not answered true
 #   is reported and left open. `--dry-run` prints what would be done and writes nothing. gh runs with the
-#   orchestrator's credentials, so this runs outside the sandbox.
+#   orchestrator's credentials, so this runs outside the sandbox. A disposition holding a backtick in either local
+#   source refuses the run before any gh call because the reply cannot carry it losslessly.
 # @arg $1 int PR number.
 # @arg $2 path The disposition table: TSV rows of a comment id and its disposition.
 # @arg $3 string `--dry-run`, or any placeholder such as `-`.
 # @arg $4 path The sweep JSON (optional).
 # @exitcode 0 Every unresolved thread was resolved (under `--dry-run`, would be).
-# @exitcode 2 Usage error.
+# @exitcode 2 Usage error, or a local disposition holds a backtick that the reply cannot carry losslessly.
 # @exitcode 3 A thread has no disposition, one of another form, or a resolve answer other than true; it is left open.
 # @example
 #   scripts/orchestrator/resolve-threads.sh 355 extra.tsv - .orchestration/validation/t-a01-pr-feedback.json
@@ -29,6 +30,15 @@ usage() {
 (($# >= 2 && $# <= 4)) || usage
 pr=$1 tsv=$2 dry=${3:-} sweep=${4:-}
 [[ ${pr} =~ ^[0-9]+$ && -f ${tsv} ]] || usage
+bad=$(awk -F'\t' 'index($2, "`") {print $1; exit}' "${tsv}")
+if [[ -z ${bad} && -s ${sweep} ]]; then
+    bad=$(jq -r 'first(.items[] | select((.url // "") | test("_r[0-9]+$")) |
+        select((.disposition // "") | contains("`")) | .url | capture("_r(?<id>[0-9]+)$").id) // ""' "${sweep}")
+fi
+if [[ -n ${bad} ]]; then
+    echo "resolve-threads: disposition for ${bad} holds a backtick; the reply cannot carry it losslessly" >&2
+    exit 2
+fi
 query="query { repository(owner:\"mryfmo\", name:\"dotfiles\") { pullRequest(number:${pr}) { reviewThreads(first:100) \
 { nodes { id isResolved comments(first:1) { nodes { databaseId } } } } } } }"
 threads=$(gh api graphql -f query="${query}" --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not) | "\(.comments.nodes[0].databaseId) \(.id)"')

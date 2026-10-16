@@ -1,9 +1,12 @@
 task_id: dotfiles-T128-chain-review-scripts-followup-a01
-round: 4
-previous_head: ba451c66ce0ba3f1cb5caeed42a07f2aaec1c525
-check: grep permission_gated_commands:20 in .orchestration/dotfiles-T128-chain-review-scripts-followup-a01/sandbox.md
-reason: the audit of ba451c66, P3 evidence; the committed sandbox.md said permission_gated_commands 19 while rows 1-17 plus 5a, 8b and 11a total 20
+round: 5
+previous_head: b879aac6c47515ccd4c15f157ae48ed5eed29b9b
+check: tests/unit/test_chain_review_scripts.py::test_local_advisory_refuses_a_malformed_owner_id
+reason: the local review's P1 on b879aac6; local-advisory.sh used the owner task id (argument 3) unvalidated, as a grep regex and as verbatim record text
 earlier:
+  - round: 4
+    previous_head: ba451c66ce0ba3f1cb5caeed42a07f2aaec1c525
+    check: grep permission_gated_commands:20 in .orchestration/dotfiles-T128-chain-review-scripts-followup-a01/sandbox.md
   - round: 3
     previous_head: 850fc54ea58ee0952a9762d6cd64bdae2dd2c63e
     check: tests/unit/test_chain_review_scripts.py::test_local_review_keeps_env_S_shebang_arguments

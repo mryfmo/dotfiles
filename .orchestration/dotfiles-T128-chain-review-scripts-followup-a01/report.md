@@ -99,6 +99,14 @@ The main-checkout `memory add` runs after CI. Its command and output go into the
 - **The test.** `test_local_review_keeps_env_S_shebang_arguments`, the revise's check. The round-2 test's expectation now includes the `--flag` word its `-S` stub passes. The mutant restoring round 2's behaviour is killed (validation §9).
 - **Size after the round.** 100 changed lines outside `tests/` and `.orchestration/` (of 200), 170 added under `tests/`, 3 files.
 
+## Revise round 5 (`df92b402`)
+
+- **The P1.** The local review of `b879aac6` found that `scripts/orchestrator/local-advisory.sh` used the owner task id, argument 3, unvalidated: as a grep regex for the heading and as verbatim record text.
+- **The fix.** The owner is validated with the task id's pattern and refused with exit 2, like the task id. Its heading is matched as a literal string (awk prefix comparison) ended by a space or the line's end, so `.` is no wildcard and a longer id is another owner.
+- **Tests.** `test_local_advisory_refuses_a_malformed_owner_id` and `test_local_advisory_matches_the_owner_heading_literally`; three mutants, all killed (validation §10). 13 tests pass.
+- **Size after the round.** 107 changed lines outside `tests/` and `.orchestration/` (of 200), 191 added under `tests/`, 3 files.
+- **Round 4** (`2f4ce7e9`) set the committed sandbox count to 20, evidence only.
+
 ## Bot and CI
 
 The PR opens after this evidence commit. The CI result and the Bot's review go into the main-checkout copy and the RESULT.

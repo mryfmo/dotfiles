@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-chain-review-scripts-followup-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 20
+permission_gated_commands: 29
 ---
 
 # Sandbox record: dotfiles-T128-chain-review-scripts-followup-a01
@@ -44,3 +44,22 @@ Period: from the AGMSG-TASK (2026-10-15T04:24:59Z) to the RESULT. These ran insi
 | 15 | `gh pr checks 364 --watch` on that head (no Bot wait) | `gh` |
 | 16 | the round-3 sections copied into the main-checkout records, masked again | artifact copy with the repository masker |
 | 17 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-review-scripts-followup-a01 round=3 …` | `agmsg-dispatch` |
+
+**Revise round 4.** Rows 18 to 21 and 19a, as the main-checkout copy records them: 20 to 25.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| 18 | the HTTPS push of `2f4ce7e9` | `git push` |
+| 19 | `gh pr checks 364 --watch` on that head (stopped at the tool's 10-minute limit) | `gh` |
+| 19a | `gh pr checks 364 --watch` again, every check | `gh` |
+| 20 | the round-4 sections copied into the main-checkout records, masked again | artifact copy with the repository masker |
+| 21 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-review-scripts-followup-a01 round=4 …` | `agmsg-dispatch` |
+
+**Revise round 5.** It adds rows 22 to 25, counted in advance: 25 to 29. The main-checkout copy gives the final count.
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| 22 | the HTTPS push of round 5's head | `git push` |
+| 23 | `gh pr checks 364 --watch` on that head (no Bot wait) | `gh` |
+| 24 | the round-5 sections copied into the main-checkout records, masked again | artifact copy with the repository masker |
+| 25 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-review-scripts-followup-a01 round=5 …` | `agmsg-dispatch` |

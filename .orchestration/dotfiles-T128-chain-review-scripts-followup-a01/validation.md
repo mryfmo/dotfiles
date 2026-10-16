@@ -268,3 +268,35 @@ The check `test_local_review_keeps_env_S_shebang_arguments` uses a stub binary w
 ```text
 T1 the -S words dropped (round 2's behaviour) -> test_local_review_keeps_env_S_shebang_arguments: killed (FAILED (failures=1)); file restored: True
 ```
+
+## 10. Revise round 5 (`df92b402`): the owner task id
+
+The local review's P1 on `b879aac6`, the update-branch head of `2f4ce7e9`: `local-advisory.sh` left the owner task id (argument 3) unvalidated, used it as a grep regex and wrote it verbatim into the record. The owner now takes the task id's form (exit 2 otherwise), and its heading is matched as a literal string ended by a space or the line's end. The check `test_local_advisory_refuses_a_malformed_owner_id` refuses six malformed owners with nothing written. `test_local_advisory_matches_the_owner_heading_literally` keeps the near-match headings `t-followupXa01` and `t.followup-a01b` from counting as `t.followup-a01`, and adds that heading once over two runs.
+
+```text
+$ git log --oneline -1; git merge-base --is-ancestor b879aac6 HEAD
+df92b402 fix(orchestrator): local-advisory.sh validates the owner task id and ma
+b879aac6 is an ancestor
+$ python -m unittest -v tests/unit/test_chain_review_scripts.py
+(rc=0)
+test_local_advisory_matches_the_owner_heading_literally ... ok
+test_local_advisory_refuses_a_malformed_owner_id ... ok
+Ran 13 tests in 7.761s
+OK
+$ shellcheck scripts/orchestrator/local-advisory.sh; shfmt --indent 4 --space-redirects -d scripts/orchestrator/local-advisory.sh
+(rc=0)
+$ ruff check tests/unit/test_chain_review_scripts.py; ruff format --check tests/unit/test_chain_review_scripts.py
+All checks passed!
+1 file already formatted
+(rc=0)
+$ mutation proofs (the script swapped, the two new tests run, the file restored)
+M1 the script of b879aac6 ->  1 FAIL: test_local_advisory_matches_the_owner_heading_literally; 6 FAIL: test_local_advisory_refuses_a_malformed_owner_id;
+M2 no owner check ->  6 FAIL: test_local_advisory_refuses_a_malformed_owner_id;
+M3 a prefix heading match ->  1 FAIL: test_local_advisory_matches_the_owner_heading_literally;
+file restored: True
+$ git diff --numstat origin/main...HEAD -- . ':!.orchestration'
+12	4	scripts/orchestrator/local-advisory.sh
+72	19	scripts/orchestrator/local-review.sh
+191	6	tests/unit/test_chain_review_scripts.py
+files: 3; changed lines outside tests/ and .orchestration/: 107; added under tests/: 191
+```

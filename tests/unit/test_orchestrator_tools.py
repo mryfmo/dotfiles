@@ -664,6 +664,23 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.assertEqual([name], [path for path in tree.split("\0") if path])
         self.assertEqual("victim\n", victim.read_text())
 
+    def test_boundary_deletes_a_name_with_glob_characters_literally(self):
+        # The a05 record's owned row audit:2e77a33:1: a deleted `a*.md` or `[x].md` is a name, not a pattern,
+        # so `ab.md` and `x.md`, which those patterns match, stay in the boundary commit's tree.
+        for name in ("a*.md", "ab.md", "[x].md", "x.md"):
+            self.write(f".orchestration/{name}", f"{name}\n")
+        self.origin(".orchestration")
+        os.remove(self.repo / ".orchestration/a*.md")
+        os.remove(self.repo / ".orchestration/[x].md")
+        message = self.write("msg.txt", "chore(orchestration): boundary\n")
+        (self.calls / "uv-output").write_text("")
+        self.run_tool("boundary.sh", "2026-10-13-1", message)
+        branch = "orchestration/boundary-2026-10-13-1"
+        changed = self.git("show", "--name-status", "--format=", branch).splitlines()
+        self.assertEqual(["D\t.orchestration/[x].md", "D\t.orchestration/a*.md"], sorted(changed))
+        tree = self.git("ls-tree", "-r", "--name-only", branch, ".orchestration").splitlines()
+        self.assertEqual([".orchestration/ab.md", ".orchestration/x.md"], tree)
+
     def test_ff_main_keeps_local_edits_across_the_fast_forward(self):
         self.write(".orchestration/a.md", "a\n")
         self.origin(".orchestration/a.md")
@@ -815,7 +832,7 @@ class OrchestratorToolsTest(unittest.TestCase):
             [
                 "not-applicable:the line is gone; evidence=git show HEAD:x",
                 "not-applicable:bot summary or onboarding comment, no finding; "
-                + f"""evidence=jq '.items[] | select(.url == "{url}#issuecomment-12")' {sweep}""",
+                + f"""evidence=jq --argjson u '"{url}#issuecomment-12"' '.items[] | select(.url == $u)' {sweep}""",
             ],
             [i["disposition"] for i in json.loads(sweep.read_text())["items"]],
         )
@@ -964,6 +981,80 @@ class OrchestratorToolsTest(unittest.TestCase):
             ],
             [i["disposition"] for i in json.loads(sweep.read_text())["items"]],
         )
+
+    def test_fill_sweep_sees_a_collision_after_the_discussion_r_strip(self):
+        # The a05 record's owned row audit:2e77a33:2: a review fragment `discussion_r123` and a status fragment
+        # `123` differ but share the lookup key `123`, so one row `123` fills neither; `item#<n>` takes over.
+        url = "https://github.test/pull/9"
+        sweep = self.sweep(
+            [
+                {"source": "review_comment", "url": f"{url}#discussion_r123", "body": "P1", "level": "P1"},
+                {"source": "status", "url": "https://ci.test/x#123", "body": "ci", "level": "failure"},
+            ]
+        )
+        before = sweep.read_text()
+        comments = self.write("c.json", "[]")
+        out = self.fill_sweep(
+            sweep, comments, self.write("x.tsv", "123\tfixed:abcdef1\n"), "--orchestrator-login", "o", code=1
+        )
+        self.assertEqual(
+            ["shared-key 123 item#0", "shared-key 123 item#1"], re.findall(r"^shared-key .*", out, re.MULTILINE)
+        )
+        self.assertEqual(["item#0", "item#1"], re.findall(r"^GAP (\S+)", out, re.MULTILINE))
+        self.assertEqual(before, sweep.read_text())
+        self.fill_sweep(
+            sweep,
+            comments,
+            self.write("x.tsv", "item#0\tfixed:abcdef1\nitem#1\tfixed:abcdef2\n"),
+            "--orchestrator-login",
+            "o",
+        )
+        self.assertEqual(
+            ["fixed:abcdef1", "fixed:abcdef2"], [i["disposition"] for i in json.loads(sweep.read_text())["items"]]
+        )
+
+    def test_fill_sweep_selects_a_null_url_status_by_source_and_check(self):
+        # The a05 record's owned rows audit:e9404a6:2 and audit:39c186a:2: a status whose url is JSON null gets an
+        # evidence command that selects it, not `select(.url == "None")`; PR #368 thread 4280648512: its context is
+        # external, so a quote in it neither ends the jq argument nor runs the rest as shell code.
+        item = {
+            "source": "status",
+            "url": None,
+            "check": "Code'Rabbit\" $(touch pwned); touch pwned",
+            "body": "CodeRabbit: skipped",
+            "level": "success",
+        }
+        sweep = self.sweep([item])
+        self.fill_sweep(sweep, self.write("c.json", "[]"), "--orchestrator-login", "o")
+        [filled] = json.loads(sweep.read_text())["items"]
+        reason, command = filled["disposition"].split("; evidence=")
+        self.assertEqual("not-applicable:CI status, no finding", reason)
+        self.assertTrue(command.startswith("jq --argjson s "), command)
+        # The command, replayed, shows the item and nothing else runs.
+        shown = subprocess.run(["bash", "-c", command], cwd=self.temp, capture_output=True, text=True, check=True)
+        self.assertEqual(filled, json.loads(shown.stdout))
+        self.assertFalse((self.temp / "pwned").exists())
+
+    def test_fill_sweep_quotes_the_url_form_evidence(self):
+        # PR #368 revise round 2 (the audit of cfebc1f): a status's url is its external target_url, so a quote in it
+        # neither ends the jq argument nor runs the rest as shell or jq code when the evidence command is replayed.
+        item = {
+            "source": "status",
+            "url": 'https://ci.test/x\'" $(touch pwned); touch pwned; echo "#7',
+            "check": "ci",
+            "body": "ci",
+            "level": "success",
+        }
+        sweep = self.sweep([item])
+        self.fill_sweep(sweep, self.write("c.json", "[]"), "--orchestrator-login", "o")
+        [filled] = json.loads(sweep.read_text())["items"]
+        reason, command = filled["disposition"].split("; evidence=")
+        self.assertEqual("not-applicable:CI status, no finding", reason)
+        self.assertTrue(command.startswith("jq --argjson u "), command)
+        # The command, replayed, shows the item and nothing else runs.
+        shown = subprocess.run(["bash", "-c", command], cwd=self.temp, capture_output=True, text=True, check=True)
+        self.assertEqual(filled, json.loads(shown.stdout))
+        self.assertFalse((self.temp / "pwned").exists())
 
     # orch-audit.sh
 

@@ -267,6 +267,47 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         self.storage.unlink()
         self.assertEqual([], self.report())
 
+    def test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal(self):
+        # M-20261015-01: a seated worker's pane state, read through its placement record and the
+        # driver's terminal_pane_state, names the stale removal only when the pane is gone.
+        worktree = self.main / ".claude/worktrees/b1"
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(self.main)]
+        subprocess.run([*git, "worktree", "add", "-q", "--detach", str(worktree)], check=True)
+        scripts = self.home / ".agents/skills/agmsg/scripts"
+        identities = scripts / "identities.sh"
+        identities.write_text(
+            "#!/usr/bin/env bash\n[[ $1 == */.claude/worktrees/b1 && $2 == claude-code ]] || exit 0\n"
+            'printf "dotfiles\\tclaude-standard-dot-a009\\n"\n'
+        )
+        identities.chmod(0o755)
+        record = self.home / "spawn.record"
+        record.write_text(f"herdr:{self.temp}/herdr.sock:wA:p9\t{worktree}\tclaude-code\n")
+        (scripts / "lib/actas-lock.sh").write_text(f'agmsg_spawn_path() {{ printf "%s\\n" "{record}"; }}\n')
+        (scripts / "lib/terminal-registry.sh").write_text(
+            'agmsg_terminal_ref_terminal() { printf "%s\\n" "${1%%:*}"; }\n'
+            'agmsg_terminal_ref_id() { printf "%s\\n" "${1#*:}"; }\n'
+            "agmsg_terminal_load() { [[ $1 == herdr ]]; }\n"
+            'terminal_pane_state() { cat "$HOME/pane-state"; [[ $(cat "$HOME/pane-state") != unknown ]] || return 10; }\n'
+        )
+        stale = "worker seated but its pane is gone at .claude/worktrees/b1 (herdr-agents --remove-worker .claude/worktrees/b1 --stale)"
+        seated = "worker still seated at .claude/worktrees/b1 (herdr-agents --remove-worker .claude/worktrees/b1)"
+        for state, expected in (("gone", stale), ("present", seated), ("unknown", seated)):
+            with self.subTest(state=state):
+                (self.home / "pane-state").write_text(f"{state}\n")
+                result = subprocess.run(
+                    ["bash", str(self.main / "scripts/check-regime-boundary.sh"), "--report"],
+                    cwd=self.main,
+                    env=self.env,
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                lines = [line for line in result.stdout.splitlines() if ".claude/worktrees/b1" in line]
+                self.assertEqual([f"regime-boundary: {expected}"], lines)
+
 
 if __name__ == "__main__":
     unittest.main()

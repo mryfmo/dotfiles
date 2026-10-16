@@ -288,6 +288,7 @@ class ChainIntegrateTest(unittest.TestCase):
         self.assertIn("pr view 7 --json headRefOid --jq .headRefOid", gh[gh.index("pr update-branch 7") + 1 :])
         # The first head's log ends at the update-branch; the merged head's log holds both rounds.
         self.assertEqual(1, self.log().count("+pull/7/head:refs/remotes/pr/7\n"))
+        self.assertNotIn(" checks rc=", self.log())  # a head behind the base waits for no CI
         log = self.log(merged)
         self.assertEqual(2, log.count("git -C . fetch -q origin +pull/7/head:refs/remotes/pr/7\n"))
         self.assertEqual(2, log.count("git -C .claude/worktrees/orchestrator-review fetch -q origin +pull/7/head\n"))

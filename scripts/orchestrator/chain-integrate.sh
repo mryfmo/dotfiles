@@ -30,21 +30,10 @@
 #   scripts/orchestrator/chain-integrate.sh dotfiles-T128-x-a01 370 "$PWD" "$PWD/.claude/worktrees/orchestrator-review" dotfiles-T128-x-followup-a01
 set -euo pipefail
 log='' lines=()
-say() {
-    lines+=("$1")
-    [ -z "${log}" ] || printf '%s\n' "$1" >> "${log}"
-}
-refuse() { # <exit> <message>
-    echo "chain-integrate: $2" >&2
-    [ -z "${log}" ] || say "chain-integrate: $2"
-    exit "$1"
-}
-pre() { # <command…>: a precondition read; sets out, and a failure is exit 1
-    out=$("$@") || {
-        echo "step prepare failed rc=$?" >&2
-        exit 1
-    }
-}
+say() { lines+=("$1") && { [ -z "${log}" ] || printf '%s\n' "$1" >> "${log}"; }; }
+refuse() { echo "chain-integrate: $2" >&2 && { [ -z "${log}" ] || say "chain-integrate: $2"; } && exit "$1"; } # <exit> <message>
+# <command…>: a precondition read; sets out, and a failure is exit 1
+pre() { out=$("$@") || { echo "step prepare failed rc=$?" >&2 && exit 1; }; }
 step() { # <name> <accepted statuses, comma-separated, or any> <command…>: sets out and rc; any other status is exit 1
     local name=$1 ok=",$2," shown
     shift 2
@@ -81,6 +70,11 @@ done
 pre "${git}" -C "${main}" fetch -q origin main
 pre "${git}" -C "${main}" rev-parse HEAD origin/main
 [ "${out%%$'\n'*}" = "${out##*$'\n'}" ] || refuse 10 "main checkout is not origin/main: run scripts/orchestrator/ff-main.sh"
+# They run with the orchestrator's credentials, so each must be HEAD's own copy (PR #372 thread 4291474880).
+for s in scripts/orchestrator/{sandbox-scan.sh,local-review.sh,local-advisory.sh,fill_sweep.py,acceptance-front-matter.py,orch-audit.sh} scripts/pr-feedback.py; do
+    "${git}" -C "${main}" ls-files --error-unmatch -- "${s}" > /dev/null 2>&1 || refuse 10 "${s} is not tracked in the main checkout"
+done
+"${git}" -C "${main}" diff --quiet HEAD -- scripts || refuse 10 "scripts/ in the main checkout differs from HEAD"
 pre "${git}" -C "${main}" rev-parse --show-toplevel
 canonical=${out}/.claude/worktrees/orchestrator-review
 review=$(cd -- "$4" 2> /dev/null && pwd -P) || review=$4

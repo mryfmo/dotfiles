@@ -88,6 +88,10 @@ class ChainIntegrateTest(unittest.TestCase):
         origin, self.seed = self.temp / "origin.git", self.temp / "seed"
         self.git("init", "-q", "--bare", "-b", "main", str(origin), cwd=self.temp)
         self.git("clone", "-q", str(origin), str(self.seed), cwd=self.temp)
+        # The stubs are tracked on main, so the main checkout's copies are HEAD's (PR #372 thread 4291474880).
+        for rel, name in SCRIPTS.items():
+            self.executable(self.seed / "scripts" / rel, STUB.format(name=name))
+        self.git("add", "scripts", cwd=self.seed)
         self.commit(self.seed, "a.txt")
         self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
         self.commit(self.seed, "b.txt")
@@ -98,8 +102,6 @@ class ChainIntegrateTest(unittest.TestCase):
         self.git("clone", "-q", str(origin), str(self.main), cwd=self.temp)
         self.review = self.main / ".claude/worktrees/orchestrator-review"
         self.git("clone", "-q", str(origin), str(self.review), cwd=self.temp)
-        for rel, name in SCRIPTS.items():
-            self.executable(self.main / "scripts" / rel, STUB.format(name=name))
         self.v = self.main / ".orchestration/validation"
         self.v.mkdir(parents=True)
         rows = "# Acceptance\n\n4280648512\tclass-a\naudit:abcdef1:2\tclass-b\nlocal:abcdef1:1\tadvisory-p2\n123456789\tshort-id\n"
@@ -215,6 +217,17 @@ class ChainIntegrateTest(unittest.TestCase):
         self.commit(self.seed, "c.txt")
         self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
         refused("scripts/orchestrator/ff-main.sh")
+
+    def test_integrate_refuses_a_main_checkout_script_that_is_not_heads(self):
+        # PR #372 thread 4291474880: a called script modified or untracked in the main checkout never runs.
+        stub = self.main / "scripts/orchestrator/local-review.sh"
+        stub.write_text(stub.read_text() + "# changed\n")
+        self.assertIn("scripts/ in the main checkout differs from HEAD", self.chain(code=10).stderr)
+        self.git("checkout", "--", "scripts")
+        self.git("rm", "-q", "--cached", "scripts/pr-feedback.py")
+        self.assertIn("scripts/pr-feedback.py is not tracked in the main checkout", self.chain(code=10).stderr)
+        self.assertEqual([], [p.name for p in self.calls.glob("*.log") if p.name != "gh.log"])
+        self.assertEqual([], list(self.v.glob("*.log")))
 
     def test_integrate_runs_the_steps_in_order_and_logs_each(self):
         (self.calls / "local-review.out").write_text("- [P2] x\nlocal-review: 1 findings (f)\n")

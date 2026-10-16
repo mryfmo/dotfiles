@@ -37,8 +37,9 @@ model_profiles:
       model_reasoning_effort: xhigh
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
   review:
-    # Review independence rests on a fresh context, not a stronger model (operator decision 2026-10-13, plan 007 T717).
-    claude: { model: claude-fable-5-1, effort: high }
+    # Review independence rests on a fresh context, not a stronger model (operator decision 2026-10-13, plan 007 T717);
+    # INV-7: the Claude review profile is the same model and effort as deep.
+    claude: { model: claude-fable-5-1, effort: xhigh }
     codex: { model: gpt-6.1-sol, model_reasoning_effort: xhigh }
   deep:
     claude: { model: claude-fable-5-1, effort: xhigh, advisor: fable }

@@ -17,5 +17,11 @@
     "body": "Independent read-only review found no P0-P3 findings. One-line predicate change matches amendment2 exact token shape. Regression covers user chains, extra arguments and interpreter chains while retaining existing guards/cases and original19 methods. Task hash79d2af63 and14-source/57-test-addition caps agree; current root proof is complete, with post-publication CI/Bot explicitly separate. No secrets or unmasked home paths. Basename matching remains disclosed. Reviewer performed no edits/tests.",
     "scope": "review",
     "resolved": true
+  },
+  {
+    "id": "settings-hook-amendment3-managed-path-approval",
+    "body": "Independent read-only peer review found no P0-P3 findings. Compiled regex and fullmatch follow amendment3 exactly; cardinality and dict/string/shlex guards remain intact. Cases cover unrelated basenames, compact shell chains, interpreter variant and stale absolute managed-home migration, with three red subcases then20green. TaskSHAae036713,18source/73test caps and current root evidence agree; original19 methods and sharedmerge/SessionStart unchanged. No secrets or unmasked home paths. Matching remains lexical, not filesystem identity. New-head CI/Bot follow publication; no reviewer edits/tests.",
+    "scope": "review",
+    "resolved": true
   }
 ]

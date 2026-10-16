@@ -1,5 +1,5 @@
-# T15 amendment 2 learning
+# T15 amendment3 learning
 
-[memory:failure] Recognizing a managed program by its first token still drops user behavior chained after that program. Wrapper-only preservation is insufficient for a whole hook command object.
+[memory:failure] Basename-only classification loses unrelated same-name programs; shlex token count also misses shell punctuation glued without whitespace. Both shapes fail red on72d0e66d, including an interpreter variant.
 
-[memory:decision] For the specified managed bare-script commands, require exactly one remaining token after optional interpreter stripping. Preserve any additional arguments or shell chain as unmanaged. The chain regression fails before that one-line correction and all20 tests pass afterward; keep the wrapper, argument and interpreter cases in the same regression method. Commit current source-validation proof in the task root and state post-publication CI/Bot separately.
+[memory:decision] Match the specified managed hook path with a fullmatch over a plain-character prefix and /.claude/hooks/<managed basename>, after requiring exact token count. Preserve other command shapes and retain stale absolute managed-home migration, covered in the same new regression method. All20 tests pass after this root fix. The additional round was explicitly operator-authorized; no worker waiver of the stop rule.

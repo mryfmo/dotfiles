@@ -1,5 +1,5 @@
 task_id: dotfiles-T128-settings-hook-dedupe-a01
-amendment: 2
-previous_head: 5bcab1f98c60ff6043422794b1c1a72483edb1ac
+amendment: 3
+previous_head: 72d0e66dcf27bfdb1161f4f4f52b35ef3857b928
 check: tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_managed_post_tool_use_replaces_stale_format_only_entry
-finding: Bot-P1-4290538244-chained-command-loss
+findings: Bot-P1-4290664196-and-worker-P1-compact-chain

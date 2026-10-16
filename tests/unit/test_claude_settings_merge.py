@@ -385,6 +385,18 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             "matcher": "Write|Edit|MultiEdit",
             "hooks": [{"type": "command", "command": "~/.claude/hooks/format-edited-files.py && ~/bin/audit-edit.sh"}],
         }
+        same_basename_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": "/opt/team/format-edited-files.py"}],
+        }
+        compact_chain_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": "~/bin/audit-edit.sh;~/.claude/hooks/format-edited-files.py"}],
+        }
+        absolute_entry = {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [{"type": "command", "command": str(self.home_dir / ".claude/hooks/format-edited-files.py")}],
+        }
         cases = [
             ("stale and managed", [stale_entry, managed_entry], [managed_entry]),
             ("stale alone", [stale_entry], [managed_entry]),
@@ -396,6 +408,9 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             ("absent key", None, [managed_entry]),
             ("wrapper argument", [wrapper_entry, stale_entry], [wrapper_entry, managed_entry]),
             ("chained user command", [chained_entry, stale_entry], [chained_entry, managed_entry]),
+            ("same basename", [same_basename_entry, stale_entry], [same_basename_entry, managed_entry]),
+            ("compact chain", [compact_chain_entry, stale_entry], [compact_chain_entry, managed_entry]),
+            ("absolute managed path", [absolute_entry], [managed_entry]),
         ]
         for interpreter in ("python3", "python", "bash", "sh"):
             interpreted = {
@@ -414,6 +429,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             "bash",
             "~/.claude/hooks/format-edited-files.py --custom",
             "python3 ~/.claude/hooks/format-edited-files.py --custom",
+            "python3 /opt/team/format-edited-files.py",
             "bash ~/.claude/hooks/project-map-reload.sh && ~/bin/audit-edit.sh",
         ):
             unmanaged = {"matcher": "Bash", "hooks": [{"type": "command", "command": command}]}

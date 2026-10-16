@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import sys
 from pathlib import Path
@@ -21,6 +22,9 @@ MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
 # entry invoking this script is managed, whatever home path it was rendered with.
 MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents")
 MANAGED_POST_TOOL_USE_SCRIPTS = ("format-edited-files.py", "project-map-reload.sh")
+MANAGED_POST_TOOL_USE_HOOK = re.compile(
+    r"[~\w./-]*/\.claude/hooks/(" + "|".join(map(re.escape, MANAGED_POST_TOOL_USE_SCRIPTS)) + ")"
+)
 
 
 def source_dir() -> Path:
@@ -82,7 +86,7 @@ def is_managed_post_tool_use_hook(hook: Any) -> bool:
         return False
     if parts and Path(parts[0]).name in ("python3", "python", "bash", "sh"):
         parts = parts[1:]
-    return len(parts) == 1 and Path(parts[0]).name in MANAGED_POST_TOOL_USE_SCRIPTS
+    return len(parts) == 1 and bool(MANAGED_POST_TOOL_USE_HOOK.fullmatch(parts[0]))
 
 
 def entry_has_managed_hook(entry: Any, is_managed: Any) -> bool:

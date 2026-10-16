@@ -53,3 +53,12 @@
 - **Checks.** 55 tests pass; twelve mutants, all killed (validation §8).
 - **Size after the round.** 120 changed lines outside `tests/` and `.orchestration/` (of 200), 145 added under `tests/` (of 1000), 2 files.
 - **The Bot.** Its re-review is asked with `@codex review` on this round's head.
+
+## Revise round 4 (`b18698d5`)
+
+- **The P1.** The Bot's re-review of `6ae8cf75`, thread 4300102967, `dispatch.sh:197`: the `import yaml` probe ran without `-I`, so an inherited `PYTHONPATH` could load a caller's `yaml.py`. The fourth finding of the class; the operator's decision D-S2-374-3 A: one round that ends the class by an allowlist.
+- **The fix.** `fixed:b18698d5`. Both uv forms run under `env -i` with `PATH`, `HOME`, `LANG` and `LC_ALL` when set, and the `AGMSG_*` variables, nothing else; the probe runs `python -I`. The pinned `--python`, `--no-project` and the `cd` to the root stay.
+- **The test.** `test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state`, extended: every caller-state source at once, now with a `yaml.py` on `PYTHONPATH`; the fake uv inherits only the allowlisted names (validation §10).
+- **Checks.** 55 tests pass; thirteen mutants, all killed (validation §10).
+- **Size after the round.** 124 changed lines outside `tests/` and `.orchestration/` (of 200), 153 added under `tests/` (of 1000), 2 files.
+- **The Bot.** Its re-review is asked with `@codex review` on this round's head.

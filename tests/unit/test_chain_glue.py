@@ -562,6 +562,20 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.assertIn("step gate failed rc=3", self.finish(code=1).stderr)
         self.assertEqual(order[:5], (self.calls / "order.log").read_text().splitlines())
 
+    def test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward(self):
+        # PR #378 thread 4300324931: the fast-forward puts the merged head's pr-cost.sh in the main checkout; the
+        # chain runs HEAD's copy taken before the merge, never the PR's.
+        self.finish_ready()
+        hook = f"""#!/bin/sh
+printf '#!/bin/sh\\necho decoy >> "$CALLS/decoy.log"\\n' > "{self.main}/scripts/orchestrator/pr-cost.sh"
+"""
+        self.executable(self.calls / "ff-main-hook", hook)
+        self.finish()
+        self.assertFalse((self.calls / "decoy.log").exists())
+        self.assertEqual(["7"], self.calls_of("pr-cost"))
+        self.assertIn(f"cwd: {self.main}\n", (self.calls / "pr-cost.log").read_text())
+        self.assertEqual([], list(self.v.glob("*-pr-cost-*.sh")))
+
     def test_finish_prints_the_acceptance_line_and_sends_nothing(self):
         self.finish_ready()
         last = self.finish().stdout.splitlines()[-1]

@@ -95,7 +95,8 @@ pre "${uv}" run --no-project python -I -c 'import json, sys; print(json.load(ope
 [ "${out}" = "${pr}" ] || refuse 10 "the sweep JSON is PR ${out}'s, not ${pr}'s"
 log=${v}/${task}-chain-${sha7}.log # T7's log, appended; nothing is logged before the head is known
 comments=${v}/${task}-pr-comments.json ledger=${v}/${task}-ledger-${sha7}.tsv dispositions=${v}/${task}-audit-dispositions-${sha7}.tsv
-trap 'rm -f -- "${comments}" "${ledger}" "${dispositions}"' EXIT
+cost=${v}/${task}-pr-cost-${sha7}.sh
+trap 'rm -f -- "${comments}" "${ledger}" "${dispositions}" "${cost}"' EXIT
 # (1) Every finding, under either verdict, needs its line: the gate's ledger check adds audit:<sha7>:<n> for each.
 verdict=$(tail -n 1 -- "${summary}")
 [[ ${verdict} == "Verdict: correct" || ${verdict} == "Verdict: incorrect" ]] || refuse 12 "unexpected audit verdict: ${verdict}"
@@ -131,12 +132,16 @@ extra_args=()
 step record 0 "${uv}" run --no-project python -I "${main}/scripts/orchestrator/acceptance-front-matter.py" "${task}" "${sweep}" "${review}" --ledger "${ledger}" ${extra_args[@]+"${extra_args[@]}"}
 # (5) The gate, (6) the merge bound to the audited head, (7) the fast-forward, (8) the cost line.
 step gate 0 "${main}/scripts/orchestrator/orch-gate.sh" "${task}" "${review}" "${pr}"
+# The fast-forward puts the merged head's scripts in place, so pr-cost.sh runs from HEAD's copy, taken before the
+# merge (PR #378 thread 4300324931); ff-main.sh runs before it moves, and bash keeps reading the file it opened.
+pre "${git}" -C "${main}" show HEAD:scripts/orchestrator/pr-cost.sh
+printf '%s\n' "${out}" > "${cost}"
 step merge 0 "${gh}" pr merge --squash --match-head-commit "${head}" "${pr}"
 step merge 0 "${git}" -C "${main}" fetch -q origin main
 step merge 0 "${git}" -C "${main}" rev-parse origin/main
 merged=${out}
 step ff-main 0 "${main}/scripts/orchestrator/ff-main.sh"
-step pr-cost 0 "${main}/scripts/orchestrator/pr-cost.sh" "${pr}"
+step pr-cost 0 "${BASH}" "${cost}" "${pr}"
 # (9) Printed for the orchestrator to send (C-53); this script sends nothing.
 accept="AGMSG-ACCEPTANCE v1 task_id=${task} status=accepted reason=merged-as-${merged}-pr-${pr}-head-${sha7} next_action=<the orchestrator fills this before sending>"
 say "chain-finish: ${task} ${head} merged as ${merged}"

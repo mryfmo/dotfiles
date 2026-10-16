@@ -1,0 +1,3 @@
+[P2] high .orchestration/tasks/dotfiles-T128-seat-liveness-followup-a01.md:59 The test specification does not require both cases to assert that the placement record is untouched and the workspace remains listed, as stop condition 2 requires.
+[P3] high .orchestration/tasks/dotfiles-T128-seat-liveness-followup-a01.md:54 The task says `local:d3bc745:1` has class `stale-dir-order` in the owner section, but the actual owner row records `advisory-p2`.
+Task-file verdict: dotfiles-T128-seat-liveness-followup-a01: revise

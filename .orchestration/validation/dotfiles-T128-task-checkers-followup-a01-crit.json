@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-task-checkers-followup-a01-pr365-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "19bd6de248470b5396674d5dba796646bbb87de5",
+    "pr": "365",
+    "reviewed_at": "2026-10-15T06:42:45Z",
+    "body": "Orchestrator review of PR #365 (dotfiles-T128-task-checkers-followup-a01, head 187ff435: the round-2 fix 70614e7a on the update-branch head b84e81f0, base f0faa33a merged with 59599783), read from the fetched head: the three code files change exactly within the owned rows (task-consistency-check.py C9 probes the checker at scripts/orchestrator/ through one CHECKER constant; ledger-check.py counts a review comment as a finding only when its author is the Codex Bot, as the gate's swept_finding_ids() does; orch-audit.sh refuses a ledger check that is untracked or differs from HEAD, the default beside it included); the round-2 fix runs the ledger check as uv run --no-project python -I, so no module beside it is imported, with the header sentence updated and the test test_orch_audit_runs_the_ledger_check_isolated_from_sibling_modules (an untracked scripts/orchestrator/json.py that exits 9 when imported, beside the committed checker: the ledger check runs and passes); 104 tests OK across the three modules; 19 changed lines outside tests and .orchestration, 82 added under tests; the Bot's one P2 (4279174373) and the same defect raised by the local review and the audit of b84e81f0 are fixed by 70614e7a; no finding."
+  }
+]

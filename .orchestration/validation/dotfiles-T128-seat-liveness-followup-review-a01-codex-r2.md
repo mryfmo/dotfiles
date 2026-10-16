@@ -1,0 +1,3 @@
+[P2] high .orchestration/tasks/dotfiles-T128-seat-liveness-followup-a01.md:58 The claim that a record-less stale seat “retires as today” contradicts `seat_pane_state`, which returns `unknown` without a readable placement record and therefore refuses retirement.
+[P2] high .orchestration/tasks/dotfiles-T128-seat-liveness-followup-a01.md:59 Neither specified test case exercises the required unwritable-run-directory refusal, so the closed-row test can pass if that branch is omitted or placed after cleanup.
+Task-file verdict: dotfiles-T128-seat-liveness-followup-a01: revise

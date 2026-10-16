@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-validator-offline-a01-pr366-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "39c186ad6736a8f88e616d30339c762e61945270",
+    "pr": "366",
+    "reviewed_at": "2026-10-15T06:11:45Z",
+    "body": "Orchestrator review of PR #366 (dotfiles-T128-validator-offline-a01, head 39c186ad on base 59599783), read from the fetched head: the Makefile gains one recursively expanded variable UV_PYYAML whose $(if $(shell \u2026)) probe (uv run --offline --with pyyaml python -c 'import yaml') picks the cached form when the cache holds PyYAML and today's index form otherwise, with a one-line comment, and the validate-agent-assets and render-check recipes run $(UV_PYYAML) <script>; nothing else in the Makefile changes; tests/unit/test_makefile_offline.py (new, standard library) holds the two named tests, the second with the stub uv first on PATH recording its argv (probe 0 \u2192 the offline form; probe 1 \u2192 the index form without --offline; a run exit 1 \u2192 one call, no retry, make exit non-zero); 7 changed lines outside tests and .orchestration, 61 added under tests; the worker ran both make targets inside the Claude sandbox from its seat with exit 0 (D10 from a worker seat); the Bot's single review produced no review object, its @codex review answer came as the issue comment \"no findings\"; no finding."
+  }
+]

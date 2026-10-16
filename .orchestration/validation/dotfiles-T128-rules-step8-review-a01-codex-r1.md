@@ -1,0 +1,3 @@
+[P1] high .orchestration/tasks/dotfiles-T128-rules-step8-a01.md:9 `allowed_files` omits `.orchestration/templates/task-short.md`, although C-50 explicitly assigns this task to update that template and its current Completion clause still makes every P2 advisory.
+[P2] high .orchestration/tasks/dotfiles-T128-rules-step8-a01.md:101 “The Bot reviews once” contradicts plan 020 step 2, which permits one re-review after the single P0/P1 fix round and defines the count as `1 + number of P0/P1 fix rounds`.
+Task-file verdict: dotfiles-T128-rules-step8-a01: revise

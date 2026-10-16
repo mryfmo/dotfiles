@@ -1,0 +1,2 @@
+[P2] high .orchestration/tasks/dotfiles-T128-rules-step8-a01.md:90 A GitHub PR reopened after failure retains its existing branch and therefore cannot justify a `-2`/`-3` branch suffix; describe a replacement boundary PR on a fresh same-day branch instead, and pin that wording in the new cadence test.
+Task-file verdict: dotfiles-T128-rules-step8-a01: revise

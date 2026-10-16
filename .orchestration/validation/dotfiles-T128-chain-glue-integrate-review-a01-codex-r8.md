@@ -1,0 +1,3 @@
+[P2] high .orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md:113 The exit-code contract says chain refusals occupy 10–15 but also assigns exit 16 to an unjudged sandbox-scan hit, so the stated range is incomplete.
+[P2] medium .orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md:114 The six specified tests never exercise the draft-PR or already-audited-head refusals, allowing either required fail-closed precondition to be omitted without failing the test suite.
+Task-file verdict: dotfiles-T128-chain-glue-integrate-a01: revise

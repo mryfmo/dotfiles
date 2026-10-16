@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-chain-review-scripts-followup-a01-pr364-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "40f3be41e3884cbf6aa2f9c89693676f032b3c89",
+    "pr": "364",
+    "reviewed_at": "2026-10-16T05:24:21Z",
+    "body": "Orchestrator review of PR #364 (dotfiles-T128-chain-review-scripts-followup-a01, the head the chain fetches after the update-branch onto 3b60d6da (the worker's evidence head 2f4ce7e9: the sandbox record's count 19 to 20 and revise.yaml round 4 after the audit of ba451c66, no source change since 2e3ff494; the code of 38309665, 2e3ff494 and ba451c66 is the same): the round-3 fix afd36bb8 after the round-2 fix 35f76e7d, on the update-branch head c45f9b53, base f0faa33a merged with 59599783 and update-branched again onto 907522c2), read from the fetched head: scripts/orchestrator/local-review.sh and local-advisory.sh change where the eight owned rows of the chain-review-scripts lineage name (the shared trusted-binary resolver under env -i with a shims path refused, no reusable file on a failed review, the recorded head compared before reuse, the advisory rows' text and classes), sandbox-scan.sh within its rows; the round-2 fix makes the resolver one function used for the binary and, when the binary's first line is an env shebang (#!/usr/bin/env NAME or env -S NAME), for NAME too, both before the checkout, so no interpreter comes from PATH in the PR worktree (the audit P1 of c45f9b5), and the round-3 fix keeps the words after `env -S NAME` as the interpreter's own arguments between it and the binary (the local review P2 of 850fc54e; test test_local_review_keeps_env_S_shebang_arguments); the test module gains test_local_review_pins_the_review_binary_interpreter (an interpreter from the stub mise runs the binary as its first argument; an interpreter under shims exits 2 before the checkout, no file); 100 changed lines outside tests and .orchestration, 170 added under tests, 3 files; no finding.\n\nIntegration resumed on 2026-10-16 after the operator's INV-6 waiver (D-S2-364, answer A through AskUserQuestion): the chain runs gh pr update-branch onto main 8b25f9ca (seven merges since the branch's base), CI, the local review once on the new head, the sweep, this receipt and a fresh task-level audit; the owner task dotfiles-T128-chain-review-scripts-followup-a02 exists for the advisory rows."
+  }
+]

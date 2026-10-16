@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-aws-cli-macos-a01-pr363-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "86212a4a5cb7b2eef7d7b6e89fe29cbb32710cc9",
+    "pr": "363",
+    "reviewed_at": "2026-10-15T04:36:16Z",
+    "body": "Orchestrator review of PR #363 (dotfiles-T128-aws-cli-macos-a01, plan 007 T715; diff head fe392450, evidence head a1f59ad8 on base 04590ae9), read from the fetched head: install/ubuntu/common/aws_cli.sh gains the Darwin case of aws_cli_url first (the pkg URL for any architecture, so the ETag probe no longer reads arm64 as offline) and a macOS branch of install_aws_cli: install.sh is the file the existing download-and-gpgv path verifies against the pinned key, version.txt is fetched (exit 3 on failure) and trimmed as the release the postcondition expects, the installer runs under XDG_DATA_HOME (the install root's parent) and XDG_BIN_HOME (the bin dir), and verify_aws_cli_install takes that version; the Linux branch is unchanged; the shdoc header names both OSes. The macOS wrapper template is the Ubuntu twin's include under the darwin guard (three lines). dependencies.sh drops awscli from BREW_PACKAGES (gpg stays). Tests: the four macOS tests named in item 4 plus the changed first assertion of test_platform_package_managers_and_wrapper_own_aws_cli; 20 tests green in CI (two Linux tests fail in the sandbox on macOS mktemp paths exactly as on origin/main there, disclosed); mutation pass 12 of 12. The macOS public-bootstrap CI job ran the real path: gpgv reported a good signature from the AWS CLI Team key on install.sh, install.sh installed AWS CLI 2.38.1 from the pkg under HOME/.local/share/aws-cli, the postcondition printed the installed version. Caps: 35 added and 6 deleted lines outside tests and .orchestration (41 of 200, three files), 147 added under tests. The Bot: the security review completed on c2638b32; no review object or thread; the \"no findings\" issue comment (6182875026) answered the @codex review request after the host's sleep. CI 15 of 15 on both heads. The task copy equals the dispatched b51b8bfb. The worker's unchanged candidates (version.txt fetched twice, install.sh's downgrade exit 2, no test for the wrapper, pre-existing ruff I001) are named for the audit. After the merge the operator runs make update, then brew uninstall awscli and brew autoremove --dry-run. Main moved to 226f8c45, so the chain update-branches first (after #361). No finding."
+  }
+]

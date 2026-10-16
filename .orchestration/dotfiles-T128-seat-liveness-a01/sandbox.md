@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-seat-liveness-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 12
+permission_gated_commands: 7
 ---
 
 # Sandbox record: dotfiles-T128-seat-liveness-a01
@@ -24,12 +24,3 @@ Period: from the AGMSG-TASK (2026-10-15T06:05:59Z) to the RESULT. These ran insi
 | 5 | main-checkout `memory add` | main-checkout `memory add` |
 | 6 | the masked copy of the evidence files to the main checkout | artifact copy with the repository masker |
 | 7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-seat-liveness-a01 …` | `agmsg-dispatch` |
-
-**Revise round 2.** Round 1's main-checkout copy holds eight calls; its row 3a is a wait rerun. Round 2 adds rows 8 to 11, counted in advance, for twelve in all. The baseline worktree ran inside the sandbox.
-
-| # | Command | Step 4 case |
-|--:|---|---|
-| 8 | the HTTPS push of round 2's head | `git push` |
-| 9 | `gh pr checks 367 --watch` on that head (no Bot wait) | `gh` |
-| 10 | the round-2 sections copied into the main-checkout records, masked again | artifact copy with the repository masker |
-| 11 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-seat-liveness-a01 round=2 …` | `agmsg-dispatch` |

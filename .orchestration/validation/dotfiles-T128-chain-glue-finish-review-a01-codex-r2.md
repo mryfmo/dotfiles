@@ -1,0 +1,2 @@
+[P2] high .orchestration/tasks/dotfiles-T128-chain-glue-finish-a01.md:88 The failure contract omits leftover local artifacts—including the chain log, comments JSON, and audit/ledger TSVs—so it does not satisfy the brief’s requirement to state what every failure leaves behind.
+Task-file verdict: dotfiles-T128-chain-glue-finish-a01: revise

@@ -1,0 +1,31 @@
+---
+format: 2
+task_id: dotfiles-T128-regime-v3-inv6-redesign-a01
+kind: review
+security: false
+---
+
+# AGMSG-TASK dotfiles-T128-regime-v3-inv6-redesign-a01 — write the INV-6/INV-4 recalibration proposal in a context other than its author (plan 022 T12 after its third pair; INV-7)
+
+Drafted 2026-10-15 by the orchestrator seat. The orchestrator's v25, v26 and v27 of `.orchestration/tasks/dotfiles-T128-regime-v3-a01.md` (plan 020 step 8's recalibration of INV-6) were revised by all three review pairs (rounds 29 to 31; receipts `…-design-review-round29.md`, `-round29-codex.md`, `-round30.md`, `-round30-codex.md`, `-round31.md`, `-round31-codex.md`), so under INV-7 nothing is frozen, the design on disk is `origin/main`'s v24 (`fa2c5157…`), and the amendment goes to a context other than its author: this seat. The v27 draft is at `.agents/worklog/orchestrator-glue/design-v27-draft.md` (sha256 `bb0dc151…`), input, not a base.
+
+## Inputs
+
+- The six receipts above (every finding they carry is the proposal's acceptance condition), the design-review record `.orchestration/acceptance/dotfiles-T128-design-review-a01.md` (rounds 29 to 31), plan 020 step 8, plan 022 T12, T14 and T16, plan 007 S6 and S7 on `origin/main`.
+- The scripts as they stand on `origin/main`: `scripts/require-crit-review.py` (`RECORD_KEYS` at line 785), `scripts/orchestrator/acceptance-front-matter.py`, `scripts/orchestrator/orch-gate.sh` (the copy-and-clean run of the gate, lines 50, 63-64, 77-89), `scripts/regime-counters.sh` (`threshold=2`, line 60), `scripts/check-regime-boundary.sh` (lines 196-240), `scripts/agent-stop-gate.sh`, `scripts/pr-feedback.py`.
+
+## What to write
+
+`.orchestration/validation/dotfiles-T128-regime-v3-inv6-redesign-a01-proposal.md`: a complete copy of the design file with INV-6 (and INV-4 where it must agree) rewritten, `implementing_tasks` entries for every task the sentence needs, and one history paragraph (v25, the number restarts from the frozen v24), such that every finding of the six receipts is answered mechanically: the threshold number in the hashed sentences; what a reached count is and where it is dispositioned; what a reset trigger is, with a source the gate and the boundary check read that the orchestrator cannot author (the persistence problem the seat's round 31 names: the gate runs on a copy in the review worktree); how a P0/P1 "left unfixed after the one round" is established across two heads from the Bot items and the audit JSONs; how an advisory row is recognised (badge and disposition prefix); the review-brief exclusion; INV-1's one-account residual kept. State in a closing section which mapped task carries each mechanism and which files it needs (so plan 022 T14 and T16 can be rewritten to match). Forbidden: editing the design file itself, any tracked file, branches, commits, pushes, PRs. The orchestrator then runs a fresh review pair on the proposal's hash (a new change to the hashed keys), and on its accept copies it into the design file for the next boundary.
+
+## RESULT
+
+`AGMSG-RESULT v1 task_id=dotfiles-T128-regime-v3-inv6-redesign-a01 status=done proposal=<path> proposal_sha256=<sha> keydiff=<the design-keydiff.py output of the proposal against origin/main>`.
+
+## Round 2 (2026-10-15T09:00:20Z)
+
+Round 32 on your proposal (`10e5a900…`, installed as the design for the pair): both halves revised. Inputs: `.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round32.md` (the headless Claude half: two P1, four P2, four P3) and `…-round32-codex.md` (one P1). Revise the proposal file in place (the same path; a new sha256) so that each finding is answered mechanically against the scripts on `origin/main`: the gate's record path resolution (`acceptance_errors` → `orchestration_path_error` → `feedback_relative_path` with the cwd's git root) and where the gate's entries can live; a release for the no-row and reset states that keeps D1 attainable; the pre-block prose records; the gate's trusted source for every head's audit text; the advisory predicate on what the gate reads (`audit_findings` reasons; the local-review rows' place in the class count); the INV-5 audit-input boundary and the gate's own key; the unknown-count reader; one badge predicate; the class token of the audit line (`[P0-P3] confidence dimension file:line rationale`, the `AUDIT_FINDING` regex to extend or the audit JSON to read); the Stop-hook signal's task or its removal from the hashed sentence; the table's counters sentence. Keep the rest. RESULT: `AGMSG-RESULT v1 task_id=dotfiles-T128-regime-v3-inv6-redesign-a01 round=2 status=done proposal=<path> proposal_sha256=<sha> keydiff=<design-keydiff.py output>`.
+
+## Round 3 (2026-10-15T09:30:24Z; the last pair follows)
+
+Round 33 on your round-2 proposal (`3185955f…`): Codex `accept`; the headless Claude `revise` (`.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round33.md`: two P1, two P2, three P3; your round-2 answers to round 32 confirmed). Revise the proposal file in place once more so that: a `none` row is cross-checked by the gate against its own data (two matching `gate_refusals` entries, or a reached `bot_p1_heads`/`audit_p1_heads` it computes, refuse a `none` row); `unknown` is defined so the gate and the boundary check can tell a PR-less task (`kind: review` or `design`, or a record's `pr=none`) from a `gh` failure, each with its named handling; the det-check entries cover the sweep's refusals too (the entry written at the point `pr_feedback_errors` refuses, after the record is opened, or the order of `main()` changed in T16 so the record is opened first), with the slug list complete; one predicate for the P0/P1 commit window shared by the count and the trigger; the audit receipt `.md` assigned to the trusted root with its `.last.md`; the INV-5 manifest clause stays deferred but the note says which sentence moves at the next hashed change. Keep the rest. The next pair (round 34) is the last this change may have under INV-7; on its revise the change stops and the regime keeps INV-6 v24 until the operator decides. RESULT: `AGMSG-RESULT v1 task_id=dotfiles-T128-regime-v3-inv6-redesign-a01 round=3 status=done proposal=<path> proposal_sha256=<sha> keydiff=<design-keydiff.py output>`.

@@ -1,0 +1,3 @@
+# T15 amendments4/5 sandbox
+
+All actions use existing managed sandbox and allowed source/task/Git paths. No escalation, policy edit, installed apply/restart, local bats, graph update, merge, thread write or external review publication. Tests use temporary settings/source and execute no hook commands; uv cache is /tmp. Exact-home helper only constructs strings. Amendment4 peer P1 blocked approval/commit and the native gate returned2; no receipt was fabricated. Amendment5 removes that clause in the same operator D-P1-369-2-A round. New-head proof is collected after authorized in-sandbox publication. Main-checkout CompactionDB consolidation remains orchestrator-owned.

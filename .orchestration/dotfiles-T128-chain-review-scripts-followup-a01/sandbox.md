@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-chain-review-scripts-followup-a01
 seat: claude-standard-dot-a003
-permission_gated_commands: 19
+permission_gated_commands: 20
 ---
 
 # Sandbox record: dotfiles-T128-chain-review-scripts-followup-a01

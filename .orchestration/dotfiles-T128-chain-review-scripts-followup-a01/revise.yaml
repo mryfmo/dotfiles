@@ -1,9 +1,12 @@
 task_id: dotfiles-T128-chain-review-scripts-followup-a01
-round: 3
-previous_head: 850fc54ea58ee0952a9762d6cd64bdae2dd2c63e
-check: tests/unit/test_chain_review_scripts.py::test_local_review_keeps_env_S_shebang_arguments
-reason: the local review's P2 on 850fc54e at local-review.sh:91-92; the shebang branch kept only the first word after env -S and dropped the rest of the line
+round: 4
+previous_head: ba451c66ce0ba3f1cb5caeed42a07f2aaec1c525
+check: grep permission_gated_commands:20 in .orchestration/dotfiles-T128-chain-review-scripts-followup-a01/sandbox.md
+reason: the audit of ba451c66, P3 evidence; the committed sandbox.md said permission_gated_commands 19 while rows 1-17 plus 5a, 8b and 11a total 20
 earlier:
+  - round: 3
+    previous_head: 850fc54ea58ee0952a9762d6cd64bdae2dd2c63e
+    check: tests/unit/test_chain_review_scripts.py::test_local_review_keeps_env_S_shebang_arguments
   - round: 2
     previous_head: c45f9b53eb376f514aeadc1940f3b7e5e6584517
     check: tests/unit/test_chain_review_scripts.py::test_local_review_pins_the_review_binary_interpreter

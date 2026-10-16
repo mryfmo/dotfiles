@@ -18,12 +18,14 @@ import unittest
 from pathlib import Path
 
 CHAIN = Path(__file__).resolve().parents[2] / "scripts/orchestrator/chain-integrate.sh"
+FINISH = CHAIN.with_name("chain-finish.sh")
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 TASK, OWNER = "dotfiles-T128-x-a01", "dotfiles-T128-x-followup-a01"
 STUB = (
     "#!/usr/bin/env bash\n"
     '{{ printf "argv:"; printf " %s" "$@"; printf "\\ncwd: %s\\npath: %s\\nreview: %s\\n" "$(pwd -P)" "$PATH" "${{ORCH_REVIEW_WORKTREE:-}}"\n'
     '  for a; do case $a in *.tsv | *-pr-comments.json) cat -- "$a" ;; esac; done; }} >> "$CALLS/{name}.log"\n'
+    'echo {name} >> "$CALLS/order.log"\n'
     '[ ! -x "$CALLS/{name}-hook" ] || "$CALLS/{name}-hook"\n'
     'cat "$CALLS/{name}.out" 2> /dev/null || true\n'
     'exit "$(cat "$CALLS/{name}.status" 2> /dev/null || echo 0)"\n'
@@ -45,6 +47,9 @@ case "$1 $2" in
     git -C "$SEED" push -q origin HEAD:refs/pull/7/head
     git -C "$SEED" rev-parse HEAD > "$CALLS/head"
     [ ! -x "$CALLS/update-hook" ] || "$CALLS/update-hook" ;;
+"pr merge")
+    echo "gh pr merge" >> "$CALLS/order.log"
+    exit "$(cat "$CALLS/merge-status" 2> /dev/null || echo 0)" ;;
 "api user") paint < "$CALLS/login" ;;
 "api "*)
     case $2 in *reviews) f=$CALLS/reviews.json ;; *) f=$CALLS/comments.json ;; esac
@@ -54,6 +59,7 @@ esac
 UV = """#!/usr/bin/env bash
 { printf "argv:"; printf " %s" "$@"; printf "\\n"; } >> "$CALLS/uv.log"
 shift 4
+[ "$1" != -c ] || exec python3 -I "$@"
 exec "$@"
 """
 SCRIPTS = {
@@ -64,6 +70,10 @@ SCRIPTS = {
     "orchestrator/acceptance-front-matter.py": "acceptance-front-matter",
     "orchestrator/orch-audit.sh": "orch-audit",
     "pr-feedback.py": "pr-feedback",
+    "orchestrator/resolve-threads.sh": "resolve-threads",
+    "orchestrator/orch-gate.sh": "orch-gate",
+    "orchestrator/ff-main.sh": "ff-main",
+    "orchestrator/pr-cost.sh": "pr-cost",
 }
 SCAN_HIT = "sandbox scan: unsandboxed mutation calls above (C-29); judge before the audit"
 STEPS = [
@@ -117,6 +127,8 @@ class ChainIntegrateTest(unittest.TestCase):
         self.executable(bin_dir / "uv", UV)
         self.executable(bin_dir / "codex", STUB.format(name="codex"))
         self.executable(bin_dir / "mise", "#!/bin/sh\nexit 1\n")
+        for name in ("send.sh", "agmsg-dispatch"):
+            self.executable(bin_dir / name, f'#!/bin/sh\necho "{name} $*" >> "$CALLS/send.log"\n')
         bot = {"user": {"login": "chatgpt-codex-connector[bot]"}, "commit_id": self.head}
         (self.calls / "head").write_text(self.head + "\n")
         (self.calls / "reviews.json").write_text(json.dumps([bot]))
@@ -414,6 +426,149 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.chain(env={"CHAIN_SCAN_JUDGED": self.head[:7]})
         self.assertIn("sandbox scan: judged by the orchestrator", self.log())
         self.assertEqual([f"{TASK} {self.head} 7"], self.calls_of("local-review"))
+
+    # chain-finish.sh (plan 022 T8)
+
+    def finish_ready(self, summary="audit\nVerdict: correct\n", lines=""):
+        """The review worktree at the PR head, the gate's inputs for it, and the record with the given lines."""
+        self.git("fetch", "-q", "origin", "pull/7/head", cwd=self.review)
+        self.git("checkout", "-q", "--detach", "FETCH_HEAD", cwd=self.review)
+        sha7 = self.head[:7]
+        (self.v / f"{TASK}-pr-feedback.json").write_text(json.dumps({"pr": 7, "items": []}))
+        (self.v / f"{TASK}-audit-{sha7}.md").write_text("transcript\n")
+        (self.v / f"{TASK}-audit-{sha7}.md.last.md").write_text(summary)
+        (self.v / f"{TASK}-review-receipt.md").write_text("review_surface: crit-data\n")
+        (self.v / f"{TASK}-crit.json").write_text("[]\n")
+        record = self.main / f".orchestration/acceptance/{TASK}.md"
+        record.write_text(record.read_text() + lines)
+        self.write(".orchestration/extra.tsv", "")
+
+    def finish(self, *args, code=0, env=None):
+        argv = args or (TASK, "7", self.main, self.review, self.main / ".orchestration/extra.tsv")
+        result = subprocess.run(
+            ["bash", str(FINISH), *map(str, argv)],
+            cwd=self.temp,
+            env={**self.env, **(env or {})},
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+        return result
+
+    def finding(self, n, reason="the finding is about a line this PR does not change"):
+        return f"audit-finding: {self.head[:7]}:{n} not-applicable:{reason}; evidence=git show HEAD:a.txt\n"
+
+    def test_finish_refuses_a_head_that_differs_from_the_audit(self):
+        self.finish_ready()
+        summary = self.v / f"{TASK}-audit-{self.head[:7]}.md.last.md"
+
+        def refused(message, *args):
+            self.assertIn(message, self.finish(*args, code=10).stderr)
+            stubs = [p.name for p in self.calls.glob("*.log") if p.name not in ("gh.log", "uv.log")]
+            self.assertEqual([], stubs)
+            self.assertNotIn("pr merge", "\n".join(self.calls_of("gh")))
+
+        summary.rename(summary.with_suffix(".bak"))
+        refused("head differs from the audit")
+        summary.with_suffix(".bak").rename(summary)
+        (self.calls / "head").write_text("0" * 40 + "\n")
+        refused("head differs from the audit")
+        (self.calls / "head").write_text(self.head + "\n")
+        refused("invalid argument", "a/b", "7", self.main, self.review, self.main / ".orchestration/extra.tsv")
+        other = self.temp / "other"
+        self.git("clone", "-q", str(self.temp / "origin.git"), str(other), cwd=self.temp)
+        refused("not the canonical one", TASK, "7", self.main, other, self.main / ".orchestration/extra.tsv")
+        (self.v / f"{TASK}-review-receipt.md").unlink()
+        refused(f"gate input missing: .orchestration/validation/{TASK}-review-receipt.md")
+        self.assertEqual("", self.log())
+
+    def test_finish_requires_an_audit_finding_line_per_incorrect_finding(self):
+        sha7 = self.head[:7]
+        self.finish_ready("- [P2] one\n* [P3] two\nVerdict: incorrect\n", self.finding(1))
+        result = self.finish(code=12)
+        self.assertIn(f"audit finding 2 of {sha7} has no audit-finding line", result.stderr)
+        self.assertEqual([], self.calls_of("resolve-threads"))
+        record = self.main / f".orchestration/acceptance/{TASK}.md"
+        record.write_text(record.read_text() + self.finding(2, "the second finding names a file outside this PR"))
+        self.finish()
+        [argv] = self.calls_of("acceptance-front-matter")
+        dispositions = f"{self.v}/{TASK}-audit-dispositions-{sha7}.tsv"
+        self.assertTrue(
+            argv.endswith(f"--ledger {self.v}/{TASK}-ledger-{sha7}.tsv --audit-dispositions {dispositions}")
+        )
+        logged = (self.calls / "acceptance-front-matter.log").read_text()
+        self.assertIn(
+            "1\tthe finding is about a line this PR does not change\tgit show HEAD:a.txt\n"
+            "2\tthe second finding names a file outside this PR\tgit show HEAD:a.txt\n",
+            logged,
+        )
+        self.assertEqual([], list(self.v.glob("*.tsv")))
+        self.assertFalse((self.v / f"{TASK}-pr-comments.json").exists())
+        # A correct verdict that still lists findings needs their lines too, and passes no dispositions.
+        (self.calls / "acceptance-front-matter.log").unlink()
+        summary = self.v / f"{TASK}-audit-{sha7}.md.last.md"
+        summary.write_text("[P1] one\n- [P2] two\n+ [P3] three\nVerdict: correct\n")
+        self.assertIn(f"audit finding 3 of {sha7} has no audit-finding line", self.finish(code=12).stderr)
+        record.write_text(record.read_text() + self.finding(3, "the third finding repeats the first one here"))
+        self.finish()
+        [argv] = self.calls_of("acceptance-front-matter")
+        self.assertNotIn("--audit-dispositions", argv)
+        summary.write_text("audit\nVerdict: unclear\n")
+        self.assertIn("unexpected audit verdict: Verdict: unclear", self.finish(code=12).stderr)
+
+    def test_finish_runs_gate_before_merge_and_cost_after(self):
+        self.finish_ready()
+        self.finish()
+        order = [
+            "resolve-threads",
+            "pr-feedback",
+            "fill_sweep",
+            "acceptance-front-matter",
+            "orch-gate",
+            "gh pr merge",
+            "ff-main",
+            "pr-cost",
+        ]
+        self.assertEqual(order, (self.calls / "order.log").read_text().splitlines())
+        merges = [c for c in self.calls_of("gh") if c.startswith("pr merge")]
+        self.assertEqual([f"pr merge --squash --match-head-commit {self.head} 7"], merges)
+        extra = self.main / ".orchestration/extra.tsv"
+        self.assertEqual([f"7 {extra} - {self.v}/{TASK}-pr-feedback.json"], self.calls_of("resolve-threads"))
+        self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-gate"))
+        self.assertEqual(["7"], self.calls_of("pr-cost"))
+        for name in ("ff-main", "pr-cost"):
+            self.assertIn(f"cwd: {self.main}\n", (self.calls / f"{name}.log").read_text())
+        steps = self.steps(self.log())
+        self.assertEqual(
+            [
+                "verdict",
+                "resolve-threads",
+                "pr-feedback",
+                "fill-sweep",
+                "record",
+                "gate",
+                "merge",
+                "ff-main",
+                "pr-cost",
+            ],
+            steps,
+        )
+        self.assertNotIn(str(self.temp), self.log())
+        # A failed gate merges nothing and writes no cost line.
+        (self.calls / "order.log").unlink()
+        (self.calls / "orch-gate.status").write_text("3")
+        self.assertIn("step gate failed rc=3", self.finish(code=1).stderr)
+        self.assertEqual(order[:5], (self.calls / "order.log").read_text().splitlines())
+
+    def test_finish_prints_the_acceptance_line_and_sends_nothing(self):
+        self.finish_ready()
+        last = self.finish().stdout.splitlines()[-1]
+        pattern = rf"^AGMSG-ACCEPTANCE v1 task_id={TASK} status=accepted reason=merged-as-[0-9a-f]{{40}}-pr-7-head-{self.head[:7]} next_action="
+        self.assertRegex(last, pattern)
+        self.assertIn(f"merged-as-{self.git('rev-parse', 'origin/main')}-", last)
+        self.assertFalse((self.calls / "send.log").exists())
 
 
 if __name__ == "__main__":

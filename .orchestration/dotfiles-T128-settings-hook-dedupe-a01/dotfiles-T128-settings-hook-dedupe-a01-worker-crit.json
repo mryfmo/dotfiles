@@ -4,5 +4,12 @@
     "body": "Independent read-only implementation review found no P0-P3 findings against amended task99fb3dc7. Managed PostToolUse recognition uses program position only, retaining dict/string/shlex guards and safely preserving empty/interpreter-only commands. Wrapper regression failed on auditedbdefcbe4 before the fix, then all20 tests passed, including all four interpreters. Shared merge and SessionStart behavior unchanged. Committed core report now describes publishedPR369 rather than blocked publication. Basename collisions and interpreter-option limits disclosed; final-head CI not claimed by this local review.",
     "scope": "review",
     "resolved": true
+  },
+  {
+    "id": "settings-hook-evidence2-masking-resolved",
+    "body": "Independent read-only evidence review found the tracked implementation-head proof complete and correctly separated from pending successor-head CI/Bot. Its P2 home-directory-path finding in validation.md was addressed with the repository evidence masker, followed by a successful assertion that no /Users/ path remains. Source and tests remain byte-identical to bf6beb53. This is worker review evidence, not task acceptance.",
+    "scope": "file",
+    "path": ".orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md",
+    "resolved": true
   }
 ]

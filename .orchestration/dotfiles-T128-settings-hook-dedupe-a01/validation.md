@@ -1,189 +1,57 @@
-# Validation: dotfiles-T128-settings-hook-dedupe-a01
+# Committed validation: dotfiles-T128-settings-hook-dedupe-a01 amendment 1
 
-## Initial red: uv run python -m unittest tests.unit.test_claude_settings_merge -k managed_post_tool_use -v (exit1)
+Implementation/diff head: bf6beb53aeb56d0392566f924303581d8f819b80
+Evidence-only revise previous_head: bf6beb53aeb56d0392566f924303581d8f819b80
+Task SHA256: 99fb3dc7f244c31f58eb9f24f0b0fd9b58c8a5eac71f91027af8a47ee3771225
 
-```text
-test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... 
-  test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='stale and managed', entries=[{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}, {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}, {'type': 'command', 'command': '~/.claude/hooks/project-map-reload.sh'}]}]) ... FAIL
-  test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='stale alone', entries=[{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}]) ... FAIL
-  test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='mixed custom command', entries=[{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}, {'type': 'command', 'command': '~/bin/my-hook.sh'}]}]) ... FAIL
-  test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='unmanaged command', entries=[{'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': '~/bin/my-hook.sh'}]}, {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}]) ... FAIL
-  test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='unmanaged command', entries=[{'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': "'unterminated"}]}, {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}]) ... FAIL
-  test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='unmanaged command', entries=[{'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': None}]}, {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}]) ... FAIL
+Output below is normalized only for trailing whitespace and home-directory masking. Current implementation checks below supersede the original network-blocked validation. This snapshot records source/test validation and remote CI/Bot for the implementation head bf6beb53; the following commit changes evidence only. Its new-head CI/Bot will be reported separately at RESULT, not confused with the code-head snapshot.
+
+## Historical wrapper regression reproduced on bdefcbe4 before the source correction
+
+$ UV_CACHE_DIR=/tmp/dotfiles-a004-uv-cache uv run python -m unittest tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry -v
+test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ...
+  test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='wrapper argument', entries=[{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/bin/log-hook.sh ~/.claude/hooks/format-edited-files.py'}]}, {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}]) ... FAIL
 
 ======================================================================
-FAIL: test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='stale and managed', entries=[{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}, {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}, {'type': 'command', 'command': '~/.claude/hooks/project-map-reload.sh'}]}])
+FAIL: test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='wrapper argument', entries=[{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/bin/log-hook.sh ~/.claude/hooks/format-edited-files.py'}]}, {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}])
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py", line 400, in test_managed_post_tool_use_replaces_stale_format_only_entry
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py", line 411, in test_managed_post_tool_use_replaces_stale_format_only_entry
     self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], expected)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: Lists differ: [{'ma[109 chars].py'}]}, {'matcher': 'Write|Edit|MultiEdit', '[152 chars]'}]}] != [{'ma[109 chars].py'}, {'type': 'command', 'command': '~/.clau[30 chars]'}]}]
+AssertionError: Lists differ: [{'ma[71 chars]: '~/.claude/hooks/format-edited-files.py'}, {[68 chars]'}]}] != [{'ma[71 chars]: '~/bin/log-hook.sh ~/.claude/hooks/format-ed[208 chars]'}]}]
 
 First differing element 0:
-{'mat[108 chars].py'}]}
-{'mat[108 chars].py'}, {'type': 'command', 'command': '~/.clau[29 chars]h'}]}
+{'mat[70 chars]: '~/.claude/hooks/format-edited-files.py'}, {[67 chars]h'}]}
+{'mat[70 chars]: '~/bin/log-hook.sh ~/.claude/hooks/format-edited-files.py'}]}
 
-First list contains 1 additional elements.
+Second list contains 1 additional elements.
 First extra element 1:
 {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}, {'type': 'command', 'command': '~/.claude/hooks/project-map-reload.sh'}]}
 
-  [{'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
--              'type': 'command'}],
--   'matcher': 'Write|Edit|MultiEdit'},
--  {'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
-               'type': 'command'},
-              {'command': '~/.claude/hooks/project-map-reload.sh',
-               'type': 'command'}],
-    'matcher': 'Write|Edit|MultiEdit'}]
-
-======================================================================
-FAIL: test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='stale alone', entries=[{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}])
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py", line 400, in test_managed_post_tool_use_replaces_stale_format_only_entry
-    self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], expected)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: Lists differ: [{'ma[109 chars].py'}]}, {'matcher': 'Write|Edit|MultiEdit', '[152 chars]'}]}] != [{'ma[109 chars].py'}, {'type': 'command', 'command': '~/.clau[30 chars]'}]}]
-
-First differing element 0:
-{'mat[108 chars].py'}]}
-{'mat[108 chars].py'}, {'type': 'command', 'command': '~/.clau[29 chars]h'}]}
-
-First list contains 1 additional elements.
-First extra element 1:
-{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}, {'type': 'command', 'command': '~/.claude/hooks/project-map-reload.sh'}]}
-
-  [{'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
--              'type': 'command'}],
--   'matcher': 'Write|Edit|MultiEdit'},
--  {'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
-               'type': 'command'},
-              {'command': '~/.claude/hooks/project-map-reload.sh',
-               'type': 'command'}],
-    'matcher': 'Write|Edit|MultiEdit'}]
-
-======================================================================
-FAIL: test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='mixed custom command', entries=[{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}, {'type': 'command', 'command': '~/bin/my-hook.sh'}]}])
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py", line 400, in test_managed_post_tool_use_replaces_stale_format_only_entry
-    self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], expected)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: Lists differ: [{'ma[71 chars]: '~/.claude/hooks/format-edited-files.py'}, {[242 chars]'}]}] != [{'ma[71 chars]: '~/bin/my-hook.sh'}]}, {'matcher': 'Write|Ed[168 chars]'}]}]
-
-First differing element 0:
-{'mat[70 chars]: '~/.claude/hooks/format-edited-files.py'}, {[46 chars]h'}]}
-{'mat[70 chars]: '~/bin/my-hook.sh'}]}
-
++ [{'hooks': [{'command': '~/bin/log-hook.sh '
++                         '~/.claude/hooks/format-edited-files.py',
++              'type': 'command'}],
++   'matcher': 'Write|Edit|MultiEdit'},
 - [{'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
--              'type': 'command'},
--             {'command': '~/bin/my-hook.sh', 'type': 'command'}],
-? ^^^^^^^^^^^^
+? ^
 
-+ [{'hooks': [{'command': '~/bin/my-hook.sh', 'type': 'command'}],
-? ^^^^^^^^^^^^
++  {'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
+? ^
 
-    'matcher': 'Write|Edit|MultiEdit'},
-   {'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
-               'type': 'command'},
-              {'command': '~/.claude/hooks/project-map-reload.sh',
-               'type': 'command'}],
-    'matcher': 'Write|Edit|MultiEdit'}]
-
-======================================================================
-FAIL: test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='unmanaged command', entries=[{'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': '~/bin/my-hook.sh'}]}, {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}])
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py", line 400, in test_managed_post_tool_use_replaces_stale_format_only_entry
-    self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], expected)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: Lists differ: [{'ma[193 chars].py'}]}, {'matcher': 'Write|Edit|MultiEdit', '[152 chars]'}]}] != [{'ma[193 chars].py'}, {'type': 'command', 'command': '~/.clau[30 chars]'}]}]
-
-First differing element 1:
-{'mat[108 chars].py'}]}
-{'mat[108 chars].py'}, {'type': 'command', 'command': '~/.clau[29 chars]h'}]}
-
-First list contains 1 additional elements.
-First extra element 2:
-{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}, {'type': 'command', 'command': '~/.claude/hooks/project-map-reload.sh'}]}
-
-  [{'hooks': [{'command': '~/bin/my-hook.sh', 'type': 'command'}],
-    'matcher': 'Bash'},
--  {'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
--              'type': 'command'}],
--   'matcher': 'Write|Edit|MultiEdit'},
-   {'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
-               'type': 'command'},
-              {'command': '~/.claude/hooks/project-map-reload.sh',
-               'type': 'command'}],
-    'matcher': 'Write|Edit|MultiEdit'}]
-
-======================================================================
-FAIL: test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='unmanaged command', entries=[{'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': "'unterminated"}]}, {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}])
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py", line 400, in test_managed_post_tool_use_replaces_stale_format_only_entry
-    self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], expected)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: Lists differ: [{'ma[190 chars].py'}]}, {'matcher': 'Write|Edit|MultiEdit', '[152 chars]'}]}] != [{'ma[190 chars].py'}, {'type': 'command', 'command': '~/.clau[30 chars]'}]}]
-
-First differing element 1:
-{'mat[108 chars].py'}]}
-{'mat[108 chars].py'}, {'type': 'command', 'command': '~/.clau[29 chars]h'}]}
-
-First list contains 1 additional elements.
-First extra element 2:
-{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}, {'type': 'command', 'command': '~/.claude/hooks/project-map-reload.sh'}]}
-
-  [{'hooks': [{'command': "'unterminated", 'type': 'command'}],
-    'matcher': 'Bash'},
--  {'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
--              'type': 'command'}],
--   'matcher': 'Write|Edit|MultiEdit'},
-   {'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
-               'type': 'command'},
-              {'command': '~/.claude/hooks/project-map-reload.sh',
-               'type': 'command'}],
-    'matcher': 'Write|Edit|MultiEdit'}]
-
-======================================================================
-FAIL: test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) (case='unmanaged command', entries=[{'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': None}]}, {'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}]}])
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py", line 400, in test_managed_post_tool_use_replaces_stale_format_only_entry
-    self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], expected)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: Lists differ: [{'ma[179 chars].py'}]}, {'matcher': 'Write|Edit|MultiEdit', '[152 chars]'}]}] != [{'ma[179 chars].py'}, {'type': 'command', 'command': '~/.clau[30 chars]'}]}]
-
-First differing element 1:
-{'mat[108 chars].py'}]}
-{'mat[108 chars].py'}, {'type': 'command', 'command': '~/.clau[29 chars]h'}]}
-
-First list contains 1 additional elements.
-First extra element 2:
-{'matcher': 'Write|Edit|MultiEdit', 'hooks': [{'type': 'command', 'command': '~/.claude/hooks/format-edited-files.py'}, {'type': 'command', 'command': '~/.claude/hooks/project-map-reload.sh'}]}
-
-  [{'hooks': [{'command': None, 'type': 'command'}], 'matcher': 'Bash'},
--  {'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
--              'type': 'command'}],
--   'matcher': 'Write|Edit|MultiEdit'},
-   {'hooks': [{'command': '~/.claude/hooks/format-edited-files.py',
                'type': 'command'},
               {'command': '~/.claude/hooks/project-map-reload.sh',
                'type': 'command'}],
     'matcher': 'Write|Edit|MultiEdit'}]
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.341s
+Ran 1 test in 0.584s
 
-FAILED (failures=6)
+FAILED (failures=1)
 
-```
+## Fresh implementation checks, with source/tests unchanged from bf6beb53
 
-## Final: uv run python -m unittest tests/unit/test_claude_settings_merge.py -v (exit0)
-
-```text
+$ UV_CACHE_DIR=/tmp/dotfiles-a004-uv-cache uv run python -m unittest tests/unit/test_claude_settings_merge.py -v
 test_current_only_key_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
 test_current_session_start_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
 Order is preserved; a stale bare herdr-agents command still migrates. ... ok
@@ -209,79 +77,55 @@ test_runtime_enabled_plugins_survive_a_managed_file_without_the_key (tests.unit.
 test_trailing_newline (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
 
 ----------------------------------------------------------------------
-Ran 20 tests in 1.501s
+Ran 20 tests in 1.286s
 
 OK
+$ check=tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_managed_post_tool_use_replaces_stale_format_only_entry
+$ UV_CACHE_DIR=/tmp/dotfiles-a004-uv-cache uv run python -m unittest tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry -v
+test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... ok
 
-```
+----------------------------------------------------------------------
+Ran 1 test in 0.560s
 
-## UV_CACHE_DIR=<task-cache> make render-check (exit2, DNS failure)
-
-```text
-uv run --with pyyaml scripts/generate-agent-configs.py --check
-error: Request failed after 3 retries in 7.3s
-  cause: Failed to fetch: https://pypi.org/simple/pyyaml/
-  cause: error sending request for url (https://pypi.org/simple/pyyaml/)
-  cause: client error (Connect)
-  cause: dns error
-  cause: failed to lookup address information: nodename nor servname provided, or not known
-make: *** [render-check] Error 2
-
-```
-
-## UV_CACHE_DIR=<task-cache> UV_OFFLINE=1 make render-check (exit2, dependency absent)
-
-```text
-uv run --with pyyaml scripts/generate-agent-configs.py --check
-error: No solution found when resolving `--with` dependencies
-  cause: Because pyyaml was not found in the cache and you require pyyaml, we can conclude that your requirements are unsatisfiable.
-
-hint: Packages were unavailable because the network was disabled. When the network is disabled, registry packages may only be read from the cache.
-make: *** [render-check] Error 1
-
-```
-
-## uv run --offline --no-project --with ruff ruff format --check <test> (exit1, unavailable package/index)
-
-```text
+OK
+$ UV_CACHE_DIR=/tmp/dotfiles-a004-uv-cache make render-check
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
 mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
-error: No solution found when resolving `--with` dependencies
-  cause: Because ruff was not found in the cache and you require ruff, we can conclude that your requirements are unsatisfiable.
-
-hint: Packages were unavailable because the network was disabled. When the network is disabled, registry packages may only be read from the cache.
-
-```
-
-## uv run --offline --no-project python -c import-yaml probe (exit1)
-
-```text
-mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-    import yaml; print(yaml.__version__)
-    ^^^^^^^^^^^
-ModuleNotFoundError: No module named 'yaml'
-
-```
-
-## Native ruff --version (exit0)
-
-```text
-ruff 0.17.0
-
-```
-
-## uv run --offline --no-project ruff format --check tests/unit/test_claude_settings_merge.py (exit0)
-
-```text
-mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
-1 file already formatted
-
-```
-
-## crit status --json (exit0)
-
-```text
+generated agent configs are up to date
+$ git diff --exit-code bf6beb53 -- home/dot_claude/modify_private_settings.json tests/unit/test_claude_settings_merge.py
+$ git diff --numstat origin/main...bf6beb53
+3	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/autoskill.md
+8	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/dotfiles-T128-settings-hook-dedupe-a01-worker-crit.json
+6	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/dotfiles-T128-settings-hook-dedupe-a01-worker-review-receipt.md
+5	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/learning.md
+18	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/report.md
+7	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/revise.yaml
+67	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/ruff-base.json
+67	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/ruff-current.json
+7	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/sandbox.md
+87	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/task.md
+367	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md
+14	0	home/dot_claude/modify_private_settings.json
+42	0	tests/unit/test_claude_settings_merge.py
+$ gh pr checks 369 (implementation head bf6beb53)
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com
+private-bootstrap (macos-14, client)	pass	9s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766396298
+private-bootstrap (ubuntu-24.04, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766396215
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766395973
+public-bootstrap (macos-14, client)	pass	7m14s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766396301
+public-bootstrap (ubuntu-24.04, client)	pass	8m24s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766396229
+public-bootstrap (ubuntu-24.04, server)	pass	7m43s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766396342
+test (macos-14, client)	pass	7m27s	https://github.com/mryfmo/dotfiles/actions/runs/38836395613/job/116766395620
+test (ubuntu-24.04, client)	pass	8m3s	https://github.com/mryfmo/dotfiles/actions/runs/38836395613/job/116766395763
+test (ubuntu-24.04, server)	pass	5m56s	https://github.com/mryfmo/dotfiles/actions/runs/38836395613/job/116766395735
+test (ubuntu-26.04, client)	pass	9m12s	https://github.com/mryfmo/dotfiles/actions/runs/38836395613/job/116766395717
+validate	pass	1m51s	https://github.com/mryfmo/dotfiles/actions/runs/38836395622/job/116766395585
+$ gh pr view 369 --json url,headRefOid,baseRefOid,state,isDraft
+{"baseRefOid":"8b25f9ca6d6bc25c21b30f2a67cb462a6dd4a95e","headRefOid":"bf6beb53aeb56d0392566f924303581d8f819b80","isDraft":false,"state":"OPEN","url":"https://github.com/mryfmo/dotfiles/pull/369"}
+$ gh api --paginate repos/mryfmo/dotfiles/issues/369/comments (bf6beb53 receipt and full-head summary)
+[{"body":"\u003c!-- codex-pull-request-review-summary --\u003e\n\u003c!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"bf6beb53aeb56d0392566f924303581d8f819b80\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"80f59cd685d63524089ca73884c409d7e9355b13\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} --\u003e\n\u003c!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"80f59cd685d63524089ca73884c409d7e9355b13\",\"mergeGateEnabled\":false,\"pullRequestNumber\":369,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} --\u003e\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** \u003crelative-time datetime=\"2026-10-16T01:42:59.071416Z\"\u003e2026-10-16T01:42:59.071416Z\u003c/relative-time\u003e | `bf6beb5` | Manual request |\n| 🔒 **Security Review** | ✅ **Completed** \u003crelative-time datetime=\"2026-10-15T22:55:16.742795Z\"\u003e2026-10-15T22:55:16.742795Z\u003c/relative-time\u003e | `80f59cd` | Draft marked ready |\n\n\n\n\u003cdetails\u003e \u003csummary\u003eℹ️ About Codex in GitHub\u003c/summary\u003e\n\u003cbr/\u003e\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n\u003c/details\u003e","html_url":"https://github.com/mryfmo/dotfiles/pull/369#issuecomment-6203950188","id":6203950188,"updated_at":"2026-10-16T01:43:00Z"},{"body":"\u003c!-- codex-review-receipt:v1 --\u003e\n\nCodex Review: Didn't find any major issues. Breezy!\n\n**Reviewed commit:** `bf6beb53ae`\n\n\u003cdetails\u003e \u003csummary\u003eℹ️ About Codex in GitHub\u003c/summary\u003e\n\u003cbr/\u003e\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n\u003c/details\u003e","html_url":"https://github.com/mryfmo/dotfiles/pull/369#issuecomment-6206111205","id":6206111205,"updated_at":"2026-10-16T01:42:57Z"}]
+$ crit status --json
 {
   "branch": "fix/managed-post-tool-use-dedupe",
   "daemon": {
@@ -292,76 +136,3 @@ mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~
   "sessions": [],
   "vcs": "git"
 }
-
-```
-
-## crit comments --all --json <reported missing file> (exit1)
-
-```text
-stat ~/.crit/reviews/e6dd809cae51/review.json: no such file or directory
-
-```
-
-## make require-crit-review before receipt (exit2)
-
-```text
-Native agent review required before completion.
-- review-sensitive path changed: .orchestration/dotfiles-T128-project-map-reload-hook-followup-a01/20261015_004907_done.md
-- broad diff touches 13 files
-- broad diff changes 2770 lines
-Use the active agent's review path, not a browser by default:
-- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
-- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
-- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
-Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
-For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
-Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
-This local evidence is process evidence, not reviewer authentication.
-Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
-After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
-make: *** [require-crit-review] Error 1
-
-```
-
-## git diff --numstat origin/main (uncommitted source; triple-dot after commit follows)
-
-```text
-12	0	home/dot_claude/modify_private_settings.json
-29	0	tests/unit/test_claude_settings_merge.py
-
-```
-
-## Source, base and network binding
-
-```text
-$ git fetch origin main
-fatal: unable to access 'https://github.com/mryfmo/dotfiles/': Could not resolve host: github.com
-$ git rev-parse origin/main
-595997831afcc05b266c9f245456df54725628db
-$ git -C <canonical checkout> rev-parse HEAD
-595997831afcc05b266c9f245456df54725628db
-$ git merge-base --is-ancestor 59599783 origin/main
-$ git diff --check
-```
-
-fetch exited128; ancestry and source diff-check exited0 with empty output. Branch creation succeeded, with nonfatal packed-refs.lock Operation-not-permitted warnings. Task file sha256 equals461643b4c10fd146416e0dd3c237b8a3ffbc2fe07098f9ab4cf827e40bc679f4. Source12 additions and test29 additions. Knowledge graph nodes read first, scoped callers inspected; no graph update.
-
-## Native Ruff lint baseline comparison
-
-The native Ruff0.17.0 invocation through uv run --offline --no-project ruff check --extension json:python --output-format json <two source/test files> exited1; complete diagnostics are saved as ruff-current.json, baseline stdin checks as ruff-base.json. The comparison asserted matching code/line/message and exited0:
-
-```text
-Ruff0.17.0 baseline comparison: 2 identical pre-existing diagnostics; zero new diagnostics.
-```
-
-The earlier --with ruff attempt failed resolution and had empty JSON stdout; its diagnostic reader raised JSONDecodeError, yielding no lint evidence. No result from that failed attempt is called a pass. Native format-check later succeeded. render-check remains blocked; no dependency was installed or shimmed to bypass it.
-
-## Local reviewed completion gate (exit0)
-
-AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T128-settings-hook-dedupe-a01/dotfiles-T128-settings-hook-dedupe-a01-worker-review-receipt.md make require-crit-review
-
-```text
-Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
-```
-
-The resolved JSON evidence was read after masking. Gate success does not stand in for the failed required render-check or absent remote CI. Evidence masking ran via uv run --offline --no-project python scripts/validate-agent-assets.py --mask-secrets (the script supports this standard-library branch without optional PyYAML); exit0, eight validation home paths and two paths in each Ruff JSON masked. Task copy unchanged.

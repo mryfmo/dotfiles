@@ -3727,6 +3727,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4140,6 +4151,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4168,12 +4190,16 @@
 
 
 <h1 id="scriptsorchestratorlocal-reviewsh">scripts/orchestrator/local-review.sh<a class="headerlink" href="#scriptsorchestratorlocal-reviewsh" title="Permanent link">&para;</a></h1>
-<p>Run outside the Bash sandbox: inside it codex exits 1 ("failed to initialize in-process app-server client: Operation not permitted"). An existing <code>.orchestration/validation/&lt;task&gt;-local-review-&lt;sha7&gt;.md</code> is reused and re-reported. Otherwise the clean review worktree (<code>$ORCH_REVIEW_WORKTREE</code>, else <code>.claude/worktrees/orchestrator-review</code>), a path with its own <code>.git</code> entry, is checked out detached at the head and left there, and the review binary (<code>$CODEX_BIN</code>, else codex) runs in it as <code>--profile review -s read-only review --base main</code>. The file gets the front matter, the unique <code>- [P0-3]</code> findings of the transcript's final message, and that message with the worktree prefix stripped; the findings are printed, then <code>local-review: &lt;n&gt; findings (&lt;file&gt;)</code>.</p>
+<p>Run outside the Bash sandbox: inside it codex exits 1 ("failed to initialize in-process app-server client: Operation not permitted"). An existing <code>.orchestration/validation/&lt;task&gt;-local-review-&lt;sha7&gt;.md</code> whose <code>head:</code> is this head is reused and re-reported; one that records another head is refused. Otherwise the clean review worktree (<code>$ORCH_REVIEW_WORKTREE</code>, else <code>.claude/worktrees/orchestrator-review</code>), a path with its own <code>.git</code> entry, is checked out detached at the head and left there, and the review binary runs in it as <code>--profile review -s read-only review --base main</code>. The binary is <code>$CODEX_BIN</code>, else codex as <code>mise which</code> answers it under <code>env -i</code> in the root, else <code>command -v</code>; it is resolved before the checkout, and a path under a <code>shims</code> directory is refused. When its first line is an env shebang (<code>#!/usr/bin/env NAME</code> or <code>env -S NAME ARG…</code>), NAME is resolved the same way and runs with the <code>-S</code> form's ARG words, then the binary, so no interpreter comes from PATH in the PR worktree. When the binary fails, no file is written. Otherwise the file gets the front matter, the unique <code>- [P0-3]</code> findings of the transcript's final message, and that message with the worktree prefix stripped; the findings are printed, then <code>local-review: &lt;n&gt; findings (&lt;file&gt;)</code>.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/orchestrator/local-review.sh</code></li>
 <li>Category: repository script</li>
 <li>Renderer: <code>shell-fallback</code></li>
+</ul>
+<h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>resolve() { # &lt;name&gt; &lt;what&gt; [&lt;found by command -v alone&gt;]</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -4181,30 +4207,47 @@
 <span class="c1"># @brief Review a PR head's diff against main locally with the Bot's engine, once per head, before the audit (C-32).</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Run outside the Bash sandbox: inside it codex exits 1 ("failed to initialize in-process app-server client:</span>
-<span class="c1">#   Operation not permitted"). An existing `.orchestration/validation/&lt;task&gt;-local-review-&lt;sha7&gt;.md` is reused and</span>
-<span class="c1">#   re-reported. Otherwise the clean review worktree (`$ORCH_REVIEW_WORKTREE`, else</span>
-<span class="c1">#   `.claude/worktrees/orchestrator-review`), a path with its own `.git` entry, is checked out detached at the head</span>
-<span class="c1">#   and left there, and the review binary (`$CODEX_BIN`, else codex) runs in it as `--profile review -s read-only</span>
-<span class="c1">#   review --base main`. The file gets the front matter, the unique `- [P0-3]` findings of the transcript's final</span>
-<span class="c1">#   message, and that message with the worktree prefix stripped; the findings are printed, then `local-review: &lt;n&gt;</span>
-<span class="c1">#   findings (&lt;file&gt;)`.</span>
-<span class="c1"># @arg $1 string Task id.</span>
-<span class="c1"># @arg $2 string The PR head commit, a local one.</span>
+<span class="c1">#   Operation not permitted"). An existing `.orchestration/validation/&lt;task&gt;-local-review-&lt;sha7&gt;.md` whose `head:` is</span>
+<span class="c1">#   this head is reused and re-reported; one that records another head is refused. Otherwise the clean review</span>
+<span class="c1">#   worktree (`$ORCH_REVIEW_WORKTREE`, else `.claude/worktrees/orchestrator-review`), a path with its own `.git`</span>
+<span class="c1">#   entry, is checked out detached at the head and left there, and the review binary runs in it as `--profile review</span>
+<span class="c1">#   -s read-only review --base main`. The binary is `$CODEX_BIN`, else codex as `mise which` answers it under `env</span>
+<span class="c1">#   -i` in the root, else `command -v`; it is resolved before the checkout, and a path under a `shims` directory is</span>
+<span class="c1">#   refused. When its first line is an env shebang (`#!/usr/bin/env NAME` or `env -S NAME ARG…`), NAME is resolved the</span>
+<span class="c1">#   same way and runs with the `-S` form's ARG words, then the binary, so no interpreter comes from PATH in the PR</span>
+<span class="c1">#   worktree. When the</span>
+<span class="c1">#   binary fails, no file is written. Otherwise the file gets the front matter, the unique `-</span>
+<span class="c1">#   [P0-3]` findings of the transcript's final message, and that message with the worktree prefix stripped; the</span>
+<span class="c1">#   findings are printed, then `local-review: &lt;n&gt; findings (&lt;file&gt;)`.</span>
+<span class="c1"># @arg $1 string Task id, letters, digits, `.`, `_` and `-`.</span>
+<span class="c1"># @arg $2 string The PR head commit, a local one, 40 hex characters.</span>
 <span class="c1"># @arg $3 int PR number.</span>
 <span class="c1"># @exitcode 0 No finding.</span>
-<span class="c1"># @exitcode 2 A precondition failed: the head is not a local commit, the review worktree is not a worktree root or not</span>
-<span class="c1">#   clean, or there is no review binary.</span>
+<span class="c1"># @exitcode 2 A precondition failed: a malformed task id or head, a review file of another head, the head is not a</span>
+<span class="c1">#   local commit, the review worktree is not a worktree root or not clean, or no review binary outside a shims</span>
+<span class="c1">#   directory.</span>
 <span class="c1"># @exitcode 3 One or more findings.</span>
+<span class="c1"># @exitcode 4 The review binary failed; no file is written, and its transcript stays in `$TMPDIR`.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   scripts/orchestrator/local-review.sh dotfiles-T128-x-a01 "$(git rev-parse FETCH_HEAD)" 356</span>
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
 <span class="nv">task</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span><span class="nv">head</span><span class="o">=</span><span class="nv">$2</span><span class="w"> </span><span class="nv">pr</span><span class="o">=</span><span class="nv">$3</span>
+<span class="c1"># Both name the review file, so a / in either would write outside the validation directory (the audit of b6ce4ff).</span>
+<span class="o">[[</span><span class="w"> </span><span class="nv">$task</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span>A-Za-z0-9<span class="o">][</span>A-Za-z0-9._-<span class="o">]</span>*$<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">$head</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">40</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"local-review: usage: local-review.sh &lt;task&gt; &lt;40-hex head&gt; &lt;pr&gt;"</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
 <span class="nv">R</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="k">)</span><span class="s2">"</span>
 <span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="nv">$R</span><span class="s2">"</span>
 <span class="nv">W</span><span class="o">=</span><span class="si">${</span><span class="nv">ORCH_REVIEW_WORKTREE</span><span class="k">:-</span><span class="nv">$R</span><span class="p">/.claude/worktrees/orchestrator-review</span><span class="si">}</span>
 <span class="nv">out</span><span class="o">=</span><span class="nv">$R</span>/.orchestration/validation/<span class="nv">$task</span>-local-review-<span class="si">${</span><span class="nv">head</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="nv">7</span><span class="si">}</span>.md
 <span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="c1"># one sample per head (C-32): a review of this head exists; reuse it instead of sampling again</span>
+<span class="w">    </span><span class="c1"># one sample per head (C-32): a review of this head exists; reuse it instead of sampling again. The name keeps</span>
+<span class="w">    </span><span class="c1"># seven characters of the head, so the recorded head must be this one (PR #357 thread 4270918140).</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^head: //p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="nv">$head</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"local-review: </span><span class="nv">$out</span><span class="s2"> records another head; not reused"</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="nv">findings</span><span class="o">=</span><span class="k">$(</span>/usr/bin/grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^- \[P[0-3]\]'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span>
 <span class="w">    </span><span class="nv">n</span><span class="o">=</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^findings: //p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$out</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="k">)</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$findings</span><span class="s2">"</span>
@@ -4226,18 +4269,54 @@ git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><s
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="o">}</span>
 <span class="c1"># Resolved in the root before the checkout and run by its absolute path, so no relative PATH entry (./bin) picks a</span>
-<span class="c1"># binary from the PR head.</span>
-<span class="nv">codex</span><span class="o">=</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_BIN</span><span class="k">:-</span><span class="nv">codex</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"local-review: no review binary </span><span class="si">${</span><span class="nv">CODEX_BIN</span><span class="k">:-</span><span class="nv">codex</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="c1"># binary from the PR head. A mise shim would pick its binary from the PR worktree it runs in, so a name comes from</span>
+<span class="c1"># mise which under env -i, as orch-gate.sh resolves gh, and a shims path is refused (the audit of b6ce4ff). Sets</span>
+<span class="c1"># found; a refusal exits here, before the checkout.</span>
+resolve<span class="o">()</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="c1"># &lt;name&gt; &lt;what&gt; [&lt;found by command -v alone&gt;]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">3</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">found</span><span class="o">=</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">found</span><span class="o">=</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">found</span><span class="o">=</span><span class="k">$(</span>env<span class="w"> </span>-i<span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PATH</span><span class="s2">"</span><span class="w"> </span><span class="nv">HOME</span><span class="o">=</span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">"</span><span class="w"> </span>mise<span class="w"> </span>which<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">found</span><span class="o">=</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="nv">$found</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"local-review: no </span><span class="nv">$2</span><span class="s2"> </span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="nv">$found</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>/*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">found</span><span class="o">=</span><span class="nv">$R</span>/<span class="nv">$found</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="nv">$found</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*/shims/*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"local-review: the </span><span class="nv">$2</span><span class="s2"> </span><span class="nv">$found</span><span class="s2"> is under a shims directory; refused"</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="o">}</span>
-<span class="o">[[</span><span class="w"> </span><span class="nv">$codex</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>/*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">codex</span><span class="o">=</span><span class="nv">$R</span>/<span class="nv">$codex</span>
+resolve<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_BIN</span><span class="k">:-</span><span class="nv">codex</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"review binary"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_BIN</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">run</span><span class="o">=(</span><span class="s2">"</span><span class="nv">$found</span><span class="s2">"</span><span class="o">)</span>
+<span class="c1"># An env shebang would find its interpreter on PATH at exec time, in the PR worktree (the audit of c45f9b5).</span>
+<span class="nv">first</span><span class="o">=</span>
+<span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>first<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">run</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$first</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="se">\#</span>!<span class="o">[[</span>:space:<span class="o">]]</span>*<span class="o">[</span>^<span class="o">[</span>:space:<span class="o">]]</span>*/env<span class="o">[[</span>:space:<span class="o">]]</span>+<span class="o">(</span>-S<span class="o">[[</span>:space:<span class="o">]]</span>+<span class="o">)</span>?<span class="o">([</span>^<span class="o">[</span>:space:<span class="o">]</span>-<span class="o">][</span>^<span class="o">[</span>:space:<span class="o">]]</span>*<span class="o">)(</span>.*<span class="o">)</span>$<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">interpreter</span><span class="o">=</span><span class="si">${</span><span class="nv">BASH_REMATCH</span><span class="p">[2]</span><span class="si">}</span>
+<span class="w">    </span><span class="c1"># env -S splits the rest of the line into the interpreter's own arguments (the local review of 850fc54e).</span>
+<span class="w">    </span><span class="nv">words</span><span class="o">=()</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_REMATCH</span><span class="p">[1]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>words<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_REMATCH</span><span class="p">[3]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>resolve<span class="w"> </span><span class="s2">"</span><span class="nv">$interpreter</span><span class="s2">"</span><span class="w"> </span><span class="s2">"review binary's interpreter"</span>
+<span class="w">    </span><span class="nv">run</span><span class="o">=(</span><span class="s2">"</span><span class="nv">$found</span><span class="s2">"</span><span class="w"> </span><span class="si">${</span><span class="nv">words</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">words</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">run</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="k">fi</span>
 git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="nv">$W</span><span class="s2">"</span><span class="w"> </span>checkout<span class="w"> </span>-q<span class="w"> </span>--detach<span class="w"> </span><span class="s2">"</span><span class="nv">$head</span><span class="s2">"</span>
 <span class="nv">base</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="nv">$W</span><span class="s2">"</span><span class="w"> </span>merge-base<span class="w"> </span>main<span class="w"> </span>HEAD<span class="k">)</span>
 <span class="nv">t0</span><span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>-u<span class="w"> </span>+%FT%TZ<span class="k">)</span>
 <span class="nv">tmp</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TMPDIR</span><span class="k">:-</span><span class="p">/tmp</span><span class="si">}</span><span class="s2">/local-review.XXXXXX"</span><span class="k">)</span>
-<span class="o">(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="nv">$W</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$codex</span><span class="s2">"</span><span class="w"> </span>--profile<span class="w"> </span>review<span class="w"> </span>-s<span class="w"> </span>read-only<span class="w"> </span>review<span class="w"> </span>--base<span class="w"> </span>main<span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$tmp</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"local-review: codex exited </span><span class="nv">$?</span><span class="s2"> (see </span><span class="nv">$out</span><span class="s2">)"</span>
-<span class="nv">final</span><span class="o">=</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">'/^codex$/{f=1; buf=""; next} f{buf=buf $0 "\n"} END{printf "%s", buf}'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$tmp</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s2">"s#</span><span class="nv">$W</span><span class="s2">/##g"</span><span class="k">)</span>
+<span class="nv">rc</span><span class="o">=</span><span class="m">0</span>
+<span class="o">(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="nv">$W</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">run</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--profile<span class="w"> </span>review<span class="w"> </span>-s<span class="w"> </span>read-only<span class="w"> </span>review<span class="w"> </span>--base<span class="w"> </span>main<span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$tmp</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">rc</span><span class="o">=</span><span class="nv">$?</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$rc</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># A failed review is no sample: no file, so the next run reviews again (PR #357 thread 4270918132).</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"local-review: codex exited </span><span class="nv">$rc</span><span class="s2">; no review file written (transcript </span><span class="nv">$tmp</span><span class="s2">)"</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">4</span>
+<span class="k">fi</span>
+<span class="nv">final</span><span class="o">=</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">'/^codex$/{f=1; buf=""; next} f{buf=buf $0 "\n"} END{printf "%s", buf}'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$tmp</span><span class="s2">"</span><span class="k">)</span>
+<span class="c1"># Stripped as a literal, so no character of the worktree path acts as sed syntax (the audit of b6ce4ff); the pattern</span>
+<span class="c1"># is a quoted variable, which bash 3.2 also reads literally.</span>
+<span class="nv">prefix</span><span class="o">=</span><span class="s2">"</span><span class="nv">$W</span><span class="s2">/"</span>
+<span class="nv">final</span><span class="o">=</span><span class="si">${</span><span class="nv">final</span><span class="p">//</span><span class="s2">"</span><span class="nv">$prefix</span><span class="s2">"</span><span class="p">/</span><span class="si">}</span>
 <span class="nv">findings</span><span class="o">=</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$final</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>/usr/bin/grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^- \[P[0-3]\]'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span>
 <span class="nv">n</span><span class="o">=</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$findings</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>/usr/bin/grep<span class="w"> </span>-c<span class="w"> </span>.<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span>
 <span class="o">{</span>

@@ -4185,16 +4185,23 @@
 <span class="c1">#   other appends the row `local:&lt;sha7&gt;:&lt;n&gt;&lt;TAB&gt;advisory-p2` under the heading `## Owned by &lt;owner&gt;` of</span>
 <span class="c1">#   `.orchestration/acceptance/&lt;task&gt;.md` (created when missing) and a `local-finding: &lt;sha7&gt;:&lt;n&gt;</span>
 <span class="c1">#   not-applicable:advisory P2 owned by &lt;owner&gt; (…); evidence=…` line, each only when the record lacks it.</span>
-<span class="c1"># @arg $1 string Task id.</span>
+<span class="c1"># @arg $1 string Task id, letters, digits, `.`, `_` and `-`.</span>
 <span class="c1"># @arg $2 string The reviewed head, 40 hex characters.</span>
-<span class="c1"># @arg $3 string The task id that owns the advisory findings.</span>
+<span class="c1"># @arg $3 string The task id that owns the advisory findings, in the task id's form.</span>
 <span class="c1"># @exitcode 0 No P0/P1 finding.</span>
-<span class="c1"># @exitcode 2 No local review file.</span>
+<span class="c1"># @exitcode 2 No local review file, or a malformed task id, head or owner task id.</span>
 <span class="c1"># @exitcode 3 A P0/P1 finding.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   scripts/orchestrator/local-advisory.sh dotfiles-T128-x-a01 "$head" dotfiles-T128-x-followup-a01</span>
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
 <span class="nv">task</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span><span class="nv">head</span><span class="o">=</span><span class="nv">$2</span><span class="w"> </span><span class="nv">owner</span><span class="o">=</span><span class="nv">$3</span>
+<span class="c1"># Both name the files read and appended, so a / in either would reach outside .orchestration (the audit of b6ce4ff).</span>
+<span class="c1"># The owner is written into the record verbatim, so it takes the task id's form too.</span>
+<span class="nv">id</span><span class="o">=</span><span class="s1">'^[A-Za-z0-9][A-Za-z0-9._-]*$'</span>
+<span class="o">[[</span><span class="w"> </span><span class="nv">$task</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="nv">$id</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">$head</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">40</span><span class="o">}</span>$<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">$owner</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="nv">$id</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"usage: local-advisory.sh &lt;task&gt; &lt;40-hex head&gt; &lt;owner task&gt;"</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
 <span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="k">)</span><span class="s2">"</span>
 <span class="nv">h7</span><span class="o">=</span><span class="si">${</span><span class="nv">head</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="nv">7</span><span class="si">}</span>
 <span class="nv">LR</span><span class="o">=</span><span class="s2">".orchestration/validation/</span><span class="nv">$task</span><span class="s2">-local-review-</span><span class="nv">$h7</span><span class="s2">.md"</span>
@@ -4208,7 +4215,8 @@
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"local review of </span><span class="nv">$h7</span><span class="s2">: no findings"</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="o">}</span>
-/usr/bin/grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">"^## Owned by </span><span class="nv">$owner</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'\n## Owned by %s (advisory P2 of the final head; plan 020 step 1.2; rows id&lt;TAB&gt;class)\n\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$owner</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span>
+<span class="c1"># A literal heading match, ended by a space or the line's end: a . in the owner is no wildcard, a longer id no match.</span>
+awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">h</span><span class="o">=</span><span class="s2">"## Owned by </span><span class="nv">$owner</span><span class="s2">"</span><span class="w"> </span><span class="s1">'substr($0, 1, length(h)) == h &amp;&amp; substr($0, length(h) + 1, 1) ~ /^ ?$/ { f = 1 } END { exit !f }'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'\n## Owned by %s (advisory P2 of the final head; plan 020 step 1.2; rows id&lt;TAB&gt;class)\n\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$owner</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span>
 <span class="nv">i</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">stop</span><span class="o">=</span><span class="m">0</span>
 <span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>line<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="nv">i</span><span class="o">=</span><span class="k">$((</span><span class="nv">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>

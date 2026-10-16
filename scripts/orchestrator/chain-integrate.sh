@@ -67,9 +67,8 @@ for found in "${gh}" "${git}" "${uv}" "${shasum}" "${date}"; do
     [[ ${found} == /* && ${found} != */shims/* ]] || refuse 10 "no binary outside a shims directory: ${found:-none}"
 done
 [ "$("${git}" -C "${main}" symbolic-ref -q --short HEAD || true)" = main ] || refuse 10 "main checkout is not on main"
-pre "${git}" -C "${main}" fetch -q origin main
-pre "${git}" -C "${main}" rev-parse HEAD origin/main
-[ "${out%%$'\n'*}" = "${out##*$'\n'}" ] || refuse 10 "main checkout is not origin/main: run scripts/orchestrator/ff-main.sh"
+fresh() { pre "${git}" -C "${main}" fetch -q origin main && pre "${git}" -C "${main}" rev-parse HEAD origin/main && { [ "${out%%$'\n'*}" = "${out##*$'\n'}" ] || refuse 10 "main checkout is not origin/main: run scripts/orchestrator/ff-main.sh"; }; }
+fresh
 # They run with the orchestrator's credentials, so each must be HEAD's own copy (PR #372 thread 4291474880).
 for s in scripts/orchestrator/{sandbox-scan.sh,local-review.sh,local-advisory.sh,fill_sweep.py,acceptance-front-matter.py,orch-audit.sh} scripts/pr-feedback.py; do
     "${git}" -C "${main}" ls-files --error-unmatch -- "${s}" > /dev/null 2>&1 || refuse 10 "${s} is not tracked in the main checkout"
@@ -129,6 +128,7 @@ for attempt in 1 2 3; do
         (($("${date}" +%s) - t0 < ${CHAIN_POLL_MAX:-120})) || refuse 10 "update-branch head not visible"
         sleep "${CHAIN_POLL_SECONDS:-5}"
     done
+    fresh  # a moved base may have left the main checkout's main behind, which local-review.sh diffs against
     log='' # the next head's log takes every line; this one ends here
 done
 # C-29: the scan reports and exits 0, so the chain is the stop its reader used to be.
@@ -175,5 +175,6 @@ printf '%s\n' "${out}" > "${tsv}"
 step record 0 "${uv}" run --no-project python -I "${main}/scripts/orchestrator/acceptance-front-matter.py" "${task}" "${sweep}" "${review}" --ledger "${tsv}"
 rm -f -- "${tsv}"
 step audit 0 "${main}/scripts/orchestrator/orch-audit.sh" "${task}" "${review}" "${pr}"
-say "chain-integrate: ${task} ${head} ${out##*$'\n'}"
-echo "chain-integrate: ${task} ${head} ${out##*$'\n'}"
+verdict="chain-integrate: ${task} ${head} ${out##*$'\n'}"
+step audit 0 "${git}" -C "${review}" checkout -q --detach "${head}" # orch-audit.sh leaves it at origin/main; the gate reads it
+say "${verdict}" && echo "${verdict}"

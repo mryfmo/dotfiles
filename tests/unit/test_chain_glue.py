@@ -24,6 +24,7 @@ STUB = (
     "#!/usr/bin/env bash\n"
     '{{ printf "argv:"; printf " %s" "$@"; printf "\\ncwd: %s\\npath: %s\\nreview: %s\\n" "$(pwd -P)" "$PATH" "${{ORCH_REVIEW_WORKTREE:-}}"\n'
     '  for a; do case $a in *.tsv | *-pr-comments.json) cat -- "$a" ;; esac; done; }} >> "$CALLS/{name}.log"\n'
+    '[ ! -x "$CALLS/{name}-hook" ] || "$CALLS/{name}-hook"\n'
     'cat "$CALLS/{name}.out" 2> /dev/null || true\n'
     'exit "$(cat "$CALLS/{name}.status" 2> /dev/null || echo 0)"\n'
 )
@@ -40,7 +41,8 @@ case "$1 $2" in
     git -C "$SEED" checkout -q --detach pr/7
     git -C "$SEED" -c commit.gpgsign=false merge -q --no-edit origin/main
     git -C "$SEED" push -q origin HEAD:refs/pull/7/head
-    git -C "$SEED" rev-parse HEAD > "$CALLS/head" ;;
+    git -C "$SEED" rev-parse HEAD > "$CALLS/head"
+    [ ! -x "$CALLS/update-hook" ] || "$CALLS/update-hook" ;;
 "api user") cat "$CALLS/login" ;;
 "api "*)
     case $2 in *reviews) f=$CALLS/reviews.json ;; *) f=$CALLS/comments.json ;; esac
@@ -303,6 +305,7 @@ class ChainIntegrateTest(unittest.TestCase):
 rm -f "$CALLS/checks-hook"
 cd "{self.seed}" && echo d > d.txt && git add d.txt && git -c commit.gpgsign=false commit -q -m d
 git -C "{self.seed}" push -q origin HEAD:main
+git -C "{self.main}" pull -q --ff-only
 """
         self.executable(self.calls / "checks-hook", hook)
         out = self.chain().stdout
@@ -318,6 +321,40 @@ git -C "{self.seed}" push -q origin HEAD:main
         self.assertEqual(2, self.log(merged).count(" checks rc=0: "))
         self.assertEqual([f"{TASK} {merged} 7"], self.calls_of("local-review"))
         self.git("cat-file", "-e", f"{self.git('rev-parse', 'origin/main', cwd=self.seed)}^{{commit}}", cwd=self.review)
+
+    def test_integrate_refuses_a_stale_main_checkout_after_the_restart(self):
+        # Revise round 2 (the local review of 2fe135c5, P2): origin/main moves again while the PR is updated, so
+        # after the restart the main checkout's main, which local-review.sh diffs against, is behind: exit 10.
+        self.commit(self.seed, "c.txt")
+        self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
+        self.git("pull", "-q", "--ff-only")
+        hook = f"""#!/bin/bash
+rm -f "$CALLS/update-hook"
+git -C "{self.seed}" checkout -q main && cd "{self.seed}" && echo e > e.txt && git add e.txt
+git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.seed}" push -q origin HEAD:main
+"""
+        self.executable(self.calls / "update-hook", hook)
+        result = self.chain(code=10)
+        self.assertIn("main checkout is not origin/main: run scripts/orchestrator/ff-main.sh", result.stderr)
+        self.assertEqual(1, self.calls_of("gh").count("pr update-branch 7"))
+        for name in ("sandbox-scan", "local-review", "orch-audit"):
+            self.assertEqual([], self.calls_of(name))
+
+    def test_integrate_restores_the_review_worktree_after_the_audit(self):
+        # Revise round 2 (the local review of 2fe135c5, P1): orch-audit.sh leaves the shared review worktree at
+        # origin/main; the chain puts it back at the audited head, which the gate reads next.
+        hook = '#!/bin/bash\ngit -C "$ORCH_REVIEW_WORKTREE" checkout -q --detach origin/main\n'
+        self.executable(self.calls / "orch-audit-hook", hook)
+        out = self.chain().stdout
+        self.assertEqual(f"chain-integrate: {TASK} {self.head} Verdict: correct", out.splitlines()[-1])
+        self.assertEqual(self.head, self.git("rev-parse", "HEAD", cwd=self.review))
+        last = [line for line in self.log().splitlines() if " rc=" in line][-1]
+        self.assertTrue(
+            last.endswith(
+                f" audit rc=0: git -C .claude/worktrees/orchestrator-review checkout -q --detach {self.head}"
+            ),
+            last,
+        )
 
     def test_integrate_refuses_an_extra_tsv_outside_the_main_checkout(self):
         # PR #372 thread 4291474891: the log names repository paths only, so an extra TSV elsewhere is refused.

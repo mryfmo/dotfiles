@@ -3336,6 +3336,44 @@ esac
             [call for call in calls if call.startswith(("delivery", "leave", "despawn"))],
         )
 
+    def test_remove_worker_stale_prepares_the_archive_before_cleanup_and_refuses_without_identity_rows(self) -> None:
+        # The audit of d3bc745 (rows audit:d3bc745:1, audit:d3bc745:2, local:d3bc745:1): an unusable archive or no
+        # identity row refuses before any cleanup; the record and the standalone workspace stay.
+        worktree = self.seat_remove_fixture()
+        run = self.home_dir / ".agents/skills/agmsg/run"
+        record = run / "spawn.dotfiles__claude-standard-dot-a007"
+        self.write_pane_state_fakes(record, "gone")
+        kept, listed = record.read_text(), self.workspace_list_path.read_text()
+        cleanup = ("delivery", "leave", "despawn", "workspace close")
+        unusable = f"herdr-agents: {run}/stale is not a directory, or {run} is not writable; nothing retired"
+
+        def refused(code: int, message: str) -> None:
+            self.calls_path.write_text("")
+            result = self.run_helper("--remove-worker", ".claude/worktrees/b1", "--stale")
+            self.assertEqual(result.returncode, code, result.stdout + result.stderr)
+            self.assertIn(message, result.stderr)
+            self.assertEqual([], [c for c in self.calls_path.read_text().splitlines() if c.startswith(cleanup)])
+            self.assertEqual(kept, record.read_text())
+            self.assertEqual(listed, self.workspace_list_path.read_text())
+            self.assertNotIn("retired (stale)", result.stdout)
+
+        with self.subTest("run/stale is a regular file"):
+            (run / "stale").write_text("not a directory\n")
+            refused(1, unusable)
+            (run / "stale").unlink()
+        with self.subTest("no identity row for the worktree"):
+            scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+            (scripts / "at-worktree.txt").write_text("")
+            refused(2, f"herdr-agents: no seated identity at {worktree}; nothing retired")
+            (scripts / "at-worktree.txt").write_text("dotfiles\tclaude-standard-dot-a007")
+        with self.subTest("the run directory is not writable"):
+            run.chmod(0o500)
+            try:  # restored here: tearDown's rmtree runs before addCleanup callbacks
+                refused(1, unusable)
+                self.assertFalse((run / "stale").exists())
+            finally:
+                run.chmod(0o700)
+
     def test_remove_worker_closes_only_its_tab_in_the_pair_workspace(self) -> None:
         self.write_worktree_seat(
             main_identities="dotfiles\tclaude-remediation-dot",

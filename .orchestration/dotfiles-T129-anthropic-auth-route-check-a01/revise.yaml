@@ -1,12 +1,17 @@
 task_id: dotfiles-T129-anthropic-auth-route-check-a01
-round: 2
-previous_head: 6a00d518eec2e71d5c77313da26da6cd52d783bb
-checks:
-  - tests/unit/test_validate_agent_assets.py::test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty
-  - tests/unit/test_validate_agent_assets.py::test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty
-operator_decision: D-389-replan
-reason: the Bot's P1 4302531070 on 6a00d518 survived the worker-side fix round (bot_rounds=2); the operator's directive (21:32 JST, item 2) re-plans R2 as a whole-value allowlist (one $NAME or ${NAME} reference, one {{ }} template or empty, each optionally quoted, up to the end of the line or a comment after whitespace), which also covers the P2 4302488376 (a comment after an empty value); fix round 2 of INV-6
+round: 3
+previous_head: a13645d8e13f0efad9d586470f99edd817892109
+check: tests/unit/test_validate_agent_assets.py::test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment
+operator_decision: D-389-round3
+reason: the Bot's review 5557820069 of a13645d8 raised P1 4302702584 (a JSON, YAML or TOML key in quotes is not reached by R2, the form amendment 1 had scoped out) and P2 4302702588 (Bash's += is not an assignment to R2); the operator's directive (21:32 JST, item 2) authorizes a third round, one grammar change on the key side of R2 (optional matching quotes around the name and an optional + before the =); no fourth round
 earlier:
+  - round: 2
+    previous_head: 6a00d518eec2e71d5c77313da26da6cd52d783bb
+    checks:
+      - tests/unit/test_validate_agent_assets.py::test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty
+      - tests/unit/test_validate_agent_assets.py::test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty
+    operator_decision: D-389-replan
+    fixed: 4880c1ea15402f916fd35efe31e306e605296478
   - round: 1
     kind: worker-side fix round (Worker Playbook step 15), no ACCEPTANCE
     previous_head: 53d9b608416aff2e99b2326fa4fa44f7274923ec

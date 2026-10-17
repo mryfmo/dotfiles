@@ -1587,6 +1587,30 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.assertTrue(refused)
         self.assertIn(f"ERROR: {home}:2: R2:", stderr)
 
+    def test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment(self) -> None:
+        # D-389-round3: a JSON, YAML or TOML key quoted with matching quotes (the Bot's P1 4302702584) and a Bash
+        # `+=` (the Bot's P2 4302702588) are assignments too, and their value is read by the same whole-value grammar.
+        key = "ANTHROPIC_API_" + "KEY"
+        (home, _, _), check = self.anthropic_route_fixture()
+        for line in (
+            f'"{key}": "literal-value"',
+            f'"{key}": literal-value',
+            f"'{key}' = 'literal-value'",
+            f"{key}+=literal-value",
+        ):
+            with self.subTest(line=line):
+                refused, stderr = check(home, line)
+                self.assertTrue(refused)
+                self.assertIn(f"ERROR: {home}:2: R2:", stderr)
+        for line in (
+            f'"{key}": "${{{key}}}"',
+            f'"{key}": "{{{{ .anthropic }}}}"',
+            f"'{key}' = '${{{key}}}'",
+            f"{key}+=${key}",
+        ):
+            with self.subTest(line=line):
+                self.assertEqual((False, ""), check(home, line))
+
     def write_manifest(self, hook_command: str) -> None:
         path = self.temp_dir / "home/dot_agents/agent-config.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)

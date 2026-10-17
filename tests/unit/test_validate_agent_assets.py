@@ -1508,6 +1508,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             (home, f'{key}="literal-value"', "R2"),
             (home, f"{key}: literal", "R2"),
             (install, f"{key}=literal", "R2"),
+            # Only $NAME and ${NAME} are references: Bash reads $'...' and $"..." as literal data (the Bot's P1).
+            (home, f"{key}=$'literal-value'", "R2"),
+            (home, f'{key}=$"literal-value"', "R2"),
+            (home, f"{key}=$(cat key-file)", "R2"),
         ):
             with self.subTest(rel=rel, line=line):
                 refused, stderr = check(rel, line)

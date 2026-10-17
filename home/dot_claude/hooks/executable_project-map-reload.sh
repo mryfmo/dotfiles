@@ -27,7 +27,8 @@ selection=$(jq -r --arg file_path "$file_path" --arg cwd "$PWD" '
      | .tabs[]?
      | select(.url | strings | startswith("file://"))
      | select((.url | ltrimstr("file://")
-               | gsub("(?<char>[^A-Za-z0-9/%._~?#-])"; .char | @uri)) == $event_path)
+               | gsub("(?<char>[^A-Za-z0-9/%._~?#-])"; .char | @uri)
+               | gsub("%7[eE]"; "~")) == $event_path)
      | select(.targetId | strings | test("^[A-Fa-f0-9]{32}\\z"))
      | [$port, .targetId]] | .[0] // empty | @tsv
 ' <<< "$listing" 2>/dev/null) || exit 0

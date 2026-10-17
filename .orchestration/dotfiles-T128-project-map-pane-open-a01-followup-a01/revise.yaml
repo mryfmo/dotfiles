@@ -1,0 +1,4 @@
+previous_head: 64df31ea7c7c52ca30e9f1e1b33246c3a44bb3a0
+round: 1
+check: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_project_map_reload_hook_matches_percent_encoded_tilde
+finding: 4300474045

@@ -1882,6 +1882,31 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
         self.assertEqual(agent, [])
 
+    def test_project_map_reload_hook_matches_percent_encoded_tilde(self) -> None:
+        for directory, url_directory in (
+            ("repo~name", "repo%7Ename"),
+            ("repo~name", "repo%7ename"),
+            ("repo~name", "repo~name"),
+            ("repo%7Ename", "repo%257Ename"),
+        ):
+            with self.subTest(directory=directory, url_directory=url_directory):
+                browser, agent = self._run_project_map_reload_listing(
+                    f"/{directory}/.project-map/index.html",
+                    {
+                        "browsers": [
+                            {
+                                "cdpPort": 9222,
+                                "tabs": [
+                                    {"url": f"file:///{url_directory}/.project-map/index.html", "targetId": "A" * 32}
+                                ],
+                            }
+                        ]
+                    },
+                )
+                self.assertEqual(browser, [["ls", "--all", "--json"]])
+                self.assertEqual(len(agent), 2)
+                self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+
     def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

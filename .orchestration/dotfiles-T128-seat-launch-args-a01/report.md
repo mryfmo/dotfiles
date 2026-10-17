@@ -1,6 +1,6 @@
 ---
 task_id: dotfiles-T128-seat-launch-args-a01
-round: 3
+round: 4
 status: ready_for_external_checks
 ---
 
@@ -35,3 +35,13 @@ Four new subcases (ps failure/empty, lsof failure/empty) all failed before this 
 Remaining limitation: a nonempty sandbox PID namespace that hides host workers cannot be distinguished from a genuinely absent seat by this probe. The revision follows the explicit failed-or-empty check and does not establish host process visibility. That limitation is sent to the orchestrator and carried in RESULT. The fixture checks do not read live process state. The actual post-push CI/Bot result and publishing SHA remain external observations in RESULT; these committed records bind to the local source hashes and prior feedback, without future claims.
 
 Independent second C50 review approved the narrowed change with high confidence and no new finding;8 extra stub cases passed, including valid-looking stdout from failed probes and existing unlaunched/matching behavior. The reviewer retains the nonempty namespace limitation. The complete transcript is in validation.md, with resolved JSON and addressed receipt committed.
+
+## Third authorized C50 revision: continue cwd selection
+
+ACCEPTANCE2026-10-17T04:25:34Z on previous_heada428eb5ff31dc8452e22fbea332efa2a5ee9a5e8 accepts the narrow fix for Bot P24301342120. Class process-visibility now has two occurrences (4301301556 and4301342120); a third stops the rounds pending re-plan. Per-pid lsof failure or empty cwd now saves the first diagnostic and continues scanning. A successfully inspected cwd match decides ok/differs. Without a match, any uninspectable candidate yields unknown-probe4 with that saved diagnostic; unlaunched3 is reserved for inspected nonmatches. This explicit amendment supersedes the previous unconditional per-pid lsof skip. Global failed/empty ps handling is unchanged.
+
+Three new subcases failed before the fix: lower-pid uninspectable decoy with a matching worker, with a mismatched worker, and every candidate uninspectable. They also assert both cwd lookups; the all-uninspectable case previously returned4 but failed because it stopped after the first lookup. Full requested suite passes12 tests16.254s, with27 seat subcases. ShellCheck, configured shfmt, Ruff format and source/test whitespace pass. Final source changed141<=200; test additions278<=1000, superseding prior checkpoint caps. The third finding/check/previous head are recorded under cwd_scan_revision in revise.yaml.
+
+Proposed dispositions:4301264676 fixed:bfae75c14f52ff1b8083a69179bd90e91aa99458;4301301556 fixed:a428eb5ff31dc8452e22fbea332efa2a5ee9a5e8 for the authorized failed/empty-probe check, with the cwd-candidate amendment in the current publishing commit;4301342120 fixed by this publishing commit (exact SHA in RESULT after creation). All three Bot review bodies have been read; none has a P0/P1. The worker replies to or resolves no thread. No real ps/lsof or host command runs. The previously documented nonempty hidden PID namespace limitation remains; this fix does not establish host visibility.
+
+Independent third C50 review approved with high confidence, no additional finding;8 extra stub cases cover first diagnostic retention, failure plus nonmatch, all inspected nonmatches, visible match despite a later lower-pid lookup failure, and minimum visible matching PID. Parent read the complete transcript and resolved JSON; the addressed receipt covers current source hashes.

@@ -158,6 +158,27 @@ class SeatArgsTest(unittest.TestCase):
         self.assertEqual({"-axo pid=,command="}, set((self.home / "ps-calls").read_text().splitlines()))
 
         original_ps, original_lsof = self.ps.read_text(), self.lsof.read_text()
+        for profile, all_unavailable, code, tail in [
+            ("standard", False, 0, "process=20 args=ok"),
+            ("review", False, 2, "process=20 args=differs expected=--profile standard found=--profile review"),
+            ("standard", True, 4, "args=unknown-probe"),
+        ]:
+            with self.subTest(decoy_cwd_unavailable=True, profile=profile, all_unavailable=all_unavailable):
+                lookup = "exit 1" if all_unavailable else '[[ $pid != 10 ]] || exit 1\ncat "$HOME/cwd-$pid"'
+                self.lsof.write_text(original_lsof.replace('cat "$HOME/cwd-$pid"', lookup))
+                (self.home / "lsof-calls").unlink()
+                self.profiles.write_text(profiles)
+                result = self.run_probe(
+                    codex, "codex", "t", project, f"10 codex --profile standard\n20 codex --profile {profile}\n"
+                )
+                self.assertEqual(code, result.returncode)
+                self.assertEqual(f"seat {codex} profile=standard kind=codex {tail}\n", result.stdout)
+                self.assertEqual("seat-args: lsof failed (exit 1)\n" if all_unavailable else "", result.stderr)
+                self.assertEqual(
+                    ["-a -p 10 -d cwd -Fn", "-a -p 20 -d cwd -Fn"],
+                    (self.home / "lsof-calls").read_text().splitlines(),
+                )
+
         for probe, code, kind, diagnostic in [
             (self.ps, 1, "claude-code", "ps failed (exit 1)"),
             (self.ps, 0, "claude-code", "ps listed no process"),

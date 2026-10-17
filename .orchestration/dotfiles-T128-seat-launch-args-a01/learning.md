@@ -7,3 +7,5 @@ No skill/rule/manifest promotion, model change, persistent memory entry or new d
 C50: validate an identity's embedded profile using the generator's existing profile grammar; underscores are legal. The one my_profile regression subcase catches rejecting a valid manifest-derived seat before exact-key lookup. No rule or skill promotion.
 
 Probe executability does not prove visibility: capture ps status and validate a nonempty process snapshot; failed/empty lsof cannot establish cwd. Do not turn unavailable visibility into evidence that a seat is absent. Nonempty namespace filtering requires a trusted host-visible source, beyond this narrow check. No rule/skill promotion.
+
+Per-candidate lookup failure does not establish global probe failure. Save a first diagnostic and finish selection: a successful cwd match decides; no match with unknown candidates stays unknown. The three decoy regressions distinguish correct status from scanning all relevant candidates.

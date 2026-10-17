@@ -70,7 +70,7 @@ has_pair() {
     return 1
 }
 
-selected_pid=""
+selected_pid="" cwd_diagnostic=""
 while read -r pid process_args; do
     [[ ${pid} =~ ^[0-9]+$ ]] || continue
     if [[ -n ${selected_pid} ]] && ((10#${pid} >= 10#${selected_pid})); then continue; fi
@@ -91,7 +91,10 @@ while read -r pid process_args; do
             { [[ ${program##*/} != node ]] || [[ ${words[1]:-} != */codex ]]; }; then continue; fi
         probe_status=0
         cwd="$("${lsof_probe}" -a -p "${pid}" -d cwd -Fn 2> /dev/null | sed -n 's/^n//p')" || probe_status=$?
-        if ((probe_status != 0)) || [[ -z ${cwd} ]]; then unknown_probe "lsof failed (exit ${probe_status})"; fi
+        if ((probe_status != 0)) || [[ -z ${cwd} ]]; then
+            [[ -n ${cwd_diagnostic} ]] || cwd_diagnostic="lsof failed (exit ${probe_status})"
+            continue
+        fi
         [[ ${cwd} == "${project}" ]] || continue
     fi
     selected_pid=${pid}
@@ -99,6 +102,7 @@ while read -r pid process_args; do
 done <<< "${processes}"
 
 if [[ -z ${selected_pid} ]]; then
+    [[ -z ${cwd_diagnostic} ]] || unknown_probe "${cwd_diagnostic}"
     printf '%s process=none args=unlaunched\n' "${label}"
     exit 3
 fi

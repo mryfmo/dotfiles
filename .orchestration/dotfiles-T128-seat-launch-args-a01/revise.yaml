@@ -13,3 +13,12 @@ probe_revision:
   finding_class: process-visibility
   check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
   scope: Probe failures and empty visibility report unknown-probe4 with one diagnostic; never false unlaunched.
+
+cwd_scan_revision:
+  round: 3
+  previous_head: a428eb5ff31dc8452e22fbea332efa2a5ee9a5e8
+  finding: 4301342120
+  finding_class: process-visibility
+  class_count: 2
+  check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+  scope: Save the first failed cwd diagnostic and continue; a visible cwd match decides, otherwise failures skip4 and only fully inspected absence is unlaunched3.

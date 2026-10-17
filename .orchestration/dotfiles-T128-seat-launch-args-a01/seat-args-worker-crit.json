@@ -30,5 +30,18 @@
     "scope": "review",
     "body": "Independent read-only Codex review againstbfae75c14f52ff1b8083a69179bd90e91aa99458 approved the authorized probe failure/empty-output delta, high confidence, no additional finding. Source hashes match parent-tested bytes. Transcript SHA25654768faec91b016680275bc472010ca569c69256bb7f104c9a0a6b8346f1c23e is pasted verbatim in validation.md. Explicit residual: nonempty sandbox PID namespace may hide host workers. Verdict: correct.",
     "resolved": true
+  },
+  {
+    "id": "bot-4301342120",
+    "scope": "file",
+    "path": "scripts/orchestrator/seat-args.sh",
+    "body": "P2 process-visibility occurrence2: uninspectable decoy cwd immediately skipped before a later visible worker. The amended C50 now saves the first cwd failure diagnostic, continues selection, compares a successfully inspected matching worker, and returns unknown4 only without any match plus a failed lookup. Three regression subcases failed before fix; full12 passes16.254s,27 seat subcases. Independent review approved with8 additional stub cases, no new finding.",
+    "resolved": true
+  },
+  {
+    "id": "seat-args-cwd-scan-independent-approval",
+    "scope": "review",
+    "body": "Independent read-only Codex third C50 review againsta428eb5ff31dc8452e22fbea332efa2a5ee9a5e8 approved the amended cwd scan semantics, high confidence, no additional finding. First diagnostic retention, visible matching/differing worker precedence, inspected absence, and minimum visible matching PID all verified. Transcript SHA256621973453945c203a4c3d4c44d37eb87844cac94d8f637104d7e3c7510241035 pasted in validation.md. Nonempty hidden namespace limitation remains. Verdict: correct.",
+    "resolved": true
   }
 ]

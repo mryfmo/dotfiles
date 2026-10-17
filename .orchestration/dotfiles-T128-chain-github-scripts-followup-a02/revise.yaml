@@ -1,0 +1,8 @@
+previous_head: a250b1cb2035c879893865cf7b8ca4f7904ca46a
+round: 1
+check: tests/unit/test_chain_github_scripts.py::test_resolve_threads_skips_comment_rows_during_preflight
+operator_decision: D-S2-375-A
+audit_followup:
+  previous_head: 59eca2afbd834132ba187c98e88afbe57be5b5dd
+  check: tests/unit/test_chain_github_scripts.py::test_resolve_threads_refuses_backticks_when_tsv_id_is_empty
+  operator_decision: D-S2-375-2-A

@@ -126,6 +126,17 @@ class ChainGithubScriptsTest(unittest.TestCase):
                 )
                 self.assertEqual([], calls)
 
+    def test_resolve_threads_refuses_backticks_when_tsv_id_is_empty(self):
+        self.canned = {
+            "graphql query": "101 T_one\n",
+            "graphql mutation": "true\n",
+            f"{API}/comments/101/replies .id": "9001\n",
+        }
+        table = self.t / "extra.tsv"
+        table.write_text("\tnot-applicable: evidence=`bad`\n101\tfixed:abc1234\n")
+        _, calls = self.run_script("resolve-threads.sh", 9, table, code=2)
+        self.assertEqual([], calls)
+
     def test_resolve_threads_skips_comment_rows_during_preflight(self):
         self.canned = {
             "graphql query": "101 T_one\n",

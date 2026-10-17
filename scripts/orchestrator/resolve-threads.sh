@@ -30,13 +30,13 @@ usage() {
 (($# >= 2 && $# <= 4)) || usage
 pr=$1 tsv=$2 dry=${3:-} sweep=${4:-}
 [[ ${pr} =~ ^[0-9]+$ && -f ${tsv} ]] || usage
-bad=$(awk -F'\t' '!/^#/ && index($2, "`") {print $1; exit}' "${tsv}")
+bad=$(awk -F'\t' '!/^#/ && index($2, "`") {print; exit}' "${tsv}")
 if [[ -z ${bad} && -s ${sweep} ]]; then
     bad=$(jq -r 'first(.items[] | select((.url // "") | test("_r[0-9]+$")) |
         select((.disposition // "") | contains("`")) | .url | capture("_r(?<id>[0-9]+)$").id) // ""' "${sweep}")
 fi
 if [[ -n ${bad} ]]; then
-    echo "resolve-threads: disposition for ${bad} holds a backtick; the reply cannot carry it losslessly" >&2
+    echo "resolve-threads: disposition for ${bad%%$'\t'*} holds a backtick; the reply cannot carry it losslessly" >&2
     exit 2
 fi
 query="query { repository(owner:\"mryfmo\", name:\"dotfiles\") { pullRequest(number:${pr}) { reviewThreads(first:100) \

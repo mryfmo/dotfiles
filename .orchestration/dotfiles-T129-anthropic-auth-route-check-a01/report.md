@@ -14,12 +14,12 @@ task_sha256: 6722f83d7327378040bd35b0a7c8d72dbfd7e1d5c93c99a437a1473fab0aa07f
 
 ## What changed in `scripts/validate-agent-assets.py`
 
-Validation §4 holds the diff of the first head 53d9b608 and §9.2 the fix round's; together 33 added lines, nothing deleted.
+Validation §4 holds the diff of the first head 53d9b608, §9.2 the fix round's and §10.2 revise round 2's; together 34 added lines, nothing deleted.
 
 - **`validate_anthropic_auth_route()`**, called from `main` right after `validate_no_obvious_secrets()`. It reads the files `git ls-files -z -- home install` lists, as UTF-8 with undecodable bytes replaced, line by line. Each refusal is `fail(...)` with `<file>:<line>: R1:` or `<file>:<line>: R2:`.
   - **R1:** the line contains `ANTHROPIC_OAUTH_TOKEN`, anywhere on it.
-  - **R2:** `ANTHROPIC_API_KEY_LITERAL`, the line assigns `ANTHROPIC_API_KEY` (a `=` or `:` after the name) a value that is not empty (`=`, `=""`, `=''`), not a `$NAME` or `${NAME}` reference (quoted or not; `$'…'`, `$"…"` and `$(…)` are refused since the fix round, the Bot's P1) and not a template expression (`{{ … }}`). The whitespace after the `=`/`:` and the optional quote sit inside the negative lookahead, so neither can match empty in front of a reference. That backtracking was the fault of the first regex (validation §3: on 12 lines in scope the first regex was wrong on four, the branch regex on none).
-- **Security properties** (each with a mutant that fails the test, validation §5):
+  - **R2** (since revise round 2, the operator's re-plan D-389-replan): `ANTHROPIC_API_KEY_LITERAL` refuses an assignment of `ANTHROPIC_API_KEY` (a `=` or `:` after the name) unless its whole value, up to the end of the line or a `#` comment after whitespace, is one of these, each optionally quoted with a matching quote: one `$NAME`/`${NAME}` reference, one `{{ … }}` template whose body holds no `}}`, or empty (`=`, `=""`, `=''`). Anything else is a literal Bash could assign: `$'…'`, `$"…"`, `$(…)`, `${NAME:-…}`, a reference with more after it, or a `#` glued to the value. The grammar sits inside one negative lookahead after the `=`/`:`, so no optional piece can match empty in front of a value and let it through. Validation §10.3's table has the branch regex right on all 20 lines in scope; the first regex of the task is wrong on 12 of them.
+- **Security properties** (each with a mutant that fails a test, validation §5 and §10.3):
   - The message names the file, the line number and the rule, never the line, so a real key never reaches a CI log.
   - A failed `git ls-files` fails the run instead of passing on an empty list.
   - A tracked symlink is not followed, because on a PR checkout it could point at a device and hang the run. None is tracked under `home/` or `install/` today (validation §2).
@@ -27,13 +27,15 @@ Validation §4 holds the diff of the first head 53d9b608 and §9.2 the fix round
 
 ## Test
 
-`test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment`, beside the secret-scan tests. The fixture tree is the module's temporary `ROOT`, made a git repository with three tracked files, and the function is called directly, as those tests do. The names are split (`"ANTHROPIC_API_" + "KEY"`) so the module passes the committed-secret scan.
+`test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment`, beside the secret-scan tests, and since revise round 2 its two checks, `test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty` and `test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty`. The three share `anthropic_route_fixture()`: the module's temporary `ROOT`, made a git repository with three tracked files, and the function called directly, as the secret-scan tests do. The names are split (`"ANTHROPIC_API_" + "KEY"`) so the module passes the committed-secret scan.
 
 - **Refused**, with `ERROR: <file>:2: <rule>:` on stderr and the line absent from it:
   - R1: `export ANTHROPIC_OAUTH_TOKEN=x` under `home/`, and the same line under `install/`.
   - R2: the quoted literal `ANTHROPIC_<redacted:secret-pattern>` (the case item 2 shows redacted), `ANTHROPIC_API_KEY: literal`, and `ANTHROPIC_API_KEY=literal` under `install/`; since the fix round also `ANTHROPIC_API_KEY=$'literal-value'`, `ANTHROPIC_API_KEY=$"literal-value"` and `ANTHROPIC_API_KEY=$(cat key-file)`.
 - **Passed:** `ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY`, `apiKey: ANTHROPIC_API_KEY`, `env: ANTHROPIC_API_KEY`, `ANTHROPIC_API_KEY=`, `ANTHROPIC_API_KEY=""`, the quoted reference `ANTHROPIC_<redacted:secret-pattern>` (the pass case item 2 shows redacted), `ANTHROPIC_API_KEY= $ANTHROPIC_API_KEY`, `ANTHROPIC_API_KEY: {{ .anthropic }}`, and the OAuth line under `scripts/`.
 - **Also covered:** a tracked symlink under `home/` that points at an OAuth line passes, and a mocked failed `git ls-files` refuses.
+- **Round 2, the whole value:** refused are `${DEPLOYED_KEY:-literal-value}`, `${DEPLOYED_KEY}literal-value` and `$DEPLOYED_KEY$'literal-value'` (the three of P1 4302531070), `$DEPLOYED_KEY#literal-value`, `{{ .anthropic }}literal-value{{ .x }}` and a mismatched `"$DEPLOYED_KEY'`. Passed are `$DEPLOYED_KEY`, `${DEPLOYED_KEY}`, `"$DEPLOYED_KEY"`, `'${DEPLOYED_KEY}'`, `: "{{ .anthropic }}"` and `$DEPLOYED_KEY  # from the environment`.
+- **Round 2, a comment after an empty value:** `= # supplied externally`, `: # populated at runtime` and `"" # empty on purpose` pass (P2 4302488376); `=#literal-value` is refused.
 - Item 2's two redacted lines are inferred from `SECRET_PATTERN`, which masks any quoted `api_key` assignment: a quoted literal (refused) and a quoted reference (passed).
 
 Results (validation §5, §6):
@@ -41,8 +43,8 @@ Results (validation §5, §6):
 - On origin/main's validator every subtest errors, because the function does not exist.
 - With the first regex the four lines of §3 fail.
 - Five mutants (R1 removed, R2 removed, symlinks followed, a failed listing passes, the message quotes the line) each fail at least one subtest (§5). After the fix round the same five and `any $ exempts`, the regex before the round, each fail too (§9.3).
-- The module runs 98 tests, OK. `ruff format --check` passes. `ruff check` reports the same eight findings as on origin/main's copies of the two files, all in untouched lines; the new code adds none.
-- `uv run --offline --with pyyaml scripts/validate-agent-assets.py` exits 0 on the branch with the rule live (validation §7, and again after the fix round, §9.4). Premise 1 holds: no applied file names either variable.
+- The module runs 100 tests, OK (after revise round 2, §10.4; 98 before it). `ruff format --check` passes. `ruff check` reports the same eight findings as on origin/main's copies of the two files, all in untouched lines; the new code adds none.
+- `uv run --offline --with pyyaml scripts/validate-agent-assets.py` exits 0 on the branch with the rule live (validation §7, again after the fix round, §9.4, and after revise round 2, §10.4). Premise 1 holds: no applied file names either variable.
 
 ## Out of scope, as left by amendment 1
 
@@ -54,13 +56,20 @@ Results (validation §5, §6):
 Review 5557555178 (2026-10-17T11:24:20Z) left two inline threads on `scripts/validate-agent-assets.py:1577`:
 
 - **4302488371, P1** (the dollar-reference exemption): `fixed:6e4669b03d455e5325d580f98a025640b766dc99`. The exemption is now `\$\{?[A-Za-z_]`, the `$NAME` and `${NAME}` forms amendment 1 names, so `$'…'` and `$"…"` (literal data in Bash) and `$(…)` are refused. The three refusal cases failed on 53d9b608 (validation §9.1) and pass after the fix (§9.3). This is the one worker-side fix round; `@codex review` follows the push.
-- **4302488376, P2** (a comment after an empty value): the worker proposes a C-50 revise round, since it is small and within `allowed_files`. The empty-value branch would read a `#` comment after whitespace as empty (`(?:\s+#.*)?` before the end), while `ANTHROPIC_API_KEY=#x` stays refused, because in a shell word a `#` without whitespace before it is data. Proposed check: `tests/unit/test_validate_agent_assets.py::test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty`. Otherwise it is advisory, owned by `dotfiles-T129-anthropic-auth-route-check-followup-a01`.
+- **4302488376, P2** (a comment after an empty value): `fixed:4880c1ea15402f916fd35efe31e306e605296478` by the same grammar in revise round 2 (below). The worker had proposed it as a C-50 round.
+
+## The re-review of 6a00d518 and revise round 2
+
+Re-review 5557603153 (2026-10-17T11:41:18Z) left one inline thread on `scripts/validate-agent-assets.py:1579`:
+
+- **4302531070, P1** (the exemption checked only a reference prefix, so `${NAME:-literal}`, `${NAME}literal` and `$NAME$'literal'` passed). It survived the worker-side fix round (`bot_rounds=2`), so the PR stopped for the operator. The operator's directive (D-389-replan, ACCEPTANCE `revise` of 12:35:23Z) re-plans R2 as the whole-value allowlist above. `fixed:4880c1ea15402f916fd35efe31e306e605296478`. Both checks of the round failed on 6a00d518 (validation §10.1: six and three subtests) and pass at 4880c1ea (§10.3). `revise.yaml` records previous_head 6a00d518 and the two checks.
+- The class `dollar-reference-exemption` now has two rows (4302488371 and 4302531070). The re-plan replaced the prefix lookahead with a whole-value grammar instead of a third patch (C-59).
 
 ## Caps and evidence
 
-- Caps (`git diff --numstat origin/main...HEAD`; validation §8 for the first head, the round adds 3 and 4): 33 changed lines outside `tests/` and `.orchestration/` (<= 200); 63 added under `tests/` (<= 1000).
+- Caps (`git diff --numstat origin/main...HEAD`; validation §8 for the first head, §10.4 at 4880c1ea): 34 changed lines outside `tests/` and `.orchestration/` (<= 200); 108 added under `tests/` (<= 1000).
 - `task_copy=6722f83d7327378040bd35b0a7c8d72dbfd7e1d5c93c99a437a1473fab0aa07f`.
-- This report and the validation are in the PR's first commit (53d9b608), and, updated for the fix round, in the evidence commit after 6e4669b0. CI and the Bot's re-review of the final head come after the commit, so the RESULT names them.
+- This report and the validation are in the PR's first commit (53d9b608), updated for the fix round in 6a00d518 and for revise round 2 in the evidence commit after 4880c1ea. CI and the Bot's review of the final head come after the commit, so the RESULT names them.
 - The worker replies to and resolves no thread, and does not merge. No new durable decision was made, so no CompactionDB memory was added; the learning candidates are in learning.md, not promoted. AutoSkill was not used. The Understand-Anything graph was not touched.
 
 cost: n/a

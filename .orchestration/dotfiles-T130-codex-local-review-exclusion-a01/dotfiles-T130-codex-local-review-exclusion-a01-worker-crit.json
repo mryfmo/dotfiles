@@ -22,5 +22,29 @@
       "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
     },
     "stack_base": "85547ca5348d9e0a61c3ae9ae30d324db1897f0f"
+  },
+  {
+    "id": "T130-local-review-A3-index-flags-P1",
+    "body": "Independent initial A3 P1: git diff --quiet HEAD missed modified executable bytes flagged assume-unchanged or skip-worktree; isolated marker probe executed UNCOMMITTED. Both added regressions RED2 then GREEN after raw HEAD blob/disk cmp under pipefail, retaining required tracked/diff checks. Independent final frozen-source re-review confirms closed, including filter-independent comparison and no exec. Initial incorrect report and exact initial hashes retained; no approval reused from that snapshot.",
+    "scope": "file",
+    "path": "home/dot_local/bin/common/executable_codex-local-review",
+    "resolved": true
+  },
+  {
+    "id": "T130-local-review-A3-source-approval",
+    "body": "Independent read-only security re-review approves current exact seven source hashes and Amendment3 task. Full lowercase40hex, primary checkout, tracked/HEAD-unchanged script, raw blob identity despite index flags, quoted argv/root/exit propagation, bothOS exact exclusions/no new allow and connected modifier assertions assessed. Parent read complete initial/final reports and resolved JSON. This is source-phase approval only; post392merge rebase extension and final CI/Bot/audit/acceptance remain separate.",
+    "scope": "review",
+    "resolved": true,
+    "task_sha256": "aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a",
+    "source_sha256": {
+      "home/dot_agents/agent-config.yaml": "ecdb928492084c49b80317daa7c30a3c3de21867967a9bd42c21833516505327",
+      "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+      "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+      "tests/unit/test_generate_agent_configs.py": "9a961786c7a668e40652319cedd19027bfb0c4f591ef6d15bc7db1365f26a681",
+      "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+      "home/dot_local/bin/common/executable_codex-local-review": "b74153250b002e658538884a1cf3f93d74fadcb2ebf35d5caf4f48df773702be",
+      "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
+    },
+    "stack_base": "85547ca5348d9e0a61c3ae9ae30d324db1897f0f"
   }
 ]

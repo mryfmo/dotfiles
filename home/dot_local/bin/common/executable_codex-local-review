@@ -1,20 +1,34 @@
 #!/usr/bin/env bash
 # @file codex-local-review
-# @brief Run the current repository's local review after validating its task and head.
+# @brief Run the primary checkout's committed local review after validating its task and head.
+# @description Compare HEAD's blob directly because Git index flags can hide local changes.
 # @arg $1 string Existing task id containing letters, digits, dots, underscores and hyphens.
-# @arg $2 string Head containing 7 to 40 hexadecimal digits.
+# @arg $2 string Head containing exactly 40 lowercase hexadecimal digits.
 # @arg $3 string Additional review-script arguments, forwarded unchanged.
-# @exitcode 2 Malformed arguments or a missing task file.
+# @exitcode 2 Malformed arguments, a missing task, a non-primary checkout or an uncommitted review script.
 set -euo pipefail
 
-[[ ${1:-} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && ${2:-} =~ ^[[:xdigit:]]{7,40}$ ]] || {
-	printf 'usage: codex-local-review <task> <7-40 hex head> [args...]\n' >&2
+[[ ${1:-} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && ${2:-} =~ ^[0-9a-f]{40}$ ]] || {
+	printf 'usage: codex-local-review <task> <40 lowercase hex head> [args...]\n' >&2
 	exit 2
 }
-root=$(git rev-parse --show-toplevel)
+root=$(git rev-parse --show-toplevel) || {
+	printf 'codex-local-review: not a Git checkout\n' >&2
+	exit 2
+}
+cd -- "$root"
+[[ $(cd -- "$(git rev-parse --git-common-dir)" && pwd -P) == "$root/.git" ]] || {
+	printf 'codex-local-review: requires a primary checkout\n' >&2
+	exit 2
+}
+if ! git ls-files --error-unmatch -- scripts/orchestrator/local-review.sh >/dev/null 2>&1 ||
+	! git diff --quiet HEAD -- scripts/orchestrator/local-review.sh ||
+	! git cat-file blob HEAD:scripts/orchestrator/local-review.sh | cmp -s - scripts/orchestrator/local-review.sh; then
+	printf 'codex-local-review: local-review.sh must be tracked and unchanged against HEAD\n' >&2
+	exit 2
+fi
 [[ -f "$root/.orchestration/tasks/$1.md" ]] || {
 	printf 'codex-local-review: no task file for %s\n' "$1" >&2
 	exit 2
 }
-cd -- "$root"
 exec "$root/scripts/orchestrator/local-review.sh" "$@"

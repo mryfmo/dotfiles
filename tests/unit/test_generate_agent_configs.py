@@ -822,6 +822,27 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         script.parent.mkdir(parents=True)
         script.write_text('#!/usr/bin/env bash\nprintf \'%s\\0\' "$PWD" "$@" > "$RECORD_PATH"\nexit 23\n')
         script.chmod(0o755)
+        subprocess.run(
+            ["git", "add", "scripts/orchestrator/local-review.sh"], cwd=repo, check=True, capture_output=True
+        )
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "user.name=Wrapper Test",
+                "-c",
+                "user.email=wrapper@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "commit",
+                "--quiet",
+                "-m",
+                "Track the review stub",
+            ],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
         stub_bin = repo / "bin"
         stub_bin.mkdir()
         decoy = stub_bin / "local-review.sh"
@@ -831,7 +852,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         nested.mkdir()
         record = repo / "arguments"
         env = os.environ | {"PATH": str(stub_bin) + os.pathsep + os.environ["PATH"], "RECORD_PATH": str(record)}
-        for head in ("a" * 7, "a" * 40, "ABCDEF0" * 5):
+        for head in ("a" * 40, "0123456789abcdef" * 2 + "01234567"):
             with self.subTest(head=head):
                 args = [task, head, "392", "with spaces", "$(printf injected)", "semi;colon", "line\nbreak"]
                 result = subprocess.run([str(wrapper), *args], cwd=nested, env=env, capture_output=True, check=False)
@@ -848,14 +869,66 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             ["../outside", "a" * 40],
             ["--help", "a" * 40],
             [task, "a" * 6],
+            [task, "a" * 7],
+            [task, "a" * 39],
+            [task, "A" * 40],
             [task, "a" * 41],
             [task, "g" * 40],
             [task, "../badhead"],
         ):
             with self.subTest(args=args):
+                record.unlink(missing_ok=True)
                 result = subprocess.run([str(wrapper), *args], cwd=nested, env=env, capture_output=True, check=False)
                 self.assertEqual(2, result.returncode, result.stderr)
                 self.assertFalse(record.exists())
+        linked = self.temp_dir / "linked worktree"
+        subprocess.run(
+            ["git", "worktree", "add", "--quiet", "--detach", str(linked)],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        linked_task = linked / task_file.relative_to(repo)
+        linked_task.parent.mkdir(parents=True)
+        linked_task.touch()
+        for state in (
+            "linked worktree",
+            "untracked script",
+            "modified script",
+            "staged script",
+            "assume-unchanged script",
+            "skip-worktree script",
+        ):
+            with self.subTest(state=state):
+                record.unlink(missing_ok=True)
+                if state == "untracked script":
+                    subprocess.run(["git", "rm", "--cached", str(script)], cwd=repo, check=True, capture_output=True)
+                elif state == "modified script":
+                    subprocess.run(["git", "reset", "--quiet", "HEAD", "--", str(script)], cwd=repo, check=True)
+                    script.write_text(script.read_text() + "# changed\n")
+                elif state == "staged script":
+                    subprocess.run(["git", "add", str(script)], cwd=repo, check=True)
+                elif state in ("assume-unchanged script", "skip-worktree script"):
+                    subprocess.run(["git", "update-index", "--no-assume-unchanged", str(script)], cwd=repo, check=True)
+                    subprocess.run(
+                        ["git", "restore", "--source=HEAD", "--staged", "--worktree", str(script)], cwd=repo, check=True
+                    )
+                    subprocess.run(["git", "update-index", "--" + state.split()[0], str(script)], cwd=repo, check=True)
+                    script.write_text(script.read_text() + "# hidden change\n")
+                result = subprocess.run(
+                    [str(wrapper), task, "a" * 40],
+                    cwd=linked if state == "linked worktree" else nested,
+                    env=env,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(2, result.returncode, result.stderr)
+                self.assertIn(
+                    b"primary checkout" if state == "linked worktree" else b"tracked and unchanged", result.stderr
+                )
+                self.assertFalse(record.exists())
+        linked_task.unlink()
+        subprocess.run(["git", "worktree", "remove", str(linked)], cwd=repo, check=True, capture_output=True)
 
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()

@@ -47,7 +47,18 @@ Red: the two herdr tests fail on `origin/main`'s four files, the integration-sea
 - `1c29ec0d` shortens both headers so the code stays under the 260 cap (257).
 - **The re-review** (`@codex review` at 14:04:19Z): review `5558148144` on `3baa0003` (14:09:17Z) left P1 `4302959624` (`integrate-seat.sh:35`: a retry read the first run's `kind=integration` RESULT, which has no `threads=`, and refused) and P2 `4302959629` (`result-precheck.sh:87`: check (g) reads inline comments, not review-body findings). CI on `3baa0003` failed two pins outside `allowed_files` that item 3's texts move: `test_word_budgets` (the rule at 488 words against 450) and `test_regime_rule_sections_are_pinned_whole` (`worker-step-15`). My pre-dispatch grep for pinned sentences had excluded `tests/fixtures/`, so the pin went unseen until CI.
 - **Amendment 3** (D-F4-round2): both test files join `allowed_files`, the budget becomes 490, the fixture takes item 3's sentence, and the P1 is fixed as fix round 2 of INV-6, `cb09181f`: the RESULT read selects the newest RESULT carrying `threads=`, with a retry case in the chain test (red on `3baa0003`'s script, a mutant; validation §11). The P2 is advisory under `dotfiles-T129-integration-seat-result-gate-cap-followup-a01`. No further `@codex review`; the Bot wait of step 15 on the final head, CI on it and the precheck receipt are in the RESULT.
+- **The final head, `2d61e227`:** CI passed, 11 check runs with CodeRabbit and GitGuardian (13 rows); bot: none on 2d61e22 (the step-15 wait of 15 minutes from the push at 14:22:19Z, no further `@codex review` per amendment 3).
 - Thread tokens, the RESULT's form, which the precheck's (g) reads: threads=4302868172:P1:fixed:ff9bb7c1;4302868177:P1:fixed:ff9bb7c1;4302868180:P1:fixed:ff9bb7c1;4302959624:P1:fixed:cb09181f;4302959629:P2:not-applicable:advisory-P2-owned-by-dotfiles-T129-integration-seat-result-gate-cap-followup-a01
+
+## The first use of item 2, on this PR (validation §12)
+
+The precheck's first run on `2d61e227` found three defects in this PR's own scripts. The fix rounds of INV-6 are spent, so they are reported, not fixed:
+
+1. **(a) misreads an amended TASK line.** `grep -o -E 'task_sha256=[0-9a-f]{64}'` also matches inside `previous_task_sha256=`, so every amended task's (a) is `missing` (this one's included). The fix is one anchor, `(^| )task_sha256=`, and one test with an amended TASK line.
+2. **The team-wide history read does not finish.** `history.sh <team> "" 100000`, in check (a) and in `integrate-seat.sh`'s reader, is super-linear (200 rows 4.1 s, 2000 rows past 120 s) and waits on a terminal stdin. Fix: read with `< /dev/null`, and bound the read. The precheck can read the worker's own rows (`history.sh <team> <me> <n>`), where its TASK lines are. `integrate-seat.sh` needs the task's worker RESULT, which a bounded team read (the newest few hundred rows) or the orchestrator's rows hold. `bus-read.sh` reads the same way.
+3. **(i) keeps only codex's last three lines**, so its findings are lost; it should keep the whole final message (`codex exec -o`).
+
+The receipt was made with `AGMSG_SCRIPTS` pointing at a bounded wrapper (this seat's 300 rows), the scripts' own seam, declared here. Its (a) is `missing` for defect 1, so `verify` refuses it (§12). The task copy itself is the dispatched one: sha256 `626823fb…`, amendment 3.
 
 ## Readings, declared
 

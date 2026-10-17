@@ -851,3 +851,54 @@ $ git status --porcelain -- scripts tests home; git diff --numstat origin/main..
 389	0	tests/unit/test_integration_seat.py
 [exit 0]
 ```
+
+## 12. The first use of item 2: `result-precheck.sh run` on this PR's head 2d61e227
+
+Run outside the sandbox (its gh reads and its (i) codex call), after CI passed on `2d61e227` and the step-15 Bot wait ended `bot: none` (report.md records both, uncommitted at the run).
+
+1. The first run, `scripts/orchestrator/result-precheck.sh run dotfiles-T129-integration-seat-result-gate-cap-a01 393 2d61e2271c959cc46453dae5e9a0ad70e7da1bc5`, wrote only the receipt's front matter and stayed in check (a) for over ten minutes; stopped. A second with `< /dev/null` likewise. Probes of `history.sh` under Python timeouts, stdin `/dev/null` (the first two in one script, the last in another):
+
+```console
+$ (python) history.sh dotfiles-conformance claude-standard-dot-a006 5; history.sh dotfiles-conformance "" 5
+['dotfiles-conformance', 'claude-standard-dot-a006', '5'] rc 0 1.6s 5 lines
+['dotfiles-conformance', '', '5'] rc 0 0.9s 5 lines
+$ (python) history.sh dotfiles-conformance "" 200; history.sh dotfiles-conformance "" 2000
+200 rc 0 4.1s 200 lines
+2000 TIMEOUT 120s
+$ (python) history.sh dotfiles-conformance claude-standard-dot-a006 300, and the task's latest TASK line in it
+rc 0 1.8s 19 lines
+['  ○ [2026-10-17T14:18:02Z] claude-deep-dot → claude-standard-dot-a006: AGMSG-TASK v1 task_id=dotfiles-T129-integration-seat-result-gate-cap-a01 round=']
+```
+
+   A team-wide read is super-linear in its rows, so the scripts' `history.sh <team> "" 100000` (check (a), and `integrate-seat.sh`'s reader, both as `bus-read.sh` reads) does not finish on this team's history; with stdin a terminal it also waits on stdin.
+
+2. The receipt was then made with `AGMSG_SCRIPTS` (the scripts' seam) pointing at a wrapper directory in the session scratchpad that bounds the read to this seat's 300 latest rows:
+
+```console
+$ cat "$S/agmsg-seat/whoami.sh" "$S/agmsg-seat/history.sh"
+#!/bin/sh
+exec "$HOME/.agents/skills/agmsg/scripts/whoami.sh" "$@" < /dev/null
+#!/bin/sh
+# A bounded read for the precheck receipt: this seat's own 300 latest rows (history.sh is super-linear team-wide).
+exec "$HOME/.agents/skills/agmsg/scripts/history.sh" "$1" claude-standard-dot-a006 300 < /dev/null
+[exit 0]
+```
+
+```console
+$ AGMSG_SCRIPTS="$S/agmsg-seat" scripts/orchestrator/result-precheck.sh run dotfiles-T129-integration-seat-result-gate-cap-a01 393 2d61e2271c959cc46453dae5e9a0ad70e7da1bc5 < /dev/null
+precheck=57900e173ef5e9112bfe61d37f7cf4678c75636448f9bd76c720ac97c3282b8e .orchestration/dotfiles-T129-integration-seat-result-gate-cap-a01/precheck-2d61e22.md missing: a 
+[exit 1]
+```
+
+3. Check (a) is `missing` on a correct task copy: an amended TASK line carries `previous_task_sha256=<old>` before `task_sha256=<new>`, and `grep -o -E 'task_sha256=[0-9a-f]{64}'` matches inside the first too, so `want` holds two lines:
+
+```console
+$ "$S/agmsg-seat/history.sh" dotfiles-conformance x 1 | /usr/bin/grep -F 'AGMSG-TASK v1 task_id=dotfiles-T129-integration-seat-result-gate-cap-a01 ' | tail -n 1 | /usr/bin/grep -o -E 'task_sha256=[0-9a-f]{64}'
+task_sha256=4e00bf122f578a9dbbde8ac36feb025d68cb828009a2e9f009606ad760879081
+task_sha256=626823fbf25a2a48bad0ae1e05792e6ea5f25ea4d1e4c710e973da64b62d1864
+[exit 0]
+```
+
+4. (i) ran `codex exec --sandbox read-only` and pasted its last three lines: `Verdict: incorrect`, seven issues; the findings themselves are not in the receipt (`tail -n 3`), and the dry run could not reach gh.
+
+The receipt, `precheck-2d61e22.md` (sha256 `57900e173ef5e9112bfe61d37f7cf4678c75636448f9bd76c720ac97c3282b8e`), is committed unchanged in the records-only commit after `2d61e227`.

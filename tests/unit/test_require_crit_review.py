@@ -1357,7 +1357,7 @@ class ReviewGuardTest(unittest.TestCase):
                 self.rewrite_replans(record, {"class-count-scope": {k: v for k, v in REPLAN.items() if k != missing}})
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
                 self.assertEqual(result.returncode, 1, result.stdout)
-                self.assertIn("S1: class-count-scope at 3 rows without a re-plan (C-59)", result.stdout)
+                self.assertIn("malformed block: replans must be", result.stdout)
 
     def test_s1_replan_is_read_from_the_record_block_json(self) -> None:
         # Plan 023 F1: the re-plan is the record block's replans object; no prose line is read any more.
@@ -1371,7 +1371,7 @@ class ReviewGuardTest(unittest.TestCase):
         line = "re-plan: class-count-scope -> specification, design, implementation, verification.\n"
         for label, replans, body, message in (
             ("a body line alone", {}, line, s1),
-            ("a blank part", {"class-count-scope": {**REPLAN, "design": " "}}, "", s1),
+            ("a blank part", {"class-count-scope": {**REPLAN, "design": " "}}, "", malformed),
             ("a list", ["class-count-scope"], "", malformed),
             (
                 "an entry that is text",
@@ -1385,6 +1385,29 @@ class ReviewGuardTest(unittest.TestCase):
                 result = self.guard_base(env)
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn(message, result.stdout)
+
+    def test_a_malformed_replans_entry_is_refused_at_any_threshold(self) -> None:
+        # PR #390 thread 4302490297: the gate holds every entry to the writer's rule, the four keys and no other, each
+        # a non-empty string, for a class below the three-row threshold as for one at it.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-s6-present.md")
+        env = {"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record}
+        below = "threat-row-outside-paths"  # one ledger row in the fixture
+        self.rewrite_replans(record, {"class-count-scope": REPLAN, below: REPLAN})
+        self.assertEqual(self.guard_base(env).returncode, 0)
+        for label, replans in (
+            ("incomplete, below the threshold", {"class-count-scope": REPLAN, below: {**REPLAN, "design": ""}}),
+            ("a key missing, below the threshold", {"class-count-scope": REPLAN, below: {"design": "d"}}),
+            ("a part that is no string, below", {"class-count-scope": REPLAN, below: {**REPLAN, "design": 1}}),
+            ("an extra key, below the threshold", {"class-count-scope": REPLAN, below: {**REPLAN, "notes": "n"}}),
+            ("an extra key, at the threshold", {"class-count-scope": {**REPLAN, "notes": "n"}}),
+        ):
+            with self.subTest(label):
+                self.rewrite_replans(record, replans)
+                result = self.guard_base(env)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("malformed block: replans must be", result.stdout)
 
     def test_s6_reads_an_inherited_audit_s_ids_under_the_parent_sha7(self) -> None:
         # Plan 023 F1: an inherited audit's first line names the head it ran on, whose ids its ledger rows carry.

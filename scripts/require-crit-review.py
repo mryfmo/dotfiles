@@ -796,11 +796,15 @@ def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[
         not isinstance(record["dispatch"], list) or not all(isinstance(line, str) for line in record["dispatch"])
     ):
         errors.append("dispatch must be a list of strings")
+    # Every entry, at any threshold, to acceptance-front-matter.py's rule (PR #390 thread 4302490297).
     replans = record.get("replans", {})
     if not isinstance(replans, dict) or not all(
-        CLASS_SLUG.fullmatch(cls) and isinstance(entry, dict) for cls, entry in replans.items()
+        CLASS_SLUG.fullmatch(cls) and replan_complete(entry) and set(entry) == set(REPLAN_KEYS)
+        for cls, entry in replans.items()
     ):
-        errors.append(f"malformed block: replans must be {{<class slug>: {{{', '.join(REPLAN_KEYS)}}}}}: {replans!r}")
+        errors.append(
+            f"malformed block: replans must be {{<class slug>: {{{', '.join(REPLAN_KEYS)}}}}}, each a non-empty string: {replans!r}"
+        )
     if not is_int(record.get("format")) or record["format"] != RECORD_FORMAT:
         errors.append(f"format must be {RECORD_FORMAT}")
     ledger = record.get("ledger")

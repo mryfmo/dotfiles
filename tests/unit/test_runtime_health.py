@@ -105,6 +105,8 @@ class RuntimeHealthTest(unittest.TestCase):
                     update_codex_understand_anything() { :; }
                     update_terminal_code() { :; }
                     update_terminal_browser() { :; }
+                    update_omp() { :; }
+                    update_hcom() { :; }
                     update_compactiondb() { :; }
                     update_agmsg() { :; }
                     ensure_herdr_integrations() { :; }
@@ -171,7 +173,11 @@ class RuntimeHealthTest(unittest.TestCase):
         log = repo / "commands.log"
 
         result = self.run_test_command(
-            ["bash", "scripts/update-agent-assets.sh"],
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; update_omp() { :; }; update_hcom() { :; }; main",
+            ],
             cwd=repo,
             env={
                 **os.environ,
@@ -253,7 +259,11 @@ EOF
         log = repo / "commands.log"
 
         result = self.run_test_command(
-            ["bash", "scripts/update-agent-assets.sh"],
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; update_omp() { :; }; update_hcom() { :; }; main",
+            ],
             cwd=repo,
             env={
                 **os.environ,
@@ -1230,7 +1240,7 @@ EOF
             ("", 0, "required failures: 0"),
             ("missing:chezmoi", 1, "required failures: 1"),
             ("git:--version", 1, "required failures: 1"),
-            ("gh:extension list", 0, "optional warnings: 1"),
+            ("gh:extension list", 0, "optional warnings: 3"),
         )
         for fail, expected_status, summary in cases:
             with self.subTest(fail=fail):

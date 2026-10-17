@@ -18,12 +18,14 @@ import unittest
 from pathlib import Path
 
 CHAIN = Path(__file__).resolve().parents[2] / "scripts/orchestrator/chain-integrate.sh"
+FINISH = CHAIN.with_name("chain-finish.sh")
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 TASK, OWNER = "dotfiles-T128-x-a01", "dotfiles-T128-x-followup-a01"
 STUB = (
     "#!/usr/bin/env bash\n"
     '{{ printf "argv:"; printf " %s" "$@"; printf "\\ncwd: %s\\npath: %s\\nreview: %s\\n" "$(pwd -P)" "$PATH" "${{ORCH_REVIEW_WORKTREE:-}}"\n'
     '  for a; do case $a in *.tsv | *-pr-comments.json) cat -- "$a" ;; esac; done; }} >> "$CALLS/{name}.log"\n'
+    'echo {name} >> "$CALLS/order.log"\n'
     '[ ! -x "$CALLS/{name}-hook" ] || "$CALLS/{name}-hook"\n'
     'cat "$CALLS/{name}.out" 2> /dev/null || true\n'
     'exit "$(cat "$CALLS/{name}.status" 2> /dev/null || echo 0)"\n'
@@ -34,7 +36,13 @@ GH = """#!/usr/bin/env bash
 paint() { if [ -z "${NO_COLOR:-}" ] && { [ "${CLICOLOR_FORCE:-0}" != 0 ] || [ -n "${GH_FORCE_TTY:-}" ]; }; then sed $'s/.*/\\e[32m&\\e[0m/'; else cat; fi; }
 jq=; prev=; for a; do [ "$prev" != --jq ] || jq=$a; prev=$a; done
 case "$1 $2" in
-"pr view") if [[ " $* " == *" isDraft "* ]]; then cat "$CALLS/draft" 2> /dev/null || echo false; else cat "$CALLS/head"; fi | paint ;;
+"pr view")
+    if [[ " $* " == *" isDraft "* ]]; then cat "$CALLS/draft" 2> /dev/null || echo false
+    elif [[ " $* " == *" state,mergeCommit "* ]]; then
+        # One JSON object per line, one line per call; the last line repeats.
+        f=$CALLS/merge-views && head -n 1 "$f" | JQ -r "$jq"
+        [ "$(wc -l < "$f")" -le 1 ] || { tail -n +2 "$f" > "$f.next" && mv "$f.next" "$f"; }
+    else cat "$CALLS/head"; fi | paint ;;
 "pr checks")
     [ ! -x "$CALLS/checks-hook" ] || "$CALLS/checks-hook"
     exit "$(cat "$CALLS/checks-status" 2> /dev/null || echo 0)" ;;
@@ -45,6 +53,9 @@ case "$1 $2" in
     git -C "$SEED" push -q origin HEAD:refs/pull/7/head
     git -C "$SEED" rev-parse HEAD > "$CALLS/head"
     [ ! -x "$CALLS/update-hook" ] || "$CALLS/update-hook" ;;
+"pr merge")
+    echo "gh pr merge" >> "$CALLS/order.log"
+    exit "$(cat "$CALLS/merge-status" 2> /dev/null || echo 0)" ;;
 "api user") paint < "$CALLS/login" ;;
 "api "*)
     case $2 in *reviews) f=$CALLS/reviews.json ;; *) f=$CALLS/comments.json ;; esac
@@ -54,6 +65,7 @@ esac
 UV = """#!/usr/bin/env bash
 { printf "argv:"; printf " %s" "$@"; printf "\\n"; } >> "$CALLS/uv.log"
 shift 4
+[ "$1" != -c ] || exec python3 -I "$@"
 exec "$@"
 """
 SCRIPTS = {
@@ -64,6 +76,10 @@ SCRIPTS = {
     "orchestrator/acceptance-front-matter.py": "acceptance-front-matter",
     "orchestrator/orch-audit.sh": "orch-audit",
     "pr-feedback.py": "pr-feedback",
+    "orchestrator/resolve-threads.sh": "resolve-threads",
+    "orchestrator/orch-gate.sh": "orch-gate",
+    "orchestrator/ff-main.sh": "ff-main",
+    "orchestrator/pr-cost.sh": "pr-cost",
 }
 SCAN_HIT = "sandbox scan: unsandboxed mutation calls above (C-29); judge before the audit"
 STEPS = [
@@ -96,7 +112,9 @@ class ChainIntegrateTest(unittest.TestCase):
         self.git("clone", "-q", str(origin), str(self.seed), cwd=self.temp)
         # The stubs are tracked on main, so the main checkout's copies are HEAD's (PR #372 thread 4291474880).
         for rel, name in SCRIPTS.items():
-            self.executable(self.seed / "scripts" / rel, STUB.format(name=name))
+            # The calls directory is baked in as the default, since pr-cost.sh runs under env -i.
+            stub = STUB.format(name=name).replace("$CALLS", f"${{CALLS:-{self.calls}}}")
+            self.executable(self.seed / "scripts" / rel, stub)
         self.git("add", "scripts", cwd=self.seed)
         self.commit(self.seed, "a.txt")
         self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
@@ -117,6 +135,10 @@ class ChainIntegrateTest(unittest.TestCase):
         self.executable(bin_dir / "uv", UV)
         self.executable(bin_dir / "codex", STUB.format(name="codex"))
         self.executable(bin_dir / "mise", "#!/bin/sh\nexit 1\n")
+        # chain-finish.sh resolves jq for pr-cost.sh; macOS 14 has none in /usr/bin, so the test's own jq is linked.
+        (bin_dir / "jq").symlink_to(shutil.which("jq") or "/usr/bin/jq")
+        for name in ("send.sh", "agmsg-dispatch"):
+            self.executable(bin_dir / name, f'#!/bin/sh\necho "{name} $*" >> "$CALLS/send.log"\n')
         bot = {"user": {"login": "chatgpt-codex-connector[bot]"}, "commit_id": self.head}
         (self.calls / "head").write_text(self.head + "\n")
         (self.calls / "reviews.json").write_text(json.dumps([bot]))
@@ -414,6 +436,255 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.chain(env={"CHAIN_SCAN_JUDGED": self.head[:7]})
         self.assertIn("sandbox scan: judged by the orchestrator", self.log())
         self.assertEqual([f"{TASK} {self.head} 7"], self.calls_of("local-review"))
+
+    # chain-finish.sh (plan 022 T8)
+
+    def finish_ready(self, summary="audit\nVerdict: correct\n", lines=""):
+        """The review worktree at the PR head, the gate's inputs for it, and the record with the given lines."""
+        self.git("fetch", "-q", "origin", "pull/7/head", cwd=self.review)
+        self.git("checkout", "-q", "--detach", "FETCH_HEAD", cwd=self.review)
+        sha7 = self.head[:7]
+        (self.v / f"{TASK}-pr-feedback.json").write_text(json.dumps({"pr": 7, "head_sha": self.head, "items": []}))
+        (self.v / f"{TASK}-audit-{sha7}.md").write_text("transcript\n")
+        (self.v / f"{TASK}-audit-{sha7}.md.last.md").write_text(summary)
+        (self.v / f"{TASK}-review-receipt.md").write_text("review_surface: crit-data\n")
+        (self.v / f"{TASK}-crit.json").write_text("[]\n")
+        merged = {"state": "MERGED", "mergeCommit": {"oid": self.git("rev-parse", "origin/main")}}
+        (self.calls / "merge-views").write_text(json.dumps(merged) + "\n")
+        record = self.main / f".orchestration/acceptance/{TASK}.md"
+        record.write_text(record.read_text() + lines)
+        self.write(".orchestration/extra.tsv", "")
+
+    def finish(self, *args, code=0, env=None):
+        argv = args or (TASK, "7", self.main, self.review, self.main / ".orchestration/extra.tsv")
+        result = subprocess.run(
+            ["bash", str(FINISH), *map(str, argv)],
+            cwd=self.temp,
+            env={**self.env, **(env or {})},
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+        return result
+
+    def finding(self, n, reason="the finding is about a line this PR does not change"):
+        return f"audit-finding: {self.head[:7]}:{n} not-applicable:{reason}; evidence=git show HEAD:a.txt\n"
+
+    def test_finish_refuses_a_head_that_differs_from_the_audit(self):
+        self.finish_ready()
+        summary = self.v / f"{TASK}-audit-{self.head[:7]}.md.last.md"
+
+        def refused(message, *args):
+            self.assertIn(message, self.finish(*args, code=10).stderr)
+            stubs = [p.name for p in self.calls.glob("*.log") if p.name not in ("gh.log", "uv.log")]
+            self.assertEqual([], stubs)
+            self.assertNotIn("pr merge", "\n".join(self.calls_of("gh")))
+
+        summary.rename(summary.with_suffix(".bak"))
+        refused("head differs from the audit")
+        summary.with_suffix(".bak").rename(summary)
+        (self.calls / "head").write_text("0" * 40 + "\n")
+        refused("head differs from the audit")
+        (self.calls / "head").write_text(self.head + "\n")
+        refused("invalid argument", "a/b", "7", self.main, self.review, self.main / ".orchestration/extra.tsv")
+        other = self.temp / "other"
+        self.git("clone", "-q", str(self.temp / "origin.git"), str(other), cwd=self.temp)
+        refused("not the canonical one", TASK, "7", self.main, other, self.main / ".orchestration/extra.tsv")
+        (self.v / f"{TASK}-review-receipt.md").unlink()
+        refused(f"gate input missing: .orchestration/validation/{TASK}-review-receipt.md")
+        self.assertEqual("", self.log())
+
+    def test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head(self):
+        # The local review of f20826e (P1): the thread step posts the sweep's dispositions, so a sweep of an earlier
+        # head of the same PR refuses before any GitHub write; the PR head read is the only gh call.
+        self.finish_ready()
+        sweep, stale = self.v / f"{TASK}-pr-feedback.json", "0" * 40
+        sweep.write_text(json.dumps({"pr": 7, "head_sha": stale, "items": []}))
+        result = self.finish(code=10)
+        self.assertIn(f"the sweep JSON is head {stale}'s, not the audited head {self.head}'s", result.stderr)
+        self.assertEqual([], [p.name for p in self.calls.glob("*.log") if p.name not in ("gh.log", "uv.log")])
+        self.assertEqual(["pr view 7 --json headRefOid --jq .headRefOid"], self.calls_of("gh"))
+        self.assertEqual("", self.log())
+        sweep.write_text(json.dumps({"pr": 7, "head_sha": self.head, "items": []}))
+        self.finish()
+        self.assertEqual(1, len(self.calls_of("resolve-threads")))
+
+    def test_finish_requires_an_audit_finding_line_per_incorrect_finding(self):
+        sha7 = self.head[:7]
+        self.finish_ready("- [P2] one\n* [P3] two\nVerdict: incorrect\n", self.finding(1))
+        result = self.finish(code=12)
+        self.assertIn(f"audit finding 2 of {sha7} has no audit-finding line", result.stderr)
+        self.assertEqual([], self.calls_of("resolve-threads"))
+        record = self.main / f".orchestration/acceptance/{TASK}.md"
+        record.write_text(record.read_text() + self.finding(2, "the second finding names a file outside this PR"))
+        self.finish()
+        [argv] = self.calls_of("acceptance-front-matter")
+        dispositions = f"{self.v}/{TASK}-audit-dispositions-{sha7}.tsv"
+        self.assertTrue(
+            argv.endswith(f"--ledger {self.v}/{TASK}-ledger-{sha7}.tsv --audit-dispositions {dispositions}")
+        )
+        logged = (self.calls / "acceptance-front-matter.log").read_text()
+        self.assertIn(
+            "1\tthe finding is about a line this PR does not change\tgit show HEAD:a.txt\n"
+            "2\tthe second finding names a file outside this PR\tgit show HEAD:a.txt\n",
+            logged,
+        )
+        self.assertEqual([], list(self.v.glob("*.tsv")))
+        self.assertFalse((self.v / f"{TASK}-pr-comments.json").exists())
+        # A correct verdict that still lists findings needs their lines too, and passes no dispositions.
+        (self.calls / "acceptance-front-matter.log").unlink()
+        summary = self.v / f"{TASK}-audit-{sha7}.md.last.md"
+        summary.write_text("[P1] one\n- [P2] two\n+ [P3] three\nVerdict: correct\n")
+        self.assertIn(f"audit finding 3 of {sha7} has no audit-finding line", self.finish(code=12).stderr)
+        record.write_text(record.read_text() + self.finding(3, "the third finding repeats the first one here"))
+        self.finish()
+        [argv] = self.calls_of("acceptance-front-matter")
+        self.assertNotIn("--audit-dispositions", argv)
+        summary.write_text("audit\nVerdict: unclear\n")
+        self.assertIn("unexpected audit verdict: Verdict: unclear", self.finish(code=12).stderr)
+
+    def test_finish_checks_each_audit_finding_line_in_full(self):
+        # PR #378 thread 4300359437: a correct verdict passes no dispositions to the record script, so the chain reads
+        # each line in the gate's grammar: one `; evidence=` with a command, and a reason of 20 or more characters.
+        sha7 = self.head[:7]
+        self.finish_ready("[P2] one\nVerdict: correct\n")
+        record = self.main / f".orchestration/acceptance/{TASK}.md"
+        kept = record.read_text()
+        good = "the finding is about a line this PR does not change"
+        for case, line in (
+            ("no evidence", f"audit-finding: {sha7}:1 not-applicable:{good}\n"),
+            ("two evidence delimiters", f"audit-finding: {sha7}:1 not-applicable:{good}; evidence=a; evidence=b\n"),
+            ("empty evidence", f"audit-finding: {sha7}:1 not-applicable:{good}; evidence= \n"),
+            ("a short reason", self.finding(1, "too short")),
+            ("a tab", self.finding(1, f"{good}\twith a tab")),
+        ):
+            with self.subTest(case):
+                record.write_text(kept + line)
+                self.assertIn(f"audit finding 1 of {sha7}: the line is not", self.finish(code=12).stderr)
+                self.assertEqual([], self.calls_of("resolve-threads"))
+        record.write_text(kept + self.finding(1, good))
+        self.finish()
+        self.assertEqual(1, len(self.calls_of("resolve-threads")))
+
+    def test_finish_runs_pr_cost_with_a_path_of_resolved_links(self):
+        # The local review of f4d86ee5 (P1): after the fast-forward the main checkout's mise config is the merged
+        # head's, so pr-cost.sh runs under env -i with a PATH of one directory of links resolved before any write.
+        self.finish_ready()
+        self.finish()
+        [path] = re.findall(r"^path: (.*)$", (self.calls / "pr-cost.log").read_text(), re.MULTILINE)
+        self.assertEqual(f"{self.v}/{TASK}-pr-cost-bin-{self.head[:7]}", path)
+        self.assertFalse(Path(path).exists())
+        self.assertNotIn(str(self.temp), self.log())
+        # A tool that resolves only to a shims directory refuses before any GitHub write.
+        shims = self.temp / "shims"
+        self.executable(shims / "jq", "#!/bin/sh\nexit 0\n")
+        result = self.finish(code=10, env={"PATH": f"{shims}{os.pathsep}{self.env['PATH']}"})
+        self.assertIn(f"no jq for pr-cost.sh outside a shims directory: {shims}/jq", result.stderr)
+        self.assertEqual(1, len(self.calls_of("resolve-threads")))
+
+    def test_finish_reads_the_last_nonblank_line_as_the_verdict(self):
+        # The local review of f4d86ee5 (P2): trailing blank lines and spaces do not hide the verdict, as the gate reads it.
+        self.finish_ready("[P2] one\n  Verdict: correct  \n\n \n", self.finding(1))
+        self.finish()
+        self.assertIn("verdict rc=0: Verdict: correct, 1 finding(s)", self.log())
+        self.assertNotIn("--audit-dispositions", self.calls_of("acceptance-front-matter")[0])
+
+    def test_finish_counts_the_trimmed_reason(self):
+        # The local review of f4d86ee5 (P2): spaces around a short reason do not reach the 20-character minimum.
+        sha7 = self.head[:7]
+        self.finish_ready("[P2] one\nVerdict: incorrect\n", self.finding(1, "short" + " " * 30))
+        self.assertIn(f"audit finding 1 of {sha7}: the line is not", self.finish(code=12).stderr)
+        self.assertEqual([], self.calls_of("resolve-threads"))
+
+    def test_finish_runs_gate_before_merge_and_cost_after(self):
+        self.finish_ready()
+        self.finish()
+        order = [
+            "resolve-threads",
+            "pr-feedback",
+            "fill_sweep",
+            "acceptance-front-matter",
+            "orch-gate",
+            "gh pr merge",
+            "ff-main",
+            "pr-cost",
+        ]
+        self.assertEqual(order, (self.calls / "order.log").read_text().splitlines())
+        merges = [c for c in self.calls_of("gh") if c.startswith("pr merge")]
+        self.assertEqual([f"pr merge --squash --match-head-commit {self.head} 7"], merges)
+        extra = self.main / ".orchestration/extra.tsv"
+        self.assertEqual([f"7 {extra} - {self.v}/{TASK}-pr-feedback.json"], self.calls_of("resolve-threads"))
+        self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-gate"))
+        self.assertEqual(["7"], self.calls_of("pr-cost"))
+        for name in ("ff-main", "pr-cost"):
+            self.assertIn(f"cwd: {self.main}\n", (self.calls / f"{name}.log").read_text())
+        steps = self.steps(self.log())
+        self.assertEqual(
+            [
+                "verdict",
+                "resolve-threads",
+                "pr-feedback",
+                "fill-sweep",
+                "record",
+                "gate",
+                "merge",
+                "ff-main",
+                "pr-cost",
+            ],
+            steps,
+        )
+        self.assertNotIn(str(self.temp), self.log())
+        # A failed gate merges nothing and writes no cost line.
+        (self.calls / "order.log").unlink()
+        (self.calls / "orch-gate.status").write_text("3")
+        self.assertIn("step gate failed rc=3", self.finish(code=1).stderr)
+        self.assertEqual(order[:5], (self.calls / "order.log").read_text().splitlines())
+
+    def test_finish_waits_for_the_merge_to_land_before_reading_main(self):
+        # PR #378 thread 4301998951: under a merge queue gh pr merge can return once the PR is enqueued, so the chain
+        # polls the PR until GitHub reports it merged and takes its merge commit (gh has no `merged` JSON field).
+        self.finish_ready()
+        views, oid = self.calls / "merge-views", "c" * 40
+        pending = json.dumps({"state": "OPEN", "mergeCommit": None})
+        merged = json.dumps({"state": "MERGED", "mergeCommit": {"oid": oid}})
+        views.write_text(f"{pending}\n{pending}\n{merged}\n")
+        last = self.finish().stdout.splitlines()[-1]
+        self.assertIn(f"reason=merged-as-{oid}-pr-7-head-{self.head[:7]} ", last)
+        polls = [c for c in self.calls_of("gh") if c.startswith("pr view 7 --json state,mergeCommit ")]
+        self.assertEqual(3, len(polls))
+        log = self.log()
+        self.assertLess(log.rindex("pr view 7 --json state,mergeCommit"), log.index("fetch -q origin main"))
+        # Never merged within the bound: exit 10, and neither the fast-forward nor the cost line runs.
+        (self.calls / "order.log").unlink()
+        views.write_text(pending + "\n")
+        result = self.finish(code=10, env={"CHAIN_MERGE_WAIT": "2"})
+        self.assertIn("merge enqueued, not landed: PR 7 not merged after 2 polls", result.stderr)
+        self.assertEqual("gh pr merge", (self.calls / "order.log").read_text().splitlines()[-1])
+        self.assertEqual(1, len(self.calls_of("pr-cost")))
+
+    def test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward(self):
+        # PR #378 thread 4300324931: the fast-forward puts the merged head's pr-cost.sh in the main checkout; the
+        # chain runs HEAD's copy taken before the merge, never the PR's.
+        self.finish_ready()
+        hook = f"""#!/bin/sh
+printf '#!/bin/sh\\necho decoy >> "$CALLS/decoy.log"\\n' > "{self.main}/scripts/orchestrator/pr-cost.sh"
+"""
+        self.executable(self.calls / "ff-main-hook", hook)
+        self.finish()
+        self.assertFalse((self.calls / "decoy.log").exists())
+        self.assertEqual(["7"], self.calls_of("pr-cost"))
+        self.assertIn(f"cwd: {self.main}\n", (self.calls / "pr-cost.log").read_text())
+        self.assertEqual([], list(self.v.glob("*-pr-cost-*.sh")))
+
+    def test_finish_prints_the_acceptance_line_and_sends_nothing(self):
+        self.finish_ready()
+        last = self.finish().stdout.splitlines()[-1]
+        pattern = rf"^AGMSG-ACCEPTANCE v1 task_id={TASK} status=accepted reason=merged-as-[0-9a-f]{{40}}-pr-7-head-{self.head[:7]} next_action="
+        self.assertRegex(last, pattern)
+        self.assertIn(f"merged-as-{self.git('rev-parse', 'origin/main')}-", last)
+        self.assertFalse((self.calls / "send.log").exists())
 
 
 if __name__ == "__main__":

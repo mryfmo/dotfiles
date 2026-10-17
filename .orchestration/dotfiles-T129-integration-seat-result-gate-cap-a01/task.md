@@ -12,6 +12,8 @@ allowed_files:
   - scripts/orchestrator/result-precheck.sh
   - tests/unit/test_integration_seat.py
   - tests/unit/test_herdr_agents.py
+  - tests/unit/test_agmsg_orchestration_docs.py
+  - tests/fixtures/regime/worker-step-15.md
   - .orchestration/dotfiles-T129-integration-seat-result-gate-cap-a01/**
 after: []
 threat_table:
@@ -31,6 +33,10 @@ threat_table:
     disposition: "residual: fixtures and stubs written by the test; the audit reads each case against items 1 and 2"
   - control: "the PR edits tests/unit/test_herdr_agents.py (the cap test and the text-consistency test above)"
     disposition: "residual: the tests run herdr-agents as a subprocess with stub identities and read the SKILL, the rule and the manifest from the checkout; the audit reads each case against item 3"
+  - control: "the PR edits tests/unit/test_agmsg_orchestration_docs.py in one assertion (the rule's word budget 450 becomes 490: the 41 words of item 3's Delegation and Acceptance sentences; Amendment 3)"
+    disposition: "residual: one number; the budget still pins the rule file; the audit reads the diff against the current file"
+  - control: "the PR edits tests/fixtures/regime/worker-step-15.md (the pinned copy of Worker Playbook step 15 follows item 3's sentence word for word; Amendment 3)"
+    disposition: "residual: a fixture equal to the SKILL section it pins; test_regime_rule_sections_are_pinned_whole holds it equal"
   - control: "the inputs of integrate-seat.sh and result-precheck.sh as a trust boundary (PR-controlled content: the PR diff, Bot thread bodies, check-run conclusions, the RESULT line's fields, the task id, the PR number and the head sha they take as arguments)"
     disposition: "closed: tests/unit/test_integration_seat.py::test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt"
   - control: the task-file copy on the branch (.orchestration/dotfiles-T129-integration-seat-result-gate-cap-a01/task.md)
@@ -107,6 +113,10 @@ M-20261017-07 (the #386 chains 2 and 3 of today): gh colors its JSON when the ca
 ## Amendment 2 (round 1, 2026-10-17T13:1xZ)
 
 a006's caps question (PONG 13:13:41Z): the full spec in tested, lint-clean code measures 249 changed lines outside tests and the two text files (integrate-seat.sh 122, result-precheck.sh 106, herdr-agents 18, manifest 3) against the Check's 200. Decided by default (D-cap-F4): option A, the cap is 260 for this PR; the directive fixed one PR with the three items, and the audit reads the whole diff. a006's declared readings stand: `worker_cap` read by sed from the deployed `~/.agents/agent-config.yaml` (herdr-agents has no yaml reader), a missing key meaning no cap plus one stderr line (an old deployment is not blocked, the line names the missing key); `allowed_files` read by sed as plain items; (g) reads the RESULT's thread tokens `<id>:<P>:<disposition>` from report.md. One correction: (h) and (i) are three-state, `ok`, `unavailable (<reason>)` or `missing`, and `verify` refuses only `missing`, so a Claude seat's RESULT is not refused for lacking codex. Nothing else changes.
+
+## Amendment 3 (round 1, 2026-10-17T14:1xZ)
+
+a006's question (PONG 14:16:01Z) on PR #393 (head 3baa0003): CI fails two pins outside `allowed_files`, both caused by item 3's texts: `tests/unit/test_agmsg_orchestration_docs.py::test_word_budgets` (the rule budget 450, the rule measures 488 = origin/main's 447 + the 41 words of the Delegation and Acceptance sentences item 3 requires) and `test_regime_rule_sections_are_pinned_whole` (`tests/fixtures/regime/worker-step-15.md` still says "The worker resolves no thread"). Option A is adopted: both files join `allowed_files` with their rows; the budget becomes 490 (the directive's sentences are its cost) and the fixture follows item 3's step-15 sentence. The Bot's re-review 5558148144 on 3baa0003 after the one worker-side fix round ff9bb7c1 left P1 4302959624 (integrate-seat.sh:35: a retry reads the first run's `kind=integration` RESULT, which has no `threads=`, and refuses) and P2 4302959629 (precheck (g) reads inline comments only, not review-body findings). The P1 is fixed in the same push as this amendment, fix round 2 of INV-6 (the orchestrator's decision, D-F4-round2): the RESULT reader selects the newest `kind=` worker RESULT (one grep for `threads=`), with one failing test; no further round after it. The P2 is advisory (C-61, a later review), owned by `dotfiles-T129-integration-seat-result-gate-cap-followup-a01` (written now, C-51); the record of that lineage lists it. Then CI, the Bot wait of step 15 without a further `@codex review`, RESULT.
 
 ## Checks (pasted by the orchestrator before each send)
 

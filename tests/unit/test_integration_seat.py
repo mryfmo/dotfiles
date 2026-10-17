@@ -180,6 +180,15 @@ class IntegrationSeatTest(unittest.TestCase):
             "acceptance-front-matter",
         ]
         self.assertEqual(order, self.logged("order"))
+        # PR #393 thread 4302959624: a retry takes the worker's RESULT, not the kind=integration one the first run sent.
+        history = self.calls / "history.txt"
+        sent = (
+            f"AGMSG-RESULT v1 task_id={TASK} kind=integration status=blocked step=checks rc=1 head={self.head} record=x"
+        )
+        history.write_text(history.read_text() + f"  ○ [2026-10-17T12:00:00Z] {ME} → {ORCH}: {sent}\n")
+        self.reset_calls()
+        self.run_script(SEAT, TASK, "7", "--owner", OWNER, cwd=self.seat, code=0)
+        self.assertEqual(order, self.logged("order"))
         record = f".orchestration/validation/{TASK}-integration-{h7}.md"
         self.assertEqual(
             [

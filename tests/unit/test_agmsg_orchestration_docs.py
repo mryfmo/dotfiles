@@ -84,7 +84,7 @@ class AgmsgOrchestrationRuleTest(unittest.TestCase):
         self.assertIn("queued only while no other PR is between its final head and its merge", invariants)
 
     def test_word_budgets(self) -> None:
-        self.assertLessEqual(words(RULE), 450)
+        self.assertLessEqual(words(RULE), 490)
         self.assertLessEqual(sum(words(RULES / name) for name in ALWAYS_LOADED_RULES), 1800)
 
 

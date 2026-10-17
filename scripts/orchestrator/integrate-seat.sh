@@ -28,10 +28,10 @@ for type in claude-code codex; do
 done
 [ -n "${me:-}" ] || die "no agmsg identity registered at ${PWD}"
 history=$("${a}/history.sh" "${team}" "" 100000)
-line() { /usr/bin/grep -F "$1 v1 task_id=${task} " <<< "${history}" | tail -n 1 || true; }
+line() { /usr/bin/grep -F "$1 v1 task_id=${task} " <<< "${history}" | /usr/bin/grep -F -- "${2:-}" | tail -n 1 || true; }
 [[ $(line AGMSG-TASK) =~ \]\ ([^ ]+)\ →\  ]] || die "no AGMSG-TASK for ${task} on ${team}"
 orch=${BASH_REMATCH[1]}
-[[ $(line AGMSG-RESULT) =~ \ threads=([^ ]*) ]] || die "no AGMSG-RESULT with threads= for ${task}"
+[[ $(line AGMSG-RESULT ' threads=') =~ \ threads=([^ ]*) ]] # the worker's, never a kind=integration one (thread 4302959624) || die "no AGMSG-RESULT with threads= for ${task}"
 threads=${BASH_REMATCH[1]}
 pane=$("${a}/team.sh" "${team}" --json | jq -r --arg m "${orch}" '.[] | select(.member == $m) | .pane // empty')
 pane=${pane#"${pane%:*:*}":} # <socket>:<workspace>:<pane> -> <workspace>:<pane>, agmsg-dispatch's form

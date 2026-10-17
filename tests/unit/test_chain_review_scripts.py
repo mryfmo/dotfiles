@@ -450,20 +450,25 @@ class ChainReviewScriptsTest(unittest.TestCase):
         rows = "local:aaaaaa1:1\tquoting\nlocal:aaaaaa1:2\trange-case\nlocal:bbbbbb2:1\tenv-s-quoting\n"
         record = self.write(".orchestration/acceptance/t-a01.md", f"# record\n{rows}")
         head = "cccccc3" + "1" * 33
-        current = "- [P2] `scripts/x.sh:12` once more\n- [P2] scripts/y.sh:3-5 again\n- [P2] scripts/z.sh:7 new\n"
-        self.write(f"{v}/t-a01-local-review-cccccc3.md", f"---\nfindings: 3\n---\n\n{current}")
+        current = "- [P2] `scripts/x.sh:12` once more\n- [P2] scripts/y.sh:3-5 again\n- [P2] scripts/y.sh:3-9 wider\n- [P2] scripts/z.sh:7 new\n"
+        self.write(f"{v}/t-a01-local-review-cccccc3.md", f"---\nfindings: 4\n---\n\n{current}")
         self.run_tool("local-advisory.sh", "t-a01", head, owner)
         text = record.read_text()
         self.assertEqual(
-            ["local:cccccc3:1\tenv-s-quoting", "local:cccccc3:2\trange-case", "local:cccccc3:3\tadvisory-p2"],
+            [
+                "local:cccccc3:1\tenv-s-quoting",
+                "local:cccccc3:2\trange-case",
+                "local:cccccc3:3\tadvisory-p2",  # y.sh:3-9 is another token than y.sh:3-5
+                "local:cccccc3:4\tadvisory-p2",
+            ],
             re.findall(r"^local:cccccc3:\d\t.*$", text, re.MULTILINE),
         )
         findings = re.findall(r"^local-finding: cccccc3:(\d) .*$", text, re.MULTILINE)
-        self.assertEqual(["1", "2", "3"], findings)
+        self.assertEqual(["1", "2", "3", "4"], findings)
         lines = [line for line in text.splitlines() if line.startswith("local-finding: cccccc3:")]
         self.assertIn("(- [P2] scripts/x.sh:12 once more; repeat of local:bbbbbb2:1)", lines[0])
         self.assertIn("(- [P2] scripts/y.sh:3-5 again; repeat of local:aaaaaa1:2)", lines[1])
-        self.assertNotIn("repeat of", lines[2])
+        self.assertNotIn("repeat of", lines[2] + lines[3])
         # A review without findings needs no owner file and writes no heading.
         empty = "dddddd4" + "1" * 33
         self.write(f"{v}/t-b01-local-review-dddddd4.md", "---\nfindings: 0\n---\n")

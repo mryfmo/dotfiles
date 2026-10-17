@@ -51,7 +51,8 @@ O=".orchestration/tasks/$owner.md"
 sha=$(shasum -a 256 "$O" | cut -d' ' -f1)
 # C-50: a finding repeated from an earlier head takes the class the record gave it. Each earlier review's findings,
 # numbered as the loop below numbers them, as `<path:line[-line]> local:<sha7>:<n>` lines.
-token() { [[ ${1//\`/} =~ ([A-Za-z0-9._/-]+:[0-9]+(-[0-9]+)?) ]] && printf '%s\n' "${BASH_REMATCH[1]}"; }
+# The class excludes the backtick, so `a.sh:1` in backticks reads as a.sh:1.
+token() { [[ $1 =~ ([A-Za-z0-9._/-]+:[0-9]+(-[0-9]+)?) ]] && printf '%s\n' "${BASH_REMATCH[1]}"; }
 earlier=""
 for f in .orchestration/validation/"$task"-local-review-*.md; do
     [[ -f $f && $f != "$LR" ]] || continue

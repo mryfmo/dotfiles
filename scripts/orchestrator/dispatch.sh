@@ -36,8 +36,9 @@
 #   before the send, and nothing is sent.
 #   An AGMSG-TASK line whose `task_file=` fails `task-consistency-check.py`
 #   (beside this script, run as `python -I` through the Makefile's `UV_PYYAML`
-#   uv form with `--no-project` and a pinned `--python`, from the root, under `env -i` with only `PATH`, `HOME`,
-#   `LANG`, `LC_ALL` and the `AGMSG_*` variables) is refused with the checker's output, and nothing is sent (C-52).
+#   uv form with `--no-config`, `--no-project` and a pinned `--python`, from the root, under `env -i` with only
+#   `PATH`, `HOME` (the script owner's passwd home), `UV_CACHE_DIR` (under it), `LANG`, `LC_ALL` and the `AGMSG_*`
+#   variables) is refused with the checker's output, and nothing is sent (C-52).
 #   Only a review brief is exempt: a front matter (the text between the first
 #   two `---` lines) that PyYAML parses, refusing a duplicate key, to a mapping
 #   whose `kind` is the string `review`; every other outcome runs the checker.
@@ -96,7 +97,19 @@ line="$(cat -- "${file}" && printf x)" && line=${line%x} && line=${line%$'\n'}
 }
 # One allowlisted environment for git and uv: no inherited GIT_DIR, GIT_WORK_TREE or other GIT_*, VIRTUAL_ENV, UV_* or
 # PYTHON* variable chooses the root, the interpreter or the code they run (audit:ef74eae:1, C-57).
-clean=(env -i PATH="${PATH}" HOME="${HOME}")
+# HOME is the script owner's passwd home and the uv cache sits under it, never inherited values (4300738707).
+owner="$(stat -c %U -- "${BASH_SOURCE[0]}" 2> /dev/null || stat -f %Su -- "${BASH_SOURCE[0]}")" || owner=
+[[ ${owner} =~ ^[A-Za-z0-9._][A-Za-z0-9._-]*$ ]] || {
+    echo "dispatch: cannot tell the owner of ${BASH_SOURCE[0]}" >&2
+    exit 1
+}
+home=
+eval "home=~${owner}" # the name is checked above; ~name is its passwd home
+[[ ${home} == /* ]] || {
+    echo "dispatch: no passwd home for ${owner}" >&2
+    exit 1
+}
+clean=(env -i PATH="${PATH}" HOME="${home}" UV_CACHE_DIR="${home}/.cache/uv")
 for v in LANG LC_ALL; do
     [[ -z ${!v:-} ]] || clean+=("${v}=${!v}")
 done
@@ -191,16 +204,16 @@ if [[ ${tokens[0]} == AGMSG-TASK ]]; then
     # The interpreter is named, python3 as mise answers it under env -i at the root, else python3 on PATH, and uv
     # runs under env -i with an allowlist, so no VIRTUAL_ENV, CONDA_PREFIX, UV_* or PYTHON* variable reaches it
     # (local:9df6b0c:1, C-57, the Bot's P1 4300102967).
-    py="$(cd -- "${root}" && { env -i PATH="${PATH}" HOME="${HOME}" mise which python3 2> /dev/null || command -v python3; })" || py=
+    py="$(cd -- "${root}" && { env -i PATH="${PATH}" HOME="${home}" mise which python3 2> /dev/null || command -v python3; })" || py=
     [[ ${py} == /* ]] || {
         echo "dispatch: no python3 interpreter to pin for uv" >&2
         exit 1
     }
-    uvy=(uv run --no-project --offline --python "${py}" --with pyyaml)
+    uvy=(uv run --no-config --no-project --offline --python "${py}" --with pyyaml)
     here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
     # Run from the trusted root, so a caller's .python-version or virtual environment picks no interpreter (4299651928).
     uvr() { (cd -- "${root}" && "${clean[@]}" "${uvy[@]}" "$@"); }
-    uvr python -I -c 'import yaml' > /dev/null 2>&1 || uvy=(uv run --no-project --python "${py}" --with pyyaml)
+    uvr python -I -c 'import yaml' > /dev/null 2>&1 || uvy=(uv run --no-config --no-project --python "${py}" --with pyyaml)
     read -r -d '' brief << 'PY' || true
 import sys, yaml
 def unique(loader, node, deep=False):

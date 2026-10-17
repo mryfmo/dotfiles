@@ -13,6 +13,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import pwd
 import re
 import shutil
 import subprocess
@@ -428,6 +429,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         fake.write_text(
             f'#!/usr/bin/env bash\necho "$*" >> "{self.calls}/uv.log"\npwd -P >> "{self.calls}/uv-cwd.log"\n'
             f'/usr/bin/env | /usr/bin/sed -n "s/^\\([A-Za-z_][A-Za-z0-9_]*\\)=.*/\\1/p" >> "{self.calls}/uv-env.log"\n'
+            f'echo "HOME=$HOME UV_CACHE_DIR=${{UV_CACHE_DIR:-}}" >> "{self.calls}/uv-home.log"\n'
             'here="$(cd "$(dirname "$0")" && pwd -P)"\n'
             'p=":${PATH}:" && p=${p//:${here}:/:}\nexec "$(PATH=${p} command -v uv)" "$@"\n'
         )
@@ -441,7 +443,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         def send(front, code, cwd=None, extra=None):
             text = self.write(rel, f"---\nformat: 2\ntask_id: t\n{front}---\n\nBody.\n").read_text()
             line = self.write("line.txt", f"AGMSG-TASK v1 task_id=t task_file={rel} task_sha256={sha(text)}\n")
-            for name in ("uv.log", "uv-cwd.log", "uv-env.log"):
+            for name in ("uv.log", "uv-cwd.log", "uv-env.log", "uv-home.log"):
                 (self.calls / name).unlink(missing_ok=True)
             args = ["team", "orch", "worker", "w5:pA", line, record]
             result = self.run_tool("dispatch.sh", *args, code=code, env={**env, **(extra or {})}, cwd=cwd)
@@ -466,7 +468,8 @@ class OrchestratorToolsTest(unittest.TestCase):
         _, log = send("kind: review\n", 0)
         # The Makefile's UV_PYYAML probe comes first, then the brief parse in the form it chose.
         self.assertRegex(
-            log.splitlines()[0], r"^run --no-project --offline --python /\S+ --with pyyaml python -I -c import yaml$"
+            log.splitlines()[0],
+            r"^run --no-config --no-project --offline --python /\S+ --with pyyaml python -I -c import yaml$",
         )
         self.assertNotIn("task-consistency-check.py", log)
         self.assertIn("python -I -c", log)
@@ -490,17 +493,28 @@ class OrchestratorToolsTest(unittest.TestCase):
         (caller / "pylib/yaml.py").write_text(f"open({str(self.calls / 'pwned')!r}, 'w')\n")
         state = {"VIRTUAL_ENV": str(caller / ".venv"), "CONDA_PREFIX": str(caller / ".venv"), "UV_PYTHON": str(pwn)}
         state |= {"PYTHONPATH": str(caller / "pylib"), "AGMSG_STORAGE_PATH": str(self.temp / "store")}
+        # 4300738707: a planted HOME whose uv.toml names a planted index, and audit:ef74eae:1's GIT_DIR/GIT_WORK_TREE.
+        (caller / "home/.config/uv").mkdir(parents=True)
+        (caller / "home/.config/uv/uv.toml").write_text('index-url = "http://127.0.0.1:9/simple"\n')
+        other = self.temp / "other"
+        subprocess.run(["git", "init", "-q", str(other)], check=True)
+        state |= {"HOME": str(caller / "home"), "GIT_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)}
         _, log = send("kind: review\n", 0, cwd=caller, extra=state)
         self.assertFalse((self.calls / "pwned").exists())
         self.assertEqual({str(self.repo)}, set((self.calls / "uv-cwd.log").read_text().splitlines()))
         # The allowlist (PATH, HOME, LANG, LC_ALL, AGMSG_*), plus what bash itself sets in the fake.
         names = set((self.calls / "uv-env.log").read_text().split())
         others = {n for n in names if not n.startswith("AGMSG_")}
-        self.assertLessEqual(others, {"PATH", "HOME", "LANG", "LC_ALL", "PWD", "SHLVL", "_", "OLDPWD"})
-        self.assertLessEqual({"PATH", "HOME", "AGMSG_STORAGE_PATH"}, names)
+        self.assertLessEqual(others, {"PATH", "HOME", "UV_CACHE_DIR", "LANG", "LC_ALL", "PWD", "SHLVL", "_", "OLDPWD"})
+        self.assertLessEqual({"PATH", "HOME", "UV_CACHE_DIR", "AGMSG_STORAGE_PATH"}, names)
+        # HOME is the script owner's passwd home and the cache sits under it, whatever the caller's HOME.
+        home = pwd.getpwuid((self.repo / "scripts/orchestrator/dispatch.sh").stat().st_uid).pw_dir
+        seen = set((self.calls / "uv-home.log").read_text().splitlines())
+        self.assertEqual({f"HOME={home} UV_CACHE_DIR={home}/.cache/uv"}, seen)
         # Each call starts a "run" line; the brief script it passes with -c spans the lines after it.
         calls = [line for line in log.splitlines() if line.startswith("run ")]
         self.assertEqual(2, len(calls))  # the probe and the brief parse; a brief runs no checker
+        self.assertTrue(all(call.startswith("run --no-config --no-project ") for call in calls), calls)
         pinned = {re.search(r" --python (/\S+) ", call)[1] for call in calls}
         self.assertEqual(1, len(pinned))
         self.assertNotEqual(str(pwn), pinned.pop())

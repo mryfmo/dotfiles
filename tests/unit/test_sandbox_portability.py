@@ -97,6 +97,36 @@ class SandboxPortabilityTest(unittest.TestCase):
         )
         self.assertEqual([], hits(ROOT, {"shell", "python"}, refused))
 
+    def test_a_continued_diff_command_is_refused(self):
+        def refused(code_line, _line):
+            return bool(DIFF_SUBSTITUTION.search(code_line))
+
+        continued = "#!/usr/bin/env bash\ndiff \\\n<(sort a) \\\n<(sort b)\n"
+        self.assertEqual(
+            ["scripts/bad.sh:2: diff <(sort a) <(sort b)"],
+            hits(self.repo_with("bad.sh", continued), {"shell"}, refused),
+        )
+
+    def test_a_quoted_hash_is_not_a_comment(self):
+        def diff_refused(code_line, _line):
+            return bool(DIFF_SUBSTITUTION.search(code_line))
+
+        def tmp_refused(code_line, line):
+            return bool(TMP.search(code_line)) and "TMPDIR" not in line
+
+        quoted = (
+            "#!/usr/bin/env bash\n"
+            'diff --label "baseline # current" <(sort a) <(sort b)\n'
+            "printf 'copy # /tmp/out'\n"
+            "x=1 # a comment may name /tmp\n"
+        )
+        repo = self.repo_with("bad.sh", quoted)
+        self.assertEqual(
+            ['scripts/bad.sh:2: diff --label "baseline # current" <(sort a) <(sort b)'],
+            hits(repo, {"shell"}, diff_refused),
+        )
+        self.assertEqual(["scripts/bad.sh:3: printf 'copy # /tmp/out'"], hits(repo, {"shell"}, tmp_refused))
+
 
 if __name__ == "__main__":
     unittest.main()

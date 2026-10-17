@@ -157,6 +157,25 @@ class SeatArgsTest(unittest.TestCase):
         self.assertIn("-a -p 20 -d cwd -Fn", calls)
         self.assertEqual({"-axo pid=,command="}, set((self.home / "ps-calls").read_text().splitlines()))
 
+        original_ps, original_lsof = self.ps.read_text(), self.lsof.read_text()
+        for probe, code, kind, diagnostic in [
+            (self.ps, 1, "claude-code", "ps failed (exit 1)"),
+            (self.ps, 0, "claude-code", "ps listed no process"),
+            (self.lsof, 1, "codex", "lsof failed (exit 1)"),
+            (self.lsof, 0, "codex", "lsof failed (exit 0)"),
+        ]:
+            with self.subTest(probe=probe.name, exit=code):
+                self.ps.write_text(original_ps)
+                self.lsof.write_text(original_lsof)
+                probe.write_text(f"#!/bin/bash\nexit {code}\n")
+                self.profiles.write_text(profiles)
+                identity = claude if kind == "claude-code" else codex
+                result = self.run_probe(identity, kind, "t", project, f"200 {match}\n20 codex --profile standard\n")
+                runtime = "claude" if kind == "claude-code" else "codex"
+                self.assertEqual(4, result.returncode)
+                self.assertEqual(f"seat {identity} profile=standard kind={runtime} args=unknown-probe\n", result.stdout)
+                self.assertEqual(f"seat-args: {diagnostic}\n", result.stderr)
+
     def run_probe(self, identity, kind, teams, project, processes, **seams):
         (self.home / "ps-lines").write_text(processes)
         (self.home / "cwd-10").write_text("p10\nn/another/repository\n")

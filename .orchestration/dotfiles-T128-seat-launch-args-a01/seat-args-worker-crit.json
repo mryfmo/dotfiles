@@ -17,5 +17,18 @@
     "scope": "review",
     "body": "Independent read-only Codex C50 review against274257172db0915df34e9f1764c69f572346727f approved the one-character grammar change and seven-line regression subcase, high confidence, no additional finding. Source hashes match parent-tested bytes. Transcript SHA256 d61a817387b6966b27b4a10c8f6ff10527b32227482e26c2fc3ff6443184709a is pasted verbatim in validation.md. Verdict: correct.",
     "resolved": true
+  },
+  {
+    "id": "bot-4301301556-probe-failure-empty",
+    "scope": "file",
+    "path": "scripts/orchestrator/seat-args.sh",
+    "body": "P2 process-visibility: failed or empty ps/lsof probes falsely became unlaunched. The explicit second C50 check is addressed by capturing ps status/snapshot, requiring a numeric process line, and skipping4 on failed/empty cwd lookup, with one diagnostic. Four subcases failed before the fix, then full12 tests passed16.258s. Independent review approved the narrowed delta and8 extra stub cases. Nonempty namespace filtering remains indistinguishable from real absence; no host-visibility closure is claimed.",
+    "resolved": true
+  },
+  {
+    "id": "seat-args-probe-c50-independent-approval",
+    "scope": "review",
+    "body": "Independent read-only Codex review againstbfae75c14f52ff1b8083a69179bd90e91aa99458 approved the authorized probe failure/empty-output delta, high confidence, no additional finding. Source hashes match parent-tested bytes. Transcript SHA25654768faec91b016680275bc472010ca569c69256bb7f104c9a0a6b8346f1c23e is pasted verbatim in validation.md. Explicit residual: nonempty sandbox PID namespace may hide host workers. Verdict: correct.",
+    "resolved": true
   }
 ]

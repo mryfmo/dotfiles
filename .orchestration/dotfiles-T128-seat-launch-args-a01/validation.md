@@ -1756,3 +1756,475 @@ exit=2
 $ git diff --check -- scripts/orchestrator/seat-args.sh scripts/check-regime-boundary.sh tests/unit/test_seat_args.py tests/unit/test_check_regime_boundary.py
 stdout/stderr empty; exit=0
 ```
+
+## Second C50: process-visibility4301301556
+
+Authorized ACCEPTANCE2026-10-17T04:15:41Z on previous_headbfae75c14f52ff1b8083a69179bd90e91aa99458, class process-visibility occurrence1, exact test selector unchanged. Failed ps or no numeric process line skips4; failed/empty lsof skips4. Stderr one diagnostic, no host process command. A nonempty sandbox namespace hiding the host remains indistinguishable from real absence; no host-visibility claim.
+
+### Prior exact-head Bot review and finding
+
+```text
+{
+  "head": "bfae75c14f52ff1b8083a69179bd90e91aa99458",
+  "reviews": [
+    {
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### \ud83d\udca1 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `bfae75c14f`\n    \n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with \ud83d\udc4d.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "commit_id": "bfae75c14f52ff1b8083a69179bd90e91aa99458",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/383#pullrequestreview-5556073590",
+      "id": 5556073590,
+      "state": "COMMENTED",
+      "submitted_at": "2026-10-17T04:13:09Z"
+    }
+  ],
+  "inline": [
+    {
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Run the process probe outside the agent sandbox**\n\nWhen this boundary check runs from the normal Claude orchestrator context, this subprocess inherits the agent sandbox: `home/dot_agents/skills/agmsg-orchestration/SKILL.md:56` documents that macOS Seatbelt denies `ps` and Linux bubblewrap hides outside processes. Consequently, `seat-args.sh` receives no visible worker rows and reports a healthy seat as `process=none args=unlaunched`; an executable-but-denied `ps` also reproduces this because its failure is discarded by the process substitution. Invoke the probe through an established outside-sandbox mechanism or another process source visible from the sandbox. The process-input threat-table row only describes the probes as read-only/test-replaceable and therefore does not mitigate this runtime limitation.\n\nAGENTS.md reference: [AGENTS.md:L75-L78](https://github.com/mryfmo/dotfiles/blob/bfae75c14f52ff1b8083a69179bd90e91aa99458/AGENTS.md#L75-L78)\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/383#discussion_r4301301556",
+      "id": 4301301556,
+      "line": 132,
+      "original_commit_id": "bfae75c14f52ff1b8083a69179bd90e91aa99458",
+      "path": "scripts/check-regime-boundary.sh"
+    }
+  ],
+  "issue_comments": [
+    {
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"bfae75c14f52ff1b8083a69179bd90e91aa99458\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"274257172db0915df34e9f1764c69f572346727f\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"274257172db0915df34e9f1764c69f572346727f\",\"mergeGateEnabled\":false,\"pullRequestNumber\":383,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| \ud83d\udcdd **Code Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-17T04:13:12.249447Z\">2026-10-17T04:13:12.249447Z</relative-time> | `bfae75c` | Manual request |\n| \ud83d\udd12 **Security Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-17T04:05:25.814777Z\">2026-10-17T04:05:25.814777Z</relative-time> | `2742571` | Draft marked ready |\n\n\n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with \ud83d\udc40 while any review is running, comments if it has suggestions, and reacts with \ud83d\udc4d once all reviews finish with no findings.\n\n</details>",
+      "created_at": "2026-10-17T04:00:57Z",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/383#issuecomment-6229380503",
+      "id": 6229380503,
+      "updated_at": "2026-10-17T04:13:13Z"
+    }
+  ]
+}
+
+```
+
+### Stub reproduction on prior source
+
+```text
+{"executable_stub_ps_exit": 1, "script_exit": 3, "stdout": "seat claude-standard-dot-a001 profile=standard kind=claude process=none args=unlaunched\n", "stderr": ""}
+Reproduced: executable-but-failing ps is indistinguishable from an absent process. Stub only; no live process probe.
+
+```
+
+### RED prescribed seat method before second C50, exit1 expected
+
+```text
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... 
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (probe='ps', exit=1) ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (probe='ps', exit=0) ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (probe='lsof', exit=1) ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (probe='lsof', exit=0) ... FAIL
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (probe='ps', exit=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 175, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(4, result.returncode)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 3
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (probe='ps', exit=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 175, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(4, result.returncode)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 3
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (probe='lsof', exit=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 175, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(4, result.returncode)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 3
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (probe='lsof', exit=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 175, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(4, result.returncode)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 3
+
+----------------------------------------------------------------------
+Ran 1 test in 1.448s
+
+FAILED (failures=4)
+
+```
+
+### GREEN full requested two modules with process-only cache/signing overrides, exit0
+
+```text
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... ok
+test_a_pr_closed_unmerged_is_reported_without_an_anchored_reset_record (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_pr_closed_unmerged_is_reported_without_an_anchored_reset_record) ... ok
+test_a_pr_none_record_silences_only_a_task_whose_results_name_no_pr (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_pr_none_record_silences_only_a_task_whose_results_name_no_pr) ... ok
+test_a_reset_record_naming_an_unrelated_accepted_design_anchors_nothing (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_reset_record_naming_an_unrelated_accepted_design_anchors_nothing) ... ok
+test_a_reset_record_silences_only_when_another_identity_accepted_its_design (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_reset_record_silences_only_when_another_identity_accepted_its_design) ... ok
+test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal) ... ok
+test_a_seated_worker_without_its_profile_arguments_is_a_violation (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_seated_worker_without_its_profile_arguments_is_a_violation) ... ok
+test_a_task_over_a_count_is_reported (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_task_over_a_count_is_reported) ... ok
+test_a_waiver_line_silences_nothing (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_waiver_line_silences_nothing) ... ok
+test_an_accepted_record_silences_only_when_the_tasks_pr_is_merged (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_an_accepted_record_silences_only_when_the_tasks_pr_is_merged) ... ok
+test_each_listed_task_is_counted_and_an_unsafe_id_is_skipped (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_each_listed_task_is_counted_and_an_unsafe_id_is_skipped) ... ok
+test_the_probe_skips_without_the_counters_script_or_a_readable_store (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_the_probe_skips_without_the_counters_script_or_a_readable_store) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 16.258s
+
+OK
+
+```
+
+```text
+$ shellcheck scripts/orchestrator/seat-args.sh scripts/check-regime-boundary.sh
+stdout/stderr empty; exit=0
+$ shfmt --indent 4 --space-redirects --diff scripts/orchestrator/seat-args.sh scripts/check-regime-boundary.sh
+stdout/stderr empty; exit=0
+$ UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project ruff format --check tests/unit/test_seat_args.py tests/unit/test_check_regime_boundary.py
+2 files already formatted
+exit=0
+$ git diff --check -- scripts/orchestrator/seat-args.sh scripts/check-regime-boundary.sh tests/unit/test_seat_args.py tests/unit/test_check_regime_boundary.py
+stdout/stderr empty; exit=0
+$ git diff --numstat b167fe0a76a2e77d262f9f556c69ba6b9f118bbe -- scripts tests
+17	1	scripts/check-regime-boundary.sh
+119	0	scripts/orchestrator/seat-args.sh
+56	0	tests/unit/test_check_regime_boundary.py
+201	0	tests/unit/test_seat_args.py
+exit=0; source137<=200, test additions257<=1000
+$ shasum -a 256 <the four source/test files and task.md>
+7abcdcdb867cd289fd26acaaa3103a4085f1b7f32ef5ad99413c55eb9a7e8a55  scripts/orchestrator/seat-args.sh
+eb242b6e7f3ebcdeca2946993324f4012474e30ec85fdf6b418447764123d423  scripts/check-regime-boundary.sh
+42215a55c685620b00cb53c1092c5abda30c6210d75d9f4d3e5582e78f4296d1  tests/unit/test_seat_args.py
+27d86374f82d7f0d069e4896173ff311725dda83b041e4a56d6285246938dfb3  tests/unit/test_check_regime_boundary.py
+148f5dde8795da8a8eeb265fcbbd40be11cb27e2407c979b772dcbcba772bd8f  .orchestration/dotfiles-T128-seat-launch-args-a01/task.md
+```
+
+## Independent second C50 transcript
+
+Parent read full transcript; source hashes match tested bytes. SHA25654768faec91b016680275bc472010ca569c69256bb7f104c9a0a6b8346f1c23e. Approval is for the narrowed authorized failed/empty check and explicitly retains the nonempty namespace limitation.
+
+# Seat launch arguments process-visibility C50 review
+
+Review base: bfae75c14f52ff1b8083a69179bd90e91aa99458.
+
+Scope: only the ps/lsof failure-and-empty-output delta in scripts/orchestrator/seat-args.sh and its four added subcases in tests/unit/test_seat_args.py. The orchestrator explicitly narrowed this C50 check to nonzero probes and empty usable output. No repository source, refs or configuration were changed by the reviewer; all exercised processes were fixture stubs.
+
+## Conclusion
+
+Approval for the authorized narrowed C50 delta, high confidence. The ps snapshot is captured once with its status; a nonzero status or no numeric process line returns unknown-probe/4. The lsof pipeline's nonzero status is preserved through pipefail; nonzero or empty extracted cwd returns unknown-probe/4. Diagnostics identify the failed probe and status without reproducing raw probe output. The four added subcases assert exact exit, stdout and stderr. Eight additional independent stub cases passed, including nonzero probes that still print plausible output, header-only ps, lsof without a cwd, and existing matching/unlaunched behavior. No further finding within the authorized scope.
+
+Residual limitation: a nonempty sandbox PID namespace can hide host workers. Its visible snapshot is indistinguishable from a genuinely absent seat, and the script still returns unlaunched/3 when no matching process appears in that nonempty snapshot. This review does not claim host process visibility or closure of that residual limitation.
+
+## Reviewed source SHA256
+
+- scripts/orchestrator/seat-args.sh: 7abcdcdb867cd289fd26acaaa3103a4085f1b7f32ef5ad99413c55eb9a7e8a55
+- tests/unit/test_seat_args.py: 42215a55c685620b00cb53c1092c5abda30c6210d75d9f4d3e5582e78f4296d1
+
+## Exact command/output transcript
+
+The outer execution tool exposes combined stdout/stderr, reproduced verbatim below with the recorded exit status. The behavioral check separately captures and prints every inner probe's stdout, stderr and exit status as JSON. No commands were rerun to create this transcript.
+
+### Exact source/test delta, numbered source and source hashes
+
+~~~bash
+git diff bfae75c14f52ff1b8083a69179bd90e91aa99458 -- scripts/orchestrator/seat-args.sh tests/unit/test_seat_args.py && nl -ba scripts/orchestrator/seat-args.sh && shasum -a 256 scripts/orchestrator/seat-args.sh tests/unit/test_seat_args.py
+~~~
+
+Verbatim displayed output:
+
+~~~text
+diff --git a/scripts/orchestrator/seat-args.sh b/scripts/orchestrator/seat-args.sh
+index 7cd98297..b8a9ecfd 100755
+--- a/scripts/orchestrator/seat-args.sh
++++ b/scripts/orchestrator/seat-args.sh
+@@ -44,6 +44,21 @@ if [[ ! -x ${ps_probe} ]] || { [[ ${kind} == codex ]] && [[ ! -x ${lsof_probe} ]
+     exit 4
+ fi
+ 
++# @description Skip a probe whose result cannot establish process visibility.
++# @arg $1 string Diagnostic without probe output.
++unknown_probe() {
++    printf '%s args=unknown-probe\n' "${label}"
++    printf 'seat-args: %s\n' "$1" >&2
++    exit 4
++}
++
++probe_status=0
++processes="$("${ps_probe}" -axo pid=,command= 2> /dev/null)" || probe_status=$?
++if ((probe_status != 0)); then unknown_probe "ps failed (exit ${probe_status})"; fi
++if ! grep -Eq '^[[:blank:]]*[0-9]+[[:blank:]]+[^[:blank:]]' <<< "${processes}"; then
++    unknown_probe 'ps listed no process'
++fi
++
+ # @description Find one literal adjacent pair in the current process tokens.
+ # @arg $1 string Flag.
+ # @arg $2 string Value.
+@@ -74,12 +89,14 @@ while read -r pid process_args; do
+     else
+         if [[ ${program##*/} != codex ]] &&
+             { [[ ${program##*/} != node ]] || [[ ${words[1]:-} != */codex ]]; }; then continue; fi
+-        cwd="$("${lsof_probe}" -a -p "${pid}" -d cwd -Fn 2> /dev/null | sed -n 's/^n//p')" || cwd=""
++        probe_status=0
++        cwd="$("${lsof_probe}" -a -p "${pid}" -d cwd -Fn 2> /dev/null | sed -n 's/^n//p')" || probe_status=$?
++        if ((probe_status != 0)) || [[ -z ${cwd} ]]; then unknown_probe "lsof failed (exit ${probe_status})"; fi
+         [[ ${cwd} == "${project}" ]] || continue
+     fi
+     selected_pid=${pid}
+     selected=("${words[@]}")
+-done < <("${ps_probe}" -axo pid=,command= 2> /dev/null)
++done <<< "${processes}"
+ 
+ if [[ -z ${selected_pid} ]]; then
+     printf '%s process=none args=unlaunched\n' "${label}"
+diff --git a/tests/unit/test_seat_args.py b/tests/unit/test_seat_args.py
+index c799acc3..ce7521b2 100644
+--- a/tests/unit/test_seat_args.py
++++ b/tests/unit/test_seat_args.py
+@@ -157,6 +157,25 @@ class SeatArgsTest(unittest.TestCase):
+         self.assertIn("-a -p 20 -d cwd -Fn", calls)
+         self.assertEqual({"-axo pid=,command="}, set((self.home / "ps-calls").read_text().splitlines()))
+ 
++        original_ps, original_lsof = self.ps.read_text(), self.lsof.read_text()
++        for probe, code, kind, diagnostic in [
++            (self.ps, 1, "claude-code", "ps failed (exit 1)"),
++            (self.ps, 0, "claude-code", "ps listed no process"),
++            (self.lsof, 1, "codex", "lsof failed (exit 1)"),
++            (self.lsof, 0, "codex", "lsof failed (exit 0)"),
++        ]:
++            with self.subTest(probe=probe.name, exit=code):
++                self.ps.write_text(original_ps)
++                self.lsof.write_text(original_lsof)
++                probe.write_text(f"#!/bin/bash\nexit {code}\n")
++                self.profiles.write_text(profiles)
++                identity = claude if kind == "claude-code" else codex
++                result = self.run_probe(identity, kind, "t", project, f"200 {match}\n20 codex --profile standard\n")
++                runtime = "claude" if kind == "claude-code" else "codex"
++                self.assertEqual(4, result.returncode)
++                self.assertEqual(f"seat {identity} profile=standard kind={runtime} args=unknown-probe\n", result.stdout)
++                self.assertEqual(f"seat-args: {diagnostic}\n", result.stderr)
++
+     def run_probe(self, identity, kind, teams, project, processes, **seams):
+         (self.home / "ps-lines").write_text(processes)
+         (self.home / "cwd-10").write_text("p10\nn/another/repository\n")
+     1	#!/usr/bin/env bash
+     2	# @file seat-args.sh
+     3	# @brief Compare a seated worker's live arguments with its rendered profile.
+     4	# @description
+     5	#   Reads profile text and process probes without sourcing, writing or signalling.
+     6	#   SEAT_ARGS_PS and SEAT_ARGS_LSOF replace the absolute probes in tests.
+     7	# @arg $1 string Comma-separated teams of the seated identity.
+     8	# @arg $2 string Identity in kind-profile-suffix form.
+     9	# @arg $3 string Agent type, claude-code or codex.
+    10	# @arg $4 path Project cwd used to select a Codex process.
+    11	# @exitcode 0 Profile pairs match.
+    12	# @exitcode 2 Arguments differ, or identity/profile is unknown.
+    13	# @exitcode 3 No launched process matches.
+    14	# @exitcode 4 A required probe binary is unavailable.
+    15	set -euo pipefail
+    16	
+    17	teams=$1 identity=$2 agent_type=$3 project=$4
+    18	if [[ ! ${identity} =~ ^(claude|codex)-([a-z][a-z0-9_]*)-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+    19	    printf 'seat %s args=unknown-identity\n' "${identity}"
+    20	    exit 2
+    21	fi
+    22	kind=${BASH_REMATCH[1]} profile=${BASH_REMATCH[2]}
+    23	if [[ ${kind}:${agent_type} != claude:claude-code && ${kind}:${agent_type} != codex:codex ]]; then
+    24	    printf 'seat %s args=unknown-identity\n' "${identity}"
+    25	    exit 2
+    26	fi
+    27	label="seat ${identity} profile=${profile} kind=${kind}"
+    28	key="MODEL_PROFILE_$(tr '[:lower:]' '[:upper:]' <<< "${profile}_${kind}")_ARGS"
+    29	expected="$(awk -v key="${key}" 'index($0, key "=\"") == 1 && substr($0, length($0), 1) == "\"" {
+    30	    print substr($0, length(key) + 3, length($0) - length(key) - 3); exit
+    31	}' "${HOME}/.agents/model-profiles.env" 2> /dev/null)" || expected=""
+    32	if [[ -z ${expected} ]]; then
+    33	    printf '%s args=unknown-profile\n' "${label}"
+    34	    exit 2
+    35	fi
+    36	[[ ${kind} != codex ]] || expected="--profile ${profile}"
+    37	read -r -a expected_args <<< "${expected}"
+    38	IFS=, read -r -a team_names <<< "${teams}"
+    39	ps_probe=${SEAT_ARGS_PS:-/bin/ps}
+    40	lsof_probe=${SEAT_ARGS_LSOF:-/usr/sbin/lsof}
+    41	[[ -n ${SEAT_ARGS_LSOF+x} || -x ${lsof_probe} ]] || lsof_probe=/usr/bin/lsof
+    42	if [[ ! -x ${ps_probe} ]] || { [[ ${kind} == codex ]] && [[ ! -x ${lsof_probe} ]]; }; then
+    43	    printf '%s args=unknown-probe\n' "${label}"
+    44	    exit 4
+    45	fi
+    46	
+    47	# @description Skip a probe whose result cannot establish process visibility.
+    48	# @arg $1 string Diagnostic without probe output.
+    49	unknown_probe() {
+    50	    printf '%s args=unknown-probe\n' "${label}"
+    51	    printf 'seat-args: %s\n' "$1" >&2
+    52	    exit 4
+    53	}
+    54	
+    55	probe_status=0
+    56	processes="$("${ps_probe}" -axo pid=,command= 2> /dev/null)" || probe_status=$?
+    57	if ((probe_status != 0)); then unknown_probe "ps failed (exit ${probe_status})"; fi
+    58	if ! grep -Eq '^[[:blank:]]*[0-9]+[[:blank:]]+[^[:blank:]]' <<< "${processes}"; then
+    59	    unknown_probe 'ps listed no process'
+    60	fi
+    61	
+    62	# @description Find one literal adjacent pair in the current process tokens.
+    63	# @arg $1 string Flag.
+    64	# @arg $2 string Value.
+    65	has_pair() {
+    66	    local index
+    67	    for ((index = 1; index + 1 < ${#words[@]}; index++)); do
+    68	        [[ ${words[index]} != "$1" || ${words[index + 1]} != "$2" ]] || return 0
+    69	    done
+    70	    return 1
+    71	}
+    72	
+    73	selected_pid=""
+    74	while read -r pid process_args; do
+    75	    [[ ${pid} =~ ^[0-9]+$ ]] || continue
+    76	    if [[ -n ${selected_pid} ]] && ((10#${pid} >= 10#${selected_pid})); then continue; fi
+    77	    read -r -a words <<< "${process_args}"
+    78	    program=${words[0]:-}
+    79	    if [[ ${kind} == claude ]]; then
+    80	        [[ ${program##*/} == claude ]] || continue
+    81	        matched=false
+    82	        for team in "${team_names[@]}"; do
+    83	            if has_pair -n "${team}-${identity}"; then
+    84	                matched=true
+    85	                break
+    86	            fi
+    87	        done
+    88	        [[ ${matched} == true ]] || continue
+    89	    else
+    90	        if [[ ${program##*/} != codex ]] &&
+    91	            { [[ ${program##*/} != node ]] || [[ ${words[1]:-} != */codex ]]; }; then continue; fi
+    92	        probe_status=0
+    93	        cwd="$("${lsof_probe}" -a -p "${pid}" -d cwd -Fn 2> /dev/null | sed -n 's/^n//p')" || probe_status=$?
+    94	        if ((probe_status != 0)) || [[ -z ${cwd} ]]; then unknown_probe "lsof failed (exit ${probe_status})"; fi
+    95	        [[ ${cwd} == "${project}" ]] || continue
+    96	    fi
+    97	    selected_pid=${pid}
+    98	    selected=("${words[@]}")
+    99	done <<< "${processes}"
+   100	
+   101	if [[ -z ${selected_pid} ]]; then
+   102	    printf '%s process=none args=unlaunched\n' "${label}"
+   103	    exit 3
+   104	fi
+   105	words=("${selected[@]}")
+   106	ok=true
+   107	((${#expected_args[@]} % 2 == 0)) || ok=false
+   108	for ((index = 0; index + 1 < ${#expected_args[@]}; index += 2)); do
+   109	    has_pair "${expected_args[index]}" "${expected_args[index + 1]}" || ok=false
+   110	done
+   111	if [[ ${ok} == true ]]; then
+   112	    printf '%s process=%s args=ok\n' "${label}" "${selected_pid}"
+   113	    exit 0
+   114	fi
+   115	offset=1
+   116	[[ ${words[0]##*/} != node ]] || offset=2
+   117	printf '%s process=%s args=differs expected=%s found=%s\n' \
+   118	    "${label}" "${selected_pid}" "${expected_args[*]}" "${words[*]:offset}"
+   119	exit 2
+7abcdcdb867cd289fd26acaaa3103a4085f1b7f32ef5ad99413c55eb9a7e8a55  scripts/orchestrator/seat-args.sh
+42215a55c685620b00cb53c1092c5abda30c6210d75d9f4d3e5582e78f4296d1  tests/unit/test_seat_args.py
+~~~
+
+Exit status: 0. Tool chunk: 0ac17e.
+
+### Additional stub-only process-visibility checks
+
+~~~bash
+PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project python - <<'PY'
+import importlib.util
+import json
+from pathlib import Path
+
+spec = importlib.util.spec_from_file_location('seat_probe_review_fixture', Path('tests/unit/test_seat_args.py'))
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+case = module.SeatArgsTest()
+case.setUp()
+project = str(case.temp / 'project with spaces')
+claude = 'claude-standard-dot-a001'
+codex = 'codex-standard-dot-a004'
+matching = f'200 claude {module.CLAUDE_ARGS} -n t-{claude}\n'
+case.profiles.write_text(
+    f'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="{module.CLAUDE_ARGS}"\n'
+    'MODEL_PROFILE_STANDARD_CODEX_ARGS="--profile standard"\n'
+)
+original_ps, original_lsof = case.ps.read_text(), case.lsof.read_text()
+cases = [
+    ('ps failure despite valid stdout', claude, 'claude-code', '#!/bin/bash\ncat "$HOME/ps-lines"\nexit 7\n', None, matching, 4, 'ps failed (exit 7)'),
+    ('ps empty success', claude, 'claude-code', '#!/bin/bash\nexit 0\n', None, matching, 4, 'ps listed no process'),
+    ('ps header only', claude, 'claude-code', '#!/bin/bash\nprintf "PID COMMAND\\n"\n', None, matching, 4, 'ps listed no process'),
+    ('lsof failure despite cwd stdout', codex, 'codex', None, '#!/bin/bash\ncat "$HOME/cwd-20"\nexit 7\n', '20 codex --profile standard\n', 4, 'lsof failed (exit 7)'),
+    ('lsof empty success', codex, 'codex', None, '#!/bin/bash\nexit 0\n', '20 codex --profile standard\n', 4, 'lsof failed (exit 0)'),
+    ('lsof pid only', codex, 'codex', None, '#!/bin/bash\nprintf "p20\\n"\n', '20 codex --profile standard\n', 4, 'lsof failed (exit 0)'),
+    ('nonempty snapshot without target', claude, 'claude-code', None, None, '1 /sbin/init\n', 3, None),
+    ('visible matching seat', claude, 'claude-code', None, None, matching, 0, None),
+]
+try:
+    for label, identity, kind, ps_text, lsof_text, lines, code, diagnostic in cases:
+        case.ps.write_text(ps_text if ps_text is not None else original_ps)
+        case.lsof.write_text(lsof_text if lsof_text is not None else original_lsof)
+        result = case.run_probe(identity, kind, 't', project, lines)
+        runtime = 'claude' if kind == 'claude-code' else 'codex'
+        prefix = f'seat {identity} profile=standard kind={runtime}'
+        if code == 4:
+            expected_stdout = f'{prefix} args=unknown-probe\n'
+            expected_stderr = f'seat-args: {diagnostic}\n'
+        else:
+            tail = 'process=none args=unlaunched' if code == 3 else 'process=200 args=ok'
+            expected_stdout = f'{prefix} {tail}\n'
+            expected_stderr = ''
+        assert (result.returncode, result.stdout, result.stderr) == (code, expected_stdout, expected_stderr), (label, result)
+        print(json.dumps({'case': label, 'exit': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}))
+    print('8 additional stub-only process-visibility cases passed')
+finally:
+    case.doCleanups()
+PY
+~~~
+
+Verbatim displayed output:
+
+~~~text
+{"case": "ps failure despite valid stdout", "exit": 4, "stdout": "seat claude-standard-dot-a001 profile=standard kind=claude args=unknown-probe\n", "stderr": "seat-args: ps failed (exit 7)\n"}
+{"case": "ps empty success", "exit": 4, "stdout": "seat claude-standard-dot-a001 profile=standard kind=claude args=unknown-probe\n", "stderr": "seat-args: ps listed no process\n"}
+{"case": "ps header only", "exit": 4, "stdout": "seat claude-standard-dot-a001 profile=standard kind=claude args=unknown-probe\n", "stderr": "seat-args: ps listed no process\n"}
+{"case": "lsof failure despite cwd stdout", "exit": 4, "stdout": "seat codex-standard-dot-a004 profile=standard kind=codex args=unknown-probe\n", "stderr": "seat-args: lsof failed (exit 7)\n"}
+{"case": "lsof empty success", "exit": 4, "stdout": "seat codex-standard-dot-a004 profile=standard kind=codex args=unknown-probe\n", "stderr": "seat-args: lsof failed (exit 0)\n"}
+{"case": "lsof pid only", "exit": 4, "stdout": "seat codex-standard-dot-a004 profile=standard kind=codex args=unknown-probe\n", "stderr": "seat-args: lsof failed (exit 0)\n"}
+{"case": "nonempty snapshot without target", "exit": 3, "stdout": "seat claude-standard-dot-a001 profile=standard kind=claude process=none args=unlaunched\n", "stderr": ""}
+{"case": "visible matching seat", "exit": 0, "stdout": "seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=ok\n", "stderr": ""}
+8 additional stub-only process-visibility cases passed
+~~~
+
+Exit status: 0. Tool chunk: fccd08.
+
+Not checked: live host/sandbox process lists, CI or the parent's concurrently running full two-module suite.
+
+Verdict: correct
+
+
+## Second C50 worker gate and masking
+
+```text
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+exit=0
+$ UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <six changed canonical artifacts>
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/revise.yaml
+exit=0
+```

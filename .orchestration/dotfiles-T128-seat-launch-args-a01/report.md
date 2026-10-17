@@ -1,6 +1,6 @@
 ---
 task_id: dotfiles-T128-seat-launch-args-a01
-round: 2
+round: 3
 status: ready_for_external_checks
 ---
 
@@ -25,3 +25,13 @@ Orchestrator ACCEPTANCE 2026-10-17T04:07:05Z authorizes the narrow fix for Bot P
 The first head's Bot review5556009034 contained that one P2 and no P0/P1; the review body and top-level inline finding are pasted in validation.md. Security summary6229380503 later completed with no findings. First-head CI was still pending at the recorded snapshot; no first-head all-green claim. This committed evidence describes verified local source hashes and known first-head feedback. The final C50 publishing head still requires CI and a same-head Bot review after push; observed results and exact publishing SHA are reported in RESULT, without inventing future results in these phase-bound records. Prior PR379 C50 is queued for its preserved branch after this hand-off, as the ACCEPTANCE states.
 
 Independent C50 review approved with high confidence, no new finding; three additional stub cases passed (Claude/Codex underscore profiles, invalid leading underscore). The transcript is pasted verbatim in validation.md. The resolved JSON and addressed receipt cover the new source hashes.
+
+## Second authorized C50 revision: unavailable process visibility
+
+ACCEPTANCE2026-10-17T04:15:41Z requires probe errors or empty visibility to skip4, rather than report false unlaunched. Bot P2 4301301556 on headbfae75c14f52ff1b8083a69179bd90e91aa99458 is process-visibility occurrence1, a different class from the profile grammar finding. The ps snapshot is now captured once with its status; nonzero status or no numeric process line prints unknown-probe4 and one stderr diagnostic. A failed lsof or empty extracted cwd also skips4 with one diagnostic, including lsof failed(exit0) for an empty successful response. Existing missing-binary skips stay unchanged. A nonempty valid process list without the seat remains unlaunched3. No host or outside-sandbox command runs.
+
+Four new subcases (ps failure/empty, lsof failure/empty) all failed before this fix. The complete requested suite now passes12 tests16.258s, with24 seat subcases; ShellCheck, configured shfmt, Ruff format and scoped source/test whitespace pass. Final local caps are source137<=200 and test additions257<=1000, superseding earlier publishing checkpoints. The previous publishing head, second finding/class/check are recorded under probe_revision in revise.yaml. Both known Bot review bodies have been read; no P0/P1, no thread replied to or resolved by this worker. Proposed disposition for4301301556 is fixed by the publishing commit of this authorized revision.
+
+Remaining limitation: a nonempty sandbox PID namespace that hides host workers cannot be distinguished from a genuinely absent seat by this probe. The revision follows the explicit failed-or-empty check and does not establish host process visibility. That limitation is sent to the orchestrator and carried in RESULT. The fixture checks do not read live process state. The actual post-push CI/Bot result and publishing SHA remain external observations in RESULT; these committed records bind to the local source hashes and prior feedback, without future claims.
+
+Independent second C50 review approved the narrowed change with high confidence and no new finding;8 extra stub cases passed, including valid-looking stdout from failed probes and existing unlaunched/matching behavior. The reviewer retains the nonempty namespace limitation. The complete transcript is in validation.md, with resolved JSON and addressed receipt committed.

@@ -44,6 +44,21 @@ if [[ ! -x ${ps_probe} ]] || { [[ ${kind} == codex ]] && [[ ! -x ${lsof_probe} ]
     exit 4
 fi
 
+# @description Skip a probe whose result cannot establish process visibility.
+# @arg $1 string Diagnostic without probe output.
+unknown_probe() {
+    printf '%s args=unknown-probe\n' "${label}"
+    printf 'seat-args: %s\n' "$1" >&2
+    exit 4
+}
+
+probe_status=0
+processes="$("${ps_probe}" -axo pid=,command= 2> /dev/null)" || probe_status=$?
+if ((probe_status != 0)); then unknown_probe "ps failed (exit ${probe_status})"; fi
+if ! grep -Eq '^[[:blank:]]*[0-9]+[[:blank:]]+[^[:blank:]]' <<< "${processes}"; then
+    unknown_probe 'ps listed no process'
+fi
+
 # @description Find one literal adjacent pair in the current process tokens.
 # @arg $1 string Flag.
 # @arg $2 string Value.
@@ -74,12 +89,14 @@ while read -r pid process_args; do
     else
         if [[ ${program##*/} != codex ]] &&
             { [[ ${program##*/} != node ]] || [[ ${words[1]:-} != */codex ]]; }; then continue; fi
-        cwd="$("${lsof_probe}" -a -p "${pid}" -d cwd -Fn 2> /dev/null | sed -n 's/^n//p')" || cwd=""
+        probe_status=0
+        cwd="$("${lsof_probe}" -a -p "${pid}" -d cwd -Fn 2> /dev/null | sed -n 's/^n//p')" || probe_status=$?
+        if ((probe_status != 0)) || [[ -z ${cwd} ]]; then unknown_probe "lsof failed (exit ${probe_status})"; fi
         [[ ${cwd} == "${project}" ]] || continue
     fi
     selected_pid=${pid}
     selected=("${words[@]}")
-done < <("${ps_probe}" -axo pid=,command= 2> /dev/null)
+done <<< "${processes}"
 
 if [[ -z ${selected_pid} ]]; then
     printf '%s process=none args=unlaunched\n' "${label}"

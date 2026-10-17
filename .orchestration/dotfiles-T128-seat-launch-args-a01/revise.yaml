@@ -5,3 +5,11 @@ finding: 4301264676
 finding_class: profile-name-grammar
 check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
 scope: Accept generator-valid underscores in the identity profile field; one regression subcase, no other behavior change.
+
+probe_revision:
+  round: 2
+  previous_head: bfae75c14f52ff1b8083a69179bd90e91aa99458
+  finding: 4301301556
+  finding_class: process-visibility
+  check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+  scope: Probe failures and empty visibility report unknown-probe4 with one diagnostic; never false unlaunched.

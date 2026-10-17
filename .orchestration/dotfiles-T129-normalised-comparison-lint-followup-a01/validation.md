@@ -1,12 +1,12 @@
 ---
 task_id: dotfiles-T129-normalised-comparison-lint-followup-a01
 seat: claude-standard-dot-a008
-head: 1b56dc2b
+head: bb60ee84
 ---
 
 # Validation: dotfiles-T129-normalised-comparison-lint-followup-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f` on the branch `lint/normalised-comparisons-followup-a01` at `1b56dc2b`, inside the sandbox, through `$TMPDIR/val.sh` (a generator that prints each command, its verbatim output and its exit status); `MAIN` names the main checkout, `T` the task id, `BASE` PR #387's head `7c8e7484`. The scratch worktrees (`$R`, `$V`, `$X`, `$B`, `$S`) live under `$TMPDIR` and are removed after their block with `git worktree remove --force`. A block's status is its last command's. The red tracked-tree test of §3 to §5 is the same with the base script and baseline (§5a); see the report.
+Every command ran from the worktree `.claude/worktrees/worker-f` on the branch `lint/normalised-comparisons-followup-a01` at `bb60ee84`, inside the sandbox, through `$TMPDIR/val.sh` (a generator that prints each command, its verbatim output and its exit status); `MAIN` names the main checkout, `T` the task id, `BASE` PR #387's head `7c8e7484`. The scratch worktrees (`$R`, `$V`, `$X`, `$Y`, `$B`, `$S`) live under `$TMPDIR` and are removed after their block with `git worktree remove --force`. A block's status is its last command's. The red tracked-tree test of §3 to §5 is the same with the base script and baseline (§5a); see the report.
 
 ## 1. Task file (sha256 ab92d008…) and task copy
 ```console
@@ -26,12 +26,15 @@ dotfiles-T129-normalised-comparison-lint-followup-a01.md: OK
 ```console
 $ git branch --show-current; git log --oneline "$BASE"..HEAD; git rev-parse HEAD "$BASE" origin/main; git merge-base --is-ancestor "$BASE" HEAD && echo "7c8e7484 is an ancestor of HEAD"
 lint/normalised-comparisons-followup-a01
+bb60ee84 fix(lint): an unbalanced double quote before the jq program is read as text, as the base read it (T129 followup a01 re-review)
+a0563644 test(lint): jq named inside a double-quoted expansion with more text before its closing quote (T129 followup a01 re-review)
+b6c47653 docs(orchestration): T129 normalised-comparison lint followup a01: the task copy and the worker evidence
 1b56dc2b fix(lint): the jq program is the base scan's first single-quoted string that is no option's argument (T129 followup a01 review)
 be2958cf test(lint): the forms the base jq scan read stay read; map(re.escape) and a jq comment (T129 followup a01 review)
 37bf6a51 fix(lint): follow jq named through a variable or a substitution to its program (T129 followup a01)
 979c0429 fix(lint): locate the jq program after its options, require a normaliser application per side, escape every interpolation (T129 followup a01)
 a6518485 test(lint): one refusal fixture per owned row of the lint lineage's follow-up (T129 followup a01)
-1b56dc2b8e0c36282bdae426e2846464a54bba46
+bb60ee84dd58527927dbe1366881e269faedf21a
 7c8e748485e903ac2f4f8655c388e205c3260f22
 a8a747af06b32ff1d0d1720467892f34d9465ae4
 7c8e7484 is an ancestor of HEAD
@@ -138,7 +141,7 @@ First differing element 0:
 +  '')
 
 ----------------------------------------------------------------------
-Ran 9 tests in 3.561s
+Ran 9 tests in 3.632s
 
 FAILED (failures=4)
 [exit 1]
@@ -164,7 +167,7 @@ FAIL: test_a_single_quoted_jq_option_value_is_not_read_as_the_program (__main__.
 FAIL: test_a_single_quoted_jq_option_value_is_not_read_as_the_program (__main__.LintComparisonsTest.test_a_single_quoted_jq_option_value_is_not_read_as_the_program) (call='"${jq}"')
 FAIL: test_a_single_quoted_jq_option_value_is_not_read_as_the_program (__main__.LintComparisonsTest.test_a_single_quoted_jq_option_value_is_not_read_as_the_program) (call='"$(command -v jq)"')
 FAIL: test_the_tracked_tree_is_clean_against_the_baseline (__main__.LintComparisonsTest.test_the_tracked_tree_is_clean_against_the_baseline)
-Ran 9 tests in 3.862s
+Ran 9 tests in 3.642s
 FAILED (failures=4)
 [exit 0]
 ```
@@ -195,8 +198,21 @@ FAIL: test_a_single_quoted_jq_option_value_is_not_read_as_the_program (__main__.
 FAIL: test_a_single_quoted_jq_option_value_is_not_read_as_the_program (__main__.LintComparisonsTest.test_a_single_quoted_jq_option_value_is_not_read_as_the_program) (form="jq -r\\\n  'select(.url == $p)'\n")
 FAIL: test_every_f_string_interpolation_in_a_regex_is_escaped (__main__.LintComparisonsTest.test_every_f_string_interpolation_in_a_regex_is_escaped)
 FAIL: test_the_tracked_tree_is_clean_against_the_baseline (__main__.LintComparisonsTest.test_the_tracked_tree_is_clean_against_the_baseline)
-Ran 9 tests in 4.262s
+Ran 9 tests in 4.006s
 FAILED (failures=8)
+[exit 0]
+```
+## 3c. RED for bb60ee84: the a0563644 test file against the 1b56dc2b script, in a scratch worktree
+```console
+$ git -C "$Y" log --oneline -1; git -C "$Y" status --short; uv run --no-project python -I "$Y/tests/unit/test_lint_comparisons.py" -v 2>&1 | grep -E "^FAIL:|^Ran|^(OK|FAILED)"
+1b56dc2b fix(lint): the jq program is the base scan's first single-quoted string that is no option's argument (T129 followup a01 review)
+ M tests/unit/test_lint_comparisons.py
+FAIL: test_a_single_quoted_jq_option_value_is_not_read_as_the_program (__main__.LintComparisonsTest.test_a_single_quoted_jq_option_value_is_not_read_as_the_program) (form='"$(command -v jq 2>/dev/null)" -r \'select(.url == $p)\'\n')
+FAIL: test_a_single_quoted_jq_option_value_is_not_read_as_the_program (__main__.LintComparisonsTest.test_a_single_quoted_jq_option_value_is_not_read_as_the_program) (form='"${tools[jq]}" -r \'select(.url == $p)\'\n')
+FAIL: test_a_single_quoted_jq_option_value_is_not_read_as_the_program (__main__.LintComparisonsTest.test_a_single_quoted_jq_option_value_is_not_read_as_the_program) (form='"$bin/jq.exe" -r \'select(.url == $p)\'\n')
+FAIL: test_the_tracked_tree_is_clean_against_the_baseline (__main__.LintComparisonsTest.test_the_tracked_tree_is_clean_against_the_baseline)
+Ran 9 tests in 4.202s
+FAILED (failures=4)
 [exit 0]
 ```
 ## 4. GREEN: the Check's unit-test command on HEAD
@@ -216,7 +232,7 @@ test_the_tracked_tree_is_clean_against_the_baseline (tests.unit.test_lint_compar
 FAIL: test_the_tracked_tree_is_clean_against_the_baseline (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_tracked_tree_is_clean_against_the_baseline)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 264, in test_the_tracked_tree_is_clean_against_the_baseline
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 267, in test_the_tracked_tree_is_clean_against_the_baseline
     self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Tuples differ: (0, '', '') != (1, 'home/dot_claude/hooks/executable_proj[492 chars], '')
@@ -240,7 +256,7 @@ First differing element 0:
 +  '')
 
 ----------------------------------------------------------------------
-Ran 9 tests in 4.260s
+Ran 9 tests in 4.273s
 
 FAILED (failures=1)
 [exit 1]
@@ -280,13 +296,21 @@ All checks passed!
 $ wc -l scripts/lint-comparisons.py; echo "--- 7c8e7484...HEAD"; git diff --numstat "$BASE"...HEAD; echo "--- origin/main...HEAD"; git diff --numstat origin/main...HEAD -- ":!.orchestration"
      200 scripts/lint-comparisons.py
 --- 7c8e7484...HEAD
+37	0	.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/dotfiles-T129-normalised-comparison-lint-followup-a01-worker-crit.json
+13	0	.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/dotfiles-T129-normalised-comparison-lint-followup-a01-worker-review-receipt.md
+9	0	.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/learning.md
+18	0	.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/pr-body.md
+87	0	.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/report.md
+25	0	.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/sandbox.md
+75	0	.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/task.md
+395	0	.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/validation.md
 1	0	scripts/lint-comparisons-baseline.tsv
 13	12	scripts/lint-comparisons.py
-64	0	tests/unit/test_lint_comparisons.py
+67	0	tests/unit/test_lint_comparisons.py
 --- origin/main...HEAD
 86	0	scripts/lint-comparisons-baseline.tsv
 200	0	scripts/lint-comparisons.py
-268	0	tests/unit/test_lint_comparisons.py
+271	0	tests/unit/test_lint_comparisons.py
 [exit 0]
 ```
 ## 8. --list-rules is unchanged

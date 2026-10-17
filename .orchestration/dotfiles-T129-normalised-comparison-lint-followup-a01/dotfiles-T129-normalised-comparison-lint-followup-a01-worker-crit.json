@@ -33,5 +33,33 @@
   "path": "scripts/lint-comparisons.py",
   "body": "Round 1, P3 high: the docstring's last line lost 'repo-relative' outside the owned rows. Declared: it is the cap's text trim the TASK note allows ('trim text if needed'); no behaviour, argparse description or --list-rules output changes (validation 8).",
   "resolved": true
+ },
+ {
+  "id": "r2-jq-unbalanced-quote",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 2 (37bf6a51..1b56dc2b), P3 high, row 4302629300: report.md's claim that the skips cannot read less than the base was false: with jq inside a double-quoted expansion and more text before its closing quote (\"$(command -v jq 2>/dev/null)\", \"${tools[jq]}\", \"$bin/jq.exe\", \"$(type -p jq | head -n1)\"), JQ_QUOTE stopped at the unbalanced quote the base read through. Fixed in bb60ee84 (a bare quote as the last alternative under a possessive repetition; tests in a0563644, red at 1b56dc2b); report.md's wording corrected.",
+  "resolved": true
+ },
+ {
+  "id": "r2-jq-joined-word-values",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 2, P3 medium, row 4302629300: a single-quoted value joined to other text in one word is still read as the program ('it'\\''s', \"$x\"'/y', $'/x', -L'/lib', -nL '/lib'). The base misses each too, so no regression; declared as a residual in report.md (a second option pattern line would exceed the 200-line cap).",
+  "resolved": true
+ },
+ {
+  "id": "r2-r3-object-keys",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 2, P3 medium, row 4302629305: object keys, the {canonical_path} shorthand and a def inside a side still satisfy the word check; already declared as residuals in report.md. The reviewer confirmed the comment strip adds no false hit (split(\"#\") and \"a\\\"#\" sides stay accepted).",
+  "resolved": true
+ },
+ {
+  "id": "r2-r6-reference",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 2, P3 medium, row 4302629307: {re.escape(prefix) + name} and constants stay as declared; a value that only mentions re.escape without calling it ({name if re.escape else ''}) passes the reference check. Contrived; added to report.md's residuals.",
+  "resolved": true
  }
 ]

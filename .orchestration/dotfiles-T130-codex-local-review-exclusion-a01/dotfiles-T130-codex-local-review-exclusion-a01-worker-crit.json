@@ -46,5 +46,22 @@
       "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
     },
     "stack_base": "85547ca5348d9e0a61c3ae9ae30d324db1897f0f"
+  },
+  {
+    "id": "T130-local-review-rebased-source-approval",
+    "body": "Independent read-only security extension approves exact seven hashes after parent392 merge and rebase onto maina8a747af. Own source delta remains53production/167testchanged and exact approved scope; only manifest/generator-test full-file hashes incorporate unrelated upstream changes. Wrapper/guards/raw-byte-identity behavior and connected bothOS tests rechecked. Prior A3 index-flag P1 remains addressed. Parent read full extension and all five resolved evidence records. Source-phase approval; final CI/Bot and orchestrator integration remain separate.",
+    "scope": "review",
+    "resolved": true,
+    "task_sha256": "aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a",
+    "source_sha256": {
+      "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+      "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+      "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+      "tests/unit/test_generate_agent_configs.py": "01a6aa0834e89f456918bc31c3ee89472b21d33d8c963ccb41a4fccfe25a115d",
+      "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+      "home/dot_local/bin/common/executable_codex-local-review": "b74153250b002e658538884a1cf3f93d74fadcb2ebf35d5caf4f48df773702be",
+      "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
+    },
+    "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4"
   }
 ]

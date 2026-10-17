@@ -23,6 +23,11 @@ case "$*" in
   api\ repos/o/r/rules/branches/main*) cat "${state}/required.txt" ;;
   api\ --paginate\ repos/o/r/commits/*/check-runs*) cat "${state}/runs.txt" ;;
   api\ repos/o/r/commits/*/status*) : ;;
+  "api repos/o/r/branches/task/ok --jq .commit.sha"|"api repos/o/r/branches/orchestration/b --jq .commit.sha") echo "${GATE_HEAD_SHA}" ;;
+  api\ repos/o/r/branches/*) exit 1 ;;
+  "pr list --repo o/r --head stack/parent --state open --json number --jq length") echo 1 ;;
+  "pr list --repo o/r --head "*) echo 0 ;;
+  api\ repos/o/r/compare/*) cat "${state}/compare.txt" ;;
   *) echo "unexpected gh $*" >&2; exit 9 ;;
 esac
 """
@@ -60,6 +65,7 @@ class GhMergeGateTest(unittest.TestCase):
             "PATH": f"{self.bin}:{os.environ['PATH']}",
             "GATE_STUB_DIR": str(self.tmp),
             "XDG_STATE_HOME": str(self.tmp / "state"),
+            "GATE_HEAD_SHA": SHA,
         }
         payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd or self.repo)})
         result = subprocess.run(
@@ -153,6 +159,44 @@ class GhMergeGateTest(unittest.TestCase):
         subprocess.run(["git", "-C", str(self.repo), "worktree", "add", "-q", str(worktree)], check=True)
         self.assertIn("main checkout", self.decide(self.pinned(), cwd=worktree)[1])
         self.assertIn("no existing working directory", self.decide(self.pinned(), cwd=self.tmp / "gone")[1])
+
+    def test_create_draft_of_a_pushed_task_branch_is_allowed(self) -> None:
+        for command in (
+            "gh pr create --draft --base main --head task/ok --title 'feat: x; y' --body-file /tmp/b.md",
+            "gh pr create -d -B stack/parent -H task/ok --fill",
+        ):
+            with self.subTest(command=command):
+                self.assertEqual("allow", self.decide(command, cwd=self.tmp)[0])
+
+    def test_create_ready_needs_acceptance_or_records_only(self) -> None:
+        ready = "gh pr create --base main --head task/ok --title t --body b"
+        self.assertEqual("allow", self.decide(ready)[0])
+        self.write_record(SHA, "accepted", "revise")
+        self.assertIn("not accepted", self.decide(ready)[1])
+        self.assertIn("not in a git checkout", self.decide(ready, cwd=self.tmp)[1])
+        records = "gh pr create --base main --head orchestration/b --fill"
+        (self.tmp / "compare.txt").write_text("2\n.orchestration/a.md\n.orchestration/b.tsv\n")
+        self.assertEqual("allow", self.decide(records)[0])
+        (self.tmp / "compare.txt").write_text("2\n.orchestration/a.md\nscripts/x.sh\n")
+        self.assertIn("outside .orchestration", self.decide(records)[1])
+
+    def test_create_other_forms_ask(self) -> None:
+        for command in (
+            "gh pr create --draft --head task/ok --fill",
+            "gh pr create --draft --base main --fill",
+            "gh pr create --draft --base other --head task/ok --fill",
+            "gh pr create --draft --base main --head task/missing --fill",
+            "gh pr create --draft --base main --head main --fill",
+            "gh pr create --draft --base main --head task/ok --fill --reviewer x",
+            "gh pr create --draft --base main --head task/ok --fill --web",
+            'gh pr create --draft --base main --head task/ok --title "$(id)"',
+            "gh pr create --draft --base main --head task/ok --fill; echo x",
+            "gh pr create --draft --base main --head task/ok --fill | cat",
+            "gh pr create --draft --base main --head task/ok --title 'unterminated",
+            "cd /tmp && gh pr create --draft --base main --head task/ok --fill",
+        ):
+            with self.subTest(command=command):
+                self.assertEqual("ask", self.decide(command)[0])
 
 
 if __name__ == "__main__":

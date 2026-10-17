@@ -30,7 +30,6 @@
     ],
     "defaultMode": "auto",
     "ask": [
-      "Bash(gh pr create:*)",
       "Bash(gh pr comment:*)",
       "Bash(gh pr review:*)",
       "Bash(gh pr close:*)",

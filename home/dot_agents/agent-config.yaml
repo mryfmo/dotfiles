@@ -224,7 +224,6 @@ claude:
       - Bash(kubectl apply:*)
     # shortcut: flags after the API path escape prefix rules; the integration gate remains authoritative.
     ask:
-      - Bash(gh pr create:*)
       - Bash(gh pr comment:*)
       - Bash(gh pr review:*)
       - Bash(gh pr close:*)
@@ -323,8 +322,9 @@ claude:
       # auto-approved sandbox into an escape (T44 r2, operator 2026-10-01).
   hooks:
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
-    # gh pr merge / update-branch are gated here, not by ask rules: only a pinned squash merge of an accepted,
-    # green head from the main checkout (and a bare update-branch) pass; every other form asks.
+    # gh pr merge / update-branch / create are gated here, not by ask rules: only a pinned squash merge of an
+    # accepted, green head from the main checkout, a bare update-branch, and a draft, accepted or records-only
+    # create pass; every other form asks.
     gh_merge_gate_hook: ~/.claude/hooks/gh-merge-gate.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py
     project_map_reload_hook: ~/.claude/hooks/project-map-reload.sh

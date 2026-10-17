@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # @file gh-merge-gate.sh
-# @brief PreToolUse gate that lets only a pinned, accepted, green squash merge and a bare update-branch run unprompted.
+# @brief PreToolUse gate that lets only a pinned, accepted, green squash merge, a bare update-branch and a gated
+#   `gh pr create` run unprompted.
 # @description
 #   The `gh pr merge` and `gh pr update-branch` ask rules are replaced by this hook (a hook's allow cannot lift an ask
 #   rule, so the rules themselves are dropped). Every other merge-shaped command gets `ask`, and so does any failure
@@ -17,6 +18,12 @@
 #        `"head"` is that sha and whose latest `AGMSG-ACCEPTANCE v1` line says `status=accepted`, and the audit of that
 #        head `.orchestration/validation/*-audit-<sha7>.md` exists.
 #   GitHub's ruleset still enforces 3 and 4 on its side; this hook adds 1, 2 and 5 before the call is made.
+#   `gh pr create` (its ask rule is dropped too) passes only as one plain command (quotes allowed, no `$`, backtick,
+#   backslash, operator or newline) using only --base/--head/--title/--body/--body-file/--draft/--fill*/--repo, with an
+#   explicit --base that is the default branch or the head branch of an open PR (a stack), and an explicit --head that
+#   is pushed. Then: with --draft any non-default head passes (task branches open drafts); otherwise, from the main
+#   checkout only, the head must be an `orchestration/` branch whose diff against the base touches only
+#   `.orchestration/` (boundary records), or its pushed tip must have an acceptance record as in 5 above.
 # @stdin json The PreToolUse payload.
 # @stdout json A hookSpecificOutput permission decision, or nothing for unrelated commands.
 # @set ${XDG_STATE_HOME:-~/.local/state}/claude/gh-merge-gate.log One line per decision (UTC time, decision, reason).
@@ -40,8 +47,103 @@ input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"${input}" 2>/dev/null) || ask "unreadable payload"
 cwd=$(jq -r '.cwd // empty' <<<"${input}" 2>/dev/null) || ask "unreadable payload"
 
-shape='(^|[^[:alnum:]_-])(pr[[:space:]]+(merge|update-branch)|pulls/[^[:space:]]*/(merge|update-branch))([^[:alnum:]_-]|$)'
+shape='(^|[^[:alnum:]_-])(pr[[:space:]]+(merge|update-branch|create)|pulls/[^[:space:]]*/(merge|update-branch))([^[:alnum:]_-]|$)'
 grep -Eq "${shape}" <<<"${cmd}" || exit 0
+
+# Require the payload's cwd to be the repository's main checkout; sets top.
+main_checkout() {
+  [[ -n ${cwd} && -d ${cwd} ]] || ask "the payload names no existing working directory"
+  cd "${cwd}" || ask "no working directory"
+  top=$(git rev-parse --show-toplevel 2>/dev/null) || ask "not in a git checkout"
+  local gitdir common
+  gitdir=$(git rev-parse --path-format=absolute --git-dir 2>/dev/null) || ask "no git dir"
+  common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || ask "no git common dir"
+  [[ ${gitdir} == "${common}" ]] || ask "$1 only from the main checkout, not a linked worktree"
+}
+
+# Find the acceptance record pinning head $1 whose latest verdict is accepted; sets accepted.
+require_accepted() {
+  local record verdict
+  shopt -s nullglob
+  accepted=""
+  for record in "${top}"/.orchestration/acceptance/*.md; do
+    [[ -L ${record} ]] && continue
+    if grep -Eq "^[[:space:]]*\"head\":[[:space:]]*\"$1\"" "${record}"; then accepted=${record}; break; fi
+  done
+  [[ -n ${accepted} ]] || ask "no acceptance record pins head ${1:0:12}"
+  verdict=$(grep -Eo 'AGMSG-ACCEPTANCE v1 task_id=[^[:space:]]+ status=[a-z-]+' "${accepted}" | tail -n 1 | sed 's/.*status=//')
+  [[ ${verdict} == accepted ]] || ask "the latest acceptance status in ${accepted##*/} is ${verdict:-missing} not accepted"
+}
+
+gate_create() {
+  local py tokens t i n repo="" base="" head="" draft=0 nwo default head_sha files
+  case "${cmd}" in
+    *[\`\$\\]* | *$'\n'*) ask "create: no substitution, backslash or newline" ;;
+    *) ;;
+  esac
+  py=$(command -v python3) || ask "create: python3 missing"
+  tokens=()
+  while IFS= read -r -d '' t; do tokens+=("${t}"); done < <("${py}" -c '
+import shlex, sys
+lexer = shlex.shlex(sys.argv[1], posix=True, punctuation_chars=True)
+lexer.whitespace_split = True
+try:
+    words = list(lexer)
+except ValueError:
+    sys.exit(3)
+if any(word and all(c in "();<>|&" for c in word) for word in words):
+    sys.exit(4)
+sys.stdout.write("".join(word + "\0" for word in words))
+' "${cmd}")
+  n=${#tokens[@]}
+  ((n >= 3)) && [[ ${tokens[0]} == gh && ${tokens[1]} == pr && ${tokens[2]} == create ]] \
+    || ask "create: not a single plain gh pr create"
+  i=3
+  while ((i < n)); do
+    t=${tokens[i]}
+    case "${t}" in
+      --base | -B) base=${tokens[i + 1]:-}; ((i += 2)); continue ;;
+      --head | -H) head=${tokens[i + 1]:-}; ((i += 2)); continue ;;
+      --repo | -R) repo=${tokens[i + 1]:-}; ((i += 2)); continue ;;
+      --title | -t | --body | -b | --body-file | -F) ((i + 1 < n)) || ask "create: ${t} needs a value"; ((i += 2)); continue ;;
+      --base=*) base=${t#*=} ;;
+      --head=*) head=${t#*=} ;;
+      --repo=*) repo=${t#*=} ;;
+      --title=* | --body=* | --body-file=*) ;;
+      --draft | -d) draft=1 ;;
+      --fill | -f | --fill-first | --fill-verbose) ;;
+      *) ask "create: flag or argument ${t} is outside the gated form" ;;
+    esac
+    ((i += 1))
+  done
+  [[ -z ${repo} || ${repo} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || ask "create: bad --repo"
+  [[ ${base} =~ ^[A-Za-z0-9._/-]+$ && ${base} != -* ]] || ask "create: needs an explicit --base"
+  [[ ${head} =~ ^[A-Za-z0-9._/-]+$ && ${head} != -* ]] || ask "create: needs an explicit --head branch"
+  [[ -n ${cwd} && -d ${cwd} ]] || ask "the payload names no existing working directory"
+  cd "${cwd}" || ask "no working directory"
+  nwo=$(gh repo view ${repo:+"${repo}"} --json nameWithOwner --jq .nameWithOwner 2>/dev/null) || ask "gh repo view failed"
+  default=$(gh repo view "${nwo}" --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null) || ask "no default branch"
+  [[ ${head} != "${default}" ]] || ask "create: the head is the default branch"
+  head_sha=$(gh api "repos/${nwo}/branches/${head}" --jq .commit.sha 2>/dev/null) || ask "create: ${head} is not pushed"
+  [[ ${head_sha} =~ ^[0-9a-f]{40}$ ]] || ask "create: ${head} is not pushed"
+  if [[ ${base} != "${default}" ]]; then
+    [[ $(gh pr list --repo "${nwo}" --head "${base}" --state open --json number --jq length 2>/dev/null) =~ ^[1-9] ]] \
+      || ask "create: base ${base} is neither ${default} nor the head of an open PR"
+  fi
+  ((draft)) && decide allow "draft PR of ${head} onto ${base}"
+  main_checkout "a ready PR"
+  if [[ ${head} == orchestration/* ]]; then
+    files=$(gh api "repos/${nwo}/compare/${base}...${head}" --jq '(.files | length), (.files[].filename)' 2>/dev/null) \
+      || ask "create: cannot compare ${base}...${head}"
+    (($(head -n 1 <<<"${files}") > 0 && $(head -n 1 <<<"${files}") < 300)) || ask "create: records diff empty or too large"
+    tail -n +2 <<<"${files}" | grep -qv '^\.orchestration/' && ask "create: ${head} touches files outside .orchestration"
+    decide allow "records PR of ${head} onto ${base}"
+  fi
+  require_accepted "${head_sha}"
+  decide allow "PR of ${head} at ${head_sha:0:12} accepted in ${accepted##*/}"
+}
+
+[[ ${cmd} =~ ^gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$) ]] && gate_create
 
 case "${cmd}" in
   *[\;\&\|\<\>\`\$\(\)\{\}\'\"\\]* | *$'\n'*) ask "not a single simple command" ;;
@@ -75,13 +177,7 @@ done
 [[ ${squash} == 1 ]] || ask "merge must be --squash"
 [[ ${sha} =~ ^[0-9a-f]{40}$ ]] || ask "merge must carry --match-head-commit with a full sha"
 
-[[ -n ${cwd} && -d ${cwd} ]] || ask "the payload names no existing working directory"
-cd "${cwd}" || ask "no working directory"
-top=$(git rev-parse --show-toplevel 2>/dev/null) || ask "not in a git checkout"
-gitdir=$(git rev-parse --path-format=absolute --git-dir 2>/dev/null) || ask "no git dir"
-common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || ask "no git common dir"
-[[ ${gitdir} == "${common}" ]] || ask "merge only from the main checkout, not a linked worktree"
-
+main_checkout "merge"
 R=()
 [[ -n ${repo} ]] && R=(--repo "${repo}")
 nwo=$(gh repo view ${repo:+"${repo}"} --json nameWithOwner --jq .nameWithOwner 2>/dev/null) || ask "gh repo view failed"
@@ -104,15 +200,7 @@ while IFS= read -r ctx; do
   grep -Fxq -- "${ctx}" <<<"${runs}"$'\n'"${statuses}" || ask "required check ${ctx} is not green on ${sha:0:12}"
 done <<<"${required}"
 
-shopt -s nullglob
-accepted=""
-for record in "${top}"/.orchestration/acceptance/*.md; do
-  [[ -L ${record} ]] && continue
-  if grep -Eq "^[[:space:]]*\"head\":[[:space:]]*\"${sha}\"" "${record}"; then accepted=${record}; break; fi
-done
-[[ -n ${accepted} ]] || ask "no acceptance record pins head ${sha:0:12}"
-verdict=$(grep -Eo 'AGMSG-ACCEPTANCE v1 task_id=[^[:space:]]+ status=[a-z-]+' "${accepted}" | tail -n 1 | sed 's/.*status=//')
-[[ ${verdict} == accepted ]] || ask "the latest acceptance status in ${accepted##*/} is ${verdict:-missing} not accepted"
+require_accepted "${sha}"
 audits=("${top}"/.orchestration/validation/*-audit-"${sha:0:7}".md)
 ((${#audits[@]} > 0)) || ask "no audit of ${sha:0:7}"
 

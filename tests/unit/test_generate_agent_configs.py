@@ -696,7 +696,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         expected_ask = [
             f"Bash(gh {command}:*)"
             for command in (
-                "pr create",
                 "pr comment",
                 "pr review",
                 "pr close",

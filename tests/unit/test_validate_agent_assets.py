@@ -1170,7 +1170,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         writes = list(self.module.GH_WRITE_ASK)
         gate = {"PreToolUse": [{"matcher": "Bash", "hooks": [{"command": "~/.claude/hooks/gh-merge-gate.sh"}]}]}
         self.module.validate_claude_gh_merge_gate({"permissions": {"ask": writes}, "hooks": gate}, "s")
-        merge_ask = writes + ["Bash(gh pr merge:*)", "Bash(gh pr update-branch:*)"]
+        merge_ask = writes + list(self.module.GH_GATED_ASK)
         self.module.validate_claude_gh_merge_gate({"permissions": {"ask": merge_ask}, "hooks": {}}, "s")
         for settings, message in (
             ({"permissions": {"ask": writes}, "hooks": {}}, "without the gh-merge-gate"),

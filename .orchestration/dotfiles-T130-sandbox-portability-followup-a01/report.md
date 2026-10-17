@@ -25,7 +25,7 @@ The record is the source (item 1). At dispatch it carries one row under the owne
 
 ## The Check
 
-Five tests green (§4). Caps (§5a): against the stack base, 0 changed lines outside `tests/` and `.orchestration/` (cap 40) and 62 added under `tests/` (cap 200); against `origin/main`, which until #395 merges carries #395's own diff, 4 and 189. After the rebase the Check reads the first pair.
+Five tests green (§4). Caps (§5a): against the stack base, 0 changed lines outside `tests/` and `.orchestration/` (cap 40) and 63 added under `tests/` (cap 200); against `origin/main`, which until #395 merges carries #395's own diff, 4 and 190. After the rebase the Check reads the first pair.
 
 ## Readings, declared
 

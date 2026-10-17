@@ -55,7 +55,12 @@ class GhMergeGateTest(unittest.TestCase):
         (self.tmp / "pr.json").write_text(json.dumps(pr))
 
     def decide(self, command: str, cwd: Path | None = None) -> tuple[str, str]:
-        env = {**os.environ, "PATH": f"{self.bin}:{os.environ['PATH']}", "GATE_STUB_DIR": str(self.tmp)}
+        env = {
+            **os.environ,
+            "PATH": f"{self.bin}:{os.environ['PATH']}",
+            "GATE_STUB_DIR": str(self.tmp),
+            "XDG_STATE_HOME": str(self.tmp / "state"),
+        }
         payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd or self.repo)})
         result = subprocess.run(
             ["bash", str(HOOK)], input=payload, capture_output=True, text=True, env=env, check=False
@@ -77,6 +82,8 @@ class GhMergeGateTest(unittest.TestCase):
 
     def test_pinned_accepted_green_head_is_allowed(self) -> None:
         self.assertEqual("allow", self.decide(self.pinned())[0])
+        log = (self.tmp / "state/claude/gh-merge-gate.log").read_text().splitlines()
+        self.assertEqual("allow", log[-1].split("\t")[1])
         self.assertEqual("allow", self.decide(f"gh pr merge --match-head-commit={SHA} -s 7")[0])
 
     def test_update_branch_is_allowed(self) -> None:

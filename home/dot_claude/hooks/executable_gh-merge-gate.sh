@@ -19,10 +19,13 @@
 #   GitHub's ruleset still enforces 3 and 4 on its side; this hook adds 1, 2 and 5 before the call is made.
 # @stdin json The PreToolUse payload.
 # @stdout json A hookSpecificOutput permission decision, or nothing for unrelated commands.
+# @set ${XDG_STATE_HOME:-~/.local/state}/claude/gh-merge-gate.log One line per decision (UTC time, decision, reason).
 # @exitcode 0 Always.
 
 decide() {
   local reason=${2//[^[:alnum:][:space:]._:\/=#-]/_}
+  local log=${XDG_STATE_HOME:-${HOME}/.local/state}/claude/gh-merge-gate.log
+  { mkdir -p "${log%/*}" && printf '%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "${reason}" >>"${log}"; } 2>/dev/null || true
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"%s","permissionDecisionReason":"gh-merge-gate: %s"}}\n' "$1" "$reason"
   exit 0
 }

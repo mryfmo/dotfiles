@@ -473,6 +473,41 @@ assets:
     render:
       file: scripts/lib/installer-pins.sh
       constants: {TERMINAL_BROWSER_PIN_VERSION: pin, TERMINAL_BROWSER_INSTALLER_SHA256: sha256}
+  omp:
+    source: https-download
+    upstream: https://registry.npmjs.org/@oh-my-pi/pi-coding-agent/-/pi-coding-agent-18.11.3.tgz
+    pin: 18.11.3
+    verify: sha256
+    sha256: b4a4eaf8057a7591f4ca83be293780489fd72b174e6a629d4704320165177f09
+    note: npm published 2026-10-16T21:52:39.004Z; bin omp is dist/cli.js; integrity sha512-7MdQBaj/zGHG7uV0mJSrYGHsjX3xthYgXUxTxLeJeFFL15UAnyE99kAfDE66c8LdXU0dN34eTyw6lfM7K5ouCg==; shasum a187bd1b0ef31c17e18b456846309f64fe92cf87; tarball fetched 2026-10-17T10:44:00Z (14684952 bytes), its sha512 equals the registry integrity.
+    reason: the npm registry serves an integrity hash from the same registry and no signature or attestation; the reviewed sha256 of the exact tarball is the check.
+    install_path: ~/.local/bin/omp
+    installer: scripts/update-agent-assets.sh#update_omp
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants: {OMP_PIN_VERSION: pin, OMP_TARBALL_SHA256: sha256}
+  hcom:
+    source: https-download
+    upstream: https://pypi.org/project/hcom/0.7.30/#files
+    pin: 0.7.30
+    verify: sha256
+    sha256:
+      darwin-arm64: 764b6469ce4fe470094d2fb821285ea5e7e002726c68c634752663abe2410ea4
+      darwin-amd64: bb32f2e0357e067c03827fc3c8e1319d67874b7bc49977c5e69b95a11a2a9bfb
+      linux-amd64: 38b4424fb335cd6faa70010823682e53a4a2e29e31a36a977874a13f11ad0992
+      linux-arm64: 278202e8eedce8a838785be8153b26b36fee0662640fc838fc7048da01aaba81
+    files:
+      darwin-arm64: https://files.pythonhosted.org/packages/f5/ed/5e951b0e6fcadef1a2598e82b969b3eaa387a3e202f8987102d0e84cddfc/hcom-0.7.30-py3-none-macosx_11_0_arm64.whl
+      darwin-amd64: https://files.pythonhosted.org/packages/ba/c3/04dd3c68d87620fa347372b5e9450c3bb3518aa096abdf08169e6d2ce37f/hcom-0.7.30-py3-none-macosx_10_12_x86_64.whl
+      linux-amd64: https://files.pythonhosted.org/packages/21/fb/0a48f19a1c39b4ff59412f1fe34130c14acbc55da69097018d729191c6d2/hcom-0.7.30-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+      linux-arm64: https://files.pythonhosted.org/packages/f0/23/e746ce90643a1286ed3c6410c66eaae7134fbd2267d002814e6a932a2b60/hcom-0.7.30-py3-none-manylinux_2_28_aarch64.whl
+    note: PyPI read 2026-10-17T10:33Z; eight platform wheels, no sdist or universal wheel; these four cover Mac and glibc Linux on amd64/arm64.
+    reason: PyPI serves a sha256 per file from the same index and no signature or attestation; the reviewed sha256 of the exact wheel is the check.
+    install_path: ~/.local/bin/hcom
+    installer: scripts/update-agent-assets.sh#update_hcom
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants: {HCOM_PIN_VERSION: pin, HCOM_DARWIN_ARM64_SHA256: sha256.darwin-arm64, HCOM_DARWIN_AMD64_SHA256: sha256.darwin-amd64, HCOM_LINUX_AMD64_SHA256: sha256.linux-amd64, HCOM_LINUX_ARM64_SHA256: sha256.linux-arm64}
   crit:
     source: github-release
     upstream: tomasz-tomczyk/crit

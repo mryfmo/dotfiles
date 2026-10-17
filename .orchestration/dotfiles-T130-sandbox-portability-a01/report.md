@@ -3,7 +3,7 @@ task_id: dotfiles-T130-sandbox-portability-a01
 seat: claude-review-dot-a005
 branch: portability/sandbox-a01
 base: e9bc99d2
-code_commit: 005e6c91
+code_commit: e4819e2f (round 1: 005e6c91)
 pr: 395
 task_sha256: 53eb1abbaa839795a41abd9540a5e08bd312e95a4b9274bbdf272721f3a967bc
 ---
@@ -34,6 +34,17 @@ The two tests green (§4); caps 4 changed lines outside `tests/` and `.orchestra
 - A trailing ` #…` is cut whether or not the `#` sits inside a quoted string, and the `TMPDIR` exemption reads the whole line, comment included.
 - Item 1's guard is line- and word-scoped: the word `diff` and a `<(` or `>(` on the same line; a backslash continuation or a variable holding the program name is outside it.
 - A shell file is one whose name ends `.sh`, `.bash` or `.zsh` or whose first line is a `sh`, `bash` or `zsh` shebang; a Python file one whose name ends `.py` or whose first line is a python shebang; `.tmpl` files and executables under `env -S uv run` are outside both sets, as the task's own filter has it.
+
+## Revise round 1 (ACCEPTANCE of 15:29:54Z, previous head d571d674)
+
+The Bot's first review (5558372164) left two P2 on the guards themselves, both small and inside `allowed_files` (C-50; fix round 1 of INV-6):
+
+1. **4303151489, a backslash-continued `diff`**: `hits()` matched each physical line alone, so `diff \` followed by `<(sort a) \` and `<(sort b)` carried no line with both the word and the argument. `logical_lines()` now joins a line ending in a backslash with the next one, as the shell reads it, before `code()` and the predicate run; the hit keeps the first physical line's number. The continuation is decided on the comment-free text, so a whole-line or trailing comment ending in a backslash (the shell ends a comment at the newline; `scripts/orchestrator/dispatch.sh:73` is one) never swallows the next line, and a final continued line without a newline is still scanned.
+2. **4303151496, a quoted `#`**: the comment cut split at the first whitespace-prefixed `#` even inside quotes, so `diff --label "baseline # current" <(sort a) <(sort b)` and `printf 'copy # /tmp/out'` lost their tails. `code()` now scans the line and cuts only at a `#` that starts the line or follows whitespace while no single or double quote is open; the whole-line-comment case falls out of the same rule. A backslash-escaped quote still reads as a quote (declared in the code as a shortcut).
+
+Checks, red before green (validation §7 to §10): `test_a_continued_diff_command_is_refused` and `test_a_quoted_hash_is_not_a_comment` fail on the test commit `c98dde2d` (`FAILED (failures=2)`, the two earlier tests OK) and pass on the first fix commit `54975f44`. The worker review of `54975f44` then found a P2 of the same class as 4303151489, introduced by that fix: the continuation was decided on the raw line, so a trailing comment ending in a backslash (`foo # see \\`) joined the next line and the comment cut then hid it. The case and the final-line case joined the first check in `bb84e254` (red against `54975f44`'s guards, `FAILED (failures=1)`) and `e4819e2f` decides the continuation on `code(line)` and flushes a final continued line (green, the checkout still accepted). Caps unchanged and met: 4 changed lines outside `tests/` and `.orchestration/` (cap 20), 159 added under `tests/` (cap 200) (§12a). `ruff format --check` and `ruff check` clean on the test file (§13). No thread resolved. The six P3 of the worker review stay advisory under `dotfiles-T130-sandbox-portability-followup-a01`.
+
+Round-2 worker review: two reviews by the same read-only subagent: `Verdict: incorrect` on `54975f44` (the P2 above and three P3) and `Verdict: correct` on `e4819e2f` after the repair (the P2 and the final-line P3 closed by the new assertions; a backslash-escaped double quote closing the scanner's quote and the `TMPDIR` exemption now reading the logical line stay declared P3). Records in the worker-crit JSON, receipt updated.
 
 ## Review, hook, cost
 

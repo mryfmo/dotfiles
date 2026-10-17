@@ -19,4 +19,5 @@ Calls outside the sandbox, planned in advance and run through the permission gat
 | 3 | the second push with the evidence commit, then `gh pr ready 395` | `git push`, `gh` |
 | 4 | `gh pr checks 395 --watch` (background) and the bounded Bot wait (`gh api` reads at most every 30 seconds for at most 15 minutes; `gh pr comment 395 --body '@codex review'` only at 10 minutes without a review) | `gh` |
 | 5 | after a P0/P1 fix round only: the push, then `@codex review` and the same wait (`bot_rounds=2`) | `git push`, `gh` |
+| 5a | revise round 1 (ACCEPTANCE 15:29:54Z): the test and fix commits inside the sandbox; one push of the round's three commits, then `gh pr comment 395 --body '@codex review'` once, `gh pr checks 395 --watch` and the same bounded Bot wait on the new head | `git push`, `gh` |
 | 6 | `agmsg-dispatch … AGMSG-PONG …` (the question and the blocked note) and `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T130-sandbox-portability-a01 …` | `agmsg-dispatch` |

@@ -1,0 +1,11 @@
+# AGMSG-ACCEPTANCE status=revise of 2026-10-17T15:29:54Z (round 1 of the task; fix round 1 of INV-6)
+previous_head: d571d674703fca250b203376a1288a03d740fd78
+reason: Bot first review 5558372164 on d571d674, two P2 on this PR's own guards, small and inside allowed_files (C-50; threads 4303151489 and 4303151496)
+checks:
+  - tests/unit/test_sandbox_portability.py::test_a_continued_diff_command_is_refused
+  - tests/unit/test_sandbox_portability.py::test_a_quoted_hash_is_not_a_comment
+constraints:
+  - join backslash-continued lines before the diff process-substitution match; cut a trailing hash only outside quotes
+  - red before green after; caps unchanged (20 outside tests/ and .orchestration/, 200 under tests/)
+  - the six P3 stay advisory under dotfiles-T130-sandbox-portability-followup-a01 (the orchestrator's file)
+  - no thread resolved by the worker; one push, @codex review once, CI and the Bot waited, RESULT round=2

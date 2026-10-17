@@ -383,6 +383,10 @@ def validate_claude_gh_merge_gate(settings: dict[str, Any], label: str) -> None:
     gated = [rule for rule in permissions.get("allow", []) if str(rule).startswith(("Bash(gh pr", "Bash(gh api"))]
     if gated:
         fail(f"{label} permissions.allow must not pre-approve gh pr or gh api writes: {gated}")
+    gate = (ROOT / "home/dot_claude/hooks/executable_gh-merge-gate.sh").read_text()
+    for token in ("resolveReviewThread", "mutation|=@|--input", "--match-head-commit", "require_accepted"):
+        if token not in gate:
+            fail(f"{label} gh-merge-gate hook lost its {token!r} gate")
     if set(GH_GATED_ASK) <= set(ask):
         return
     commands = [

@@ -30,6 +30,7 @@ case "$*" in
   "pr list --repo o/r --head stack/parent --state open --json number --jq length") echo 1 ;;
   "pr list --repo o/r --head "*) echo 0 ;;
   api\ repos/o/r/compare/*) cat "${state}/compare.txt" ;;
+  api\ graphql\ -f\ id=PRRT_*) cat "${state}/thread.json" ;;
   *) echo "unexpected gh $*" >&2; exit 9 ;;
 esac
 """
@@ -215,6 +216,76 @@ class GhMergeGateTest(unittest.TestCase):
         ):
             with self.subTest(command=command):
                 self.assertEqual("ask", self.decide(command)[0])
+
+    RESOLVE = (
+        'gh api graphql -f query=\'mutation { resolveReviewThread(input: {threadId: "PRRT_abc"}) '
+        "{ thread { isResolved } } }'"
+    )
+
+    def write_thread(self, state: str = "OPEN", repo: str = "o/r", cid: int = 42) -> None:
+        node = {
+            "isResolved": False,
+            "pullRequest": {"number": 7, "headRefOid": SHA, "state": state, "repository": {"nameWithOwner": repo}},
+            "comments": {"nodes": [{"databaseId": cid}]},
+        }
+        (self.tmp / "thread.json").write_text(json.dumps(node))
+
+    def write_sweep(self, disposition: str, head: str = SHA, pr: int = 7) -> None:
+        item = {"url": "https://github.com/o/r/pull/7#discussion_r42", "disposition": disposition}
+        sweep = {"pr": pr, "head_sha": head, "items": [item]}
+        (self.repo / ".orchestration/validation/t-pr-feedback.json").write_text(json.dumps(sweep))
+
+    def test_resolve_thread_needs_an_accepted_head_and_a_disposition(self) -> None:
+        self.write_thread()
+        self.write_sweep("not-applicable:advisory, owned elsewhere")
+        self.assertEqual("allow", self.decide(self.RESOLVE)[0])
+        self.write_sweep("fixed:" + SHA)
+        self.assertEqual("allow", self.decide(self.RESOLVE)[0])
+        for breaks, reason in (
+            (lambda: self.write_sweep(""), "no fixed or not-applicable"),
+            (lambda: self.write_sweep("open"), "no fixed or not-applicable"),
+            (lambda: self.write_sweep("fixed:x", head="f" * 40), "no fixed or not-applicable"),
+            (lambda: self.write_sweep("fixed:x", pr=8), "no fixed or not-applicable"),
+            (lambda: self.write_thread(cid=43), "no fixed or not-applicable"),
+            (lambda: self.write_thread(state="MERGED"), "not on an open PR"),
+            (lambda: self.write_thread(repo="x/y"), "is not on o/r"),
+            (lambda: self.write_record(SHA, "revise"), "not accepted"),
+        ):
+            with self.subTest(reason=reason):
+                self.write_thread()
+                self.write_sweep("fixed:" + SHA)
+                self.write_record(SHA, "accepted")
+                breaks()
+                self.assertIn(reason, self.decide(self.RESOLVE)[1])
+
+    def test_other_graphql_mutations_ask_and_queries_pass_through(self) -> None:
+        self.write_thread()
+        self.write_sweep("fixed:" + SHA)
+        for command in (
+            "gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: \"PR_x\"}) { clientMutationId } }'",
+            self.RESOLVE + " --hostname x",
+            self.RESOLVE + "; echo x",
+            "gh api graphql -F query=@m.graphql",
+            "gh api graphql -f query='mutation($t: ID!) { resolveReviewThread(input: {threadId: $t}) { thread { id } } }' -f t=PRRT_abc",
+        ):
+            with self.subTest(command=command):
+                self.assertEqual("ask", self.decide(command)[0])
+        self.assertEqual(("", ""), self.decide("gh api graphql -f query='query { viewer { login } }'"))
+        self.assertIn("main checkout", self.decide(self.RESOLVE, cwd=self.worktree())[1])
+
+    def worktree(self) -> Path:
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@t",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@t",
+            "GIT_CONFIG_GLOBAL": "/dev/null",
+        }
+        subprocess.run(["git", "-C", str(self.repo), "commit", "-q", "--allow-empty", "-m", "i"], check=True, env=env)
+        path = self.tmp / "wt-resolve"
+        subprocess.run(["git", "-C", str(self.repo), "worktree", "add", "-q", str(path)], check=True)
+        return path
 
 
 if __name__ == "__main__":

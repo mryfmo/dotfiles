@@ -757,7 +757,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     sandbox["network"]["allowedDomains"],
                 )
                 self.assertEqual(
-                    ["agmsg-dispatch *"]
+                    ["agmsg-dispatch *", "codex-local-review *"]
                     + (
                         ["gh *", "herdr-agents *", "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *"]
                         if os_name == "linux"
@@ -784,6 +784,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(
             [
                 "agmsg-dispatch *",
+                "codex-local-review *",
                 "gh *",
                 "herdr-agents *",
                 "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *",
@@ -791,6 +792,70 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             settings["sandbox"]["excludedCommands"],
         )
         self.assertEqual(["Bash(agmsg-dispatch:*)"], settings["permissions"]["allow"])
+
+    def test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new(self) -> None:
+        manifest = load_manifest_fixture(self.temp_dir)
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os=os_name):
+                settings = self.render_claude_template(self.module.render_claude_settings(manifest), os_name)
+                expected = ["agmsg-dispatch *", "codex-local-review *"]
+                if os_name == "linux":
+                    expected += [
+                        "gh *",
+                        "herdr-agents *",
+                        "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *",
+                    ]
+                self.assertEqual(expected, settings["sandbox"]["excludedCommands"])
+                self.assertEqual(["Bash(agmsg-dispatch:*)"], settings["permissions"]["allow"])
+
+    def test_codex_local_review_wrapper_only_execs_the_repository_local_review_script(self) -> None:
+        wrapper = ROOT / "home/dot_local/bin/common/executable_codex-local-review"
+        repo = self.temp_dir / "review repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "--quiet", str(repo)], check=True, capture_output=True)
+        task = "task.name-1"
+        task_file = repo / f".orchestration/tasks/{task}.md"
+        task_file.parent.mkdir(parents=True)
+        task_file.touch()
+        (repo / ".orchestration/outside.md").touch()
+        script = repo / "scripts/orchestrator/local-review.sh"
+        script.parent.mkdir(parents=True)
+        script.write_text('#!/usr/bin/env bash\nprintf \'%s\\0\' "$PWD" "$@" > "$RECORD_PATH"\nexit 23\n')
+        script.chmod(0o755)
+        stub_bin = repo / "bin"
+        stub_bin.mkdir()
+        decoy = stub_bin / "local-review.sh"
+        decoy.write_text("#!/usr/bin/env bash\nexit 91\n")
+        decoy.chmod(0o755)
+        nested = repo / "nested dir"
+        nested.mkdir()
+        record = repo / "arguments"
+        env = os.environ | {"PATH": str(stub_bin) + os.pathsep + os.environ["PATH"], "RECORD_PATH": str(record)}
+        for head in ("a" * 7, "a" * 40, "ABCDEF0" * 5):
+            with self.subTest(head=head):
+                args = [task, head, "392", "with spaces", "$(printf injected)", "semi;colon", "line\nbreak"]
+                result = subprocess.run([str(wrapper), *args], cwd=nested, env=env, capture_output=True, check=False)
+                self.assertEqual(23, result.returncode, result.stderr)
+                self.assertEqual(
+                    [str(repo.resolve()), *args],
+                    [value.decode() for value in record.read_bytes().split(b"\0")[:-1]],
+                )
+                record.unlink()
+        for args in (
+            [],
+            [task],
+            ["missing", "a" * 40],
+            ["../outside", "a" * 40],
+            ["--help", "a" * 40],
+            [task, "a" * 6],
+            [task, "a" * 41],
+            [task, "g" * 40],
+            [task, "../badhead"],
+        ):
+            with self.subTest(args=args):
+                result = subprocess.run([str(wrapper), *args], cwd=nested, env=env, capture_output=True, check=False)
+                self.assertEqual(2, result.returncode, result.stderr)
+                self.assertFalse(record.exists())
 
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()

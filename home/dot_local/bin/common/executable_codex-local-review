@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# @file codex-local-review
+# @brief Run the current repository's local review after validating its task and head.
+# @arg $1 string Existing task id containing letters, digits, dots, underscores and hyphens.
+# @arg $2 string Head containing 7 to 40 hexadecimal digits.
+# @arg $3 string Additional review-script arguments, forwarded unchanged.
+# @exitcode 2 Malformed arguments or a missing task file.
+set -euo pipefail
+
+[[ ${1:-} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && ${2:-} =~ ^[[:xdigit:]]{7,40}$ ]] || {
+	printf 'usage: codex-local-review <task> <7-40 hex head> [args...]\n' >&2
+	exit 2
+}
+root=$(git rev-parse --show-toplevel)
+[[ -f "$root/.orchestration/tasks/$1.md" ]] || {
+	printf 'codex-local-review: no task file for %s\n' "$1" >&2
+	exit 2
+}
+cd -- "$root"
+exec "$root/scripts/orchestrator/local-review.sh" "$@"

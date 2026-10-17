@@ -19,7 +19,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.unit.test_generate_agent_configs import load_manifest_fixture
+from tests.unit.test_generate_agent_configs import load_generator, load_manifest_fixture
 
 sys.dont_write_bytecode = True
 
@@ -1064,6 +1064,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "enabled": True,
             "failIfUnavailable": False,
             "autoAllowBashIfSandboxed": True,
+            "excludedCommands": ["agmsg-dispatch *", "codex-local-review *"],
             "filesystem": {"allowWrite": list(self.required_agmsg_writable_roots)},
             "network": {
                 "allowedDomains": ["github.com", "api.github.com"],
@@ -1073,6 +1074,28 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_claude_sandbox_accepts_manifest_symmetric_settings(self) -> None:
         self.module.validate_claude_sandbox(self.valid_claude_sandbox(), self.required_agmsg_writable_roots, "sandbox")
+
+    def test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion(self) -> None:
+        generator = load_generator()
+        manifest = load_manifest_fixture(self.temp_dir)
+        manifest["claude"]["sandbox"]["excludedCommands"] = ["agmsg-dispatch *", "codex-local-review *"]
+        roots = manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os=os_name):
+                sandbox = generator.render_claude_sandbox(manifest, os_name)
+                self.module.validate_claude_sandbox(sandbox, roots, "sandbox", os_name)
+                for pattern in ("codex *", "bash *", "codex-local-review * *"):
+                    with self.subTest(extra=pattern):
+                        candidate = copy.deepcopy(sandbox)
+                        candidate["excludedCommands"].append(pattern)
+                        stderr = io.StringIO()
+                        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                            self.module.validate_claude_sandbox(candidate, roots, "sandbox", os_name)
+                        self.assertIn("excludedCommands", stderr.getvalue())
+                candidate = copy.deepcopy(sandbox)
+                candidate["excludedCommands"].remove("codex-local-review *")
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(candidate, roots, "sandbox", os_name)
 
     def test_claude_sandbox_validator_refuses_each_forbidden_form(self) -> None:
         spec = importlib.util.spec_from_file_location(

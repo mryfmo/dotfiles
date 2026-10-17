@@ -1,0 +1,26 @@
+[
+  {
+    "id": "T130-local-review-connected-fixture-P2",
+    "body": "Initial independent security P2: adding the common exclusion broke actual modifier exact-list test on Darwin/Linux. Amendment2 authorized one expected common-list correction. Independent re-review verifies every other byte reconstructs the initially failing test, all env/runtime/plugin/Linux/idempotence assertions preserved, four focused methods GREEN0.820s including bothOS actual modifier. Addressed, not deferred. Initial full report and RED retained.",
+    "scope": "file",
+    "path": "tests/unit/test_claude_settings_merge.py",
+    "resolved": true
+  },
+  {
+    "id": "T130-local-review-A2-source-approval",
+    "body": "Independent read-only security re-review approves exact seven hashes and task Amendment2. Five initial source hashes unchanged; generator test differs only by two check=False additions, modifier test by one expected-list change. Four focused methods GREEN0.820s. Wrapper guards/root/literalargv/exit propagation, exactDarwin2/Linux5 lists and unchanged permission flow verified; no remaining P0-P3 finding. Source-phase approval only; exact candidate validator, post392merge rebase and review extension, final CI/Bot/audit/acceptance remain separate.",
+    "scope": "review",
+    "resolved": true,
+    "task_sha256": "1e4671ba1da997135e3430a403d69508e2305f1a1c6f6e7addbab4cd1195d9f1",
+    "source_sha256": {
+      "home/dot_agents/agent-config.yaml": "ecdb928492084c49b80317daa7c30a3c3de21867967a9bd42c21833516505327",
+      "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+      "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+      "tests/unit/test_generate_agent_configs.py": "a94e1519c2266eecf10b4a29cd2e6ddcfd17b53233ae926e4425e0ff9c9417c3",
+      "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+      "home/dot_local/bin/common/executable_codex-local-review": "55d7e2f0ac44be4c8c30d88f5f21af6f1f9080d91f946d9132c22fcc057a3caa",
+      "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
+    },
+    "stack_base": "85547ca5348d9e0a61c3ae9ae30d324db1897f0f"
+  }
+]

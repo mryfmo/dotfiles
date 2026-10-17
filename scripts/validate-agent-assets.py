@@ -346,13 +346,16 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
         fnmatch.fnmatchcase("gh", entry.split()[0].rsplit("/", 1)[-1]) for entry in exclusions
     ):
         fail(f"{label} macOS must not exclude gh")
-    if os_name == "linux" and exclusions != [
-        "agmsg-dispatch *",
-        "gh *",
-        "herdr-agents *",
-        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *",
-    ]:
-        fail(f"{label} Linux excludedCommands must match the exact seat-tool list")
+    expected_exclusions = ["agmsg-dispatch *", "codex-local-review *"]
+    if os_name == "linux":
+        expected_exclusions += [
+            "gh *",
+            "herdr-agents *",
+            "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *",
+        ]
+    if exclusions != expected_exclusions:
+        platform = "Linux" if os_name == "linux" else "macOS"
+        fail(f"{label} {platform} excludedCommands must match the exact seat-tool list")
     sockets = sandbox.get("network", {}).get("allowUnixSockets", [])
     if not isinstance(sockets, list):
         fail(f"{label}.network.allowUnixSockets must be a list")

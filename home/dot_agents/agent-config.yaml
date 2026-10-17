@@ -285,6 +285,8 @@ claude:
       # outside the sandbox it delivered msgs 545-577 with read_at within
       # seconds (T49 E2E, 2026-10-01).
       - agmsg-dispatch *
+      # The local-review app-server client cannot initialise inside the Bash sandbox.
+      - codex-local-review *
     # Linux blocks gh's keyring and herdr-agents -> actas-claim.sh socket calls;
     # child-script patterns cannot match the parent, but the absolute pattern covers direct calls.
     linux_excluded_commands:

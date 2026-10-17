@@ -71,6 +71,10 @@ The operator's decision of 22:4x JST on PR #389 (D-389-merge-a): the surviving P
 
 a007's Q1 (PONG 13:53:53Z): 8 of the 35 tracked structured sources under home/ are chezmoi `modify_` scripts (shell text named like the target format) that fail the parsers, so "a parse failure is a refusal" would fail the validator on main. The default a007 built is adopted: the format is decided after stripping the chezmoi attribute prefixes from the basename; `modify_`, `run_`, `symlink_` and `encrypted_` sources and `.tmpl` sources are script text under the line grammar; every other `.json`/`.toml`/`.yaml`/`.yml` source is parsed and a parse failure there is a refusal (item 1 says so). The base statement is approved too: origin/main lacks `validate_anthropic_auth_route`, so the branch starts from PR #389's head 862ab31c and rebases onto origin/main after #389 merges; no PR opens before that rebase. Nothing else changes.
 
+## Amendment 2 (round 1, 2026-10-17T14:5xZ)
+
+The overnight monitor's 23:45 JST correction (item 4): no waiting loop on PR #389's merge. Open the draft PR now from the committed work on 862ab31c (a stacked branch) and send the RESULT after #389 merges, the rebase onto origin/main, CI and the Bot wait; between those, the seat takes the next task the orchestrator sends (dotfiles-T129-assets-omp-hcom-followup-a01, the #388 owner task, stacked on PR #388's head the same way) instead of polling. A merge is noticed from the orchestrator's ACCEPTANCE line or a PING, never from a poll.
+
 ## Checks (pasted by the orchestrator before each send)
 
 ```

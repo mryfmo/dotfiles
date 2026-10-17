@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T129-integration-seat-result-gate-cap-a01
 seat: claude-standard-dot-a006
-code_commit: 1c29ec0d
+code_commit: cb09181f
 ---
 
 # Validation: dotfiles-T129-integration-seat-result-gate-cap-a01
@@ -693,5 +693,161 @@ $ git status --porcelain -- scripts tests home; git diff --numstat origin/main..
 113	0	scripts/orchestrator/result-precheck.sh
 76	0	tests/unit/test_herdr_agents.py
 380	0	tests/unit/test_integration_seat.py
+[exit 0]
+```
+
+## 11. Amendment 3 and fix round 2 (thread 4302959624), captured at cb09181f
+
+CI on `3baa0003` failed two pins outside `allowed_files` that item 3's texts move (the rule's word budget, 488 words against 450, and the step-15 fixture); amendment 3 adds both files. The Bot's re-review 5558148144 left P1 4302959624, fixed here as fix round 2 of INV-6 (D-F4-round2), and P2 4302959629, advisory. Below: the task copy (amendment 3) and the checker; the branch; the updated chain test against `3baa0003`'s `integrate-seat.sh` (red), restored; the two modules; the linters; the mutants, one added (the `threads=` filter dropped); the caps. The environment is §1's.
+
+```console
+$ shasum -a 256 "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md"; cmp "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md" && echo byte-identical
+626823fbf25a2a48bad0ae1e05792e6ea5f25ea4d1e4c710e973da64b62d1864  $MAIN/.orchestration/tasks/dotfiles-T129-integration-seat-result-gate-cap-a01.md
+626823fbf25a2a48bad0ae1e05792e6ea5f25ea4d1e4c710e973da64b62d1864  .orchestration/dotfiles-T129-integration-seat-result-gate-cap-a01/task.md
+byte-identical
+[exit 0]
+```
+```console
+$ uv run --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py --root "$PWD" "$MAIN/.orchestration/tasks/$T.md"
+dotfiles-T129-integration-seat-result-gate-cap-a01.md: OK
+[exit 0]
+```
+```console
+$ git log --oneline -3; git merge-base origin/main HEAD
+cb09181f fix(orchestrator): a retry of integrate-seat.sh reads the worker's RESULT, not its own kind=integration one; the rule budget and the step-15 pin follow item 3 (PR #393 thread 4302959624, amendment 3)
+3baa0003 docs(orchestration): T129 integration-seat result-gate cap a01 fix-round evidence (ff9bb7c1, 1c29ec0d)
+1c29ec0d docs(orchestrator): integrate-seat.sh and result-precheck.sh headers say what the fix round changed, in fewer lines (the 260 cap of amendment 2)
+59db77bbab7fe19377bc2b94adc6ec5c576f3ebb
+[exit 0]
+```
+```console
+$ git show 3baa0003:scripts/orchestrator/integrate-seat.sh > scripts/orchestrator/integrate-seat.sh && git diff --stat
+ scripts/orchestrator/integrate-seat.sh | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+[exit 0]
+```
+```console
+$ set -o pipefail; uv run python -m unittest tests.unit.test_integration_seat.IntegrationSeatTest.test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges 2>&1 | /usr/bin/grep -E '^(FAIL|ERROR):|^AssertionError|^Ran|^FAILED|^OK'
+FAIL: test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges (tests.unit.test_integration_seat.IntegrationSeatTest.test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+AssertionError: 0 != 2 : integrate-seat: no AGMSG-RESULT with threads= for dotfiles-T129-x-a01
+Ran 1 test in 2.360s
+FAILED (failures=1)
+[exit 1]
+```
+```console
+$ git checkout -- scripts && git diff --quiet && echo restored to $(git rev-parse --short HEAD)
+restored to cb09181f
+[exit 0]
+```
+```console
+$ uv run python -m unittest tests/unit/test_integration_seat.py tests/unit/test_agmsg_orchestration_docs.py -v
+test_integrate_seat_reads_plain_gh_output_under_clicolor_force (tests.unit.test_integration_seat.IntegrationSeatTest.test_integrate_seat_reads_plain_gh_output_under_clicolor_force) ... ok
+test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges (tests.unit.test_integration_seat.IntegrationSeatTest.test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges) ... ok
+test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt (tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt) ... ok
+test_docs_no_longer_name_codex_review_commit (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationForbiddenPhrasesTest.test_docs_no_longer_name_codex_review_commit) ... ok
+test_rule_and_skill_name_worker_seats_not_codex_workers (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationForbiddenPhrasesTest.test_rule_and_skill_name_worker_seats_not_codex_workers) ... ok
+test_rule_drops_the_worker_network_escalation (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationForbiddenPhrasesTest.test_rule_drops_the_worker_network_escalation) ... ok
+test_skill_drops_the_pane_status_gate_and_raw_pane_wakes (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationForbiddenPhrasesTest.test_skill_drops_the_pane_status_gate_and_raw_pane_wakes) ... ok
+test_boundary_cadence_is_stated_between_integrations (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationRuleTest.test_boundary_cadence_is_stated_between_integrations) ... ok
+test_rule_pointers_name_real_skill_sections (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationRuleTest.test_rule_pointers_name_real_skill_sections) ... ok
+test_rule_states_the_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationRuleTest.test_rule_states_the_invariants) ... ok
+test_word_budgets (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationRuleTest.test_word_budgets) ... ok
+test_audit_command_lives_only_in_the_task_level_audit_bullet (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationSingleSourceTest.test_audit_command_lives_only_in_the_task_level_audit_bullet) ... ok
+test_codex_agents_points_at_the_worklog_section (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationSingleSourceTest.test_codex_agents_points_at_the_worklog_section) ... ok
+test_contextdb_cli_is_invoked_with_uv_run (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationSingleSourceTest.test_contextdb_cli_is_invoked_with_uv_run) ... ok
+test_skill_masks_evidence_with_a_runnable_command (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationSingleSourceTest.test_skill_masks_evidence_with_a_runnable_command) ... ok
+test_claude_worker_merge_denials_and_prefix_limits_are_documented (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationSkillTest.test_claude_worker_merge_denials_and_prefix_limits_are_documented) ... ok
+test_codex_worker_profile_defaults_to_standard (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationSkillTest.test_codex_worker_profile_defaults_to_standard) ... ok
+test_skill_carries_the_audit_gate_and_bot_wait_mechanics (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationSkillTest.test_skill_carries_the_audit_gate_and_bot_wait_mechanics) ... ok
+test_skill_carries_the_parallel_execution_and_routing_mechanics (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationSkillTest.test_skill_carries_the_parallel_execution_and_routing_mechanics) ... ok
+test_skill_carries_the_registration_and_delivery_mechanics (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationSkillTest.test_skill_carries_the_registration_and_delivery_mechanics) ... ok
+test_skill_carries_the_session_lessons (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationSkillTest.test_skill_carries_the_session_lessons) ... ok
+test_a_design_lands_on_main_before_its_task (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_a_design_lands_on_main_before_its_task) ... ok
+test_a_revise_acceptance_names_the_previous_head_and_a_check (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_a_revise_acceptance_names_the_previous_head_and_a_check) ... ok
+test_a_trust_boundary_task_carries_a_threat_table (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_a_trust_boundary_task_carries_a_threat_table) ... ok
+test_advisory_rows_are_excluded_from_the_class_counts (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_advisory_rows_are_excluded_from_the_class_counts) ... ok
+test_an_incorrect_audit_is_dispositioned_in_audit_findings (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_an_incorrect_audit_is_dispositioned_in_audit_findings) ... ok
+test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_bot_fix_rounds_are_capped_and_the_pr_is_ready_first) ... ok
+test_boundary_merge_sentence_names_the_in_job_decision (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_boundary_merge_sentence_names_the_in_job_decision) ... ok
+test_closed_selector_existence_is_checked_at_acceptance (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_closed_selector_existence_is_checked_at_acceptance) ... ok
+test_code_review_rules_cover_orchestration_records_and_threat_tables (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_code_review_rules_cover_orchestration_records_and_threat_tables) ... ok
+test_counters_bullet_names_owners_not_sources (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_counters_bullet_names_owners_not_sources) ... ok
+test_counters_run_before_every_acceptance_action (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_counters_run_before_every_acceptance_action) ... ok
+test_design_review_runs_in_paired_rounds_with_a_cap (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_design_review_runs_in_paired_rounds_with_a_cap) ... ok
+test_dispatches_are_recorded_from_the_bus (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_dispatches_are_recorded_from_the_bus) ... ok
+test_open_review_body_findings_have_an_identifier (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_open_review_body_findings_have_an_identifier) ... ok
+test_orchestration_records_rule_binds_the_bot_review_only (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_orchestration_records_rule_binds_the_bot_review_only) ... ok
+test_pattern_rules_pin_their_safeguards (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_pattern_rules_pin_their_safeguards) ... ok
+test_question_pongs_are_in_the_contract (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_question_pongs_are_in_the_contract) ... ok
+test_regime_rule_sections_are_pinned_whole (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_regime_rule_sections_are_pinned_whole) ... ok
+test_rule_changes_travel_as_task_amendments (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_rule_changes_travel_as_task_amendments) ... ok
+test_shape_is_checked_by_hand (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_shape_is_checked_by_hand) ... ok
+test_shape_rules_and_the_decision_sentence_are_pinned (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_shape_rules_and_the_decision_sentence_are_pinned) ... ok
+test_skill_names_no_unlanded_mechanism (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_skill_names_no_unlanded_mechanism) ... ok
+test_skill_sandbox_text_names_both_platforms (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_skill_sandbox_text_names_both_platforms) ... ok
+test_step_10_states_the_advisory_p2_policy (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_step_10_states_the_advisory_p2_policy) ... ok
+test_surviving_fix_round_threads_stop_for_the_operator (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_surviving_fix_round_threads_stop_for_the_operator) ... ok
+test_task_file_review_is_one_round_with_a_fixed_stop_condition (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_task_file_review_is_one_round_with_a_fixed_stop_condition) ... ok
+test_the_bot_wait_filters_the_codex_bot (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_bot_wait_filters_the_codex_bot) ... ok
+test_the_ci_watch_is_joined_before_the_result (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_ci_watch_is_joined_before_the_result) ... ok
+test_the_ci_watcher_survives_the_no_checks_race (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_ci_watcher_survives_the_no_checks_race) ... ok
+test_the_gate_reads_the_acceptance_record (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_the_gate_reads_the_acceptance_record) ... ok
+test_threat_table_rows_have_a_fixed_unit (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_threat_table_rows_have_a_fixed_unit) ... ok
+test_threat_table_rule_carries_no_grammar (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_threat_table_rule_carries_no_grammar) ... ok
+test_three_repeats_start_with_a_pasted_correction_search (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_three_repeats_start_with_a_pasted_correction_search) ... ok
+test_workers_commit_inside_the_sandbox (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_workers_commit_inside_the_sandbox) ... ok
+test_workers_open_the_pr_as_a_draft (tests.unit.test_agmsg_orchestration_docs.AgmsgRegimePatternTest.test_workers_open_the_pr_as_a_draft) ... ok
+
+----------------------------------------------------------------------
+Ran 56 tests in 13.911s
+
+OK
+[exit 0]
+```
+```console
+$ shellcheck scripts/orchestrator/integrate-seat.sh scripts/orchestrator/result-precheck.sh home/dot_local/bin/common/executable_herdr-agents && shfmt -d -i 4 -sr scripts/orchestrator/integrate-seat.sh scripts/orchestrator/result-precheck.sh && echo clean
+clean
+[exit 0]
+```
+```console
+$ ruff format --config ruff.toml --check tests/unit/test_integration_seat.py tests/unit/test_agmsg_orchestration_docs.py
+2 files already formatted
+[exit 0]
+```
+```console
+$ uv run python "$S/mutate-f4.py"
+mutant 1 rc=1 home/dot_local/bin/common/executable_herdr-agents: the cap check dropped (test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap)
+mutant 2 rc=1 home/dot_local/bin/common/executable_herdr-agents: the cap off by one (test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap)
+mutant 3 rc=1 home/dot_agents/skills/agmsg-orchestration/SKILL.md: a seat count out of step (test_the_skill_and_the_rule_name_the_manifest_worker_cap_and_the_integration_seat)
+mutant 4 rc=1 home/dot_config/claude/rules/agmsg-orchestration.md: the Delegation bullet without the integration seat (test_the_skill_and_the_rule_name_the_manifest_worker_cap_and_the_integration_seat)
+mutant 5 rc=1 scripts/orchestrator/integrate-seat.sh: CLICOLOR_FORCE inherited (test_integrate_seat_reads_plain_gh_output_under_clicolor_force)
+mutant 6 rc=1 scripts/orchestrator/integrate-seat.sh: a failing step does not block (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 7 rc=1 scripts/orchestrator/integrate-seat.sh: an unfixed P0/P1 made advisory (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 8 rc=1 scripts/orchestrator/result-precheck.sh: (b) takes any file (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 9 rc=1 scripts/orchestrator/result-precheck.sh: (c) ignores the caps (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 10 rc=1 scripts/orchestrator/result-precheck.sh: (d) ignores the validation file (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 11 rc=1 scripts/orchestrator/result-precheck.sh: (e) not bound to the head (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 12 rc=1 scripts/orchestrator/result-precheck.sh: (g) takes any mention of the id (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 13 rc=1 scripts/orchestrator/result-precheck.sh: verify takes code after the receipt (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 14 rc=1 scripts/orchestrator/result-precheck.sh: (a) takes any task copy (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 15 rc=1 scripts/orchestrator/result-precheck.sh: verify takes a receipt without its status lines (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 16 rc=1 scripts/orchestrator/integrate-seat.sh: a review-body finding keyed by its bare id (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 17 rc=1 scripts/orchestrator/integrate-seat.sh: the record copied in after local-advisory.sh (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 18 rc=1 scripts/orchestrator/integrate-seat.sh: a retry reads the kind=integration RESULT (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+baseline rc=0: the 5 tests on the unmutated tree
+[exit 0]
+```
+```console
+$ git status --porcelain -- scripts tests home; git diff --numstat origin/main...HEAD -- home scripts tests
+3	0	home/dot_agents/agent-config.yaml
+6	6	home/dot_agents/skills/agmsg-orchestration/SKILL.md
+2	2	home/dot_config/claude/rules/agmsg-orchestration.md
+18	0	home/dot_local/bin/common/executable_herdr-agents
+123	0	scripts/orchestrator/integrate-seat.sh
+113	0	scripts/orchestrator/result-precheck.sh
+1	1	tests/fixtures/regime/worker-step-15.md
+1	1	tests/unit/test_agmsg_orchestration_docs.py
+76	0	tests/unit/test_herdr_agents.py
+389	0	tests/unit/test_integration_seat.py
 [exit 0]
 ```

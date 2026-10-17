@@ -4,7 +4,8 @@ seat: claude-standard-dot-a006
 branch: tools/integration-seat-result-gate-cap
 base: 59db77bb
 code_commits: [6c994f2c, e260d89b, 522cc4b8, ec4a300d]
-fix_commits: [ff9bb7c1, 1c29ec0d]
+fix_commits: [ff9bb7c1, 1c29ec0d, cb09181f]
+task_sha256_amendment_3: 626823fbf25a2a48bad0ae1e05792e6ea5f25ea4d1e4c710e973da64b62d1864
 task_sha256: 4e00bf122f578a9dbbde8ac36feb025d68cb828009a2e9f009606ad760879081
 ---
 
@@ -34,7 +35,7 @@ Both new scripts export `CLICOLOR_FORCE=0 FORCE_COLOR=0 NO_COLOR=1` after `set -
 | integrate-seat.sh | `test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges`: the exact script order, the RESULT line, the dispositions TSV, the record's steps, the record block on the copied main record, the receipt; no merge call and no audit, gate or merge command in the script text; a failing CI, a failing `resolve-threads.sh` and an unfixed P1 each send `status=blocked step=<name>` and stop before the record; malformed arguments and a missing TASK refuse with exit 2 and run nothing. `test_integrate_seat_reads_plain_gh_output_under_clicolor_force` (amendment 1): with `CLICOLOR_FORCE=1` inherited and a stub gh that colours its output then, the comments JSON the sweep fill reads parses and the RESULT is ready_for_audit. |
 | result-precheck.sh, its inputs | `test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt`: all ok (seven ok, (h) and (i) unavailable); verify accepts the receipt committed after the head and refuses a wrong sha256 (`receipt`), a code change after the receipt (`code-after-receipt`) and a receipt naming a missing check; each of (a), (c), (d), (e), (e) with another head on GitHub, (f), (g), (h) broken alone is the one `missing`; (b) with a file outside `allowed_files`; malformed task id, PR number, head and RESULT line exit 2. |
 
-Red: the two herdr tests fail on `origin/main`'s four files, the integration-seat module without the two scripts (validation §4), and the fix round's cases on `194e0bde`'s scripts (§10). Mutants: 17, each caught by its test, then a passing baseline (§6, §10). The `CLICOLOR_FORCE` export of `result-precheck.sh` has no test of its own; the amendment's one test is `integrate-seat.sh`'s.
+Red: the two herdr tests fail on `origin/main`'s four files, the integration-seat module without the two scripts (validation §4), and the fix round's cases on `194e0bde`'s scripts (§10). Mutants: 18, each caught by its test, then a passing baseline (§6, §10, §11). The `CLICOLOR_FORCE` export of `result-precheck.sh` has no test of its own; the amendment's one test is `integrate-seat.sh`'s.
 
 ## CI and the Bot
 
@@ -44,7 +45,9 @@ Red: the two herdr tests fail on `origin/main`'s four files, the integration-sea
   - `4302868180:P1:fixed:ff9bb7c1` (`integrate-seat.sh:97`): review-body findings, `review-<id>` in a RESULT's thread list (the Message Contract's `open:review-<id>` form), are written as the sweep's `pullrequestreview-<id>` key.
   - ShellCheck: no `A && B || C` is left outside `[[ ]]` and loop bodies in either script.
 - `1c29ec0d` shortens both headers so the code stays under the 260 cap (257).
-- The re-review on `@codex review`, CI on the final head and the precheck receipt are in the RESULT.
+- **The re-review** (`@codex review` at 14:04:19Z): review `5558148144` on `3baa0003` (14:09:17Z) left P1 `4302959624` (`integrate-seat.sh:35`: a retry read the first run's `kind=integration` RESULT, which has no `threads=`, and refused) and P2 `4302959629` (`result-precheck.sh:87`: check (g) reads inline comments, not review-body findings). CI on `3baa0003` failed two pins outside `allowed_files` that item 3's texts move: `test_word_budgets` (the rule at 488 words against 450) and `test_regime_rule_sections_are_pinned_whole` (`worker-step-15`). My pre-dispatch grep for pinned sentences had excluded `tests/fixtures/`, so the pin went unseen until CI.
+- **Amendment 3** (D-F4-round2): both test files join `allowed_files`, the budget becomes 490, the fixture takes item 3's sentence, and the P1 is fixed as fix round 2 of INV-6, `cb09181f`: the RESULT read selects the newest RESULT carrying `threads=`, with a retry case in the chain test (red on `3baa0003`'s script, a mutant; validation §11). The P2 is advisory under `dotfiles-T129-integration-seat-result-gate-cap-followup-a01`. No further `@codex review`; the Bot wait of step 15 on the final head, CI on it and the precheck receipt are in the RESULT.
+- Thread tokens, the RESULT's form, which the precheck's (g) reads: threads=4302868172:P1:fixed:ff9bb7c1;4302868177:P1:fixed:ff9bb7c1;4302868180:P1:fixed:ff9bb7c1;4302959624:P1:fixed:cb09181f;4302959629:P2:not-applicable:advisory-P2-owned-by-dotfiles-T129-integration-seat-result-gate-cap-followup-a01
 
 ## Readings, declared
 

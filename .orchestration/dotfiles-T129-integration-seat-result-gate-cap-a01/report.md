@@ -48,6 +48,7 @@ Red: the two herdr tests fail on `origin/main`'s four files, the integration-sea
 - **The re-review** (`@codex review` at 14:04:19Z): review `5558148144` on `3baa0003` (14:09:17Z) left P1 `4302959624` (`integrate-seat.sh:35`: a retry read the first run's `kind=integration` RESULT, which has no `threads=`, and refused) and P2 `4302959629` (`result-precheck.sh:87`: check (g) reads inline comments, not review-body findings). CI on `3baa0003` failed two pins outside `allowed_files` that item 3's texts move: `test_word_budgets` (the rule at 488 words against 450) and `test_regime_rule_sections_are_pinned_whole` (`worker-step-15`). My pre-dispatch grep for pinned sentences had excluded `tests/fixtures/`, so the pin went unseen until CI.
 - **Amendment 3** (D-F4-round2): both test files join `allowed_files`, the budget becomes 490, the fixture takes item 3's sentence, and the P1 is fixed as fix round 2 of INV-6, `cb09181f`: the RESULT read selects the newest RESULT carrying `threads=`, with a retry case in the chain test (red on `3baa0003`'s script, a mutant; validation §11). The P2 is advisory under `dotfiles-T129-integration-seat-result-gate-cap-followup-a01`. No further `@codex review`; the Bot wait of step 15 on the final head, CI on it and the precheck receipt are in the RESULT.
 - **The final head, `2d61e227`:** CI passed, 11 check runs with CodeRabbit and GitGuardian (13 rows); bot: none on 2d61e22 (the step-15 wait of 15 minutes from the push at 14:22:19Z, no further `@codex review` per amendment 3).
+- **The round-3 head, `fa14b374`:** CI passed, 13 rows; bot: none on fa14b37 (the step-15 wait of 15 minutes from the push at 15:35:59Z, no further `@codex review`).
 - Thread tokens, the RESULT's form, which the precheck's (g) reads: threads=4302868172:P1:fixed:ff9bb7c1;4302868177:P1:fixed:ff9bb7c1;4302868180:P1:fixed:ff9bb7c1;4302959624:P1:fixed:cb09181f;4302959629:P2:not-applicable:advisory-P2-owned-by-dotfiles-T129-integration-seat-result-gate-cap-followup-a01
 
 ## The first use of item 2, on this PR (validation §12)
@@ -61,6 +62,12 @@ The precheck's first run on `2d61e227` found three defects in this PR's own scri
 The dry run's own result, `Verdict: incorrect` with seven issues, is informational: item 2 asks for its verdict pasted, not judged. Its findings were not captured (defect 3), and the orchestrator's task-level audit of the final head is the authority on the PR's findings.
 
 The receipt was made with `AGMSG_SCRIPTS` pointing at a bounded wrapper (this seat's 300 rows), the scripts' own seam, declared here. Its (a) is `missing` for defect 1, so `verify` refuses it (§12). The task copy itself is the dispatched one: sha256 `626823fb…`, amendment 3.
+
+**The round-3 run.** On `fa14b374` the precheck runs with no wrapper and no stdin redirect. Every check is `ok` except (h), `unavailable`, and the run exits 0 (receipt `precheck-fa14b37.md`). Its (i) now carries the dry run's whole message: `Verdict: incorrect` with five P1 and four P2. As item 2 says, the verdict is pasted, not judged, and the orchestrator's task-level audit is the authority. The fix rounds are spent (no fourth, D-F4-round3), so none is fixed here. Two of them hold on a reading of the code:
+- `verify` takes a receipt with no `head:` line: the failing `git diff` is swallowed by `|| true`, so the code-after-receipt check passes.
+- The records-only exemption `grep -v -F "<.orchestration/<task>/>"` matches a substring anywhere in a path, not a prefix.
+
+The rest are listed in the receipt.
 
 ## Readings, declared
 

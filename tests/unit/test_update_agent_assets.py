@@ -221,6 +221,48 @@ class UpdateAgentAssetsTest(unittest.TestCase):
         # managed path and the asset manifest lists it; exercise_update asserts the path, its hash and the entry.
         self.exercise_update("hcom", "Darwin/arm64")
 
+    def test_update_hcom_reinstalls_a_pinned_install_without_its_retained_wheel(self):
+        # The Bot's P2 4303212227: an hcom installed at the pin before the wheel was kept has a receipt that names a
+        # deleted temporary wheel, so the version alone does not skip it; once the wheel is retained it is skipped.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            hcom = home / ".local/bin/hcom"
+            hcom.parent.mkdir(parents=True)
+            hcom.write_text("#!/bin/sh\nprintf 'hcom 0.7.30\\n'\n")
+            hcom.chmod(0o755)
+            payload = "reproduced wheel bytes; no real package\n"
+            digest = hashlib.sha256(payload.encode()).hexdigest()
+            log = home / "calls"
+            wheel = home / ".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-any.whl"
+            stubs = (
+                "HCOM_PIN_VERSION=0.7.30; HCOM_LINUX_AMD64_URL=https://fixture.invalid/hcom-0.7.30-py3-none-any.whl; "
+                f"HCOM_LINUX_AMD64_SHA256={digest}; has_command() {{ return 0; }}; manifest_record() {{ :; }}; "
+                'uname() { if [ "$1" = -s ]; then echo Linux; else echo x86_64; fi; }; '
+                'curl() { printf %s "$PAYLOAD" > "${@: -1}"; echo curl >> "$CALLS"; }; '
+                'uv() { echo "uv $*" >> "$CALLS"; }; '
+            )
+
+            def update():
+                return subprocess.run(
+                    ["bash", "-c", 'source "$1"; ' + stubs + "update_hcom", "bash", str(UPDATER)],
+                    env=os.environ | {"HOME": directory, "PAYLOAD": payload, "CALLS": str(log)},
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+
+            repaired = update()
+            self.assertEqual(0, repaired.returncode, repaired.stdout + repaired.stderr)
+            self.assertNotIn("already installed", repaired.stdout)
+            self.assertEqual(["curl", f"uv tool install --force {wheel}"], log.read_text().splitlines())
+            self.assertEqual(digest, hashlib.sha256(wheel.read_bytes()).hexdigest())
+            log.write_text("")
+            skipped = update()
+            self.assertEqual(0, skipped.returncode, skipped.stdout + skipped.stderr)
+            self.assertIn("hcom 0.7.30 is already installed", skipped.stdout)
+            self.assertEqual("", log.read_text())
+
     def test_updates_use_managed_binaries_when_path_is_shadowed(self):
         for tool in ("omp", "hcom"):
             for shadow_version in ("pin", "0.0.0"):

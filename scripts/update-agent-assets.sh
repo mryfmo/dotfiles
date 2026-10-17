@@ -972,8 +972,12 @@ function update_hcom() (
         return 0
     }
     section "hcom"
+    # uv's receipt records the wheel's path as hcom's source and `uv tool upgrade` re-reads it, so the verified wheel
+    # lives at a managed path that outlives the run.
+    wheel_dir="${HOME}/.local/share/agent-assets/hcom"
     installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
-    if [ "${installed}" = "${HCOM_PIN_VERSION}" ]; then
+    # A pinned install without the retained wheel (one from before the wheel was kept) is reinstalled to repair it.
+    if [ "${installed}" = "${HCOM_PIN_VERSION}" ] && [ -f "${wheel_dir}/${url##*/}" ]; then
         printf 'hcom %s is already installed.\n' "${installed}"
         return 0
     fi
@@ -986,9 +990,6 @@ function update_hcom() (
         printf 'hcom checksum mismatch: expected %s, got %s.\n' "${expected}" "${actual}" >&2
         return 1
     fi
-    # uv's receipt records this path as hcom's source and `uv tool upgrade` re-reads it, so the verified wheel moves
-    # to a managed path that outlives the run.
-    wheel_dir="${HOME}/.local/share/agent-assets/hcom"
     mkdir -p "${wheel_dir}" && mv -f "${wheel}" "${wheel_dir}/" || return
     wheel="${wheel_dir}/${url##*/}"
     uv tool install --force "${wheel}" || return

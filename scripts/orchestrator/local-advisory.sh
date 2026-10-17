@@ -9,8 +9,9 @@
 #   not-applicable:advisory P2 owned by <owner> (…); evidence=shasum -a 256 .orchestration/tasks/<owner>.md
 #   (<sha256>)` line, each only when the record lacks it. A review with findings needs the owner task file. The
 #   class is `advisory-p2`, unless the finding's `path:line[-line]` token (backticks ignored) matches a finding of
-#   the task's earlier local review files whose `local:` row in the record has another class: then the last such
-#   row's class, and the line's parenthesis names it as `repeat of local:<sha7>:<n>` (C-50).
+#   the task's earlier local review files (`<task>-local-review-<sha7>.md` only) whose `local:` row in the record,
+#   matched by its exact id, has another class: then the last such row's class, and the line's parenthesis names it
+#   as `repeat of local:<sha7>:<n>` (C-50).
 # @arg $1 string Task id, letters, digits, `.`, `_` and `-`.
 # @arg $2 string The reviewed head, 40 hex characters.
 # @arg $3 string The task id that owns the advisory findings, in the task id's form.
@@ -57,6 +58,8 @@ earlier=""
 for f in .orchestration/validation/"$task"-local-review-*.md; do
     [[ -f $f && $f != "$LR" ]] || continue
     e=${f%.md} && e=${e##*-local-review-} && k=0
+    # Only a seven-hex suffix names a reviewed head; any other file is skipped (the audit of d3e8acf, finding 1).
+    [[ $e =~ ^[0-9a-f]{7}$ ]] || continue
     while IFS= read -r l; do
         k=$((k + 1))
         if t=$(token "$l"); then earlier+="$t local:$e:$k"$'\n'; fi
@@ -78,7 +81,8 @@ while IFS= read -r line; do
         t=$(token "$line") || t=""
         ids=$(printf '%s' "$earlier" | awk -v t="$t" '$1 == t { print $2 }' | tr '\n' '|')
         if [[ -n $t && -n $ids ]]; then
-            row=$(/usr/bin/grep -E "^(${ids%|})	" "$A" | /usr/bin/grep -v '	advisory-p2$' | tail -1 || true)
+            # A row's id is its first tab-separated field, compared as text, never as a pattern.
+            row=$(awk -F'\t' -v ids="${ids%|}" 'BEGIN { n = split(ids, a, "|"); for (j = 1; j <= n; j++) s[a[j]] = 1 } NF > 1 && ($1 in s) && $0 !~ /\tadvisory-p2$/' "$A" | tail -1 || true)
             [ -z "$row" ] || class=${row#*	} repeat="; repeat of ${row%%	*}"
         fi
         /usr/bin/grep -q "^local:$h7:$i	" "$A" || printf 'local:%s:%s\t%s\n' "$h7" "$i" "$class" >> "$A"

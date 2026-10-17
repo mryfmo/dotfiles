@@ -1572,11 +1572,12 @@ def validate_no_obvious_secrets() -> None:
             )
 
 
-# R2: an assignment whose value is not a `$NAME`/`${NAME}` reference, a `{{` template or empty; `$'...'` and `$"..."`
-# are literal data in Bash. The whitespace and the optional quote sit inside the lookahead, so neither can match empty
-# in front of a reference and let it through as a literal.
+# R2: an assignment whose whole value, up to the end of the line or a `#` comment after whitespace, is not one
+# `$NAME`/`${NAME}` reference, one `{{ }}` template or empty, each optionally quoted. Anything else is a literal Bash
+# could assign: `$'...'`, `$"..."`, `$(...)`, `${NAME:-...}`, or a reference with more after it.
 ANTHROPIC_API_KEY_LITERAL = re.compile(
-    r"""ANTHROPIC_API_KEY\s*[:=](?!\s*["']?(?:\$\{?[A-Za-z_]|\{\{)|\s*(?:""|'')?\s*$)"""
+    r"""ANTHROPIC_API_KEY\s*[:=](?!\s*(?:(["']?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})\1"""
+    r"""|(["']?)\{\{(?:(?!\}\}).)*\}\}\2|""|'')?\s*(?:(?<=\s)#.*)?$)"""
 )
 
 

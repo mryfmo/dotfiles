@@ -3,6 +3,1246 @@ task_id: dotfiles-T128-project-map-pane-open-a01-followup-a01
 status: final
 ---
 
+Current C59 canonical-path revision against8607a87. Task-copy SHA256 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9. Commands below are worker-local unless explicitly labeled independent or previous-head. Paths are redacted as <HOME> and <TMP>; outputs otherwise retain their original bytes/whitespace, including historical diagnostics. The publishing head and future CI/Bot observations are reported after push in RESULT-round3/raw round3-canonical/. The historical appendix does not validate the current source.
+
+Source SHA256:
+- home/dot_claude/hooks/executable_project-map-reload.sh: e5b1ac6aa0f3f595acb00ac63d7c5c75990fb9b5064bc303a15f606a3ed0d0ed
+- tests/unit/test_generate_agent_configs.py: ad99c9ea57342d7c202ac6112529e08790d2e920f377b5ad3f986257af5374cf
+
+## Amended TASK line, source-copy comparison and SHA256
+
+```text
+Formal AGMSG-TASK received 2026-10-17T07:10:33Z from claude-deep-dot; round=3 amendment=1 previous_task_sha256=3d87e72644ca0b4f11fd24de768a674fd8fbc6af9f54df7bcffb822ae7e3a27d task_sha256=24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9; pair-confirmed Codex-round2,a005-round2.
+Source: <HOME>/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-followup-a01.md
+Destination: .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+Source SHA256: 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9
+Destination SHA256: 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9
+Byte comparison: identical; exit0.
+
+--- pre-amend1 task copy
++++ amend1 task copy
+@@ -35,7 +35,7 @@
+   - control: in-process effects
+     disposition: "residual: the tests import scripts/generate-agent-configs.py as the existing module tests do and run the hook script as a subprocess with a stub terminal-browser on PATH; nothing else is imported"
+   - control: workflow and interpreter or environment inputs
+-    disposition: "residual: no workflow or interpreter file is in allowed_files; the hook runs the same three executables as the merged hook, jq and terminal-browser on the user's PATH and the agent binary of TERMINAL_BROWSER_AGENT else the bundled one, with the open subcommand and the event's map path as its only variable argument (already matched to /.project-map/index.html); terminal-browser open splits the pane its environment names, the pane of the Claude session that wrote the map, and launches nothing outside the Herdr workspace; nothing in the event or the file chooses an executable"
++    disposition: "residual: no workflow or interpreter file is in allowed_files; the hook runs the same three executables as the merged hook, jq and terminal-browser on the user's PATH and the agent binary of TERMINAL_BROWSER_AGENT else the bundled one, and, from amendment 1 (the re-plan of D-S1-379), python3 as /usr/bin/env resolves it on the session's PATH, exactly as the format-edited-files hook's shebang does, run as python3 -I -S -c with the standard library only (urllib.parse for the percent-decoding, os.path for the physical absolute path; -I drops the environment and the user site, -S the site initialisation, so no .pth file or sitecustomize loads) and the two paths as its only arguments, its other inputs being the hook's own environment HOME (the session's, for the leading ~), the hook's physical working directory (pwd -P, the directory Claude Code ran the hook in) and the user's filesystem symlink state that the physical path follows (data, read-only), so no module beside the standard library and no file relative to cwd is loaded; with the open subcommand and the event's map path as its only variable argument (already matched to /.project-map/index.html); terminal-browser open splits the pane its environment names, the pane of the Claude session that wrote the map, and launches nothing outside the Herdr workspace; nothing in the event or the file chooses an executable"
+   - control: new or renamed scripts
+     disposition: "residual: no new or renamed script: the owned rows name edits to files the lineage landed; any new or renamed script is an undeclared change the audit fails"
+   - control: orchestrator effect merge
+@@ -81,3 +81,6 @@
+ 
+ The review seat's round on the premise change (P2, P3): the Completion clause still had the single-review form written before T13's amendment 6 (no `open:<thread id>`, no `bot_rounds=2`, "every P2 as advisory", the pre-C-51 owner wording). It is now the task template's clause of 2026-10-16 (`.orchestration/templates/task-short.md`, Completion): the Bot's review at PR open and once more on `@codex review` after a P0/P1 fix round, a surviving P0/P1 listed as `open:<thread id>` with `bot_rounds=2`, the C-50 revise round for a small in-scope P2, every other P2 advisory and owned by `dotfiles-T128-project-map-pane-open-a01-followup-a02` (written when the first advisory P2 appears, C-51) under `## Owned by dotfiles-T128-project-map-pane-open-a01-followup-a02` in this task's acceptance record. Nothing else changes from `ecd3606f`; re-confirmed Codex first (C-54).
+ 
++## Amendment (1, 2026-10-17T06:49:48Z)
++
++After the operator's decision D-S1-379 A (the re-plan: one canonical-path normaliser for the event path and every tab URL, the class `path-form-normalisation` at three findings), the worker asked which runtime the normaliser may use, since the workflow row named three executables: the row now also names python3, resolved by /usr/bin/env on the session's PATH as the format-edited-files hook's shebang resolves it, run with -I -S and the standard library only (urllib.parse, os.path), the two paths its only arguments and HOME, the physical cwd and the filesystem's symlink state its only other inputs (the Codex half's round 1, 2026-10-17T06:53:48Z). Nothing else changes from `3d87e726`; the amendment travels as a hashed TASK line with `amendment=1` and `previous_task_sha256=3d87e72644ca0b4f11fd24de768a674fd8fbc6af9f54df7bcffb822ae7e3a27d`, the pre-amendment copy at `.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-pre-amend1.md`.
+```
+
+## Expected RED: named nine-form method before implementation (exit1, seven failures)
+
+```text
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... 
+  test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='home') ... FAIL
+  test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='encoded event URL') ... FAIL
+  test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='dot and parent segments') ... FAIL
+  test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='event trailing slash') ... FAIL
+  test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='tab trailing slash') ... FAIL
+  test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='event symlink') ... FAIL
+  test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='tab symlink') ... FAIL
+
+======================================================================
+FAIL: test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='home')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1983, in test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+    self.assertEqual(browser, [["ls", "--all", "--json"]])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [['ls[16 chars]son'], ['open', '~/repo/.project-map/index.htm[50 chars]ge']] != [['ls[16 chars]son']]
+
+First list contains 1 additional elements.
+First extra element 1:
+['open', '~/repo/.project-map/index.html', '--split', 'right', '--size', '0.5', '--no-merge']
+
+- [['ls', '--all', '--json'],
+?                           ^
+
++ [['ls', '--all', '--json']]
+?                           ^
+
+-  ['open',
+-   '~/repo/.project-map/index.html',
+-   '--split',
+-   'right',
+-   '--size',
+-   '0.5',
+-   '--no-merge']]
+
+======================================================================
+FAIL: test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='encoded event URL')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1983, in test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+    self.assertEqual(browser, [["ls", "--all", "--json"]])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [['ls[16 chars]son'], ['open', 'file:///private/var/folders/p[136 chars]ge']] != [['ls[16 chars]son']]
+
+First list contains 1 additional elements.
+First extra element 1:
+['open', 'file://<TMP>/tmp64tuttge/home/repo%7Ename/.project-map/index.html', '--split', 'right', '--size', '0.5', '--no-merge']
+
+- [['ls', '--all', '--json'],
+?                           ^
+
++ [['ls', '--all', '--json']]
+?                           ^
+
+-  ['open',
+-   'file://<TMP>/tmp64tuttge/home/repo%7Ename/.project-map/index.html',
+-   '--split',
+-   'right',
+-   '--size',
+-   '0.5',
+-   '--no-merge']]
+
+======================================================================
+FAIL: test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='dot and parent segments')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1983, in test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+    self.assertEqual(browser, [["ls", "--all", "--json"]])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [['ls[16 chars]son'], ['open', '/private/var/folders/py/p9bt7[134 chars]ge']] != [['ls[16 chars]son']]
+
+First list contains 1 additional elements.
+First extra element 1:
+['open', '<TMP>/tmp64tuttge/home/repo/./unused/../.project-map/index.html', '--split', 'right', '--size', '0.5', '--no-merge']
+
+- [['ls', '--all', '--json'],
+?                           ^
+
++ [['ls', '--all', '--json']]
+?                           ^
+
+-  ['open',
+-   '<TMP>/tmp64tuttge/home/repo/./unused/../.project-map/index.html',
+-   '--split',
+-   'right',
+-   '--size',
+-   '0.5',
+-   '--no-merge']]
+
+======================================================================
+FAIL: test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='event trailing slash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1983, in test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+    self.assertEqual(browser, [["ls", "--all", "--json"]])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [] != [['ls', '--all', '--json']]
+
+Second list contains 1 additional elements.
+First extra element 0:
+['ls', '--all', '--json']
+
+- []
++ [['ls', '--all', '--json']]
+
+======================================================================
+FAIL: test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='tab trailing slash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1983, in test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+    self.assertEqual(browser, [["ls", "--all", "--json"]])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [['ls[16 chars]son'], ['open', '/private/var/folders/py/p9bt7[122 chars]ge']] != [['ls[16 chars]son']]
+
+First list contains 1 additional elements.
+First extra element 1:
+['open', '<TMP>/tmp64tuttge/home/repo/.project-map/index.html', '--split', 'right', '--size', '0.5', '--no-merge']
+
+- [['ls', '--all', '--json'],
+?                           ^
+
++ [['ls', '--all', '--json']]
+?                           ^
+
+-  ['open',
+-   '<TMP>/tmp64tuttge/home/repo/.project-map/index.html',
+-   '--split',
+-   'right',
+-   '--size',
+-   '0.5',
+-   '--no-merge']]
+
+======================================================================
+FAIL: test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='event symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1983, in test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+    self.assertEqual(browser, [["ls", "--all", "--json"]])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [['ls[16 chars]son'], ['open', '/private/var/folders/py/p9bt7[125 chars]ge']] != [['ls[16 chars]son']]
+
+First list contains 1 additional elements.
+First extra element 1:
+['open', '<TMP>/tmp64tuttge/logical repo/.project-map/index.html', '--split', 'right', '--size', '0.5', '--no-merge']
+
+- [['ls', '--all', '--json'],
+?                           ^
+
++ [['ls', '--all', '--json']]
+?                           ^
+
+-  ['open',
+-   '<TMP>/tmp64tuttge/logical '
+-   'repo/.project-map/index.html',
+-   '--split',
+-   'right',
+-   '--size',
+-   '0.5',
+-   '--no-merge']]
+
+======================================================================
+FAIL: test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='tab symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 1983, in test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+    self.assertEqual(browser, [["ls", "--all", "--json"]])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [['ls[16 chars]son'], ['open', '/private/var/folders/py/p9bt7[122 chars]ge']] != [['ls[16 chars]son']]
+
+First list contains 1 additional elements.
+First extra element 1:
+['open', '<TMP>/tmp64tuttge/home/repo/.project-map/index.html', '--split', 'right', '--size', '0.5', '--no-merge']
+
+- [['ls', '--all', '--json'],
+?                           ^
+
++ [['ls', '--all', '--json']]
+?                           ^
+
+-  ['open',
+-   '<TMP>/tmp64tuttge/home/repo/.project-map/index.html',
+-   '--split',
+-   'right',
+-   '--size',
+-   '0.5',
+-   '--no-merge']]
+
+----------------------------------------------------------------------
+Ran 1 test in 1.428s
+
+FAILED (failures=7)
+```
+
+## GREEN: UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python -m unittest tests.unit.test_generate_agent_configs -k project_map_reload -v (exit0)
+
+```text
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_matches_percent_encoded_tilde (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_matches_percent_encoded_tilde) ... ok
+test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd) ... ok
+test_project_map_reload_hook_selects_the_event_map_among_two_repositories (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_selects_the_event_map_among_two_repositories) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 10.279s
+
+OK
+```
+
+## shellcheck home/dot_claude/hooks/executable_project-map-reload.sh (exit0)
+
+```text
+```
+
+## UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml make render-check (exit0)
+
+```text
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+```
+
+## UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with ruff ruff format --check tests/unit/test_generate_agent_configs.py (exit0)
+
+```text
+1 file already formatted
+```
+
+## git diff --check -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py (exit0)
+
+```text
+```
+
+## git diff --numstat af4f1e997f78119d5994d7d7b1966894d62bbc6a -- hook test (working source/test; exit0)
+
+```text
+37	4	home/dot_claude/hooks/executable_project-map-reload.sh
+200	0	tests/unit/test_generate_agent_configs.py
+```
+
+## git diff --numstat origin/main...HEAD at previous_head8607a87 (historical committed checkpoint, exit0)
+
+```text
+6	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/autoskill.md
+8	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/learning.md
+20	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-crit.json
+8	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md
+32	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/report.md
+11	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/revise.yaml
+10	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/sandbox.md
+83	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+2237	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/validation.md
+12	2	home/dot_claude/hooks/executable_project-map-reload.sh
+143	0	tests/unit/test_generate_agent_configs.py
+```
+
+## Corrected auxiliary AST integrity comparison and source/cap assertions (exit0)
+
+```text
+{
+  "previous_head": "8607a87c71cce2cebfaf0a7747e11de0451fc98e",
+  "previous_focused_methods": 10,
+  "current_focused_methods": 11,
+  "unchanged_existing_method_bodies": [
+    "test_project_map_reload_hook_renders_into_post_tool_use",
+    "test_project_map_reload_hook_selects_the_event_map_among_two_repositories",
+    "test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open",
+    "test_project_map_reload_hook_matches_percent_encoded_tilde",
+    "test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd",
+    "test_project_map_reload_hook_guards_against_a_tab_navigating_away",
+    "test_project_map_reload_hook_pins_the_bound_tab_when_it_closes",
+    "test_project_map_reload_hook_accepts_only_cdp_target_ids"
+  ],
+  "existing_methods_with_only_python_fixture_symlink_additions": [
+    "test_project_map_reload_hook_acts_only_on_the_map_and_never_fails",
+    "test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map"
+  ],
+  "all_existing_assertions_unchanged": true,
+  "source_sha256": {
+    "home/dot_claude/hooks/executable_project-map-reload.sh": "e5b1ac6aa0f3f595acb00ac63d7c5c75990fb9b5064bc303a15f606a3ed0d0ed",
+    "tests/unit/test_generate_agent_configs.py": "ad99c9ea57342d7c202ac6112529e08790d2e920f377b5ad3f986257af5374cf"
+  },
+  "caps": {
+    "source_changed": 41,
+    "source_limit": 200,
+    "test_added": 200,
+    "test_limit": 1000
+  },
+  "runtime": "python3 -I -S -c",
+  "focused_test_seconds": "10.279"
+}
+```
+
+## Auxiliary AST harness correction
+
+```text
+Initial auxiliary AST assertion expected all ten old method bodies byte-for-AST unchanged and failed: two methods now provision Python in their PATH fixtures. Corrected assertion strips only symlink_to(sys.executable) fixture statements and confirms all ten original assertions/bodies otherwise unchanged; eight methods are entirely AST-identical. No source/test change was made for this harness correction.
+```
+
+## crit status --json (exit0; no review file/daemon)
+
+```text
+{
+  "branch": "fix/project-map-owned-followups",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "<HOME>/.crit/reviews/626e56928309/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}
+```
+
+## Initial make require-crit-review (exit2; independent agent evidence required)
+
+```text
+Native agent review required before completion.
+- review-sensitive path changed: .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/crit-status.json
+- broad diff touches 350 files
+- broad diff changes 23212 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+```
+
+## Full independent read-only security review
+
+# Focused independent review: shared canonical project-map path comparison
+
+Scope: read-only review of the pending diff in `home/dot_claude/hooks/executable_project-map-reload.sh` and `tests/unit/test_generate_agent_configs.py` against HEAD 8607a87c71cce2cebfaf0a7747e11de0451fc98e, branch fix/project-map-owned-followups. No repository edits, agmsg, live browser/pane/daemon probes, Bats, further agents or integration actions. Temporary fixtures and this transcript are under /tmp only. Plan: inspect bounded diff and relevant callers/tests, verify the canonicalizer and trust boundary using stubs, assess the runtime amendment when supplied, report. TODO: runtime amendment/hash verification and final assessment. Done: code/reference reading and nine-form table test.
+
+Reference-read commands (outputs intentionally not embedded: unchanged documents and module sections are not review evidence dumps):
+- cat <HOME>/.agents/skills/agmsg-orchestration/SKILL.md (initial tool output truncated; the required worklogs section was reread separately)
+- sed -n '/## Codex seat worklogs/,/## Pitfalls/p' <HOME>/.agents/skills/agmsg-orchestration/SKILL.md
+- cat <HOME>/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md
+- cat .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+- sed -n '98,110p' <HOME>/Workspace/dotfiles/.orchestration/acceptance/dotfiles-T128-project-map-pane-open-a01-followup-a01.md
+- cat <HOME>/Workspace/dotfiles/.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-audit-8607a87.md.last.md
+- cat home/dot_claude/hooks/executable_project-map-reload.sh
+- sed -n '/model_profiles:/,/^[^ ]/p' home/dot_agents/agent-config.yaml
+- sed -n '1535,2090p' tests/unit/test_generate_agent_configs.py
+
+The manifest security model is gpt-6-astra/high, matching the requested review profile. Repo worklogs remain the parent's responsibility: this explicitly read-only review neither creates nor edits repository evidence.
+
+## Exact bounded diff and checks
+
+$ git rev-parse HEAD
+```text
+8607a87c71cce2cebfaf0a7747e11de0451fc98e
+
+exit=0
+```
+
+$ git branch --show-current
+```text
+fix/project-map-owned-followups
+
+exit=0
+```
+
+$ git status --short --untracked-files=no
+```text
+ M home/dot_claude/hooks/executable_project-map-reload.sh
+ M tests/unit/test_generate_agent_configs.py
+
+exit=0
+```
+
+$ git diff -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+diff --git a/home/dot_claude/hooks/executable_project-map-reload.sh b/home/dot_claude/hooks/executable_project-map-reload.sh
+index 66b86b10..0abba81b 100755
+--- a/home/dot_claude/hooks/executable_project-map-reload.sh
++++ b/home/dot_claude/hooks/executable_project-map-reload.sh
+@@ -6,32 +6,55 @@
+ #   Pass CDP on both calls to avoid terminal-browser issue 60.
+ #   Pin tab selection and guard reloads against navigation away from a project map.
+ #   Match the event file path before choosing an existing map tab.
++#   Canonicalize event paths and file URLs with the installed isolated Python stdlib.
+ #   Open a separate right split using half the width when the parsed listing yields no map tab.
+ #   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.
+ # @exitcode 0 Always, including unavailable tools or browsers.
+ 
++# @description Return the physical absolute path of a local path or file URL.
++# @arg $1 path Event path or file URL, including home and relative forms.
++# @stdout Canonical path.
++canonical_path() {
++    python3 -I -c '
++import os
++import sys
++from urllib.parse import unquote, urlsplit
++
++path = sys.argv[1]
++if path.startswith("file://"):
++    url = urlsplit(path)
++    if url.netloc not in ("", "localhost"):
++        sys.exit(1)
++    path = unquote(url.path, errors="strict")
++if path == "~" or path.startswith("~/"):
++    path = os.path.expanduser("~") + path[1:]
++print(os.path.realpath(path))
++' "$1" 2>/dev/null
++}
++
+ file_path=$(jq -r '.tool_input.file_path // empty' 2>/dev/null) || exit 0
+-[[ "$file_path" == */.project-map/index.html ]] || exit 0
++[[ -n "$file_path" ]] || exit 0
++event_path=$(canonical_path "$file_path") || exit 0
++[[ "$event_path" == */.project-map/index.html ]] || exit 0
+ 
+ listing=$(terminal-browser ls --all --json 2>/dev/null) || exit 0
+-selection=$(jq -r --arg file_path "$file_path" --arg cwd "$(pwd -P)" '
+-    ($file_path | if startswith("/") then . else $cwd + "/" + . end
+-     | split("/") | reduce .[] as $part ([];
+-         if $part == ".." then .[:-1]
+-         elif $part == "." or $part == "" then . else . + [$part] end)
+-     | "/" + (map(@uri) | join("/"))) as $event_path
+-    |
++candidates=$(jq -c '
+     [.browsers[]? | .cdpPort as $port
+      | select($port | type == "number")
+      | select($port >= 1 and $port <= 65535 and $port == ($port | floor))
+      | .tabs[]?
+      | select(.url | strings | startswith("file://"))
+-     | select((.url | ltrimstr("file://")
+-               | gsub("(?<char>[^A-Za-z0-9/%._~?#-])"; .char | @uri)
+-               | gsub("%7[eE]"; "~")) == $event_path)
+      | select(.targetId | strings | test("^[A-Fa-f0-9]{32}\\z"))
+-     | [$port, .targetId]] | .[0] // empty | @tsv
++     | [$port, .targetId, .url]][]
+ ' <<< "$listing" 2>/dev/null) || exit 0
++selection=""
++while IFS= read -r candidate; do
++    [[ -n "$candidate" ]] || continue
++    tab_path=$(canonical_path "$(jq -r '.[2]' <<< "$candidate")") || continue
++    [[ "$tab_path" == "$event_path" ]] || continue
++    selection=$(jq -r '.[0:2] | @tsv' <<< "$candidate")
++    break
++done <<< "$candidates"
+ if [[ -z "$selection" ]]; then
+     terminal-browser open "$file_path" --split right --size 0.5 --no-merge >/dev/null 2>&1
+     exit 0
+diff --git a/tests/unit/test_generate_agent_configs.py b/tests/unit/test_generate_agent_configs.py
+index 9f945c53..802170f6 100644
+--- a/tests/unit/test_generate_agent_configs.py
++++ b/tests/unit/test_generate_agent_configs.py
+@@ -1550,9 +1550,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             jq = shutil.which("jq")
+             self.assertIsNotNone(jq)
+             (root / "jq").symlink_to(jq)
++            (root / "python3").symlink_to(sys.executable)
+             jq_only = root / "jq-only"
+             jq_only.mkdir()
+             (jq_only / "jq").symlink_to(jq)
++            (jq_only / "python3").symlink_to(sys.executable)
+             map_path = str(root / ".project-map/index.html")
+             map_tab = {
+                 "id": 7,
+@@ -1704,6 +1706,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             jq = shutil.which("jq")
+             self.assertIsNotNone(jq)
+             (root / "jq").symlink_to(jq)
++            (root / "python3").symlink_to(sys.executable)
+             map_path = str(root / "map with spaces/.project-map/index.html")
+             no_map = {
+                 "self": {},
+@@ -1789,7 +1792,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                         else [],
+                     )
+ 
+-    def _run_project_map_reload_listing(self, map_path: str, listing: dict, *, cwd: Path | None = None):
++    def _run_project_map_reload_listing(
++        self, map_path: str, listing: dict, *, cwd: Path | None = None, home: Path | None = None
++    ):
+         with tempfile.TemporaryDirectory() as tmp:
+             root = Path(tmp)
+             browser = root / "terminal-browser"
+@@ -1811,6 +1816,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             )
+             agent.chmod(0o755)
+             (root / "jq").symlink_to(shutil.which("jq"))
++            (root / "python3").symlink_to(sys.executable)
+             result = subprocess.run(
+                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
+                 input=json.dumps({"tool_input": {"file_path": map_path}}),
+@@ -1820,6 +1826,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 env={
+                     **os.environ,
+                     **({"PWD": str(cwd)} if cwd is not None else {}),
++                    **({"HOME": str(home)} if home is not None else {}),
+                     "PATH": str(root),
+                     "BROWSER_LISTING": json.dumps(listing),
+                     "BROWSER_CALLS": str(root / "browser-calls"),
+@@ -1932,6 +1939,55 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             self.assertEqual(len(agent), 2)
+             self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+ 
++    def test_project_map_reload_hook_compares_canonical_paths_for_every_path_form(self) -> None:
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp).resolve()
++            home = root / "home"
++            repo = home / "repo"
++            map_path = repo / ".project-map/index.html"
++            map_path.parent.mkdir(parents=True)
++            map_path.write_text("map")
++            (repo / "unused").mkdir()
++            tilde_map = home / "repo~name/.project-map/index.html"
++            tilde_map.parent.mkdir(parents=True)
++            tilde_map.write_text("map")
++            logical = root / "logical repo"
++            logical.symlink_to(repo, target_is_directory=True)
++            encoded_tilde = tilde_map.as_uri().replace("~", "%7E")
++            for form, event, url, cwd in (
++                ("home", "~/repo/.project-map/index.html", map_path.as_uri(), root),
++                ("encoded tab URL", str(tilde_map), encoded_tilde, root),
++                ("encoded event URL", encoded_tilde, tilde_map.as_uri(), root),
++                ("symlinked cwd", "./.project-map/index.html", map_path.as_uri(), logical),
++                (
++                    "dot and parent segments",
++                    str(repo) + "/./unused/../.project-map/index.html",
++                    repo.as_uri() + "/./unused/../.project-map/index.html",
++                    root,
++                ),
++                ("event trailing slash", str(map_path) + "/", map_path.as_uri(), root),
++                ("tab trailing slash", str(map_path), map_path.as_uri() + "/", root),
++                ("event symlink", str(logical / ".project-map/index.html"), map_path.as_uri(), root),
++                ("tab symlink", str(map_path), (logical / ".project-map/index.html").as_uri(), root),
++            ):
++                with self.subTest(form=form):
++                    browser, agent = self._run_project_map_reload_listing(
++                        event,
++                        {
++                            "browsers": [
++                                {
++                                    "cdpPort": 9222,
++                                    "tabs": [{"url": url, "targetId": "A" * 32}],
++                                }
++                            ]
++                        },
++                        cwd=cwd,
++                        home=home,
++                    )
++                    self.assertEqual(browser, [["ls", "--all", "--json"]])
++                    self.assertEqual(len(agent), 2)
++                    self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
++
+     def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False):
+         with tempfile.TemporaryDirectory() as tmp:
+             root = Path(tmp)
+@@ -1953,6 +2009,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             )
+             agent.chmod(0o755)
+             (root / "jq").symlink_to(shutil.which("jq"))
++            (root / "python3").symlink_to(sys.executable)
+             map_path = str(root / ".project-map/index.html")
+             result = subprocess.run(
+                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
+
+exit=0
+```
+
+$ git diff --check -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+
+exit=0
+```
+
+$ shasum -a 256 .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+3d87e72644ca0b4f11fd24de768a674fd8fbc6af9f54df7bcffb822ae7e3a27d  .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+211901f61dfc00217d813b48fdf6f5950cf4a88cade8203c5bd5a91945fcab75  home/dot_claude/hooks/executable_project-map-reload.sh
+ad99c9ea57342d7c202ac6112529e08790d2e920f377b5ad3f986257af5374cf  tests/unit/test_generate_agent_configs.py
+
+exit=0
+```
+
+$ /bin/bash -n home/dot_claude/hooks/executable_project-map-reload.sh
+```text
+
+exit=0
+```
+
+$ shellcheck home/dot_claude/hooks/executable_project-map-reload.sh
+```text
+
+exit=0
+```
+
+$ UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form -v
+```text
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.299s
+
+OK
+exit=0
+```
+
+## Additional fixture development: failed harness experiment
+
+$ UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python /tmp/codex-project-map-canonical-extra.py
+```text
+Traceback (most recent call last):
+  File "/tmp/codex-project-map-canonical-extra.py", line 41, in <module>
+    run('isolated imports ignore cwd and PYTHONPATH', event, [tab(url)], 'A' * 32, {'PYTHONPATH': str(project), 'PYTHONUSERBASE': str(project)})
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/codex-project-map-canonical-extra.py", line 39, in run
+    assert not marker.exists(), label
+           ^^^^^^^^^^^^^^^^^^^
+AssertionError: isolated imports ignore cwd and PYTHONPATH
+exit=1
+```
+
+Harness limitation, not a hook finding: the existing test helper's fake browser and fake agent have ordinary Python shebangs, so supplying a poisoned PYTHONPATH to the entire stub harness loads its sitecustomize in the stub processes. The corrected check invokes only the exact canonical_path definition extracted from the hook in a subprocess with poisoned PYTHONPATH/PYTHONUSERBASE/PYTHONHOME and cwd. Other tests keep using the unchanged recording stubs without poisoned Python environment variables. No product or repository file was changed.
+
+## Corrected additional fixture source and output
+
+$ cat /tmp/codex-project-map-canonical-extra.py
+```python
+import json
+import os
+from pathlib import Path
+import sys
+import subprocess
+import tempfile
+
+repo = Path('<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e')
+sys.path.insert(0, str(repo))
+from tests.unit.test_generate_agent_configs import GenerateAgentConfigsTest
+
+case = GenerateAgentConfigsTest()
+with tempfile.TemporaryDirectory(prefix='canonical-review-') as directory:
+    root = Path(directory).resolve()
+    project = root / 'repo'
+    project.mkdir()
+    marker = root / 'imported-untrusted-code'
+    (project / 'urllib').mkdir()
+    (project / 'urllib/__init__.py').write_text(f"open({str(marker)!r}, 'w').write('unsafe')\nraise RuntimeError('unsafe cwd import')\n")
+    (project / 'sitecustomize.py').write_text(f"open({str(marker)!r}, 'w').write('unsafe')\n")
+    event = str(project / '.project-map/index.html')
+    url = Path(event).as_uri()
+    def tab(address, target='A' * 32):
+        return {'url': address, 'targetId': target}
+    def run(label, path, tabs, chosen, environment=None):
+        old = dict(os.environ)
+        if environment:
+            os.environ.update(environment)
+        try:
+            browser, agent = case._run_project_map_reload_listing(path, {'browsers': [{'cdpPort': 9222, 'tabs': tabs}]}, cwd=project)
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
+        if chosen:
+            assert browser == [['ls', '--all', '--json']], (label, browser)
+            assert len(agent) == 2 and agent[0][-1] == chosen, (label, agent)
+        else:
+            assert browser == [['ls', '--all', '--json'], ['open', path, '--split', 'right', '--size', '0.5', '--no-merge']], (label, browser)
+            assert not agent, (label, agent)
+        assert not marker.exists(), label
+        print('PASS', label)
+    prefix = (repo / 'home/dot_claude/hooks/executable_project-map-reload.sh').read_text().split('file_path=$(jq', 1)[0]
+    isolated = subprocess.run(['/bin/bash', '-c', prefix + '\ncanonical_path "$1"', 'review', event], cwd=project, env={**os.environ, 'PYTHONPATH': str(project), 'PYTHONUSERBASE': str(project), 'PYTHONHOME': str(project)}, text=True, capture_output=True)
+    assert (isolated.returncode, isolated.stdout, isolated.stderr) == (0, event + '\n', ''), isolated
+    assert not marker.exists()
+    print('PASS isolated imports ignore cwd, PYTHONPATH, PYTHONUSERBASE and PYTHONHOME')
+    run('remote authority skipped before valid local candidate', event, [tab(url.replace('file://', 'file://evil.example'), 'B' * 32), tab(url)], 'A' * 32)
+    run('localhost authority is local', event, [tab(url.replace('file://', 'file://localhost'))], 'A' * 32)
+    run('userinfo localhost authority rejected', event, [tab(url.replace('file://', 'file://evil@localhost'))], None)
+    run('invalid UTF-8 candidate skipped', event, [tab(url.replace('/repo/', '/repo%FF/'), 'B' * 32), tab(url)], 'A' * 32)
+    run('NUL candidate skipped', event, [tab(url.replace('/repo/', '/repo%00/'), 'B' * 32), tab(url)], 'A' * 32)
+    run('first canonical match wins', event, [tab(url, 'B' * 32), tab(url)], 'B' * 32)
+    encoded_path = str(root / 'repo%7Ename/.project-map/index.html')
+    run('encoded percent decoded once', encoded_path, [tab(Path(encoded_path).as_uri())], 'A' * 32)
+    run('no double decode equivalence', encoded_path, [tab(Path(encoded_path.replace('%7E', '~')).as_uri())], None)
+    run('query and fragment do not change file identity', event, [tab(url + '?view=map#section')], 'A' * 32)
+print('PASS 10 additional stub-only fixture checks; no browser or daemon invoked')
+```
+
+$ UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python /tmp/codex-project-map-canonical-extra.py
+```text
+PASS isolated imports ignore cwd, PYTHONPATH, PYTHONUSERBASE and PYTHONHOME
+PASS remote authority skipped before valid local candidate
+PASS localhost authority is local
+PASS userinfo localhost authority rejected
+PASS invalid UTF-8 candidate skipped
+PASS NUL candidate skipped
+PASS first canonical match wins
+PASS encoded percent decoded once
+PASS no double decode equivalence
+PASS query and fragment do not change file identity
+PASS 10 additional stub-only fixture checks; no browser or daemon invoked
+exit=0
+```
+
+## Assessment
+
+No implementation finding in this bounded diff. Justified approval of the code, pending verification of the separately dispatched task amendment:
+
+- Correctness: canonical_path is the sole normalizer, called for the event (line 38) and every structurally eligible tab (line 54). It expands bare home-prefix tilde, percent-decodes file URL paths exactly once, resolves relative paths against the process's actual physical cwd, and uses realpath for symlinks, dot/parent components and trailing slashes. Direct local filenames keep their percent characters literal. Equality compares the resulting physical absolute paths, and the first matching candidate wins. The new nine-form table exercises both event and tab forms while the ten prior method bodies retain their existing assertions; fixture changes only expose the installed Python binary and a HOME override.
+- Trust boundary: inputs are argv values, never interpolated into Python source, shell evaluation or JavaScript. URL authority is restricted to empty/localhost; invalid decoding or NUL resolution errors are quiet failures that skip that candidate. Numeric integer port bounds and the 32-digit hexadecimal target filter remain unchanged. JSON-encoded candidate records preserve tab/newline characters until quoted argument extraction. No event-controlled executable or variable eval source is introduced.
+- Interpreter isolation: the new dependency is the installed PATH-resolved python3, invoked only with -I and an inline stdlib program. The subprocess isolation fixture verifies cwd, PYTHONPATH, PYTHONUSERBASE and PYTHONHOME do not load the supplied untrusted Python modules. This does not authenticate the PATH-resolved interpreter itself; the stated authorization explicitly retains the existing PATH trust model.
+- Existing behavior: matching tabs use the same CDP/session/pin-tab commands and fixed navigation guard. Nonmatching valid events pass their original path to the unchanged right-half no-merge open command. Missing tools, failed listing/parsing/normalization or tab selection remain silent; the hook exits zero. No secret-bearing file contents are read, no packages/scripts are installed, and no configuration or exports change.
+- Tests/evidence: independently ran the named table method, 10 focused temporary checks, bash -n, shellcheck and git diff --check. Parent-reported full 11-method suite, render-check and Ruff successes were not rerun or independently certified here. The pre-existing navigation guard's broader semantics are outside this bounded canonicalization revision; no guard change is claimed. The requested table's trailing-slash assertions verify selection/no second open, not that a real browser can display an HTML file with a trailing slash.
+- Task metadata: the initially read task copy is SHA256 3d87e72644ca0b4f11fd24de768a674fd8fbc6af9f54df7bcffb822ae7e3a27d and still describes three executables. The read acceptance record explicitly allows installed isolated Python stdlib in principle, requires a pair-confirmed hashed amendment, and tells the worker to hold push until dispatch. No final metadata-consistency approval is made until the amendment is supplied and checked. Its absence is an outstanding procedural condition, not represented as a completed update.
+
+Scope limits: no Bats, whole-module regression suite, live browser, fresh/persisted E2E, CI fetch, PR integration or final-head audit was performed. Live verification is explicitly assigned by the accepted re-plan to orchestrator post-merge observation. This working-diff review is not acceptance authority and does not replace that final-head audit.
+
+Current state: code review complete; waiting for the dispatched runtime amendment/hash before final verdict.
+
+## Updated isolated invocation: -I -S
+
+Parent supplied read-only draft amendment SHA256 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9 and then updated the hook to python3 -I -S -c. Independently read the draft workflow row and Amendment (1) section from <HOME>/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-followup-a01.md; hash matched. The task has not yet been dispatched/pair-confirmed. The following checks supersede the earlier -I-only implementation checks. -S also prevents installed site .pth/sitecustomize initialization; the prior environment/cwd poisoning test did not claim to test installed global site initialization.
+
+
+$ shasum -a 256 home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+e5b1ac6aa0f3f595acb00ac63d7c5c75990fb9b5064bc303a15f606a3ed0d0ed  home/dot_claude/hooks/executable_project-map-reload.sh
+ad99c9ea57342d7c202ac6112529e08790d2e920f377b5ad3f986257af5374cf  tests/unit/test_generate_agent_configs.py
+
+exit=0
+```
+
+$ git diff -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+diff --git a/home/dot_claude/hooks/executable_project-map-reload.sh b/home/dot_claude/hooks/executable_project-map-reload.sh
+index 66b86b10..91292b77 100755
+--- a/home/dot_claude/hooks/executable_project-map-reload.sh
++++ b/home/dot_claude/hooks/executable_project-map-reload.sh
+@@ -6,32 +6,55 @@
+ #   Pass CDP on both calls to avoid terminal-browser issue 60.
+ #   Pin tab selection and guard reloads against navigation away from a project map.
+ #   Match the event file path before choosing an existing map tab.
++#   Canonicalize event paths and file URLs with the installed isolated Python stdlib.
+ #   Open a separate right split using half the width when the parsed listing yields no map tab.
+ #   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.
+ # @exitcode 0 Always, including unavailable tools or browsers.
+ 
++# @description Return the physical absolute path of a local path or file URL.
++# @arg $1 path Event path or file URL, including home and relative forms.
++# @stdout Canonical path.
++canonical_path() {
++    python3 -I -S -c '
++import os
++import sys
++from urllib.parse import unquote, urlsplit
++
++path = sys.argv[1]
++if path.startswith("file://"):
++    url = urlsplit(path)
++    if url.netloc not in ("", "localhost"):
++        sys.exit(1)
++    path = unquote(url.path, errors="strict")
++if path == "~" or path.startswith("~/"):
++    path = os.path.expanduser("~") + path[1:]
++print(os.path.realpath(path))
++' "$1" 2>/dev/null
++}
++
+ file_path=$(jq -r '.tool_input.file_path // empty' 2>/dev/null) || exit 0
+-[[ "$file_path" == */.project-map/index.html ]] || exit 0
++[[ -n "$file_path" ]] || exit 0
++event_path=$(canonical_path "$file_path") || exit 0
++[[ "$event_path" == */.project-map/index.html ]] || exit 0
+ 
+ listing=$(terminal-browser ls --all --json 2>/dev/null) || exit 0
+-selection=$(jq -r --arg file_path "$file_path" --arg cwd "$(pwd -P)" '
+-    ($file_path | if startswith("/") then . else $cwd + "/" + . end
+-     | split("/") | reduce .[] as $part ([];
+-         if $part == ".." then .[:-1]
+-         elif $part == "." or $part == "" then . else . + [$part] end)
+-     | "/" + (map(@uri) | join("/"))) as $event_path
+-    |
++candidates=$(jq -c '
+     [.browsers[]? | .cdpPort as $port
+      | select($port | type == "number")
+      | select($port >= 1 and $port <= 65535 and $port == ($port | floor))
+      | .tabs[]?
+      | select(.url | strings | startswith("file://"))
+-     | select((.url | ltrimstr("file://")
+-               | gsub("(?<char>[^A-Za-z0-9/%._~?#-])"; .char | @uri)
+-               | gsub("%7[eE]"; "~")) == $event_path)
+      | select(.targetId | strings | test("^[A-Fa-f0-9]{32}\\z"))
+-     | [$port, .targetId]] | .[0] // empty | @tsv
++     | [$port, .targetId, .url]][]
+ ' <<< "$listing" 2>/dev/null) || exit 0
++selection=""
++while IFS= read -r candidate; do
++    [[ -n "$candidate" ]] || continue
++    tab_path=$(canonical_path "$(jq -r '.[2]' <<< "$candidate")") || continue
++    [[ "$tab_path" == "$event_path" ]] || continue
++    selection=$(jq -r '.[0:2] | @tsv' <<< "$candidate")
++    break
++done <<< "$candidates"
+ if [[ -z "$selection" ]]; then
+     terminal-browser open "$file_path" --split right --size 0.5 --no-merge >/dev/null 2>&1
+     exit 0
+diff --git a/tests/unit/test_generate_agent_configs.py b/tests/unit/test_generate_agent_configs.py
+index 9f945c53..802170f6 100644
+--- a/tests/unit/test_generate_agent_configs.py
++++ b/tests/unit/test_generate_agent_configs.py
+@@ -1550,9 +1550,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             jq = shutil.which("jq")
+             self.assertIsNotNone(jq)
+             (root / "jq").symlink_to(jq)
++            (root / "python3").symlink_to(sys.executable)
+             jq_only = root / "jq-only"
+             jq_only.mkdir()
+             (jq_only / "jq").symlink_to(jq)
++            (jq_only / "python3").symlink_to(sys.executable)
+             map_path = str(root / ".project-map/index.html")
+             map_tab = {
+                 "id": 7,
+@@ -1704,6 +1706,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             jq = shutil.which("jq")
+             self.assertIsNotNone(jq)
+             (root / "jq").symlink_to(jq)
++            (root / "python3").symlink_to(sys.executable)
+             map_path = str(root / "map with spaces/.project-map/index.html")
+             no_map = {
+                 "self": {},
+@@ -1789,7 +1792,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                         else [],
+                     )
+ 
+-    def _run_project_map_reload_listing(self, map_path: str, listing: dict, *, cwd: Path | None = None):
++    def _run_project_map_reload_listing(
++        self, map_path: str, listing: dict, *, cwd: Path | None = None, home: Path | None = None
++    ):
+         with tempfile.TemporaryDirectory() as tmp:
+             root = Path(tmp)
+             browser = root / "terminal-browser"
+@@ -1811,6 +1816,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             )
+             agent.chmod(0o755)
+             (root / "jq").symlink_to(shutil.which("jq"))
++            (root / "python3").symlink_to(sys.executable)
+             result = subprocess.run(
+                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
+                 input=json.dumps({"tool_input": {"file_path": map_path}}),
+@@ -1820,6 +1826,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 env={
+                     **os.environ,
+                     **({"PWD": str(cwd)} if cwd is not None else {}),
++                    **({"HOME": str(home)} if home is not None else {}),
+                     "PATH": str(root),
+                     "BROWSER_LISTING": json.dumps(listing),
+                     "BROWSER_CALLS": str(root / "browser-calls"),
+@@ -1932,6 +1939,55 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             self.assertEqual(len(agent), 2)
+             self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+ 
++    def test_project_map_reload_hook_compares_canonical_paths_for_every_path_form(self) -> None:
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp).resolve()
++            home = root / "home"
++            repo = home / "repo"
++            map_path = repo / ".project-map/index.html"
++            map_path.parent.mkdir(parents=True)
++            map_path.write_text("map")
++            (repo / "unused").mkdir()
++            tilde_map = home / "repo~name/.project-map/index.html"
++            tilde_map.parent.mkdir(parents=True)
++            tilde_map.write_text("map")
++            logical = root / "logical repo"
++            logical.symlink_to(repo, target_is_directory=True)
++            encoded_tilde = tilde_map.as_uri().replace("~", "%7E")
++            for form, event, url, cwd in (
++                ("home", "~/repo/.project-map/index.html", map_path.as_uri(), root),
++                ("encoded tab URL", str(tilde_map), encoded_tilde, root),
++                ("encoded event URL", encoded_tilde, tilde_map.as_uri(), root),
++                ("symlinked cwd", "./.project-map/index.html", map_path.as_uri(), logical),
++                (
++                    "dot and parent segments",
++                    str(repo) + "/./unused/../.project-map/index.html",
++                    repo.as_uri() + "/./unused/../.project-map/index.html",
++                    root,
++                ),
++                ("event trailing slash", str(map_path) + "/", map_path.as_uri(), root),
++                ("tab trailing slash", str(map_path), map_path.as_uri() + "/", root),
++                ("event symlink", str(logical / ".project-map/index.html"), map_path.as_uri(), root),
++                ("tab symlink", str(map_path), (logical / ".project-map/index.html").as_uri(), root),
++            ):
++                with self.subTest(form=form):
++                    browser, agent = self._run_project_map_reload_listing(
++                        event,
++                        {
++                            "browsers": [
++                                {
++                                    "cdpPort": 9222,
++                                    "tabs": [{"url": url, "targetId": "A" * 32}],
++                                }
++                            ]
++                        },
++                        cwd=cwd,
++                        home=home,
++                    )
++                    self.assertEqual(browser, [["ls", "--all", "--json"]])
++                    self.assertEqual(len(agent), 2)
++                    self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
++
+     def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False):
+         with tempfile.TemporaryDirectory() as tmp:
+             root = Path(tmp)
+@@ -1953,6 +2009,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             )
+             agent.chmod(0o755)
+             (root / "jq").symlink_to(shutil.which("jq"))
++            (root / "python3").symlink_to(sys.executable)
+             map_path = str(root / ".project-map/index.html")
+             result = subprocess.run(
+                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
+
+exit=0
+```
+
+$ /bin/bash -n home/dot_claude/hooks/executable_project-map-reload.sh
+```text
+
+exit=0
+```
+
+$ shellcheck home/dot_claude/hooks/executable_project-map-reload.sh
+```text
+
+exit=0
+```
+
+$ git diff --check -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+
+exit=0
+```
+
+$ env UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form -v
+```text
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.366s
+
+OK
+
+exit=0
+```
+
+$ env UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python /tmp/codex-project-map-canonical-extra.py
+```text
+PASS isolated imports ignore cwd, PYTHONPATH, PYTHONUSERBASE and PYTHONHOME
+PASS remote authority skipped before valid local candidate
+PASS localhost authority is local
+PASS userinfo localhost authority rejected
+PASS invalid UTF-8 candidate skipped
+PASS NUL candidate skipped
+PASS first canonical match wins
+PASS encoded percent decoded once
+PASS no double decode equivalence
+PASS query and fragment do not change file identity
+PASS 10 additional stub-only fixture checks; no browser or daemon invoked
+
+exit=0
+```
+
+$ python3 -I -S -c 'import sys; assert sys.flags.isolated == 1; assert sys.flags.no_site == 1; assert "site" not in sys.modules; from urllib.parse import unquote; import os.path; assert "site" not in sys.modules; print("PASS isolated interpreter disables site initialization before and after stdlib imports")'
+```text
+PASS isolated interpreter disables site initialization before and after stdlib imports
+
+exit=0
+```
+
+Updated code assessment: finding-free. The source change is limited to adding -S to the reviewed Python invocation. The code now satisfies the draft's -I -S isolation requirement; verification against a dispatched task copy is still pending. Test preservation wording: all ten existing test method bodies are AST-identical after excluding the newly required symlink_to(sys.executable) fixture statements; eight are entirely AST-identical, while two gain only those fixture links. This statement does not claim byte-identical old method bodies.
+
+Additional exact AST check: parsed git show 8607a87:tests/unit/test_generate_agent_configs.py and current file, compared all test_project_map_reload method ASTs; repeated after removing only Expr(Call(Attribute(..., symlink_to), [sys.executable])) fixture statements.
+```text
+PASS original methods=10; entirely AST-identical=8; fixture-only Python-link additions=2; new methods=1
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map
+exit=0
+```
+
+## Final bounded code-review result
+
+Parent directed this review turn to finish while formal amendment dispatch remains pending; the same review agent will resume on the supplied hash. Code review: approved with no findings. Task-runtime consistency certification: pending, not complete. No amended task was represented as dispatched or copied. Plan/TODO: all bounded source review checks done; formal dispatched task hash comparison remains owned by the resumed review.
+
+Final reviewed file hashes:
+e5b1ac6aa0f3f595acb00ac63d7c5c75990fb9b5064bc303a15f606a3ed0d0ed  home/dot_claude/hooks/executable_project-map-reload.sh
+ad99c9ea57342d7c202ac6112529e08790d2e920f377b5ad3f986257af5374cf  tests/unit/test_generate_agent_configs.py
+
+Skipped: live browser/fresh and persisted E2E, Bats, full module/CI verification, integration and final-head audit. Risk/remaining condition: formal amended-task runtime consistency is unverified until the hashed TASK dispatch arrives.
+
+Verdict: correct
+
+## Formal amendment dispatch: final task-runtime consistency verification
+
+The parent supplied formal AGMSG-TASK 1807 received from claude-deep-dot at 2026-10-17T07:10:33Z: round=3 amendment=1 previous_task_sha256=3d87e72644ca0b4f11fd24de768a674fd8fbc6af9f54df7bcffb822ae7e3a27d task_sha256=24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9, pair-confirmed Codex-round2/a005-round2. Message delivery/pair confirmation is the parent's attestation; this reviewer performs no agmsg operation. The following independently verifies the on-disk source/copy/hash and implementation. Earlier pending-certification statements are superseded by this dispatch and these checks.
+
+
+$ shasum -a 256 <HOME>/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-followup-a01.md <HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9  <HOME>/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-followup-a01.md
+24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9  <HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+e5b1ac6aa0f3f595acb00ac63d7c5c75990fb9b5064bc303a15f606a3ed0d0ed  home/dot_claude/hooks/executable_project-map-reload.sh
+ad99c9ea57342d7c202ac6112529e08790d2e920f377b5ad3f986257af5374cf  tests/unit/test_generate_agent_configs.py
+
+exit=0
+```
+
+$ cmp -- <HOME>/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-followup-a01.md <HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+```text
+
+exit=0
+```
+
+$ git diff -- .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+```text
+diff --git a/.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md b/.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+index 99dee602..da5d55fb 100644
+--- a/.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
++++ b/.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+@@ -35,7 +35,7 @@ threat_table:
+   - control: in-process effects
+     disposition: "residual: the tests import scripts/generate-agent-configs.py as the existing module tests do and run the hook script as a subprocess with a stub terminal-browser on PATH; nothing else is imported"
+   - control: workflow and interpreter or environment inputs
+-    disposition: "residual: no workflow or interpreter file is in allowed_files; the hook runs the same three executables as the merged hook, jq and terminal-browser on the user's PATH and the agent binary of TERMINAL_BROWSER_AGENT else the bundled one, with the open subcommand and the event's map path as its only variable argument (already matched to /.project-map/index.html); terminal-browser open splits the pane its environment names, the pane of the Claude session that wrote the map, and launches nothing outside the Herdr workspace; nothing in the event or the file chooses an executable"
++    disposition: "residual: no workflow or interpreter file is in allowed_files; the hook runs the same three executables as the merged hook, jq and terminal-browser on the user's PATH and the agent binary of TERMINAL_BROWSER_AGENT else the bundled one, and, from amendment 1 (the re-plan of D-S1-379), python3 as /usr/bin/env resolves it on the session's PATH, exactly as the format-edited-files hook's shebang does, run as python3 -I -S -c with the standard library only (urllib.parse for the percent-decoding, os.path for the physical absolute path; -I drops the environment and the user site, -S the site initialisation, so no .pth file or sitecustomize loads) and the two paths as its only arguments, its other inputs being the hook's own environment HOME (the session's, for the leading ~), the hook's physical working directory (pwd -P, the directory Claude Code ran the hook in) and the user's filesystem symlink state that the physical path follows (data, read-only), so no module beside the standard library and no file relative to cwd is loaded; with the open subcommand and the event's map path as its only variable argument (already matched to /.project-map/index.html); terminal-browser open splits the pane its environment names, the pane of the Claude session that wrote the map, and launches nothing outside the Herdr workspace; nothing in the event or the file chooses an executable"
+   - control: new or renamed scripts
+     disposition: "residual: no new or renamed script: the owned rows name edits to files the lineage landed; any new or renamed script is an undeclared change the audit fails"
+   - control: orchestrator effect merge
+@@ -81,3 +81,6 @@ Boundary (16) (PR #373, merged as 1d418126 on 2026-10-16) landed the owner secti
+ 
+ The review seat's round on the premise change (P2, P3): the Completion clause still had the single-review form written before T13's amendment 6 (no `open:<thread id>`, no `bot_rounds=2`, "every P2 as advisory", the pre-C-51 owner wording). It is now the task template's clause of 2026-10-16 (`.orchestration/templates/task-short.md`, Completion): the Bot's review at PR open and once more on `@codex review` after a P0/P1 fix round, a surviving P0/P1 listed as `open:<thread id>` with `bot_rounds=2`, the C-50 revise round for a small in-scope P2, every other P2 advisory and owned by `dotfiles-T128-project-map-pane-open-a01-followup-a02` (written when the first advisory P2 appears, C-51) under `## Owned by dotfiles-T128-project-map-pane-open-a01-followup-a02` in this task's acceptance record. Nothing else changes from `ecd3606f`; re-confirmed Codex first (C-54).
+ 
++## Amendment (1, 2026-10-17T06:49:48Z)
++
++After the operator's decision D-S1-379 A (the re-plan: one canonical-path normaliser for the event path and every tab URL, the class `path-form-normalisation` at three findings), the worker asked which runtime the normaliser may use, since the workflow row named three executables: the row now also names python3, resolved by /usr/bin/env on the session's PATH as the format-edited-files hook's shebang resolves it, run with -I -S and the standard library only (urllib.parse, os.path), the two paths its only arguments and HOME, the physical cwd and the filesystem's symlink state its only other inputs (the Codex half's round 1, 2026-10-17T06:53:48Z). Nothing else changes from `3d87e726`; the amendment travels as a hashed TASK line with `amendment=1` and `previous_task_sha256=3d87e72644ca0b4f11fd24de768a674fd8fbc6af9f54df7bcffb822ae7e3a27d`, the pre-amendment copy at `.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-pre-amend1.md`.
+
+exit=0
+```
+
+$ cat .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/round3-canonical/amendment-verification.log
+```text
+Formal AGMSG-TASK received 2026-10-17T07:10:33Z from claude-deep-dot; round=3 amendment=1 previous_task_sha256=3d87e72644ca0b4f11fd24de768a674fd8fbc6af9f54df7bcffb822ae7e3a27d task_sha256=24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9; pair-confirmed Codex-round2,a005-round2.
+Source: <HOME>/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-followup-a01.md
+Destination: .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+Source SHA256: 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9
+Destination SHA256: 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9
+Byte comparison: identical; exit0.
+
+--- pre-amend1 task copy
++++ amend1 task copy
+@@ -35,7 +35,7 @@
+   - control: in-process effects
+     disposition: "residual: the tests import scripts/generate-agent-configs.py as the existing module tests do and run the hook script as a subprocess with a stub terminal-browser on PATH; nothing else is imported"
+   - control: workflow and interpreter or environment inputs
+-    disposition: "residual: no workflow or interpreter file is in allowed_files; the hook runs the same three executables as the merged hook, jq and terminal-browser on the user's PATH and the agent binary of TERMINAL_BROWSER_AGENT else the bundled one, with the open subcommand and the event's map path as its only variable argument (already matched to /.project-map/index.html); terminal-browser open splits the pane its environment names, the pane of the Claude session that wrote the map, and launches nothing outside the Herdr workspace; nothing in the event or the file chooses an executable"
++    disposition: "residual: no workflow or interpreter file is in allowed_files; the hook runs the same three executables as the merged hook, jq and terminal-browser on the user's PATH and the agent binary of TERMINAL_BROWSER_AGENT else the bundled one, and, from amendment 1 (the re-plan of D-S1-379), python3 as /usr/bin/env resolves it on the session's PATH, exactly as the format-edited-files hook's shebang does, run as python3 -I -S -c with the standard library only (urllib.parse for the percent-decoding, os.path for the physical absolute path; -I drops the environment and the user site, -S the site initialisation, so no .pth file or sitecustomize loads) and the two paths as its only arguments, its other inputs being the hook's own environment HOME (the session's, for the leading ~), the hook's physical working directory (pwd -P, the directory Claude Code ran the hook in) and the user's filesystem symlink state that the physical path follows (data, read-only), so no module beside the standard library and no file relative to cwd is loaded; with the open subcommand and the event's map path as its only variable argument (already matched to /.project-map/index.html); terminal-browser open splits the pane its environment names, the pane of the Claude session that wrote the map, and launches nothing outside the Herdr workspace; nothing in the event or the file chooses an executable"
+   - control: new or renamed scripts
+     disposition: "residual: no new or renamed script: the owned rows name edits to files the lineage landed; any new or renamed script is an undeclared change the audit fails"
+   - control: orchestrator effect merge
+@@ -81,3 +81,6 @@
+ 
+ The review seat's round on the premise change (P2, P3): the Completion clause still had the single-review form written before T13's amendment 6 (no `open:<thread id>`, no `bot_rounds=2`, "every P2 as advisory", the pre-C-51 owner wording). It is now the task template's clause of 2026-10-16 (`.orchestration/templates/task-short.md`, Completion): the Bot's review at PR open and once more on `@codex review` after a P0/P1 fix round, a surviving P0/P1 listed as `open:<thread id>` with `bot_rounds=2`, the C-50 revise round for a small in-scope P2, every other P2 advisory and owned by `dotfiles-T128-project-map-pane-open-a01-followup-a02` (written when the first advisory P2 appears, C-51) under `## Owned by dotfiles-T128-project-map-pane-open-a01-followup-a02` in this task's acceptance record. Nothing else changes from `ecd3606f`; re-confirmed Codex first (C-54).
+ 
++## Amendment (1, 2026-10-17T06:49:48Z)
++
++After the operator's decision D-S1-379 A (the re-plan: one canonical-path normaliser for the event path and every tab URL, the class `path-form-normalisation` at three findings), the worker asked which runtime the normaliser may use, since the workflow row named three executables: the row now also names python3, resolved by /usr/bin/env on the session's PATH as the format-edited-files hook's shebang resolves it, run with -I -S and the standard library only (urllib.parse, os.path), the two paths its only arguments and HOME, the physical cwd and the filesystem's symlink state its only other inputs (the Codex half's round 1, 2026-10-17T06:53:48Z). Nothing else changes from `3d87e726`; the amendment travels as a hashed TASK line with `amendment=1` and `previous_task_sha256=3d87e72644ca0b4f11fd24de768a674fd8fbc6af9f54df7bcffb822ae7e3a27d`, the pre-amendment copy at `.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-pre-amend1.md`.
+
+exit=0
+```
+
+$ sed -n 34,43p <HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+```text
+    disposition: "residual: PyYAML splits on the first document only and the byte comparison covers the whole file"
+  - control: in-process effects
+    disposition: "residual: the tests import scripts/generate-agent-configs.py as the existing module tests do and run the hook script as a subprocess with a stub terminal-browser on PATH; nothing else is imported"
+  - control: workflow and interpreter or environment inputs
+    disposition: "residual: no workflow or interpreter file is in allowed_files; the hook runs the same three executables as the merged hook, jq and terminal-browser on the user's PATH and the agent binary of TERMINAL_BROWSER_AGENT else the bundled one, and, from amendment 1 (the re-plan of D-S1-379), python3 as /usr/bin/env resolves it on the session's PATH, exactly as the format-edited-files hook's shebang does, run as python3 -I -S -c with the standard library only (urllib.parse for the percent-decoding, os.path for the physical absolute path; -I drops the environment and the user site, -S the site initialisation, so no .pth file or sitecustomize loads) and the two paths as its only arguments, its other inputs being the hook's own environment HOME (the session's, for the leading ~), the hook's physical working directory (pwd -P, the directory Claude Code ran the hook in) and the user's filesystem symlink state that the physical path follows (data, read-only), so no module beside the standard library and no file relative to cwd is loaded; with the open subcommand and the event's map path as its only variable argument (already matched to /.project-map/index.html); terminal-browser open splits the pane its environment names, the pane of the Claude session that wrote the map, and launches nothing outside the Herdr workspace; nothing in the event or the file chooses an executable"
+  - control: new or renamed scripts
+    disposition: "residual: no new or renamed script: the owned rows name edits to files the lineage landed; any new or renamed script is an undeclared change the audit fails"
+  - control: orchestrator effect merge
+    disposition: "residual: merge only through gh pr merge --squash --match-head-commit <audited head> after the gate (Orchestrator Playbook step 10.5); never a local merge or a push to main"
+  - control: orchestrator effect update-branch
+
+exit=0
+```
+
+$ tail -n 5 <HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+```text
+The review seat's round on the premise change (P2, P3): the Completion clause still had the single-review form written before T13's amendment 6 (no `open:<thread id>`, no `bot_rounds=2`, "every P2 as advisory", the pre-C-51 owner wording). It is now the task template's clause of 2026-10-16 (`.orchestration/templates/task-short.md`, Completion): the Bot's review at PR open and once more on `@codex review` after a P0/P1 fix round, a surviving P0/P1 listed as `open:<thread id>` with `bot_rounds=2`, the C-50 revise round for a small in-scope P2, every other P2 advisory and owned by `dotfiles-T128-project-map-pane-open-a01-followup-a02` (written when the first advisory P2 appears, C-51) under `## Owned by dotfiles-T128-project-map-pane-open-a01-followup-a02` in this task's acceptance record. Nothing else changes from `ecd3606f`; re-confirmed Codex first (C-54).
+
+## Amendment (1, 2026-10-17T06:49:48Z)
+
+After the operator's decision D-S1-379 A (the re-plan: one canonical-path normaliser for the event path and every tab URL, the class `path-form-normalisation` at three findings), the worker asked which runtime the normaliser may use, since the workflow row named three executables: the row now also names python3, resolved by /usr/bin/env on the session's PATH as the format-edited-files hook's shebang resolves it, run with -I -S and the standard library only (urllib.parse, os.path), the two paths its only arguments and HOME, the physical cwd and the filesystem's symlink state its only other inputs (the Codex half's round 1, 2026-10-17T06:53:48Z). Nothing else changes from `3d87e726`; the amendment travels as a hashed TASK line with `amendment=1` and `previous_task_sha256=3d87e72644ca0b4f11fd24de768a674fd8fbc6af9f54df7bcffb822ae7e3a27d`, the pre-amendment copy at `.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-pre-amend1.md`.
+
+exit=0
+```
+
+$ sed -n 14,35p home/dot_claude/hooks/executable_project-map-reload.sh
+```text
+# @description Return the physical absolute path of a local path or file URL.
+# @arg $1 path Event path or file URL, including home and relative forms.
+# @stdout Canonical path.
+canonical_path() {
+    python3 -I -S -c '
+import os
+import sys
+from urllib.parse import unquote, urlsplit
+
+path = sys.argv[1]
+if path.startswith("file://"):
+    url = urlsplit(path)
+    if url.netloc not in ("", "localhost"):
+        sys.exit(1)
+    path = unquote(url.path, errors="strict")
+if path == "~" or path.startswith("~/"):
+    path = os.path.expanduser("~") + path[1:]
+print(os.path.realpath(path))
+' "$1" 2>/dev/null
+}
+
+file_path=$(jq -r '.tool_input.file_path // empty' 2>/dev/null) || exit 0
+
+exit=0
+```
+
+Checks: asserted source bytes equal copy bytes, copy SHA256 equals dispatched 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9, and hook/test SHA256 equal the reviewed e5b1ac6a/ad99c9ea full hashes above.
+```text
+PASS dispatched task hash, byte-identical source/copy, unchanged reviewed source/test hashes
+exit=0
+```
+
+## Final focused assessment after formal dispatch
+
+Finding-free approval for the bounded implementation and its amended runtime authorization. The task copy is byte-identical to the main source and both hash to the dispatched 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9. Relative to the original task, the only differences are the explicitly authorized workflow/interpreter row and Amendment (1) section. The row now covers the added interpreter, isolation flags, HOME, physical cwd and read-only filesystem symlink inputs. The hook matches it: PATH-resolved python3 -I -S -c, inline stdlib imports only, and a quoted path argument on each invocation of the same normalizer for the event and tab comparison sides. There is no new script/package, input-controlled executable, cwd module import, or variable shell/JavaScript evaluation.
+
+The reviewed hook remains SHA256 e5b1ac6aa0f3f595acb00ac63d7c5c75990fb9b5064bc303a15f606a3ed0d0ed, and the reviewed tests remain SHA256 ad99c9ea57342d7c202ac6112529e08790d2e920f377b5ad3f986257af5374cf. Previously passing table/temporary security/AST/syntax/lint checks therefore remain applicable without repetition. The existing port/target filters, first-match behavior, original open argument, pinned-tab calls, fixed navigation guard and silent failure behavior remain intact.
+
+The earlier task-consistency-pending status is superseded: runtime consistency is now verified against the formally dispatched amendment reported by the parent. This closes this focused review's TODO; it is not authority to integrate the PR or a replacement for the orchestrator's final-head audit.
+
+Skipped: live browser/fresh-session/persisted-session E2E, Bats, CI refresh, integration, and redundant test reruns. Remaining operational check: the re-plan assigns live E2E observation to the orchestrator after merge; that is outside this approval.
+
+Verdict: correct
+
+
+## gh pr view379 --json baseRefOid,headRefOid,headRefName,url at previous_head (exit0; historical)
+
+```text
+{"baseRefOid":"af4f1e997f78119d5994d7d7b1966894d62bbc6a","headRefName":"fix/project-map-owned-followups","headRefOid":"8607a87c71cce2cebfaf0a7747e11de0451fc98e","url":"https://github.com/mryfmo/dotfiles/pull/379"}
+```
+
+## gh pr checks379 --json name,state,link at previous_head (exit0; all13 SUCCESS, historical)
+
+```text
+[{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003203/job/117327269239","name":"private-bootstrap (macos-14, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003164/job/117327268892","name":"test (macos-14, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003203/job/117327269169","name":"public-bootstrap (macos-14, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003203/job/117327269217","name":"public-bootstrap (ubuntu-24.04, server)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003164/job/117327268969","name":"test (ubuntu-24.04, server)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003213/job/117327268870","name":"validate","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003164/job/117327268894","name":"test (ubuntu-24.04, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003164/job/117327268694","name":"test (ubuntu-26.04, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003203/job/117327269211","name":"private-bootstrap (ubuntu-24.04, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003203/job/117327269215","name":"private-bootstrap (ubuntu-24.04, server)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009003203/job/117327268975","name":"public-bootstrap (ubuntu-24.04, client)","state":"SUCCESS"},{"link":"https://dashboard.gitguardian.com","name":"GitGuardian Security Checks","state":"SUCCESS"},{"link":"","name":"CodeRabbit","state":"SUCCESS"}]
+```
+
+## Final canonical-record masking and worker gate
+
+Canonical actual HOME/temp prefixes were replaced before the mask pass; the byte-identical task copy was preserved. The broad gate also sees preserved unrelated untracked task logs, which are not staged or included in this PR.
+
+### UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets (all nine canonical files; exit0)
+
+```text
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/revise.yaml
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md
+```
+
+### AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md make require-crit-review (exit0)
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+## Historical validation through physical-cwd round2 (preserved, superseded for current claims)
+
+---
+task_id: dotfiles-T128-project-map-pane-open-a01-followup-a01
+status: final
+---
+
 Current validation for the physical-cwd revision of previous_head990b607. Source hashes and current counts are in report.md. The initial eight-test/93-addition checkpoint and the nine-test/118-addition tilde supplement are retained below verbatim as HISTORICAL outputs, not current claims. Their advisory disposition of4300561777 and statement that no second C-50 round was authorized are superseded by the explicit C-56 revise and this physical-cwd fix. No local Bats.
 
 ## Historical initial validation (before tilde and physical-cwd fixes)
@@ -1750,8 +2990,8 @@ Bot watcher exit0. Review5555157020 and inline4300561777 match c0c3ff05 full hea
 Ran the existing stub fixture after changing into a symlink directory and setting inherited PWD to that logical directory, with relative event ./.project-map/index.html and the physical map URL. Asserted the browser receives only ls.
 
 ```text
-logical PWD: /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpckmdyhgo/logical
-Node process.cwd(): /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpckmdyhgo/physical
+logical PWD: <TMP>/tmpckmdyhgo/logical
+Node process.cwd(): <TMP>/tmpckmdyhgo/physical
 browser argv: [['ls', '--all', '--json'], ['open', './.project-map/index.html', '--split', 'right', '--size', '0.5', '--no-merge']]
 agent argv: []
 Traceback (most recent call last):

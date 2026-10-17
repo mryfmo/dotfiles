@@ -1550,9 +1550,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             jq = shutil.which("jq")
             self.assertIsNotNone(jq)
             (root / "jq").symlink_to(jq)
+            (root / "python3").symlink_to(sys.executable)
             jq_only = root / "jq-only"
             jq_only.mkdir()
             (jq_only / "jq").symlink_to(jq)
+            (jq_only / "python3").symlink_to(sys.executable)
             map_path = str(root / ".project-map/index.html")
             map_tab = {
                 "id": 7,
@@ -1704,6 +1706,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             jq = shutil.which("jq")
             self.assertIsNotNone(jq)
             (root / "jq").symlink_to(jq)
+            (root / "python3").symlink_to(sys.executable)
             map_path = str(root / "map with spaces/.project-map/index.html")
             no_map = {
                 "self": {},
@@ -1789,7 +1792,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         else [],
                     )
 
-    def _run_project_map_reload_listing(self, map_path: str, listing: dict, *, cwd: Path | None = None):
+    def _run_project_map_reload_listing(
+        self, map_path: str, listing: dict, *, cwd: Path | None = None, home: Path | None = None
+    ):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             browser = root / "terminal-browser"
@@ -1811,6 +1816,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             )
             agent.chmod(0o755)
             (root / "jq").symlink_to(shutil.which("jq"))
+            (root / "python3").symlink_to(sys.executable)
             result = subprocess.run(
                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
                 input=json.dumps({"tool_input": {"file_path": map_path}}),
@@ -1820,6 +1826,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 env={
                     **os.environ,
                     **({"PWD": str(cwd)} if cwd is not None else {}),
+                    **({"HOME": str(home)} if home is not None else {}),
                     "PATH": str(root),
                     "BROWSER_LISTING": json.dumps(listing),
                     "BROWSER_CALLS": str(root / "browser-calls"),
@@ -1932,6 +1939,55 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.assertEqual(len(agent), 2)
             self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
 
+    def test_project_map_reload_hook_compares_canonical_paths_for_every_path_form(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            home = root / "home"
+            repo = home / "repo"
+            map_path = repo / ".project-map/index.html"
+            map_path.parent.mkdir(parents=True)
+            map_path.write_text("map")
+            (repo / "unused").mkdir()
+            tilde_map = home / "repo~name/.project-map/index.html"
+            tilde_map.parent.mkdir(parents=True)
+            tilde_map.write_text("map")
+            logical = root / "logical repo"
+            logical.symlink_to(repo, target_is_directory=True)
+            encoded_tilde = tilde_map.as_uri().replace("~", "%7E")
+            for form, event, url, cwd in (
+                ("home", "~/repo/.project-map/index.html", map_path.as_uri(), root),
+                ("encoded tab URL", str(tilde_map), encoded_tilde, root),
+                ("encoded event URL", encoded_tilde, tilde_map.as_uri(), root),
+                ("symlinked cwd", "./.project-map/index.html", map_path.as_uri(), logical),
+                (
+                    "dot and parent segments",
+                    str(repo) + "/./unused/../.project-map/index.html",
+                    repo.as_uri() + "/./unused/../.project-map/index.html",
+                    root,
+                ),
+                ("event trailing slash", str(map_path) + "/", map_path.as_uri(), root),
+                ("tab trailing slash", str(map_path), map_path.as_uri() + "/", root),
+                ("event symlink", str(logical / ".project-map/index.html"), map_path.as_uri(), root),
+                ("tab symlink", str(map_path), (logical / ".project-map/index.html").as_uri(), root),
+            ):
+                with self.subTest(form=form):
+                    browser, agent = self._run_project_map_reload_listing(
+                        event,
+                        {
+                            "browsers": [
+                                {
+                                    "cdpPort": 9222,
+                                    "tabs": [{"url": url, "targetId": "A" * 32}],
+                                }
+                            ]
+                        },
+                        cwd=cwd,
+                        home=home,
+                    )
+                    self.assertEqual(browser, [["ls", "--all", "--json"]])
+                    self.assertEqual(len(agent), 2)
+                    self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+
     def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1953,6 +2009,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             )
             agent.chmod(0o755)
             (root / "jq").symlink_to(shutil.which("jq"))
+            (root / "python3").symlink_to(sys.executable)
             map_path = str(root / ".project-map/index.html")
             result = subprocess.run(
                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],

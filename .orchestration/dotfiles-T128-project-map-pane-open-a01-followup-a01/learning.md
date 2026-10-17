@@ -3,6 +3,7 @@ task_id: dotfiles-T128-project-map-pane-open-a01-followup-a01
 status: final
 ---
 
-No promotion requested. Node resolves relative file URLs from physical cwd, while inherited shell PWD may name a symlink. Supplying Bash pwd-P to the existing jq relative-path normalization aligns that prefix without a new dependency. The focused regression explicitly supplies logical PWD and subprocess cwd through a symlink and records duplicate pane opening before the fix.
 
-The prior tilde normalization and literal-percent controls remain covered. Path-component symlinks beyond the cwd prefix are not canonicalized. Prior optional Ruff lint/shfmt baseline observations are historical and were not rerun for this one-argument revision.
+No promotion requested. Comparing encoded URL spellings with shell paths caused recurring home-prefix, physical cwd, dot/parent and symlink discrepancies. One stdlib canonicalizer on both sides removes those separate normalization rules. File URLs are decoded once; filesystem percent characters remain literal. Python -I -S keeps local modules and Python environment variables out of the import path while retaining the existing PATH interpreter trust model.
+
+The real-path table proves selection and pinned eval issuance with stubs; it does not establish live navigation/reload behavior. Fresh/persisted live E2E remains the orchestrator's post-merge observation. Existing navigation guard, rejected-metadata and racing-write limits remain. Historical validation below is labeled and does not certify this revision.

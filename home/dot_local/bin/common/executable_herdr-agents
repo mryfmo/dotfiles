@@ -1928,12 +1928,28 @@ if [[ ${remove_worker_mode} == true ]]; then
     # --stale retires only seats whose panes are gone (M-20261015-01): every
     # row's state is read before anything changes.
     if [[ ${seat_stale} == true ]]; then
-        for row in ${seat_rows[@]+"${seat_rows[@]}"}; do
+        # No row read is no seat shown gone (an enumeration failure among them): nothing is closed (the audit of d3bc745).
+        if ((${#seat_rows[@]} == 0)); then
+            printf 'herdr-agents: no seated identity at %s; nothing retired\n' "${seat_dir}" >&2
+            exit 2
+        fi
+        for row in "${seat_rows[@]}"; do
             IFS=$'\t' read -r seat_type seat_team seat_name <<< "${row}"
             state="$(seat_pane_state "${seat_team}" "${seat_name}")"
             if [[ ${state} != gone ]]; then
                 printf 'herdr-agents: %s at %s is %s, not gone; use --remove-worker without --stale.\n' "${seat_name}" "${seat_dir}" "${state}" >&2
                 exit 2
+            fi
+        done
+        # The archive must be usable before leave.sh drops the identity, or the record would stay under spawn.*
+        # with no identity to find it by; checked, not created, so a refused run leaves no stale/ (the audit of d3bc745).
+        # A dangling stale symlink is refused too: -e follows it and says no, -L does not (the audit of bf650af).
+        for row in "${seat_rows[@]}"; do
+            IFS=$'\t' read -r seat_type seat_team seat_name <<< "${row}"
+            run_dir="$(dirname -- "$(seat_record_path "${seat_team}" "${seat_name}")")"
+            if [[ ((-e ${run_dir}/stale || -L ${run_dir}/stale) && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
+                printf 'herdr-agents: %s/stale is not a directory, or %s is not writable; nothing retired\n' "${run_dir}" "${run_dir}" >&2
+                exit 1
             fi
         done
     fi

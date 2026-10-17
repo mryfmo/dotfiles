@@ -11,7 +11,8 @@
 #   -i` in the root, else `command -v`; it is resolved before the checkout, and a path under a `shims` directory is
 #   refused. When its first line is an env shebang (`#!/usr/bin/env NAME` or `env -S NAME ARG…`), NAME is resolved the
 #   same way and runs with the `-S` form's ARG words, then the binary, so no interpreter comes from PATH in the PR
-#   worktree. When the
+#   worktree. A `-S` string holding a quote, a backslash, a `$` or a word starting with `#` is refused, since env -S
+#   splits those differently. When the
 #   binary fails, no file is written. Otherwise the file gets the front matter, the unique `-
 #   [P0-3]` findings of the transcript's final message, and that message with the worktree prefix stripped; the
 #   findings are printed, then `local-review: <n> findings (<file>)`.
@@ -20,8 +21,8 @@
 # @arg $3 int PR number.
 # @exitcode 0 No finding.
 # @exitcode 2 A precondition failed: a malformed task id or head, a review file of another head, the head is not a
-#   local commit, the review worktree is not a worktree root or not clean, or no review binary outside a shims
-#   directory.
+#   local commit, the review worktree is not a worktree root or not clean, no review binary outside a shims
+#   directory, or an env -S shebang the script does not split.
 # @exitcode 3 One or more findings.
 # @exitcode 4 The review binary failed; no file is written, and its transcript stays in `$TMPDIR`.
 # @example
@@ -90,10 +91,17 @@ run=("$found")
 first=
 IFS= read -r first < "${run[0]}" || true
 if [[ $first =~ ^\#![[:space:]]*[^[:space:]]*/env[[:space:]]+(-S[[:space:]]+)?([^[:space:]-][^[:space:]]*)(.*)$ ]]; then
-    interpreter=${BASH_REMATCH[2]}
+    interpreter=${BASH_REMATCH[2]} split=${BASH_REMATCH[1]} rest=${BASH_REMATCH[3]}
     # env -S splits the rest of the line into the interpreter's own arguments (the local review of 850fc54e).
     words=()
-    [ -z "${BASH_REMATCH[1]}" ] || read -r -a words <<< "${BASH_REMATCH[3]}"
+    if [ -n "$split" ]; then
+        # env -S quotes, escapes, expands and comments where read -a does not: refuse, never split wrongly (audit:2e3ff49:1).
+        if [[ $interpreter$rest == *[\"\'\\\$]* || " $interpreter$rest" =~ [[:space:]]# ]]; then
+            echo "local-review: the review binary's env -S shebang holds a quote, an escape, an expansion or a comment the script does not split; refused"
+            exit 2
+        fi
+        read -r -a words <<< "$rest"
+    fi
     resolve "$interpreter" "review binary's interpreter"
     run=("$found" ${words[@]+"${words[@]}"} "${run[0]}")
 fi

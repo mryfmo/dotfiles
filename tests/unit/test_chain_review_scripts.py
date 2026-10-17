@@ -476,6 +476,26 @@ class ChainReviewScriptsTest(unittest.TestCase):
         self.run_tool("local-advisory.sh", "t-b01", empty, "t-nobody-a01")
         self.assertEqual("# record\n", b.read_text())
 
+    def test_local_advisory_matches_an_earlier_review_id_literally(self):
+        # A historical suffix is no regex: a review file named t-a01-local-review-.*.md made `local:.*:1` match an
+        # unrelated row, whose class and provenance the repeat then took (the audit of d3e8acf, finding 1). Only a
+        # seven-hex suffix names a reviewed head, so t-a01-local-review-notes.md is no earlier review either.
+        owner, v = "t-followup-a01", ".orchestration/validation"
+        self.write(f".orchestration/tasks/{owner}.md", "owner\n")
+        for suffix in (".*", "notes"):
+            self.write(
+                f"{v}/t-a01-local-review-{suffix}.md", "---\nfindings: 1\n---\n\n- [P2] scripts/x.sh:12 quoting\n"
+            )
+        rows = "local:notes:1\tnotes-class\nlocal:aaaaaa1:1\tunrelated-class\n"
+        record = self.write(".orchestration/acceptance/t-a01.md", f"# record\n{rows}")
+        head = "cccccc3" + "1" * 33
+        self.write(f"{v}/t-a01-local-review-cccccc3.md", "---\nfindings: 1\n---\n\n- [P2] scripts/x.sh:12 again\n")
+        self.run_tool("local-advisory.sh", "t-a01", head, owner)
+        text = record.read_text()
+        self.assertEqual(["local:cccccc3:1\tadvisory-p2"], re.findall(r"^local:cccccc3:\d\t.*$", text, re.MULTILINE))
+        [line] = [line for line in text.splitlines() if line.startswith("local-finding: cccccc3:")]
+        self.assertNotIn("repeat of", line)
+
     def test_sandbox_scan_prints_the_unsandboxed_mutation_calls(self):
         sandboxes = ".orchestration/sandboxes"
         hit = "| 2 | dangerouslyDisableSandbox: git commit -m wip |"

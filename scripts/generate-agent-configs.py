@@ -373,23 +373,24 @@ def render_codex(manifest: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_claude_sandbox(manifest: dict[str, Any]) -> dict[str, Any]:
+def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> dict[str, Any]:
     """Render the Claude sandbox; allowWrite reuses the Codex agmsg writable roots."""
     sandbox = manifest["claude"]["sandbox"]
-    network = {
-        "allowedDomains": sandbox["network"]["allowedDomains"],
-        "allowUnixSockets": sandbox["network"]["allowUnixSockets"],
-    }
+    network = dict(sandbox["network"])
+    if os_name != "darwin":
+        network.pop("allowMachLookup", None)
     return {
         "enabled": sandbox["enabled"],
         "failIfUnavailable": sandbox["failIfUnavailable"],
         "autoAllowBashIfSandboxed": sandbox["autoAllowBashIfSandboxed"],
         "allowUnsandboxedCommands": sandbox["allowUnsandboxedCommands"],
-        "excludedCommands": sandbox["excludedCommands"],
+        "excludedCommands": sandbox["excludedCommands"]
+        + (sandbox.get("linux_excluded_commands", []) if os_name == "linux" else []),
         "filesystem": {
             "allowWrite": [
                 *manifest["codex"]["sandbox_workspace_write"]["writable_roots"],
                 *sandbox.get("filesystem", {}).get("extra_allow_write", []),
+                *(sandbox.get("filesystem", {}).get("darwin_extra_allow_write", []) if os_name == "darwin" else []),
             ]
         },
         "network": network,
@@ -431,7 +432,8 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
             "defaultMode": claude["permissions"]["defaultMode"],
             "ask": claude["permissions"]["ask"],
         },
-        **({"sandbox": render_claude_sandbox(manifest)} if "sandbox" in claude else {}),
+        **({"sandbox": None} if "sandbox" in claude else {}),
+        **({"env": claude["env"]} if "env" in claude else {}),
         "hooks": {
             "PreToolUse": [
                 {
@@ -475,7 +477,14 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "disableSkillShellExecution": claude["disableSkillShellExecution"],
         "includeGitInstructions": claude["includeGitInstructions"],
     }
-    return json_dumps(settings)
+    text = json_dumps(settings)
+    if "sandbox" in claude:
+        variants = [json_dumps(render_claude_sandbox(manifest, os_name)).strip() for os_name in ("darwin", "linux")]
+        sandbox_template = (
+            '{{ if eq .chezmoi.os "darwin" }}\n' + variants[0] + "\n{{ else }}\n" + variants[1] + "\n{{ end }}"
+        )
+        text = text.replace('"sandbox": null', '"sandbox": ' + sandbox_template, 1)
+    return text
 
 
 def claude_mcp_entry(server: dict[str, Any]) -> dict[str, Any]:

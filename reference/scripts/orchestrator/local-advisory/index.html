@@ -3727,6 +3727,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4168,6 +4179,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4196,12 +4218,16 @@
 
 
 <h1 id="scriptsorchestratorlocal-advisorysh">scripts/orchestrator/local-advisory.sh<a class="headerlink" href="#scriptsorchestratorlocal-advisorysh" title="Permanent link">&para;</a></h1>
-<p>Plan 020 step 1.2 for the local review. Reads <code>.orchestration/validation/&lt;task&gt;-local-review-&lt;sha7&gt;.md</code>. Each unique finding, numbered from 1: a P0/P1 prints STOP (the PR's one round is over: the plan's step 4.2); any other appends the row <code>local:&lt;sha7&gt;:&lt;n&gt;&lt;TAB&gt;advisory-p2</code> under the heading <code>## Owned by &lt;owner&gt;</code> of <code>.orchestration/acceptance/&lt;task&gt;.md</code> (created when missing) and a <code>local-finding: &lt;sha7&gt;:&lt;n&gt; not-applicable:advisory P2 owned by &lt;owner&gt; (…); evidence=…</code> line, each only when the record lacks it.</p>
+<p>Plan 020 step 1.2 for the local review. Reads <code>.orchestration/validation/&lt;task&gt;-local-review-&lt;sha7&gt;.md</code>. Each unique finding, numbered from 1: a P0/P1 prints STOP (the PR's one round is over: the plan's step 4.2); any other appends the row <code>local:&lt;sha7&gt;:&lt;n&gt;&lt;TAB&gt;&lt;class&gt;</code> under the heading <code>## Owned by &lt;owner&gt;</code> of <code>.orchestration/acceptance/&lt;task&gt;.md</code> (created when missing) and a <code>local-finding: &lt;sha7&gt;:&lt;n&gt; not-applicable:advisory P2 owned by &lt;owner&gt; (…); evidence=shasum -a 256 .orchestration/tasks/&lt;owner&gt;.md (&lt;sha256&gt;)</code> line, each only when the record lacks it. A review with findings needs the owner task file. The class is <code>advisory-p2</code>, unless the finding's <code>path:line[-line]</code> token (backticks ignored) matches a finding of the task's earlier local review files whose <code>local:</code> row in the record has another class: then the last such row's class, and the line's parenthesis names it as <code>repeat of local:&lt;sha7&gt;:&lt;n&gt;</code> (C-50).</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/orchestrator/local-advisory.sh</code></li>
 <li>Category: repository script</li>
 <li>Renderer: <code>shell-fallback</code></li>
+</ul>
+<h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>token() { [[ $1 =~ ([A-Za-z0-9._/-]+:[0-9]+(-[0-9]+)?) ]] &amp;&amp; printf '%s\n' "${BASH_REMATCH[1]}"; }</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -4210,14 +4236,19 @@
 <span class="c1"># @description</span>
 <span class="c1">#   Plan 020 step 1.2 for the local review. Reads `.orchestration/validation/&lt;task&gt;-local-review-&lt;sha7&gt;.md`. Each</span>
 <span class="c1">#   unique finding, numbered from 1: a P0/P1 prints STOP (the PR's one round is over: the plan's step 4.2); any</span>
-<span class="c1">#   other appends the row `local:&lt;sha7&gt;:&lt;n&gt;&lt;TAB&gt;advisory-p2` under the heading `## Owned by &lt;owner&gt;` of</span>
+<span class="c1">#   other appends the row `local:&lt;sha7&gt;:&lt;n&gt;&lt;TAB&gt;&lt;class&gt;` under the heading `## Owned by &lt;owner&gt;` of</span>
 <span class="c1">#   `.orchestration/acceptance/&lt;task&gt;.md` (created when missing) and a `local-finding: &lt;sha7&gt;:&lt;n&gt;</span>
-<span class="c1">#   not-applicable:advisory P2 owned by &lt;owner&gt; (…); evidence=…` line, each only when the record lacks it.</span>
+<span class="c1">#   not-applicable:advisory P2 owned by &lt;owner&gt; (…); evidence=shasum -a 256 .orchestration/tasks/&lt;owner&gt;.md</span>
+<span class="c1">#   (&lt;sha256&gt;)` line, each only when the record lacks it. A review with findings needs the owner task file. The</span>
+<span class="c1">#   class is `advisory-p2`, unless the finding's `path:line[-line]` token (backticks ignored) matches a finding of</span>
+<span class="c1">#   the task's earlier local review files whose `local:` row in the record has another class: then the last such</span>
+<span class="c1">#   row's class, and the line's parenthesis names it as `repeat of local:&lt;sha7&gt;:&lt;n&gt;` (C-50).</span>
 <span class="c1"># @arg $1 string Task id, letters, digits, `.`, `_` and `-`.</span>
 <span class="c1"># @arg $2 string The reviewed head, 40 hex characters.</span>
 <span class="c1"># @arg $3 string The task id that owns the advisory findings, in the task id's form.</span>
 <span class="c1"># @exitcode 0 No P0/P1 finding.</span>
-<span class="c1"># @exitcode 2 No local review file, or a malformed task id, head or owner task id.</span>
+<span class="c1"># @exitcode 2 No local review file, a malformed task id, head or owner task id, or (for a review with findings) no</span>
+<span class="c1">#   owner task file: `write the owner task &lt;owner&gt; first`.</span>
 <span class="c1"># @exitcode 3 A P0/P1 finding.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   scripts/orchestrator/local-advisory.sh dotfiles-T128-x-a01 "$head" dotfiles-T128-x-followup-a01</span>
@@ -4243,6 +4274,26 @@
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"local review of </span><span class="nv">$h7</span><span class="s2">: no findings"</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="o">}</span>
+<span class="c1"># The rows name the owner task, so it must exist; its hash is evidence that replays before the boundary (C-51).</span>
+<span class="nv">O</span><span class="o">=</span><span class="s2">".orchestration/tasks/</span><span class="nv">$owner</span><span class="s2">.md"</span>
+<span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="nv">$O</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"write the owner task </span><span class="nv">$owner</span><span class="s2"> first"</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+<span class="nv">sha</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">"</span><span class="nv">$O</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d<span class="s1">' '</span><span class="w"> </span>-f1<span class="k">)</span>
+<span class="c1"># C-50: a finding repeated from an earlier head takes the class the record gave it. Each earlier review's findings,</span>
+<span class="c1"># numbered as the loop below numbers them, as `&lt;path:line[-line]&gt; local:&lt;sha7&gt;:&lt;n&gt;` lines.</span>
+<span class="c1"># The class excludes the backtick, so `a.sh:1` in backticks reads as a.sh:1.</span>
+token<span class="o">()</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="o">([</span>A-Za-z0-9._/-<span class="o">]</span>+:<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+<span class="o">(</span>-<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+<span class="o">)</span>?<span class="o">)</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_REMATCH</span><span class="p">[1]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
+<span class="nv">earlier</span><span class="o">=</span><span class="s2">""</span>
+<span class="k">for</span><span class="w"> </span>f<span class="w"> </span><span class="k">in</span><span class="w"> </span>.orchestration/validation/<span class="s2">"</span><span class="nv">$task</span><span class="s2">"</span>-local-review-*.md<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="nv">$f</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">$f</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="nv">$LR</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">    </span><span class="nv">e</span><span class="o">=</span><span class="si">${</span><span class="nv">f</span><span class="p">%.md</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">e</span><span class="o">=</span><span class="si">${</span><span class="nv">e</span><span class="p">##*-local-review-</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">k</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>l<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">k</span><span class="o">=</span><span class="k">$((</span><span class="nv">k</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">t</span><span class="o">=</span><span class="k">$(</span>token<span class="w"> </span><span class="s2">"</span><span class="nv">$l</span><span class="s2">"</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="nv">earlier</span><span class="o">+=</span><span class="s2">"</span><span class="nv">$t</span><span class="s2"> local:</span><span class="nv">$e</span><span class="s2">:</span><span class="nv">$k</span><span class="s2">"</span><span class="s1">$'\n'</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>/usr/bin/grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^- \[P[0-3]\]'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$f</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="o">)</span>
+<span class="k">done</span>
 <span class="c1"># A literal heading match, ended by a space or the line's end: a . in the owner is no wildcard, a longer id no match.</span>
 awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">h</span><span class="o">=</span><span class="s2">"## Owned by </span><span class="nv">$owner</span><span class="s2">"</span><span class="w"> </span><span class="s1">'substr($0, 1, length(h)) == h &amp;&amp; substr($0, length(h) + 1, 1) ~ /^ ?$/ { f = 1 } END { exit !f }'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'\n## Owned by %s (advisory P2 of the final head; plan 020 step 1.2; rows id&lt;TAB&gt;class)\n\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$owner</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span>
 <span class="nv">i</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">stop</span><span class="o">=</span><span class="m">0</span>
@@ -4254,8 +4305,16 @@ awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">h</span><s
 <span class="w">        </span><span class="nv">stop</span><span class="o">=</span><span class="m">1</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
-<span class="w">        </span>/usr/bin/grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">"^local:</span><span class="nv">$h7</span><span class="s2">:</span><span class="nv">$i</span><span class="s2"> "</span><span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'local:%s:%s\tadvisory-p2\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$h7</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$i</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span>
-<span class="w">        </span>/usr/bin/grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">"^local-finding: </span><span class="nv">$h7</span><span class="s2">:</span><span class="nv">$i</span><span class="s2"> "</span><span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'local-finding: %s:%s not-applicable:advisory P2 owned by %s (%s); evidence=git show origin/main:.orchestration/tasks/%s.md | grep -n '</span><span class="s2">"'"</span><span class="s1">'item 1'</span><span class="s2">"'"</span><span class="s1">'\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$h7</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$i</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$owner</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$line</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-c1-120<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'`'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$owner</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span>
+<span class="w">        </span><span class="c1"># The last row in the record of an earlier finding with this token, other than advisory-p2, wins.</span>
+<span class="w">        </span><span class="nv">class</span><span class="o">=</span>advisory-p2<span class="w"> </span><span class="nv">repeat</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">        </span><span class="nv">t</span><span class="o">=</span><span class="k">$(</span>token<span class="w"> </span><span class="s2">"</span><span class="nv">$line</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">t</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">        </span><span class="nv">ids</span><span class="o">=</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$earlier</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">t</span><span class="o">=</span><span class="s2">"</span><span class="nv">$t</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$1 == t { print $2 }'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="s1">'|'</span><span class="k">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$t</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$ids</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">row</span><span class="o">=</span><span class="k">$(</span>/usr/bin/grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">"^(</span><span class="si">${</span><span class="nv">ids</span><span class="p">%|</span><span class="si">}</span><span class="s2">) "</span><span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>/usr/bin/grep<span class="w"> </span>-v<span class="w"> </span><span class="s1">' advisory-p2$'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-1<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span>
+<span class="w">            </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="nv">$row</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">class</span><span class="o">=</span><span class="si">${</span><span class="nv">row</span><span class="p">#*  </span><span class="si">}</span><span class="w"> </span><span class="nv">repeat</span><span class="o">=</span><span class="s2">"; repeat of </span><span class="si">${</span><span class="nv">row</span><span class="p">%%   *</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span>/usr/bin/grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">"^local:</span><span class="nv">$h7</span><span class="s2">:</span><span class="nv">$i</span><span class="s2"> "</span><span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'local:%s:%s\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$h7</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$i</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$class</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span>
+<span class="w">        </span>/usr/bin/grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">"^local-finding: </span><span class="nv">$h7</span><span class="s2">:</span><span class="nv">$i</span><span class="s2"> "</span><span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'local-finding: %s:%s not-applicable:advisory P2 owned by %s (%s%s); evidence=shasum -a 256 %s (%s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$h7</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$i</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$owner</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$line</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-c1-120<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'`'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repeat</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$O</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$sha</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$A</span><span class="s2">"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
 <span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>/usr/bin/grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^- \[P[0-3]\]'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$LR</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="o">)</span>

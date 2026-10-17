@@ -1479,23 +1479,31 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
 
-    def anthropic_route_fixture(self):
-        """One tracked file under home/, install/ and scripts/, and check(rel, line) -> (refused, stderr)."""
-        files = ("home/dot_config/fixture.sh", "install/fixture.sh", "scripts/fixture.sh")
+    def anthropic_route_fixture(self, *extra: str):
+        """One tracked file under home/, install/ and scripts/ (and each extra), and check(rel, line) -> (refused, stderr).
+
+        check writes `# fixture` and the line, or with verbatim=True the text as given (JSON has no comments); between
+        checks every file holds an empty document, so each check sees one fixture.
+        """
+        files = ("home/dot_config/fixture.sh", "install/fixture.sh", "scripts/fixture.sh", *extra)
+
+        def empty(rel: str) -> str:
+            return "{}\n" if rel.endswith(".json") else ""
+
         for rel in files:
-            self.write_text_file(rel, "")
+            self.write_text_file(rel, empty(rel))
         subprocess.run(["git", "init", "-q", str(self.temp_dir)], check=True)
         subprocess.run(["git", "-C", str(self.temp_dir), "add", *files], check=True)
 
-        def check(rel: str, line: str) -> tuple[bool, str]:
-            self.write_text_file(rel, f"# fixture\n{line}\n")
+        def check(rel: str, line: str, verbatim: bool = False) -> tuple[bool, str]:
+            self.write_text_file(rel, line if verbatim else f"# fixture\n{line}\n")
             stderr, refused = io.StringIO(), False
             with contextlib.redirect_stderr(stderr):
                 try:
                     self.module.validate_anthropic_auth_route()
                 except SystemExit:
                     refused = True
-            self.write_text_file(rel, "")
+            self.write_text_file(rel, empty(rel))
             return refused, stderr.getvalue()
 
         return files, check
@@ -1568,7 +1576,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             f"{key}=$DEPLOYED_KEY",
             f"{key}=${{DEPLOYED_KEY}}",
             f'{key}="$DEPLOYED_KEY"',
-            f"{key}='${{DEPLOYED_KEY}}'",
             f'{key}: "{{{{ .anthropic }}}}"',
             f"{key}=$DEPLOYED_KEY  # from the environment",
         ):
@@ -1605,11 +1612,117 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         for line in (
             f'"{key}": "${{{key}}}"',
             f'"{key}": "{{{{ .anthropic }}}}"',
-            f"'{key}' = '${{{key}}}'",
             f"{key}+=${key}",
         ):
             with self.subTest(line=line):
                 self.assertEqual((False, ""), check(home, line))
+
+    def assert_parsed_refusals(self, check, cases, line_grammar_misses: bool) -> None:
+        """Each (rel, text, rule, where) is refused naming the key path, never the literal value."""
+        for rel, text, rule, where in cases:
+            with self.subTest(rel=rel, text=text):
+                if line_grammar_misses:
+                    lines = text.splitlines()
+                    self.assertFalse(any(self.module.ANTHROPIC_API_KEY_LITERAL.search(line) for line in lines))
+                    self.assertFalse(any("ANTHROPIC_OAUTH_" + "TOKEN" in line for line in lines))
+                refused, stderr = check(rel, text, verbatim=True)
+                self.assertTrue(refused)
+                self.assertIn(f"ERROR: {rel}: {rule}: {where}:", stderr)
+                self.assertNotIn("literal-value", stderr)
+
+    def test_anthropic_auth_route_reads_json_and_toml_through_their_parsers(self) -> None:
+        # The re-plan of 4302758230 (escaped-name): a parsed format's key names are decoded and its values are data, so
+        # escapes, key quoting and line breaks no longer hide an assignment the line grammar cannot see.
+        key, oauth = "ANTHROPIC_API_" + "KEY", "ANTHROPIC_OAUTH_" + "TOKEN"
+        escaped_key, escaped_oauth = "ANTHROPIC_API_\\u004b" + "EY", "ANTHROPIC_OAUTH_\\u0054" + "OKEN"
+        json_rel, toml_rel = "home/dot_config/fixture.json", "home/dot_config/fixture.toml"
+        script_rel = "home/dot_config/modify_private_fixture.json"
+        _, check = self.anthropic_route_fixture(json_rel, toml_rel, script_rel)
+        refused_by_the_parse_only = (
+            (toml_rel, f'"{escaped_key}" = "literal-value"\n', "R2", key),
+            (json_rel, f'{{"{escaped_key}": "literal-value"}}\n', "R2", key),
+            (json_rel, f'{{"env": {{"{key}":\n"literal-value"}}}}\n', "R2", f"env.{key}"),
+            (json_rel, f'{{"env": ["{escaped_key}=literal-value"]}}\n', "R2", "env[0]"),
+            (toml_rel, f'"{escaped_oauth}" = "x"\n', "R1", oauth),
+        )
+        self.assert_parsed_refusals(check, refused_by_the_parse_only, line_grammar_misses=True)
+        self.assert_parsed_refusals(
+            check,
+            (
+                (json_rel, f'{{"{escaped_key}": "literal-value", "{key}": "${{{key}}}"}}\n', "R2", key),  # a duplicate
+                (json_rel, f'{{"{key}": 12}}\n', "R2", key),
+                # A key with a newline is printed escaped, so it cannot start a log line of its own.
+                (json_rel, f'{{"a\\n::error::x": {{"{key}": "literal-value"}}}}\n', "R2", f"a\\n::error::x.{key}"),
+            ),
+            line_grammar_misses=False,
+        )
+        for rel, text in (
+            (toml_rel, f'{key} = "${{{key}}}"\n'),
+            (toml_rel, f'[env]\n{key} = "{{{{ .anthropic }}}}"\n'),
+            (json_rel, f'{{"{key}": "", "apiKeyEnv": "{key}"}}\n'),
+            (script_rel, f"#!/bin/sh\n{key}=${key}\n"),  # a chezmoi modify_ source is a script, read as text
+        ):
+            with self.subTest(rel=rel, text=text):
+                self.assertEqual((False, ""), check(rel, text, verbatim=True))
+        refused, stderr = check(script_rel, f"#!/bin/sh\n{key}=literal-value\n", verbatim=True)
+        self.assertTrue(refused)
+        self.assertIn(f"ERROR: {script_rel}:2: R2:", stderr)
+        refused, stderr = check(json_rel, "{\n", verbatim=True)  # a parse failure is a refusal, never a skip
+        self.assertTrue(refused)
+        self.assertIn(f"ERROR: {json_rel}: cannot be parsed as json", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("yaml"), "PyYAML is not installed")
+    def test_anthropic_auth_route_reads_yaml_through_its_parser(self) -> None:
+        # The re-plan of 4302758230 for YAML: the node graph keeps duplicate keys and decodes quoted escapes.
+        key, escaped_key = "ANTHROPIC_API_" + "KEY", "ANTHROPIC_API_\\u004b" + "EY"
+        yaml_rel = "home/dot_config/fixture.yaml"
+        _, check = self.anthropic_route_fixture(yaml_rel)
+        self.assert_parsed_refusals(
+            check,
+            (
+                (yaml_rel, f'"{escaped_key}": literal-value\n', "R2", key),
+                (yaml_rel, f"env:\n  {key}:\n    literal-value\n", "R2", f"env.{key}"),
+                (yaml_rel, f"{key}:\n  literal-value\n", "R2", key),
+            ),
+            line_grammar_misses=True,
+        )
+        self.assert_parsed_refusals(
+            check,
+            ((yaml_rel, f'"{escaped_key}": literal-value\n{key}: ${key}\n', "R2", key),),
+            line_grammar_misses=False,
+        )
+        for text in (f"{key}: ${key}\n", f"{key}:\n", f'{key}: "{{{{ .anthropic }}}}"\n', "a: &a [x]\nb: [*a, *a]\n"):
+            with self.subTest(text=text):
+                self.assertEqual((False, ""), check(yaml_rel, text, verbatim=True))
+        refused, stderr = check(yaml_rel, "a: [\n", verbatim=True)
+        self.assertTrue(refused)
+        self.assertIn(f"ERROR: {yaml_rel}: cannot be parsed as yaml", stderr)
+
+    def test_anthropic_auth_route_refuses_a_single_quoted_reference_in_text(self) -> None:
+        # Row 4302758234: Bash expands nothing inside single quotes, so '$NAME' assigns the text $NAME; in text a
+        # reference passes bare or double-quoted only. A TOML literal string is data, so the parser reads it.
+        key = "ANTHROPIC_API_" + "KEY"
+        toml_rel = "home/dot_config/fixture.toml"
+        (home, *_), check = self.anthropic_route_fixture(toml_rel)
+        for line in (f"{key}='$DEPLOYED_KEY'", f"{key}='${{DEPLOYED_KEY}}'", f"'{key}' = '${{{key}}}'"):
+            with self.subTest(line=line):
+                refused, stderr = check(home, line)
+                self.assertTrue(refused)
+                self.assertIn(f"ERROR: {home}:2: R2:", stderr)
+        for line in (f'{key}="$DEPLOYED_KEY"', f"{key}=$DEPLOYED_KEY", f"{key}='{{{{ .anthropic }}}}'"):
+            with self.subTest(line=line):
+                self.assertEqual((False, ""), check(home, line))
+        self.assertEqual((False, ""), check(toml_rel, f"'{key}' = '${{{key}}}'\n", verbatim=True))
+
+    def test_anthropic_auth_route_reads_a_json_reference_before_a_delimiter(self) -> None:
+        # Row 4302758239: in JSON a comma or a brace after the value is syntax; the parser reads the value alone, where
+        # the line grammar refused the line.
+        key = "ANTHROPIC_API_" + "KEY"
+        json_rel = "home/dot_config/fixture.json"
+        _, check = self.anthropic_route_fixture(json_rel)
+        text = f'{{"{key}": "${{{key}}}", "x": 1}}\n'
+        self.assertIsNotNone(self.module.ANTHROPIC_API_KEY_LITERAL.search(text))
+        self.assertEqual((False, ""), check(json_rel, text, verbatim=True))
 
     def write_manifest(self, hook_command: str) -> None:
         path = self.temp_dir / "home/dot_agents/agent-config.yaml"

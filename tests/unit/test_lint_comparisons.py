@@ -195,6 +195,44 @@ class LintComparisonsTest(unittest.TestCase):
         result = self.run_fixture("j.sh", accepted)
         self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
 
+    def assert_refused_and_accepted(self, name, rule, refused, accepted):
+        result = self.run_fixture(name, refused)
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"{name}:1: {rule} ", result.stdout)
+        result = self.run_fixture(name, accepted)
+        self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
+
+    def test_a_single_quoted_jq_option_value_is_not_read_as_the_program(self):
+        # owned row 4302629300: the program is the first word after the options and the arguments they take
+        self.assert_refused_and_accepted(
+            "j.sh",
+            "R3",
+            "jq -n --arg p '/x' 'select(.url == $p)'\n",
+            "jq -n --arg p '/x' 'def canonical_path: .; select((.url | canonical_path) == ($p | canonical_path))'\n",
+        )
+        # a program word that concatenates a double-quoted part and a single-quoted run is still read at the run
+        result = self.run_fixture("j.sh", "jq -n \"${defs}\"'select(.url == $p)'\n")
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("j.sh:1: R3 ", result.stdout)
+
+    def test_a_jq_normaliser_name_inside_a_string_literal_is_no_application(self):
+        # owned row 4302629305: each side must apply the normaliser, not merely contain its name
+        self.assert_refused_and_accepted(
+            "j.sh",
+            "R3",
+            "jq -r 'def canonical_path: .; select((.url + \"canonical_path\") == ($path | canonical_path))'\n",
+            "jq -r 'def canonical_path: .; select((.url + \"/\" | canonical_path) == ($path | canonical_path))'\n",
+        )
+
+    def test_every_f_string_interpolation_in_a_regex_is_escaped(self):
+        # owned row 4302629307: one re.escape does not cover the other interpolations of the f-string
+        self.assert_refused_and_accepted(
+            "r6.py",
+            "R6",
+            're.search(f"{re.escape(prefix)}{name}", text)\n',
+            're.search(f"{re.escape(prefix)}{re.escape(name)}", text)\n',
+        )
+
     def test_the_tracked_tree_is_clean_against_the_baseline(self):
         result = self.lint(cwd=ROOT)
         self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))

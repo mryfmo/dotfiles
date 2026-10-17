@@ -1,10 +1,10 @@
 ---
 task_id: dotfiles-T128-project-map-pane-open-a01-followup-a01
-status: pre_push_checkpoint
+status: final
 ---
 
-All commands run inside the Codex managed workspace-write sandbox. No permission-gated command or escalation. Task artifacts are at the expected relative paths in this worker worktree; the main-checkout task is read only. Only allowed source paths and this task's evidence directory are edited. PR375 branch/evidence are preserved.
+All revision commands run in the managed workspace-write sandbox without escalation, permission-gated commands or persistent configuration changes. The main checkout and task/acceptance/audit inputs are read only. Edits stay in the allowed hook, existing tests and this task directory. Other task branches and untracked logs are preserved.
 
-UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache avoids the forbidden default uv cache. Branch creation uses --no-track and does not edit shared git config; packed-refs.lock warnings accompanied successful creation. Push will use the known per-command HTTPS identity rewrite and will not change persistent git configuration. No approval prompt is bypassed or retried outside the sandbox.
+uv uses UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache. Tests use temporary symlinks and stub terminal-browser/agent executables with real Bash/jq; no real browser, pane, daemon or process inventory. Independent read-only review is the explicit AGENTS.md fallback for missing Crit data; no Crit server/browser or human review request. No local Bats.
 
-The hook is executed only with stub terminal-browser and stub agent binaries, a real jq on PATH, and temporary call logs. No pane, browser or agent daemon starts. The independent reviewer is read only, requested by the explicit AGENTS.md fallback for absent Crit data. No real browser review or Crit server is opened. Live GitHub actions are limited to this task branch, one draft/ready PR and the protocol's bounded review request if needed; the worker does not integrate or merge.
+The branch was fetched/fast-forwarded to990b607 before edits. Git commits use a per-command signing override because the configured signing key is unavailable; push uses the known per-command HTTPS identity rewrite, no shared git config edit. Nonfatal packed-refs/credential-store warnings are recorded if emitted. GitHub actions are limited to this PR's authorized push and bounded Bot re-review. Orchestrator owns integration/merge.

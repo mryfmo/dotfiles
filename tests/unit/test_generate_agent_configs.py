@@ -1789,7 +1789,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         else [],
                     )
 
-    def _run_project_map_reload_listing(self, map_path: str, listing: dict):
+    def _run_project_map_reload_listing(self, map_path: str, listing: dict, *, cwd: Path | None = None):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             browser = root / "terminal-browser"
@@ -1816,8 +1816,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 input=json.dumps({"tool_input": {"file_path": map_path}}),
                 text=True,
                 capture_output=True,
+                cwd=cwd,
                 env={
                     **os.environ,
+                    **({"PWD": str(cwd)} if cwd is not None else {}),
                     "PATH": str(root),
                     "BROWSER_LISTING": json.dumps(listing),
                     "BROWSER_CALLS": str(root / "browser-calls"),
@@ -1906,6 +1908,29 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(browser, [["ls", "--all", "--json"]])
                 self.assertEqual(len(agent), 2)
                 self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+
+    def test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            physical = root / "physical repo"
+            physical.mkdir()
+            logical = root / "logical repo"
+            logical.symlink_to(physical, target_is_directory=True)
+            browser, agent = self._run_project_map_reload_listing(
+                "./.project-map/index.html",
+                {
+                    "browsers": [
+                        {
+                            "cdpPort": 9222,
+                            "tabs": [{"url": (physical / ".project-map/index.html").as_uri(), "targetId": "A" * 32}],
+                        }
+                    ]
+                },
+                cwd=logical,
+            )
+            self.assertEqual(browser, [["ls", "--all", "--json"]])
+            self.assertEqual(len(agent), 2)
+            self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
 
     def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False):
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,6 +1,6 @@
 ---
 task_id: dotfiles-T128-project-map-pane-open-a01-followup-a01
-status: pre_push_checkpoint
+status: final
 ---
 
-AutoSkill not used. This is a bounded two-row hook bug fix using existing tools. No skill, rule, plugin or model configuration is created or promoted.
+AutoSkill not used. This is a bounded authorized C-50 fix and evidence collection. No skill, rule, hook installation, plugin, profile or model configuration is created or promoted.

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "project-map-worker-review-approval",
+    "scope": "review",
+    "body": "Independent Codex subagent review approved the normalized event-file selection and preservation of port/target validation. The two owned rows have distinct regression tests; parent validation confirms all 8 focused tests pass. No findings. Live browser/daemon and CI are not covered by this local review.",
+    "resolved": true
+  },
+  {
+    "id": "project-map-worker-c50-review-approval",
+    "scope": "review",
+    "body": "Independent read-only Codex review of the C-50 incremental diff against 64df31ea7c7c52ca30e9f1e1b33246c3a44bb3a0 found no issues. URL-side percent7E/percent7e normalization preserves literal percent7E filenames (percent257E). The named test covers both encodings, raw tilde, and the literal-percent control; revise.yaml records the exact previous_head/check. Reviewer reran the named test and ShellCheck successfully.",
+    "resolved": true
+  },
+  {
+    "id": "project-map-physical-cwd-review-approval",
+    "scope": "review",
+    "body": "Independent read-only Codex incremental review against990b607fb286155737f5ee9078d2f572f1624837 approved the quoted Bash pwd-P relative-path prefix and optional fixture cwd seam, with no P0-P3 finding. Reviewer reran the actual-symlink regression and ShellCheck successfully. Parent read the full transcript preserved in validation.md and all three resolved records. Historical earlier approvals cover their earlier checkpoints, not this final revision.",
+    "resolved": true
+  }
+]

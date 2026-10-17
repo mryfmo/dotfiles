@@ -14,7 +14,7 @@ file_path=$(jq -r '.tool_input.file_path // empty' 2>/dev/null) || exit 0
 [[ "$file_path" == */.project-map/index.html ]] || exit 0
 
 listing=$(terminal-browser ls --all --json 2>/dev/null) || exit 0
-selection=$(jq -r --arg file_path "$file_path" --arg cwd "$PWD" '
+selection=$(jq -r --arg file_path "$file_path" --arg cwd "$(pwd -P)" '
     ($file_path | if startswith("/") then . else $cwd + "/" + . end
      | split("/") | reduce .[] as $part ([];
          if $part == ".." then .[:-1]

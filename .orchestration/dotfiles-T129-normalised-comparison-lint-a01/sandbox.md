@@ -23,3 +23,4 @@ Calls outside the sandbox, each planned in advance and run through the permissio
 | 5 | `gh api` reads of the Bot's reviews and comments on the head, at most every 30 seconds, for at most 15 minutes; `gh pr comment <pr> --body '@codex review'` only at 10 minutes without a review | `gh` |
 | 6 | after a P0/P1 fix round only: the push, then `gh pr comment <pr> --body '@codex review'` and the same Bot wait (`bot_rounds=2`) | `git push`, `gh` |
 | 7 | `agmsg-dispatch … AGMSG-PONG …` (question 1, the two alive notes) and `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T129-normalised-comparison-lint-a01 …` | `agmsg-dispatch` |
+| 8 | round 2 (after the revise of 12:01:25Z): the push of the test, fix and evidence commits, then `gh pr comment 387 --body '@codex review'` once, `gh pr checks 387 --watch` and the same bounded Bot wait on the new head; `agmsg-dispatch … AGMSG-RESULT v1 … round=2` | `git push`, `gh`, `agmsg-dispatch` |

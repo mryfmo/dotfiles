@@ -187,3 +187,112 @@ watch rc=
 11:38:52Z
 ```
 The code head `e88f8f05` had 5 checks passed and 8 pending when this record was committed (11:41:48Z); its results and the final head's (this evidence commit, `.orchestration/` only) are read by the orchestrator on GitHub and named in the RESULT.
+## 9. Round 2 (commits 8d7b9831, df8055ce and 12d5d771; head 12d5d771)
+### 9a. Branch
+```console
+$ git log --oneline origin/main..HEAD; git rev-parse origin/main
+12d5d771 fix(lint): accept the qualified pathlib.Path(...).resolve as the table's Path(...).resolve (T129 round 2, review P3)
+df8055ce fix(lint): structural checks for the baseline, the Python normalisers and the jq normaliser (T129 round 2, D-S1-387)
+8d7b9831 test(lint): the three structural checks of the revise round, red on 4b843ce9 (T129 round 2)
+4b843ce9 docs(orchestration): T129 normalised-comparison lint a01 task copy and evidence (4663dc4d, 9fbd0de0, 26ed34bb, e88f8f05)
+e88f8f05 fix(lint): the R2 accepted forms keep a literal tail, Python R6 needs re as the receiver, one row per distinct line (T129 re-review)
+26ed34bb fix(lint): find the test word anywhere on the line and anchor jq programs at the jq word (T129 worker review)
+9fbd0de0 refactor(lint): bring lint-comparisons.py under the 200-line cap (T129 Amendment 2, D-cap-F2)
+4663dc4d feat(lint): refuse string-form comparisons of paths, URLs and processes (T129 normalised-comparison lint a01)
+35ab0e95a7fe27c501db3478d4f37e69a514d532
+[exit 0]
+```
+### 9b. The three checks red against the previous head's script (the tests of 8d7b9831 on 4b843ce9's scripts/lint-comparisons.py; the grep keeps the test, FAIL and summary lines)
+```console
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_lint_comparisons.py -v 2>&1 | /usr/bin/grep -E "^(test_|FAIL:|ERROR:|Ran|OK|FAILED)"
+test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails) ... FAIL
+test_a_baseline_row_matching_no_hit_fails_as_stale (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_matching_no_hit_fails_as_stale) ... ok
+test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails) ... 
+test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted (tests.unit.test_lint_comparisons.LintComparisonsTest.test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted) ... ok
+test_the_jq_normaliser_is_required_on_each_operand_side (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_jq_normaliser_is_required_on_each_operand_side) ... 
+test_the_tracked_tree_is_clean_against_the_baseline (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_tracked_tree_is_clean_against_the_baseline) ... ok
+FAIL: test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails)
+FAIL: test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails) (form='if fake.realpath(path) == "/x":\n    pass\n')
+FAIL: test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails) (form='if fake.resolve(path) == "/x":\n    pass\n')
+FAIL: test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails) (form='re.search(f"^{fake.escape(name)}$", text)\n')
+FAIL: test_the_jq_normaliser_is_required_on_each_operand_side (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_jq_normaliser_is_required_on_each_operand_side) (form="jq -r 'def canonical_path: .; select((.url | canonical_path | canonical_path) == $path)'\n")
+FAIL: test_the_jq_normaliser_is_required_on_each_operand_side (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_jq_normaliser_is_required_on_each_operand_side) (form="jq -r 'def canonical_path: .; select(.url | endswith($path | canonical_path | canonical_path))'\n")
+Ran 6 tests in 3.370s
+FAILED (failures=6)
+[exit 1]
+```
+### 9c. Green after the fix
+```console
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_lint_comparisons.py -v
+test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails) ... ok
+test_a_baseline_row_matching_no_hit_fails_as_stale (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_matching_no_hit_fails_as_stale) ... ok
+test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails) ... ok
+test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted (tests.unit.test_lint_comparisons.LintComparisonsTest.test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted) ... ok
+test_the_jq_normaliser_is_required_on_each_operand_side (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_jq_normaliser_is_required_on_each_operand_side) ... ok
+test_the_tracked_tree_is_clean_against_the_baseline (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_tracked_tree_is_clean_against_the_baseline) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 3.363s
+
+OK
+[exit 0]
+```
+### 9d. The tracked tree against the regenerated baseline (one row per hit)
+```console
+$ uv run --offline --no-project python -I scripts/lint-comparisons.py
+[exit 0]
+```
+### 9e. ruff check and format
+```console
+$ ruff check scripts/lint-comparisons.py tests/unit/test_lint_comparisons.py; ruff format --check scripts/lint-comparisons.py tests/unit/test_lint_comparisons.py
+All checks passed!
+2 files already formatted
+[exit 0]
+```
+### 9f. The baseline's shape (rows, per rule, malformed, distinct)
+```console
+$ wc -l scripts/lint-comparisons-baseline.tsv; cut -f2 scripts/lint-comparisons-baseline.tsv | sort | uniq -c; awk -F'\t' 'NF != 3 || $3 !~ /^[0-9a-f]{64}$/' scripts/lint-comparisons-baseline.tsv | wc -l; sort -u scripts/lint-comparisons-baseline.tsv | wc -l
+      86 scripts/lint-comparisons-baseline.tsv
+  33 R1
+   2 R2
+   6 R3
+  41 R4
+   4 R6
+       0
+      85
+[exit 0]
+```
+### 9g. Caps
+```console
+$ git diff --numstat origin/main...HEAD
+3	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/autoskill.md
+138	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/baseline-rows.md
+82	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/dotfiles-T129-normalised-comparison-lint-a01-worker-crit.json
+10	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/dotfiles-T129-normalised-comparison-lint-a01-worker-review-receipt.md
+9	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/learning.md
+123	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/question-1.md
+97	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/report.md
+25	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/sandbox.md
+120	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/task.md
+189	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/validation.md
+86	0	scripts/lint-comparisons-baseline.tsv
+199	0	scripts/lint-comparisons.py
+204	0	tests/unit/test_lint_comparisons.py
+[exit 0]
+```
+### 9h. Caps summed (Amendment 2's reading)
+```console
+$ git diff --numstat origin/main...HEAD | awk '…the same awk as §5a…'; wc -l scripts/lint-comparisons.py
+outside tests/ and .orchestration/, the baseline excluded (D-cap-F2): 199 changed lines (cap 200); under tests/: 204 added lines (cap 1000)
+     199 scripts/lint-comparisons.py
+[exit 0]
+```
+### 9i. The round's diff
+```console
+$ git diff 4b843ce9..HEAD --stat
+ scripts/lint-comparisons-baseline.tsv |  1 +
+ scripts/lint-comparisons.py           | 49 +++++++++++++++++------------------
+ tests/unit/test_lint_comparisons.py   | 44 +++++++++++++++++++++++++++++++
+ 3 files changed, 69 insertions(+), 25 deletions(-)
+[exit 0]
+```

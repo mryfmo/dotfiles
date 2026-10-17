@@ -39,14 +39,14 @@ threat_table:
   - control: orchestrator effect forced worker removal
     disposition: "residual: none planned; herdr-agents --remove-worker refuses a dirty worktree without --force, and a forced removal is recorded in the acceptance record with the uncommitted state it discarded"
 premises:
-  - claim: 'the owned row is in the lineage record''s owner section on origin/main at dispatch (absent until boundary (16): the row was added on 2026-10-15 after the audit of e9404a6; this task never dispatches before)'
+  - claim: 'the owned row is in the lineage record''s owner section on origin/main at dispatch (present since boundary (16), PR #373 merged as 1d418126 on 2026-10-16: the row was added on 2026-10-15 after the audit of e9404a6)'
     command: 'git show origin/main:.orchestration/acceptance/dotfiles-T128-chain-github-scripts-a01.md 2>/dev/null | /usr/bin/grep -c "^audit:e9404a6:1	disposition-backtick-truncation" || true'
     output: |-
-      0
-  - claim: 'the five other rows of the section are closed by PR #360 and marked so in the record on origin/main at dispatch (the fixed lines were added on 2026-10-15; absent until boundary (16))'
+      1
+  - claim: 'the five other rows of the section are closed by PR #360 and marked so in the record on origin/main at dispatch (the fixed lines were added on 2026-10-15 and landed with boundary (16), PR #373)'
     command: 'git show origin/main:.orchestration/acceptance/dotfiles-T128-chain-github-scripts-a01.md 2>/dev/null | /usr/bin/grep -c "fixed in PR #360" || true'
     output: |-
-      0
+      5
   - claim: 'resolve-threads.sh on origin/main backticks the disposition in both reply sentences and refuses nothing about its content'
     command: 'git show origin/main:scripts/orchestrator/resolve-threads.sh | /usr/bin/grep -c "cannot carry it losslessly"'
     output: |-
@@ -55,7 +55,7 @@ premises:
 
 # AGMSG-TASK dotfiles-T128-chain-github-scripts-followup-a02 — resolve-threads.sh refuses a disposition the reply template cannot carry losslessly (the second owner task of the chain-github-scripts lineage; plan 020 step 1; the audit of e9404a6, PR #360)
 
-Written 2026-10-15 by the orchestrator seat (the bus time of its TASK line is the dispatch time), pair-reviewed before dispatch; dispatched only after boundary (16) puts the row and the five `fixed in PR #360` lines on `origin/main` (both premises then read `1` and `5`; the premise outputs above are today's, before the boundary). The audit of PR #360's head e9404a6 (finding 1, P2, `resolve-threads.sh:57`): the reply template wraps the disposition in backticks, the form `fill_sweep.py`'s reader takes back from the thread; a disposition that itself holds a backtick (an evidence command such as ``rg 'uses `example`' README.md``) is cut at the embedded backtick when read back, `fill_sweep.py` reports `filled 1 gaps 0`, and the saved evidence is shorter than what the orchestrator wrote. The row is `audit:e9404a6:1` (class `disposition-backtick-truncation`) under `## Owned by dotfiles-T128-chain-github-scripts-followup-a01` in `.orchestration/acceptance/dotfiles-T128-chain-github-scripts-a01.md`; the five rows above it are closed by PR #360 and carry a `fixed in PR #360` line each.
+Written 2026-10-15 by the orchestrator seat (the bus time of its TASK line is the dispatch time), pair-reviewed before dispatch; dispatched after boundary (16) (PR #373, merged as 1d418126 on 2026-10-16) put the row and the five `fixed in PR #360` lines on `origin/main` (both premises read `1` and `5`, the outputs recorded above). The audit of PR #360's head e9404a6 (finding 1, P2, `resolve-threads.sh:57`): the reply template wraps the disposition in backticks, the form `fill_sweep.py`'s reader takes back from the thread; a disposition that itself holds a backtick (an evidence command such as ``rg 'uses `example`' README.md``) is cut at the embedded backtick when read back, `fill_sweep.py` reports `filled 1 gaps 0`, and the saved evidence is shorter than what the orchestrator wrote. The row is `audit:e9404a6:1` (class `disposition-backtick-truncation`) under `## Owned by dotfiles-T128-chain-github-scripts-followup-a01` in `.orchestration/acceptance/dotfiles-T128-chain-github-scripts-a01.md`; the five rows above it are closed by PR #360 and carry a `fixed in PR #360` line each.
 
 ## What to do
 
@@ -70,7 +70,7 @@ Written 2026-10-15 by the orchestrator seat (the bus time of its TASK line is th
 
 ## Completion
 
-A fresh branch from `origin/main` after boundary (16), one new PR. The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's single review (on PR open) is in, every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the outputs above, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 as advisory; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot reviews once, at PR open; its P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round stops the PR and goes to the operator as a decision; a P2 on this PR whose fix stays within these files and is small is fixed in a revise round the orchestrator sends with a `check=` (correction C-50); any other P2 is advisory and recorded under the same heading in `.orchestration/acceptance/dotfiles-T128-chain-github-scripts-a01.md` for the lineage's next owner task. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test name, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-chain-github-scripts-followup-a02/task.md>` and the evidence paths.
+One PR from a fresh branch off `origin/main` (after boundary (16), PR #373 merged as 1d418126). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more on `@codex review` after a P0/P1 fix round: plan 020 step 2), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the outputs above, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 thread with the disposition the worker proposes; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot's P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=2` (the Bot's review at PR open and its re-review after the fix round), stops the PR and goes to the operator as a decision; a P2 on this PR's own change whose fix stays within `allowed_files` and is small (one flag or a few lines plus one test) is fixed in a revise round the orchestrator sends with a `check=` while INV-6's counts allow it (C-50); any other P2 is advisory, owned by `dotfiles-T128-chain-github-scripts-followup-a03`, which the orchestrator writes when the first advisory P2 appears, before the PR's dispositions (C-51), and recorded under `## Owned by dotfiles-T128-chain-github-scripts-followup-a03` in this task's acceptance record. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names per row, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-chain-github-scripts-followup-a02/task.md>` and the evidence paths.
 
 ## Change (round 2, 2026-10-15 07:2xZ)
 
@@ -83,3 +83,12 @@ The review seat's rounds 1 and 2 (P2, three P3): the newline leaves the refusal 
 ## Change (round 4, 2026-10-15 07:5xZ)
 
 The Codex half's round 3 (P2): the environment row had claimed the script never reads a PR checkout's files as if the script checked its paths; it reads the two paths its caller passes with no check of its own, and the row now says so (the orchestrator passes its own checkout's files). The review seat confirmed round 3.
+
+## Change (premises, 2026-10-16T06:25:31Z, before dispatch)
+
+Boundary (16) (PR #373, merged as 1d418126) landed the lineage record's owned row and the five `fixed in PR #360` lines on `origin/main`, so premises 1 and 2 now record the post-boundary outputs (1 and 5) that `presend.sh` replays at dispatch; their claims say so. Nothing else changes from the pair-confirmed hash `5d3b78db`; re-confirmed Codex first (C-54). The Codex half's round 5 (2026-10-16T08:26:10Z): the introduction had still called the recorded outputs pre-boundary values; it now names the boundary and the recorded values.
+
+## Change (Completion, 2026-10-16T08:44:50Z, before dispatch)
+
+The review seat's round on the premise change (P2, P3): the Completion clause still had the single-review form written before T13's amendment 6 (no `open:<thread id>`, no `bot_rounds=2`, "every P2 as advisory", the pre-C-51 owner wording). It is now the task template's clause of 2026-10-16 (`.orchestration/templates/task-short.md`, Completion): the Bot's review at PR open and once more on `@codex review` after a P0/P1 fix round, a surviving P0/P1 listed as `open:<thread id>` with `bot_rounds=2`, the C-50 revise round for a small in-scope P2, every other P2 advisory and owned by `dotfiles-T128-chain-github-scripts-followup-a03` (written when the first advisory P2 appears, C-51) under `## Owned by dotfiles-T128-chain-github-scripts-followup-a03` in this task's acceptance record. Nothing else changes from `8ce7462f`; re-confirmed Codex first (C-54).
+

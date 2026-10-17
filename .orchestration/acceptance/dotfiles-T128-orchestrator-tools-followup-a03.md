@@ -1,10 +1,155 @@
 ---
 {
+  "audit_findings": [
+    {
+      "evidence": "shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md",
+      "n": "1",
+      "reason": "advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4: the same finding as audit:ef74eae:3 and local:f364b7d:1, the window alignment considering evictions from an underfull window, already an owned row)"
+    },
+    {
+      "evidence": "shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md",
+      "n": "2",
+      "reason": "advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4: the same finding as audit:ef74eae:2 and local:ef74eae:1, timestamp-ordered history letting concurrent rows interleave inside the window, already an owned row)"
+    },
+    {
+      "evidence": "shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md",
+      "n": "3",
+      "reason": "advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4: BUS_READ_WINDOW=1 accepted though every send then fails its recording, now the owned row audit:f364b7d:3 in the owner section)"
+    },
+    {
+      "evidence": "shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md",
+      "n": "4",
+      "reason": "advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4: the cache warm-up and the dispatch naming different caches under another UV_CACHE_DIR or XDG_CACHE_HOME, now the owned row audit:f364b7d:4 in the owner section)"
+    },
+    {
+      "evidence": "shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md",
+      "n": "5",
+      "reason": "advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4: the same finding as the Bot's 4300891366, the checker tests depending on a warm cache for PyYAML, already an owned row)"
+    },
+    {
+      "evidence": "/usr/bin/grep -c 'M-20261017-02' .orchestration/learning/index.yaml",
+      "n": "6",
+      "reason": "the same as audit:ef74eae:4: the record block the chain wrote was recomputed from the review worktree at the PR head, where M-20261017-02 (the mistake record naming the class) is not tracked, so searches.records read []; finish-pr.sh rewrites the block from the main checkout, where the lookup returns M-20261017-02.md, before the gate's S6 check reads it"
+    },
+    {
+      "evidence": "/bin/ls .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-audit-*.md.last.md",
+      "n": "7",
+      "reason": "the finding names the record: the pasted counters print bot_p1_heads_after_result and audits as unknown, and the counters bullet wants the source reading for each: audits read from the receipts under .orchestration/validation (`/bin/ls …-audit-*.md.last.md`: 2 files, the heads ef74eae and f364b7d; the audits of the earlier heads were superseded in place), bot P1 heads after the first RESULT read from the sweep JSON and 374-extra.tsv (the JSON carries no `level: P1` field, the badge lives in the comment body: the Bot threads of this PR are the five rows of 374-extra.tsv, four `fixed:` in the rounds the operator decided and 4300891366 advisory under a04), both pasted in the bullet of 2026-10-17T05:44:40Z below; the earlier rounds' missing paste is the record's 07 of chain 7 and the five S2 decisions are the plan's rows"
+    },
+    {
+      "evidence": "/usr/bin/grep -c 'audit:4460d52:3' .orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md",
+      "n": "8",
+      "reason": "the finding names the revise lines: their check= named the module and the test in prose instead of the tests/<file>::<name> selector; from the #382 round-3 line on every revise carries the selector form and previous_head=, and the dispatcher's refusal of a revise line without them is the tools a04 row audit:4460d52:3"
+    },
+    {
+      "evidence": "/usr/bin/grep -c . .agents/worklog/orchestrator-glue/374-extra.tsv",
+      "n": "9",
+      "reason": "the five Bot threads are replied to and resolved by finish-pr.sh from 374-extra.tsv before the sweep re-run, the gate and the merge (its first step, scripts/orchestrator/resolve-threads.sh), after the chain's audit by design, so at the audit's moment they stand open on GitHub with their dispositions local; the chain-8 audit ran on the same head f364b7d as chain 7 (the update-branch found nothing to merge), its ninth finding replacing chain 7's ninth (the two deferred findings, now owner rows audit:f364b7d:3 and :4)"
+    }
+  ],
   "dispatch": [
-    "AGMSG-TASK v1 task_id=dotfiles-T128-orchestrator-tools-followup-review-a03 round=1 repo=~/Workspace/dotfiles task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-review-a03.md task_sha256=a328b9871e0591f16a451d228823c5528791abb67c639623d7c7deb0804a5b3b tools_task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md tools_task_sha256=7f2f42392809b909eea3f3110d7378e61ea1725c32105aa2a8824dc2843463d8 deadline=none note=one-round-review-of-the-owner-task-corrections-C-52-(2)-and-C-53-(2)-name(the-Codex-half-confirmed-first,C-54);answer-with-AGMSG-RESULT-verdict=confirm|revise-tools_task_sha256=<sha> read_at=read",
-    "AGMSG-TASK v1 task_id=dotfiles-T128-orchestrator-tools-followup-review-a03 round=2 repo=~/Workspace/dotfiles task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-review-a03.md task_sha256=8bec237cac18e2cc81512a9ac803ee01a53f551da946f4417f1d0fe4207f807f tools_task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md tools_task_sha256=296f35d9c815a33d3873b9abca0ee4d70546383fb34ed8be3d5707708a99a089 deadline=none note=one-round-review-of-the-owner-task-corrections-C-52-(2)-and-C-53-(2)-name(the-Codex-half-confirmed-first,C-54;your-round-1-applied:the-window-read-anchored-on-the-newest-pre-send-row-not-a-count,the-checker-s-own-line-asserted-through-a-stub-checker-beside-the-copied-script,presend.sh-keeps-the-premise-replay-and-the-mask-check,the-exitcode-line;the-Codex-rounds-4-and-5:the-two-windows-are-aligned-as-views-of-one-bus-by-the-smallest-shift,the-last-new-row-must-equal-the-line,anything-else-refused,with-eviction-and-collision-cases;the-Codex-round-6-P1:the-exemption-needs-a-successful-duplicate-rejecting-YAML-parse-yielding-review,a-malformed-front-matter-is-checked;the-Codex-round-7-P1:the-fake-uv-delegates-to-the-real-uv-so-PyYAML-is-present-as-in-production;the-Codex-round-8-P1:a-nonempty-overlap-is-required-unless-the-pre-send-window-was-empty;the-Codex-round-9-P2:the-pre-send-window-file-is-a-private-mktemp-file-removed-by-a-trap,with-its-own-row;the-Codex-round-10-P1:the-alignment-must-be-unique-across-every-shift-including-no-change,else-refused,with-a-periodic-bus-case);answer-with-AGMSG-RESULT-verdict=confirm|revise-tools_task_sha256=<sha> read_at=read",
-    "AGMSG-TASK v1 task_id=dotfiles-T128-orchestrator-tools-followup-review-a03 round=3 repo=~/Workspace/dotfiles task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-review-a03.md task_sha256=5a189d71db69b6a482b01decec362514f370dec364977a9b662b34281cb0487e tools_task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md tools_task_sha256=5a741e63e619ad31f83f10516be178f0ba63490bca2d4e16f9e45c14d4070b0a deadline=none note=one-round-review-of-the-owner-task-corrections-C-52-(2)-and-C-53-(2)-name(the-Codex-half-confirmed-first,C-54;your-round-1-applied:the-window-read-anchored-on-the-newest-pre-send-row-not-a-count,the-checker-s-own-line-asserted-through-a-stub-checker-beside-the-copied-script,presend.sh-keeps-the-premise-replay-and-the-mask-check,the-exitcode-line;the-Codex-rounds-4-and-5:the-two-windows-are-aligned-as-views-of-one-bus-by-the-smallest-shift,the-last-new-row-must-equal-the-line,anything-else-refused,with-eviction-and-collision-cases;the-Codex-round-6-P1:the-exemption-needs-a-successful-duplicate-rejecting-YAML-parse-yielding-review,a-malformed-front-matter-is-checked;the-Codex-round-7-P1:the-fake-uv-delegates-to-the-real-uv-so-PyYAML-is-present-as-in-production;the-Codex-round-8-P1:a-nonempty-overlap-is-required-unless-the-pre-send-window-was-empty;the-Codex-round-9-P2:the-pre-send-window-file-is-a-private-mktemp-file-removed-by-a-trap,with-its-own-row;the-Codex-round-10-P1:the-alignment-must-be-unique-across-every-shift-including-no-change,else-refused,with-a-periodic-bus-case;your-round-2:among-the-new-rows-the-last-one-equal-to-the-line-is-the-send,the-fake-uv-runs-the-probe-form-itself,the-module-s-uv-dependency-named-as-new);answer-with-AGMSG-RESULT-verdict=confirm|revise-tools_task_sha256=<sha> read_at=read"
-  ]
+    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=6 status=accepted reason=PR-374-merged-as-af4f1e997f78119d5994d7d7b1966894d62bbc6a-at-05:45:55Z(gh-pr-merge--squash--match-head-commit-f364b7d4);the-five-Bot-threads-resolved-with-their-dispositions;the-audit-s-nine-P2-dispositioned(five-advisory-under-a04,four-on-the-record);INV-6-revises-5-under-the-operator-s-five-decisions,S1-class-closed-by-the-re-plan-round;gate-pass;no-further-action-for-you-on-this-task;your-seat-is-re-seated-by-the-operator-before-any-further-TASK(C-60) read_at=read"
+  ],
+  "format": 1,
+  "head": "f364b7d478ab100d56c80b6935b90ffcf72a99ab",
+  "ledger": [
+    {
+      "class": "uv-caller-state-interpreter",
+      "id": "4292675906"
+    },
+    {
+      "class": "uv-caller-state-interpreter",
+      "id": "4299651928"
+    },
+    {
+      "class": "uv-caller-state-interpreter",
+      "id": "4300102967"
+    },
+    {
+      "class": "uv-caller-state-interpreter",
+      "id": "4300738707"
+    },
+    {
+      "class": "uv-caller-state-interpreter",
+      "id": "4300891366"
+    },
+    {
+      "class": "tool-half",
+      "id": "audit:4460d52:3"
+    },
+    {
+      "class": "tool-half",
+      "id": "audit:4460d52:4"
+    },
+    {
+      "class": "advisory-p2",
+      "id": "audit:f364b7d:3"
+    },
+    {
+      "class": "advisory-p2",
+      "id": "audit:f364b7d:4"
+    },
+    {
+      "class": "uv-caller-state-interpreter",
+      "id": "audit:ef74eae:1"
+    },
+    {
+      "class": "advisory-p2",
+      "id": "audit:ef74eae:2"
+    },
+    {
+      "class": "advisory-p2",
+      "id": "audit:ef74eae:3"
+    },
+    {
+      "class": "s6-block-records",
+      "id": "audit:ef74eae:4"
+    },
+    {
+      "class": "evidence-command-unlanded-owner",
+      "id": "audit:ef74eae:5"
+    },
+    {
+      "class": "advisory-p2",
+      "id": "audit:f364b7d:1"
+    },
+    {
+      "class": "advisory-p2",
+      "id": "audit:f364b7d:2"
+    },
+    {
+      "class": "advisory-p2",
+      "id": "audit:f364b7d:5"
+    },
+    {
+      "class": "s6-block-records",
+      "id": "audit:f364b7d:6"
+    },
+    {
+      "class": "counters-unknown-components",
+      "id": "audit:f364b7d:7"
+    },
+    {
+      "class": "revise-line-contract",
+      "id": "audit:f364b7d:8"
+    },
+    {
+      "class": "threads-resolved-at-finish",
+      "id": "audit:f364b7d:9"
+    }
+  ],
+  "pr": 374,
+  "searches": [
+    {
+      "class": "advisory-p2",
+      "records": []
+    },
+    {
+      "class": "uv-caller-state-interpreter",
+      "records": []
+    }
+  ],
+  "task": "dotfiles-T128-orchestrator-tools-followup-a03"
 }
 ---
 
@@ -27,3 +172,145 @@
 - 2026-10-15T22:42:43Z review seat round 2 (bus 22:41:42Z, on 296f35d9): `revise`: P2-1 the acceptance rule took only the newest new row for the send, while another seat's line can land newest before the post-send read (agmsg-dispatch returns after the read); P3-1 the fake uv made the module's first real uv call and the sentence called the dependency existing. Round 12: among the new rows the last one equal to the line in sender, recipient and text is the send, refused only when none is; the fake uv runs the `UV_PYYAML` probe form itself (`--offline` when the cache holds PyYAML) and the sentence names the dependency as new: task sha256 `5a741e63e619ad31f83f10516be178f0ba63490bca2d4e16f9e45c14d4070b0a`, brief `5a189d71db69b6a482b01decec362514f370dec364977a9b662b34281cb0487e`, `presend.sh` OK; `ACCEPTANCE round=2 status=accepted` sent; Codex round 12 first, the seat's round 3 after its confirm (C-54).
 - 2026-10-15T22:44:43Z Codex half round 12 (`…-codex-r12.md`, on 5a741e63, 87 s): `confirm`, no finding. The seat's round 3 on the same hash dispatched through `dispatch-direct.sh` (C-54).
 - 2026-10-15T22:46:33Z review seat round 3 (bus 22:46:06Z, on 5a741e63): `confirm`; the Codex half confirmed the same hash (`…-codex-r12.md`). **Pair-confirmed: task sha256 `5a741e63e619ad31f83f10516be178f0ba63490bca2d4e16f9e45c14d4070b0a`** (Codex rounds 1 to 12, seat rounds 1 to 3; C-54 held throughout). `ACCEPTANCE round=3 status=accepted` sent. Dispatch after boundary (16), to a free Claude seat (the tools a02 PR is merged, `after:` is satisfied).
+- 2026-10-16T08:28:22Z review seat round 4 (bus 08:27:35Z, on b291ba85): `confirm`; with the Codex confirm (round 13) **tools-a03 is pair-confirmed again at `b291ba85f89d46877f74969d4e33ce994ff875f83454df58dbd8037a7d745da7`**; presend rc 0 (premises hold on 1d418126); the TASK line to `claude-standard-dot-a003` (worker-c, wA:p3) by dispatch-direct at 2026-10-16T08:28:22Z.
+
+## Ledger of the Bot reviews on PR #374 (rows id<TAB>class)
+
+4292675906	uv-caller-state-interpreter
+4299651928	uv-caller-state-interpreter
+4300102967	uv-caller-state-interpreter
+4300738707	uv-caller-state-interpreter
+4300891366	uv-caller-state-interpreter
+
+- 2026-10-16T21:57:29Z RESULT round 1 `status=done` (bus 21:56:07Z): PR #374 `tools/dispatch-checker-window`, head 57d3577c on base 1d418126 (766c1491 change and task copy, aeb4a0fb evidence, c8e813ea the Bot P1 fix, 57d3577c fix-round evidence); dispatch.sh refuses a task file failing the checker and reads a bounded history window; tests `test_dispatch_refuses_a_task_file_failing_the_checker` and `test_dispatch_reads_a_bounded_history_window`, two existing tests edited for the cap removal, 54 of 54, 8 of 8 mutants; caps 105 / 114; CI 13 pass; security review on aeb4a0fb clean; task_copy b291ba85. Bot: 4292675906 (P1, uv without --no-project discovering the caller's pyproject) `fixed:c8e813ea`; the re-review of 57d3577c left 4299651928 (P1): uv still executes a caller cwd's `.python-version` interpreter (`./pwn`) even with `run --no-project` (uv 0.7.22), and `--no-project` still uses a venv found in the current or parent directory; remedy: run uv from the trusted script root or pin the interpreter; the threat row claiming the caller cwd chooses nothing is contradicted. The one fix round is spent (`bot_rounds=2`), so the Completion clause sends the PR to the operator: D-P1-374 in plan 022 (default A), ACCEPTANCE `pending-integration` hold at 2026-10-16T21:57:29Z.
+- 2026-10-16T22:06:27Z operator decision D-P1-374 (AskUserQuestion, answer A, recorded in plan 022): one more fix round for 4299651928 (uv run from the trusted script root, one test; the task text's threat row corrected by the orchestrator); revise line to a003 at 2026-10-16T22:06:27Z; `4299651928` becomes `fixed:<sha>` with the RESULT.
+- 2026-10-16T22:27:40Z RESULT round 2 `status=done` (bus 22:25:43Z): head 9df6b0c7 (fix 8adf74bb: both uv forms run in a subshell cd'd to the script's checkout root; the checker named by the script directory's absolute path); `4299651928 fixed:8adf74bb`; the Bot's re-review of 9df6b0c7 without findings; 54 of 54 tests, 9 of 9 mutants, caps 108 / 122, CI 13 pass; `374-extra.tsv` holds both P1 rows as fixed. ACCEPTANCE `pending-integration` at 22:26:54Z; the owner task `dotfiles-T128-orchestrator-tools-followup-a04` written (C-51) and the chain (`374-chain1.log`, Bot wait 5 min) starts now; PR #372's chain resumes after a002's fix round.
+
+## Local review of 9df6b0c (the fix-round head): one P1 (rows id<TAB>class)
+
+local:9df6b0c:1	uv-caller-state-interpreter
+local-finding: 9df6b0c:1 fixed:411c7d68
+
+- 2026-10-16T22:38:10Z the chain on 9df6b0c7 (`374-chain1.log`): CI pass, no Bot review in the 5-minute wait, sandbox scan clean, sweep 13 items / 0 gaps; the local review (`…-local-review-9df6b0c.md`) found a P1: an inherited `VIRTUAL_ENV` pointing at a PR checkout's `.venv` still selects uv's interpreter after the cd, so its site-packages can run during the `import yaml` probe before validation. The third finding of one class (the interpreter chosen from caller state), so the three rows carry one slug, `uv-caller-state-interpreter`, and the S6 search ran (M-20261017-02, C-57: name the interpreter, strip the inherited environment):
+
+```
+search: uv-caller-state-interpreter -> M-20261017-02.md
+search-body: uv-caller-state-interpreter -> M-20261017-02.md
+compactiondb: uv-caller-state-interpreter -> 0 matches
+```
+
+- 2026-10-16T22:38:10Z a further fix round makes INV-6 read `revises 2` (S2): D-S2-374-2 (default A: one round that closes the class, pinning the interpreter and stripping VIRTUAL_ENV and the UV_* overrides, with one test setting every caller-state source at once); hold ACCEPTANCE at 2026-10-16T22:38:10Z.
+- 2026-10-16T22:42:38Z operator decision D-S2-374-2 (AskUserQuestion, answer A, recorded in plan 022): the class-closing fix round (pin the interpreter, strip the inherited environment, one test with every caller-state source set) sent to a003 at 2026-10-16T22:42:38Z; `local:9df6b0c:1` becomes `fixed:<sha>` with the RESULT.
+- 2026-10-16T23:14:12Z RESULT round 3 `status=done` (bus 23:13:19Z): head 6ae8cf75 (fix 411c7d68: both uv forms name `--python` (python3 from `mise which` under `env -i` at the root, else python3 on PATH; a non-absolute path refuses) and run under `env -u VIRTUAL_ENV, VIRTUAL_ENV_PROMPT, CONDA_PREFIX` and every inherited `UV_*`, keeping `--no-project` and the cd); test `test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state`; 12 of 12 mutants, 55 of 55 tests, caps 120 / 145, CI 13 pass; `local:9df6b0c:1 fixed:411c7d68`. The Bot's re-review of 6ae8cf75: P1 4300102967, the `import yaml` probe runs without `-I`, so an inherited PYTHONPATH loads a caller's yaml.py (the fourth finding of the class: the environment was stripped by a denylist, and PYTHON* was not on it). A further round makes INV-6 read `revises 3`: D-S2-374-3 (default A: end the class by allowlist, `env -i` with PATH, HOME and the agmsg variables for the probe and the checker, plus `-I` on the probe; one test planting yaml.py on PYTHONPATH and every earlier source at once); hold ACCEPTANCE at 2026-10-16T23:14:12Z.
+- 2026-10-16T23:16:22Z operator decision D-S2-374-3 (AskUserQuestion, answer A, recorded in plan 022): the allowlist round (env -i with an explicit allowlist for the probe and the checker, -I on the probe, one test planting every source at once) sent to a003 at 2026-10-16T23:16:22Z; `4300102967` becomes `fixed:<sha>` with the RESULT. C-57's method gains the allowlist form.
+- 2026-10-16T23:59:11Z RESULT round 4 `status=done` (bus 23:38:46Z): head 9cf65c02 (fix b18698d5: both uv forms run under `env -i` with PATH, HOME, LANG/LC_ALL when set and the AGMSG_* variables only; the probe runs `python -I`; the pinned `--python`, `--no-project` and the cd kept); `4300102967 fixed:b18698d5`; the Bot's re-review of 9cf65c02 without findings; the test extended to every caller-state source at once (the fake uv inherits only the allowlisted variables); 13 of 13 mutants, 55 of 55 tests, caps 124 / 153, CI 13 pass (BEHIND: main moved). ACCEPTANCE `pending-integration` at 2026-10-16T23:59:11Z; the chain runs after PR #376's.
+
+
+## Owned by dotfiles-T128-orchestrator-tools-followup-a04 (advisory P2 of the final head; plan 020 step 1.2; rows id<TAB>class)
+
+local:ef74eae:1	advisory-p2
+local-finding: ef74eae:1 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (- [P2] Allow concurrent rows to interleave in timestamp-ordered history — scripts/orchestrator/dispatch.sh:283-284); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md (the owner task file in the main checkout, e23b5499622b2f0b3c5f97c35257335c14897f66f7baf9d8aafeff30b3941a33; it lands with the next boundary)
+local:ef74eae:2	advisory-p2
+local-finding: ef74eae:2 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (- [P2] Exclude impossible evictions from underfull history windows — scripts/orchestrator/dispatch.sh:284-285); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md (the owner task file in the main checkout, e23b5499622b2f0b3c5f97c35257335c14897f66f7baf9d8aafeff30b3941a33; it lands with the next boundary)
+C-58:1	tool-half
+- C-58's tool half (2026-10-17T01:16:01Z): dispatch.sh prints the boundary of the task's allowed_files (a path under home/dot_claude/ or home/dot_config/claude/ is Claude-boundary, under home/dot_codex/ Codex-boundary) and refuses a `repo=` whose worktree belongs to a seat of the same kind (the seat kind from the agmsg identity registered at that path), with one test; the orchestrator's procedure half is standing since 2026-10-17T01:16Z.
+C-59:1	tool-half
+- C-59's dispatcher half (2026-10-17T02:00:08Z): dispatch.sh refuses to send a `status=revise` ACCEPTANCE or an `amendment=` TASK line for a task whose acceptance record holds a ledger class (other than advisory-p2) at three or more rows without a `re-plan: <class> -> ` line naming specification, design, implementation and verification (the same grammar as the task dotfiles-T128-s1-replan-gate-a01 gives the counters and the gate), exit 2 with the C-59 guidance; one test.
+4300891366	advisory-p2
+- the Bot's re-review of 5ef0ef3b (2026-10-17T02:32:28Z): the offline uv in the dispatch tests needs PyYAML in the pinned cache, which a fresh runner lacks; CI passes only because an earlier module warms the cache in the same job (an order dependency); the owner adds a warm step to the test helper checker_dispatch with the pinned HOME and UV_CACHE_DIR (test file only). Advisory after the re-plan round of D-S2-374-5, as that decision recorded (a further finding of the class is advisory under a04); the Bot's P1 badge is read as the class's seventh instance on the test, not on the script.
+C-60:1	tool-half
+- dispatch.sh refuses an AGMSG-TASK line to a seat whose live process does not carry its profile's launch arguments (scripts/orchestrator/seat-args.sh of dotfiles-T128-seat-launch-args-a01: exit 3 unlaunched, exit 2 differs), printing its line and sending nothing; a resumed seat (M-20261017-05, C-60) is then refused at dispatch, not only at the boundary check; one test.
+audit:4460d52:3	tool-half
+- the #382 audit's finding 3 (2026-10-17T04:20:20Z): dispatch.sh refuses a status=revise ACCEPTANCE line without previous_head= (64 hex) and without a check= naming at least one test selector (tests/…::…), printing which is missing and sending nothing; one test.
+audit:4460d52:4	tool-half
+- the #382 audit's finding 4 (2026-10-17T04:20:20Z): dispatch.sh refuses a status=revise ACCEPTANCE line while the task's acceptance record holds no pasted regime-counters.sh output (a fenced block beginning `task=<task id> tasks=`) newer in the file than the latest RESULT bullet, printing the rule and sending nothing; one test.
+audit:f364b7d:3	advisory-p2
+- the #374 audit of f364b7d, finding 3 (2026-10-17T05:33:36Z): BUS_READ_WINDOW=1 passes dispatch.sh's validation while every send against a non-empty bus then fails its recording; the owner rejects the unsupported setting before delivery, with one test.
+audit:f364b7d:4	advisory-p2
+- the #374 audit of f364b7d, finding 4 (2026-10-17T05:33:36Z): the recommended cache warm-up `make validate-agent-assets` inherits the caller's UV_CACHE_DIR or XDG_CACHE_HOME while dispatch.sh pins the owner's .cache/uv, so a warm-up elsewhere leaves the TASK dispatch blocked; the owner makes the warm-up and the dispatch name the same cache (the pinned one), with one test.
+
+
+## Audit of ef74eae (the update-branch head of 9cf65c02): Verdict incorrect, one P1, three P2, one P3 (rows id<TAB>class)
+
+audit:ef74eae:1	uv-caller-state-interpreter
+audit-finding: ef74eae:1 fixed:f77185ddc7b9c4391b2c65b74d662b0482798c5b
+audit:ef74eae:2	advisory-p2
+audit:ef74eae:3	advisory-p2
+audit:ef74eae:4	s6-block-records
+audit:ef74eae:5	evidence-command-unlanded-owner
+
+audit-finding: ef74eae:2 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4; the same finding as local:ef74eae:1: timestamp-ordered history lets concurrent rows interleave inside the window, so the alignment misses a successful send and leaves it unrecorded, a false negative, never an unsafe record); evidence=/usr/bin/grep -n "^audit:ef74eae:2" .orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md
+audit-finding: ef74eae:3 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4; the same finding as local:ef74eae:2: the window algorithm, as the task text prescribes it, considers evictions from an underfull window, where none is possible; the task text carries a Change note and the owner corrects the algorithm with its test); evidence=/usr/bin/grep -n "^audit:ef74eae:3" .orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md
+audit-finding: ef74eae:4 not-applicable:the record block the chain wrote was recomputed from the review worktree at the PR head, where M-20261017-02 (the mistake record naming the class) has not landed, so searches.records read []; finish-pr.sh rewrites the block from the main checkout, where the lookup returns M-20261017-02.md, and the gate's S6 check reads that block; the pasted search lines in this record already name the file; evidence=/usr/bin/grep -n "^search: uv-caller-state-interpreter" .orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md
+audit-finding: ef74eae:5 not-applicable:the two advisory evidence commands now cite the owner task file in the main checkout with its sha256 (e23b5499622b…) instead of origin/main, where it lands with the next boundary (2 commands rewritten at 2026-10-17T00:55:53Z); evidence=/usr/bin/grep -c "evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md" .orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md
+
+## Dispatch (bus lines)
+
+- AGMSG-TASK v1 task_id=dotfiles-T128-orchestrator-tools-followup-review-a03 round=1 repo=~/Workspace/dotfiles task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-review-a03.md task_sha256=a328b9871e0591f16a451d228823c5528791abb67c639623d7c7deb0804a5b3b tools_task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md tools_task_sha256=7f2f42392809b909eea3f3110d7378e61ea1725c32105aa2a8824dc2843463d8 deadline=none note=one-round-review-of-the-owner-task-corrections-C-52-(2)-and-C-53-(2)-name(the-Codex-half-confirmed-first,C-54);answer-with-AGMSG-RESULT-verdict=confirm|revise-tools_task_sha256=<sha> read_at=read
+- AGMSG-TASK v1 task_id=dotfiles-T128-orchestrator-tools-followup-review-a03 round=2 repo=~/Workspace/dotfiles task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-review-a03.md task_sha256=8bec237cac18e2cc81512a9ac803ee01a53f551da946f4417f1d0fe4207f807f tools_task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md tools_task_sha256=296f35d9c815a33d3873b9abca0ee4d70546383fb34ed8be3d5707708a99a089 deadline=none note=one-round-review-of-the-owner-task-corrections-C-52-(2)-and-C-53-(2)-name(the-Codex-half-confirmed-first,C-54;your-round-1-applied:the-window-read-anchored-on-the-newest-pre-send-row-not-a-count,the-checker-s-own-line-asserted-through-a-stub-checker-beside-the-copied-script,presend.sh-keeps-the-premise-replay-and-the-mask-check,the-exitcode-line;the-Codex-rounds-4-and-5:the-two-windows-are-aligned-as-views-of-one-bus-by-the-smallest-shift,the-last-new-row-must-equal-the-line,anything-else-refused,with-eviction-and-collision-cases;the-Codex-round-6-P1:the-exemption-needs-a-successful-duplicate-rejecting-YAML-parse-yielding-review,a-malformed-front-matter-is-checked;the-Codex-round-7-P1:the-fake-uv-delegates-to-the-real-uv-so-PyYAML-is-present-as-in-production;the-Codex-round-8-P1:a-nonempty-overlap-is-required-unless-the-pre-send-window-was-empty;the-Codex-round-9-P2:the-pre-send-window-file-is-a-private-mktemp-file-removed-by-a-trap,with-its-own-row;the-Codex-round-10-P1:the-alignment-must-be-unique-across-every-shift-including-no-change,else-refused,with-a-periodic-bus-case);answer-with-AGMSG-RESULT-verdict=confirm|revise-tools_task_sha256=<sha> read_at=read
+- AGMSG-TASK v1 task_id=dotfiles-T128-orchestrator-tools-followup-review-a03 round=3 repo=~/Workspace/dotfiles task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-review-a03.md task_sha256=5a189d71db69b6a482b01decec362514f370dec364977a9b662b34281cb0487e tools_task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md tools_task_sha256=5a741e63e619ad31f83f10516be178f0ba63490bca2d4e16f9e45c14d4070b0a deadline=none note=one-round-review-of-the-owner-task-corrections-C-52-(2)-and-C-53-(2)-name(the-Codex-half-confirmed-first,C-54;your-round-1-applied:the-window-read-anchored-on-the-newest-pre-send-row-not-a-count,the-checker-s-own-line-asserted-through-a-stub-checker-beside-the-copied-script,presend.sh-keeps-the-premise-replay-and-the-mask-check,the-exitcode-line;the-Codex-rounds-4-and-5:the-two-windows-are-aligned-as-views-of-one-bus-by-the-smallest-shift,the-last-new-row-must-equal-the-line,anything-else-refused,with-eviction-and-collision-cases;the-Codex-round-6-P1:the-exemption-needs-a-successful-duplicate-rejecting-YAML-parse-yielding-review,a-malformed-front-matter-is-checked;the-Codex-round-7-P1:the-fake-uv-delegates-to-the-real-uv-so-PyYAML-is-present-as-in-production;the-Codex-round-8-P1:a-nonempty-overlap-is-required-unless-the-pre-send-window-was-empty;the-Codex-round-9-P2:the-pre-send-window-file-is-a-private-mktemp-file-removed-by-a-trap,with-its-own-row;the-Codex-round-10-P1:the-alignment-must-be-unique-across-every-shift-including-no-change,else-refused,with-a-periodic-bus-case;your-round-2:among-the-new-rows-the-last-one-equal-to-the-line-is-the-send,the-fake-uv-runs-the-probe-form-itself,the-module-s-uv-dependency-named-as-new);answer-with-AGMSG-RESULT-verdict=confirm|revise-tools_task_sha256=<sha> read_at=read
+- AGMSG-TASK v1 task_id=dotfiles-T128-orchestrator-tools-followup-review-a03 round=4 repo=~/Workspace/dotfiles task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-review-a03.md task_sha256=5a189d71db69b6a482b01decec362514f370dec364977a9b662b34281cb0487e tools_task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md tools_task_sha256=b291ba85f89d46877f74969d4e33ce994ff875f83454df58dbd8037a7d745da7 deadline=none note=round-4-a-re-confirm-after-one-change-since-the-pair-confirmed-5a741e63:the-Change(bot_rounds)section-names-it,the-Completion-clause-s-bot_rounds=1-becoming-the-template-s-bot_rounds=2-form(the-Bot-s-review-at-PR-open-and-its-re-review-after-the-fix-round;T13-amendment-6);judge-that-nothing-else-changed-and-the-clause-reads-consistently;the-Codex-half-confirmed(round-13);answer-with-AGMSG-RESULT-verdict=confirm|revise-tools_task_sha256=<sha> read_at=read
+- AGMSG-TASK v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=1 repo=~/Workspace/dotfiles/.claude/worktrees/worker-c task_file=.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md task_sha256=b291ba85f89d46877f74969d4e33ce994ff875f83454df58dbd8037a7d745da7 deadline=none note=plan-022-tools-a03(dispatch.sh:the-checker-refusal-and-the-bounded-aligned-window-reads,C-52/C-53-tool-halves);pair-confirmed-at-this-hash(Codex-round-13,seat-round-4);read-the-task-file-first,fresh-branch-from-origin/main(1d418126-or-later),one-PR,the-Bot-reviews-once-at-PR-open,RESULT-per-Worker-Playbook-step-15 read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=1 status=pending-integration reason=RESULT-read:head-57d3577c,CI-13-pass,4292675906-fixed:c8e813ea,the-Bot-s-re-review-P1-4299651928(uv-runs-a-caller-cwd-interpreter)survives-the-one-fix-round,so-the-Completion-clause-sends-it-to-the-operator(D-P1-374,default-A:one-more-fix-round,uv-run-from-the-trusted-script-root);hold-until-the-decision;nothing-to-do-on-your-side previous_head=57d3577ca780248f573fd26c4fa460e2b5e2d510 next_action=none-until-the-decision read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=1 status=revise reason=operator-decision-D-P1-374-A(AskUserQuestion,plan-022):one-more-fix-round-for-the-Bot-s-P1-4299651928-on-57d3577c:run-both-uv-commands-from-the-trusted-script-root(uv---directory-<root>-or-a-cd-subshell-to-git-rev-parse---show-toplevel-of-the-script)so-a-caller-cwd-s-.python-version-or-venv-chooses-nothing,one-test(the-uv-shim-records-the-directory-it-ran-in-or-a-caller-cwd-.python-version-./pwn-is-not-executed);the-task-text-s-threat-row-is-corrected-by-the-orchestrator(Change-note);commit,push,@codex-review,RESULT-naming-4299651928-fixed:<sha> check=tests/unit/test_orchestrator_tools.py(the-new-test,named-in-the-RESULT) previous_head=57d3577ca780248f573fd26c4fa460e2b5e2d510 next_action=fix-round,commit,push,@codex-review,RESULT read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=2 status=pending-integration reason=RESULT-round-2-read:head-9df6b0c7,both-Bot-P1-fixed(4292675906:c8e813ea,4299651928:8adf74bb:uv-in-a-subshell-cd-to-the-script-s-checkout-root);the-chain-runs-on-this-head(CI,Bot-wait,sandbox-scan,local-review,sweep,receipt,audit);the-orchestrator-replies-to-and-resolves-the-threads;nothing-to-do-on-your-side previous_head=9df6b0c7594cef7f42e9a43faa3e08d0f035e329 next_action=none-until-the-integration-result read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=2 status=pending-integration reason=the-local-review-of-9df6b0c7-found-a-P1(dispatch.sh-183-185:an-inherited-VIRTUAL_ENV-still-selects-uv-s-interpreter-after-the-cd,so-a-PR-checkout-s-.venv-can-run-during-the-import-yaml-probe);the-third-finding-of-one-class(the-interpreter-chosen-from-caller-state:pyproject,.python-version,VIRTUAL_ENV);the-chain-stopped-before-the-audit;a-further-fix-round-makes-INV-6-read-revises-2,so-it-waits-for-the-operator-s-decision-D-S2-374-2(default-A:one-round-that-closes-the-class:pin-the-interpreter-and-strip-the-inherited-env);hold previous_head=9df6b0c7594cef7f42e9a43faa3e08d0f035e329 next_action=none-until-the-decision read_at=unread
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=2 status=revise reason=operator-decision-D-S2-374-2-A(AskUserQuestion,plan-022:S2-waived):one-round-that-closes-the-class(C-57,identity-over-shape):both-uv-invocations-name-the-interpreter(--python-<the-trusted-interpreter-resolved-at-the-script-s-checkout-root,e.g.-the-python3-mise-provides-there>)and-run-under-an-environment-without-VIRTUAL_ENV,VIRTUAL_ENV_PROMPT,UV_PROJECT_ENVIRONMENT,UV_PYTHON-and-the-other-UV_*-overrides(env--u-…-or-an-explicit-allowlisted-env),keeping---no-project-and-the-cd-to-the-root;one-test-that-sets-a-caller-pyproject,a-caller-cwd-.python-version-and-VIRTUAL_ENV-at-once-and-asserts-none-is-used(the-fake-uv-records-its-env-and-args);nothing-else;commit,push,@codex-review,RESULT-naming-local:9df6b0c:1-fixed:<sha>-and-the-test check=tests/unit/test_orchestrator_tools.py(the-new-test,named-in-the-RESULT) previous_head=9df6b0c7594cef7f42e9a43faa3e08d0f035e329 next_action=fix-round,commit,push,@codex-review,RESULT read_at=unread
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=3 status=pending-integration reason=RESULT-round-3-read:head-6ae8cf75,local:9df6b0c:1-fixed:411c7d68(pinned---python,env--u-VIRTUAL_ENV/CONDA_PREFIX/UV_*),12-mutants,CI-13-pass;the-Bot-s-re-review-P1-4300102967(the-import-yaml-probe-without--I,an-inherited-PYTHONPATH-loads-a-caller-s-yaml.py)is-the-fourth-finding-of-the-class;a-further-round-makes-INV-6-read-revises-3,so-it-waits-for-the-operator-s-decision-D-S2-374-3(default-A:one-round-that-ends-the-class-by-allowlist:env--i-with-an-explicit-PATH/HOME/agmsg-variable-allowlist-for-the-probe-and-the-checker,plus--I-on-the-probe);hold previous_head=6ae8cf75df74bb54eb3b724ea7c94e16b70759ef next_action=none-until-the-decision read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=3 status=revise reason=operator-decision-D-S2-374-3-A(AskUserQuestion,plan-022:S2-waived):one-round-that-ends-the-class-by-allowlist,not-denylist:run-the-import-yaml-probe-and-the-checker-under-env--i-with-an-explicit-allowlist(PATH-as-the-script-computes-it,HOME,LANG/LC_ALL-if-needed,the-AGMSG_*-variables-the-scripts-read,and-nothing-else),the-probe-with-python-s--I,keeping-the-pinned---python,--no-project-and-the-cd-to-the-root;one-test-that-plants-every-caller-state-source-at-once(a-caller-pyproject,a-cwd-.python-version,VIRTUAL_ENV,CONDA_PREFIX,UV_PYTHON-and-a-yaml.py-on-PYTHONPATH)and-asserts-the-fake-uv-and-the-probe-see-only-the-allowlisted-variables;nothing-else;commit,push,@codex-review,RESULT-naming-4300102967-fixed:<sha>-and-the-test check=tests/unit/test_orchestrator_tools.py(the-new-or-extended-test,named-in-the-RESULT) previous_head=6ae8cf75df74bb54eb3b724ea7c94e16b70759ef next_action=fix-round,commit,push,@codex-review,RESULT read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=4 status=pending-integration reason=RESULT-round-4-read:head-9cf65c02,4300102967-fixed:b18698d5(the-allowlist-form:env--i-with-PATH,HOME,LANG/LC_ALL,AGMSG_*;python--I-on-the-probe),13-mutants,CI-13-pass,the-Bot-s-re-review-clean;the-chain-runs-after-PR-376-s(one-chain-at-a-time;main-moved,so-update-branch-first);nothing-to-do-on-your-side;you-are-free previous_head=9cf65c0299645e30e54419668ba523eff9c4897e next_action=none-for-this-task read_at=read
+- 2026-10-17T00:55:53Z the chain on 9cf65c02 (`374-chain2.log`): update-branch onto f7847616 gave head ef74eaea, CI pass, no Bot review in the 5-minute wait, sandbox scan clean, the local review two P2 (the window alignment: concurrent rows may interleave; impossible evictions from an underfull window), recorded as advisory under the owner a04 by the chain's automatic step, sweep 18 items / 0 gaps, receipt, record block with the S6 search; audit (`…-audit-ef74eae.md`): **Verdict incorrect**: (P1, dispatch.sh:219) the checker's root discovery runs under the inherited environment, so `GIT_WORK_TREE=/tmp` redirects the root the allowlisted uv then trusts: the fifth finding of the class `uv-caller-state-interpreter` (the allowlist covered the uv calls, not the git calls that compute the root); (P2, P2) the two window findings, advisory as above; (P2, orchestration) the block's `searches.records: []` (the review-worktree recomputation; finish-pr.sh rewrites it from the main checkout); (P3) the advisory evidence commands named origin/main, corrected. A further round makes INV-6 read `revises 4` (S2): D-S2-374-4 (default A: one round that puts the root discovery and every git call under the same allowlisted environment, with a test setting GIT_WORK_TREE and GIT_DIR); hold ACCEPTANCE at 2026-10-17T00:55:53Z.
+- 2026-10-17T01:14:00Z operator decision D-S2-374-4 (AskUserQuestion, answer A, recorded in plan 022): the round (the root discovery and every git call under the allowlisted environment, one test with GIT_WORK_TREE and GIT_DIR) sent to a003 at 2026-10-17T01:14:00Z; `audit:ef74eae:1` becomes `fixed:<sha>` with the RESULT. C-57's method gains: the allowlist applies to every command that computes trusted state (the root), not only to the interpreter launcher.
+- 2026-10-17T01:37:37Z RESULT round 5 `status=done` (bus 01:36:42Z): head 9f6c5ceb (fix f77185dd: the env -i allowlist is built first and the root discovery, the one git call, runs under it as the uv calls do); `audit:ef74eae:1 fixed:f77185dd`; test `test_dispatch_resolves_its_root_without_inherited_git_variables`; 14 of 14 mutants, 56 of 56 tests, caps 130 / 187, CI 13 pass. The Bot's re-review of 9f6c5ceb: P1 4300738707, uv reads `$HOME/.config/uv/uv.toml`, so HOME (on the allowlist) can redirect the pyyaml index; proposed `--no-config` on both uv forms with a test. The sixth finding of the class in six rounds (project, .python-version, VIRTUAL_ENV, PYTHONPATH, GIT_*, uv config): S1's re-plan point. D-S2-374-5 (default A: one final round that specifies the complete uv invocation at once, every input named: `--no-config`, `UV_CACHE_DIR` pinned, HOME pinned to the orchestrator's real home rather than inherited, the pinned `--python`, `--no-project`, the allowlist; plus a threat row listing the complete input identity; the test plants every source at once); hold ACCEPTANCE at 2026-10-17T01:37:37Z.
+- 2026-10-17T01:39:50Z operator decision D-S2-374-5 (AskUserQuestion, answer A, recorded in plan 022): the final round naming every input of the uv invocation sent to a003 at 2026-10-17T01:39:50Z; `4300738707` becomes `fixed:<sha>` with the RESULT; a further finding of the class after this round is advisory under a04 (the orchestrator's rule for this PR, recorded here).
+- 2026-10-17T01:53:20Z the operator's correction (「3回を超えた時点で仕様、設計、実装、検証を見直すのではないのか」): six single-source patches were not S1's re-plan; recorded as M-20261017-04 with C-59. re-plan: specification, a closed input set and no network for the checker invocation; design, PyYAML from the orchestrator-owned cache the validator recipes warm (T5), `--offline`, so no configuration or HOME redirect has an index to redirect; implementation, the complete-inputs row (now with `--offline`); verification, identity assertions on the exact argv and environment, not absence tests. The supplement to the final round (01:4xZ) carries it; one operator question per class from now on.
+
+re-plan: uv-caller-state-interpreter -> specification: the checker invocation's inputs are a closed set named by the script and the network is forbidden (--offline); design: PyYAML comes from the orchestrator-owned cache the validator recipes warm (T5), with --no-config, --no-project, a pinned --python, HOME and UV_CACHE_DIR pinned and an env -i allowlist for every command that computes trusted state; implementation: the complete-inputs threat row and the final round of D-S2-374-5 (the supplement of 2026-10-17T02:27Z); verification: identity assertions on the exact argv and environment the script passes, not absence tests. (grammar-form line written 2026-10-17T02:27:45Z; the prose re-plan of 01:53Z stands as its explanation)
+- 2026-10-17T02:32:28Z RESULT round 6 `status=done` (bus 02:30:51Z): head 5ef0ef3b (e09f14ca: HOME set to the script owner's passwd home, UV_CACHE_DIR under it, --no-config, the allowlist built before the root discovery; e2b7d2cc, the re-plan supplement: both uv forms --offline only, no fallback, a cold cache is exit 2 with the make validate-agent-assets guidance); `4300738707 fixed:e09f14ca,e2b7d2cc`; the test asserts positive identity (the exact argv and the exact environment of both calls with every planted source in one case) and the cold-cache case; 18 of 18 mutants; 56 of 56 tests; caps 149 / 235; CI 13 pass. The Bot's re-review of 5ef0ef3b: P1 4300891366 on the test's cache dependence (the row above): advisory under a04 per D-S2-374-5's recorded rule; no further round. ACCEPTANCE `pending-integration` at 2026-10-17T02:32:28Z; the chain runs after PR #380's.
+local:94c36f4:1	advisory-p2
+local-finding: 94c36f4:1 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (- [P2] Bootstrap the same cache used by the isolated probe — scripts/orchestrator/dispatch.sh:217-219); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md (e23b5499622b2f0b3c5f97c35257335c14897f66f7baf9d8aafeff30b3941a33)
+local:94c36f4:2	advisory-p2
+local-finding: 94c36f4:2 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (- [P2] Reject one-row history windows before sending — scripts/orchestrator/dispatch.sh:340-341); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md (e23b5499622b2f0b3c5f97c35257335c14897f66f7baf9d8aafeff30b3941a33)
+local:f364b7d:1	advisory-p2
+local-finding: f364b7d:1 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (- [P2] Exclude impossible eviction from underfull history windows — scripts/orchestrator/dispatch.sh:303-304); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md (e23b5499622b2f0b3c5f97c35257335c14897f66f7baf9d8aafeff30b3941a33)
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=4 status=pending-integration reason=the-audit-of-ef74eaea(the-update-branch-head-of-9cf65c02)is-incorrect:P1-dispatch.sh:219-the-checker-s-root-discovery(git-rev-parse)runs-under-the-inherited-environment,so-GIT_WORK_TREE-or-GIT_DIR-redirects-the-root-the-allowlisted-uv-then-trusts(the-fifth-finding-of-the-caller-state-class);two-P2-on-the-history-window(advisory,owner-a04);two-orchestration-findings-on-this-record;a-further-round-needs-the-operator-s-decision-D-S2-374-4(default-A:one-round-that-puts-the-root-discovery-and-every-git-call-under-the-same-allowlisted-environment);hold previous_head=ef74eaea9a94bff388b7c1027551a57797407b2f next_action=none-until-the-decision read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=4 status=revise reason=operator-decision-D-S2-374-4-A(AskUserQuestion,plan-022:S2-waived):one-round:the-root-discovery-and-every-git-call-dispatch.sh-makes-run-under-the-same-allowlisted-environment-as-the-uv-calls(env--i-with-PATH,HOME,LANG/LC_ALL,the-AGMSG_*-variables;no-GIT_*),or-the-root-is-resolved-from-the-script-s-own-path-without-git;one-test-that-sets-GIT_WORK_TREE-and-GIT_DIR-to-another-tree-and-asserts-the-root-and-the-checker-path-are-the-script-s-checkout(C6-s-stale-receipt-case-included);the-two-window-P2-stay-advisory(owner-a04),no-change-from-you;commit,push,@codex-review,RESULT-naming-audit:ef74eae:1-fixed:<sha>-and-the-test check=tests/unit/test_orchestrator_tools.py(the-new-or-extended-test,named-in-the-RESULT) previous_head=ef74eaea9a94bff388b7c1027551a57797407b2f next_action=fix-round,commit,push,@codex-review,RESULT read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=5 status=pending-integration reason=RESULT-round-5-read:head-9f6c5ceb,audit:ef74eae:1-fixed:f77185dd,14-mutants,CI-13-pass;the-Bot-s-re-review-P1-4300738707(uv-reads-HOME/.config/uv/uv.toml,so-HOME-on-the-allowlist-can-redirect-the-pyyaml-index)is-the-sixth-finding-of-the-class-in-six-rounds:S1-s-re-plan-point;the-next-round,if-any,specifies-the-complete-uv-invocation-at-once(--no-config,UV_CACHE_DIR-pinned,HOME-pinned-to-the-orchestrator-s-real-home,pinned---python,--no-project,the-allowlist)and-waits-for-the-operator-s-decision-D-S2-374-5;hold previous_head=9f6c5cebd23592793f3ad5247a20753aff26f388 next_action=none-until-the-decision read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=5 status=revise reason=operator-decision-D-S2-374-5-A(AskUserQuestion,plan-022:S2-waived;S1-re-plan):one-final-round-that-names-every-input-of-the-uv-invocation-at-once:both-uv-forms-run-with---no-config-and---no-project,the-pinned---python(the-interpreter-resolved-at-the-script-s-checkout-root),UV_CACHE_DIR-pinned-to-the-orchestrator-s-cache-under-the-real-home,HOME-set-to-the-orchestrator-s-real-home(the-script-s-owner-home-from-the-passwd-entry-or-the-checkout-root-s-owner,not-inherited),under-env--i-with-only-PATH,HOME,UV_CACHE_DIR,LANG/LC_ALL-and-the-AGMSG_*-variables;the-probe-with--I;the-root-discovery-under-the-same-env;one-test-that-plants-every-source-at-once(pyproject,.python-version,VIRTUAL_ENV,CONDA_PREFIX,UV_PYTHON,a-yaml.py-on-PYTHONPATH,GIT_DIR/GIT_WORK_TREE,a-uv.toml-under-a-planted-HOME-with-a-planted-index)and-asserts-the-fake-uv-sees-only-the-named-inputs;the-orchestrator-adds-the-complete-input-row-to-the-task-text;after-this-round-a-further-finding-of-the-class-is-advisory-under-a04;commit,push,@codex-review,RESULT-naming-4300738707-fixed:<sha>-and-the-test check=tests/unit/test_orchestrator_tools.py(the-extended-test,named-in-the-RESULT) previous_head=9f6c5cebd23592793f3ad5247a20753aff26f388 next_action=final-round,commit,push,@codex-review,RESULT read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=5 status=revise reason=re-plan-supplement-to-the-01:39:51Z-round(the-operator-s-correction:six-single-source-patches-were-not-the-re-plan-S1-requires):the-round-s-specification-is-the-design-change,not-another-patch:(1)both-uv-forms-run---offline(no-index-at-all;PyYAML-comes-from-the-pinned-UV_CACHE_DIR-that-the-validator-recipes-already-warm,T5;a-cold-cache-is-exit-2-with-the-make-validate-agent-assets-guidance,never-a-network-fetch)in-addition-to---no-config,--no-project,the-pinned---python,HOME-and-UV_CACHE_DIR-pinned-and-the-env--i-allowlist;(2)the-test-is-positive-identity,not-absence:the-fake-uv-and-the-probe-record-argv-and-env,and-the-test-asserts-the-exact-argv(flags-and-values)and-the-exact-env-key-set-the-script-passes,so-a-new-input-source-is-impossible-by-construction;the-planted-sources-stay-as-one-case;(3)nothing-else;commit,push,@codex-review,RESULT check=tests/unit/test_orchestrator_tools.py(the-identity-test,named-in-the-RESULT) previous_head=9f6c5cebd23592793f3ad5247a20753aff26f388 next_action=final-round-per-this-specification read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-orchestrator-tools-followup-a03 round=6 status=pending-integration reason=RESULT-round-6-read:head-5ef0ef3b,the-re-plan-round-done(--offline,--no-config,pinned-HOME/UV_CACHE_DIR/--python,the-allowlist-before-the-root-discovery,identity-assertions),4300738707-fixed:e09f14ca+e2b7d2cc,18-mutants,CI-13-pass;the-re-review-P1-4300891366-on-the-test-s-cache-dependence-is-advisory-under-a04-per-D-S2-374-5-s-recorded-rule(no-further-round);the-chain-runs-after-PR-380-s;you-are-free previous_head=5ef0ef3bb7d9d89d51bfa2056029fde54fc825d9 next_action=none-for-this-task read_at=read
+
+- 2026-10-17T05:33:36Z integration chain 7 (`374-chain7.log`, rc 0): update-branch onto main gives head `f364b7d478ab100d56c80b6935b90ffcf72a99ab` (its parents 94c36f40 and 77227047: the merge of #377 was already in it, so chain 8 was not needed; the "onto 58303c37" first written here was wrong); CI green; no new Bot review in the 5-minute wait (the sweep's items dispositioned, 0 gaps); sandbox scan clean; the local review one P2 (local:f364b7d:1, advisory under a04: the impossible eviction from an underfull window, the class of local:ef74eae:2); the audit of f364b7d `Verdict: incorrect`, nine P2 (below). INV-6 S2 counters (`scripts/regime-counters.sh dotfiles-T128-orchestrator-tools-followup-a03 --pr 374`, pasted; the earlier rounds went without this paste, the audit's finding 7):
+
+```
+task=dotfiles-T128-orchestrator-tools-followup-a03 tasks=1 amendments=0 questions=0 results=6 withdrawn=0 revises=5 first_result_head=57d3577ca780248f573fd26c4fa460e2b5e2d510 bot_p1_heads_after_result=unknown audits=unknown wall=2026-10-16T08:28:10Z..2026-10-17T02:30:51Z (18:02) source=live
+S2: revises 5 >= 2 source=live
+S1: class=uv-caller-state-interpreter count=6 source=record
+detail: pr=374 authors=claude-deep-dot tasks=01a143d3-6590-7208-818e-32031db27b9f results=01a146b7-18d8-790a-871d-4a1ac2da7127,01a146d2-3258-7357-8211-4cfab5426ce5,01a146fd-c698-74b9-8727-559956f56379,01a14715-1370-749c-8cee-dccbd708ae90,01a14781-0c10-7fb0-810a-ff6a01044096,01a147b2-9f78-7255-8edc-c26e28fb5854 questions=- withdrawn=- bot_heads=- source=live
+```
+
+**S2: revises 5 >= 2** (results 6): the five rounds were each the operator's decision (D-P1-374, D-S2-374-2, -3, -4, -5, plan 022), the last of them, D-S2-374-5 A, covering the round that produced 5ef0ef3b; no round has been sent since, and the merge is read under those decisions. **S1: `uv-caller-state-interpreter` count 6 with the `re-plan:` line present** (above, C-59); the class is closed by the re-plan round and no new row of it appears on f364b7d.
+
+## Audit of f364b7d (the update-branch head of 5ef0ef3b): Verdict incorrect, nine P2 (rows id<TAB>class)
+
+audit:f364b7d:1	advisory-p2
+audit:f364b7d:2	advisory-p2
+audit:f364b7d:3	advisory-p2
+audit:f364b7d:4	advisory-p2
+audit:f364b7d:5	advisory-p2
+audit:f364b7d:6	s6-block-records
+audit:f364b7d:7	counters-unknown-components
+audit:f364b7d:8	revise-line-contract
+audit:f364b7d:9	threads-resolved-at-finish
+
+audit-finding: f364b7d:1 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4: the same finding as audit:ef74eae:3 and local:f364b7d:1, the window alignment considering evictions from an underfull window, already an owned row); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md
+audit-finding: f364b7d:2 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4: the same finding as audit:ef74eae:2 and local:ef74eae:1, timestamp-ordered history letting concurrent rows interleave inside the window, already an owned row); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md
+audit-finding: f364b7d:3 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4: BUS_READ_WINDOW=1 accepted though every send then fails its recording, now the owned row audit:f364b7d:3 in the owner section); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md
+audit-finding: f364b7d:4 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4: the cache warm-up and the dispatch naming different caches under another UV_CACHE_DIR or XDG_CACHE_HOME, now the owned row audit:f364b7d:4 in the owner section); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md
+audit-finding: f364b7d:5 not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (plan 020 step 4: the same finding as the Bot's 4300891366, the checker tests depending on a warm cache for PyYAML, already an owned row); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md
+audit-finding: f364b7d:6 not-applicable:the same as audit:ef74eae:4: the record block the chain wrote was recomputed from the review worktree at the PR head, where M-20261017-02 (the mistake record naming the class) is not tracked, so searches.records read []; finish-pr.sh rewrites the block from the main checkout, where the lookup returns M-20261017-02.md, before the gate's S6 check reads it; evidence=/usr/bin/grep -c 'M-20261017-02' .orchestration/learning/index.yaml
+audit-finding: f364b7d:7 not-applicable:the finding names the record: the pasted counters print bot_p1_heads_after_result and audits as unknown, and the counters bullet wants the source reading for each: audits read from the receipts under .orchestration/validation (`/bin/ls …-audit-*.md.last.md`: 2 files, the heads ef74eae and f364b7d; the audits of the earlier heads were superseded in place), bot P1 heads after the first RESULT read from the sweep JSON and 374-extra.tsv (the JSON carries no `level: P1` field, the badge lives in the comment body: the Bot threads of this PR are the five rows of 374-extra.tsv, four `fixed:` in the rounds the operator decided and 4300891366 advisory under a04), both pasted in the bullet of 2026-10-17T05:44:40Z below; the earlier rounds' missing paste is the record's 07 of chain 7 and the five S2 decisions are the plan's rows; evidence=/bin/ls .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-audit-*.md.last.md
+audit-finding: f364b7d:8 not-applicable:the finding names the revise lines: their check= named the module and the test in prose instead of the tests/<file>::<name> selector; from the #382 round-3 line on every revise carries the selector form and previous_head=, and the dispatcher's refusal of a revise line without them is the tools a04 row audit:4460d52:3; evidence=/usr/bin/grep -c 'audit:4460d52:3' .orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md
+audit-finding: f364b7d:9 not-applicable:the five Bot threads are replied to and resolved by finish-pr.sh from 374-extra.tsv before the sweep re-run, the gate and the merge (its first step, scripts/orchestrator/resolve-threads.sh), after the chain's audit by design, so at the audit's moment they stand open on GitHub with their dispositions local; the chain-8 audit ran on the same head f364b7d as chain 7 (the update-branch found nothing to merge), its ninth finding replacing chain 7's ninth (the two deferred findings, now owner rows audit:f364b7d:3 and :4); evidence=/usr/bin/grep -c . .agents/worklog/orchestrator-glue/374-extra.tsv
+- 2026-10-17T05:44:40Z integration chain 8 (`374-chain8.log`, rc 0): the update-branch found the head `f364b7d` already containing main (its second parent is 77227047), so chain 8 re-audited the same head, which the tracked chain-integrate.sh (line 105) refuses and the orchestrator's glue integrate-pr.sh did not; the re-audit replaced the receipt the chain-7 dispositions cited (a glue defect, fixed in the glue at 2026-10-17T05:59:23Z: the same head is not re-audited); CI green; the audit re-ran on f364b7d and found the same nine P2 in substance, two of them differently (finding 7: the unknown INV-6 components without their source reading; finding 9: the Bot threads unresolved on GitHub at the audit's moment), the rows and lines above updated to the current receipt. Source readings for the unknown components (pasted): `/bin/ls .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-audit-*.md.last.md` lists 2 files (ef74eae, f364b7d); the sweep JSON's items carry no `level: P1` field (a reading by that field returns 0), so the Bot P1 heads are read from 374-extra.tsv: five Bot threads, four `fixed:` (4292675906, 4299651928, 4300102967, 4300738707) and one advisory (4300891366), on the heads the rounds produced after the first RESULT, each round the operator's decision (D-P1-374, D-S2-374-2 to -5). finish-pr.sh next (threads, sweep, block, gate, merge).
+- 2026-10-17T05:46:47Z finish-pr.sh (`374-finish.log`, rc 0): the five Bot threads replied to and resolved from `374-extra.tsv` (4292675906, 4299651928, 4300102967, 4300738707 fixed; 4300891366 advisory), sweep re-run 0 gaps, record block rewritten from the main checkout (searches for advisory-p2 and uv-caller-state-interpreter), gate pass (the S2 WARN read under D-P1-374 and D-S2-374-2 to -5; the S1 class with its re-plan line), **merged as `af4f1e997f78119d5994d7d7b1966894d62bbc6a` at 05:45:55Z** (`gh pr merge --squash --match-head-commit f364b7d4`); main = origin/main af4f1e99; pr-cost row written. ACCEPTANCE `accepted` to a003 by dispatch-direct.

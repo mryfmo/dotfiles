@@ -174,6 +174,21 @@ mistakes:
   - id: M-20261016-01
     corrections: [C-55]
     status: open
+  - id: M-20261017-01
+    corrections: [C-56]
+    status: open
+  - id: M-20261017-02
+    corrections: [C-57]
+    status: open
+  - id: M-20261017-03
+    corrections: [C-58]
+    status: open
+  - id: M-20261017-04
+    corrections: [C-59]
+    status: open
+  - id: M-20261017-05
+    corrections: [C-60]
+    status: open
 corrections:
   - id: C-1
     closes: [M-20261012-1]
@@ -394,4 +409,24 @@ corrections:
   - id: C-55
     closes: [M-20261016-01]
     mechanism: ['procedure:identity over shape for managed-content predicates; one class slug for over-match findings (standing)', 'task:dotfiles-T128-settings-hook-dedupe-followup-a01 row audit:ca892e4:1, the whole-command comparison (pending)']
+    status: "pending"
+  - id: C-56
+    closes: [M-20261017-01]
+    mechanism: ['procedure:S2 read from regime-counters.sh output and its documented definitions only (standing)']
+    status: "pending"
+  - id: C-57
+    closes: [M-20261017-02]
+    mechanism: ['procedure:identity over shape for interpreter selection, one slug (standing)', 'task:D-S2-374-2 fix round and owner a04 (pending)']
+    status: "pending"
+  - id: C-58
+    closes: [M-20261017-03]
+    mechanism: ['procedure:boundary of allowed_files against the seat kind before every dispatch (standing)', 'tool:dispatch.sh refuses a same-kind seat (pending, row C-58:1 of the tools a04 owner)']
+    status: "pending"
+  - id: C-59
+    closes: [M-20261017-04]
+    mechanism: ['procedure:re-plan line after every S1 search, one operator question per class (standing)', 'tool:regime-counters.sh S1 line and dispatch.sh refusal (pending)']
+    status: "pending"
+  - id: C-60
+    closes: [M-20261017-05]
+    mechanism: ['procedure:re-seat after every manifest or render change; ps of the seats at every boundary (standing)', 'tool:check-regime-boundary.sh and herdr-agents --attach compare live arguments with the rendered profile (pending, dotfiles-T128-seat-launch-args-a01)']
     status: "pending"

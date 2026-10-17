@@ -1,0 +1,20 @@
+head: c98e4ceafc451282c956d6f61546dff46f55864f
+task_sha256: f317d68de16722f12d972deb2e1b46433df0c8b0eadabe78c8a8393ca8bb574d
+report.md: committed bytes match 392614db55e38afd62fa36b34199121a358065aff068ce6a2a4c59e15c5ac1ed
+validation.md: committed bytes match b191c4ce4fb231a16920c4eff86efdf1b4ad26d35c59dd7b1b8fd9c49b82034b
+sandbox.md: committed bytes match 46095c2da00496e65696c49ed95167d70c77241ce17e1562a883e936a4172bed
+learning.md: committed bytes match 9a2f2bcbb2e7c6f05c2fe1256ca234a15836e347025b6c8f20c4b4a488fd0395
+3	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/autoskill.md
+40	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/dotfiles-T128-settings-hook-dedupe-a01-worker-crit.json
+6	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/dotfiles-T128-settings-hook-dedupe-a01-worker-review-receipt.md
+5	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/learning.md
+20	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/report.md
+6	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/revise.yaml
+67	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/ruff-base.json
+67	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/ruff-current.json
+3	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/sandbox.md
+103	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/task.md
+542	0	.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md
+20	0	home/dot_claude/modify_private_settings.json
+81	0	tests/unit/test_claude_settings_merge.py
+

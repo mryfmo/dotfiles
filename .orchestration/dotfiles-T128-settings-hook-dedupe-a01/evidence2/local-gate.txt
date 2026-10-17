@@ -1,0 +1,48 @@
+[
+  {
+    "id": "settings-hook-amend1-independent-review",
+    "body": "Independent read-only implementation review found no P0-P3 findings against amended task99fb3dc7. Managed PostToolUse recognition uses program position only, retaining dict/string/shlex guards and safely preserving empty/interpreter-only commands. Wrapper regression failed on auditedbdefcbe4 before the fix, then all20 tests passed, including all four interpreters. Shared merge and SessionStart behavior unchanged. Committed core report now describes publishedPR369 rather than blocked publication. Basename collisions and interpreter-option limits disclosed; final-head CI not claimed by this local review.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "settings-hook-evidence2-masking-resolved",
+    "body": "Independent read-only evidence review found the tracked implementation-head proof complete and correctly separated from pending successor-head CI/Bot. Its P2 home-directory-path finding in validation.md was addressed with the repository evidence masker, followed by a successful assertion that no /Users/ path remains. Source and tests remain byte-identical to bf6beb53. This is worker review evidence, not task acceptance.",
+    "scope": "file",
+    "path": ".orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md",
+    "resolved": true
+  }
+]
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:12: trailing whitespace.
++test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... 
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:112: trailing whitespace.
++GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:113: trailing whitespace.
++private-bootstrap (macos-14, client)	pass	9s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766396298	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:114: trailing whitespace.
++private-bootstrap (ubuntu-24.04, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766396215	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:115: trailing whitespace.
++private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766395973	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:116: trailing whitespace.
++public-bootstrap (macos-14, client)	pass	7m14s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766396301	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:117: trailing whitespace.
++public-bootstrap (ubuntu-24.04, client)	pass	8m24s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766396229	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:118: trailing whitespace.
++public-bootstrap (ubuntu-24.04, server)	pass	7m43s	https://github.com/mryfmo/dotfiles/actions/runs/38836395668/job/116766396342	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:119: trailing whitespace.
++test (macos-14, client)	pass	7m27s	https://github.com/mryfmo/dotfiles/actions/runs/38836395613/job/116766395620	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:120: trailing whitespace.
++test (ubuntu-24.04, client)	pass	8m3s	https://github.com/mryfmo/dotfiles/actions/runs/38836395613/job/116766395763	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:121: trailing whitespace.
++test (ubuntu-24.04, server)	pass	5m56s	https://github.com/mryfmo/dotfiles/actions/runs/38836395613/job/116766395735	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:122: trailing whitespace.
++test (ubuntu-26.04, client)	pass	9m12s	https://github.com/mryfmo/dotfiles/actions/runs/38836395613/job/116766395717	
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md:123: trailing whitespace.
++validate	pass	1m51s	https://github.com/mryfmo/dotfiles/actions/runs/38836395622/job/116766395585	
+ ...-T128-settings-hook-dedupe-a01-worker-crit.json |   7 +
+ ...ttings-hook-dedupe-a01-worker-review-receipt.md |   2 +-
+ .../report.md                                      |  21 +-
+ .../revise.yaml                                    |  10 +-
+ .../validation.md                                  | 369 ++++-----------------
+ 5 files changed, 95 insertions(+), 314 deletions(-)

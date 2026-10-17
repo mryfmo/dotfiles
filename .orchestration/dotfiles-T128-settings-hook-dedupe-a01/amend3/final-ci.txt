@@ -1,0 +1,13 @@
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	21s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/38848329357/job/116803777896	
+private-bootstrap (ubuntu-24.04, client)	pass	9s	https://github.com/mryfmo/dotfiles/actions/runs/38848329357/job/116803777871	
+private-bootstrap (ubuntu-24.04, server)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/38848329357/job/116803778231	
+public-bootstrap (macos-14, client)	pass	8m37s	https://github.com/mryfmo/dotfiles/actions/runs/38848329357/job/116803777611	
+public-bootstrap (ubuntu-24.04, client)	pass	9m59s	https://github.com/mryfmo/dotfiles/actions/runs/38848329357/job/116803778215	
+public-bootstrap (ubuntu-24.04, server)	pass	6m18s	https://github.com/mryfmo/dotfiles/actions/runs/38848329357/job/116803777915	
+test (macos-14, client)	pass	7m41s	https://github.com/mryfmo/dotfiles/actions/runs/38848329457/job/116803778515	
+test (ubuntu-24.04, client)	pass	7m50s	https://github.com/mryfmo/dotfiles/actions/runs/38848329457/job/116803778295	
+test (ubuntu-24.04, server)	pass	5m16s	https://github.com/mryfmo/dotfiles/actions/runs/38848329457/job/116803778539	
+test (ubuntu-26.04, client)	pass	8m46s	https://github.com/mryfmo/dotfiles/actions/runs/38848329457/job/116803778418	
+validate	pass	1m50s	https://github.com/mryfmo/dotfiles/actions/runs/38848329390/job/116803778068	

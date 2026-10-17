@@ -53,10 +53,10 @@ premises:
     command: 'git show origin/main:scripts/orchestrator/local-advisory.sh | /usr/bin/grep -c "advisory-p2"'
     output: |-
       2
-  - claim: 'the chain-review test module on origin/main holds three tests (the a02 owner task adds its own before this one)'
+  - claim: 'the chain-review test module on origin/main holds fourteen tests after the a01 and a02 owner PRs (#364 merged as fdef3ceb, #376 merged as f7847616) landed theirs; this task adds its own beside them'
     command: 'git show origin/main:tests/unit/test_chain_review_scripts.py | /usr/bin/grep -c "def test_"'
     output: |-
-      3
+      14
 ---
 
 # AGMSG-TASK dotfiles-T128-chain-review-scripts-followup-a03 — local-advisory.sh refuses an absent owner task, hashes the owner file as evidence, and classes a repeated finding by the record's earlier row (corrections C-51 (2) and C-50 (3); the chain-review-scripts lineage's next owner task; a Claude seat)
@@ -90,9 +90,17 @@ After the merge, `local-advisory.sh` writes no row whose owner task file is abse
 
 ## Completion
 
-One PR from a fresh branch off `origin/main` (after the a02 owner task's PR merges). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more on `@codex review` after a P0/P1 fix round: plan 020 step 2), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the Check's outputs, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 thread with the disposition the worker proposes; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot's P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=1`, stops the PR and goes to the operator as a decision; a P2 on this PR's own change whose fix stays within `allowed_files` and is small (one flag or a few lines plus one test) is fixed in a revise round the orchestrator sends with a `check=` while INV-6's counts allow it (C-50); any other P2 is advisory, owned by `dotfiles-T128-chain-review-scripts-followup-a04`, which the orchestrator writes when the first advisory P2 appears, before the PR's dispositions (C-51), and recorded under `## Owned by dotfiles-T128-chain-review-scripts-followup-a04` in this task's acceptance record. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-chain-review-scripts-followup-a03/task.md>` and the evidence paths.
+One PR from a fresh branch off `origin/main` (after PR #376, the a02 owner task's PR, merged as f7847616 on 2026-10-17). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more on `@codex review` after a P0/P1 fix round: plan 020 step 2), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the outputs above, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 thread with the disposition the worker proposes; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot's P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=2` (the Bot's review at PR open and its re-review after the fix round), stops the PR and goes to the operator as a decision; a P2 on this PR's own change whose fix stays within `allowed_files` and is small (one flag or a few lines plus one test) is fixed in a revise round the orchestrator sends with a `check=` while INV-6's counts allow it (C-50); any other P2 is advisory, owned by `dotfiles-T128-chain-review-scripts-followup-a04`, which the orchestrator writes when the first advisory P2 appears, before the PR's dispositions (C-51), and recorded under `## Owned by dotfiles-T128-chain-review-scripts-followup-a04` in this task's acceptance record. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names per row, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-chain-review-scripts-followup-a03/task.md>` and the evidence paths.
 
 ## Owned row (2026-10-16T05:53:07Z)
 
 `audit:40f3be4:2` (advisory P2 of PR #364's final head): `test_local_advisory_matches_the_owner_heading_literally` has no fixture that fails under an anchored regex match, so the literal match of the owner heading (df92b402) is not isolated; add the heading `tXfollowup-a01` against the owner id `t.followup-a01` and assert it does not match (the test module is in allowed_files).
+
+## Change (premises, 2026-10-17T00:26:15Z, before dispatch)
+
+PRs #364 (fdef3ceb) and #376 (f7847616) landed the a01 and a02 owner tasks' tests, so premise 4 records the module's fourteen tests and the Completion clause names the a02 PR's merge; the owned row `audit:40f3be4:2` (the heading-test fixture) was added on 2026-10-16 after the pair-confirmed hash `d6b2108b`. Nothing else changes from `33e1c301`; re-confirmed Codex first (C-54).
+
+## Change (Completion, 2026-10-17T00:29:55Z, before dispatch)
+
+The Codex half's re-confirm (P3): the Completion clause still read `bot_rounds=1`; it is now the task template's clause of 2026-10-16 (`open:<thread id>` with `bot_rounds=2`, the C-50 revise round, every other P2 advisory and owned by `dotfiles-T128-chain-review-scripts-followup-a04` under `## Owned by dotfiles-T128-chain-review-scripts-followup-a04` in this task's acceptance record). Nothing else changes from `fd1f800a`.
 

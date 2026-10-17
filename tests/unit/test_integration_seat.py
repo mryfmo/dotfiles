@@ -36,6 +36,7 @@ GIT_ENV = {
 STUB = """#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$CALLS/{name}.log"
 echo {name} >> "$CALLS/order.log"
+[ ! -x "$CALLS/{name}-hook" ] || "$CALLS/{name}-hook"
 exit "$(cat "$CALLS/{name}.status" 2> /dev/null || echo 0)"
 """
 SCRIPTS = {
@@ -67,6 +68,8 @@ shift 2
 exec "$@"
 """
 BOT = {"login": "chatgpt-codex-connector[bot]"}
+# Inline threads by comment id, review-body findings as review-<id> (the Message Contract's open:review-<id> form).
+THREADS = "4300000001:P1:fixed:abcdef1;4300000002:P2:proposed(advisory);review-5550000001:P1:fixed:abcdef1;review-5550000002:P2:proposed(x)"
 
 
 class IntegrationSeatTest(unittest.TestCase):
@@ -121,7 +124,7 @@ class IntegrationSeatTest(unittest.TestCase):
             {"id": 4300000002, "in_reply_to_id": None, "user": BOT, "body": "**![P2 Badge](x)** b"},
         ]
         (self.calls / "comments.json").write_text(json.dumps(comments))
-        self.bus("4300000001:P1:fixed:abcdef1;4300000002:P2:proposed(advisory)")
+        self.bus(THREADS)
 
     def git(self, *args: str, cwd: Path) -> str:
         return subprocess.run(
@@ -184,9 +187,13 @@ class IntegrationSeatTest(unittest.TestCase):
             ],
             self.logged("dispatch"),
         )
+        # PR #393 thread 4302868180: a review-body finding is keyed as the sweep keys it, pullrequestreview-<id>.
         self.assertEqual(
             f"4300000001\tfixed:abcdef1\n4300000002\tnot-applicable:advisory P2 owned by {OWNER}; "
-            "evidence=gh api repos/{owner}/{repo}/pulls/comments/4300000002\n",
+            "evidence=gh api repos/{owner}/{repo}/pulls/comments/4300000002\n"
+            "pullrequestreview-5550000001\tfixed:abcdef1\n"
+            f"pullrequestreview-5550000002\tnot-applicable:advisory P2 owned by {OWNER}; "
+            "evidence=gh api repos/{owner}/{repo}/pulls/7/reviews/5550000002\n",
             (v / f"{TASK}-dispositions-{h7}.tsv").read_text(),
         )
         text = (self.seat / record).read_text()
@@ -197,6 +204,18 @@ class IntegrationSeatTest(unittest.TestCase):
         receipt = (v / f"{TASK}-review-receipt.md").read_text()
         self.assertIn("review_surface: crit-data\nreviewer: claude-code\n", receipt)
         self.assertIn(f"head: {self.head}\npr: 7\n", receipt)
+        # PR #393 thread 4302868177: a local review with findings files advisory rows, which the record block keeps.
+        self.reset_calls()
+        (self.calls / "local-review.status").write_text("3")
+        row = "local:abcdef1:1\tadvisory-p2"
+        self.executable(
+            self.calls / "local-advisory-hook", f"#!/bin/sh\nprintf '{row}\\n' >> .orchestration/acceptance/{TASK}.md\n"
+        )
+        self.run_script(SEAT, TASK, "7", "--owner", OWNER, cwd=self.seat, code=0)
+        self.assertIn("local-advisory", self.logged("order"))
+        self.assertIn(row + "\n", (self.seat / f".orchestration/acceptance/{TASK}.md").read_text())
+        (self.calls / "local-review.status").unlink()
+        (self.calls / "local-advisory-hook").unlink()
         # Never past the audit: no merge call, and no audit, gate or merge command in the script at all.
         self.assertNotIn("merge", self.logged("order"))
         self.assertIsNone(
@@ -217,7 +236,7 @@ class IntegrationSeatTest(unittest.TestCase):
                 self.assertNotIn("acceptance-front-matter", self.logged("order"))
                 for path in self.calls.glob("*.status"):
                     path.unlink()
-                self.bus("4300000001:P1:fixed:abcdef1;4300000002:P2:proposed(advisory)")
+                self.bus(THREADS)
         # Refused before anything runs: malformed arguments, no RESULT on the bus, a seat not at origin/main.
         self.reset_calls()
         for args, message in ((("a/b", "7"), "invalid id"), ((TASK, "x"), "invalid PR number")):
@@ -287,6 +306,14 @@ class IntegrationSeatTest(unittest.TestCase):
         self.assertEqual("", verify(f"AGMSG-RESULT v1 task_id={TASK} head={good[:8]} precheck={digest}", 0))
         refusal = f"AGMSG-ACCEPTANCE v1 task_id={TASK} status=revise reason=precheck:"
         self.assertIn(f"{refusal}receipt next_action=", verify(f"head={good} precheck={'0' * 64}", 1))
+        # PR #393 thread 4302868172: a hand-written receipt without the nine status lines is refused.
+        forged = d / "precheck-0000000.md"
+        forged.write_text(f"---\nhead: {self.head}\n---\n")
+        self.commit(self.seed, "a forged receipt")
+        sha = hashlib.sha256(forged.read_bytes()).hexdigest()
+        forged_head = self.git("rev-parse", "HEAD", cwd=self.seed)
+        self.assertIn(f"{refusal}incomplete-receipt next_action=", verify(f"head={forged_head} precheck={sha}", 1))
+        self.git("reset", "-q", "--hard", good, cwd=self.seed)
         (self.seed / "scripts/orchestrator/new.sh").write_text("#!/bin/sh\necho changed after the receipt\n")
         self.commit(self.seed, "code after the receipt")
         later = self.git("rev-parse", "HEAD", cwd=self.seed)

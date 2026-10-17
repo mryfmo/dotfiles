@@ -22,7 +22,8 @@ for id in "${task}" ${owner:+"${owner}"}; do [[ ${id} =~ ^[A-Za-z0-9][A-Za-z0-9.
 [[ ${pr} =~ ^[0-9]+$ ]] || die "invalid PR number: ${pr}"
 cd -- "$(git rev-parse --show-toplevel)"
 main=$(cd -- "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd -P) a=${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}
-git fetch -q origin main && [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || die "this worktree is not at origin/main"
+git fetch -q origin main
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || die "this worktree is not at origin/main"
 for type in claude-code codex; do
     who=$(AGMSG_RESOLVE_PROJECT=0 "${a}/whoami.sh" "${PWD}" "${type}" 2> /dev/null) || who=''
     [[ ${who} =~ ^agent=([^ ]+)\ teams=([^ ,]+) ]] && me=${BASH_REMATCH[1]} team=${BASH_REMATCH[2]} && break
@@ -79,10 +80,14 @@ for _ in $(seq 30); do
     ((seen == 0)) || break
     sleep 30
 done
-printf -- '- bot review of %s: %s\n\n' "${diff_head:0:7}" "$( ((seen > 0)) && echo present || echo "none within 15 minutes")" >> "${rec}"
+bot_seen="none within 15 minutes"
+((seen == 0)) || bot_seen=present
+printf -- '- bot review of %s: %s\n\n' "${diff_head:0:7}" "${bot_seen}" >> "${rec}"
 sweep=${v}/${task}-pr-feedback.json
 step sweep 0 uv run --no-project python -I scripts/pr-feedback.py "${pr}" --json "${sweep}"
 git worktree add -q --detach "${review}" "${head}"
+mkdir -p .orchestration/acceptance # the main checkout's live record, copied in before local-advisory.sh adds to it
+step record-copy 0 cp -- "${main}/.orchestration/acceptance/${task}.md" .orchestration/acceptance/
 step local-review 0,3 env ORCH_REVIEW_WORKTREE="${review}" scripts/orchestrator/local-review.sh "${task}" "${head}" "${pr}"
 if ((rc == 3)); then # findings: P2/P3 become the owner's advisory rows, a P0/P1 stops the chain
     [ -n "${owner}" ] || step owner-given 0 false
@@ -90,13 +95,15 @@ if ((rc == 3)); then # findings: P2/P3 become the owner's advisory rows, a P0/P1
 fi
 dispositions=${v}/${task}-dispositions-${head:0:7}.tsv && : > "${dispositions}"
 IFS=';' read -ra items <<< "${threads}"
-for item in ${items[@]+"${items[@]}"}; do # <id>:<P0-P3>:<fixed:<sha>|…>, the RESULT's thread list
-    [[ ${item} =~ ^([0-9]+):(P[0-3]):(.*)$ ]] || step thread-format 0 false
-    id=${BASH_REMATCH[1]} p=${BASH_REMATCH[2]} d=${BASH_REMATCH[3]}
+for item in ${items[@]+"${items[@]}"}; do # <id>|review-<id>:<P0-P3>:<fixed:<sha>|…>, the RESULT's thread list
+    [[ ${item} =~ ^(review-)?([0-9]+):(P[0-3]):(.*)$ ]] || step thread-format 0 false
+    id=${BASH_REMATCH[2]} p=${BASH_REMATCH[3]} d=${BASH_REMATCH[4]} key=${BASH_REMATCH[2]} api=comments/${BASH_REMATCH[2]}
+    # A review-body finding is the sweep's pullrequestreview-<id> item, as fill_sweep.py keys it (PR #393 thread 4302868180).
+    [ -z "${BASH_REMATCH[1]}" ] || key=pullrequestreview-${id} api=${pr}/reviews/${id}
     if [[ ${d} =~ ^fixed:([0-9a-f]{7,40}) ]]; then
-        printf '%s\tfixed:%s\n' "${id}" "${BASH_REMATCH[1]}" >> "${dispositions}"
+        printf '%s\tfixed:%s\n' "${key}" "${BASH_REMATCH[1]}" >> "${dispositions}"
     elif [[ ${p} == P[23] && -n ${owner} ]]; then
-        printf '%s\tnot-applicable:advisory %s owned by %s; evidence=gh api repos/{owner}/{repo}/pulls/comments/%s\n' "${id}" "${p}" "${owner}" "${id}" >> "${dispositions}"
+        printf '%s\tnot-applicable:advisory %s owned by %s; evidence=gh api repos/{owner}/{repo}/pulls/%s\n' "${key}" "${p}" "${owner}" "${api}" >> "${dispositions}"
     else
         step "thread-${id}-${p}-not-fixed" 0 false # a P0/P1 that is not fixed stops the chain
     fi
@@ -113,8 +120,6 @@ jq -n --arg id "${task}-pr${pr}-review-1" --arg head "${head}" --arg pr "${pr}" 
     --arg by "${type}" '[{id: $id, scope: "review", resolved: true, author: $by, head: $head, pr: $pr, reviewed_at: $at, body: $body}]' > "${v}/${task}-crit.json"
 printf 'review_surface: crit-data\nreviewer: %s\nreview_source: %s\nreview_outcome: approved\nhead: %s\npr: %s\nreviewed_at: %s\nnote: %s\n' \
     "${type}" "${v}/${task}-crit.json" "${head}" "${pr}" "${now}" "${body}" > "${v}/${task}-review-receipt.md"
-mkdir -p .orchestration/acceptance # the record block goes onto the main checkout's live record, copied in
-step record 0 cp -- "${main}/.orchestration/acceptance/${task}.md" .orchestration/acceptance/
 step record 0,1 /usr/bin/grep -o -E $'^([0-9]{10,}|audit:[0-9a-f]{7}:[0-9]+)\t[a-z0-9-]+' ".orchestration/acceptance/${task}.md"
 printf '%s\n' "${out}" > "${v}/${task}-ledger-${head:0:7}.tsv"
 step record 0 uv run --no-project python -I scripts/orchestrator/acceptance-front-matter.py "${task}" "${sweep}" "${review}" --ledger "${v}/${task}-ledger-${head:0:7}.tsv"

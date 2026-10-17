@@ -25,11 +25,15 @@ if [[ $1 == verify && $# == 3 ]]; then
     for f in "${fields[@]}"; do case ${f} in head=*) head=${f#head=} ;; precheck=*) sum=${f#precheck=} ;; esac done
     [[ ${head:-} =~ ^[0-9a-f]{7,40}$ && ${sum:-} =~ ^[0-9a-f]{64}$ ]] || die "the RESULT line has no head= or precheck="
     git fetch -q origin 2> /dev/null || true # the branch's head, when this checkout lacks it
-    miss="receipt" && head=$(git rev-parse -q --verify "${head}^{commit}") || head=''
+    miss="receipt"
+    head=$(git rev-parse -q --verify "${head}^{commit}") || head=''
     for p in $([ -z "${head}" ] || git ls-tree --name-only "${head}" -- "${d}/" | /usr/bin/grep -E '/precheck-[0-9a-f]{7}\.md$'); do
         [ "$(git show "${head}:${p}" | shasum -a 256 | cut -d' ' -f1)" = "${sum}" ] || continue
         h=$(git show "${head}:${p}" | sed -n 's/^head: \([0-9a-f]\{40\}\)$/\1/p')
         miss=$(git show "${head}:${p}" | sed -n 's/^- \([a-i]\) missing.*/\1/p' | tr '\n' ',')
+        # One status line per check, a to i (PR #393 thread 4302868172): a receipt without them proves nothing.
+        all=$(git show "${head}:${p}" | sed -n -E 's/^- ([a-i]) (ok|missing|unavailable \(.*\)): .*/\1/p' | sort | tr -d '\n')
+        [ "${all}" = abcdefghi ] || miss+="incomplete-receipt,"
         [ -z "$(git diff --name-only "${h}" "${head}" | /usr/bin/grep -v -F "${d}/" || true)" ] || miss+="code-after-receipt,"
     done
     [ -n "${miss%,}" ] || exit 0
@@ -56,7 +60,8 @@ check_b() {
     for f in $(git diff --name-only "origin/main...${head}"); do
         # shellcheck disable=SC2053 # each allowed_files entry is a glob
         hit=no && for g in ${allowed[@]+"${allowed[@]}"}; do [[ ${f} != ${g} ]] || hit=yes; done
-        echo "${hit} ${f}" && [ "${hit}" = yes ] || bad=1
+        echo "${hit} ${f}"
+        [ "${hit}" = yes ] || bad=1
     done
     return "${bad}"
 }
@@ -70,7 +75,9 @@ check_c() {
 check_d() {
     local bad=0
     for c in $(sed -n '/^## Check/,/^## /p' "${d}/task.md" | /usr/bin/grep -o -E '`(uv|shellcheck|shfmt|make|git) [^`]+`' | tr ' ' '\001'); do
-        c=${c//$'\001'/ } && c=${c//\`/} && echo "${c}" && /usr/bin/grep -q -F -- "${c}" "${d}/validation.md" || bad=1
+        c=${c//$'\001'/ } c=${c//\`/}
+        echo "${c}"
+        /usr/bin/grep -q -F -- "${c}" "${d}/validation.md" || bad=1
     done
     return "${bad}"
 }

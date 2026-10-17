@@ -25,7 +25,8 @@ def scan(line):
     """(code, syntax): the line before its comment, and that text with every quoted span and escaped character blanked.
 
     A comment starts at a `#` at the start or after whitespace, outside quotes. A predicate reads shell syntax (an
-    operator, `<(`, a continuation) from `syntax` only, so nothing inside quotes is ever an operator or a comment.
+    operator, `<(`) from `syntax` only, so nothing inside quotes is ever an operator or a comment; the continuation
+    is read from `code`, as a backslash before the newline continues inside double quotes too.
     """
     code, syntax, quote, i = [], [], "", 0
     while i < len(line):

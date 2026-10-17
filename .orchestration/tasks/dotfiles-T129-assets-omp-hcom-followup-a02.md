@@ -6,9 +6,15 @@ security: false
 allowed_files:
   - home/dot_local/bin/common/executable_remove-agent-asset
   - tests/unit/test_remove_agent_asset.py
+  - scripts/update-agent-assets.sh
+  - tests/unit/test_update_agent_assets.py
   - .orchestration/dotfiles-T129-assets-omp-hcom-followup-a02/**
 after: [dotfiles-T129-assets-omp-hcom-followup-a01]
 threat_table:
+  - control: the PR edits scripts/update-agent-assets.sh only within the owned rows (item 1)
+    disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance records (item 1), each with its test named in report.md; the pinned, hash-verified downloads stay the review of what is installed; the audit reads the diff against the rows"
+  - control: the PR edits tests/unit/test_update_agent_assets.py only within the owned rows (item 1)
+    disposition: "residual: one fixture per owned row with stub curl, npm and uv on PATH, red before the fix and green after"
   - control: the PR edits home/dot_local/bin/common/executable_remove-agent-asset only within the owned rows (item 1)
     disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the orchestrator's diff review and the task-level audit from main compare the diff against the rows; the removal runs uv tool uninstall for the named tool only"
   - control: the PR edits tests/unit/test_remove_agent_asset.py only within the owned rows (item 1)
@@ -46,7 +52,7 @@ Every owned row is fixed with one fixture per row, red before and green after; n
 
 ## Files
 
-1. The owned rows at dispatch (the record is the source; this list is its reading at 2026-10-17T15:4xZ): 4303212235 (class uninstall-leaves-tool-env: `remove-agent-asset` deletes hcom's binary and the retained wheel but not uv's tool environment; the removal runs `uv tool uninstall hcom` for that one tool when uv is present, and reports when it is not). Rows added to the record after this text was written are read from the record at dispatch.
+1. The owned rows at dispatch (the records are the source: `dotfiles-T129-assets-omp-hcom-followup-a01.md` and, for the re-owned local row, `dotfiles-T130-claude-sandbox-integration-a01.md`; this list is their reading at 2026-10-17T16:4xZ): 4303212235 (class uninstall-leaves-tool-env: `remove-agent-asset` deletes hcom's binary and the retained wheel but not uv's tool environment; the removal runs `uv tool uninstall hcom` for that one tool when uv is present, and reports when it is not); 4303338055 (class install-receipt-repair, `scripts/update-agent-assets.sh`: when `uv tool install` fails after the verified wheel moved into place, the next run skips on the kept wheel without retrying; remove the retained wheel when the install fails, or require that uv's receipt names it before skipping); local:fbbc6d9:1 (class omp-non-npm-entry, `scripts/update-agent-assets.sh`: an existing non-npm omp entry (a mise or manual install) is handled before the npm install, so the managed binary wins without a stale entry shadowing it). Rows added to the records after this text was written are read from them at dispatch.
 
 ## Out of scope
 
@@ -54,7 +60,7 @@ Any rule not named by an owned row; the installer (the lineage's PR #388 and #39
 
 ## Check
 
-`uv run python -m unittest tests/unit/test_remove_agent_asset.py -v` green and `shellcheck` on the script clean, pasted in the validation file, with `git diff --numstat origin/main...HEAD`: at most 60 changed lines outside `tests/` and `.orchestration/`, 200 under `tests/`.
+`uv run python -m unittest tests/unit/test_remove_agent_asset.py tests/unit/test_update_agent_assets.py -v` green and `shellcheck` on both scripts clean, pasted in the validation file, with `git diff --numstat origin/main...HEAD`: at most 120 changed lines outside `tests/` and `.orchestration/`, 400 under `tests/`.
 
 ## Completion
 
@@ -63,5 +69,6 @@ One PR from a fresh branch off `origin/main` after PR #398 merges. The Completio
 ## Checks (pasted by the orchestrator before each send)
 
 ```
-(pending: pasted at dispatch)
+dotfiles-T129-assets-omp-hcom-followup-a02.md: OK
+masked 0 match(es) in .orchestration/tasks/dotfiles-T129-assets-omp-hcom-followup-a02.md
 ```

@@ -6,7 +6,8 @@
   "pr": 375,
   "ledger": [],
   "searches": [],
-  "audit_findings": []
+  "audit_findings": [],
+  "dispatch": []
 }
 ---
 
@@ -30,3 +31,7 @@ audit-finding: 5ef1c90:1 fixed:4775690e2fab9c9685a6b613ed12f92a74471424
 - AGMSG-TASK v1 task_id=dotfiles-T128-chain-github-scripts-followup-a02-review-a01 round=3 repo=~/Workspace/dotfiles task_file=.orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a02-review-a01.md task_sha256=b467f58095ba2543b7af8c388ae10b12cfd57faa61f79871c1aec81f0ca7128b owner_task_file=.orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a02.md owner_task_sha256=eaafb7792427871c52c2f0397a9d18f2e8b4509b9dfe8830b0f9bba95600dfc5 deadline=none note=round-3-after-your-rounds-1-and-2(newline-dropped,pre-query-scan,shdoc-and-run_script-clauses);one-round-review-of-the-chain-github-scripts-lineage-s-second-owner-task(resolve-threads.sh-refuses-a-disposition-holding-a-backtick-or-newline-before-any-gh-call;one-test);dispatch-waits-for-boundary-16;the-Codex-half-runs-in-parallel;answer-with-AGMSG-RESULT-verdict=confirm|revise-owner_task_sha256=<sha> read_at=read
 - AGMSG-TASK v1 task_id=dotfiles-T128-chain-github-scripts-followup-a02-review-a01 round=4 repo=~/Workspace/dotfiles task_file=.orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a02-review-a01.md task_sha256=b619ea5cc4f715abe25aecac3fb07dfda8c301e73aa873ee564b73f2d90b4c36 owner_task_file=.orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a02.md owner_task_sha256=5d3b78db38ea4a84b13938038258be75d2639639c55894bdb8bc3d50a00647ef deadline=none note=round-4-after-the-Codex-half-s-round-3-P2(the-environment-row-no-longer-implies-a-path-check);one-round-review-of-the-chain-github-scripts-lineage-s-second-owner-task(resolve-threads.sh-refuses-a-disposition-holding-a-backtick-or-newline-before-any-gh-call;one-test);dispatch-waits-for-boundary-16;the-Codex-half-runs-in-parallel;answer-with-AGMSG-RESULT-verdict=confirm|revise-owner_task_sha256=<sha> read_at=read
 - AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-chain-github-scripts-followup-a02 round=5 status=pending-integration reason=RESULT-round-5-read:head-4775690e,the-evidence-only-round(report.md-and-validation.md-at-the-final-head,audit:5ef1c90:1-fixed:4775690e);thank-you-for-catching-the-branch-name(the-orchestrator-s-mistake,recorded);the-integration-chain-reruns-after-PR-383-s(one-chain-at-a-time);no-action-for-you-on-this-task-until-its-audit;your-next-TASK(chain-review-a04,after-its-seat-review)follows read_at=read
+
+- 2026-10-17T12:25Z ledger row for the Bot P2 thread 4299756161 (resolve-threads.sh:33, dispositioned fixed:7c2f4177 in the sweep), which chain 6 found missing (GAP); the chain is rerun on the update-branch head after main moved to ce032e14.
+
+4299756161	tsv-preflight-comment-rows

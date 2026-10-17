@@ -41,3 +41,17 @@ Calls outside the sandbox: `gh` through the permission gate (`dangerouslyDisable
 | 11 | `gh pr checks 378 --repo mryfmo/dotfiles --watch` (background, exit status joined) | `gh` |
 | 12 | the Bot wait: `gh api` reads of the Bot's reviews and top-level comments on the new head, at most every 30 seconds up to 15 minutes, and `gh pr comment 378 --repo mryfmo/dotfiles --body '@codex review'` only at 10 minutes without a review | `gh` |
 | 13 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-glue-finish-a01 round=4 …` | `agmsg-dispatch` |
+| 14 | after the Bot's review, unplanned and read-only: `gh api repos/mryfmo/dotfiles/rulesets`, `gh api repos/mryfmo/dotfiles/rulesets/<id>`, `gh api repos/mryfmo/dotfiles/rules/branches/main` and the re-listing of the Bot's comments on the head (named in the round-4 RESULT) | `gh` |
+
+## Revise round 4 (ACCEPTANCE round 5, `claude-standard-dot-a006`)
+
+- Period: from the ACCEPTANCE round 5 `status=revise` (bus 2026-10-17T08:17:32Z) to the RESULT round 5.
+- Inside the sandbox ran: the HTTPS `git fetch`, the HTTPS `git push` in the documented form, the commits, every test, lint and mutant run, the evidence, and the CompactionDB `memory add` in the worktree's own database.
+- Calls outside the sandbox, planned in advance:
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| 15 | `gh pr view 377 --repo mryfmo/dotfiles --json merged,mergeCommit`, then `--json state,mergeCommit` on PRs 377 and 378 (reads; the field check in validation §7) | `gh` |
+| 16 | `gh pr checks 378 --repo mryfmo/dotfiles --watch` (background, exit status joined) | `gh` |
+| 17 | the Bot wait as row 12, on the new head | `gh` |
+| 18 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-glue-finish-a01 round=5 …` | `agmsg-dispatch` |

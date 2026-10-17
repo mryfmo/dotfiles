@@ -1,0 +1,19 @@
+parts: ['~/bin/audit-edit.sh;/usr/bin/python3', '~/.claude/hooks/format-edited-files.py']
+first basename: python3
+[
+  {
+    "matcher": "Write|Edit|MultiEdit",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "~/.claude/hooks/format-edited-files.py"
+      },
+      {
+        "type": "command",
+        "command": "~/.claude/hooks/project-map-reload.sh"
+      }
+    ]
+  }
+]
+user interpreter chain preserved: False
+Confirmed independent-review P1 in uncommitted amendment4 source; no hook executed or source/test edit.

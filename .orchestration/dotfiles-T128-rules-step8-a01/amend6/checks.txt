@@ -1,0 +1,37 @@
+21	0	.orchestration/dotfiles-T128-rules-step8-a01/dotfiles-T128-rules-step8-a01-worker-crit.json
+6	0	.orchestration/dotfiles-T128-rules-step8-a01/dotfiles-T128-rules-step8-a01-worker-review-receipt.md
+5	0	.orchestration/dotfiles-T128-rules-step8-a01/learning.md
+19	0	.orchestration/dotfiles-T128-rules-step8-a01/report.md
+6	0	.orchestration/dotfiles-T128-rules-step8-a01/revise.yaml
+3	0	.orchestration/dotfiles-T128-rules-step8-a01/sandbox.md
+161	0	.orchestration/dotfiles-T128-rules-step8-a01/task.md
+132	0	.orchestration/dotfiles-T128-rules-step8-a01/validation.md
+2	2	AGENTS.md
+20	17	home/dot_agents/skills/agmsg-orchestration/SKILL.md
+1	1	home/dot_config/claude/rules/agmsg-orchestration.md
+2	2	home/dot_config/claude/rules/pr-integration.md
+1	1	tests/fixtures/regime/code-review-orchestration.md
+6	6	tests/fixtures/regime/invariants.md
+1	1	tests/fixtures/regime/message-contract.md
+3	3	tests/fixtures/regime/worker-step-15.md
+56	25	tests/unit/test_agmsg_orchestration_docs.py
+home/dot_agents/skills/agmsg-orchestration/SKILL.md D6= 0 AUDIT_DISPOSITIONS= 0
+AGENTS.md D6= 0 AUDIT_DISPOSITIONS= 0
+rule words: 447
+source changed lines: 47 <=200; test additions: 67 <=1000
+home/dot_agents/skills/agmsg-orchestration/SKILL.md bot_rounds1= 0 bot_rounds2= 2
+tests/fixtures/regime/worker-step-15.md bot_rounds1= 0 bot_rounds2= 1
+tests/fixtures/regime/message-contract.md bot_rounds1= 0 bot_rounds2= 1
+tests/unit/test_agmsg_orchestration_docs.py bot_rounds1= 0 bot_rounds2= 2
+03544af5abdfc292683383f0548109254e3928b92528dd3cb927126bb9f65c66  .orchestration/dotfiles-T128-rules-step8-a01/task.md
+03544af5abdfc292683383f0548109254e3928b92528dd3cb927126bb9f65c66  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-rules-step8-a01.md
+{
+  "branch": "fix/regime-rules-step8",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "~/.crit/reviews/aa925ad8a1cc/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-s1-replan-gate-a01-pr382-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "5185dc1620eb43cedc82ee76f2d78a6a29cccd43",
+    "pr": "382",
+    "reviewed_at": "2026-10-17T07:49:54Z",
+    "body": "Independent orchestrator review of PR #382 at the head the chain fetches after the update-branch onto the current main (the worker's head 0a84239a on f7847616, the round-2 head after the evidence commit; task dotfiles-T128-s1-replan-gate-a01, pair-confirmed at 072564c7; branch fix/s1-replan-gate): the diff touches the five files the task's allowed_files name and the evidence dir. scripts/regime-counters.sh (item 1): the S1 line gains `re-plan=present|missing`, the class list excludes `advisory-p2`, and a body line counts as the re-plan line when it starts `re-plan: <slug> -> ` and its tokens (jq's Unicode letter, number and underscore scan) hold the four words; the header comment states the new form; nothing else in the script moves. scripts/require-crit-review.py (item 2): after the S6 check, for each non-advisory class at the limit the body is searched for the prefix line whose Python word tokens hold the four words, else `S1: <cls> at <n> rows without a re-plan line (C-59)` joins the errors. The two word definitions differ at the Unicode edge under jq 1.7 (the Bot's P2 4301061412, advisory under the owner task dotfiles-T128-s1-replan-gate-followup-a01). Tests (item 3): three counters tests (present; missing in five malformed forms: a wrong class, a leading space, a missing word, a near-word, a split line; advisory-p2 excluded with two other classes reported) and three gate tests (refused without the line; accepted with all words; refused with a missing word); the fixture and the write_record helper gain re-plan lines so the S6 test keeps passing. Caps 29 source / 105 test lines. No P0/P1 from this review."
+  }
+]

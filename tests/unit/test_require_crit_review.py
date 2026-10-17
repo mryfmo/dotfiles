@@ -418,6 +418,17 @@ class ReviewGuardTest(unittest.TestCase):
             data = {"format": 1, "task": "test", "head": "HEAD", "pr": 1, "ledger": [], "searches": [], **fields}
             block = json.dumps({key: value for key, value in data.items() if value is not None}, indent=2)
             text = f"---\n{block}\n---\n\n# prose\n"
+            ledger = data.get("ledger")
+            classes = (
+                [row["class"] for row in ledger if isinstance(row, dict) and isinstance(row.get("class"), str)]
+                if isinstance(ledger, list)
+                else []
+            )
+            text += "".join(
+                f"re-plan: {cls} -> specification, design, implementation, verification.\n"
+                for cls in sorted(set(classes))
+                if classes.count(cls) >= 3
+            )
         head = self.head_commit()
         text = text.replace('"head": "HEAD"', f'"head": "{head}"').replace('"audit:HEAD7:', f'"audit:{head[:7]}:')
         self.write_review_file(".orchestration/acceptance/test.md", text)
@@ -1311,6 +1322,67 @@ class ReviewGuardTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn(f"PR feedback evidence accepted: {feedback}", result.stdout)
+
+    def test_s1_class_at_three_without_a_replan_line_is_refused(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-s6-present.md")
+        path = self.temp_dir / record
+        path.write_text(path.read_text().partition("\n---\n")[0] + "\n---\n")
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("S1: class-count-scope at 3 rows without a re-plan line (C-59)", result.stdout)
+        self.assertNotIn("S6:", result.stdout)
+
+    def test_s1_class_at_three_with_all_replan_words_is_accepted(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-s6-present.md")
+        path = self.temp_dir / record
+        block = path.read_text().partition("\n---\n")[0] + "\n---\n"
+        for words in (
+            "verification, implementation, design, specification.",
+            "specification design\u0301 implementation verification",
+        ):
+            with self.subTest(words=words):
+                path.write_text(block + f"re-plan: class-count-scope -> {words}\n")
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+                self.assertEqual(result.returncode, 0, result.stdout)
+                self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
+
+    def test_s1_class_at_three_with_a_missing_replan_word_is_refused(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-s6-present.md")
+        path = self.temp_dir / record
+        block = path.read_text().partition("\n---\n")[0] + "\n---\n"
+        words = ("specification", "design", "implementation", "verification")
+        for missing in words:
+            with self.subTest(missing=missing):
+                text = " ".join(word for word in words if word != missing)
+                path.write_text(block + f"re-plan: class-count-scope -> {text}\n")
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("S1: class-count-scope at 3 rows without a re-plan line (C-59)", result.stdout)
+
+    def test_s1_replan_words_are_ascii_letter_runs(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-s6-present.md")
+        path = self.temp_dir / record
+        block = path.read_text().partition("\n---\n")[0] + "\n---\n"
+        for words, expected in (
+            ("specification design\u1c89 implementation verification", 0),
+            ("specification design\u1c89 implementation", 1),
+        ):
+            with self.subTest(words=words):
+                path.write_text(block + f"re-plan: class-count-scope -> {words}\n")
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+                self.assertEqual(result.returncode, expected, result.stdout)
+                if expected:
+                    self.assertIn("S1: class-count-scope at 3 rows without a re-plan line (C-59)", result.stdout)
+                else:
+                    self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
 
     def test_s6_class_at_three_without_a_searches_entry_is_refused(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)

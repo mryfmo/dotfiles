@@ -1,0 +1,5 @@
+# T15 amendment3 sandbox
+
+All commands use the current managed sandbox and allowed source/task/Git paths. No escalation, sandbox-policy edit, local bats, installed apply/restart, graph update, merge or thread write. uv uses /tmp cache. Python tests run the modifier with temporary settings/source; no hook command runs. Regex is standard library and lexical only. Switching to72d0e66d printed nonfatal packed-refs.lock denial but succeeded. GitHub push/description/requested Bot review use permitted in-sandbox CLI; post-publication proof follows. Extra fix round is authorized by operator D-P1-369-A communicated in ACCEPTANCE, not agent-to-agent permission approval. Main-checkout CompactionDB consolidation remains orchestrator-owned.
+
+Commit and HTTPS push succeeded in sandbox with nonfatal packed-refs.lock denial during commit. PRdescription and explicit@codexreview6207771400 were authorized. No GraphQL retry or thread write. New surviving P1 was reported with no further code fix/review request.

@@ -20,8 +20,11 @@
 #   block between the first two `---` lines is a JSON object whose `task` is the
 #   counted task and whose `ledger` is a list of `{id, class}` rows, each an
 #   object with a string `id` and a `[a-z0-9-]` `class` (read with jq only):
-#   every class with three or more rows prints `S1: class=<slug> count=<n>
-#   source=record`. Without such a record (none, or a prose one), Codex Bot
+#   every non-advisory-p2 class with three or more rows prints `S1: class=<slug>
+#   count=<n> re-plan=present|missing source=record`. A matching body line starts
+#   `re-plan: <slug> -> ` and contains specification, design, implementation and
+#   verification as exact ASCII letter runs; its twin is scripts/require-crit-review.py.
+#   Without such a record (none, or a prose one), Codex Bot
 #   thread titles grouped by their first three words (badge stripped,
 #   lower-cased) seen three or more times on the PR print `S1: candidate
 #   class=unclassified count=<n> title=<JSON string>`: the title is data for
@@ -132,8 +135,8 @@ counts="$(jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" 
 # {rec: the record's JSON block}, {why: <slug>} for a block it ignores, or null for no record, a prose one or another task's.
 record=null
 if [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && -f ${root}/.orchestration/acceptance/${task}.md ]]; then
-    record="$(jq -cRs 'split("\n") | if .[0] == "---" then .[1:] | index("---") as $e | if $e then .[:$e] | join("\n")
-      | (try {rec: fromjson} catch {why: "block-not-json"})
+    record="$(jq -cRs 'split("\n") | if .[0] == "---" then .[1:] | index("---") as $e | if $e then (.[$e + 1:] | join("\n")) as $body | .[:$e] | join("\n")
+      | (try {rec: fromjson, body: $body} catch {why: "block-not-json"})
       | if has("why") then . elif (.rec | type) == "object" and (.rec.ledger | type) == "array" and .rec.task == $t then
           [.rec.ledger[] | if type != "object" then "ledger-row-not-object" elif (.id | type) != "string" then "id-not-string"
             elif (.class | type) != "string" or (.class | test("^[a-z0-9-]+$") | not) then "class-not-slug" else empty end][0] as $why
@@ -168,8 +171,12 @@ jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" -
     ([["revises", $revises], ["amendments", $amendments], ["questions", ($c.questions | length)], ["bot_p1_heads", $n]][]
       | select((.[1] | type) == "number" and .[1] >= $limit) | "S2: \(.[0]) \(.[1]) >= \($limit) source=\($s)"),
     (if $state == "skipped" then empty
-      elif $rec.rec != null then [$rec.rec.ledger[].class] | group_by(.)[] | select(length >= 3)
-        | "S1: class=\(.[0]) count=\(length) source=record"
+      elif $rec.rec != null then [$rec.rec.ledger[].class | select(. != "advisory-p2")] | group_by(.)[] | select(length >= 3)
+        | .[0] as $class | any($rec.body | split("\n")[];
+            startswith("re-plan: \($class) -> ") and (ltrimstr("re-plan: \($class) -> ")
+              | (["specification", "design", "implementation", "verification"] - [scan("[A-Za-z]+")])
+              | length == 0)) as $replan
+        | "S1: class=\($class) count=\(length) re-plan=\(if $replan then "present" else "missing" end) source=record"
       elif $state == "ok" then [$gh.comments[] | select(codex and .in_reply_to_id == null) | title
         | gsub("!\\[[^\\]]*\\]\\([^)]*\\)|</?sub>|\\*\\*"; "") | sub("^\\s+"; "") | sub("\\s+$"; "")
         | {key: (ascii_downcase | [splits("\\s+") | select(. != "")][0:3] | join(" ")), title: .} | select(.key != "")]

@@ -16,3 +16,5 @@
 ---
 
 # Acceptance: test (S6 fixture, the search entry present)
+
+re-plan: class-count-scope -> specification, design, implementation, verification.

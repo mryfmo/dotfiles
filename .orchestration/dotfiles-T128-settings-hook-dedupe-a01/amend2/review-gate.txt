@@ -1,0 +1,22 @@
+[
+  {
+    "id": "settings-hook-amend1-independent-review",
+    "body": "Independent read-only implementation review found no P0-P3 findings against amended task99fb3dc7. Managed PostToolUse recognition uses program position only, retaining dict/string/shlex guards and safely preserving empty/interpreter-only commands. Wrapper regression failed on auditedbdefcbe4 before the fix, then all20 tests passed, including all four interpreters. Shared merge and SessionStart behavior unchanged. Committed core report now describes publishedPR369 rather than blocked publication. Basename collisions and interpreter-option limits disclosed; final-head CI not claimed by this local review.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "settings-hook-evidence2-masking-resolved",
+    "body": "Independent read-only evidence review found the tracked implementation-head proof complete and correctly separated from pending successor-head CI/Bot. Its P2 home-directory-path finding in validation.md was addressed with the repository evidence masker, followed by a successful assertion that no /Users/ path remains. Source and tests remain byte-identical to bf6beb53. This is worker review evidence, not task acceptance.",
+    "scope": "file",
+    "path": ".orchestration/dotfiles-T128-settings-hook-dedupe-a01/validation.md",
+    "resolved": true
+  },
+  {
+    "id": "settings-hook-amendment2-exact-invocation-approval",
+    "body": "Independent read-only review found no P0-P3 findings. One-line predicate change matches amendment2 exact token shape. Regression covers user chains, extra arguments and interpreter chains while retaining existing guards/cases and original19 methods. Task hash79d2af63 and14-source/57-test-addition caps agree; current root proof is complete, with post-publication CI/Bot explicitly separate. No secrets or unmasked home paths. Basename matching remains disclosed. Reviewer performed no edits/tests.",
+    "scope": "review",
+    "resolved": true
+  }
+]
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.

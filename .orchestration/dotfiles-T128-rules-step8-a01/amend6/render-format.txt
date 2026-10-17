@@ -1,0 +1,4 @@
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+generated agent configs are up to date
+1 file already formatted

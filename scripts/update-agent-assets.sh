@@ -79,6 +79,11 @@ AGMSG_PIN_SHA256="9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc0
 AGMSG_PIN_VERSION="1.5.0"
 # Install paths below assume the default XDG layout; the upstream installers
 # honor XDG_*_HOME/TODE_INSTALL_ROOT overrides that this lifecycle does not.
+HCOM_DARWIN_ARM64_URL="https://files.pythonhosted.org/packages/f5/ed/5e951b0e6fcadef1a2598e82b969b3eaa387a3e202f8987102d0e84cddfc/hcom-0.7.30-py3-none-macosx_11_0_arm64.whl"
+HCOM_DARWIN_AMD64_URL="https://files.pythonhosted.org/packages/ba/c3/04dd3c68d87620fa347372b5e9450c3bb3518aa096abdf08169e6d2ce37f/hcom-0.7.30-py3-none-macosx_10_12_x86_64.whl"
+HCOM_LINUX_AMD64_URL="https://files.pythonhosted.org/packages/21/fb/0a48f19a1c39b4ff59412f1fe34130c14acbc55da69097018d729191c6d2/hcom-0.7.30-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+HCOM_LINUX_ARM64_URL="https://files.pythonhosted.org/packages/f0/23/e746ce90643a1286ed3c6410c66eaae7134fbd2267d002814e6a932a2b60/hcom-0.7.30-py3-none-manylinux_2_28_aarch64.whl"
+readonly OMP_TARBALL_URL="https://registry.npmjs.org/@oh-my-pi/pi-coding-agent/-/pi-coding-agent-${OMP_PIN_VERSION}.tgz"
 readonly TERMINAL_CODE_INSTALLER_URL="https://tode.sh/install"
 readonly TERMINAL_BROWSER_INSTALLER_URL="https://terminal-browser.sh/install"
 
@@ -910,6 +915,87 @@ function update_terminal_browser() {
 }
 
 #
+# @description Verify the pinned omp tarball before npm installs it.
+# @exitcode 1 The download checksum or installed version differs from its pin.
+#
+function update_omp() (
+    local installed download_dir tarball actual
+    has_command npm || {
+        printf 'Skipping omp: npm command not found.\n'
+        return 0
+    }
+    section "omp"
+    installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    installed="${installed#omp/}"
+    if [ "${installed}" = "${OMP_PIN_VERSION}" ]; then
+        printf 'omp %s is already installed.\n' "${installed}"
+        return 0
+    fi
+    download_dir="$(mktemp -d)" || return
+    trap 'rm -rf "${download_dir}"' EXIT
+    tarball="${download_dir}/omp-${OMP_PIN_VERSION}.tgz"
+    curl -fsSL "${OMP_TARBALL_URL}" -o "${tarball}" || return
+    actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')" || return
+    if [ "${actual}" != "${OMP_TARBALL_SHA256}" ]; then
+        printf 'omp checksum mismatch: expected %s, got %s.\n' "${OMP_TARBALL_SHA256}" "${actual}" >&2
+        return 1
+    fi
+    # Allow this reviewed pin before the default three-day cooldown expires.
+    npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" || return
+    installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    installed="${installed#omp/}"
+    if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
+        printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
+        return 1
+    fi
+    manifest_record "update_omp" installer "${OMP_PIN_VERSION}" "${HOME}/.local/bin/omp" -- "npm_config_min_release_age=0 npm install -g --prefix ${HOME}/.local <verified-omp-tarball>"
+)
+
+#
+# @description Verify the pinned platform wheel before uv installs hcom.
+# @exitcode 1 The download checksum or installed version differs from its pin.
+#
+function update_hcom() (
+    local url expected installed download_dir wheel actual
+    case "$(uname -s)/$(uname -m)" in
+    Darwin/arm64 | Darwin/aarch64) url="${HCOM_DARWIN_ARM64_URL}" expected="${HCOM_DARWIN_ARM64_SHA256}" ;;
+    Darwin/x86_64 | Darwin/amd64) url="${HCOM_DARWIN_AMD64_URL}" expected="${HCOM_DARWIN_AMD64_SHA256}" ;;
+    Linux/x86_64 | Linux/amd64) url="${HCOM_LINUX_AMD64_URL}" expected="${HCOM_LINUX_AMD64_SHA256}" ;;
+    Linux/aarch64 | Linux/arm64) url="${HCOM_LINUX_ARM64_URL}" expected="${HCOM_LINUX_ARM64_SHA256}" ;;
+    *)
+        printf 'Skipping hcom: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+        return 0
+        ;;
+    esac
+    has_command uv || {
+        printf 'Skipping hcom: uv command not found.\n'
+        return 0
+    }
+    section "hcom"
+    installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    if [ "${installed}" = "${HCOM_PIN_VERSION}" ]; then
+        printf 'hcom %s is already installed.\n' "${installed}"
+        return 0
+    fi
+    download_dir="$(mktemp -d)" || return
+    trap 'rm -rf "${download_dir}"' EXIT
+    wheel="${download_dir}/${url##*/}"
+    curl -fsSL "${url}" -o "${wheel}" || return
+    actual="$(shasum -a 256 "${wheel}" | awk '{ print $1 }')" || return
+    if [ "${actual}" != "${expected}" ]; then
+        printf 'hcom checksum mismatch: expected %s, got %s.\n' "${expected}" "${actual}" >&2
+        return 1
+    fi
+    uv tool install --force "${wheel}" || return
+    installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    if [ "${installed}" != "${HCOM_PIN_VERSION}" ]; then
+        printf 'hcom version mismatch: expected %s, got %s.\n' "${HCOM_PIN_VERSION}" "${installed}" >&2
+        return 1
+    fi
+    manifest_record "update_hcom" installer "${HCOM_PIN_VERSION}" "${HOME}/.local/bin/hcom" -- "uv tool install --force <verified-hcom-wheel>"
+)
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
@@ -1115,6 +1201,8 @@ function main() {
     update_codex_understand_anything
     update_terminal_code
     update_terminal_browser
+    update_omp
+    update_hcom
     update_compactiondb
     update_agmsg
     ensure_herdr_integrations

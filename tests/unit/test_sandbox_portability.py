@@ -21,24 +21,40 @@ DIFF_SUBSTITUTION = re.compile(r"\bdiff\b[^|;&]*[<>]\(")
 TMP = re.compile(r"/tmp(/|\b)")
 
 
-def code(line):
-    """The line before its comment: a `#` at the start or after whitespace, outside quotes; a quoted `#` is code."""
-    quote = ""
-    for i, ch in enumerate(line):
+def scan(line):
+    """(code, syntax): the line before its comment, and that text with every quoted span and escaped character blanked.
+
+    A comment starts at a `#` at the start or after whitespace, outside quotes. A predicate reads shell syntax (an
+    operator, `<(`, a continuation) from `syntax` only, so nothing inside quotes is ever an operator or a comment.
+    """
+    code, syntax, quote, i = [], [], "", 0
+    while i < len(line):
+        ch = line[i]
+        if ch == "\\" and quote != "'" and i + 1 < len(line):
+            code += line[i : i + 2]
+            syntax += "  "
+            i += 2
+            continue
         if quote:
+            syntax.append(ch if ch == quote else " ")
             quote = "" if ch == quote else quote
         elif ch in "'\"":
             quote = ch
+            syntax.append(ch)
         elif ch == "#" and (i == 0 or line[i - 1].isspace()):
-            return line[:i]
-    return line  # shortcut: a backslash-escaped quote reads as a quote; upgrade when a tracked line needs it
+            break
+        else:
+            syntax.append(ch)
+        code.append(ch)
+        i += 1
+    return "".join(code), "".join(syntax)
 
 
 def logical_lines(text):
     """(first line number, text) per logical line: a backslash before the newline, outside a comment, joins the next line."""
     start, parts = 1, []
     for n, line in enumerate(text.split("\n"), 1):
-        continued = code(line).endswith("\\")
+        continued = scan(line)[0].endswith("\\")
         parts.append(line[:-1] if continued else line)
         if not continued:
             yield start, "".join(parts)
@@ -66,16 +82,16 @@ def hits(repo, kinds, refused):
         f"{rel}:{n}: {line.strip()}"
         for rel, path in tracked(repo, kinds)
         for n, line in logical_lines(path.read_text(errors="replace"))
-        if refused(code(line), line)
+        if refused(*scan(line), line)
     ]
 
 
-def diff_refused(code_line, _line):
-    return bool(DIFF_SUBSTITUTION.search(code_line))
+def diff_refused(_code, syntax, _line):
+    return bool(DIFF_SUBSTITUTION.search(syntax))
 
 
-def tmp_refused(code_line, line):
-    return bool(TMP.search(code_line)) and "TMPDIR" not in line
+def tmp_refused(code, _syntax, line):
+    return bool(TMP.search(code)) and "TMPDIR" not in line
 
 
 class SandboxPortabilityTest(unittest.TestCase):
@@ -116,7 +132,8 @@ class SandboxPortabilityTest(unittest.TestCase):
             hits(self.repo_with("bad.sh", offending), {"shell", "python"}, tmp_refused),
         )
         self.assertEqual(
-            [], hits(self.repo_with("ok.py", 'd = os.environ.get("TMPDIR", "/tmp")\n'), {"shell", "python"}, tmp_refused)
+            [],
+            hits(self.repo_with("ok.py", 'd = os.environ.get("TMPDIR", "/tmp")\n'), {"shell", "python"}, tmp_refused),
         )
         self.assertEqual([], hits(ROOT, {"shell", "python"}, tmp_refused))
 
@@ -131,7 +148,9 @@ class SandboxPortabilityTest(unittest.TestCase):
             ["scripts/bad.sh:3: diff <(a) <(b)"], hits(self.repo_with("bad.sh", trailing), {"shell"}, diff_refused)
         )
         last = "diff <(a) <(b) \\"
-        self.assertEqual(["scripts/bad.sh:1: diff <(a) <(b)"], hits(self.repo_with("bad.sh", last), {"shell"}, diff_refused))
+        self.assertEqual(
+            ["scripts/bad.sh:1: diff <(a) <(b)"], hits(self.repo_with("bad.sh", last), {"shell"}, diff_refused)
+        )
 
     def test_a_quoted_hash_is_not_a_comment(self):
         quoted = (

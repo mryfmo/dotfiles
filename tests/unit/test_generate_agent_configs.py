@@ -162,6 +162,36 @@ statusMessage = "Closing session"
 """
 
 
+def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin") -> dict:
+    result = subprocess.run(
+        [
+            "chezmoi",
+            "--config",
+            str(temp_dir / "chezmoi.toml"),
+            "--source",
+            str(temp_dir),
+            "--cache",
+            str(temp_dir / "cache"),
+            "--persistent-state",
+            str(temp_dir / "state"),
+            "execute-template",
+            "--init",
+            "--override-data",
+            json.dumps({"chezmoi": {"os": os_name, "homeDir": "/render-home"}}),
+        ],
+        input=text,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return json.loads(result.stdout)
+
+
+def load_manifest_fixture(temp_dir: Path) -> dict:
+    text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+    return render_claude_template("{{ fromYaml " + json.dumps(text) + " | toJson }}", temp_dir)
+
+
 class GenerateAgentConfigsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.module = load_generator()
@@ -172,6 +202,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
+
+    def render_claude_template(self, text: str, os_name: str = "darwin") -> dict:
+        return render_claude_template(text, self.temp_dir, os_name)
 
     def write_asset_fixture(self) -> dict:
         pins = self.temp_dir / "scripts/lib/installer-pins.sh"
@@ -657,6 +690,107 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest["claude"]["sandbox"]["filesystem"] = {"extra_allow_write": ["~/.cache/uv"]}
         extended = self.module.render_claude_sandbox(manifest)
         self.assertEqual(["/root-a", "~/.cache/uv"], extended["filesystem"]["allowWrite"])
+
+    def test_claude_sandbox_renders_per_os_from_the_manifest(self) -> None:
+        manifest = load_manifest_fixture(self.temp_dir)
+        expected_ask = [
+            f"Bash(gh {command}:*)"
+            for command in (
+                "pr merge",
+                "pr create",
+                "pr comment",
+                "pr review",
+                "pr close",
+                "pr edit",
+                "pr update-branch",
+                "issue",
+                "api -X POST",
+                "api --method POST",
+                "api -XPOST",
+                "api --method=POST",
+                "api -X PATCH",
+                "api --method PATCH",
+                "api -XPATCH",
+                "api --method=PATCH",
+                "api -X PUT",
+                "api --method PUT",
+                "api -XPUT",
+                "api --method=PUT",
+                "api -X DELETE",
+                "api --method DELETE",
+                "api -XDELETE",
+                "api --method=DELETE",
+                "api -f",
+                "api -F",
+                "api --raw-field",
+                "api --field",
+            )
+        ] + ["Bash(gh api -f*)", "Bash(gh api -F*)", "Bash(gh api --raw-field=*)", "Bash(gh api --field=*)"]
+        template = self.module.render_claude_settings(manifest)
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os=os_name):
+                settings = self.render_claude_template(template, os_name)
+                sandbox = settings["sandbox"]
+                self.assertEqual(
+                    ["com.apple.trustd.agent"] if os_name == "darwin" else [],
+                    sandbox["network"].get("allowMachLookup", []),
+                )
+                roots = [
+                    path.replace("{{ .chezmoi.homeDir }}", "/render-home")
+                    for path in manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
+                ]
+                extras = ["~/.cache/uv", "~/.local/state/mise", "~/.local/share/uv"]
+                self.assertEqual(
+                    roots + extras + (["~/Library/Caches/mise"] if os_name == "darwin" else []),
+                    sandbox["filesystem"]["allowWrite"],
+                )
+                self.assertEqual(
+                    [
+                        "github.com",
+                        "api.github.com",
+                        "uploads.github.com",
+                        "objects.githubusercontent.com",
+                        "codeload.github.com",
+                        "pypi.org",
+                        "files.pythonhosted.org",
+                    ],
+                    sandbox["network"]["allowedDomains"],
+                )
+                self.assertEqual(
+                    ["agmsg-dispatch *"]
+                    + (
+                        ["gh *", "herdr-agents *", "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *"]
+                        if os_name == "linux"
+                        else []
+                    ),
+                    sandbox["excludedCommands"],
+                )
+                self.assertEqual(expected_ask, settings["permissions"]["ask"])
+                self.assertEqual(manifest["claude"]["permissions"]["deny"], settings["permissions"]["deny"])
+                self.assertEqual(
+                    {
+                        "GH_TELEMETRY": "false",
+                        "DO_NOT_TRACK": "1",
+                        "CHECKPOINT_DISABLE": "1",
+                        "AWS_EC2_METADATA_DISABLED": "true",
+                    },
+                    settings["env"],
+                )
+                self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
+
+    def test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation(self) -> None:
+        manifest = load_manifest_fixture(self.temp_dir)
+        settings = self.render_claude_template(self.module.render_claude_settings(manifest), "linux")
+        self.assertEqual(
+            [
+                "agmsg-dispatch *",
+                "gh *",
+                "herdr-agents *",
+                "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *",
+            ],
+            settings["sandbox"]["excludedCommands"],
+        )
+        self.assertEqual(["Bash(agmsg-dispatch:*)"], settings["permissions"]["allow"])
 
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()
@@ -1299,12 +1433,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(handler["timeout"], timeout)
 
     def test_managed_claude_sandbox_excludes_agmsg_dispatch(self) -> None:
-        claude = json.loads((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
+        claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
 
-        self.assertIn("agmsg-dispatch", claude["sandbox"]["excludedCommands"])
+        self.assertIn("agmsg-dispatch *", claude["sandbox"]["excludedCommands"])
         self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
         self.assertEqual("auto", claude["permissions"]["defaultMode"])
-        self.assertEqual([], claude["permissions"]["ask"])
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.assertEqual(manifest["claude"]["permissions"]["ask"], claude["permissions"]["ask"])
         self.assertEqual(
             [
                 "Bash(gh release:*)",

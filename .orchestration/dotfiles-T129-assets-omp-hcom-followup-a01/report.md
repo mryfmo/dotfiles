@@ -2,14 +2,14 @@
 task_id: dotfiles-T129-assets-omp-hcom-followup-a01
 seat: claude-standard-dot-a007
 branch: tools/assets-hcom-receipt
-base: b49da6dd3c9e9a93301af4c0d3dd62b058852abf (PR #388's head; the branch rebases onto origin/main after #388 merges)
+base: f32c02b81f788d04916b27840006e1409a7d1bcb (origin/main after PR #388 merged; the branch started from #388's head b49da6dd and was rebased)
 task_sha256: abd85d3295bfc03b738c765409aaea695ce51c8cb4f9ebbc758eddad5f398777
-code_commit: ad57e280104e71069352e128a2758551b7ca6316
+code_commit: 457984c9 (ad57e280 before the rebase)
 ---
 
 # Report: dotfiles-T129-assets-omp-hcom-followup-a01
 
-- Seat: `claude-standard-dot-a007` in `.claude/worktrees/worker-c`, on `tools/assets-hcom-receipt` from PR #388's head b49da6dd. The task says no PR opens before the rebase onto origin/main after #388 merges. The PR #389, #396 and #386 branches stay in the worktree, committed and pushed.
+- Seat: `claude-standard-dot-a007` in `.claude/worktrees/worker-c`, on `tools/assets-hcom-receipt`. The branch started from PR #388's head b49da6dd and, after #388 merged as f32c02b8 (the orchestrator's PING of 15:13:56Z), was rebased onto origin/main; the code diff is byte-identical (validation §7). The PR opened after the rebase, as the task says. The PR #389, #396 and #386 branches stay in the worktree, committed and pushed.
 - Task file: sha256 `abd85d32…`, copied byte-identical; the task-consistency check passes (validation §1). No question and no amendment.
 - The owned row, read from the record at dispatch: `local:b49da6d:1` (PR #388's local review, `scripts/update-agent-assets.sh:989`, class install-receipt-artifact).
 
@@ -49,8 +49,8 @@ code_commit: ad57e280104e71069352e128a2758551b7ca6316
 
 ## Caps and what follows
 
-- Against b49da6dd: 11 changed lines outside `tests/` and `.orchestration/` (<= 120); 19 added under `tests/` (<= 400). The caps against origin/main are pasted after the rebase.
+- Against origin/main after the rebase (validation §7): 11 changed lines outside `tests/` and `.orchestration/` (<= 120); 19 added under `tests/` (<= 400).
 - `task_copy=abd85d3295bfc03b738c765409aaea695ce51c8cb4f9ebbc758eddad5f398777`.
-- After #388 merges: rebase onto origin/main, re-run the Check, open the PR, CI and the Bot wait, then the RESULT. The worker replies to and resolves no thread, and does not merge. No new durable decision was made, so no CompactionDB memory was added. AutoSkill was not used. The Understand-Anything graph was not touched.
+- After the rebase: the Check re-run on the rebased head (validation §7), the PR, CI and the Bot wait; the RESULT names their outcome. The worker replies to and resolves no thread, and does not merge. No new durable decision was made, so no CompactionDB memory was added. AutoSkill was not used. The Understand-Anything graph was not touched.
 
 cost: n/a

@@ -432,3 +432,215 @@ $ ruff format --config ruff.toml --check tests/unit/test_update_agent_assets.py;
 All checks passed!
 (exit 0)
 ```
+
+## 7. After PR #388 merged (f32c02b8): the rebase, the caps and the Check on the rebased head
+
+The orchestrator's PING of 15:13:56Z named the merge. The branch is rebased onto origin/main without signing (the signed form failed to write the commit object in the sandbox and was aborted); the code diff is byte-identical to the one of section 2. Caps against origin/main: 8 + 3 = 11 changed lines outside `tests/` and `.orchestration/` (<= 120); 19 added under `tests/` (<= 400). The Check on the rebased head gives the results of section 5, with the same sandbox-only failing set.
+
+```console
+$ git rev-parse origin/main HEAD; git log --oneline -3
+f32c02b81f788d04916b27840006e1409a7d1bcb
+0ef37ff118a0f8a5cf927b51015860a2d2428000
+0ef37ff1 chore(orchestration): dotfiles-T129-assets-omp-hcom-followup-a01 task copy and evidence before the rebase (ad57e280)
+457984c9 fix(assets): keep the verified hcom wheel where uv's receipt points (T129 assets-omp-hcom followup a01)
+f32c02b8 feat(agents): pin verified omp and hcom assets (#388)
+(exit 0)
+$ git -c commit.gpgsign=false rebase --onto origin/main b49da6dd3c9e9a93301af4c0d3dd62b058852abf tools/assets-hcom-receipt   # run earlier: "Successfully rebased and updated refs/heads/tools/assets-hcom-receipt."
+$ git diff b49da6dd3c9e9a93301af4c0d3dd62b058852abf ad57e280104e71069352e128a2758551b7ca6316 -- scripts tests > d1.patch; git diff origin/main 457984c9 -- scripts tests > d2.patch; cmp d1.patch d2.patch && echo "the code diff is identical before and after the rebase"
+the code diff is identical before and after the rebase
+(exit 0)
+$ git diff --numstat origin/main...HEAD
+3	0	.orchestration/dotfiles-T129-assets-omp-hcom-followup-a01/autoskill.md
+6	0	.orchestration/dotfiles-T129-assets-omp-hcom-followup-a01/learning.md
+56	0	.orchestration/dotfiles-T129-assets-omp-hcom-followup-a01/report.md
+23	0	.orchestration/dotfiles-T129-assets-omp-hcom-followup-a01/sandbox.md
+83	0	.orchestration/dotfiles-T129-assets-omp-hcom-followup-a01/task.md
+434	0	.orchestration/dotfiles-T129-assets-omp-hcom-followup-a01/validation.md
+8	3	scripts/update-agent-assets.sh
+19	4	tests/unit/test_update_agent_assets.py
+(exit 0)
+```
+
+```console
+$ PATH="$TMPDIR/t129h/shim:$PATH" uv run python -m unittest tests/unit/test_update_agent_assets.py tests/unit/test_asset_manifest.py tests/unit/test_runtime_health.py -v   # on the rebased head 0ef37ff1
+test_omp_version_check_accepts_the_branded_omp_slash_version_form (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form) ... ok
+test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin) ... ok
+test_update_hcom_keeps_the_wheel_uv_records_as_its_source (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_keeps_the_wheel_uv_records_as_its_source) ... ok
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... ok
+test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... ok
+test_chezmoi_rendered_updater_uses_exported_source_root (tests.unit.test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_exported_source_root) ... ok
+test_chezmoi_rendered_updater_uses_inlined_manifest_library (tests.unit.test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_inlined_manifest_library) ... ok
+test_chezmoi_wrapper_renders_shebang_and_source_root (tests.unit.test_asset_manifest.AssetManifestTest.test_chezmoi_wrapper_renders_shebang_and_source_root) ... ok
+test_failed_atomic_commit_leaves_previous_manifest_intact (tests.unit.test_asset_manifest.AssetManifestTest.test_failed_atomic_commit_leaves_previous_manifest_intact) ... ok
+test_records_schema_two_steps_and_replaces_one_whole_entry (tests.unit.test_asset_manifest.AssetManifestTest.test_records_schema_two_steps_and_replaces_one_whole_entry) ... ok
+test_rendered_updater_fails_when_no_source_root_is_valid (tests.unit.test_asset_manifest.AssetManifestTest.test_rendered_updater_fails_when_no_source_root_is_valid) ... ok
+test_same_run_mise_repairs_preserve_both_identity_steps (tests.unit.test_asset_manifest.AssetManifestTest.test_same_run_mise_repairs_preserve_both_identity_steps) ... ok
+test_two_real_install_steps_record_under_fake_home (tests.unit.test_asset_manifest.AssetManifestTest.test_two_real_install_steps_record_under_fake_home) ... ok
+test_unwritable_destination_warns_once_without_failing (tests.unit.test_asset_manifest.AssetManifestTest.test_unwritable_destination_warns_once_without_failing) ... ok
+test_updater_direct_source_resolves_repository_root (tests.unit.test_asset_manifest.AssetManifestTest.test_updater_direct_source_resolves_repository_root) ... ok
+test_updater_has_one_recording_call_for_each_install_step (tests.unit.test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step) ... ok
+test_agent_asset_update_removes_node_global_shadows_before_agent_commands (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_removes_node_global_shadows_before_agent_commands) ... ok
+test_agent_asset_update_repairs_broken_claude_with_npm_backend (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_repairs_broken_claude_with_npm_backend) ... ok
+test_agent_asset_update_runs_gh_extension_ensure (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_runs_gh_extension_ensure) ... ok
+test_agent_launchers_do_not_hardcode_model_ids (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_launchers_do_not_hardcode_model_ids) ... ok
+test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes) ... FAIL
+test_agmsg_already_pinned_skips_download (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_already_pinned_skips_download) ... ok
+test_agmsg_checksum_mismatch_fails_closed (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_checksum_mismatch_fails_closed) ... FAIL
+test_agmsg_fresh_install_populates_skill_and_records_manifest (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_fresh_install_populates_skill_and_records_manifest) ... FAIL
+test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state) ... ERROR
+test_agmsg_migration_reports_an_installer_that_mutates_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_migration_reports_an_installer_that_mutates_live_state) ... ERROR
+test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty) ... FAIL
+test_agmsg_refuses_to_install_without_tar (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_without_tar) ... ok
+test_agmsg_reports_an_installer_that_leaves_the_wrong_version (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_reports_an_installer_that_leaves_the_wrong_version) ... FAIL
+test_agmsg_update_aborts_when_install_corrupts_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_update_aborts_when_install_corrupts_live_state) ... FAIL
+test_agmsg_update_never_touches_teams_db_run (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_update_never_touches_teams_db_run) ... ok
+test_client_bashrc_treats_private_sources_as_optional (tests.unit.test_runtime_health.RuntimeHealthTest.test_client_bashrc_treats_private_sources_as_optional) ... ok
+test_codex_crit_normalizes_managed_marketplace_mode (tests.unit.test_runtime_health.RuntimeHealthTest.test_codex_crit_normalizes_managed_marketplace_mode) ... ok
+test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing (tests.unit.test_runtime_health.RuntimeHealthTest.test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing) ... ok
+test_crit_fails_without_an_install_when_the_download_fails (tests.unit.test_runtime_health.RuntimeHealthTest.test_crit_fails_without_an_install_when_the_download_fails) ... ok
+test_crit_never_promotes_a_staged_binary_that_prints_the_banner_but_fails (tests.unit.test_runtime_health.RuntimeHealthTest.test_crit_never_promotes_a_staged_binary_that_prints_the_banner_but_fails) ... ok
+test_crit_refuses_a_replaced_release_whose_checksums_txt_matches (tests.unit.test_runtime_health.RuntimeHealthTest.test_crit_refuses_a_replaced_release_whose_checksums_txt_matches) ... ok
+test_crit_replaces_an_installed_binary_that_cannot_report_its_version (tests.unit.test_runtime_health.RuntimeHealthTest.test_crit_replaces_an_installed_binary_that_cannot_report_its_version) ... ok
+test_crit_replaces_an_installed_binary_that_prints_the_banner_but_fails (tests.unit.test_runtime_health.RuntimeHealthTest.test_crit_replaces_an_installed_binary_that_prints_the_banner_but_fails) ... ok
+test_darwin_crit_checksum_failure_preserves_existing_binary (tests.unit.test_runtime_health.RuntimeHealthTest.test_darwin_crit_checksum_failure_preserves_existing_binary) ... ok
+test_darwin_crit_install_is_pinned_atomic_and_recorded (tests.unit.test_runtime_health.RuntimeHealthTest.test_darwin_crit_install_is_pinned_atomic_and_recorded) ... ok
+test_doctor_has_no_github_role_check (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_has_no_github_role_check) ... ok
+test_doctor_reports_claude_sandbox_prerequisites (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_reports_claude_sandbox_prerequisites) ... ok
+test_doctor_required_optional_and_healthy_statuses (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_required_optional_and_healthy_statuses) ... ok
+test_linux_crit_checksum_failure_preserves_existing_binary (tests.unit.test_runtime_health.RuntimeHealthTest.test_linux_crit_checksum_failure_preserves_existing_binary) ... ok
+test_linux_crit_correct_version_is_download_free (tests.unit.test_runtime_health.RuntimeHealthTest.test_linux_crit_correct_version_is_download_free) ... ok
+test_linux_crit_failure_does_not_leak_cleanup_trap (tests.unit.test_runtime_health.RuntimeHealthTest.test_linux_crit_failure_does_not_leak_cleanup_trap) ... ok
+test_linux_crit_install_is_pinned_atomic_and_recorded (tests.unit.test_runtime_health.RuntimeHealthTest.test_linux_crit_install_is_pinned_atomic_and_recorded) ... ok
+test_linux_crit_prefers_pinned_target_over_older_path_binary (tests.unit.test_runtime_health.RuntimeHealthTest.test_linux_crit_prefers_pinned_target_over_older_path_binary) ... ok
+test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing) ... ok
+test_make_doctor_passes_repair_variable_to_runtime_check (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check) ... ok
+test_make_doctor_propagates_runtime_drift_after_tool_checks (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_propagates_runtime_drift_after_tool_checks) ... ok
+test_make_update_pulls_clean_main_before_apply (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_pulls_clean_main_before_apply) ... ok
+test_make_update_reports_unmerged_feature_branch_before_branch_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_feature_branch_before_branch_notice) ... ok
+test_make_update_reports_unmerged_index_before_dirty_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_index_before_dirty_notice) ... ok
+test_make_update_skips_dirty_main_with_manual_pull_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_skips_dirty_main_with_manual_pull_notice) ... ok
+test_upgrade_fails_and_keeps_the_backup_when_a_partial_install_cannot_be_removed (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_fails_and_keeps_the_backup_when_a_partial_install_cannot_be_removed) ... ok
+test_upgrade_fails_when_the_final_install_fails_after_a_rebuild (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_fails_when_the_final_install_fails_after_a_rebuild) ... ok
+test_upgrade_fails_when_the_node_marker_cannot_be_written (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_fails_when_the_node_marker_cannot_be_written) ... ok
+test_upgrade_failure_after_a_successful_install_only_warns (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_failure_after_a_successful_install_only_warns) ... ok
+test_upgrade_homebrew_verifies_attestations_when_gh_is_present (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_homebrew_verifies_attestations_when_gh_is_present) ... ok
+test_upgrade_network_only_phases_warn_and_the_mise_phase_still_runs (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_network_only_phases_warn_and_the_mise_phase_still_runs) ... ok
+test_upgrade_never_restores_an_undeletable_backup_over_a_completed_rebuild (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_never_restores_an_undeletable_backup_over_a_completed_rebuild) ... ok
+test_upgrade_rebuilds_npm_tools_when_the_node_marker_differs (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_rebuilds_npm_tools_when_the_node_marker_differs) ... ok
+test_upgrade_required_failures_are_nonzero_and_independent (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_required_failures_are_nonzero_and_independent) ... ok
+test_upgrade_restores_a_rebuild_backup_left_by_a_killed_run (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_restores_a_rebuild_backup_left_by_a_killed_run) ... ok
+test_upgrade_restores_the_npm_tool_when_the_rebuild_is_interrupted (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_restores_the_npm_tool_when_the_rebuild_is_interrupted) ... ok
+test_upgrade_runs_mise_against_the_applied_host_config_and_edits_no_file (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_runs_mise_against_the_applied_host_config_and_edits_no_file) ... ok
+test_upgrade_self_updates_mise_to_its_latest_release (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_self_updates_mise_to_its_latest_release) ... ok
+test_upgrade_skips_every_phase_when_ci_is_true (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_skips_every_phase_when_ci_is_true) ... ok
+test_upgrade_skips_unavailable_mise_self_update (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_skips_unavailable_mise_self_update) ... ok
+
+======================================================================
+ERROR: test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 912, in test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state
+    log = (repo / "commands.log").read_text()
+  File "~/.local/share/mise/installs/python/latest/lib/python3.15/pathlib/__init__.py", line 986, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/latest/lib/python3.15/pathlib/__init__.py", line 970, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-501/runtime-health-test-pqdlcg9y/agmsg-repo/commands.log'
+
+======================================================================
+ERROR: test_agmsg_migration_reports_an_installer_that_mutates_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_migration_reports_an_installer_that_mutates_live_state)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 978, in test_agmsg_migration_reports_an_installer_that_mutates_live_state
+    self.assertNotIn("update=true", (repo / "commands.log").read_text())
+                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "~/.local/share/mise/installs/python/latest/lib/python3.15/pathlib/__init__.py", line 986, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/latest/lib/python3.15/pathlib/__init__.py", line 970, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-501/runtime-health-test-1erl853v/agmsg-repo/commands.log'
+
+======================================================================
+FAIL: test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 1014, in test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes
+    self.assertNotIn("installer failed", output)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'installer failed' unexpectedly found in '\n==> agmsg\nmktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.CM6jH2XTgb: Operation not permitted\nagmsg: could not snapshot the live state under /tmp/claude-501/runtime-health-test-9dhtcxi_/agmsg-home/.agents/skills/agmsg; nothing was installed\nagmsg installer failed (installed: none); see the reason above.\n'
+
+======================================================================
+FAIL: test_agmsg_checksum_mismatch_fails_closed (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_checksum_mismatch_fails_closed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 860, in test_agmsg_checksum_mismatch_fails_closed
+    self.assertIn("checksum mismatch", result.stdout + result.stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'checksum mismatch' not found in '\n==> agmsg\nmktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.0eJHmF2VAD: Operation not permitted\nagmsg installer failed (installed: none); see the reason above.\n'
+
+======================================================================
+FAIL: test_agmsg_fresh_install_populates_skill_and_records_manifest (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_fresh_install_populates_skill_and_records_manifest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 819, in test_agmsg_fresh_install_populates_skill_and_records_manifest
+    self.assertNotIn("installer failed", result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'installer failed' unexpectedly found in '\n==> agmsg\nmktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.07r6JucwZg: Operation not permitted\nagmsg installer failed (installed: none); see the reason above.\n'
+
+======================================================================
+FAIL: test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 1063, in test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty
+    self.assertIn("hashed fewer live-state files than exist", output)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'hashed fewer live-state files than exist' not found in '\n==> agmsg\nmktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.ePiJQNLiCi: Operation not permitted\nagmsg: could not snapshot the live state under /tmp/claude-501/runtime-health-test-4lfy6cg1/agmsg-home/.agents/skills/agmsg; nothing was installed\nagmsg installer failed (installed: 1.0.0); see the reason above.\n'
+
+======================================================================
+FAIL: test_agmsg_reports_an_installer_that_leaves_the_wrong_version (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_reports_an_installer_that_leaves_the_wrong_version)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 1033, in test_agmsg_reports_an_installer_that_leaves_the_wrong_version
+    self.assertIn(
+    ~~~~~~~~~~~~~^
+        "agmsg: install.sh --cmd agmsg --agent-type claude-code left VERSION 9.9.9 (want 1.5.0)",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        output,
+        ^^^^^^^
+    )
+    ^
+AssertionError: 'agmsg: install.sh --cmd agmsg --agent-type claude-code left VERSION 9.9.9 (want 1.5.0)' not found in '\n==> agmsg\nmktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.N6qPJkEWtC: Operation not permitted\nagmsg installer failed (installed: none); see the reason above.\n'
+
+======================================================================
+FAIL: test_agmsg_update_aborts_when_install_corrupts_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_update_aborts_when_install_corrupts_live_state)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/tests/unit/test_runtime_health.py", line 946, in test_agmsg_update_aborts_when_install_corrupts_live_state
+    self.assertIn(
+    ~~~~~~~~~~~~~^
+        "install.sh --update --cmd agmsg --agent-type claude-code changed or removed existing live state", output
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: 'install.sh --update --cmd agmsg --agent-type claude-code changed or removed existing live state' not found in '\n==> agmsg\nmktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.GzmKJbcjvG: Operation not permitted\nagmsg: could not snapshot the live state under /tmp/claude-501/runtime-health-test-gy8ingit/agmsg-home/.agents/skills/agmsg; nothing was installed\nagmsg installer failed (installed: 1.0.0); see the reason above.\n'
+
+----------------------------------------------------------------------
+Ran 71 tests in 57.256s
+
+FAILED (failures=6, errors=2)
+(exit 1)
+```
+
+```console
+$ diff fail-base.txt fail-rebased.txt && echo "SAME FAILING SET"   # the sandbox baseline of section 5 against the rebased head
+SAME FAILING SET
+(exit 0)
+$ shellcheck -x scripts/update-agent-assets.sh
+(exit 0)
+$ shfmt -i 4 -sr -d scripts/update-agent-assets.sh
+(exit 0)
+```

@@ -1,0 +1,33 @@
+cost: n/a
+previous_head: 8607a87c71cce2cebfaf0a7747e11de0451fc98e
+round: 3
+check: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+finding: 'audit:8607a87:1'
+class: path-form-normalisation
+authorization: 'C59 re-plan D-S1-379-A; pair-confirmed hashed runtime amendment TASK'
+task_copy: 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9
+runtime: 'installed PATH-resolved python3 -I -S, inline stdlib only, no new package/script'
+post_merge_live_e2e_owner: orchestrator
+historical_revisions:
+  - previous_head: 64df31ea7c7c52ca30e9f1e1b33246c3a44bb3a0
+    round: 1
+    finding: 4300474045
+    fixed: c0c3ff05f50846d8f880b7ccfb54d0c74630adf4
+  - previous_head: 990b607fb286155737f5ee9078d2f572f1624837
+    round: 2
+    findings: [4300561777, 'audit:990b607:1', 'audit:990b607:3']
+    fixed: 02fdf0618be46c9eba11c05cd189846f3e871704
+guard_correction:
+  previous_head: ba0bf3548b17ec0ad0837a518e338611066daf63
+  finding: 4301859324
+  round: 3
+  authorization: '2026-10-17T07:16:28Z explicit same-round re-plan interpretation, not a new round'
+  check: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+  behavior: 'canonical selected URL bound to live href; ten Node-executed rows assert reload and no injection'
+separator_correction:
+  previous_head: 40d18027d5953c31ff57bcd7bbc250c6bb357bbc
+  finding: 4301888204
+  round: 3
+  authorization: '2026-10-17T07:28:36Z last correction within round3; further P2 proposed advisory'
+  check: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_project_map_reload_hook_rejects_percent_encoded_path_separators
+  advisory_candidate: 'local:separator-review:1 malformed-percent Node differential; browser impact unverified, not fixed'

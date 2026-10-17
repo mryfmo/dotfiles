@@ -35,7 +35,7 @@ SH_NORM = re.compile(
 )
 JQ_DEF = re.compile(r"\bdef (canonical_path|normali[sz]e_\w+)\b")
 JQ_OP = re.compile(r"==|!=|\b(?:startswith|endswith|ltrimstr|rtrimstr|test)\(")
-JQ_QUOTE = re.compile(r"""(?:\\[\s\S]|"(?:[^"\\\n]|\\[\s\S])*"|[^'"\\\n])*('[^']*')""")  # skips "…" whole
+JQ_QUOTE = re.compile(r"""(?:\\[\s\S]|"(?:[^"\\\n]|\\[\s\S])*"|[^'"\\\n]|")*+('[^']*')""")  # skips a closed "…" whole
 JQ_ARG = re.compile(r"(?<!\S)(?:--(?:arg|argjson|slurpfile|rawfile)(?:[\s\\]+\S+)?|--indent|-L|--library-path)[\s\\]+$")
 PS = re.compile(
     r"(?:^|[|;&(!]|\$\(|\b(?:if|elif|while|until|then|do|else)\b)\s*ps\s(?!-o\s+\S+=\s+-p\s)[^|]*\|\s*(?:grep|awk|cut|sed)\b"

@@ -1,0 +1,71 @@
+[
+  {
+    "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4289271574",
+    "pull_request_review_id": 5541108807,
+    "id": 4289271574,
+    "node_id": "PRRC_kwDOSMyAV87_qRcW",
+    "diff_hunk": "@@ -10,4 +10,4 @@ Invariants only; every procedure lives in the `agmsg-orchestration` skill, in th\n - **Identity.** Each worker identity registers at its worktree path with `AGMSG_RESOLVE_PROJECT=0 join.sh <team> <name> <type> <worktree>`. Message and wake paths (`agmsg-dispatch`, `poke.sh` or `send.sh` with `--body-file`, `inbox.sh`; never retry a `poke.sh` exit 13 as `send.sh`) are in Orchestrator Playbook step 6 and \"Identity, delivery, and storage\".\n - **Parallelism.** Concurrent tasks need pairwise-disjoint `allowed_files`: disjoint code tasks run concurrently while overlapping code files run serially, shared prose files only in non-overlapping sections, and the later PR takes the new base with `gh pr update-branch` (\"Parallel workers\").\n - **Routing.** A seat never edits the source of its own execution boundary: Claude-boundary changes go to a Codex seat, Codex-boundary changes to a Claude seat, and shared sources or permgate to the operator (Orchestrator Playbook step 3).\n-- **Boundaries.** At every regime or session boundary, run the Stop checklist (\"Review and integration invariants\"); `make check-regime-boundary` checks it. Codify session lessons in this repository through a task; auto-memory is not a durable store for regime procedure.\n+- **Boundaries.** At every regime or session boundary, run the Stop checklist (\"Review and integration invariants\"), and records reach `main` at most once a day (plan 020 step 3); `make check-regime-boundary` checks it. Codify session lessons through a task, never auto-memory.",
+    "path": "home/dot_config/claude/rules/agmsg-orchestration.md",
+    "commit_id": "becba33c616247057f2f75cf30ec5aefcbf00592",
+    "original_commit_id": "becba33c616247057f2f75cf30ec5aefcbf00592",
+    "user": {
+      "login": "chatgpt-codex-connector[bot]",
+      "id": 199175422,
+      "node_id": "BOT_kgDOC98s_g",
+      "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D",
+      "html_url": "https://github.com/apps/chatgpt-codex-connector",
+      "followers_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Enforce the claimed daily boundary limit**\n\nWhen a second session boundary occurs on the same day, the Stop checklist still directs the orchestrator to create and auto-merge another boundary PR, and the SKILL explicitly permits `boundary-<date>-2`; meanwhile `scripts/check-regime-boundary.sh` contains no date or boundary-merge-history check. Thus `make check-regime-boundary` can pass while the new once-a-day invariant is violated. Either implement the promised check and reconcile the multi-boundary procedure, or stop claiming that this command enforces the limit. The task's residual control for this trust-boundary rule therefore does not mitigate the behavioral mismatch.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/becba33c616247057f2f75cf30ec5aefcbf00592/AGENTS.md#L78-L78)\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+    "created_at": "2026-10-15T23:23:32Z",
+    "updated_at": "2026-10-15T23:23:32Z",
+    "html_url": "https://github.com/mryfmo/dotfiles/pull/371#discussion_r4289271574",
+    "pull_request_url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/371",
+    "_links": {
+      "self": {
+        "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4289271574"
+      },
+      "html": {
+        "href": "https://github.com/mryfmo/dotfiles/pull/371#discussion_r4289271574"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/371"
+      }
+    },
+    "reactions": {
+      "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4289271574/reactions",
+      "total_count": 0,
+      "+1": 0,
+      "-1": 0,
+      "laugh": 0,
+      "hooray": 0,
+      "confused": 0,
+      "heart": 0,
+      "rocket": 0,
+      "eyes": 0
+    },
+    "start_line": null,
+    "original_start_line": null,
+    "start_side": null,
+    "line": 13,
+    "original_line": 13,
+    "side": "RIGHT",
+    "author_association": "NONE",
+    "original_position": 5,
+    "position": 5,
+    "subject_type": "line"
+  }
+]

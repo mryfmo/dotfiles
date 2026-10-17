@@ -1,0 +1,17 @@
+[
+  {
+    "matcher": "Write|Edit|MultiEdit",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "~/.claude/hooks/format-edited-files.py"
+      },
+      {
+        "type": "command",
+        "command": "~/.claude/hooks/project-map-reload.sh"
+      }
+    ]
+  }
+]
+user chained hook preserved: False
+Confirmed Bot P1 on unchanged implementation: user chained hook removed; no source/test file edited.

@@ -1,0 +1,125 @@
+previous_head exit 1
+--- home/dot_claude/modify_private_settings.json
++++ home/dot_claude/modify_private_settings.json
+@@ -40,7 +40,9 @@
+ 
+ 
+ def render_managed_template(text: str) -> str:
+-    return text.replace("{{ .chezmoi.sourceDir }}", str(source_dir())).replace("{{ .chezmoi.homeDir }}", str(home_dir()))
++    return text.replace("{{ .chezmoi.sourceDir }}", str(source_dir())).replace(
++        "{{ .chezmoi.homeDir }}", str(home_dir())
++    )
+ 
+ 
+ def load_json_object(text: str) -> dict[str, Any] | None:
+@@ -60,11 +62,7 @@
+         parts = shlex.split(hook["command"])
+     except ValueError:
+         return False
+-    return (
+-        len(parts) == 2
+-        and Path(parts[0]).name in MANAGED_PERMISSION_EXECUTABLES
+-        and parts[1] == "claude"
+-    )
++    return len(parts) == 2 and Path(parts[0]).name in MANAGED_PERMISSION_EXECUTABLES and parts[1] == "claude"
+ 
+ 
+ def is_managed_session_start_hook(hook: Any) -> bool:
+@@ -128,17 +126,13 @@
+ }
+ 
+ 
+-def merge_hooks(
+-    managed: dict[str, Any], current: dict[str, Any]
+-) -> dict[str, Any]:
++def merge_hooks(managed: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
+     merged: dict[str, Any] = {}
+     for key, value in current.items():
+         managed_value = managed.get(key)
+         if key in MANAGED_HOOK_PREDICATES and isinstance(managed_value, list):
+             current_hooks = value if isinstance(value, list) else []
+-            merged[key] = merge_managed_entries(
+-                current_hooks, managed_value, MANAGED_HOOK_PREDICATES[key]
+-            )
++            merged[key] = merge_managed_entries(current_hooks, managed_value, MANAGED_HOOK_PREDICATES[key])
+         elif isinstance(value, list) and isinstance(managed_value, list):
+             # ponytail: hook arrays are tiny; index entries only if they grow materially.
+             merged[key] = value + [entry for entry in managed_value if entry not in value]
+@@ -163,11 +157,7 @@
+             merged[key] = value
+         elif key in managed:
+             managed_value = managed[key]
+-            if (
+-                key == "hooks"
+-                and isinstance(value, dict)
+-                and isinstance(managed_value, dict)
+-            ):
++            if key == "hooks" and isinstance(value, dict) and isinstance(managed_value, dict):
+                 merged[key] = merge_hooks(managed_value, value)
+             else:
+                 merged[key] = managed_value
+
+
+current exit 1
+--- home/dot_claude/modify_private_settings.json
++++ home/dot_claude/modify_private_settings.json
+@@ -44,7 +44,9 @@
+ 
+ 
+ def render_managed_template(text: str) -> str:
+-    return text.replace("{{ .chezmoi.sourceDir }}", str(source_dir())).replace("{{ .chezmoi.homeDir }}", str(home_dir()))
++    return text.replace("{{ .chezmoi.sourceDir }}", str(source_dir())).replace(
++        "{{ .chezmoi.homeDir }}", str(home_dir())
++    )
+ 
+ 
+ def load_json_object(text: str) -> dict[str, Any] | None:
+@@ -64,11 +66,7 @@
+         parts = shlex.split(hook["command"])
+     except ValueError:
+         return False
+-    return (
+-        len(parts) == 2
+-        and Path(parts[0]).name in MANAGED_PERMISSION_EXECUTABLES
+-        and parts[1] == "claude"
+-    )
++    return len(parts) == 2 and Path(parts[0]).name in MANAGED_PERMISSION_EXECUTABLES and parts[1] == "claude"
+ 
+ 
+ def is_managed_session_start_hook(hook: Any) -> bool:
+@@ -132,17 +130,13 @@
+ }
+ 
+ 
+-def merge_hooks(
+-    managed: dict[str, Any], current: dict[str, Any]
+-) -> dict[str, Any]:
++def merge_hooks(managed: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
+     merged: dict[str, Any] = {}
+     for key, value in current.items():
+         managed_value = managed.get(key)
+         if key in MANAGED_HOOK_PREDICATES and isinstance(managed_value, list):
+             current_hooks = value if isinstance(value, list) else []
+-            merged[key] = merge_managed_entries(
+-                current_hooks, managed_value, MANAGED_HOOK_PREDICATES[key]
+-            )
++            merged[key] = merge_managed_entries(current_hooks, managed_value, MANAGED_HOOK_PREDICATES[key])
+         elif isinstance(value, list) and isinstance(managed_value, list):
+             # ponytail: hook arrays are tiny; index entries only if they grow materially.
+             merged[key] = value + [entry for entry in managed_value if entry not in value]
+@@ -167,11 +161,7 @@
+             merged[key] = value
+         elif key in managed:
+             managed_value = managed[key]
+-            if (
+-                key == "hooks"
+-                and isinstance(value, dict)
+-                and isinstance(managed_value, dict)
+-            ):
++            if key == "hooks" and isinstance(value, dict) and isinstance(managed_value, dict):
+                 merged[key] = merge_hooks(managed_value, value)
+             else:
+                 merged[key] = managed_value
+
+
+Source formatting differences match previous head after dropping line-number hunk headers; no introduced formatting differences.

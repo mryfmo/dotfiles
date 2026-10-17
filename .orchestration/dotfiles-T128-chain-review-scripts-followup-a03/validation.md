@@ -1,12 +1,12 @@
 ---
 task_id: dotfiles-T128-chain-review-scripts-followup-a03
 seat: claude-standard-dot-a002
-code_commit: a1ddb211
+code_commit: 9da0897a
 ---
 
 # Validation: dotfiles-T128-chain-review-scripts-followup-a03
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (a pipeline's is its last command's). Premise 1's `grep -c` prints `0` and exits 1 when it finds nothing, which is the premise's expected output. §4's block shows the mutant script and its output, and each mutant line carries its own `rc`. Captured at `a1ddb211`.
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (a pipeline's is its last command's). Premise 1's `grep -c` prints `0` and exits 1 when it finds nothing, which is the premise's expected output. §4's block shows the mutant script and its output, and each mutant line carries its own `rc`. Captured at `9da0897a` (the code `a311781d`, the test round `a1ddb211`, the CI ShellCheck fix `9da0897a`).
 
 ## 1. Task file and task copy
 ```console
@@ -24,6 +24,8 @@ dotfiles-T128-chain-review-scripts-followup-a03.md: OK
 ## 2. Branch and the four premises
 ```console
 $ git log --oneline origin/main..HEAD; git rev-parse origin/main
+9da0897a fix(orchestrator): local-advisory.sh numbers each earlier finding with an if, not A && B || C (CI ShellCheck SC2015)
+d2b33025 docs(orchestration): chain-review-scripts followup a03 task copy and evidence (a311781d, a1ddb211)
 a1ddb211 test(orchestrator): the repeat test tells a line range from a wider one; the token reads a backticked path as itself (T128 chain-review-scripts followup a03)
 a311781d fix(orchestrator): local-advisory.sh refuses an absent owner task, hashes the owner file as evidence, and classes a repeated finding by the earlier row (T128 chain-review-scripts followup a03)
 f7847616970d6bd83739a75a65ad8f7c35e91462
@@ -53,7 +55,7 @@ $ git show origin/main:tests/unit/test_chain_review_scripts.py | /usr/bin/grep -
 ```console
 $ git diff origin/main...HEAD -- scripts/
 diff --git a/scripts/orchestrator/local-advisory.sh b/scripts/orchestrator/local-advisory.sh
-index 409035cc..e2bf92a3 100755
+index 409035cc..5e67ace7 100755
 --- a/scripts/orchestrator/local-advisory.sh
 +++ b/scripts/orchestrator/local-advisory.sh
 @@ -4,14 +4,19 @@
@@ -79,7 +81,7 @@ index 409035cc..e2bf92a3 100755
  # @exitcode 3 A P0/P1 finding.
  # @example
  #   scripts/orchestrator/local-advisory.sh dotfiles-T128-x-a01 "$head" dotfiles-T128-x-followup-a01
-@@ -37,6 +42,25 @@ n=$(sed -n 's/^findings: //p' "$LR" | head -1)
+@@ -37,6 +42,26 @@ n=$(sed -n 's/^findings: //p' "$LR" | head -1)
      echo "local review of $h7: no findings"
      exit 0
  }
@@ -99,13 +101,14 @@ index 409035cc..e2bf92a3 100755
 +    [[ -f $f && $f != "$LR" ]] || continue
 +    e=${f%.md} && e=${e##*-local-review-} && k=0
 +    while IFS= read -r l; do
-+        k=$((k + 1)) && t=$(token "$l") && earlier+="$t local:$e:$k"$'\n' || true
++        k=$((k + 1))
++        if t=$(token "$l"); then earlier+="$t local:$e:$k"$'\n'; fi
 +    done < <(/usr/bin/grep -E '^- \[P[0-3]\]' "$f" | sort -u)
 +done
  # A literal heading match, ended by a space or the line's end: a . in the owner is no wildcard, a longer id no match.
  awk -v h="## Owned by $owner" 'substr($0, 1, length(h)) == h && substr($0, length(h) + 1, 1) ~ /^ ?$/ { f = 1 } END { exit !f }' "$A" 2> /dev/null || printf '\n## Owned by %s (advisory P2 of the final head; plan 020 step 1.2; rows id<TAB>class)\n\n' "$owner" >> "$A"
  i=0 stop=0
-@@ -48,8 +72,16 @@ while IFS= read -r line; do
+@@ -48,8 +73,16 @@ while IFS= read -r line; do
          stop=1
          ;;
      *)
@@ -147,7 +150,7 @@ test_local_review_writes_no_file_when_the_review_binary_fails (tests.unit.test_c
 test_sandbox_scan_prints_the_unsandboxed_mutation_calls (tests.unit.test_chain_review_scripts.ChainReviewScriptsTest.test_sandbox_scan_prints_the_unsandboxed_mutation_calls) ... ok
 
 ----------------------------------------------------------------------
-Ran 16 tests in 7.206s
+Ran 16 tests in 7.404s
 
 OK
 [exit 0]
@@ -213,7 +216,13 @@ baseline rc=0 OK
 ## 5. Caps
 ```console
 $ git diff --numstat origin/main...HEAD
-37	5	scripts/orchestrator/local-advisory.sh
+3	0	.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/autoskill.md
+6	0	.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/learning.md
+72	0	.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/report.md
+27	0	.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/sandbox.md
+106	0	.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/task.md
+219	0	.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/validation.md
+38	5	scripts/orchestrator/local-advisory.sh
 60	2	tests/unit/test_chain_review_scripts.py
 [exit 0]
 ```

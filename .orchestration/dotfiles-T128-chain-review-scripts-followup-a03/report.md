@@ -5,6 +5,8 @@ branch: tools/chain-review-scripts-followup-a03
 base: f7847616
 code_commit: a311781d
 test_commit: a1ddb211
+lint_commit: 9da0897a
+pr: 381
 task_sha256: e328a3fb8036d4b29b1ed798f42a967d66204bde810b62b84dd7048715c79ee2
 ---
 
@@ -59,11 +61,12 @@ The first pass, on `a311781d`, had two survivors:
 
 ## Caps
 
-Validation §5: outside `tests/` and `.orchestration/`, 1 file, 37 added and 5 deleted, so 42 changed lines (cap 200); under `tests/`, 60 added lines (cap 1000).
+Validation §5: outside `tests/` and `.orchestration/`, 1 file, 38 added and 5 deleted, so 43 changed lines (cap 200); under `tests/`, 60 added lines (cap 1000).
 
 ## CI and the Bot
 
-In the RESULT (the post-ready calls are planned in sandbox.md).
+- **The Bot:** PR #381 was marked ready at 00:48:01Z. No review came within 10 minutes, so `@codex review` was posted at 603 s (issue comment `6227663819`). The Bot answered with issue comment `6227679116` at 00:59:47Z, "Didn't find any major issues", Reviewed commit `d2b33025d0`, which was then the head. No thread.
+- **CI on `d2b33025`:** `test (ubuntu-24.04, client)` failed at `Run ShellCheck` with SC2015 (info) on `local-advisory.sh:61`, the line `k=$((k + 1)) && t=$(token "$l") && earlier+=… || true`, and three `test` jobs were cancelled with it. The local ShellCheck 0.11.0 reports nothing there. `9da0897a` writes the line as an `if` with no change of behaviour. CI's own command, `git ls-files -z 'setup.sh' 'install/*.sh' 'install/**/*.sh' 'scripts/*.sh' | xargs -0 shellcheck -x`, exits 0 locally. The 16 tests and the 6 mutants were re-run on it (validation §3 and §4). CI on the final head is in the RESULT.
 
 ## Not done, or outside scope
 

@@ -58,7 +58,8 @@ for f in .orchestration/validation/"$task"-local-review-*.md; do
     [[ -f $f && $f != "$LR" ]] || continue
     e=${f%.md} && e=${e##*-local-review-} && k=0
     while IFS= read -r l; do
-        k=$((k + 1)) && t=$(token "$l") && earlier+="$t local:$e:$k"$'\n' || true
+        k=$((k + 1))
+        if t=$(token "$l"); then earlier+="$t local:$e:$k"$'\n'; fi
     done < <(/usr/bin/grep -E '^- \[P[0-3]\]' "$f" | sort -u)
 done
 # A literal heading match, ended by a space or the line's end: a . in the owner is no wildcard, a longer id no match.

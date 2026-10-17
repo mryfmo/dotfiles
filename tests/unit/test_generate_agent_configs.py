@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -198,6 +200,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.old_root = self.module.ROOT
         self.temp_dir = Path(tempfile.mkdtemp(prefix="generate-agent-configs-test-"))
         self.module.ROOT = self.temp_dir
+        for name in ("home/dot_local/bin/common/executable_codex-local-review", "scripts/orchestrator/local-review.sh"):
+            target = self.temp_dir / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / name, target)
 
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
@@ -808,8 +814,26 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(expected, settings["sandbox"]["excludedCommands"])
                 self.assertEqual(["Bash(agmsg-dispatch:*)"], settings["permissions"]["allow"])
 
+    def test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift(
+        self,
+    ) -> None:
+        manifest = sample_manifest()
+        wrapper = self.temp_dir / "home/dot_local/bin/common/executable_codex-local-review"
+        script = self.temp_dir / "scripts/orchestrator/local-review.sh"
+        outputs = self.module.expected_outputs(manifest)
+        self.assertIn("EXPECTED_SHA256=" + hashlib.sha256(script.read_bytes()).hexdigest(), outputs[wrapper])
+        self.module.write_outputs(outputs)
+        script.write_text(script.read_text() + "# changed\n")
+        self.module.load_manifest = lambda: manifest
+        self.addCleanup(setattr, sys, "argv", sys.argv)
+        sys.argv = ["generate-agent-configs.py", "--check"]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.main()
+        self.assertIn(str(wrapper.relative_to(self.temp_dir)), stderr.getvalue())
+
     def test_codex_local_review_wrapper_only_execs_the_repository_local_review_script(self) -> None:
-        wrapper = ROOT / "home/dot_local/bin/common/executable_codex-local-review"
+        wrapper = self.temp_dir / "home/dot_local/bin/common/executable_codex-local-review"
         repo = self.temp_dir / "review repo"
         repo.mkdir()
 
@@ -824,12 +848,19 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         (repo / ".orchestration/outside.md").touch()
         script = repo / "scripts/orchestrator/local-review.sh"
         script.parent.mkdir(parents=True)
-        script.write_text('#!/usr/bin/env bash\nprintf \'%s\\0\' "$PWD" "$@" > "$RECORD_PATH"\nexit 23\n')
-        script.chmod(0o755)
+        script.write_text(
+            '#!/usr/bin/env bash\nprintf \'%s\\0\' "$PWD" "$0" "$@" > "$RECORD_PATH"\ncat "$0" > "$COPY_RECORD"\nexit 23\n'
+        )
+        digest = hashlib.sha256(script.read_bytes()).hexdigest()
+        wrapper.write_text(
+            re.sub(r"^EXPECTED_SHA256=.*$", f"EXPECTED_SHA256={digest}", wrapper.read_text(), flags=re.MULTILINE)
+        )
+        wrapper.chmod(0o755)
         git("add", "scripts/orchestrator/local-review.sh")
         for key, value in (("user.name", "Wrapper Test"), ("user.email", "wrapper@example.invalid")):
             git("config", key, value)
         git("-c", "commit.gpgsign=false", "commit", "-qm", "Track the review stub")
+        original_head = git("rev-parse", "HEAD").stdout.strip()
         stub_bin = repo / "bin"
         stub_bin.mkdir()
         decoy = stub_bin / "local-review.sh"
@@ -838,34 +869,36 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         nested = repo / "nested dir"
         nested.mkdir()
         record = repo / "arguments"
-        env = os.environ | {"PATH": str(stub_bin) + os.pathsep + os.environ["PATH"], "RECORD_PATH": str(record)}
+        copied_bytes = repo / "copied-bytes"
+        pinned_bytes = script.read_bytes()
+        state_dir = self.temp_dir / ".local/state/codex-local-review"
+        env = os.environ | {
+            "HOME": str(self.temp_dir),
+            "PATH": str(stub_bin) + os.pathsep + os.environ["PATH"],
+            "RECORD_PATH": str(record),
+            "COPY_RECORD": str(copied_bytes),
+        }
+
+        def review(*args: str, cwd: Path = nested) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.run([str(wrapper), *args], cwd=cwd, env=env, capture_output=True, check=False)
+
         for head in ("a" * 40, "0123456789abcdef" * 2 + "01234567"):
             with self.subTest(head=head):
                 args = [task, head, "392", "with spaces", "$(printf injected)", "semi;colon", "line\nbreak"]
-                result = subprocess.run([str(wrapper), *args], cwd=nested, env=env, capture_output=True, check=False)
+                result = review(*args)
                 self.assertEqual(23, result.returncode, result.stderr)
-                self.assertEqual(
-                    [str(repo.resolve()), *args],
-                    [value.decode() for value in record.read_bytes().split(b"\0")[:-1]],
-                )
-                record.unlink()
-        for args in (
-            [],
-            [task],
-            ["missing", "a" * 40],
-            ["../outside", "a" * 40],
-            ["--help", "a" * 40],
-            [task, "a" * 6],
-            [task, "a" * 7],
-            [task, "a" * 39],
-            [task, "A" * 40],
-            [task, "a" * 41],
-            [task, "g" * 40],
-            [task, "../badhead"],
-        ):
+                cwd, executed, *forwarded = [value.decode() for value in record.read_bytes().split(b"\0")[:-1]]
+                self.assertEqual([str(repo.resolve()), *args], [cwd, *forwarded])
+                self.assertEqual(state_dir.resolve(), Path(executed).parent.resolve())
+                self.assertEqual(pinned_bytes, copied_bytes.read_bytes())
+                self.assertFalse(Path(executed).exists())
+        invalid = [[], [task]]
+        invalid += [[name, "a" * 40] for name in ("missing", "../outside", "--help")]
+        bad_heads = ["a" * n for n in (6, 7, 39, 41)] + ["A" * 40, "g" * 40, "../badhead"]
+        for args in invalid + [[task, head] for head in bad_heads]:
             with self.subTest(args=args):
                 record.unlink(missing_ok=True)
-                result = subprocess.run([str(wrapper), *args], cwd=nested, env=env, capture_output=True, check=False)
+                result = review(*args)
                 self.assertEqual(2, result.returncode, result.stderr)
                 self.assertFalse(record.exists())
         linked = self.temp_dir / "linked worktree"
@@ -873,14 +906,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         linked_task = linked / task_file.relative_to(repo)
         linked_task.parent.mkdir(parents=True)
         linked_task.touch()
-        for state in (
-            "linked worktree",
-            "untracked script",
-            "modified script",
-            "staged script",
-            "assume-unchanged script",
-            "skip-worktree script",
-        ):
+        states = ("linked worktree", "untracked script", "modified script", "staged script")
+        for state in (*states, "assume-unchanged script", "skip-worktree script", "committed replacement"):
             with self.subTest(state=state):
                 record.unlink(missing_ok=True)
                 if state == "untracked script":
@@ -895,63 +922,46 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     git("restore", "--source=HEAD", "--staged", "--worktree", str(script))
                     git("update-index", "--" + state.split()[0], str(script))
                     script.write_text(script.read_text() + "# hidden change\n")
-                result = subprocess.run(
-                    [str(wrapper), task, "a" * 40],
-                    cwd=linked if state == "linked worktree" else nested,
-                    env=env,
-                    capture_output=True,
-                    check=False,
-                )
+                elif state == "committed replacement":
+                    git("update-index", "--no-skip-worktree", str(script))
+                    git("add", str(script))
+                    git("-c", "commit.gpgsign=false", "commit", "-qm", "Replace the review stub and move HEAD")
+                result = review(task, "a" * 40, cwd=linked if state == "linked worktree" else nested)
                 self.assertEqual(2, result.returncode, result.stderr)
-                self.assertIn(
-                    b"primary checkout" if state == "linked worktree" else b"tracked and unchanged", result.stderr
-                )
+                expected = b"primary checkout" if state == "linked worktree" else b"tracked and match"
+                self.assertIn(expected, result.stderr)
                 self.assertFalse(record.exists())
         linked_task.unlink()
         git("worktree", "remove", str(linked))
         git("update-index", "--no-skip-worktree", str(script))
-        git("restore", "--source=HEAD", "--staged", "--worktree", str(script))
+        git("restore", "--source=" + original_head, "--staged", "--worktree", str(script))
         helper = self.temp_dir / "git-helper"
         helper.write_text('#!/bin/sh\n: > "$HELPER_RECORD"\ncat\n')
         helper.chmod(0o755)
-        helper_record = repo / "git-helper-called"
-        env["HELPER_RECORD"] = str(helper_record)
+        env["HELPER_RECORD"] = str(repo / "git-helper-called")
         for key in ("core.fsmonitor", "filter.reviewguard.clean"):
-            with self.subTest(git_helper=key):
-                helper_record.unlink(missing_ok=True)
-                git("config", key, str(helper))
-                if key.startswith("filter."):
-                    (repo / ".git/info/attributes").write_text(
-                        "scripts/orchestrator/local-review.sh filter=reviewguard\n"
-                    )
-                    os.utime(script, (0, 0))
-                result = subprocess.run(
-                    [str(wrapper), task, "a" * 40], cwd=nested, env=env, capture_output=True, check=False
-                )
-                git("config", "--unset", key)
-                self.assertEqual(23, result.returncode, result.stderr)
-                self.assertFalse(helper_record.exists(), key)
-        helper.write_text('#!/bin/sh\n: > "$HELPER_RECORD"\nexit 1\n')
-        for key, value in (
-            ("extensions.partialClone", "origin"),
-            ("remote.origin.promisor", "true"),
-            ("remote.origin.url", str(self.temp_dir)),
-            ("remote.origin.uploadpack", str(helper)),
-        ):
-            git("config", key, value)
-        blob = git("rev-parse", "HEAD:scripts/orchestrator/local-review.sh").stdout.strip()
-        (repo / ".git/objects" / blob[:2] / blob[2:]).unlink()
-        record.unlink()
-        result = subprocess.run(
-            [str(wrapper), task, "a" * 40],
-            cwd=nested,
-            env=env | {"GIT_ALLOW_PROTOCOL": "file"},
-            capture_output=True,
-            check=False,
+            git("config", key, str(helper))
+        (repo / ".git/info/attributes").write_text("scripts/orchestrator/local-review.sh filter=reviewguard\n")
+        os.utime(script, (0, 0))
+        result = review(task, "a" * 40)
+        for key in ("core.fsmonitor", "filter.reviewguard.clean"):
+            git("config", "--unset", key)
+        self.assertEqual(23, result.returncode, result.stderr)
+        self.assertFalse((repo / "git-helper-called").exists())
+
+        replacement = repo / "replacement"
+        replacement.write_text("#!/bin/sh\nexit 91\n")
+        hasher = stub_bin / "shasum"
+        hasher.write_text(
+            f'#!{sys.executable}\nimport os,subprocess,sys\nsubprocess.run([os.environ["REAL_SHASUM"], *sys.argv[1:]], check=True)\nos.replace(os.environ["REPLACEMENT"], os.environ["SOURCE_SCRIPT"])\n'
         )
-        self.assertEqual(2, result.returncode, result.stderr)
-        self.assertFalse(record.exists())
-        self.assertFalse(helper_record.exists())
+        hasher.chmod(0o755)
+        env.update(REAL_SHASUM=shutil.which("shasum"), REPLACEMENT=str(replacement), SOURCE_SCRIPT=str(script))
+        result = review(task, "a" * 40)
+        self.assertEqual(23, result.returncode, result.stderr)
+        self.assertEqual(pinned_bytes, copied_bytes.read_bytes())
+        self.assertEqual(b"#!/bin/sh\nexit 91\n", script.read_bytes())
+        self.assertEqual([], list(state_dir.iterdir()))
 
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()

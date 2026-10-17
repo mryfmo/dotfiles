@@ -20921,3 +20921,9817 @@ $ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T130-codex-local-revi
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 (exit 0)
 ```
+
+## amendment4-two-tests-red
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift -v
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ...
+  test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (state='committed replacement') ... FAIL
+  test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (git_helper='core.fsmonitor') ... FAIL
+  test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (git_helper='filter.reviewguard.clean') ... FAIL
+test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift) ... ERROR
+
+======================================================================
+ERROR: test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 822, in test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift
+    self.assertIn("EXPECTED_SHA256=" + hashlib.sha256(script.read_bytes()).hexdigest(), outputs[wrapper])
+                                                                                        ~~~~~~~^^^^^^^^^
+KeyError: PosixPath('/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/generate-agent-configs-test-19gka4yd/home/dot_local/bin/common/executable_codex-local-review')
+
+======================================================================
+FAIL: test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (state='committed replacement')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 935, in test_codex_local_review_wrapper_only_execs_the_repository_local_review_script
+    self.assertEqual(2, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 23 : b''
+
+======================================================================
+FAIL: test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (git_helper='core.fsmonitor')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 962, in test_codex_local_review_wrapper_only_execs_the_repository_local_review_script
+    self.assertEqual(23, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 23 != 2 : b'codex-local-review: local-review.sh must be tracked and unchanged against HEAD\n'
+
+======================================================================
+FAIL: test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (git_helper='filter.reviewguard.clean')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 962, in test_codex_local_review_wrapper_only_execs_the_repository_local_review_script
+    self.assertEqual(23, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 23 != 2 : b'codex-local-review: local-review.sh must be tracked and unchanged against HEAD\n'
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.631s
+
+FAILED (failures=3, errors=1)
+(exit 1)
+```
+
+## amendment4-render
+
+```text
+$ uv run --offline --no-project --with pyyaml python scripts/generate-agent-configs.py
+generated agent configs updated
+(exit 0)
+```
+
+## amendment4-two-tests-green
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift -v
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.553s
+
+OK
+(exit 0)
+```
+
+## amendment4-activation
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-activate-a4.py
+{
+  "amendment": 4,
+  "task_copy": "8d9dae7861735852eef7a035bb1aac5c3e069412431310fba90ee08d82eb5ece",
+  "copy_identical": true,
+  "previous_head": "22e15c0c60493bcfc7969a96552c1023f77d8cce",
+  "source8_scope": "authorized",
+  "old_result_sent": false
+}
+agmsg-dispatch: sent message 2018; delivery failed or unread; verify receipt before resending
+
+(exit 1)
+```
+
+## amendment4-format
+
+```text
+$ ruff format scripts/generate-agent-configs.py tests/unit/test_generate_agent_configs.py
+2 files reformatted
+(exit 0)
+```
+
+## amendment4-connected-tests
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_claude_settings_merge -v
+test_a_declare_r_assignment_must_appear_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver) ... ok
+test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+test_asset_constant_must_be_assigned_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_command_hooks_render_after_permission_request_in_manifest_order (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_command_hooks_render_after_permission_request_in_manifest_order) ... ok
+test_codex_config_renders_permgate_permission_request (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift) ... ok
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_empty_or_missing_codex_command_hooks_render_no_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_empty_or_missing_codex_command_hooks_render_no_table) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_hook_trust_hash_reproduces_codex_current_hashes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_hook_trust_hash_reproduces_codex_current_hashes) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb) ... ok
+test_managed_codex_path_includes_installed_common_bin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_orchestrator_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_orchestrator_kind) ... ok
+test_model_profiles_env_renders_worker_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_env_selects_no_github_store (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_selects_no_github_store) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_orchestrator_kind_defaults_to_claude (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_orchestrator_kind_defaults_to_claude) ... ok
+test_plugin_versions_order_build_metadata_like_the_semver_crate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_plugin_versions_order_build_metadata_like_the_semver_crate) ... ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_handle_table_headers_with_trailing_comments (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_handle_table_headers_with_trailing_comments) ... ok
+test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin) ... ok
+test_profile_modify_scripts_hash_the_plugin_version_codex_loads (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_the_plugin_version_codex_loads) ... ok
+test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings) ... ok
+test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_replace_a_single_quoted_declared_entry (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_a_single_quoted_declared_entry) ... ok
+test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root) ... ok
+test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared) ... ok
+test_profile_modify_scripts_replace_inline_table_and_dotted_forms (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_inline_table_and_dotted_forms) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_matches_percent_encoded_tilde (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_matches_percent_encoded_tilde) ... ok
+test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd) ... ok
+test_project_map_reload_hook_selects_the_event_map_among_two_repositories (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_selects_the_event_map_among_two_repositories) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_reaches_the_fallback_pin_and_its_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_reaches_the_fallback_pin_and_its_checksums) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_orchestrator_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_orchestrator_kind_fails) ... ok
+test_unknown_worker_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+test_codex_command_hooks_accept_the_declared_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/validate-agent-assets-test-d2ok8nrq/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+test_current_only_key_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path) ... ok
+test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... ok
+test_managed_session_start_replacement_keeps_hook_order (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_runtime_enabled_plugins_survive_a_managed_file_without_the_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_runtime_enabled_plugins_survive_a_managed_file_without_the_key) ... ok
+test_trailing_newline (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+
+----------------------------------------------------------------------
+Ran 213 tests in 23.107s
+
+OK
+(exit 0)
+```
+
+## amendment4-integrity
+
+```text
+$ uv run --offline --no-project --with pyyaml python /tmp/codex-T130-a4-integrity.py
+{
+  "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4",
+  "previous_head": "22e15c0c60493bcfc7969a96552c1023f77d8cce",
+  "amendment": 4,
+  "fix_round": 2,
+  "task_sha256": "8d9dae7861735852eef7a035bb1aac5c3e069412431310fba90ee08d82eb5ece",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "954a06d31864ec653889dacfccce1dfdad026538aebc8b636dd941b3122f98e8",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "d7bda055148243b983d9c42833108849024f217e8f8d930fac6639fabb5617ac",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "c196160c01ef4ff43403e218f3810af929ee23cc4243a9bb2ce09bcbf4dd3ef0"
+  },
+  "production_changed": 64,
+  "test_added": 194,
+  "test_changed": 197,
+  "generated_excluded": 4,
+  "all_other_manifest_values_identical": true,
+  "new_scripts": [
+    "home/dot_local/bin/common/executable_codex-local-review"
+  ],
+  "numstat": "3\t1\thome/.chezmoitemplates/claude-settings-managed.json\n2\t0\thome/dot_agents/agent-config.yaml\n36\t0\thome/dot_local/bin/common/executable_codex-local-review\n9\t0\tscripts/generate-agent-configs.py\n10\t7\tscripts/validate-agent-assets.py\n1\t1\ttests/unit/test_claude_settings_merge.py\n169\t1\ttests/unit/test_generate_agent_configs.py\n24\t1\ttests/unit/test_validate_agent_assets.py\n"
+}
+(exit 0)
+```
+
+## Amendment4 render-check
+
+```text
+$ make render-check
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+(exit 0)
+```
+
+## Amendment4 shellcheck
+
+```text
+$ shellcheck home/dot_local/bin/common/executable_codex-local-review
+(exit 0)
+```
+
+## Amendment4 shfmt
+
+```text
+$ shfmt -d home/dot_local/bin/common/executable_codex-local-review
+(exit 0)
+```
+
+## Amendment4 format
+
+```text
+$ ruff format --check scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+5 files already formatted
+(exit 0)
+```
+
+## Amendment4 ruff-base
+
+```text
+$ ruff check --no-cache --output-format json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+[
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "B020",
+    "end_location": {
+      "column": 18,
+      "row": 200
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 200
+    },
+    "message": "Loop control variable `index` overrides iterable it iterates",
+    "name": "loop-variable-overrides-iterator",
+    "noqa_row": 200,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/loop-variable-overrides-iterator"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 111,
+      "row": 232
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 8
+          },
+          "location": {
+            "column": 1,
+            "row": 8
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 111,
+            "row": 232
+          },
+          "location": {
+            "column": 107,
+            "row": 232
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 107,
+      "row": 232
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 232,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "B023",
+    "end_location": {
+      "column": 83,
+      "row": 236
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 78,
+      "row": 236
+    },
+    "message": "Function definition does not bind loop variable `value`",
+    "name": "function-uses-loop-variable",
+    "noqa_row": 236,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 65,
+      "row": 1449
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "        if args.check and (not path.exists() or path.read_text() != content):\n            stale.append(path.relative_to(ROOT))",
+          "end_location": {
+            "column": 53,
+            "row": 1450
+          },
+          "location": {
+            "column": 1,
+            "row": 1448
+          }
+        }
+      ],
+      "message": "Combine `if` statements using `and`"
+    },
+    "location": {
+      "column": 9,
+      "row": 1448
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 1448,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 901
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 901
+          },
+          "location": {
+            "column": 12,
+            "row": 901
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 901
+          },
+          "location": {
+            "column": 69,
+            "row": 901
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 901
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 901,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 965
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 962
+          },
+          "location": {
+            "column": 13,
+            "row": 962
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 964
+          },
+          "location": {
+            "column": 13,
+            "row": 963
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 958
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 958,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 434
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 433
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 433,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 624
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 615
+          },
+          "location": {
+            "column": 13,
+            "row": 615
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 617
+          },
+          "location": {
+            "column": 13,
+            "row": 616
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 611
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 611,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 656
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 652
+          },
+          "location": {
+            "column": 13,
+            "row": 652
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 654
+          },
+          "location": {
+            "column": 13,
+            "row": 653
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 648
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 648,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 817
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 814
+          },
+          "location": {
+            "column": 17,
+            "row": 814
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 816
+          },
+          "location": {
+            "column": 17,
+            "row": 815
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 810
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 810,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 866
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 862
+          },
+          "location": {
+            "column": 13,
+            "row": 862
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 864
+          },
+          "location": {
+            "column": 13,
+            "row": 863
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 858
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 858,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 901
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 897
+          },
+          "location": {
+            "column": 13,
+            "row": 897
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 899
+          },
+          "location": {
+            "column": 13,
+            "row": 898
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 893
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 893,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 927
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 927
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 927,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1289
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1285
+          },
+          "location": {
+            "column": 13,
+            "row": 1285
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1287
+          },
+          "location": {
+            "column": 13,
+            "row": 1286
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1277
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1277,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1314
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1310
+          },
+          "location": {
+            "column": 13,
+            "row": 1310
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1312
+          },
+          "location": {
+            "column": 13,
+            "row": 1311
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1306
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1306,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1341
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1337
+          },
+          "location": {
+            "column": 13,
+            "row": 1337
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1339
+          },
+          "location": {
+            "column": 13,
+            "row": 1338
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1333
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1333,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1631
+    },
+    "filename": "/private/tmp/T130-a4-ruff-1ozeqan3/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1631
+          },
+          "location": {
+            "column": 41,
+            "row": 1631
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1631
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1631,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+](exit 1)
+```
+
+## Amendment4 ruff-current
+
+```text
+$ ruff check --no-cache --output-format json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+[
+  {
+    "cell": null,
+    "code": "B020",
+    "end_location": {
+      "column": 18,
+      "row": 201
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 201
+    },
+    "message": "Loop control variable `index` overrides iterable it iterates",
+    "name": "loop-variable-overrides-iterator",
+    "noqa_row": 201,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/loop-variable-overrides-iterator"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 111,
+      "row": 233
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 9
+          },
+          "location": {
+            "column": 1,
+            "row": 9
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 111,
+            "row": 233
+          },
+          "location": {
+            "column": 107,
+            "row": 233
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 107,
+      "row": 233
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 233,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "B023",
+    "end_location": {
+      "column": 83,
+      "row": 237
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 78,
+      "row": 237
+    },
+    "message": "Function definition does not bind loop variable `value`",
+    "name": "function-uses-loop-variable",
+    "noqa_row": 237,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 104,
+      "row": 1368
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 9
+          },
+          "location": {
+            "column": 1,
+            "row": 9
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 104,
+            "row": 1368
+          },
+          "location": {
+            "column": 100,
+            "row": 1368
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 100,
+      "row": 1368
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 1368,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 65,
+      "row": 1458
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "        if args.check and (not path.exists() or path.read_text() != content):\n            stale.append(path.relative_to(ROOT))",
+          "end_location": {
+            "column": 53,
+            "row": 1459
+          },
+          "location": {
+            "column": 1,
+            "row": 1457
+          }
+        }
+      ],
+      "message": "Combine `if` statements using `and`"
+    },
+    "location": {
+      "column": 9,
+      "row": 1457
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 1457,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 904
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 904
+          },
+          "location": {
+            "column": 12,
+            "row": 904
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 904
+          },
+          "location": {
+            "column": 69,
+            "row": 904
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 904
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 904,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 968
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 965
+          },
+          "location": {
+            "column": 13,
+            "row": 965
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 967
+          },
+          "location": {
+            "column": 13,
+            "row": 966
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 961
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 961,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 440
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 439
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 439,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 630
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 621
+          },
+          "location": {
+            "column": 13,
+            "row": 621
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 623
+          },
+          "location": {
+            "column": 13,
+            "row": 622
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 617
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 617,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 662
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 658
+          },
+          "location": {
+            "column": 13,
+            "row": 658
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 660
+          },
+          "location": {
+            "column": 13,
+            "row": 659
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 654
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 654,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 105,
+      "row": 855
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 12
+          },
+          "location": {
+            "column": 1,
+            "row": 12
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 105,
+            "row": 855
+          },
+          "location": {
+            "column": 101,
+            "row": 855
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 101,
+      "row": 855
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 855,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 985
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 982
+          },
+          "location": {
+            "column": 17,
+            "row": 982
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 984
+          },
+          "location": {
+            "column": 17,
+            "row": 983
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 978
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 978,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1034
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1030
+          },
+          "location": {
+            "column": 13,
+            "row": 1030
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1032
+          },
+          "location": {
+            "column": 13,
+            "row": 1031
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1026
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1026,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1069
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1065
+          },
+          "location": {
+            "column": 13,
+            "row": 1065
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1067
+          },
+          "location": {
+            "column": 13,
+            "row": 1066
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1061
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1061,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 1095
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 1095
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 1095,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1457
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1453
+          },
+          "location": {
+            "column": 13,
+            "row": 1453
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1455
+          },
+          "location": {
+            "column": 13,
+            "row": 1454
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1445
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1445,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1482
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1478
+          },
+          "location": {
+            "column": 13,
+            "row": 1478
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1480
+          },
+          "location": {
+            "column": 13,
+            "row": 1479
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1474
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1474,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1509
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1505
+          },
+          "location": {
+            "column": 13,
+            "row": 1505
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1507
+          },
+          "location": {
+            "column": 13,
+            "row": 1506
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1501
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1501,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1654
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1654
+          },
+          "location": {
+            "column": 41,
+            "row": 1654
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1654
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1654,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+](exit 1)
+```
+
+## amendment4-static-driver
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a4-static.py
+render-check 0
+shellcheck 0
+shfmt 0
+format 0
+ruff-base 1
+ruff-current 1
+Traceback (most recent call last):
+  File "/tmp/codex-T130-a4-static.py", line 19, in <module>
+    before=keys(old,baseline);after=keys(new,root);assert after==before,{'introduced':list((after-before).elements()),'removed':list((before-after).elements())}
+  File "/tmp/codex-T130-a4-static.py", line 18, in keys
+    return collections.Counter((str(Path(x['filename']).relative_to(where)),x['code'],x['message'],Path(x['filename']).read_text().splitlines()[x['location']['row']-1].strip()) for x in rows)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/latest/lib/python3.15/collections/__init__.py", line 617, in __init__
+    self.update(iterable, **kwds)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/latest/lib/python3.15/collections/__init__.py", line 707, in update
+    _count_elements(self, iterable)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/tmp/codex-T130-a4-static.py", line 18, in <genexpr>
+    return collections.Counter((str(Path(x['filename']).relative_to(where)),x['code'],x['message'],Path(x['filename']).read_text().splitlines()[x['location']['row']-1].strip()) for x in rows)
+                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "~/.local/share/mise/installs/python/latest/lib/python3.15/pathlib/__init__.py", line 494, in relative_to
+    raise ValueError(f"{str(self)!r} is not in the subpath of {str(other)!r}")
+ValueError: '/private/tmp/T130-a4-ruff-1ozeqan3/scripts/generate-agent-configs.py' is not in the subpath of '/tmp/T130-a4-ruff-1ozeqan3'
+(exit 1)
+```
+
+## Amendment4 ruff-base
+
+```text
+$ ruff check --no-cache --output-format json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+[
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "B020",
+    "end_location": {
+      "column": 18,
+      "row": 200
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 200
+    },
+    "message": "Loop control variable `index` overrides iterable it iterates",
+    "name": "loop-variable-overrides-iterator",
+    "noqa_row": 200,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/loop-variable-overrides-iterator"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 111,
+      "row": 232
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 8
+          },
+          "location": {
+            "column": 1,
+            "row": 8
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 111,
+            "row": 232
+          },
+          "location": {
+            "column": 107,
+            "row": 232
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 107,
+      "row": 232
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 232,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "B023",
+    "end_location": {
+      "column": 83,
+      "row": 236
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 78,
+      "row": 236
+    },
+    "message": "Function definition does not bind loop variable `value`",
+    "name": "function-uses-loop-variable",
+    "noqa_row": 236,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 65,
+      "row": 1449
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "        if args.check and (not path.exists() or path.read_text() != content):\n            stale.append(path.relative_to(ROOT))",
+          "end_location": {
+            "column": 53,
+            "row": 1450
+          },
+          "location": {
+            "column": 1,
+            "row": 1448
+          }
+        }
+      ],
+      "message": "Combine `if` statements using `and`"
+    },
+    "location": {
+      "column": 9,
+      "row": 1448
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 1448,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 901
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 901
+          },
+          "location": {
+            "column": 12,
+            "row": 901
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 901
+          },
+          "location": {
+            "column": 69,
+            "row": 901
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 901
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 901,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 965
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 962
+          },
+          "location": {
+            "column": 13,
+            "row": 962
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 964
+          },
+          "location": {
+            "column": 13,
+            "row": 963
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 958
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 958,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 434
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 433
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 433,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 624
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 615
+          },
+          "location": {
+            "column": 13,
+            "row": 615
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 617
+          },
+          "location": {
+            "column": 13,
+            "row": 616
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 611
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 611,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 656
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 652
+          },
+          "location": {
+            "column": 13,
+            "row": 652
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 654
+          },
+          "location": {
+            "column": 13,
+            "row": 653
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 648
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 648,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 817
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 814
+          },
+          "location": {
+            "column": 17,
+            "row": 814
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 816
+          },
+          "location": {
+            "column": 17,
+            "row": 815
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 810
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 810,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 866
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 862
+          },
+          "location": {
+            "column": 13,
+            "row": 862
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 864
+          },
+          "location": {
+            "column": 13,
+            "row": 863
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 858
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 858,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 901
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 897
+          },
+          "location": {
+            "column": 13,
+            "row": 897
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 899
+          },
+          "location": {
+            "column": 13,
+            "row": 898
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 893
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 893,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 927
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 927
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 927,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1289
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1285
+          },
+          "location": {
+            "column": 13,
+            "row": 1285
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1287
+          },
+          "location": {
+            "column": 13,
+            "row": 1286
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1277
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1277,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1314
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1310
+          },
+          "location": {
+            "column": 13,
+            "row": 1310
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1312
+          },
+          "location": {
+            "column": 13,
+            "row": 1311
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1306
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1306,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1341
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1337
+          },
+          "location": {
+            "column": 13,
+            "row": 1337
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1339
+          },
+          "location": {
+            "column": 13,
+            "row": 1338
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1333
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1333,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1631
+    },
+    "filename": "/private/tmp/T130-a4-ruff-8s1ynv1m/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1631
+          },
+          "location": {
+            "column": 41,
+            "row": 1631
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1631
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1631,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+](exit 1)
+```
+
+## Amendment4 ruff-current
+
+```text
+$ ruff check --no-cache --output-format json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+[
+  {
+    "cell": null,
+    "code": "B020",
+    "end_location": {
+      "column": 18,
+      "row": 201
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 201
+    },
+    "message": "Loop control variable `index` overrides iterable it iterates",
+    "name": "loop-variable-overrides-iterator",
+    "noqa_row": 201,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/loop-variable-overrides-iterator"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 111,
+      "row": 233
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 9
+          },
+          "location": {
+            "column": 1,
+            "row": 9
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 111,
+            "row": 233
+          },
+          "location": {
+            "column": 107,
+            "row": 233
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 107,
+      "row": 233
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 233,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "B023",
+    "end_location": {
+      "column": 83,
+      "row": 237
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 78,
+      "row": 237
+    },
+    "message": "Function definition does not bind loop variable `value`",
+    "name": "function-uses-loop-variable",
+    "noqa_row": 237,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 104,
+      "row": 1368
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 9
+          },
+          "location": {
+            "column": 1,
+            "row": 9
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 104,
+            "row": 1368
+          },
+          "location": {
+            "column": 100,
+            "row": 1368
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 100,
+      "row": 1368
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 1368,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 65,
+      "row": 1458
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "        if args.check and (not path.exists() or path.read_text() != content):\n            stale.append(path.relative_to(ROOT))",
+          "end_location": {
+            "column": 53,
+            "row": 1459
+          },
+          "location": {
+            "column": 1,
+            "row": 1457
+          }
+        }
+      ],
+      "message": "Combine `if` statements using `and`"
+    },
+    "location": {
+      "column": 9,
+      "row": 1457
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 1457,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 904
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 904
+          },
+          "location": {
+            "column": 12,
+            "row": 904
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 904
+          },
+          "location": {
+            "column": 69,
+            "row": 904
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 904
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 904,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 968
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 965
+          },
+          "location": {
+            "column": 13,
+            "row": 965
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 967
+          },
+          "location": {
+            "column": 13,
+            "row": 966
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 961
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 961,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 440
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 439
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 439,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 630
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 621
+          },
+          "location": {
+            "column": 13,
+            "row": 621
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 623
+          },
+          "location": {
+            "column": 13,
+            "row": 622
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 617
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 617,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 662
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 658
+          },
+          "location": {
+            "column": 13,
+            "row": 658
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 660
+          },
+          "location": {
+            "column": 13,
+            "row": 659
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 654
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 654,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 105,
+      "row": 855
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 12
+          },
+          "location": {
+            "column": 1,
+            "row": 12
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 105,
+            "row": 855
+          },
+          "location": {
+            "column": 101,
+            "row": 855
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 101,
+      "row": 855
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 855,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 985
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 982
+          },
+          "location": {
+            "column": 17,
+            "row": 982
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 984
+          },
+          "location": {
+            "column": 17,
+            "row": 983
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 978
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 978,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1034
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1030
+          },
+          "location": {
+            "column": 13,
+            "row": 1030
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1032
+          },
+          "location": {
+            "column": 13,
+            "row": 1031
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1026
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1026,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1069
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1065
+          },
+          "location": {
+            "column": 13,
+            "row": 1065
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1067
+          },
+          "location": {
+            "column": 13,
+            "row": 1066
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1061
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1061,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 1095
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 1095
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 1095,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1457
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1453
+          },
+          "location": {
+            "column": 13,
+            "row": 1453
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1455
+          },
+          "location": {
+            "column": 13,
+            "row": 1454
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1445
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1445,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1482
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1478
+          },
+          "location": {
+            "column": 13,
+            "row": 1478
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1480
+          },
+          "location": {
+            "column": 13,
+            "row": 1479
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1474
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1474,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1509
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1505
+          },
+          "location": {
+            "column": 13,
+            "row": 1505
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1507
+          },
+          "location": {
+            "column": 13,
+            "row": 1506
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1501
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1501,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1654
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1654
+          },
+          "location": {
+            "column": 41,
+            "row": 1654
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1654
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1654,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+](exit 1)
+```
+
+## amendment4-ruff-comparison
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a4-static.py --ruff-only
+ruff-base 1
+ruff-current 1
+Traceback (most recent call last):
+  File "/tmp/codex-T130-a4-static.py", line 19, in <module>
+    before=keys(old,baseline);after=keys(new,root);assert after==before,{'introduced':list((after-before).elements()),'removed':list((before-after).elements())}
+                                                          ^^^^^^^^^^^^^
+AssertionError: {'introduced': [('scripts/generate-agent-configs.py', 'FURB167', 'Use of regular expression alias `re.M`', 'r"^EXPECTED_SHA256=[a-f0-9]{64}$", f"EXPECTED_SHA256={digest}", wrapper.read_text(), flags=re.M'), ('tests/unit/test_generate_agent_configs.py', 'FURB167', 'Use of regular expression alias `re.M`', 're.sub(r"^EXPECTED_SHA256=.*$", f"EXPECTED_SHA256={digest}", wrapper.read_text(), flags=re.M)')], 'removed': [('scripts/generate-agent-configs.py', 'EXE001', 'Shebang is present but file is not executable', '#!/usr/bin/env python3')]}
+(exit 1)
+```
+
+## amendment4-final-format
+
+```text
+$ ruff format scripts/generate-agent-configs.py tests/unit/test_generate_agent_configs.py
+2 files left unchanged
+(exit 0)
+```
+
+## amendment4-final-integrity
+
+```text
+$ uv run --offline --no-project --with pyyaml python /tmp/codex-T130-a4-integrity.py
+{
+  "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4",
+  "previous_head": "22e15c0c60493bcfc7969a96552c1023f77d8cce",
+  "amendment": 4,
+  "fix_round": 2,
+  "task_sha256": "8d9dae7861735852eef7a035bb1aac5c3e069412431310fba90ee08d82eb5ece",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "fe5110d96cdf3499a010057e5d686d3d57bb1c55f94276b54f34ba51ec8691fd",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "d7bda055148243b983d9c42833108849024f217e8f8d930fac6639fabb5617ac",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+  },
+  "production_changed": 64,
+  "test_added": 194,
+  "test_changed": 197,
+  "generated_excluded": 4,
+  "all_other_manifest_values_identical": true,
+  "new_scripts": [
+    "home/dot_local/bin/common/executable_codex-local-review"
+  ],
+  "numstat": "3\t1\thome/.chezmoitemplates/claude-settings-managed.json\n2\t0\thome/dot_agents/agent-config.yaml\n36\t0\thome/dot_local/bin/common/executable_codex-local-review\n9\t0\tscripts/generate-agent-configs.py\n10\t7\tscripts/validate-agent-assets.py\n1\t1\ttests/unit/test_claude_settings_merge.py\n169\t1\ttests/unit/test_generate_agent_configs.py\n24\t1\ttests/unit/test_validate_agent_assets.py\n"
+}
+(exit 0)
+```
+
+## Amendment4 ruff-base
+
+```text
+$ ruff check --no-cache --output-format json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+[
+  {
+    "cell": null,
+    "code": "B020",
+    "end_location": {
+      "column": 18,
+      "row": 200
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 200
+    },
+    "message": "Loop control variable `index` overrides iterable it iterates",
+    "name": "loop-variable-overrides-iterator",
+    "noqa_row": 200,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/loop-variable-overrides-iterator"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 111,
+      "row": 232
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 8
+          },
+          "location": {
+            "column": 1,
+            "row": 8
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 111,
+            "row": 232
+          },
+          "location": {
+            "column": 107,
+            "row": 232
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 107,
+      "row": 232
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 232,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "B023",
+    "end_location": {
+      "column": 83,
+      "row": 236
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 78,
+      "row": 236
+    },
+    "message": "Function definition does not bind loop variable `value`",
+    "name": "function-uses-loop-variable",
+    "noqa_row": 236,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 65,
+      "row": 1449
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "        if args.check and (not path.exists() or path.read_text() != content):\n            stale.append(path.relative_to(ROOT))",
+          "end_location": {
+            "column": 53,
+            "row": 1450
+          },
+          "location": {
+            "column": 1,
+            "row": 1448
+          }
+        }
+      ],
+      "message": "Combine `if` statements using `and`"
+    },
+    "location": {
+      "column": 9,
+      "row": 1448
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 1448,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 901
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 901
+          },
+          "location": {
+            "column": 12,
+            "row": 901
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 901
+          },
+          "location": {
+            "column": 69,
+            "row": 901
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 901
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 901,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 965
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 962
+          },
+          "location": {
+            "column": 13,
+            "row": 962
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 964
+          },
+          "location": {
+            "column": 13,
+            "row": 963
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 958
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 958,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 434
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 433
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 433,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 624
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 615
+          },
+          "location": {
+            "column": 13,
+            "row": 615
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 617
+          },
+          "location": {
+            "column": 13,
+            "row": 616
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 611
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 611,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 656
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 652
+          },
+          "location": {
+            "column": 13,
+            "row": 652
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 654
+          },
+          "location": {
+            "column": 13,
+            "row": 653
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 648
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 648,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 817
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 814
+          },
+          "location": {
+            "column": 17,
+            "row": 814
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 816
+          },
+          "location": {
+            "column": 17,
+            "row": 815
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 810
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 810,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 866
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 862
+          },
+          "location": {
+            "column": 13,
+            "row": 862
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 864
+          },
+          "location": {
+            "column": 13,
+            "row": 863
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 858
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 858,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 901
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 897
+          },
+          "location": {
+            "column": 13,
+            "row": 897
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 899
+          },
+          "location": {
+            "column": 13,
+            "row": 898
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 893
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 893,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 927
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 927
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 927,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1289
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1285
+          },
+          "location": {
+            "column": 13,
+            "row": 1285
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1287
+          },
+          "location": {
+            "column": 13,
+            "row": 1286
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1277
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1277,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1314
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1310
+          },
+          "location": {
+            "column": 13,
+            "row": 1310
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1312
+          },
+          "location": {
+            "column": 13,
+            "row": 1311
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1306
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1306,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1341
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1337
+          },
+          "location": {
+            "column": 13,
+            "row": 1337
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1339
+          },
+          "location": {
+            "column": 13,
+            "row": 1338
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1333
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1333,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1631
+    },
+    "filename": "/private/tmp/T130-a4-ruff-py30qbdn/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1631
+          },
+          "location": {
+            "column": 41,
+            "row": 1631
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1631
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1631,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+](exit 1)
+```
+
+## Amendment4 ruff-current
+
+```text
+$ ruff check --no-cache --output-format json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+[
+  {
+    "cell": null,
+    "code": "B020",
+    "end_location": {
+      "column": 18,
+      "row": 201
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 201
+    },
+    "message": "Loop control variable `index` overrides iterable it iterates",
+    "name": "loop-variable-overrides-iterator",
+    "noqa_row": 201,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/loop-variable-overrides-iterator"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 111,
+      "row": 233
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 9
+          },
+          "location": {
+            "column": 1,
+            "row": 9
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 111,
+            "row": 233
+          },
+          "location": {
+            "column": 107,
+            "row": 233
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 107,
+      "row": 233
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 233,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "B023",
+    "end_location": {
+      "column": 83,
+      "row": 237
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 78,
+      "row": 237
+    },
+    "message": "Function definition does not bind loop variable `value`",
+    "name": "function-uses-loop-variable",
+    "noqa_row": 237,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 65,
+      "row": 1458
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "        if args.check and (not path.exists() or path.read_text() != content):\n            stale.append(path.relative_to(ROOT))",
+          "end_location": {
+            "column": 53,
+            "row": 1459
+          },
+          "location": {
+            "column": 1,
+            "row": 1457
+          }
+        }
+      ],
+      "message": "Combine `if` statements using `and`"
+    },
+    "location": {
+      "column": 9,
+      "row": 1457
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 1457,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 904
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 904
+          },
+          "location": {
+            "column": 12,
+            "row": 904
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 904
+          },
+          "location": {
+            "column": 69,
+            "row": 904
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 904
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 904,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 968
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 965
+          },
+          "location": {
+            "column": 13,
+            "row": 965
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 967
+          },
+          "location": {
+            "column": 13,
+            "row": 966
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 961
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 961,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 440
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 439
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 439,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 630
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 621
+          },
+          "location": {
+            "column": 13,
+            "row": 621
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 623
+          },
+          "location": {
+            "column": 13,
+            "row": 622
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 617
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 617,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 662
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 658
+          },
+          "location": {
+            "column": 13,
+            "row": 658
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 660
+          },
+          "location": {
+            "column": 13,
+            "row": 659
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 654
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 654,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 985
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 982
+          },
+          "location": {
+            "column": 17,
+            "row": 982
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 984
+          },
+          "location": {
+            "column": 17,
+            "row": 983
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 978
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 978,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1034
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1030
+          },
+          "location": {
+            "column": 13,
+            "row": 1030
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1032
+          },
+          "location": {
+            "column": 13,
+            "row": 1031
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1026
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1026,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1069
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1065
+          },
+          "location": {
+            "column": 13,
+            "row": 1065
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1067
+          },
+          "location": {
+            "column": 13,
+            "row": 1066
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1061
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1061,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 1095
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 1095
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 1095,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1457
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1453
+          },
+          "location": {
+            "column": 13,
+            "row": 1453
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1455
+          },
+          "location": {
+            "column": 13,
+            "row": 1454
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1445
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1445,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1482
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1478
+          },
+          "location": {
+            "column": 13,
+            "row": 1478
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1480
+          },
+          "location": {
+            "column": 13,
+            "row": 1479
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1474
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1474,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1509
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1505
+          },
+          "location": {
+            "column": 13,
+            "row": 1505
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1507
+          },
+          "location": {
+            "column": 13,
+            "row": 1506
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1501
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1501,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1654
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1654
+          },
+          "location": {
+            "column": 41,
+            "row": 1654
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1654
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1654,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+](exit 1)
+```
+
+## amendment4-final-ruff-comparison
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a4-static.py --ruff-only
+ruff-base 1
+ruff-current 1
+{
+  "ruff_baseline": 25,
+  "ruff_current": 25,
+  "introduced": 0,
+  "removed": 0,
+  "source_hashes": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "fe5110d96cdf3499a010057e5d686d3d57bb1c55f94276b54f34ba51ec8691fd",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "d7bda055148243b983d9c42833108849024f217e8f8d930fac6639fabb5617ac",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+  }
+}
+(exit 0)
+```
+
+## amendment4-final-focused-tests
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift -v
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.123s
+
+OK
+(exit 0)
+```
+
+## Amendment4 clean candidate make validate-agent-assets
+
+```text
+Clean index export with all eight working source/test files copied over and SHA256-bound; unrelated untracked historical logs are absent.
+$ make validate-agent-assets
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T130-candidate-42qj9gbh (expected one)
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-codex-local-review-exclusion-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-sandbox-portability-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## amendment4-unapproved-gate
+
+```text
+$ make require-crit-review
+Native agent review required before completion.
+- review-sensitive path changed: .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/crit-status.json
+- broad diff touches 1277 files
+- broad diff changes 1391354 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+(exit 2)
+```
+
+## Amendment4 clean candidate make validate-agent-assets
+
+```text
+Clean index export with all eight working source/test files copied over and SHA256-bound; unrelated untracked historical logs are absent.
+$ make validate-agent-assets
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T130-candidate-558sl89f (expected one)
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-codex-local-review-exclusion-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-sandbox-portability-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## amendment4-race-pong
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a4-race-status.py
+agmsg-dispatch: sent message 2021; delivery failed or unread; verify receipt before resending
+
+(exit 1)
+```
+
+## Amendment4 independent security report, full read
+
+Git-diff context leading space-tab prefixes below are expanded for Markdown/git whitespace checks; exact independently authored text remains at raw/amendment4/security-review.md, subject to required secret/home masking.
+
+# Independent security review — Amendment 4, PR399 re-plan
+
+## Scope and binding
+
+Read-only independent source-phase review against base a8a747af06b32ff1d0d1720467892f34d9465ae4 and previous head 22e15c0c60493bcfc7969a96552c1023f77d8cce. Full current task and AGENTS.md read; full task SHA256 8d9dae7861735852eef7a035bb1aac5c3e069412431310fba90ee08d82eb5ece verified. Reviewed the complete wrapper and downstream local-review.sh, generator output/check/write callers, changed fixtures, and existing exact sandbox/actual modifier expectations. The final eight source hashes below include the re.MULTILINE spelling-only correction, not the earlier two stale hashes.
+
+This is not final CI, Bot review, task audit or acceptance. No source implementation was edited and no real downstream review, local Bats, browser, package installer, live apply, or external mutation was run. The race reproduction and unit methods use disposable /tmp fixtures; this report is the sole persistent review artifact written for this extension.
+
+## Finding
+
+**P1 — high confidence — home/dot_local/bin/common/executable_codex-local-review:36 (check at line 28): hashing and execution reopen a sandbox-writable pathname, so the executed bytes can differ from the deployed pin.**
+
+The wrapper hashes scripts/orchestrator/local-review.sh, closes it, then execs that pathname. Sandboxed code can atomically replace the path while shasum still reads the original inode, or after the hash check. The digest then matches the trusted deployed pin, but exec opens and runs the replacement outside the sandbox. The isolated reproduction below uses the actual wrapper implementation with only its fixture pin substituted, real shasum, a tracked harmless script and an atomic rename from the controlling test process. At an 80ms delay the wrapper exited 91 and wrote the untrusted marker, proving that the script outside the pin executed. At 40ms it refused; both outcomes are preserved, rather than presenting a race as deterministic on every schedule.
+
+The fixture has 128 MiB of comment padding to widen the hashing window. This does not change the check/use semantics: a small production script has the same pathname reopening gap, only a smaller timing window. There is no mocked hash tool, injected interpreter environment, fake Git callback, commit/ref manipulation, or real Codex review in the probe. The legitimate fixture would write trusted and exit 23; the replacement writes untrusted and exits 91. Thus this is a concrete execution bypass, not merely a changed file observed after a failed invocation.
+
+The deployed EXPECTED_SHA256 fixes mutable HEAD as an anchor but does not bind the executed bytes to that anchor. Amendment 4's exact exec of the mutable checkout pathname must change to close this issue. Its wrapper/trust-boundary threat row is marked closed by a test that currently covers sequential replacements but not replacement between verification and execution. Source approval is withheld.
+
+## Concrete design implications for the orchestrator
+
+Two viable directions require amending the explicit checkout-script exec contract:
+
+1. Deploy the trusted review executable alongside the wrapper in a location outside sandbox write access, and execute that protected deployed executable while preserving the intended repository cwd/argv. Rendering/deployment checks must cover the deployed executable and its pin, and changes to its source require operator deployment.
+2. Copy the checkout bytes into a private snapshot outside sandbox write access, verify the snapshot's bytes against the deployed pin, then execute that same protected snapshot. Creation path, permissions, lifetime and cleanup must prevent the sandbox writer from replacing or modifying the snapshot; an attacker-controlled TMPDIR is not an adequate trust boundary.
+
+Rehashing immediately before exec still leaves a gap. Opening the original workspace inode once is also insufficient against an in-place writer unless its bytes are isolated from further sandbox writes. These are design options, not implemented or approved changes. The current allowed task explicitly requires exec of the checkout pathname, so a scope/contract amendment is appropriate before changing execution semantics.
+
+## Confirmed behavior and limits
+
+The new generator computes SHA256 of the local tracked source path and replaces exactly one canonical EXPECTED_SHA256 assignment, always includes the wrapper among generated outputs, and reports wrapper drift through the existing --check path. The new fixture supplies both required source files. The changed tests confirm a committed replacement is rejected despite HEAD moving, and original pinned bytes are accepted after HEAD changes. Both hidden-index states, linked-worktree refusal, task/head validation, literal argv forwarding, cwd, PATH script decoy and exit propagation remain covered.
+
+The wrapper retains empty Git protocol allowance, no pager, and disabled fsmonitor on its remaining rev-parse and ls-files commands. It no longer queries object bodies or refs to authorize bytes and no longer runs diff; removing the old missing-promisor-blob fixture is consistent with that narrowed Git operation set. Fsmonitor and clean-filter marker checks still pass. The dedicated exclusion and exact Darwin/Linux lists remain unchanged with no new allow rule; actual modifier runtime/env/provider/idempotence assertions pass. The downstream review script is byte-unchanged.
+
+Five independently run focused methods passed in 2.360 seconds on the final spelling-corrected source. Passing sequential tests does not close the reproduced concurrent replacement bypass. The parent-reported 213-method connected result was prior to the spelling-only correction; broader final validation and CI are not asserted by this report. Caps match the proof: 64 production changed lines of 80, tests 194 additions / 197 changed lines of 200, and four generated lines excluded.
+
+No extra findings are asserted about hypothetical environment manipulation. The confirmed race alone invalidates the claimed byte-execution boundary under the task's sandbox-writable checkout premise.
+
+## Exact hashes and source inspection outputs
+
+Python hashlib.sha256 over pathlib.read_bytes matched every entry of raw/amendment4/source-integrity.json and the task copy. These checks ran after the focused tests, with no source edits during this review. Full command outputs:
+
+```text
+{
+  "task_sha256": "8d9dae7861735852eef7a035bb1aac5c3e069412431310fba90ee08d82eb5ece",
+  "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4",
+  "previous_head": "22e15c0c60493bcfc7969a96552c1023f77d8cce",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "fe5110d96cdf3499a010057e5d686d3d57bb1c55f94276b54f34ba51ec8691fd",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "d7bda055148243b983d9c42833108849024f217e8f8d930fac6639fabb5617ac",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+  }
+}
+$ git diff 22e15c0c60493bcfc7969a96552c1023f77d8cce -- home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py home/dot_local/bin/common/executable_codex-local-review tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+diff --git a/home/dot_local/bin/common/executable_codex-local-review b/home/dot_local/bin/common/executable_codex-local-review
+index aa3dd50d..a49c8136 100755
+--- a/home/dot_local/bin/common/executable_codex-local-review
++++ b/home/dot_local/bin/common/executable_codex-local-review
+@@ -1,12 +1,13 @@
+ #!/usr/bin/env bash
+ # @file codex-local-review
+-# @brief Run the primary checkout's committed local review after validating its task and head.
+-# @description Check local HEAD bytes without fsmonitor, worktree filters or transports.
++# @brief Run the primary checkout's local review after validating its task, head and deployed hash.
++# @description Pin script bytes to the deployed wrapper's generated SHA256, independent of mutable Git refs.
+ # @arg $1 string Existing task id containing letters, digits, dots, underscores and hyphens.
+ # @arg $2 string Head containing exactly 40 lowercase hexadecimal digits.
+ # @arg $3 string Additional review-script arguments, forwarded unchanged.
+-# @exitcode 2 Malformed arguments, a missing task, a non-primary checkout or an uncommitted review script.
++# @exitcode 2 Malformed arguments, a missing task, a non-primary checkout or a script outside the deployed pin.
+ set -euo pipefail
++EXPECTED_SHA256=6c30fd0e242dcd2692099d6270449403abaeca832d8b4a53d42a1c16ab48a99a
+
+ git() { GIT_ALLOW_PROTOCOL='' command git --no-pager -c core.fsmonitor=false "$@"; }
+
+@@ -24,9 +25,8 @@ cd -- "$root"
+        exit 2
+ }
+ if ! git ls-files --error-unmatch -- scripts/orchestrator/local-review.sh >/dev/null 2>&1 ||
+-	! git diff --cached --quiet --no-ext-diff --no-textconv HEAD -- scripts/orchestrator/local-review.sh ||
+-	! git cat-file blob HEAD:scripts/orchestrator/local-review.sh | cmp -s - scripts/orchestrator/local-review.sh; then
+-	printf 'codex-local-review: local-review.sh must be tracked and unchanged against HEAD\n' >&2
++	! actual=$(shasum -a 256 scripts/orchestrator/local-review.sh) || [[ ${actual%% *} != "$EXPECTED_SHA256" ]]; then
++	printf 'codex-local-review: local-review.sh must be tracked and match the deployed pin; run make update after merge\n' >&2
+        exit 2
+ fi
+ [[ -f "$root/.orchestration/tasks/$1.md" ]] || {
+diff --git a/scripts/generate-agent-configs.py b/scripts/generate-agent-configs.py
+index 8e54e172..ee3ea8e0 100755
+--- a/scripts/generate-agent-configs.py
++++ b/scripts/generate-agent-configs.py
+@@ -4,6 +4,7 @@
+ from __future__ import annotations
+
+ import argparse
++import hashlib
+ import json
+ import re
+ import sys
+@@ -1361,6 +1362,14 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
+         outputs[ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"] = render_codex_plugin(plugin)
+     outputs.update(claude_skill_symlink_outputs())
+     outputs.update(render_asset_constants(manifest))
++    wrapper = ROOT / "home/dot_local/bin/common/executable_codex-local-review"
++    digest = hashlib.sha256((ROOT / "scripts/orchestrator/local-review.sh").read_bytes()).hexdigest()
++    content, count = re.subn(
++        r"^EXPECTED_SHA256=[a-f0-9]{64}$", f"EXPECTED_SHA256={digest}", wrapper.read_text(), flags=re.MULTILINE
++    )
++    if count != 1:
++        fail("codex-local-review must assign EXPECTED_SHA256 exactly once")
++    outputs[wrapper] = content
+     return outputs
+
+
+diff --git a/tests/unit/test_generate_agent_configs.py b/tests/unit/test_generate_agent_configs.py
+index 739f0abe..071ed31c 100644
+--- a/tests/unit/test_generate_agent_configs.py
++++ b/tests/unit/test_generate_agent_configs.py
+@@ -4,10 +4,12 @@
+ from __future__ import annotations
+
+ import contextlib
++import hashlib
+ import importlib.util
+ import io
+ import json
+ import os
++import re
+ import shutil
+ import subprocess
+ import sys
+@@ -198,6 +200,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+         self.old_root = self.module.ROOT
+         self.temp_dir = Path(tempfile.mkdtemp(prefix="generate-agent-configs-test-"))
+         self.module.ROOT = self.temp_dir
++        for name in ("home/dot_local/bin/common/executable_codex-local-review", "scripts/orchestrator/local-review.sh"):
++            target = self.temp_dir / name
++            target.parent.mkdir(parents=True, exist_ok=True)
++            shutil.copyfile(ROOT / name, target)
+
+     def tearDown(self) -> None:
+         self.module.ROOT = self.old_root
+@@ -808,8 +814,26 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 self.assertEqual(expected, settings["sandbox"]["excludedCommands"])
+                 self.assertEqual(["Bash(agmsg-dispatch:*)"], settings["permissions"]["allow"])
+
++    def test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift(
++        self,
++    ) -> None:
++        manifest = sample_manifest()
++        wrapper = self.temp_dir / "home/dot_local/bin/common/executable_codex-local-review"
++        script = self.temp_dir / "scripts/orchestrator/local-review.sh"
++        outputs = self.module.expected_outputs(manifest)
++        self.assertIn("EXPECTED_SHA256=" + hashlib.sha256(script.read_bytes()).hexdigest(), outputs[wrapper])
++        self.module.write_outputs(outputs)
++        script.write_text(script.read_text() + "# changed\n")
++        self.module.load_manifest = lambda: manifest
++        self.addCleanup(setattr, sys, "argv", sys.argv)
++        sys.argv = ["generate-agent-configs.py", "--check"]
++        stderr = io.StringIO()
++        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
++            self.module.main()
++        self.assertIn(str(wrapper.relative_to(self.temp_dir)), stderr.getvalue())
++
+     def test_codex_local_review_wrapper_only_execs_the_repository_local_review_script(self) -> None:
+-        wrapper = ROOT / "home/dot_local/bin/common/executable_codex-local-review"
++        wrapper = self.temp_dir / "home/dot_local/bin/common/executable_codex-local-review"
+         repo = self.temp_dir / "review repo"
+         repo.mkdir()
+
+@@ -826,10 +850,16 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+         script.parent.mkdir(parents=True)
+         script.write_text('#!/usr/bin/env bash\nprintf \'%s\\0\' "$PWD" "$@" > "$RECORD_PATH"\nexit 23\n')
+         script.chmod(0o755)
++        digest = hashlib.sha256(script.read_bytes()).hexdigest()
++        wrapper.write_text(
++            re.sub(r"^EXPECTED_SHA256=.*$", f"EXPECTED_SHA256={digest}", wrapper.read_text(), flags=re.MULTILINE)
++        )
++        wrapper.chmod(0o755)
+         git("add", "scripts/orchestrator/local-review.sh")
+         for key, value in (("user.name", "Wrapper Test"), ("user.email", "wrapper@example.invalid")):
+             git("config", key, value)
+         git("-c", "commit.gpgsign=false", "commit", "-qm", "Track the review stub")
++        original_head = git("rev-parse", "HEAD").stdout.strip()
+         stub_bin = repo / "bin"
+         stub_bin.mkdir()
+         decoy = stub_bin / "local-review.sh"
+@@ -873,14 +903,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+         linked_task = linked / task_file.relative_to(repo)
+         linked_task.parent.mkdir(parents=True)
+         linked_task.touch()
+-        for state in (
+-            "linked worktree",
+-            "untracked script",
+-            "modified script",
+-            "staged script",
+-            "assume-unchanged script",
+-            "skip-worktree script",
+-        ):
++        states = ("linked worktree", "untracked script", "modified script", "staged script")
++        for state in (*states, "assume-unchanged script", "skip-worktree script", "committed replacement"):
+             with self.subTest(state=state):
+                 record.unlink(missing_ok=True)
+                 if state == "untracked script":
+@@ -895,6 +919,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                     git("restore", "--source=HEAD", "--staged", "--worktree", str(script))
+                     git("update-index", "--" + state.split()[0], str(script))
+                     script.write_text(script.read_text() + "# hidden change\n")
++                elif state == "committed replacement":
++                    git("update-index", "--no-skip-worktree", str(script))
++                    git("add", str(script))
++                    git("-c", "commit.gpgsign=false", "commit", "-qm", "Replace the review stub and move HEAD")
+                 result = subprocess.run(
+                     [str(wrapper), task, "a" * 40],
+                     cwd=linked if state == "linked worktree" else nested,
+@@ -904,13 +932,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 )
+                 self.assertEqual(2, result.returncode, result.stderr)
+                 self.assertIn(
+-                    b"primary checkout" if state == "linked worktree" else b"tracked and unchanged", result.stderr
++                    b"primary checkout" if state == "linked worktree" else b"tracked and match", result.stderr
+                 )
+                 self.assertFalse(record.exists())
+         linked_task.unlink()
+         git("worktree", "remove", str(linked))
+         git("update-index", "--no-skip-worktree", str(script))
+-        git("restore", "--source=HEAD", "--staged", "--worktree", str(script))
++        git("restore", "--source=" + original_head, "--staged", "--worktree", str(script))
+         helper = self.temp_dir / "git-helper"
+         helper.write_text('#!/bin/sh\n: > "$HELPER_RECORD"\ncat\n')
+         helper.chmod(0o755)
+@@ -931,27 +959,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 git("config", "--unset", key)
+                 self.assertEqual(23, result.returncode, result.stderr)
+                 self.assertFalse(helper_record.exists(), key)
+-        helper.write_text('#!/bin/sh\n: > "$HELPER_RECORD"\nexit 1\n')
+-        for key, value in (
+-            ("extensions.partialClone", "origin"),
+-            ("remote.origin.promisor", "true"),
+-            ("remote.origin.url", str(self.temp_dir)),
+-            ("remote.origin.uploadpack", str(helper)),
+-        ):
+-            git("config", key, value)
+-        blob = git("rev-parse", "HEAD:scripts/orchestrator/local-review.sh").stdout.strip()
+-        (repo / ".git/objects" / blob[:2] / blob[2:]).unlink()
+-        record.unlink()
+-        result = subprocess.run(
+-            [str(wrapper), task, "a" * 40],
+-            cwd=nested,
+-            env=env | {"GIT_ALLOW_PROTOCOL": "file"},
+-            capture_output=True,
+-            check=False,
+-        )
+-        self.assertEqual(2, result.returncode, result.stderr)
+-        self.assertFalse(record.exists())
+-        self.assertFalse(helper_record.exists())
+
+     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
+         manifest = sample_manifest()
+exit=0
+$ git diff --numstat a8a747af06b32ff1d0d1720467892f34d9465ae4 -- home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py home/dot_local/bin/common/executable_codex-local-review tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+3	1	home/.chezmoitemplates/claude-settings-managed.json
+2	0	home/dot_agents/agent-config.yaml
+36	0	home/dot_local/bin/common/executable_codex-local-review
+9	0	scripts/generate-agent-configs.py
+10	7	scripts/validate-agent-assets.py
+1	1	tests/unit/test_claude_settings_merge.py
+169	1	tests/unit/test_generate_agent_configs.py
+24	1	tests/unit/test_validate_agent_assets.py
+exit=0
+$ git diff a8a747af06b32ff1d0d1720467892f34d9465ae4 -- scripts/orchestrator/local-review.sh
+exit=0
+
+```
+
+Additional read-only reads were cat of task.md, source-integrity.json, scripts/orchestrator/local-review.sh and AGENTS.md; sed -n '1,100p' and '1360,1460p' scripts/generate-agent-configs.py; and git diff from the base for wrapper/generator/test sources. The earlier full reads include the pre-lint re.M spelling; the exact final diff above verifies re.MULTILINE with the same semantics.
+
+## Focused test command and full output
+
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging -v
+```
+
+Process exit 0.
+
+```text
+test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift) ... ok
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new) ... ok
+test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 2.360s
+
+OK
+```
+
+## Exact safe race probe command and full output
+
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python - <<'PY'
+import hashlib,json,os,re,subprocess,tempfile,time
+from pathlib import Path
+source=Path('home/dot_local/bin/common/executable_codex-local-review').read_text()
+with tempfile.TemporaryDirectory(prefix='a4-byte-race-',dir='/tmp') as tmp:
+ root=Path(tmp); repo=root/'repo'; repo.mkdir(); env=os.environ|{'GIT_CONFIG_GLOBAL':'/dev/null','GIT_CONFIG_NOSYSTEM':'1','MARKER':str(root/'marker')}
+ def git(*args): return subprocess.run(['git','-c','core.hooksPath=/dev/null',*args],cwd=repo,env=env,text=True,capture_output=True,check=True)
+ git('init','-q'); script=repo/'scripts/orchestrator/local-review.sh'; script.parent.mkdir(parents=True)
+ good=b'#!/bin/sh\nprintf trusted > "$MARKER"\nexit 23\n'+(b'#'+b'a'*1022+b'\n')*131072
+ script.write_bytes(good); script.chmod(0o755); git('add','scripts/orchestrator/local-review.sh')
+ task=repo/'.orchestration/tasks/test.md'; task.parent.mkdir(parents=True); task.touch()
+ wrapper=root/'deployed-wrapper'; wrapper.write_text(re.sub(r'^EXPECTED_SHA256=.*$', 'EXPECTED_SHA256='+hashlib.sha256(good).hexdigest(),source,flags=re.MULTILINE)); wrapper.chmod(0o755)
+ for delay in (0.04,0.08):
+  script.write_bytes(good); script.chmod(0o755); marker=root/'marker'; marker.unlink(missing_ok=True)
+  replacement=repo/'replacement'; replacement.write_text('#!/bin/sh\nprintf untrusted > "$MARKER"\nexit 91\n'); replacement.chmod(0o755)
+  proc=subprocess.Popen([str(wrapper),'test','a'*40],cwd=repo,env=env,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+  time.sleep(delay); replacement.replace(script); stdout,stderr=proc.communicate(timeout=15)
+  print(json.dumps({'delay_seconds':delay,'pinned_bytes':len(good),'exit':proc.returncode,'marker':marker.read_text() if marker.exists() else None,'stdout':stdout,'stderr':stderr}))
+PY
+```
+
+Probe process exit 0. It completed in approximately 1.80 seconds. Full output:
+
+```json
+{"delay_seconds": 0.04, "pinned_bytes": 134217773, "exit": 2, "marker": null, "stdout": "", "stderr": "codex-local-review: local-review.sh must be tracked and match the deployed pin; run make update after merge\n"}
+{"delay_seconds": 0.08, "pinned_bytes": 134217773, "exit": 91, "marker": "untrusted", "stdout": "", "stderr": ""}
+```
+
+Verdict: incorrect
+
+
+## Amendment4 Crit state
+
+```text
+$ crit status --json
+{
+  "branch": "feat/codex-local-review-exclusion",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "<HOME>/.crit/reviews/329eea196586/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}
+(exit 0)
+```
+
+## amendment4-blocked-artifacts
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a4-blocked-artifacts.py
+{
+  "task_sha256": "8d9dae7861735852eef7a035bb1aac5c3e069412431310fba90ee08d82eb5ece",
+  "source_status": "unapproved-independent-P1",
+  "source8_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "fe5110d96cdf3499a010057e5d686d3d57bb1c55f94276b54f34ba51ec8691fd",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "d7bda055148243b983d9c42833108849024f217e8f8d930fac6639fabb5617ac",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+  },
+  "report": ".orchestration/dotfiles-T130-codex-local-review-exclusion-a01/report.md",
+  "review_evidence_unresolved": 1,
+  "no_A4_push": true
+}
+(exit 0)
+```
+
+## amendment4-blocked-checkpoint
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a4-checkpoint.py
+{
+  "time": "2026-10-17T16:54:28.854734+00:00",
+  "task_copy": "8d9dae7861735852eef7a035bb1aac5c3e069412431310fba90ee08d82eb5ece",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "fe5110d96cdf3499a010057e5d686d3d57bb1c55f94276b54f34ba51ec8691fd",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "d7bda055148243b983d9c42833108849024f217e8f8d930fac6639fabb5617ac",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+  },
+  "snapshot_validator_exit": 0,
+  "source_review": "incorrect",
+  "open_independent_finding": "P1 hash-check/exec mutable-path race at wrapper36",
+  "published_head": "22e15c0c60493bcfc7969a96552c1023f77d8cce",
+  "working_source": "uncommitted A4, frozen",
+  "staged_paths": [],
+  "P1_4303494614": "open:4303494614",
+  "bot_rounds_published_head": 2,
+  "A4_push": false,
+  "RESULT_sent": false,
+  "F3_started": false,
+  "orchestrator_PONG2021_receipt": "unread/dispatch1; not resent"
+}
+(exit 0)
+```
+
+## amendment4-checkpoint-mask
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a4-mask.py
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/report.md
+masked 87 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/activation-dispatch.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/approved-candidate-snapshot.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/approved-candidate-validator.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/blocked-checkpoint.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/dotfiles-T130-codex-local-review-exclusion-a01-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/dotfiles-T130-codex-local-review-exclusion-a01-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/frozen-candidate-snapshot.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/frozen-candidate-validator.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/previous-task-amendment3.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/race-dispatch.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/race-pong.txt
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/render-check.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/ruff-base.log
+masked 25 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/ruff-current.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/security-review.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/shellcheck.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/shfmt.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/source-integrity.json
+(exit 0)
+```
+
+## amendment4-evidence-whitespace-red
+
+```text
+$ git diff --check
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20929: trailing whitespace.
++test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ...
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:27234: trailing whitespace.
++
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:27236: trailing whitespace.
++
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:27255: trailing whitespace.
++
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:27274: trailing whitespace.
++
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:27275: trailing whitespace.
++
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:27282: trailing whitespace.
++
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:27301: trailing whitespace.
++
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:27307: trailing whitespace.
++
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:27331: trailing whitespace.
++
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:27418: trailing whitespace.
++
+(exit 2)
+```
+
+Evidence display note: trailing whitespace in newly pasted unittest/diff-context output was trimmed for git whitespace validation; original command/report artifacts remain under raw/ subject to required secret/home masks. Source bytes are unchanged.
+
+## amendment4-evidence-whitespace-display
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a4-display-whitespace.py
+Display trailing-whitespace lines normalized: 22
+(exit 0)
+```
+
+## amendment4-evidence-whitespace-green
+
+```text
+$ git diff --check
+(exit 0)
+```
+
+## amendment4-final-checkpoint-mask
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a4-mask.py
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/activation-dispatch.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/approved-candidate-snapshot.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/approved-candidate-validator.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/blocked-checkpoint.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/dotfiles-T130-codex-local-review-exclusion-a01-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/dotfiles-T130-codex-local-review-exclusion-a01-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/frozen-candidate-snapshot.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/frozen-candidate-validator.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/previous-task-amendment3.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/race-dispatch.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/race-pong.txt
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/render-check.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/ruff-base.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/ruff-current.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/security-review.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/shellcheck.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/shfmt.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4/source-integrity.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-activation.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-blocked-artifacts.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-blocked-checkpoint.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-checkpoint-mask.log
+masked 1 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-connected-tests.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-evidence-whitespace-display.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-evidence-whitespace-green.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-evidence-whitespace-red.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-final-focused-tests.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-final-format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-final-integrity.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-final-ruff-comparison.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-integrity.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-race-pong.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-render.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-ruff-comparison.log
+masked 3 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-static-driver.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-two-tests-green.log
+masked 4 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-two-tests-red.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment4-unapproved-gate.log
+(exit 0)
+```
+
+## amendment5-activation
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a5-activate.py
+{
+  "amendment": 5,
+  "task_copy": "e08a2054ee4ee11c5cb15444b7cfe6c762060a24025434f1cd2b013e818c3213",
+  "same_fix_round": 2,
+  "source_scope": 8,
+  "previous_report": "raw/amendment4/security-review.md",
+  "previous_verdict": "incorrect"
+}
+(exit 0)
+```
+
+## amendment5-wrapper-red
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script -v
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ...
+  test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (head='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa') ... FAIL
+  test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (head='0123456789abcdef0123456789abcdef01234567') ... FAIL
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... FAIL
+
+======================================================================
+FAIL: test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (head='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 882, in test_codex_local_review_wrapper_only_execs_the_repository_local_review_script
+    self.assertEqual(state.resolve(), Path(executed).parent.resolve())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Posix[71 chars]-agent-configs-test-f_0hnwdf/.local/state/codex-local-review') != Posix[71 chars]-agent-configs-test-f_0hnwdf/review repo/scripts/orchestrator')
+
+======================================================================
+FAIL: test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (head='0123456789abcdef0123456789abcdef01234567')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 882, in test_codex_local_review_wrapper_only_execs_the_repository_local_review_script
+    self.assertEqual(state.resolve(), Path(executed).parent.resolve())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Posix[71 chars]-agent-configs-test-f_0hnwdf/.local/state/codex-local-review') != Posix[71 chars]-agent-configs-test-f_0hnwdf/review repo/scripts/orchestrator')
+
+======================================================================
+FAIL: test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 975, in test_codex_local_review_wrapper_only_execs_the_repository_local_review_script
+    self.assertEqual(23, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 23 != 91 : b''
+
+----------------------------------------------------------------------
+Ran 1 test in 3.069s
+
+FAILED (failures=3)
+(exit 1)
+```
+
+## amendment5-wrapper-green
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script -v
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ERROR
+
+======================================================================
+ERROR: test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 978, in test_codex_local_review_wrapper_only_execs_the_repository_local_review_script
+    self.assertEqual([], list(state.iterdir()))
+                              ^^^^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'iterdir'
+
+----------------------------------------------------------------------
+Ran 1 test in 3.459s
+
+FAILED (errors=1)
+(exit 1)
+```
+
+## amendment5-format
+
+```text
+$ ruff format scripts/generate-agent-configs.py tests/unit/test_generate_agent_configs.py
+1 file reformatted, 1 file left unchanged
+(exit 0)
+```
+
+## amendment5-final-format
+
+```text
+$ ruff format scripts/generate-agent-configs.py tests/unit/test_generate_agent_configs.py
+2 files left unchanged
+(exit 0)
+```
+
+## amendment5-wrapper-final-green
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script -v
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.603s
+
+OK
+(exit 0)
+```
+
+## amendment5-cap-format
+
+```text
+$ ruff format scripts/generate-agent-configs.py tests/unit/test_generate_agent_configs.py
+2 files left unchanged
+(exit 0)
+```
+
+## amendment5-shfmt-format
+
+```text
+$ shfmt -w home/dot_local/bin/common/executable_codex-local-review
+(exit 0)
+```
+
+## amendment5-integrity
+
+```text
+$ uv run --offline --no-project --with pyyaml python /tmp/codex-T130-a5-integrity.py
+{
+  "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4",
+  "previous_head": "22e15c0c60493bcfc7969a96552c1023f77d8cce",
+  "amendment": 5,
+  "fix_round": 2,
+  "task_sha256": "e08a2054ee4ee11c5cb15444b7cfe6c762060a24025434f1cd2b013e818c3213",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "0ed6e46d0da10ff15af0fb4658b3aafa8a85bc5acc0b5618ccf840e4854b633f",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "ad112e85d1f665ae352bae9305babde6bcfc39b812ae15bb73b843324aacfdb8",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+  },
+  "production_changed": 70,
+  "test_added": 197,
+  "test_changed": 200,
+  "generated_excluded": 4,
+  "all_other_manifest_values_identical": true,
+  "new_scripts": [
+    "home/dot_local/bin/common/executable_codex-local-review"
+  ],
+  "numstat": "3\t1\thome/.chezmoitemplates/claude-settings-managed.json\n2\t0\thome/dot_agents/agent-config.yaml\n42\t0\thome/dot_local/bin/common/executable_codex-local-review\n9\t0\tscripts/generate-agent-configs.py\n10\t7\tscripts/validate-agent-assets.py\n1\t1\ttests/unit/test_claude_settings_merge.py\n172\t1\ttests/unit/test_generate_agent_configs.py\n24\t1\ttests/unit/test_validate_agent_assets.py\n"
+}
+(exit 0)
+```
+
+## Amendment5 render-check
+
+```text
+$ make render-check
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+(exit 0)
+```
+
+## Amendment5 shellcheck
+
+```text
+$ shellcheck home/dot_local/bin/common/executable_codex-local-review
+
+In home/dot_local/bin/common/executable_codex-local-review line 28:
+mkdir -p -m 700 -- "$state"
+         ^-- SC2174 (warning): When used with -p, -m only applies to the deepest directory.
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2174 -- When used with -p, -m only applie...
+(exit 1)
+```
+
+## amendment5-static-driver
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a5-static.py
+render-check 0
+shellcheck 1
+Traceback (most recent call last):
+  File "/tmp/codex-T130-a5-static.py", line 11, in <module>
+    run('render-check',['make','render-check']);run('shellcheck',['shellcheck',wrapper]);run('shfmt',['shfmt','-d',wrapper]);run('format',['ruff','format','--check',*files])
+                                                ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/codex-T130-a5-static.py", line 7, in run
+    print(label,x.returncode);assert x.returncode in allowed,(label,body);return x
+                                     ^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('shellcheck', '$ shellcheck home/dot_local/bin/common/executable_codex-local-review\n\nIn home/dot_local/bin/common/executable_codex-local-review line 28:\nmkdir -p -m 700 -- "$state"\n         ^-- SC2174 (warning): When used with -p, -m only applies to the deepest directory.\n\nFor more information:\n  https://www.shellcheck.net/wiki/SC2174 -- When used with -p, -m only applie...\n(exit 1)\n')
+(exit 1)
+```
+
+## amendment5-connected-tests
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_claude_settings_merge -v
+test_a_declare_r_assignment_must_appear_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver) ... ok
+test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+test_asset_constant_must_be_assigned_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_command_hooks_render_after_permission_request_in_manifest_order (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_command_hooks_render_after_permission_request_in_manifest_order) ... ok
+test_codex_config_renders_permgate_permission_request (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift) ... ok
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_empty_or_missing_codex_command_hooks_render_no_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_empty_or_missing_codex_command_hooks_render_no_table) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_hook_trust_hash_reproduces_codex_current_hashes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_hook_trust_hash_reproduces_codex_current_hashes) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb) ... ok
+test_managed_codex_path_includes_installed_common_bin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_orchestrator_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_orchestrator_kind) ... ok
+test_model_profiles_env_renders_worker_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_env_selects_no_github_store (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_selects_no_github_store) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_orchestrator_kind_defaults_to_claude (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_orchestrator_kind_defaults_to_claude) ... ok
+test_plugin_versions_order_build_metadata_like_the_semver_crate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_plugin_versions_order_build_metadata_like_the_semver_crate) ... ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_handle_table_headers_with_trailing_comments (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_handle_table_headers_with_trailing_comments) ... ok
+test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin) ... ok
+test_profile_modify_scripts_hash_the_plugin_version_codex_loads (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_the_plugin_version_codex_loads) ... ok
+test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings) ... ok
+test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_replace_a_single_quoted_declared_entry (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_a_single_quoted_declared_entry) ... ok
+test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root) ... ok
+test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared) ... ok
+test_profile_modify_scripts_replace_inline_table_and_dotted_forms (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_inline_table_and_dotted_forms) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_matches_percent_encoded_tilde (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_matches_percent_encoded_tilde) ... ok
+test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd) ... ok
+test_project_map_reload_hook_selects_the_event_map_among_two_repositories (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_selects_the_event_map_among_two_repositories) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_reaches_the_fallback_pin_and_its_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_reaches_the_fallback_pin_and_its_checksums) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_orchestrator_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_orchestrator_kind_fails) ... ok
+test_unknown_worker_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+test_codex_command_hooks_accept_the_declared_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/validate-agent-assets-test-km12x4n0/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+test_current_only_key_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path) ... ok
+test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... ok
+test_managed_session_start_replacement_keeps_hook_order (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_runtime_enabled_plugins_survive_a_managed_file_without_the_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_runtime_enabled_plugins_survive_a_managed_file_without_the_key) ... ok
+test_trailing_newline (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+
+----------------------------------------------------------------------
+Ran 213 tests in 33.006s
+
+OK
+(exit 0)
+```
+
+## amendment5-final-integrity
+
+```text
+$ uv run --offline --no-project --with pyyaml python /tmp/codex-T130-a5-integrity.py
+{
+  "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4",
+  "previous_head": "22e15c0c60493bcfc7969a96552c1023f77d8cce",
+  "amendment": 5,
+  "fix_round": 2,
+  "task_sha256": "e08a2054ee4ee11c5cb15444b7cfe6c762060a24025434f1cd2b013e818c3213",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "0ed6e46d0da10ff15af0fb4658b3aafa8a85bc5acc0b5618ccf840e4854b633f",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "a30c2eec2be5bf8a34a9ba06343990eb2782befbe141a187ac7569863460f6cc",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+  },
+  "production_changed": 70,
+  "test_added": 197,
+  "test_changed": 200,
+  "generated_excluded": 4,
+  "all_other_manifest_values_identical": true,
+  "new_scripts": [
+    "home/dot_local/bin/common/executable_codex-local-review"
+  ],
+  "numstat": "3\t1\thome/.chezmoitemplates/claude-settings-managed.json\n2\t0\thome/dot_agents/agent-config.yaml\n42\t0\thome/dot_local/bin/common/executable_codex-local-review\n9\t0\tscripts/generate-agent-configs.py\n10\t7\tscripts/validate-agent-assets.py\n1\t1\ttests/unit/test_claude_settings_merge.py\n172\t1\ttests/unit/test_generate_agent_configs.py\n24\t1\ttests/unit/test_validate_agent_assets.py\n"
+}
+(exit 0)
+```
+
+## Amendment5 render-check
+
+```text
+$ make render-check
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+(exit 0)
+```
+
+## Amendment5 shellcheck
+
+```text
+$ shellcheck home/dot_local/bin/common/executable_codex-local-review
+(exit 0)
+```
+
+## Amendment5 shfmt
+
+```text
+$ shfmt -d home/dot_local/bin/common/executable_codex-local-review
+(exit 0)
+```
+
+## Amendment5 format
+
+```text
+$ ruff format --check scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+5 files already formatted
+(exit 0)
+```
+
+## Amendment5 ruff-base
+
+```text
+$ ruff check --no-cache --output-format json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+[
+  {
+    "cell": null,
+    "code": "B020",
+    "end_location": {
+      "column": 18,
+      "row": 200
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 200
+    },
+    "message": "Loop control variable `index` overrides iterable it iterates",
+    "name": "loop-variable-overrides-iterator",
+    "noqa_row": 200,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/loop-variable-overrides-iterator"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 111,
+      "row": 232
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 8
+          },
+          "location": {
+            "column": 1,
+            "row": 8
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 111,
+            "row": 232
+          },
+          "location": {
+            "column": 107,
+            "row": 232
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 107,
+      "row": 232
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 232,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "B023",
+    "end_location": {
+      "column": 83,
+      "row": 236
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 78,
+      "row": 236
+    },
+    "message": "Function definition does not bind loop variable `value`",
+    "name": "function-uses-loop-variable",
+    "noqa_row": 236,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 65,
+      "row": 1449
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "        if args.check and (not path.exists() or path.read_text() != content):\n            stale.append(path.relative_to(ROOT))",
+          "end_location": {
+            "column": 53,
+            "row": 1450
+          },
+          "location": {
+            "column": 1,
+            "row": 1448
+          }
+        }
+      ],
+      "message": "Combine `if` statements using `and`"
+    },
+    "location": {
+      "column": 9,
+      "row": 1448
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 1448,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 901
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 901
+          },
+          "location": {
+            "column": 12,
+            "row": 901
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 901
+          },
+          "location": {
+            "column": 69,
+            "row": 901
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 901
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 901,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 965
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 962
+          },
+          "location": {
+            "column": 13,
+            "row": 962
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 964
+          },
+          "location": {
+            "column": 13,
+            "row": 963
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 958
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 958,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 434
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 433
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 433,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 624
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 615
+          },
+          "location": {
+            "column": 13,
+            "row": 615
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 617
+          },
+          "location": {
+            "column": 13,
+            "row": 616
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 611
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 611,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 656
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 652
+          },
+          "location": {
+            "column": 13,
+            "row": 652
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 654
+          },
+          "location": {
+            "column": 13,
+            "row": 653
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 648
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 648,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 817
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 814
+          },
+          "location": {
+            "column": 17,
+            "row": 814
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 816
+          },
+          "location": {
+            "column": 17,
+            "row": 815
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 810
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 810,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 866
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 862
+          },
+          "location": {
+            "column": 13,
+            "row": 862
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 864
+          },
+          "location": {
+            "column": 13,
+            "row": 863
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 858
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 858,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 901
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 897
+          },
+          "location": {
+            "column": 13,
+            "row": 897
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 899
+          },
+          "location": {
+            "column": 13,
+            "row": 898
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 893
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 893,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 927
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 927
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 927,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1289
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1285
+          },
+          "location": {
+            "column": 13,
+            "row": 1285
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1287
+          },
+          "location": {
+            "column": 13,
+            "row": 1286
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1277
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1277,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1314
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1310
+          },
+          "location": {
+            "column": 13,
+            "row": 1310
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1312
+          },
+          "location": {
+            "column": 13,
+            "row": 1311
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1306
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1306,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1341
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1337
+          },
+          "location": {
+            "column": 13,
+            "row": 1337
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1339
+          },
+          "location": {
+            "column": 13,
+            "row": 1338
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1333
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1333,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1631
+    },
+    "filename": "/private/tmp/T130-a4-ruff-z_s0rr8x/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1631
+          },
+          "location": {
+            "column": 41,
+            "row": 1631
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1631
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1631,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+](exit 1)
+```
+
+## Amendment5 ruff-current
+
+```text
+$ ruff check --no-cache --output-format json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py scripts/generate-agent-configs.py
+[
+  {
+    "cell": null,
+    "code": "B020",
+    "end_location": {
+      "column": 18,
+      "row": 201
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 201
+    },
+    "message": "Loop control variable `index` overrides iterable it iterates",
+    "name": "loop-variable-overrides-iterator",
+    "noqa_row": 201,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/loop-variable-overrides-iterator"
+  },
+  {
+    "cell": null,
+    "code": "FURB167",
+    "end_location": {
+      "column": 111,
+      "row": 233
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re",
+          "end_location": {
+            "column": 10,
+            "row": 9
+          },
+          "location": {
+            "column": 1,
+            "row": 9
+          }
+        },
+        {
+          "content": "re.MULTILINE",
+          "end_location": {
+            "column": 111,
+            "row": 233
+          },
+          "location": {
+            "column": 107,
+            "row": 233
+          }
+        }
+      ],
+      "message": "Replace with `re.MULTILINE`"
+    },
+    "location": {
+      "column": 107,
+      "row": 233
+    },
+    "message": "Use of regular expression alias `re.M`",
+    "name": "regex-flag-alias",
+    "noqa_row": 233,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/regex-flag-alias"
+  },
+  {
+    "cell": null,
+    "code": "B023",
+    "end_location": {
+      "column": 83,
+      "row": 237
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": null,
+    "location": {
+      "column": 78,
+      "row": 237
+    },
+    "message": "Function definition does not bind loop variable `value`",
+    "name": "function-uses-loop-variable",
+    "noqa_row": 237,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 65,
+      "row": 1458
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/generate-agent-configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "        if args.check and (not path.exists() or path.read_text() != content):\n            stale.append(path.relative_to(ROOT))",
+          "end_location": {
+            "column": 53,
+            "row": 1459
+          },
+          "location": {
+            "column": 1,
+            "row": 1457
+          }
+        }
+      ],
+      "message": "Combine `if` statements using `and`"
+    },
+    "location": {
+      "column": 9,
+      "row": 1457
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 1457,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 904
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 904
+          },
+          "location": {
+            "column": 12,
+            "row": 904
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 904
+          },
+          "location": {
+            "column": 69,
+            "row": 904
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 904
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 904,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 968
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 965
+          },
+          "location": {
+            "column": 13,
+            "row": 965
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 967
+          },
+          "location": {
+            "column": 13,
+            "row": 966
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 961
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 961,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 440
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 439
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 439,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 630
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 621
+          },
+          "location": {
+            "column": 13,
+            "row": 621
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 623
+          },
+          "location": {
+            "column": 13,
+            "row": 622
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 617
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 617,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 662
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 658
+          },
+          "location": {
+            "column": 13,
+            "row": 658
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 660
+          },
+          "location": {
+            "column": 13,
+            "row": 659
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 654
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 654,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 988
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 985
+          },
+          "location": {
+            "column": 17,
+            "row": 985
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 987
+          },
+          "location": {
+            "column": 17,
+            "row": 986
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 981
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 981,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1037
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1033
+          },
+          "location": {
+            "column": 13,
+            "row": 1033
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1035
+          },
+          "location": {
+            "column": 13,
+            "row": 1034
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1029
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1029,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1072
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1068
+          },
+          "location": {
+            "column": 13,
+            "row": 1068
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1070
+          },
+          "location": {
+            "column": 13,
+            "row": 1069
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1064
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1064,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 1098
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 1098
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 1098,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1460
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1456
+          },
+          "location": {
+            "column": 13,
+            "row": 1456
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1458
+          },
+          "location": {
+            "column": 13,
+            "row": 1457
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1448
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1448,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1485
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1481
+          },
+          "location": {
+            "column": 13,
+            "row": 1481
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1483
+          },
+          "location": {
+            "column": 13,
+            "row": 1482
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1477
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1477,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1512
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1508
+          },
+          "location": {
+            "column": 13,
+            "row": 1508
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1510
+          },
+          "location": {
+            "column": 13,
+            "row": 1509
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1504
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1504,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1654
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1654
+          },
+          "location": {
+            "column": 41,
+            "row": 1654
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1654
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1654,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+](exit 1)
+```
+
+## amendment5-final-static-driver
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a5-static.py
+render-check 0
+shellcheck 0
+shfmt 0
+format 0
+ruff-base 1
+ruff-current 1
+{
+  "ruff_baseline": 25,
+  "ruff_current": 25,
+  "introduced": 0,
+  "removed": 0,
+  "source_hashes": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "0ed6e46d0da10ff15af0fb4658b3aafa8a85bc5acc0b5618ccf840e4854b633f",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "a30c2eec2be5bf8a34a9ba06343990eb2782befbe141a187ac7569863460f6cc",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+  }
+}
+(exit 0)
+```
+
+## amendment5-final-connected-tests
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_claude_settings_merge -v
+test_a_declare_r_assignment_must_appear_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver) ... ok
+test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+test_asset_constant_must_be_assigned_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_command_hooks_render_after_permission_request_in_manifest_order (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_command_hooks_render_after_permission_request_in_manifest_order) ... ok
+test_codex_config_renders_permgate_permission_request (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_hash_is_rendered_from_the_tracked_script_and_render_check_fails_on_drift) ... ok
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_empty_or_missing_codex_command_hooks_render_no_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_empty_or_missing_codex_command_hooks_render_no_table) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_hook_trust_hash_reproduces_codex_current_hashes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_hook_trust_hash_reproduces_codex_current_hashes) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb) ... ok
+test_managed_codex_path_includes_installed_common_bin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_orchestrator_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_orchestrator_kind) ... ok
+test_model_profiles_env_renders_worker_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_env_selects_no_github_store (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_selects_no_github_store) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_orchestrator_kind_defaults_to_claude (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_orchestrator_kind_defaults_to_claude) ... ok
+test_plugin_versions_order_build_metadata_like_the_semver_crate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_plugin_versions_order_build_metadata_like_the_semver_crate) ... ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_handle_table_headers_with_trailing_comments (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_handle_table_headers_with_trailing_comments) ... ok
+test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin) ... ok
+test_profile_modify_scripts_hash_the_plugin_version_codex_loads (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_the_plugin_version_codex_loads) ... ok
+test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings) ... ok
+test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_replace_a_single_quoted_declared_entry (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_a_single_quoted_declared_entry) ... ok
+test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root) ... ok
+test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared) ... ok
+test_profile_modify_scripts_replace_inline_table_and_dotted_forms (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_inline_table_and_dotted_forms) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_matches_percent_encoded_tilde (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_matches_percent_encoded_tilde) ... ok
+test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd) ... ok
+test_project_map_reload_hook_selects_the_event_map_among_two_repositories (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_selects_the_event_map_among_two_repositories) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_reaches_the_fallback_pin_and_its_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_reaches_the_fallback_pin_and_its_checksums) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_orchestrator_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_orchestrator_kind_fails) ... ok
+test_unknown_worker_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+test_codex_command_hooks_accept_the_declared_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/validate-agent-assets-test-ayvwjeg2/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+test_current_only_key_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path) ... ok
+test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... ok
+test_managed_session_start_replacement_keeps_hook_order (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_runtime_enabled_plugins_survive_a_managed_file_without_the_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_runtime_enabled_plugins_survive_a_managed_file_without_the_key) ... ok
+test_trailing_newline (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+
+----------------------------------------------------------------------
+Ran 213 tests in 29.250s
+
+OK
+(exit 0)
+```
+
+## Amendment5 independent review tool results
+
+# Independent review tool blocker
+
+Two native followup review attempts returned the same error before providing findings or review evidence. The second request was narrowed to source/file lifecycle and the five existing safe unittest methods, with no new experiments or actual HOME/network actions. No approval is inferred; no further retry or alternate-agent route is attempted.
+
+Attempt1 output:
+
+```text
+Agent errored: This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request. Otherwise, confirm that the access_programs.cyber parameter is set to the appropriate tier, and note that some cybersecurity requests are still limited, even when Daybreak is on.
+```
+
+Attempt2 output:
+
+```text
+Agent errored: This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request. Otherwise, confirm that the access_programs.cyber parameter is set to the appropriate tier, and note that some cybersecurity requests are still limited, even when Daybreak is on.
+```
+
+Current8 hashes: source-integrity.json. Source remains unapproved pending an authorized review-path decision.
+
+
+## amendment5-crit-state
+
+```text
+$ crit status --json
+{
+  "branch": "feat/codex-local-review-exclusion",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "~/.crit/reviews/329eea196586/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}
+(exit 0)
+```
+
+## amendment5-review-gate-pending
+
+```text
+$ make require-crit-review
+Native agent review required before completion.
+- review-sensitive path changed: .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/crit-status.json
+- broad diff touches 1321 files
+- broad diff changes 1397671 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+(exit 2)
+```
+
+## Amendment5 clean candidate make validate-agent-assets
+
+```text
+Clean index export with all eight working source/test files copied over and SHA256-bound; unrelated untracked historical logs are absent.
+$ make validate-agent-assets
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T130-candidate-uxjyv4gg (expected one)
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-codex-local-review-exclusion-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-sandbox-portability-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## amendment5-checkpoint-artifacts
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a5-checkpoint-artifacts.py
+{
+  "task_copy": "e08a2054ee4ee11c5cb15444b7cfe6c762060a24025434f1cd2b013e818c3213",
+  "source8_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "0ed6e46d0da10ff15af0fb4658b3aafa8a85bc5acc0b5618ccf840e4854b633f",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "a30c2eec2be5bf8a34a9ba06343990eb2782befbe141a187ac7569863460f6cc",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+  },
+  "status": "blocked-independent-review-tool",
+  "final_unit": "213 GREEN29.250s",
+  "source_changed": 70,
+  "test_changed": 200,
+  "independent_approval": false,
+  "commit_push_botrequest": false
+}
+(exit 0)
+```
+
+## amendment5-review-blocker-pong
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a5-review-blocker.py
+agmsg-dispatch: sent message 2028; delivery failed or unread; verify receipt before resending
+
+(exit 1)
+```
+
+## amendment5-published-head-json
+
+```text
+$ gh pr view 399 --repo mryfmo/dotfiles --json url,headRefOid,baseRefOid,isDraft,state
+{"baseRefOid":"a8a747af06b32ff1d0d1720467892f34d9465ae4","headRefOid":"22e15c0c60493bcfc7969a96552c1023f77d8cce","isDraft":false,"state":"OPEN","url":"https://github.com/mryfmo/dotfiles/pull/399"}
+(exit 0)
+```
+
+## Amendment5 clean candidate make validate-agent-assets
+
+```text
+Clean index export with all eight working source/test files copied over and SHA256-bound; unrelated untracked historical logs are absent.
+$ make validate-agent-assets
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T130-candidate-9z0kbm2i (expected one)
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-codex-local-review-exclusion-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-sandbox-portability-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## amendment5-final-checkpoint
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a5-final-checkpoint.py
+{
+  "time": "2026-10-17T17:12:53.402277+00:00",
+  "task_copy": "e08a2054ee4ee11c5cb15444b7cfe6c762060a24025434f1cd2b013e818c3213",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "0ed6e46d0da10ff15af0fb4658b3aafa8a85bc5acc0b5618ccf840e4854b633f",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "a30c2eec2be5bf8a34a9ba06343990eb2782befbe141a187ac7569863460f6cc",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+    "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+  },
+  "snapshot_validator_exit": 0,
+  "connected_tests": "213 GREEN29.250s",
+  "render_shellcheck_shfmt_format_exit": 0,
+  "ruff": "25 baseline /25 current, no introduced or removed",
+  "source_changed": 70,
+  "test_changed": 200,
+  "source_review": "unavailable; tool rejected twice possible cybersecurity risk",
+  "published_head": "22e15c0c60493bcfc7969a96552c1023f77d8cce",
+  "working_source": "uncommitted A5, frozen",
+  "staged_paths": [],
+  "P1_4303494614": "open:4303494614 on published22e",
+  "bot_rounds_published_head": 2,
+  "A5_commit_push": false,
+  "RESULT_sent": false,
+  "F3_started": false,
+  "PONG2028_receipt": "unread/dispatch1, not resent"
+}
+(exit 0)
+```
+
+## amendment5-final-mask
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a5-mask.py
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/report.md
+masked 32 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/blocked-checkpoint.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/dotfiles-T130-codex-local-review-exclusion-a01-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/dotfiles-T130-codex-local-review-exclusion-a01-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/final-frozen-candidate-snapshot.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/final-frozen-candidate-validator.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/frozen-candidate-snapshot.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/frozen-candidate-validator.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/previous-source-integrity.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/previous-task-amendment4.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/render-check.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/review-blocker-dispatch.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/review-blocker-pong.txt
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/review-tool-blocker.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/ruff-base.log
+masked 25 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/ruff-current.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/shellcheck.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/shfmt.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/source-integrity.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-activation.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-cap-format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-checkpoint-artifacts.log
+masked 1 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-connected-tests.log
+masked 1 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-crit-state.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-checkpoint.log
+masked 1 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-connected-tests.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-integrity.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-static-driver.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-integrity.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-published-head-json.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-review-blocker-pong.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-review-gate-pending.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-shfmt-format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-static-driver.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-wrapper-final-green.log
+masked 1 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-wrapper-green.log
+masked 3 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-wrapper-red.log
+(exit 0)
+```
+
+Evidence display note: trailing whitespace in newly pasted unittest/diff-context output was trimmed for git whitespace validation; original command/report artifacts remain under raw/ subject to required secret/home masks. Source bytes are unchanged.
+
+## amendment5-display-whitespace
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a4-display-whitespace.py
+Display trailing-whitespace lines normalized: 1
+(exit 0)
+```
+
+## amendment5-diff-check
+
+```text
+$ git diff --check
+(exit 0)
+```
+
+## D-399-review-path decision (message2034, read via inbox.sh)
+
+```text
+AGMSG-PING v1 task_id=dotfiles-T130-codex-local-review-exclusion-a01 reason=decision-D-399-review-path:amendments-4-and-5-require-no-worker-side-independent-review-tool;its-content-filter-refusal-is-a-tool-limit,not-a-finding,and-no-approval-is-inferred;the-security-review-of-the-pushed-head-runs-orchestrator-side(a-Codex-security-profile-read-only-run)plus-the-task-level-audit;so:commit-and-push-the-round-2-head-now(same-round-2,one-push,no-third),then-stop-before-the-@codex-review-comment,a-gh-write-that-prompts-a-human-at-night:PONG-status=blocked-naming-the-command;no-live-HOME-write;reply-PONG-with-the-pushed-head
+```
+
+The comment command named above is NOT executed. Commit/push evidence follows in raw/amendment5/publication/published-validation.md after this immutable source commit.
+
+## amendment5-publication-prepare
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a5-publication-prepare.py
+{
+  "decision": "D-399-review-path",
+  "task_copy": "e08a2054ee4ee11c5cb15444b7cfe6c762060a24025434f1cd2b013e818c3213",
+  "source_hashes_unchanged": true,
+  "independent_review": "deferred-to-orchestrator",
+  "pending_record_resolved": false,
+  "next": "normal gate observation; explicit16file commit; one push; blockedPONG before comment"
+}
+(exit 0)
+```
+
+## amendment5-publication-mask
+
+```text
+$ uv run --offline --no-project python /tmp/codex-T130-a5-mask.py
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/blocked-checkpoint.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/dotfiles-T130-codex-local-review-exclusion-a01-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/dotfiles-T130-codex-local-review-exclusion-a01-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/final-frozen-candidate-snapshot.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/final-frozen-candidate-validator.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/frozen-candidate-snapshot.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/frozen-candidate-validator.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/previous-source-integrity.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/previous-task-amendment4.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/render-check.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/review-blocker-dispatch.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/review-blocker-pong.txt
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/review-tool-blocker.md
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/ruff-base.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/ruff-current.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/shellcheck.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/shfmt.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5/source-integrity.json
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-activation.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-cap-format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-checkpoint-artifacts.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-connected-tests.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-crit-state.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-diff-check.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-display-whitespace.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-checkpoint.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-connected-tests.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-integrity.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-mask.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-final-static-driver.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-integrity.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-publication-prepare.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-published-head-json.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-review-blocker-pong.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-review-gate-pending.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-shfmt-format.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-static-driver.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-wrapper-final-green.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-wrapper-green.log
+masked 0 match(es) in .orchestration/dotfiles-T130-codex-local-review-exclusion-a01/raw/amendment5-wrapper-red.log
+(exit 0)
+```
+
+## A5 publication gate-pending
+
+```text
+$ make require-crit-review
+Native agent review required before completion.
+- review-sensitive path changed: .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/crit-status.json
+- broad diff touches 1345 files
+- broad diff changes 1398891 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+(exit 2)
+```

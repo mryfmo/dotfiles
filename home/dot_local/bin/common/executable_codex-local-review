@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # @file codex-local-review
-# @brief Run the primary checkout's committed local review after validating its task and head.
-# @description Check local HEAD bytes without fsmonitor, worktree filters or transports.
+# @brief Run the primary checkout's local review after validating its task, head and deployed hash.
+# @description Verify and run a private state copy against the deployed pin; remove the copy on exit.
 # @arg $1 string Existing task id containing letters, digits, dots, underscores and hyphens.
 # @arg $2 string Head containing exactly 40 lowercase hexadecimal digits.
 # @arg $3 string Additional review-script arguments, forwarded unchanged.
-# @exitcode 2 Malformed arguments, a missing task, a non-primary checkout or an uncommitted review script.
+# @exitcode 2 Malformed arguments, a missing task, a non-primary checkout or a script outside the deployed pin.
 set -euo pipefail
+EXPECTED_SHA256=6c30fd0e242dcd2692099d6270449403abaeca832d8b4a53d42a1c16ab48a99a
 
 git() { GIT_ALLOW_PROTOCOL='' command git --no-pager -c core.fsmonitor=false "$@"; }
 
@@ -23,14 +24,19 @@ cd -- "$root"
 	printf 'codex-local-review: requires a primary checkout\n' >&2
 	exit 2
 }
+state=$HOME/.local/state/codex-local-review
+(umask 077 && mkdir -p -- "$state")
+copy=$(mktemp "$state/review.XXXXXX")
+trap 'rm -f -- "$copy"' EXIT
 if ! git ls-files --error-unmatch -- scripts/orchestrator/local-review.sh >/dev/null 2>&1 ||
-	! git diff --cached --quiet --no-ext-diff --no-textconv HEAD -- scripts/orchestrator/local-review.sh ||
-	! git cat-file blob HEAD:scripts/orchestrator/local-review.sh | cmp -s - scripts/orchestrator/local-review.sh; then
-	printf 'codex-local-review: local-review.sh must be tracked and unchanged against HEAD\n' >&2
+	! cat -- scripts/orchestrator/local-review.sh >"$copy" ||
+	! actual=$(shasum -a 256 "$copy") || [[ ${actual%% *} != "$EXPECTED_SHA256" ]]; then
+	printf 'codex-local-review: local-review.sh must be tracked and match the deployed pin; run make update after merge\n' >&2
 	exit 2
 fi
 [[ -f "$root/.orchestration/tasks/$1.md" ]] || {
 	printf 'codex-local-review: no task file for %s\n' "$1" >&2
 	exit 2
 }
-exec "$root/scripts/orchestrator/local-review.sh" "$@"
+# Keep the parent alive so its EXIT trap removes the verified copy after Bash exits.
+bash "$copy" "$@"

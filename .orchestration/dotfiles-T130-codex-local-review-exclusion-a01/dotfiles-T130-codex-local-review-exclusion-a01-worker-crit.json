@@ -1,99 +1,19 @@
 [
   {
-    "id": "T130-local-review-connected-fixture-P2",
-    "body": "Initial independent security P2: adding the common exclusion broke actual modifier exact-list test on Darwin/Linux. Amendment2 authorized one expected common-list correction. Independent re-review verifies every other byte reconstructs the initially failing test, all env/runtime/plugin/Linux/idempotence assertions preserved, four focused methods GREEN0.820s including bothOS actual modifier. Addressed, not deferred. Initial full report and RED retained.",
-    "scope": "file",
-    "path": "tests/unit/test_claude_settings_merge.py",
-    "resolved": true
-  },
-  {
-    "id": "T130-local-review-A2-source-approval",
-    "body": "Independent read-only security re-review approves exact seven hashes and task Amendment2. Five initial source hashes unchanged; generator test differs only by two check=False additions, modifier test by one expected-list change. Four focused methods GREEN0.820s. Wrapper guards/root/literalargv/exit propagation, exactDarwin2/Linux5 lists and unchanged permission flow verified; no remaining P0-P3 finding. Source-phase approval only; exact candidate validator, post392merge rebase and review extension, final CI/Bot/audit/acceptance remain separate.",
+    "id": "a5-orchestrator-review-pending",
     "scope": "review",
-    "resolved": true,
-    "task_sha256": "1e4671ba1da997135e3430a403d69508e2305f1a1c6f6e7addbab4cd1195d9f1",
-    "source_sha256": {
-      "home/dot_agents/agent-config.yaml": "ecdb928492084c49b80317daa7c30a3c3de21867967a9bd42c21833516505327",
-      "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
-      "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
-      "tests/unit/test_generate_agent_configs.py": "a94e1519c2266eecf10b4a29cd2e6ddcfd17b53233ae926e4425e0ff9c9417c3",
-      "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
-      "home/dot_local/bin/common/executable_codex-local-review": "55d7e2f0ac44be4c8c30d88f5f21af6f1f9080d91f946d9132c22fcc057a3caa",
-      "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
-    },
-    "stack_base": "85547ca5348d9e0a61c3ae9ae30d324db1897f0f"
-  },
-  {
-    "id": "T130-local-review-A3-index-flags-P1",
-    "body": "Independent initial A3 P1: git diff --quiet HEAD missed modified executable bytes flagged assume-unchanged or skip-worktree; isolated marker probe executed UNCOMMITTED. Both added regressions RED2 then GREEN after raw HEAD blob/disk cmp under pipefail, retaining required tracked/diff checks. Independent final frozen-source re-review confirms closed, including filter-independent comparison and no exec. Initial incorrect report and exact initial hashes retained; no approval reused from that snapshot.",
-    "scope": "file",
-    "path": "home/dot_local/bin/common/executable_codex-local-review",
-    "resolved": true
-  },
-  {
-    "id": "T130-local-review-A3-source-approval",
-    "body": "Independent read-only security re-review approves current exact seven source hashes and Amendment3 task. Full lowercase40hex, primary checkout, tracked/HEAD-unchanged script, raw blob identity despite index flags, quoted argv/root/exit propagation, bothOS exact exclusions/no new allow and connected modifier assertions assessed. Parent read complete initial/final reports and resolved JSON. This is source-phase approval only; post392merge rebase extension and final CI/Bot/audit/acceptance remain separate.",
-    "scope": "review",
-    "resolved": true,
-    "task_sha256": "aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a",
-    "source_sha256": {
-      "home/dot_agents/agent-config.yaml": "ecdb928492084c49b80317daa7c30a3c3de21867967a9bd42c21833516505327",
-      "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
-      "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
-      "tests/unit/test_generate_agent_configs.py": "9a961786c7a668e40652319cedd19027bfb0c4f591ef6d15bc7db1365f26a681",
-      "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
-      "home/dot_local/bin/common/executable_codex-local-review": "b74153250b002e658538884a1cf3f93d74fadcb2ebf35d5caf4f48df773702be",
-      "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
-    },
-    "stack_base": "85547ca5348d9e0a61c3ae9ae30d324db1897f0f"
-  },
-  {
-    "id": "T130-local-review-rebased-source-approval",
-    "body": "Independent read-only security extension approves exact seven hashes after parent392 merge and rebase onto maina8a747af. Own source delta remains53production/167testchanged and exact approved scope; only manifest/generator-test full-file hashes incorporate unrelated upstream changes. Wrapper/guards/raw-byte-identity behavior and connected bothOS tests rechecked. Prior A3 index-flag P1 remains addressed. Parent read full extension and all five resolved evidence records. Source-phase approval; final CI/Bot and orchestrator integration remain separate.",
-    "scope": "review",
-    "resolved": true,
-    "task_sha256": "aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a",
+    "body": "D-399-review-path (message2034) explicitly defers independent security review of the pushed A5 head to the orchestrator plus task audit. Worker reviewer content-filter refusal is a tool limit, not a code finding. No approval inferred. Current eight source hashes and functional checks are in raw/amendment5/source-integrity.json. Publication is authorized; review/gate approval remains pending.",
+    "resolved": false,
     "source_sha256": {
       "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
       "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
       "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
-      "tests/unit/test_generate_agent_configs.py": "01a6aa0834e89f456918bc31c3ee89472b21d33d8c963ccb41a4fccfe25a115d",
+      "tests/unit/test_generate_agent_configs.py": "0ed6e46d0da10ff15af0fb4658b3aafa8a85bc5acc0b5618ccf840e4854b633f",
       "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
-      "home/dot_local/bin/common/executable_codex-local-review": "b74153250b002e658538884a1cf3f93d74fadcb2ebf35d5caf4f48df773702be",
-      "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
+      "home/dot_local/bin/common/executable_codex-local-review": "a30c2eec2be5bf8a34a9ba06343990eb2782befbe141a187ac7569863460f6cc",
+      "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+      "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
     },
-    "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4"
-  },
-  {
-    "id": "T130-local-review-Bot4303419130-git-helpers-P1",
-    "body": "First-head Bot P1 fsmonitor callback and independent pre-push P1 lazy promisor fetch could run repository-configured helpers before trust. Callback cases RED2 and promisor case RED1 reproduced marker execution. Fixed in the one worker Bot fix round: all guard Git calls disable pager/fsmonitor, cached index diff disables external diff/textconv, raw HEAD/disk cmp retained, command-local empty protocol whitelist forbids fetch transports even with hostile caller file allowance. Final unit/independent marker probes pass without helper execution; full212current-frozen tests green. Current exact7hash approval is separate below.",
-    "scope": "file",
-    "path": "home/dot_local/bin/common/executable_codex-local-review",
-    "resolved": true
-  },
-  {
-    "id": "T130-local-review-filter-evidence-correction",
-    "body": "Earlier independent clean-filter probe combined two update-index bit-clear actions and did not independently establish unflagged filter behavior. That isolated-filter claim is withdrawn; historical reports retained. Corrected probe clears flags separately and asserts H before every state, then proves clean-filter diff equality with distinct raw bytes and wrapper refusal. Separate unit marker cases prove the wrapper never executes fsmonitor/clean-filter callbacks. Parent read initial incorrect and final corrected reports fully.",
-    "scope": "review",
-    "resolved": true
-  },
-  {
-    "id": "T130-local-review-Bot-fix-round1-source-approval",
-    "body": "Independent frozen-source security re-review approves all7current hashes after fsmonitor/filter/promisor controls. Exact final quoted-empty wrapper method and local-only missing-blob probe pass, corrected flag/filter probe passes. Parent read complete incorrect/final reports and all8resolved evidence records. Full current212tests, final exact7source validator0, static/render/format checks and baseline-exact Ruff21/21; production55/80/test190changed/200. Source-phase approval only; new push/final CI/once-requested Bot re-review and orchestrator integration remain separate.",
-    "scope": "review",
-    "resolved": true,
-    "task_sha256": "aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a",
-    "source_sha256": {
-      "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
-      "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
-      "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
-      "tests/unit/test_generate_agent_configs.py": "f13e19f671abe583858fb2dd938bad0ae589d4dce5bb770e877d5ea7771244d0",
-      "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
-      "home/dot_local/bin/common/executable_codex-local-review": "96940b96f50f9573089c9c3904facc5624bc9961256e0567e51375f451914714",
-      "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
-    },
-    "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4",
-    "prior_reviewed_head": "e06f36a1b98c7bcc42f055953a18cc4c537c370a",
-    "bot_fix_round": 1
+    "task_sha256": "e08a2054ee4ee11c5cb15444b7cfe6c762060a24025434f1cd2b013e818c3213"
   }
 ]

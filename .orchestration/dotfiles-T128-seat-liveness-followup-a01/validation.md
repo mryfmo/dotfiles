@@ -1,14 +1,14 @@
 ---
 task_id: dotfiles-T128-seat-liveness-followup-a01
 seat: claude-standard-dot-a002
-code_commit: 37ff1475
+code_commit: 8bf5445d
 ---
 
 # Validation: dotfiles-T128-seat-liveness-followup-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id, and the home directory is written `~`. Set for every command: `UV_OFFLINE=1`, and `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false`. The sandbox cannot read `~/.ssh`, so the fixtures' `git commit` would otherwise exit 128 on the SSH signing key (`Couldn't load public key …/id_ed25519.pub`). Each block ends with the exit status of the command shown; a pipeline ends with its last command's. Captured at `37ff1475` (the code `2fb34e0f`, the revise round for the Bot's P2 `37ff1475`).
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id, and the home directory is written `~`. Set for every command: `UV_OFFLINE=1`, and `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false`. The sandbox cannot read `~/.ssh`, so the fixtures' `git commit` would otherwise exit 128 on the SSH signing key (`Couldn't load public key …/id_ed25519.pub`). Each block ends with the exit status of the command shown; a pipeline ends with its last command's. Captured at `8bf5445d` (the code `2fb34e0f`, revise round 1 `37ff1475`, the orchestrator's update-branch merge `bf650af1`, revise round 2 `8bf5445d`).
 
-The whole module, in §4, has 31 failing tests inside this sandbox. `$TMPDIR/main-fails.txt` lists the failures of the same run on a temporary detached worktree of `origin/main` `1d418126`, since removed with `git worktree remove`. `$TMPDIR/branch-fails.txt` lists this branch's. They are the same 31 (`comm -3` prints nothing), so none of them comes from this change. The add-worker, linkage and spawn tests among them need what the sandbox denies. CI runs the module outside it.
+The whole module, in §4, has 31 failing tests inside this sandbox. `$TMPDIR/main-fails.txt` lists the failures of the same run on a temporary detached worktree of `origin/main` `f7847616`, re-run for revise round 2,, since removed with `git worktree remove`. `$TMPDIR/branch-fails.txt` lists this branch's. They are the same 31 (`comm -3` prints nothing), so none of them comes from this change. The add-worker, linkage and spawn tests among them need what the sandbox denies. CI runs the module outside it.
 
 ## 1. Task file and task copy
 ```console
@@ -26,11 +26,14 @@ dotfiles-T128-seat-liveness-followup-a01.md: OK
 ## 2. Branch and the two premises
 ```console
 $ git log --oneline origin/main..HEAD; git rev-parse origin/main
+8bf5445d fix(herdr-agents): --stale refuses a dangling run/stale symlink before any cleanup (the audit of bf650af, finding 1)
+bf650af1 Merge branch 'main' into tools/seat-liveness-followup
+8dbfbd7f docs(orchestration): seat-liveness followup a01 revise round 1 evidence (37ff1475)
 37ff1475 fix(herdr-agents): --stale also requires an existing run/stale to be a writable, searchable directory and the run directory searchable (PR #377 thread 4300117658)
 4fa99329 docs(orchestration): seat-liveness followup a01 validation: the exit status of the last ruff block
 4ed7867c docs(orchestration): seat-liveness followup a01 task copy and evidence (2fb34e0f)
 2fb34e0f fix(herdr-agents): --stale checks the archive before any cleanup and refuses a worktree with no identity row (T128 seat-liveness followup a01)
-5fd4fe0c32846f8e5ecbbbd027cb67f0a5be0398
+f7847616970d6bd83739a75a65ad8f7c35e91462
 [exit 0]
 ```
 ```console
@@ -61,7 +64,7 @@ local-finding: d3bc745:1 not-applicable:advisory P2 owned by dotfiles-T128-seat-
 ```console
 $ git diff origin/main...HEAD -- home/
 diff --git a/home/dot_local/bin/common/executable_herdr-agents b/home/dot_local/bin/common/executable_herdr-agents
-index 7fead33c..0b902d4a 100644
+index 7fead33c..1463403b 100644
 --- a/home/dot_local/bin/common/executable_herdr-agents
 +++ b/home/dot_local/bin/common/executable_herdr-agents
 @@ -1928,7 +1928,12 @@ if [[ ${remove_worker_mode} == true ]]; then
@@ -78,16 +81,17 @@ index 7fead33c..0b902d4a 100644
              IFS=$'\t' read -r seat_type seat_team seat_name <<< "${row}"
              state="$(seat_pane_state "${seat_team}" "${seat_name}")"
              if [[ ${state} != gone ]]; then
-@@ -1936,6 +1941,16 @@ if [[ ${remove_worker_mode} == true ]]; then
+@@ -1936,6 +1941,17 @@ if [[ ${remove_worker_mode} == true ]]; then
                  exit 2
              fi
          done
 +        # The archive must be usable before leave.sh drops the identity, or the record would stay under spawn.*
 +        # with no identity to find it by; checked, not created, so a refused run leaves no stale/ (the audit of d3bc745).
++        # A dangling stale symlink is refused too: -e follows it and says no, -L does not (the audit of bf650af).
 +        for row in "${seat_rows[@]}"; do
 +            IFS=$'\t' read -r seat_type seat_team seat_name <<< "${row}"
 +            run_dir="$(dirname -- "$(seat_record_path "${seat_team}" "${seat_name}")")"
-+            if [[ (-e ${run_dir}/stale && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
++            if [[ ((-e ${run_dir}/stale || -L ${run_dir}/stale) && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
 +                printf 'herdr-agents: %s/stale is not a directory, or %s is not writable; nothing retired\n' "${run_dir}" "${run_dir}" >&2
 +                exit 1
 +            fi
@@ -108,7 +112,7 @@ test_remove_worker_stale_prepares_the_archive_before_cleanup_and_refuses_without
 test_remove_worker_stale_retires_a_seat_whose_pane_is_gone (tests.unit.test_herdr_agents.HerdrAgentsTest.test_remove_worker_stale_retires_a_seat_whose_pane_is_gone) ... ok
 
 ----------------------------------------------------------------------
-Ran 6 tests in 7.104s
+Ran 6 tests in 7.347s
 
 OK
 [exit 0]
@@ -135,70 +139,70 @@ test_add_worker_linkage_resolves_an_id_keyed_placement_record (tests.unit.test_h
 test_add_worker_linkage_survives_a_non_numeric_pong_wait (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_survives_a_non_numeric_pong_wait) ... FAIL
 test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh) ... FAIL
 test_add_worker_names_the_seat_from_a_codex_orchestrator_identity (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_names_the_seat_from_a_codex_orchestrator_identity) ... FAIL
-test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options) ... ~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635d620>
+test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options) ... ~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108115540>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x100d60ac0>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x107b5cac0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635cba0>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108114ac0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635d2a0>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1081151c0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635c580>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108114740>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635da80>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1081159a0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635dc40>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108115b60>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635dd20>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108115c40>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635dee0>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108115e00>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635dfc0>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108115ee0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635e0a0>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108115fc0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635e180>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1081160a0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635e340>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108116260>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635e420>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108116340>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635e500>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108116420>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635e260>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108116180>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635e7a0>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1081166c0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635e6c0>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1081165e0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635e880>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1081167a0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635ea40>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108116960>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635edc0>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108116ce0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10635eea0>
+~/.local/share/mise/installs/python/latest/lib/python3.15/traceback.py:859: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108116dc0>
   def _extract_caret_anchors_from_line_segment(segment):
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 FAIL
@@ -411,7 +415,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2457, in test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.FwWgmX8YEE: Operation not permitted
+AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.RvphxuJywZ: Operation not permitted
 
 
 ======================================================================
@@ -424,8 +428,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2208, in run_codex_add_worker
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-8vktetnw/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.OAK9hnzKSP: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-v_g09upi/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.02uNQeBfUJ: Operation not permitted
 
 
 ======================================================================
@@ -435,8 +439,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2549, in test_add_worker_exits_zero_when_a_timed_out_spawn_still_links
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-4h2ive88/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.R6qXvDftn3: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-6jbrbufk/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.t2bMPY7wdq: Operation not permitted
 
 
 ======================================================================
@@ -449,8 +453,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2208, in run_codex_add_worker
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-amof2wye/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.iUs0IlWmJw: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-2mh2rz28/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.bbn2kmFG1M: Operation not permitted
 
 
 ======================================================================
@@ -460,8 +464,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2765, in test_add_worker_linkage_failure_prints_the_invocation_and_the_query
     self.assertEqual(result.returncode, 4, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 4 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-fil7t4vd/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.xhJUu1FXqi: Operation not permitted
+AssertionError: 1 != 4 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-1logkwzj/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.PxedlRVoNM: Operation not permitted
 
 
 ======================================================================
@@ -471,8 +475,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2639, in test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-8dn49818/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.h9onu9ydV5: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-ml9bqmlk/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.Z0lp0r9q0o: Operation not permitted
 
 
 ======================================================================
@@ -482,8 +486,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2702, in test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-31e30afb/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.QR1lVSdLWe: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-um7m7roh/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.EACvJulywv: Operation not permitted
 
 
 ======================================================================
@@ -493,8 +497,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2734, in test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-pz_j0zk7/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.50nLxbln5i: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-dfrd2hiq/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.7No2o0y7Xu: Operation not permitted
 
 
 ======================================================================
@@ -504,8 +508,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2753, in test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-d0uh_lhq/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.p4MWamj37o: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-p7gwdqe5/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.pJ74EZsS6e: Operation not permitted
 
 
 ======================================================================
@@ -515,8 +519,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2716, in test_add_worker_linkage_ignores_a_placement_record_from_another_workspace
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-25erdz48/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.whzYD261xu: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-gtfmro31/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.8iVnbIiUqH: Operation not permitted
 
 
 ======================================================================
@@ -526,8 +530,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2794, in test_add_worker_linkage_ignores_a_pong_older_than_this_ping
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-467izg1r/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.oYvEAx9TZR: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-liwccn4p/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.GWQGrXAztF: Operation not permitted
 
 
 ======================================================================
@@ -537,8 +541,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2675, in test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-kbicw9d5/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.Rh6k8tDihq: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-dfvbw3i0/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.yhtQCoBl9P: Operation not permitted
 
 
 ======================================================================
@@ -548,7 +552,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2690, in test_add_worker_linkage_refuses_several_orchestrator_identities
     self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 2 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.fl9MPskU7s: Operation not permitted
+AssertionError: 1 != 2 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.R1C4V2D6rD: Operation not permitted
 
 
 ======================================================================
@@ -558,8 +562,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2659, in test_add_worker_linkage_survives_a_non_numeric_pong_wait
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-3l1r03ej/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.ahmHnkh9sr: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-e2o3zl1s/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.fnWwoKxDsJ: Operation not permitted
 
 
 ======================================================================
@@ -569,8 +573,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2570, in test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-gmmx7bs8/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.a5WhEiOQAu: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-unl61ruu/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.cly862yqRq: Operation not permitted
 
 
 ======================================================================
@@ -580,7 +584,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2180, in test_add_worker_names_the_seat_from_a_codex_orchestrator_identity
     self.assertEqual(codex.returncode, 0, codex.stdout + codex.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.QCrZF9oELl: Operation not permitted
+AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.0i4TBqfWIi: Operation not permitted
 
 
 ======================================================================
@@ -590,8 +594,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2268, in test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-5eb03tty/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.24u2Ux8gxx: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-33ftyuts/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.H0IHx6Kx7t: Operation not permitted
 
 
 ======================================================================
@@ -601,7 +605,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2494, in test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog
     self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 3 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.MWgmEZjKJn: Operation not permitted
+AssertionError: 1 != 3 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.p00BUX00s2: Operation not permitted
 
 
 ======================================================================
@@ -611,8 +615,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 3168, in test_add_worker_reports_a_failed_spawn
     self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 3 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-o04dgag6/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.IDT0GnlwBv: Operation not permitted
+AssertionError: 1 != 3 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-i24wf4ju/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.fx2tBkFl5P: Operation not permitted
 
 
 ======================================================================
@@ -622,8 +626,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2505, in test_add_worker_reports_linkage_ok_after_a_ready_spawn
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-r_sbzyy4/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.753qIn8nuw: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-8ie9tkzo/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.rO3GzYEmjp: Operation not permitted
 
 
 ======================================================================
@@ -633,8 +637,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2532, in test_add_worker_reports_linkage_unreached_after_a_failed_spawn
     self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 3 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-z3u0t473/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.S8hs3aw5fY: Operation not permitted
+AssertionError: 1 != 3 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-_x1l0nbs/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.ZUt6aAurWY: Operation not permitted
 
 
 ======================================================================
@@ -647,8 +651,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2208, in run_codex_add_worker
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-9f9uxkow/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.FHQ38yOe71: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-s45_g5to/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.b2THOJYmio: Operation not permitted
 
 
 ======================================================================
@@ -658,7 +662,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2341, in test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.o3jnRfyGNt: Operation not permitted
+AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.u2HRuWv6NJ: Operation not permitted
 
 
 ======================================================================
@@ -668,7 +672,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2137, in test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.qW0KFsyyq3: Operation not permitted
+AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.RnhVjrOIbF: Operation not permitted
 
 
 ======================================================================
@@ -678,7 +682,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2484, in test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.qX6jbKB6VG: Operation not permitted
+AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.zRJlNRI7Me: Operation not permitted
 
 
 ======================================================================
@@ -688,8 +692,8 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2119, in test_added_worker_boot_keeps_the_inherited_github_environment
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-0cs1xihn/project/.claude/worktrees/github-codex only after that project .codex layer is trusted; run /hooks or trust it in Codex.
-mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.haDASJkYBJ: Operation not permitted
+AssertionError: 1 != 0 : Codex loads the new hook in /private/tmp/claude-501/herdr-agents-test-pesu4dr2/project/.claude/worktrees/github-codex only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.eq0DPMJf8M: Operation not permitted
 
 
 ======================================================================
@@ -699,7 +703,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-f/tests/unit/test_herdr_agents.py", line 2119, in test_added_worker_boot_keeps_the_inherited_github_environment
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.iMN5XwQqDc: Operation not permitted
+AssertionError: 1 != 0 : mktemp: mkstemp failed on /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmp.iHKdd0j5v8: Operation not permitted
 
 
 ======================================================================
@@ -715,10 +719,10 @@ Traceback (most recent call last):
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-AssertionError: 'seat_claim=failed status=held team=dotfiles owner=sid-stdin.15557' not found in ['seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes']
+AssertionError: 'seat_claim=failed status=held team=dotfiles owner=sid-stdin.95608' not found in ['seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes']
 
 ----------------------------------------------------------------------
-Ran 193 tests in 198.840s
+Ran 193 tests in 195.218s
 
 FAILED (failures=28, errors=3)
 [exit 1]
@@ -746,39 +750,45 @@ $ bash "$TMPDIR/slf/mutate.sh" (the script, then its output)
 export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false UV_OFFLINE=1
 S=home/dot_local/bin/common/executable_herdr-agents T=tests/unit/test_herdr_agents.py
 N=test_remove_worker_stale_prepares_the_archive_before_cleanup_and_refuses_without_identity_rows
-run() { # label sed-expression
-    sed -i '' "$2" "$S"
-    git diff -U0 -- "$S" | /usr/bin/grep -v -E '^(---|\+\+\+|@@|diff|index)' || echo "(sed changed nothing)"
+lrun() { # label old new: a literal string replacement (python's str.replace, once), the new test, the restore
+    python3 -I -c 'import sys; p, a, b = sys.argv[1:]; t = open(p).read(); assert t.count(a) == 1, a; open(p, "w").write(t.replace(a, b))' "$S" "$2" "$3"
+    git diff -U0 -- "$S" | /usr/bin/grep -v -E '^(---|\+\+\+|@@|diff|index)' || echo "(nothing changed)"
     uv run python -m unittest "$T" -k "$N" > "$TMPDIR/slf/m.log" 2>&1
     echo "mutant=$1 rc=$? $(tail -1 "$TMPDIR/slf/m.log")"
     git checkout -- "$S"
 }
-run no-row-refusal-off 's|if ((${#seat_rows\[@\]} == 0)); then|if false; then|'
-run non-directory-off 's|(-e ${run_dir}/stale \&\& ! (-d ${run_dir}/stale \&\& -w ${run_dir}/stale \&\& -x ${run_dir}/stale)) \|\| ||'
-run writable-off 's| \|\| ! -w ${run_dir} \|\| ! -x ${run_dir} \]\]| ]]|'
-run stale-perms-off 's| \&\& -w ${run_dir}/stale \&\& -x ${run_dir}/stale||'
-run check-after-leave '/^        for row in "${seat_rows\[@\]}"; do$/,/^        done$/{/run_dir=/,/fi$/d;}'
+C='((-e ${run_dir}/stale || -L ${run_dir}/stale) && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || '
+lrun no-row-refusal-off 'if ((${#seat_rows[@]} == 0)); then' 'if false; then'
+lrun non-directory-off "$C" ''
+lrun writable-off ' || ! -w ${run_dir} || ! -x ${run_dir} ]]' ' ]]'
+lrun stale-perms-off ' && -w ${run_dir}/stale && -x ${run_dir}/stale' ''
+lrun dangling-symlink-off ' || -L ${run_dir}/stale' ''
+lrun check-after-leave '        for row in "${seat_rows[@]}"; do
+            IFS=$'"'"'\t'"'"' read -r seat_type seat_team seat_name <<< "${row}"
+            run_dir=' '        for row in; do
+            run_dir='
 uv run python -m unittest "$T" -k stale > "$TMPDIR/slf/m.log" 2>&1; echo "baseline (the six stale tests) rc=$? $(tail -1 "$TMPDIR/slf/m.log")"
 git status --short -- home/
 --- output
 -        if ((${#seat_rows[@]} == 0)); then
 +        if false; then
 mutant=no-row-refusal-off rc=1 FAILED (failures=2)
--            if [[ (-e ${run_dir}/stale && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
+-            if [[ ((-e ${run_dir}/stale || -L ${run_dir}/stale) && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
 +            if [[ ! -w ${run_dir} || ! -x ${run_dir} ]]; then
-mutant=non-directory-off rc=1 FAILED (failures=2, errors=1)
--            if [[ (-e ${run_dir}/stale && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
-+            if [[ (-e ${run_dir}/stale && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) ]]; then
+mutant=non-directory-off rc=1 FAILED (failures=2, errors=2)
+-            if [[ ((-e ${run_dir}/stale || -L ${run_dir}/stale) && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
++            if [[ ((-e ${run_dir}/stale || -L ${run_dir}/stale) && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) ]]; then
 mutant=writable-off rc=1 FAILED (failures=1)
--            if [[ (-e ${run_dir}/stale && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
-+            if [[ (-e ${run_dir}/stale && ! (-d ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
-mutant=stale-perms-off rc=1 FAILED (failures=2)
--            run_dir="$(dirname -- "$(seat_record_path "${seat_team}" "${seat_name}")")"
--            if [[ (-e ${run_dir}/stale && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
--                printf 'herdr-agents: %s/stale is not a directory, or %s is not writable; nothing retired\n' "${run_dir}" "${run_dir}" >&2
--                exit 1
--            fi
-mutant=check-after-leave rc=1 FAILED (failures=2, errors=1)
+-            if [[ ((-e ${run_dir}/stale || -L ${run_dir}/stale) && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
++            if [[ ((-e ${run_dir}/stale || -L ${run_dir}/stale) && ! (-d ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
+mutant=stale-perms-off rc=1 FAILED (failures=2, errors=1)
+-            if [[ ((-e ${run_dir}/stale || -L ${run_dir}/stale) && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
++            if [[ ((-e ${run_dir}/stale) && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
+mutant=dangling-symlink-off rc=1 FAILED (failures=1)
+-        for row in "${seat_rows[@]}"; do
+-            IFS=$'\t' read -r seat_type seat_team seat_name <<< "${row}"
++        for row in; do
+mutant=check-after-leave rc=1 FAILED (failures=2, errors=2)
 baseline (the six stale tests) rc=0 OK
 [exit 0]
 ```
@@ -787,12 +797,12 @@ baseline (the six stale tests) rc=0 OK
 $ git diff --numstat origin/main...HEAD
 3	0	.orchestration/dotfiles-T128-seat-liveness-followup-a01/autoskill.md
 6	0	.orchestration/dotfiles-T128-seat-liveness-followup-a01/learning.md
-53	0	.orchestration/dotfiles-T128-seat-liveness-followup-a01/report.md
+58	0	.orchestration/dotfiles-T128-seat-liveness-followup-a01/report.md
 29	0	.orchestration/dotfiles-T128-seat-liveness-followup-a01/sandbox.md
 86	0	.orchestration/dotfiles-T128-seat-liveness-followup-a01/task.md
-800	0	.orchestration/dotfiles-T128-seat-liveness-followup-a01/validation.md
-16	1	home/dot_local/bin/common/executable_herdr-agents
-48	0	tests/unit/test_herdr_agents.py
+813	0	.orchestration/dotfiles-T128-seat-liveness-followup-a01/validation.md
+17	1	home/dot_local/bin/common/executable_herdr-agents
+55	0	tests/unit/test_herdr_agents.py
 [exit 0]
 ```
 ## 7. What CI runs on this module (the readings in report.md)

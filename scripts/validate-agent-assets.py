@@ -1572,9 +1572,12 @@ def validate_no_obvious_secrets() -> None:
             )
 
 
-# R2: an assignment whose value is not a `$` reference, a `{{` template or empty. The whitespace and the optional
-# quote sit inside the lookahead, so neither can match empty in front of a reference and let it through as a literal.
-ANTHROPIC_API_KEY_LITERAL = re.compile(r"""ANTHROPIC_API_KEY\s*[:=](?!\s*["']?(?:\$|\{\{)|\s*(?:""|'')?\s*$)""")
+# R2: an assignment whose value is not a `$NAME`/`${NAME}` reference, a `{{` template or empty; `$'...'` and `$"..."`
+# are literal data in Bash. The whitespace and the optional quote sit inside the lookahead, so neither can match empty
+# in front of a reference and let it through as a literal.
+ANTHROPIC_API_KEY_LITERAL = re.compile(
+    r"""ANTHROPIC_API_KEY\s*[:=](?!\s*["']?(?:\$\{?[A-Za-z_]|\{\{)|\s*(?:""|'')?\s*$)"""
+)
 
 
 def validate_anthropic_auth_route() -> None:

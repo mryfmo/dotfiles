@@ -105,8 +105,12 @@ findings=$(/usr/bin/grep -c -E '^[[:space:]]*([-*+][[:space:]]+)?\[P[0-3]\]' "${
 for ((n = 1; n <= findings; n++)); do
     line=$(/usr/bin/grep -m 1 -E "^audit-finding: ${sha7}:${n} not-applicable:" "${record}" || true)
     [ -n "${line}" ] || refuse 12 "audit finding ${n} of ${sha7} has no audit-finding line"
-    body=${line#*not-applicable:}
-    printf '%s\t%s\t%s\n' "${n}" "${body%%; evidence=*}" "${body#*; evidence=}" >> "${dispositions}"
+    body=${line#*not-applicable:} && reason=${body%%; evidence=*} && evidence=${body#*; evidence=}
+    # The gate's grammar, checked whatever the verdict (a correct one passes no dispositions on): one `; evidence=`
+    # with a command, a reason of 20 or more characters, and no tab, since the lines become a TSV (PR #378 thread 4300359437).
+    [[ ${body} == *"; evidence="* && ${evidence} != *"; evidence="* && ${evidence} =~ [^[:space:]] && ${#reason} -ge 20 && ${line} != *$'\t'* ]] ||
+        refuse 12 "audit finding ${n} of ${sha7}: the line is not not-applicable:<reason of 20 or more characters>; evidence=<command>"
+    printf '%s\t%s\t%s\n' "${n}" "${reason}" "${evidence}" >> "${dispositions}"
 done
 say "$("${date}" -u +%FT%TZ) verdict rc=0: ${verdict}, ${findings} finding(s), each with its audit-finding line"
 # (2) A thread without a disposition stays open, and the gate would refuse it.

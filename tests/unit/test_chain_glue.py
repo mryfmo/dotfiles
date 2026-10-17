@@ -518,6 +518,29 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         summary.write_text("audit\nVerdict: unclear\n")
         self.assertIn("unexpected audit verdict: Verdict: unclear", self.finish(code=12).stderr)
 
+    def test_finish_checks_each_audit_finding_line_in_full(self):
+        # PR #378 thread 4300359437: a correct verdict passes no dispositions to the record script, so the chain reads
+        # each line in the gate's grammar: one `; evidence=` with a command, and a reason of 20 or more characters.
+        sha7 = self.head[:7]
+        self.finish_ready("[P2] one\nVerdict: correct\n")
+        record = self.main / f".orchestration/acceptance/{TASK}.md"
+        kept = record.read_text()
+        good = "the finding is about a line this PR does not change"
+        for case, line in (
+            ("no evidence", f"audit-finding: {sha7}:1 not-applicable:{good}\n"),
+            ("two evidence delimiters", f"audit-finding: {sha7}:1 not-applicable:{good}; evidence=a; evidence=b\n"),
+            ("empty evidence", f"audit-finding: {sha7}:1 not-applicable:{good}; evidence= \n"),
+            ("a short reason", self.finding(1, "too short")),
+            ("a tab", self.finding(1, f"{good}\twith a tab")),
+        ):
+            with self.subTest(case):
+                record.write_text(kept + line)
+                self.assertIn(f"audit finding 1 of {sha7}: the line is not", self.finish(code=12).stderr)
+                self.assertEqual([], self.calls_of("resolve-threads"))
+        record.write_text(kept + self.finding(1, good))
+        self.finish()
+        self.assertEqual(1, len(self.calls_of("resolve-threads")))
+
     def test_finish_runs_gate_before_merge_and_cost_after(self):
         self.finish_ready()
         self.finish()

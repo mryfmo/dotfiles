@@ -296,3 +296,93 @@ $ git diff 4b843ce9..HEAD --stat
  3 files changed, 69 insertions(+), 25 deletions(-)
 [exit 0]
 ```
+## 10. Round 3 (PR #386's merge removed the R6 hit of local-advisory.sh:81; merge commit 35eff561, baseline commit e8a41419)
+### 10a. The lint over the merged tree against the round-2 baseline (the stale row it names)
+```console
+$ uv run --offline --no-project python -I scripts/lint-comparisons.py
+stale rows named by the lint on the merged tree before the drop:
+stale baseline row scripts/orchestrator/local-advisory.sh R6
+[exit 1]
+```
+### 10b. The diff of the drop before its commit
+```console
+$ git diff --stat HEAD
+ scripts/lint-comparisons-baseline.tsv | 1 -
+ 1 file changed, 1 deletion(-)
+[exit 0]
+```
+### 10c. The tree against the baseline after the drop
+```console
+$ uv run --offline --no-project python -I scripts/lint-comparisons.py
+[exit 0]
+```
+### 10d. The tests (the check: test_the_tracked_tree_is_clean_against_the_baseline)
+```console
+$ UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_lint_comparisons.py -v
+test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails) ... ok
+test_a_baseline_row_matching_no_hit_fails_as_stale (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_matching_no_hit_fails_as_stale) ... ok
+test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails) ... ok
+test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted (tests.unit.test_lint_comparisons.LintComparisonsTest.test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted) ... ok
+test_the_jq_normaliser_is_required_on_each_operand_side (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_jq_normaliser_is_required_on_each_operand_side) ... ok
+test_the_tracked_tree_is_clean_against_the_baseline (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_tracked_tree_is_clean_against_the_baseline) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 3.316s
+
+OK
+[exit 0]
+```
+### 10e. Branch
+```console
+$ git log --oneline origin/main..HEAD; git rev-parse origin/main
+e8a41419 chore(lint): drop the baseline row of local-advisory.sh R6, whose hit PR #386 removed (T129 round 3)
+35eff561 Merge remote-tracking branch 'origin/main' into lint/normalised-comparisons-a01
+d215e062 docs(orchestration): T129 lint a01 round-2 evidence (revise.yaml, the structural checks, the round-4 review)
+12d5d771 fix(lint): accept the qualified pathlib.Path(...).resolve as the table's Path(...).resolve (T129 round 2, review P3)
+df8055ce fix(lint): structural checks for the baseline, the Python normalisers and the jq normaliser (T129 round 2, D-S1-387)
+8d7b9831 test(lint): the three structural checks of the revise round, red on 4b843ce9 (T129 round 2)
+4b843ce9 docs(orchestration): T129 normalised-comparison lint a01 task copy and evidence (4663dc4d, 9fbd0de0, 26ed34bb, e88f8f05)
+e88f8f05 fix(lint): the R2 accepted forms keep a literal tail, Python R6 needs re as the receiver, one row per distinct line (T129 re-review)
+26ed34bb fix(lint): find the test word anywhere on the line and anchor jq programs at the jq word (T129 worker review)
+9fbd0de0 refactor(lint): bring lint-comparisons.py under the 200-line cap (T129 Amendment 2, D-cap-F2)
+4663dc4d feat(lint): refuse string-form comparisons of paths, URLs and processes (T129 normalised-comparison lint a01)
+59db77bbab7fe19377bc2b94adc6ec5c576f3ebb
+[exit 0]
+```
+### 10f. Caps
+```console
+$ git diff --numstat origin/main...HEAD
+3	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/autoskill.md
+138	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/baseline-rows.md
+88	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/dotfiles-T129-normalised-comparison-lint-a01-worker-crit.json
+10	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/dotfiles-T129-normalised-comparison-lint-a01-worker-review-receipt.md
+11	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/learning.md
+123	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/question-1.md
+116	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/report.md
+12	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/revise.yaml
+26	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/sandbox.md
+120	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/task.md
+298	0	.orchestration/dotfiles-T129-normalised-comparison-lint-a01/validation.md
+85	0	scripts/lint-comparisons-baseline.tsv
+199	0	scripts/lint-comparisons.py
+204	0	tests/unit/test_lint_comparisons.py
+[exit 0]
+```
+### 10g. Caps summed (Amendment 2's reading)
+```console
+$ git diff --numstat origin/main...HEAD | awk '…the same awk as §5a…'; wc -l scripts/lint-comparisons.py
+outside tests/ and .orchestration/, the baseline excluded (D-cap-F2): 199 changed lines (cap 200); under tests/: 204 added lines (cap 1000)
+     199 scripts/lint-comparisons.py
+[exit 0]
+```
+### 10h. The baseline's shape and the script's and tests' identity with d215e062
+```console
+$ wc -l scripts/lint-comparisons-baseline.tsv; cut -f2 scripts/lint-comparisons-baseline.tsv | sort | uniq -c; git diff d215e062..HEAD --stat -- scripts/lint-comparisons.py tests/unit/test_lint_comparisons.py | tail -1
+      85 scripts/lint-comparisons-baseline.tsv
+  33 R1
+   2 R2
+   6 R3
+  41 R4
+   3 R6
+[exit 0]
+```

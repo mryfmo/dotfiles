@@ -926,6 +926,7 @@ function update_omp() (
     }
     section "omp"
     installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    installed="${installed#omp/}"
     if [ "${installed}" = "${OMP_PIN_VERSION}" ]; then
         printf 'omp %s is already installed.\n' "${installed}"
         return 0
@@ -942,6 +943,7 @@ function update_omp() (
     # Allow this reviewed pin before the default three-day cooldown expires.
     npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" || return
     installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    installed="${installed#omp/}"
     if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
         printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
         return 1

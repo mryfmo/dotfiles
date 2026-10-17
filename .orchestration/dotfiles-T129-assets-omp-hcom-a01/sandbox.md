@@ -1,6 +1,6 @@
 ---
 task_id: dotfiles-T129-assets-omp-hcom-a01
-round: 2
+round: 3
 amendment: 5
 status: source-approved-local-validated
 ---
@@ -12,3 +12,5 @@ The full offline validator runs on a clean staged-index export because unrelated
 No local Bats, Crit browser/server/publish, Plan Mode, model/profile/permission/launcher/PATH default change. The existing signing key is unavailable; use per-command commit.gpgsign=false. Existing shared packed-refs.lock warnings during a successful branch switch are recorded, no retry outside the sandbox. effects=none.
 
 Amendment5 permits one command-local npm cooldown override for the verified omp install. Global home/dot_npmrc remains3days and byte-identical; uv/curl keep the inherited value. CI public-bootstrap attempted a real npm install and exposed the dependency cooldown failure; no real install was run in this worker sandbox. GH run logs use temporary XDG_CACHE_HOME after the normal cache path was denied.
+
+Round3 is explicitly authorized by operator D-388-round3, recorded with previous_head/check in revise.yaml. Only two literal-prefix normalizations and a real-output fixture/named regression differ from770. Fake curl rejects invalid fixture forms; no real download/install. No fourth round, thread resolution or hcom change. T130 code was committed and its observers started before the branch switch.

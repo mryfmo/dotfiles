@@ -6518,3 +6518,2905 @@ $ env AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T129-assets-omp-h
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 (exit 0)
 ```
+
+## real-omp-output-red
+
+```text
+$ uv run --offline --no-project --with pyyaml python -m unittest tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin -v
+test_omp_version_check_accepts_the_branded_omp_slash_version_form (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form) ... 
+  test_omp_version_check_accepts_the_branded_omp_slash_version_form (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form) (output='omp/18.11.3') ... FAIL
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... FAIL
+
+======================================================================
+FAIL: test_omp_version_check_accepts_the_branded_omp_slash_version_form (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form) (output='omp/18.11.3')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 188, in test_omp_version_check_accepts_the_branded_omp_slash_version_form
+    self.assertEqual(0 if valid else 42, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 42 : 
+==> omp
+
+
+======================================================================
+FAIL: test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 172, in test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin
+    self.exercise_update("omp")
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 114, in exercise_update
+    self.assertEqual(0, installed.returncode, installed.stdout + installed.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : 
+==> omp
+omp version mismatch: expected 18.11.3, got omp/18.11.3.
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.800s
+
+FAILED (failures=2)
+(exit 1)
+```
+
+## round3-test-format
+
+```text
+$ uv run --offline --no-project --with ruff ruff format tests/unit/test_update_agent_assets.py
+1 file reformatted
+(exit 0)
+```
+
+## round3-shellcheck
+
+```text
+$ shellcheck -x scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh
+(exit 0)
+```
+
+## round3-shfmt
+
+```text
+$ shfmt -d scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh
+diff scripts/update-agent-assets.sh.orig scripts/update-agent-assets.sh
+--- scripts/update-agent-assets.sh.orig
++++ scripts/update-agent-assets.sh
+@@ -17,21 +17,21 @@
+ # @exitcode 1 Neither the wrapper export nor direct script path was valid.
+ #
+ function resolve_dotfiles_source_dir() {
+-    local candidate
+-
+-    if [[ -n "${DOTFILES_SOURCE_DIR:-}" ]] && [[ -d "${DOTFILES_SOURCE_DIR}/vendor/compactiondb" ]]; then
+-        printf '%s\n' "${DOTFILES_SOURCE_DIR}"
+-        return 0
+-    fi
+-
+-    candidate="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+-    if [[ -d "${candidate}/vendor/compactiondb" ]]; then
+-        printf '%s\n' "${candidate}"
+-        return 0
+-    fi
+-
+-    printf 'Unable to resolve dotfiles source root: vendor/compactiondb was not found via DOTFILES_SOURCE_DIR or BASH_SOURCE.\n' >&2
+-    return 1
++	local candidate
++
++	if [[ -n "${DOTFILES_SOURCE_DIR:-}" ]] && [[ -d "${DOTFILES_SOURCE_DIR}/vendor/compactiondb" ]]; then
++		printf '%s\n' "${DOTFILES_SOURCE_DIR}"
++		return 0
++	fi
++
++	candidate="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
++	if [[ -d "${candidate}/vendor/compactiondb" ]]; then
++		printf '%s\n' "${candidate}"
++		return 0
++	fi
++
++	printf 'Unable to resolve dotfiles source root: vendor/compactiondb was not found via DOTFILES_SOURCE_DIR or BASH_SOURCE.\n' >&2
++	return 1
+ }
+ 
+ DOTFILES_REPO_SOURCE_DIR="$(resolve_dotfiles_source_dir)" || exit 1
+@@ -39,8 +39,8 @@
+ AGENT_ASSET_SCRIPT_DIR="${DOTFILES_REPO_SOURCE_DIR}/scripts"
+ readonly AGENT_ASSET_SCRIPT_DIR
+ if ! declare -F manifest_record > /dev/null 2>&1; then
+-    # shellcheck source=scripts/lib/asset-manifest.sh
+-    source "${AGENT_ASSET_SCRIPT_DIR}/lib/asset-manifest.sh"
++	# shellcheck source=scripts/lib/asset-manifest.sh
++	source "${AGENT_ASSET_SCRIPT_DIR}/lib/asset-manifest.sh"
+ fi
+ # shellcheck source=scripts/lib/installer-pins.sh
+ source "${AGENT_ASSET_SCRIPT_DIR}/lib/installer-pins.sh"
+@@ -92,7 +92,7 @@
+ # @arg $1 string Heading text.
+ #
+ function section() {
+-    printf '\n==> %s\n' "$1"
++	printf '\n==> %s\n' "$1"
+ }
+ 
+ #
+@@ -100,7 +100,7 @@
+ # @arg $1 string Command name.
+ #
+ function has_command() {
+-    command -v "$1" > /dev/null 2>&1
++	command -v "$1" > /dev/null 2>&1
+ }
+ 
+ #
+@@ -107,14 +107,14 @@
+ # @description Remove node-global agent CLIs that shadow their dedicated mise tools.
+ #
+ function remove_node_global_agent_cli_shadows() {
+-    local npm_package
+-
+-    has_command npm || return 0
+-    for npm_package in "@openai/codex" "@anthropic-ai/claude-code"; do
+-        if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
+-            npm uninstall -g "${npm_package}"
+-        fi
+-    done
++	local npm_package
++
++	has_command npm || return 0
++	for npm_package in "@openai/codex" "@anthropic-ai/claude-code"; do
++		if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
++			npm uninstall -g "${npm_package}"
++		fi
++	done
+ }
+ 
+ #
+@@ -123,20 +123,20 @@
+ # @arg $2 string mise npm tool name.
+ #
+ function ensure_mise_npm_agent_cli() {
+-    local cli="$1"
+-    local mise_tool="$2"
+-
+-    if has_command "${cli}" && "${cli}" --version > /dev/null 2>&1; then
+-        return 0
+-    fi
+-    has_command mise || return 0
+-
+-    printf 'Repairing %s through the mise npm backend.\n' "${cli}"
+-    MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 \
+-        mise install --force "${mise_tool}"
+-    hash -r
+-    "${cli}" --version > /dev/null
+-    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force ${mise_tool}"
++	local cli="$1"
++	local mise_tool="$2"
++
++	if has_command "${cli}" && "${cli}" --version > /dev/null 2>&1; then
++		return 0
++	fi
++	has_command mise || return 0
++
++	printf 'Repairing %s through the mise npm backend.\n' "${cli}"
++	MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 \
++		mise install --force "${mise_tool}"
++	hash -r
++	"${cli}" --version > /dev/null
++	manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force ${mise_tool}"
+ }
+ 
+ #
+@@ -143,7 +143,7 @@
+ # @description Install configured GitHub CLI extensions when authentication is ready.
+ #
+ function ensure_gh_extensions() {
+-    bash "${DOTFILES_REPO_SOURCE_DIR}/install/common/gh_extensions.sh"
++	bash "${DOTFILES_REPO_SOURCE_DIR}/install/common/gh_extensions.sh"
+ }
+ 
+ #
+@@ -152,10 +152,10 @@
+ # @arg $@ string Command and arguments to run.
+ #
+ function command_output_contains() {
+-    local needle="$1"
+-    shift
+-
+-    "$@" 2> /dev/null | grep -Fq "${needle}"
++	local needle="$1"
++	shift
++
++	"$@" 2> /dev/null | grep -Fq "${needle}"
+ }
+ 
+ #
+@@ -163,9 +163,9 @@
+ # @arg $1 string Marketplace name.
+ #
+ function codex_marketplace_root() {
+-    local marketplace="$1"
+-
+-    codex plugin marketplace list 2> /dev/null | awk -v name="${marketplace}" '$1 == name { print $2; exit }'
++	local marketplace="$1"
++
++	codex plugin marketplace list 2> /dev/null | awk -v name="${marketplace}" '$1 == name { print $2; exit }'
+ }
+ 
+ #
+@@ -174,18 +174,18 @@
+ # @arg $2 string Expected HTTPS origin URL.
+ #
+ function git_remote_origin_matches() {
+-    local root="$1"
+-    local expected_source="$2"
+-    local expected_ssh="git@github.com:${expected_source#https://github.com/}"
+-    local remote
+-
+-    remote="$(git -C "${root}" config --get remote.origin.url 2> /dev/null || true)"
+-    case "${remote}" in
+-    "${expected_source}" | "${expected_source%.git}" | "${expected_ssh}" | "${expected_ssh%.git}")
+-        return 0
+-        ;;
+-    esac
+-    return 1
++	local root="$1"
++	local expected_source="$2"
++	local expected_ssh="git@github.com:${expected_source#https://github.com/}"
++	local remote
++
++	remote="$(git -C "${root}" config --get remote.origin.url 2> /dev/null || true)"
++	case "${remote}" in
++	"${expected_source}" | "${expected_source%.git}" | "${expected_ssh}" | "${expected_ssh%.git}")
++		return 0
++		;;
++	esac
++	return 1
+ }
+ 
+ #
+@@ -194,16 +194,16 @@
+ # @arg $2 string Expected HTTPS origin URL.
+ #
+ function codex_marketplace_has_source() {
+-    local marketplace="$1"
+-    local expected_source="$2"
+-    local root
+-
+-    root="$(codex_marketplace_root "${marketplace}")"
+-    if [ -z "${root}" ] || [ ! -d "${root}/.git" ]; then
+-        return 1
+-    fi
+-
+-    git_remote_origin_matches "${root}" "${expected_source}"
++	local marketplace="$1"
++	local expected_source="$2"
++	local root
++
++	root="$(codex_marketplace_root "${marketplace}")"
++	if [ -z "${root}" ] || [ ! -d "${root}/.git" ]; then
++		return 1
++	fi
++
++	git_remote_origin_matches "${root}" "${expected_source}"
+ }
+ 
+ #
+@@ -210,11 +210,11 @@
+ # @description Ensure the official Claude Code plugin marketplace is configured.
+ #
+ function ensure_claude_superpowers_marketplace() {
+-    if command_output_contains "claude-plugins-official" claude plugin marketplace list; then
+-        return 0
+-    fi
+-
+-    claude plugin marketplace add "${CLAUDE_SUPERPOWERS_MARKETPLACE}"
++	if command_output_contains "claude-plugins-official" claude plugin marketplace list; then
++		return 0
++	fi
++
++	claude plugin marketplace add "${CLAUDE_SUPERPOWERS_MARKETPLACE}"
+ }
+ 
+ #
+@@ -225,31 +225,31 @@
+ # @arg $3 path Destination executable path.
+ #
+ function install_crit_release() (
+-    local artifact="$1"
+-    local pinned="$2"
+-    local target="$3"
+-    local tag="${CRIT_PIN_VERSION}"
+-    local actual base_url checksums download expected staging=""
+-
+-    base_url="https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}"
+-    download="$(mktemp)" || return
+-    checksums="$(mktemp)" || return
+-    trap 'rm -f "${download}" "${checksums}" ${staging:+"${staging}"}' EXIT
+-    curl -fsSL "${base_url}/${artifact}" -o "${download}" || return
+-    curl -fsSL "${base_url}/checksums.txt" -o "${checksums}" || return
+-    expected="$(awk -v name="${artifact}" '$2 == name { print $1; exit }' "${checksums}")"
+-    actual="$(shasum -a 256 "${download}" | awk '{ print $1 }')"
+-    # The release is mutable, so the reviewed sha256 is the check; checksums.txt only re-checks the download.
+-    if [ -z "${pinned}" ] || [ "${actual}" != "${pinned}" ] || [ "${actual}" != "${expected}" ]; then
+-        printf 'Crit checksum mismatch for %s %s.\n' "${artifact}" "${tag}" >&2
+-        return 1
+-    fi
+-
+-    mkdir -p "$(dirname "${target}")" || return
+-    staging="$(mktemp "${target}.XXXXXX")" || return
+-    install -m 0755 "${download}" "${staging}" || return
+-    [ "$(crit_version "${staging}")" = "${tag#v}" ] || return
+-    mv -f "${staging}" "${target}"
++	local artifact="$1"
++	local pinned="$2"
++	local target="$3"
++	local tag="${CRIT_PIN_VERSION}"
++	local actual base_url checksums download expected staging=""
++
++	base_url="https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}"
++	download="$(mktemp)" || return
++	checksums="$(mktemp)" || return
++	trap 'rm -f "${download}" "${checksums}" ${staging:+"${staging}"}' EXIT
++	curl -fsSL "${base_url}/${artifact}" -o "${download}" || return
++	curl -fsSL "${base_url}/checksums.txt" -o "${checksums}" || return
++	expected="$(awk -v name="${artifact}" '$2 == name { print $1; exit }' "${checksums}")"
++	actual="$(shasum -a 256 "${download}" | awk '{ print $1 }')"
++	# The release is mutable, so the reviewed sha256 is the check; checksums.txt only re-checks the download.
++	if [ -z "${pinned}" ] || [ "${actual}" != "${pinned}" ] || [ "${actual}" != "${expected}" ]; then
++		printf 'Crit checksum mismatch for %s %s.\n' "${artifact}" "${tag}" >&2
++		return 1
++	fi
++
++	mkdir -p "$(dirname "${target}")" || return
++	staging="$(mktemp "${target}.XXXXXX")" || return
++	install -m 0755 "${download}" "${staging}" || return
++	[ "$(crit_version "${staging}")" = "${tag#v}" ] || return
++	mv -f "${staging}" "${target}"
+ )
+ 
+ #
+@@ -258,11 +258,11 @@
+ # @arg $1 path Crit executable.
+ #
+ function crit_version() {
+-    local output
+-    [ -x "$1" ] || return 0
+-    # A binary that exits non-zero is broken whatever it printed, so it reports no version.
+-    output="$("$1" --version 2> /dev/null)" || return 0
+-    printf '%s\n' "${output}" | awk '$1 == "crit" { sub(/^v/, "", $2); print $2; exit }'
++	local output
++	[ -x "$1" ] || return 0
++	# A binary that exits non-zero is broken whatever it printed, so it reports no version.
++	output="$("$1" --version 2> /dev/null)" || return 0
++	printf '%s\n' "${output}" | awk '$1 == "crit" { sub(/^v/, "", $2); print $2; exit }'
+ }
+ 
+ #
+@@ -269,27 +269,27 @@
+ # @description Ensure the Crit CLI is the pinned release for agent integrations.
+ #
+ function ensure_crit_cli() {
+-    local artifact checksum tag="${CRIT_PIN_VERSION}" target
+-
+-    case "$(uname -s)/$(uname -m)" in
+-    Linux/x86_64 | Linux/amd64) artifact="crit-linux-amd64" checksum="${CRIT_LINUX_AMD64_SHA256}" ;;
+-    Linux/aarch64 | Linux/arm64) artifact="crit-linux-arm64" checksum="${CRIT_LINUX_ARM64_SHA256}" ;;
+-    Darwin/x86_64 | Darwin/amd64) artifact="crit-darwin-amd64" checksum="${CRIT_DARWIN_AMD64_SHA256}" ;;
+-    Darwin/arm64 | Darwin/aarch64) artifact="crit-darwin-arm64" checksum="${CRIT_DARWIN_ARM64_SHA256}" ;;
+-    *)
+-        printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+-        return 1
+-        ;;
+-    esac
+-
+-    target="${HOME}/.local/bin/crit"
+-    if [ "$(crit_version "${target}")" != "${tag#v}" ]; then
+-        section "Crit CLI"
+-        install_crit_release "${artifact}" "${checksum}" "${target}" || return 1
+-    fi
+-    export PATH="${HOME}/.local/bin:${PATH}"
+-    hash -r
+-    manifest_record "ensure_crit_cli" installer "${tag}" "${target}" -- "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/${artifact}" "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/checksums.txt" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}"
++	local artifact checksum tag="${CRIT_PIN_VERSION}" target
++
++	case "$(uname -s)/$(uname -m)" in
++	Linux/x86_64 | Linux/amd64) artifact="crit-linux-amd64" checksum="${CRIT_LINUX_AMD64_SHA256}" ;;
++	Linux/aarch64 | Linux/arm64) artifact="crit-linux-arm64" checksum="${CRIT_LINUX_ARM64_SHA256}" ;;
++	Darwin/x86_64 | Darwin/amd64) artifact="crit-darwin-amd64" checksum="${CRIT_DARWIN_AMD64_SHA256}" ;;
++	Darwin/arm64 | Darwin/aarch64) artifact="crit-darwin-arm64" checksum="${CRIT_DARWIN_ARM64_SHA256}" ;;
++	*)
++		printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
++		return 1
++		;;
++	esac
++
++	target="${HOME}/.local/bin/crit"
++	if [ "$(crit_version "${target}")" != "${tag#v}" ]; then
++		section "Crit CLI"
++		install_crit_release "${artifact}" "${checksum}" "${target}" || return 1
++	fi
++	export PATH="${HOME}/.local/bin:${PATH}"
++	hash -r
++	manifest_record "ensure_crit_cli" installer "${tag}" "${target}" -- "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/${artifact}" "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/checksums.txt" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}"
+ }
+ 
+ #
+@@ -296,11 +296,11 @@
+ # @description Ensure the Crit Claude Code plugin marketplace is configured.
+ #
+ function ensure_claude_crit_marketplace() {
+-    if command_output_contains "${CLAUDE_CRIT_MARKETPLACE_NAME}" claude plugin marketplace list; then
+-        return 0
+-    fi
+-
+-    claude plugin marketplace add "${CLAUDE_CRIT_MARKETPLACE}"
++	if command_output_contains "${CLAUDE_CRIT_MARKETPLACE_NAME}" claude plugin marketplace list; then
++		return 0
++	fi
++
++	claude plugin marketplace add "${CLAUDE_CRIT_MARKETPLACE}"
+ }
+ 
+ #
+@@ -307,11 +307,11 @@
+ # @description Ensure the Ponytail Claude Code plugin marketplace is configured.
+ #
+ function ensure_claude_ponytail_marketplace() {
+-    if command_output_contains "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" claude plugin marketplace list; then
+-        return 0
+-    fi
+-
+-    claude plugin marketplace add "${CLAUDE_PONYTAIL_MARKETPLACE}"
++	if command_output_contains "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" claude plugin marketplace list; then
++		return 0
++	fi
++
++	claude plugin marketplace add "${CLAUDE_PONYTAIL_MARKETPLACE}"
+ }
+ 
+ #
+@@ -318,11 +318,11 @@
+ # @description Ensure the Understand-Anything Claude Code plugin marketplace is configured.
+ #
+ function ensure_claude_understand_anything_marketplace() {
+-    if command_output_contains "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" claude plugin marketplace list; then
+-        return 0
+-    fi
+-
+-    claude plugin marketplace add "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}"
++	if command_output_contains "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" claude plugin marketplace list; then
++		return 0
++	fi
++
++	claude plugin marketplace add "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}"
+ }
+ 
+ #
+@@ -329,11 +329,11 @@
+ # @description Return success when the Claude Code Crit plugin is already enabled.
+ #
+ function claude_crit_plugin_is_enabled() {
+-    if ! has_command python3; then
+-        return 1
+-    fi
+-
+-    claude plugin list --json 2> /dev/null | CLAUDE_CRIT_PLUGIN_ID="${CLAUDE_CRIT_PLUGIN}" python3 -c '
++	if ! has_command python3; then
++		return 1
++	fi
++
++	claude plugin list --json 2> /dev/null | CLAUDE_CRIT_PLUGIN_ID="${CLAUDE_CRIT_PLUGIN}" python3 -c '
+ import json
+ import os
+ import sys
+@@ -358,11 +358,11 @@
+ # @description Return success when the Claude Code Ponytail plugin is already enabled.
+ #
+ function claude_ponytail_plugin_is_enabled() {
+-    if ! has_command python3; then
+-        return 1
+-    fi
+-
+-    claude plugin list --json 2> /dev/null | CLAUDE_PONYTAIL_PLUGIN_ID="${CLAUDE_PONYTAIL_PLUGIN}" python3 -c '
++	if ! has_command python3; then
++		return 1
++	fi
++
++	claude plugin list --json 2> /dev/null | CLAUDE_PONYTAIL_PLUGIN_ID="${CLAUDE_PONYTAIL_PLUGIN}" python3 -c '
+ import json
+ import os
+ import sys
+@@ -387,11 +387,11 @@
+ # @description Return success when the Claude Code Understand-Anything plugin is already enabled.
+ #
+ function claude_understand_anything_plugin_is_enabled() {
+-    if ! has_command python3; then
+-        return 1
+-    fi
+-
+-    claude plugin list --json 2> /dev/null | CLAUDE_UNDERSTAND_ANYTHING_PLUGIN_ID="${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" python3 -c '
++	if ! has_command python3; then
++		return 1
++	fi
++
++	claude plugin list --json 2> /dev/null | CLAUDE_UNDERSTAND_ANYTHING_PLUGIN_ID="${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" python3 -c '
+ import json
+ import os
+ import sys
+@@ -416,14 +416,14 @@
+ # @description Install or refresh the Herdr agent integrations.
+ #
+ function ensure_herdr_integrations() {
+-    if ! has_command herdr; then
+-        return 0
+-    fi
+-
+-    section "herdr integrations"
+-    herdr integration install claude
+-    herdr integration install codex
+-    manifest_record "ensure_herdr_integrations" integration "$(herdr --version 2> /dev/null | awk 'NF { version = $NF } END { print version ? version : "unknown" }')" "${HOME}/.claude/hooks/herdr-agent-state.sh" "${HOME}/.codex/herdr-agent-state.sh" -- "herdr integration install claude" "herdr integration install codex"
++	if ! has_command herdr; then
++		return 0
++	fi
++
++	section "herdr integrations"
++	herdr integration install claude
++	herdr integration install codex
++	manifest_record "ensure_herdr_integrations" integration "$(herdr --version 2> /dev/null | awk 'NF { version = $NF } END { print version ? version : "unknown" }')" "${HOME}/.claude/hooks/herdr-agent-state.sh" "${HOME}/.codex/herdr-agent-state.sh" -- "herdr integration install claude" "herdr integration install codex"
+ }
+ 
+ #
+@@ -433,30 +433,30 @@
+ # @exitcode 0 Always; a failed refresh only warns, and the next apply retries it.
+ #
+ function refresh_codex_hook_trust() {
+-    local managed target
+-    local pattern='/\.codex/([a-z0-9_]+\.)?config\.toml$'
+-    local -a targets=()
+-
+-    if ! has_command chezmoi; then
+-        return 0
+-    fi
+-    if ! managed="$(chezmoi managed --path-style=absolute --include=files 2> /dev/null)"; then
+-        printf 'WARN: Codex hook trust not refreshed: chezmoi managed failed; the next apply retries it.\n' >&2
+-        return 0
+-    fi
+-    while IFS= read -r target; do
+-        if [[ ${target} =~ ${pattern} ]]; then
+-            targets+=("${target}")
+-        fi
+-    done <<< "${managed}"
+-    if ((${#targets[@]} == 0)); then
+-        return 0
+-    fi
+-
+-    section "codex hook trust"
+-    if ! chezmoi apply --force "${targets[@]}"; then
+-        printf 'WARN: Codex hook trust not refreshed: chezmoi apply failed; the next apply retries it.\n' >&2
+-    fi
++	local managed target
++	local pattern='/\.codex/([a-z0-9_]+\.)?config\.toml$'
++	local -a targets=()
++
++	if ! has_command chezmoi; then
++		return 0
++	fi
++	if ! managed="$(chezmoi managed --path-style=absolute --include=files 2> /dev/null)"; then
++		printf 'WARN: Codex hook trust not refreshed: chezmoi managed failed; the next apply retries it.\n' >&2
++		return 0
++	fi
++	while IFS= read -r target; do
++		if [[ ${target} =~ ${pattern} ]]; then
++			targets+=("${target}")
++		fi
++	done <<< "${managed}"
++	if ((${#targets[@]} == 0)); then
++		return 0
++	fi
++
++	section "codex hook trust"
++	if ! chezmoi apply --force "${targets[@]}"; then
++		printf 'WARN: Codex hook trust not refreshed: chezmoi apply failed; the next apply retries it.\n' >&2
++	fi
+ }
+ 
+ #
+@@ -463,22 +463,22 @@
+ # @description Install or update the Claude Code Superpowers plugin.
+ #
+ function update_claude_superpowers() {
+-    if ! has_command claude; then
+-        printf 'Skipping Claude Code plugins: claude command not found.\n'
+-        return 0
+-    fi
+-
+-    section "Claude Code plugins"
+-    ensure_claude_superpowers_marketplace
+-    claude plugin marketplace update claude-plugins-official || true
+-
+-    if command_output_contains "\"id\":\"${CLAUDE_SUPERPOWERS_PLUGIN}\"" claude plugin list --json ||
+-        command_output_contains "\"id\": \"${CLAUDE_SUPERPOWERS_PLUGIN}\"" claude plugin list --json; then
+-        claude plugin update "${CLAUDE_SUPERPOWERS_PLUGIN}" || true
+-    else
+-        claude plugin install "${CLAUDE_SUPERPOWERS_PLUGIN}" || true
+-    fi
+-    manifest_record "update_claude_superpowers" plugin "$(manifest_claude_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")" "${HOME}/.claude/plugins/cache/claude-plugins-official/superpowers" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}"
++	if ! has_command claude; then
++		printf 'Skipping Claude Code plugins: claude command not found.\n'
++		return 0
++	fi
++
++	section "Claude Code plugins"
++	ensure_claude_superpowers_marketplace
++	claude plugin marketplace update claude-plugins-official || true
++
++	if command_output_contains "\"id\":\"${CLAUDE_SUPERPOWERS_PLUGIN}\"" claude plugin list --json ||
++		command_output_contains "\"id\": \"${CLAUDE_SUPERPOWERS_PLUGIN}\"" claude plugin list --json; then
++		claude plugin update "${CLAUDE_SUPERPOWERS_PLUGIN}" || true
++	else
++		claude plugin install "${CLAUDE_SUPERPOWERS_PLUGIN}" || true
++	fi
++	manifest_record "update_claude_superpowers" plugin "$(manifest_claude_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")" "${HOME}/.claude/plugins/cache/claude-plugins-official/superpowers" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}"
+ }
+ 
+ #
+@@ -485,30 +485,30 @@
+ # @description Install or update the Claude Code Crit plugin.
+ #
+ function update_claude_crit() {
+-    if ! has_command claude; then
+-        printf 'Skipping Claude Code Crit plugin: claude command not found.\n'
+-        return 0
+-    fi
+-
+-    section "Claude Code Crit plugin"
+-    if ! ensure_crit_cli; then
+-        return 0
+-    fi
+-    ensure_claude_crit_marketplace
+-    claude plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
+-
+-    if command_output_contains "\"id\":\"${CLAUDE_CRIT_PLUGIN}\"" claude plugin list --json ||
+-        command_output_contains "\"id\": \"${CLAUDE_CRIT_PLUGIN}\"" claude plugin list --json; then
+-        claude plugin update "${CLAUDE_CRIT_PLUGIN}" || true
+-    else
+-        claude plugin install "${CLAUDE_CRIT_PLUGIN}" || true
+-    fi
+-    if claude_crit_plugin_is_enabled; then
+-        printf 'Claude Code Crit plugin is already enabled.\n'
+-    else
+-        claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
+-    fi
+-    manifest_record "update_claude_crit" plugin "$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
++	if ! has_command claude; then
++		printf 'Skipping Claude Code Crit plugin: claude command not found.\n'
++		return 0
++	fi
++
++	section "Claude Code Crit plugin"
++	if ! ensure_crit_cli; then
++		return 0
++	fi
++	ensure_claude_crit_marketplace
++	claude plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
++
++	if command_output_contains "\"id\":\"${CLAUDE_CRIT_PLUGIN}\"" claude plugin list --json ||
++		command_output_contains "\"id\": \"${CLAUDE_CRIT_PLUGIN}\"" claude plugin list --json; then
++		claude plugin update "${CLAUDE_CRIT_PLUGIN}" || true
++	else
++		claude plugin install "${CLAUDE_CRIT_PLUGIN}" || true
++	fi
++	if claude_crit_plugin_is_enabled; then
++		printf 'Claude Code Crit plugin is already enabled.\n'
++	else
++		claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
++	fi
++	manifest_record "update_claude_crit" plugin "$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
+ }
+ 
+ #
+@@ -515,28 +515,28 @@
+ # @description Install or update the Claude Code Ponytail plugin.
+ #
+ function update_claude_ponytail() {
+-    if ! has_command claude; then
+-        printf 'Skipping Claude Code Ponytail plugin: claude command not found.\n'
+-        return 0
+-    fi
+-
+-    section "Claude Code Ponytail plugin"
+-    ensure_claude_ponytail_marketplace
+-    claude plugin marketplace update "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" || true
+-
+-    if command_output_contains "\"id\":\"${CLAUDE_PONYTAIL_PLUGIN}\"" claude plugin list --json ||
+-        command_output_contains "\"id\": \"${CLAUDE_PONYTAIL_PLUGIN}\"" claude plugin list --json; then
+-        claude plugin update "${CLAUDE_PONYTAIL_PLUGIN}" || true
+-    else
+-        claude plugin install "${CLAUDE_PONYTAIL_PLUGIN}" || true
+-    fi
+-    if claude_ponytail_plugin_is_enabled; then
+-        printf 'Claude Code Ponytail plugin is already enabled.\n'
+-    else
+-        claude plugin enable "${CLAUDE_PONYTAIL_PLUGIN}" || true
+-    fi
+-    printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
+-    manifest_record "update_claude_ponytail" plugin "$(manifest_claude_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")" "${HOME}/.claude/plugins/cache/ponytail/ponytail" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin enable ${CLAUDE_PONYTAIL_PLUGIN}"
++	if ! has_command claude; then
++		printf 'Skipping Claude Code Ponytail plugin: claude command not found.\n'
++		return 0
++	fi
++
++	section "Claude Code Ponytail plugin"
++	ensure_claude_ponytail_marketplace
++	claude plugin marketplace update "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" || true
++
++	if command_output_contains "\"id\":\"${CLAUDE_PONYTAIL_PLUGIN}\"" claude plugin list --json ||
++		command_output_contains "\"id\": \"${CLAUDE_PONYTAIL_PLUGIN}\"" claude plugin list --json; then
++		claude plugin update "${CLAUDE_PONYTAIL_PLUGIN}" || true
++	else
++		claude plugin install "${CLAUDE_PONYTAIL_PLUGIN}" || true
++	fi
++	if claude_ponytail_plugin_is_enabled; then
++		printf 'Claude Code Ponytail plugin is already enabled.\n'
++	else
++		claude plugin enable "${CLAUDE_PONYTAIL_PLUGIN}" || true
++	fi
++	printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
++	manifest_record "update_claude_ponytail" plugin "$(manifest_claude_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")" "${HOME}/.claude/plugins/cache/ponytail/ponytail" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin enable ${CLAUDE_PONYTAIL_PLUGIN}"
+ }
+ 
+ #
+@@ -543,27 +543,27 @@
+ # @description Install or update the Claude Code Understand-Anything plugin.
+ #
+ function update_claude_understand_anything() {
+-    if ! has_command claude; then
+-        printf 'Skipping Claude Code Understand-Anything plugin: claude command not found.\n'
+-        return 0
+-    fi
+-
+-    section "Claude Code Understand-Anything plugin"
+-    ensure_claude_understand_anything_marketplace
+-    claude plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
+-
+-    if command_output_contains "\"id\":\"${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}\"" claude plugin list --json ||
+-        command_output_contains "\"id\": \"${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}\"" claude plugin list --json; then
+-        claude plugin update "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
+-    else
+-        claude plugin install "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
+-    fi
+-    if claude_understand_anything_plugin_is_enabled; then
+-        printf 'Claude Code Understand-Anything plugin is already enabled.\n'
+-    else
+-        claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
+-    fi
+-    manifest_record "update_claude_understand_anything" plugin "$(manifest_claude_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin enable ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
++	if ! has_command claude; then
++		printf 'Skipping Claude Code Understand-Anything plugin: claude command not found.\n'
++		return 0
++	fi
++
++	section "Claude Code Understand-Anything plugin"
++	ensure_claude_understand_anything_marketplace
++	claude plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
++
++	if command_output_contains "\"id\":\"${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}\"" claude plugin list --json ||
++		command_output_contains "\"id\": \"${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}\"" claude plugin list --json; then
++		claude plugin update "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
++	else
++		claude plugin install "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
++	fi
++	if claude_understand_anything_plugin_is_enabled; then
++		printf 'Claude Code Understand-Anything plugin is already enabled.\n'
++	else
++		claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
++	fi
++	manifest_record "update_claude_understand_anything" plugin "$(manifest_claude_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin enable ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
+ }
+ 
+ #
+@@ -570,31 +570,31 @@
+ # @description Install the Codex Superpowers plugin from the OpenAI-curated catalog.
+ #
+ function update_codex_superpowers() {
+-    local codex_output
+-
+-    if ! has_command codex; then
+-        printf 'Skipping Codex plugins: codex command not found.\n'
+-        return 0
+-    fi
+-
+-    section "Codex plugins"
+-    if command_output_contains "\"pluginId\":\"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json ||
+-        command_output_contains "\"pluginId\": \"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json; then
+-        printf 'Codex Superpowers plugin is already installed.\n'
+-    elif codex_output="$(codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" 2>&1)"; then
+-        if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
+-            printf '%s\n' "${codex_output}" >&2
+-        fi
+-        printf 'Codex Superpowers plugin installed.\n'
+-    else
+-        if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
+-            printf '%s\n' "${codex_output}" >&2
+-        fi
+-        printf 'Codex Superpowers was not installed: the OpenAI-curated catalog is unavailable.\n'
+-        # shellcheck disable=SC2016 # Backticks are literal operator guidance.
+-        printf 'Run `codex login`, then `codex plugin add %s`.\n' "${CODEX_SUPERPOWERS_PLUGIN}"
+-    fi
+-    manifest_record "update_codex_superpowers" plugin "$(manifest_codex_plugin_version "${CODEX_SUPERPOWERS_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/.tmp/plugins/plugins/superpowers" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}"
++	local codex_output
++
++	if ! has_command codex; then
++		printf 'Skipping Codex plugins: codex command not found.\n'
++		return 0
++	fi
++
++	section "Codex plugins"
++	if command_output_contains "\"pluginId\":\"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json ||
++		command_output_contains "\"pluginId\": \"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json; then
++		printf 'Codex Superpowers plugin is already installed.\n'
++	elif codex_output="$(codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" 2>&1)"; then
++		if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
++			printf '%s\n' "${codex_output}" >&2
++		fi
++		printf 'Codex Superpowers plugin installed.\n'
++	else
++		if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
++			printf '%s\n' "${codex_output}" >&2
++		fi
++		printf 'Codex Superpowers was not installed: the OpenAI-curated catalog is unavailable.\n'
++		# shellcheck disable=SC2016 # Backticks are literal operator guidance.
++		printf 'Run `codex login`, then `codex plugin add %s`.\n' "${CODEX_SUPERPOWERS_PLUGIN}"
++	fi
++	manifest_record "update_codex_superpowers" plugin "$(manifest_codex_plugin_version "${CODEX_SUPERPOWERS_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/.tmp/plugins/plugins/superpowers" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}"
+ }
+ 
+ #
+@@ -601,26 +601,26 @@
+ # @description Ensure the Ponytail Codex plugin marketplace is configured.
+ #
+ function ensure_codex_ponytail_marketplace() {
+-    local codex_home="${CODEX_HOME:-${HOME}/.codex}"
+-    local codex_config="${codex_home%/}/config.toml"
+-
+-    if [ -f "${codex_config}" ] && grep -Fq "[marketplaces.${CODEX_PONYTAIL_MARKETPLACE_NAME}]" "${codex_config}"; then
+-        if grep -Fq "source = \"${CODEX_PONYTAIL_MARKETPLACE_SOURCE}\"" "${codex_config}"; then
+-            return 0
+-        fi
+-        printf 'Codex Ponytail marketplace exists with an unexpected source; expected %s.\n' "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"
+-        return 1
+-    fi
+-
+-    if codex_marketplace_has_source "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"; then
+-        return 0
+-    fi
+-    if command_output_contains "${CODEX_PONYTAIL_MARKETPLACE_NAME}" codex plugin marketplace list; then
+-        printf 'Codex Ponytail marketplace exists with an unexpected source; expected %s.\n' "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"
+-        return 1
+-    fi
+-
+-    codex plugin marketplace add "${CODEX_PONYTAIL_MARKETPLACE}"
++	local codex_home="${CODEX_HOME:-${HOME}/.codex}"
++	local codex_config="${codex_home%/}/config.toml"
++
++	if [ -f "${codex_config}" ] && grep -Fq "[marketplaces.${CODEX_PONYTAIL_MARKETPLACE_NAME}]" "${codex_config}"; then
++		if grep -Fq "source = \"${CODEX_PONYTAIL_MARKETPLACE_SOURCE}\"" "${codex_config}"; then
++			return 0
++		fi
++		printf 'Codex Ponytail marketplace exists with an unexpected source; expected %s.\n' "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"
++		return 1
++	fi
++
++	if codex_marketplace_has_source "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"; then
++		return 0
++	fi
++	if command_output_contains "${CODEX_PONYTAIL_MARKETPLACE_NAME}" codex plugin marketplace list; then
++		printf 'Codex Ponytail marketplace exists with an unexpected source; expected %s.\n' "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"
++		return 1
++	fi
++
++	codex plugin marketplace add "${CODEX_PONYTAIL_MARKETPLACE}"
+ }
+ 
+ #
+@@ -627,24 +627,24 @@
+ # @description Install or update the Codex Ponytail plugin from its marketplace.
+ #
+ function update_codex_ponytail() {
+-    if ! has_command codex; then
+-        printf 'Skipping Codex Ponytail plugin: codex command not found.\n'
+-        return 0
+-    fi
+-
+-    section "Codex Ponytail plugin"
+-    ensure_codex_ponytail_marketplace
+-    codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}" || true
+-
+-    if command_output_contains "\"pluginId\":\"${CODEX_PONYTAIL_PLUGIN}\"" codex plugin list --json ||
+-        command_output_contains "\"pluginId\": \"${CODEX_PONYTAIL_PLUGIN}\"" codex plugin list --json; then
+-        printf 'Codex Ponytail plugin is already installed.\n'
+-    else
+-        codex plugin add "${CODEX_PONYTAIL_PLUGIN}" || true
+-    fi
+-    printf 'Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new thread.\n'
+-    printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
+-    manifest_record "update_codex_ponytail" plugin "$(manifest_codex_plugin_version "${CODEX_PONYTAIL_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/ponytail/ponytail" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin marketplace add ${CODEX_PONYTAIL_MARKETPLACE}" "codex plugin marketplace upgrade ${CODEX_PONYTAIL_MARKETPLACE_NAME}" "codex plugin add ${CODEX_PONYTAIL_PLUGIN}"
++	if ! has_command codex; then
++		printf 'Skipping Codex Ponytail plugin: codex command not found.\n'
++		return 0
++	fi
++
++	section "Codex Ponytail plugin"
++	ensure_codex_ponytail_marketplace
++	codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}" || true
++
++	if command_output_contains "\"pluginId\":\"${CODEX_PONYTAIL_PLUGIN}\"" codex plugin list --json ||
++		command_output_contains "\"pluginId\": \"${CODEX_PONYTAIL_PLUGIN}\"" codex plugin list --json; then
++		printf 'Codex Ponytail plugin is already installed.\n'
++	else
++		codex plugin add "${CODEX_PONYTAIL_PLUGIN}" || true
++	fi
++	printf 'Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new thread.\n'
++	printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
++	manifest_record "update_codex_ponytail" plugin "$(manifest_codex_plugin_version "${CODEX_PONYTAIL_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/ponytail/ponytail" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin marketplace add ${CODEX_PONYTAIL_MARKETPLACE}" "codex plugin marketplace upgrade ${CODEX_PONYTAIL_MARKETPLACE_NAME}" "codex plugin add ${CODEX_PONYTAIL_PLUGIN}"
+ }
+ 
+ #
+@@ -651,23 +651,23 @@
+ # @description Install or update the Codex Crit plugin and plan-review hook.
+ #
+ function update_codex_crit() {
+-    if ! has_command codex; then
+-        printf 'Skipping Codex Crit plugin: codex command not found.\n'
+-        return 0
+-    fi
+-    if ! ensure_crit_cli; then
+-        return 0
+-    fi
+-
+-    section "Codex Crit plugin"
+-    (
+-        cd "${HOME}"
+-        crit install codex-plugin --force
+-    ) || true
+-    if [ -f "${HOME}/.agents/plugins/marketplace.json" ]; then
+-        chmod 644 "${HOME}/.agents/plugins/marketplace.json"
+-    fi
+-    manifest_record "update_codex_crit" plugin "$(crit --version 2> /dev/null | awk 'NR == 1 { print $2 }')" "${CODEX_HOME:-${HOME}/.codex}/plugins/crit" "${CODEX_HOME:-${HOME}/.codex}/config.toml" "${HOME}/.agents/skills/crit" "${HOME}/.agents/skills/crit-cli" "${HOME}/.agents/skills/crit-story" -- "ensure_crit_cli" "crit install codex-plugin --force"
++	if ! has_command codex; then
++		printf 'Skipping Codex Crit plugin: codex command not found.\n'
++		return 0
++	fi
++	if ! ensure_crit_cli; then
++		return 0
++	fi
++
++	section "Codex Crit plugin"
++	(
++		cd "${HOME}"
++		crit install codex-plugin --force
++	) || true
++	if [ -f "${HOME}/.agents/plugins/marketplace.json" ]; then
++		chmod 644 "${HOME}/.agents/plugins/marketplace.json"
++	fi
++	manifest_record "update_codex_crit" plugin "$(crit --version 2> /dev/null | awk 'NR == 1 { print $2 }')" "${CODEX_HOME:-${HOME}/.codex}/plugins/crit" "${CODEX_HOME:-${HOME}/.codex}/config.toml" "${HOME}/.agents/skills/crit" "${HOME}/.agents/skills/crit-cli" "${HOME}/.agents/skills/crit-story" -- "ensure_crit_cli" "crit install codex-plugin --force"
+ }
+ 
+ #
+@@ -687,31 +687,31 @@
+ # @stderr One WARN line naming the manual command when the build cannot run or fails.
+ #
+ function build_understand_anything_core() {
+-    local root="$1"
+-    local -a pnpm_cmd
+-
+-    [ -d "${root}/packages/core" ] || return 0
+-    if [ -f "${root}/packages/core/dist/index.js" ] &&
+-        [ -z "$(find "${root}/packages/core/src" "${root}/pnpm-lock.yaml" -type f -newer "${root}/packages/core/dist/index.js" -print -quit 2> /dev/null || true)" ]; then
+-        return 0
+-    fi
+-    if has_command mise; then
+-        pnpm_cmd=(mise exec npm:pnpm -- pnpm)
+-    elif has_command pnpm; then
+-        pnpm_cmd=(pnpm)
+-    else
+-        printf 'WARN: Understand-Anything core not built: pnpm not found; run: cd %q && pnpm install --frozen-lockfile && pnpm --filter @understand-anything/core build\n' "${root}" >&2
+-        return 0
+-    fi
+-    if ! (
+-        cd "${root}" &&
+-            { "${pnpm_cmd[@]}" install --frozen-lockfile 2> /dev/null || "${pnpm_cmd[@]}" install; } &&
+-            "${pnpm_cmd[@]}" --filter @understand-anything/core build
+-    ); then
+-        printf 'WARN: Understand-Anything core build failed in %s; run: cd %q && %s install --frozen-lockfile && %s --filter @understand-anything/core build\n' \
+-            "${root}" "${root}" "${pnpm_cmd[*]}" "${pnpm_cmd[*]}" >&2
+-    fi
+-    return 0
++	local root="$1"
++	local -a pnpm_cmd
++
++	[ -d "${root}/packages/core" ] || return 0
++	if [ -f "${root}/packages/core/dist/index.js" ] &&
++		[ -z "$(find "${root}/packages/core/src" "${root}/pnpm-lock.yaml" -type f -newer "${root}/packages/core/dist/index.js" -print -quit 2> /dev/null || true)" ]; then
++		return 0
++	fi
++	if has_command mise; then
++		pnpm_cmd=(mise exec npm:pnpm -- pnpm)
++	elif has_command pnpm; then
++		pnpm_cmd=(pnpm)
++	else
++		printf 'WARN: Understand-Anything core not built: pnpm not found; run: cd %q && pnpm install --frozen-lockfile && pnpm --filter @understand-anything/core build\n' "${root}" >&2
++		return 0
++	fi
++	if ! (
++		cd "${root}" &&
++			{ "${pnpm_cmd[@]}" install --frozen-lockfile 2> /dev/null || "${pnpm_cmd[@]}" install; } &&
++			"${pnpm_cmd[@]}" --filter @understand-anything/core build
++	); then
++		printf 'WARN: Understand-Anything core build failed in %s; run: cd %q && %s install --frozen-lockfile && %s --filter @understand-anything/core build\n' \
++			"${root}" "${root}" "${pnpm_cmd[*]}" "${pnpm_cmd[*]}" >&2
++	fi
++	return 0
+ }
+ 
+ #
+@@ -723,17 +723,17 @@
+ # @stdout Prints a skip message when no matching Claude release artifact is available.
+ #
+ function provision_codex_understand_anything_runtime() {
+-    local plugin_root claude_cache release_root source destination
+-
+-    plugin_root="${HOME}/.understand-anything/repo/understand-anything-plugin"
+-    claude_cache="${HOME}/.claude/plugins/cache/understand-anything/understand-anything"
+-    if ! has_command python3; then
+-        printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
+-        build_understand_anything_core "${plugin_root}"
+-        return 0
+-    fi
+-    release_root="$(
+-        python3 - "${plugin_root}/.claude-plugin/plugin.json" "${claude_cache}" << 'PY'
++	local plugin_root claude_cache release_root source destination
++
++	plugin_root="${HOME}/.understand-anything/repo/understand-anything-plugin"
++	claude_cache="${HOME}/.claude/plugins/cache/understand-anything/understand-anything"
++	if ! has_command python3; then
++		printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
++		build_understand_anything_core "${plugin_root}"
++		return 0
++	fi
++	release_root="$(
++		python3 - "${plugin_root}/.claude-plugin/plugin.json" "${claude_cache}" << 'PY'
+ import json
+ import sys
+ from pathlib import Path
+@@ -758,21 +758,21 @@
+     release_root = max(matches, key=lambda path: path.name, default=None)
+ print(release_root or "")
+ PY
+-    )"
+-    if [ -z "${release_root}" ]; then
+-        printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
+-        build_understand_anything_core "${plugin_root}"
+-        return 0
+-    fi
+-
+-    build_understand_anything_core "${release_root}"
+-    for source in "packages/core/dist" "packages/core/node_modules" "node_modules"; do
+-        destination="${plugin_root}/${source}"
+-        [ -d "${release_root}/${source}" ] || continue
+-        rm -rf "${destination}"
+-        mkdir -p "$(dirname "${destination}")"
+-        cp -R "${release_root}/${source}" "${destination}"
+-    done
++	)"
++	if [ -z "${release_root}" ]; then
++		printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
++		build_understand_anything_core "${plugin_root}"
++		return 0
++	fi
++
++	build_understand_anything_core "${release_root}"
++	for source in "packages/core/dist" "packages/core/node_modules" "node_modules"; do
++		destination="${plugin_root}/${source}"
++		[ -d "${release_root}/${source}" ] || continue
++		rm -rf "${destination}"
++		mkdir -p "$(dirname "${destination}")"
++		cp -R "${release_root}/${source}" "${destination}"
++	done
+ }
+ 
+ #
+@@ -783,34 +783,34 @@
+ #   those symlinks as an expected unmanaged-skill WARN.
+ #
+ function update_codex_understand_anything() {
+-    if ! has_command codex; then
+-        printf 'Skipping Codex Understand-Anything skills: codex command not found.\n'
+-        return 0
+-    fi
+-
+-    section "Codex Understand-Anything skills"
+-    (
+-        local actual installer
+-        installer="$(mktemp)"
+-        trap 'rm -f "${installer}"' EXIT
+-        curl -fsSL "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" -o "${installer}" || {
+-            printf 'Skipping Codex Understand-Anything skills: installer download failed.\n'
+-            return 0
+-        }
+-        actual="$(shasum -a 256 "${installer}" | awk '{ print $1 }')"
+-        [ "${actual}" = "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256}" ] || {
+-            printf 'Understand-Anything installer checksum mismatch\n' >&2
+-            return 1
+-        }
+-        bash "${installer}" codex < /dev/null || {
+-            printf 'Understand-Anything installer failed; Codex skills unchanged.\n' >&2
+-            return 1
+-        }
+-        provision_codex_understand_anything_runtime
+-        # shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.
+-        printf 'Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n'
+-    ) || true
+-    manifest_record "update_codex_understand_anything" installer "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}" "${HOME}/.understand-anything/repo" "${HOME}/.agents/skills/understand" "${HOME}/.agents/skills/understand-chat" "${HOME}/.agents/skills/understand-dashboard" "${HOME}/.agents/skills/understand-diff" "${HOME}/.agents/skills/understand-domain" "${HOME}/.agents/skills/understand-explain" "${HOME}/.agents/skills/understand-figma" "${HOME}/.agents/skills/understand-knowledge" "${HOME}/.agents/skills/understand-onboard" -- "curl -fsSL ${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer> codex"
++	if ! has_command codex; then
++		printf 'Skipping Codex Understand-Anything skills: codex command not found.\n'
++		return 0
++	fi
++
++	section "Codex Understand-Anything skills"
++	(
++		local actual installer
++		installer="$(mktemp)"
++		trap 'rm -f "${installer}"' EXIT
++		curl -fsSL "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" -o "${installer}" || {
++			printf 'Skipping Codex Understand-Anything skills: installer download failed.\n'
++			return 0
++		}
++		actual="$(shasum -a 256 "${installer}" | awk '{ print $1 }')"
++		[ "${actual}" = "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256}" ] || {
++			printf 'Understand-Anything installer checksum mismatch\n' >&2
++			return 1
++		}
++		bash "${installer}" codex < /dev/null || {
++			printf 'Understand-Anything installer failed; Codex skills unchanged.\n' >&2
++			return 1
++		}
++		provision_codex_understand_anything_runtime
++		# shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.
++		printf 'Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n'
++	) || true
++	manifest_record "update_codex_understand_anything" installer "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}" "${HOME}/.understand-anything/repo" "${HOME}/.agents/skills/understand" "${HOME}/.agents/skills/understand-chat" "${HOME}/.agents/skills/understand-dashboard" "${HOME}/.agents/skills/understand-diff" "${HOME}/.agents/skills/understand-domain" "${HOME}/.agents/skills/understand-explain" "${HOME}/.agents/skills/understand-figma" "${HOME}/.agents/skills/understand-knowledge" "${HOME}/.agents/skills/understand-onboard" -- "curl -fsSL ${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer> codex"
+ }
+ 
+ #
+@@ -820,12 +820,12 @@
+ #   Intel macOS has no release asset, so it is skipped rather than failed.
+ #
+ function zenbu_platform_supported() {
+-    case "$(uname -s)-$(uname -m)" in
+-    Darwin-arm64 | Linux-x86_64 | Linux-amd64 | Linux-aarch64 | Linux-arm64)
+-        return 0
+-        ;;
+-    esac
+-    return 1
++	case "$(uname -s)-$(uname -m)" in
++	Darwin-arm64 | Linux-x86_64 | Linux-amd64 | Linux-aarch64 | Linux-arm64)
++		return 0
++		;;
++	esac
++	return 1
+ }
+ 
+ #
+@@ -835,24 +835,24 @@
+ # @arg $@ string Optional NAME=value environment assignments for the installer run.
+ #
+ function run_pinned_installer() {
+-    local url="$1"
+-    local expected="$2"
+-    local actual installer
+-    shift 2
+-
+-    installer="$(mktemp)"
+-    # shellcheck disable=SC2064 # Expand the temp path now; it never changes.
+-    trap "rm -f '${installer}'" RETURN
+-    curl -fsSL "${url}" -o "${installer}" || {
+-        printf 'Installer download failed: %s\n' "${url}" >&2
+-        return 1
+-    }
+-    actual="$(shasum -a 256 "${installer}" | awk '{ print $1 }')"
+-    [ "${actual}" = "${expected}" ] || {
+-        printf 'Installer checksum mismatch for %s\n' "${url}" >&2
+-        return 1
+-    }
+-    env "$@" bash "${installer}" < /dev/null
++	local url="$1"
++	local expected="$2"
++	local actual installer
++	shift 2
++
++	installer="$(mktemp)"
++	# shellcheck disable=SC2064 # Expand the temp path now; it never changes.
++	trap "rm -f '${installer}'" RETURN
++	curl -fsSL "${url}" -o "${installer}" || {
++		printf 'Installer download failed: %s\n' "${url}" >&2
++		return 1
++	}
++	actual="$(shasum -a 256 "${installer}" | awk '{ print $1 }')"
++	[ "${actual}" = "${expected}" ] || {
++		printf 'Installer checksum mismatch for %s\n' "${url}" >&2
++		return 1
++	}
++	env "$@" bash "${installer}" < /dev/null
+ }
+ 
+ #
+@@ -859,26 +859,26 @@
+ # @description Install or update the terminal-code (tode) CLI at the pinned version.
+ #
+ function update_terminal_code() {
+-    local installed
+-
+-    zenbu_platform_supported || {
+-        printf 'Skipping terminal-code: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+-        return 0
+-    }
+-
+-    section "terminal-code (tode)"
+-    installed="$(jq -r '.version' "${HOME}/.local/state/tode/install.json" 2> /dev/null || printf 'none\n')"
+-    # Short-circuit only when every manifest-recorded artifact is present, so a
+-    # partially deleted install is repaired instead of skipped forever.
+-    if [ "${installed}" = "${TERMINAL_CODE_PIN_VERSION}" ] &&
+-        [ -x "${HOME}/.local/bin/tode" ] &&
+-        [ -d "${HOME}/.local/lib/tode" ]; then
+-        printf 'tode %s is already installed.\n' "${installed}"
+-    else
+-        run_pinned_installer "${TERMINAL_CODE_INSTALLER_URL}" "${TERMINAL_CODE_INSTALLER_SHA256}" ||
+-            printf 'tode installer failed; existing install unchanged.\n' >&2
+-    fi
+-    manifest_record "update_terminal_code" installer "${TERMINAL_CODE_PIN_VERSION}" "${HOME}/.local/lib/tode" "${HOME}/.local/bin/tode" "${HOME}/.local/state/tode/install.json" -- "curl -fsSL ${TERMINAL_CODE_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer>"
++	local installed
++
++	zenbu_platform_supported || {
++		printf 'Skipping terminal-code: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
++		return 0
++	}
++
++	section "terminal-code (tode)"
++	installed="$(jq -r '.version' "${HOME}/.local/state/tode/install.json" 2> /dev/null || printf 'none\n')"
++	# Short-circuit only when every manifest-recorded artifact is present, so a
++	# partially deleted install is repaired instead of skipped forever.
++	if [ "${installed}" = "${TERMINAL_CODE_PIN_VERSION}" ] &&
++		[ -x "${HOME}/.local/bin/tode" ] &&
++		[ -d "${HOME}/.local/lib/tode" ]; then
++		printf 'tode %s is already installed.\n' "${installed}"
++	else
++		run_pinned_installer "${TERMINAL_CODE_INSTALLER_URL}" "${TERMINAL_CODE_INSTALLER_SHA256}" ||
++			printf 'tode installer failed; existing install unchanged.\n' >&2
++	fi
++	manifest_record "update_terminal_code" installer "${TERMINAL_CODE_PIN_VERSION}" "${HOME}/.local/lib/tode" "${HOME}/.local/bin/tode" "${HOME}/.local/state/tode/install.json" -- "curl -fsSL ${TERMINAL_CODE_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer>"
+ }
+ 
+ #
+@@ -892,26 +892,26 @@
+ #   run `terminal-browser setup` manually once if wanted.
+ #
+ function update_terminal_browser() {
+-    local installed
+-
+-    zenbu_platform_supported || {
+-        printf 'Skipping terminal-browser: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+-        return 0
+-    }
+-
+-    section "terminal-browser"
+-    installed="$(cat "${HOME}/.local/share/terminal-browser/app/VERSION" 2> /dev/null || printf 'none\n')"
+-    # Short-circuit only when every manifest-recorded artifact is present, so a
+-    # partially deleted install is repaired instead of skipped forever.
+-    if [ "${installed}" = "${TERMINAL_BROWSER_PIN_VERSION}" ] &&
+-        [ -x "${HOME}/.local/bin/terminal-browser" ] &&
+-        [ -f "${HOME}/.local/state/terminal-browser/skills.links" ]; then
+-        printf 'terminal-browser %s is already installed.\n' "${installed}"
+-    else
+-        run_pinned_installer "${TERMINAL_BROWSER_INSTALLER_URL}" "${TERMINAL_BROWSER_INSTALLER_SHA256}" TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 ||
+-            printf 'terminal-browser installer failed; existing install unchanged.\n' >&2
+-    fi
+-    manifest_record "update_terminal_browser" installer "${TERMINAL_BROWSER_PIN_VERSION}" "${HOME}/.local/share/terminal-browser/app" "${HOME}/.local/bin/terminal-browser" "${HOME}/.local/state/terminal-browser/skills.links" -- "curl -fsSL ${TERMINAL_BROWSER_INSTALLER_URL}" "shasum -a 256 <installer>" "TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 bash <installer>"
++	local installed
++
++	zenbu_platform_supported || {
++		printf 'Skipping terminal-browser: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
++		return 0
++	}
++
++	section "terminal-browser"
++	installed="$(cat "${HOME}/.local/share/terminal-browser/app/VERSION" 2> /dev/null || printf 'none\n')"
++	# Short-circuit only when every manifest-recorded artifact is present, so a
++	# partially deleted install is repaired instead of skipped forever.
++	if [ "${installed}" = "${TERMINAL_BROWSER_PIN_VERSION}" ] &&
++		[ -x "${HOME}/.local/bin/terminal-browser" ] &&
++		[ -f "${HOME}/.local/state/terminal-browser/skills.links" ]; then
++		printf 'terminal-browser %s is already installed.\n' "${installed}"
++	else
++		run_pinned_installer "${TERMINAL_BROWSER_INSTALLER_URL}" "${TERMINAL_BROWSER_INSTALLER_SHA256}" TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 ||
++			printf 'terminal-browser installer failed; existing install unchanged.\n' >&2
++	fi
++	manifest_record "update_terminal_browser" installer "${TERMINAL_BROWSER_PIN_VERSION}" "${HOME}/.local/share/terminal-browser/app" "${HOME}/.local/bin/terminal-browser" "${HOME}/.local/state/terminal-browser/skills.links" -- "curl -fsSL ${TERMINAL_BROWSER_INSTALLER_URL}" "shasum -a 256 <installer>" "TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 bash <installer>"
+ }
+ 
+ #
+@@ -919,36 +919,36 @@
+ # @exitcode 1 The download checksum or installed version differs from its pin.
+ #
+ function update_omp() (
+-    local installed download_dir tarball actual
+-    has_command npm || {
+-        printf 'Skipping omp: npm command not found.\n'
+-        return 0
+-    }
+-    section "omp"
+-    installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+-    installed="${installed#omp/}"
+-    if [ "${installed}" = "${OMP_PIN_VERSION}" ]; then
+-        printf 'omp %s is already installed.\n' "${installed}"
+-        return 0
+-    fi
+-    download_dir="$(mktemp -d)" || return
+-    trap 'rm -rf "${download_dir}"' EXIT
+-    tarball="${download_dir}/omp-${OMP_PIN_VERSION}.tgz"
+-    curl -fsSL "${OMP_TARBALL_URL}" -o "${tarball}" || return
+-    actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')" || return
+-    if [ "${actual}" != "${OMP_TARBALL_SHA256}" ]; then
+-        printf 'omp checksum mismatch: expected %s, got %s.\n' "${OMP_TARBALL_SHA256}" "${actual}" >&2
+-        return 1
+-    fi
+-    # Allow this reviewed pin before the default three-day cooldown expires.
+-    npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" || return
+-    installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+-    installed="${installed#omp/}"
+-    if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
+-        printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
+-        return 1
+-    fi
+-    manifest_record "update_omp" installer "${OMP_PIN_VERSION}" "${HOME}/.local/bin/omp" -- "npm_config_min_release_age=0 npm install -g --prefix ${HOME}/.local <verified-omp-tarball>"
++	local installed download_dir tarball actual
++	has_command npm || {
++		printf 'Skipping omp: npm command not found.\n'
++		return 0
++	}
++	section "omp"
++	installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
++	installed="${installed#omp/}"
++	if [ "${installed}" = "${OMP_PIN_VERSION}" ]; then
++		printf 'omp %s is already installed.\n' "${installed}"
++		return 0
++	fi
++	download_dir="$(mktemp -d)" || return
++	trap 'rm -rf "${download_dir}"' EXIT
++	tarball="${download_dir}/omp-${OMP_PIN_VERSION}.tgz"
++	curl -fsSL "${OMP_TARBALL_URL}" -o "${tarball}" || return
++	actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')" || return
++	if [ "${actual}" != "${OMP_TARBALL_SHA256}" ]; then
++		printf 'omp checksum mismatch: expected %s, got %s.\n' "${OMP_TARBALL_SHA256}" "${actual}" >&2
++		return 1
++	fi
++	# Allow this reviewed pin before the default three-day cooldown expires.
++	npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" || return
++	installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
++	installed="${installed#omp/}"
++	if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
++		printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
++		return 1
++	fi
++	manifest_record "update_omp" installer "${OMP_PIN_VERSION}" "${HOME}/.local/bin/omp" -- "npm_config_min_release_age=0 npm install -g --prefix ${HOME}/.local <verified-omp-tarball>"
+ )
+ 
+ #
+@@ -956,43 +956,43 @@
+ # @exitcode 1 The download checksum or installed version differs from its pin.
+ #
+ function update_hcom() (
+-    local url expected installed download_dir wheel actual
+-    case "$(uname -s)/$(uname -m)" in
+-    Darwin/arm64 | Darwin/aarch64) url="${HCOM_DARWIN_ARM64_URL}" expected="${HCOM_DARWIN_ARM64_SHA256}" ;;
+-    Darwin/x86_64 | Darwin/amd64) url="${HCOM_DARWIN_AMD64_URL}" expected="${HCOM_DARWIN_AMD64_SHA256}" ;;
+-    Linux/x86_64 | Linux/amd64) url="${HCOM_LINUX_AMD64_URL}" expected="${HCOM_LINUX_AMD64_SHA256}" ;;
+-    Linux/aarch64 | Linux/arm64) url="${HCOM_LINUX_ARM64_URL}" expected="${HCOM_LINUX_ARM64_SHA256}" ;;
+-    *)
+-        printf 'Skipping hcom: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+-        return 0
+-        ;;
+-    esac
+-    has_command uv || {
+-        printf 'Skipping hcom: uv command not found.\n'
+-        return 0
+-    }
+-    section "hcom"
+-    installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+-    if [ "${installed}" = "${HCOM_PIN_VERSION}" ]; then
+-        printf 'hcom %s is already installed.\n' "${installed}"
+-        return 0
+-    fi
+-    download_dir="$(mktemp -d)" || return
+-    trap 'rm -rf "${download_dir}"' EXIT
+-    wheel="${download_dir}/${url##*/}"
+-    curl -fsSL "${url}" -o "${wheel}" || return
+-    actual="$(shasum -a 256 "${wheel}" | awk '{ print $1 }')" || return
+-    if [ "${actual}" != "${expected}" ]; then
+-        printf 'hcom checksum mismatch: expected %s, got %s.\n' "${expected}" "${actual}" >&2
+-        return 1
+-    fi
+-    uv tool install --force "${wheel}" || return
+-    installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+-    if [ "${installed}" != "${HCOM_PIN_VERSION}" ]; then
+-        printf 'hcom version mismatch: expected %s, got %s.\n' "${HCOM_PIN_VERSION}" "${installed}" >&2
+-        return 1
+-    fi
+-    manifest_record "update_hcom" installer "${HCOM_PIN_VERSION}" "${HOME}/.local/bin/hcom" -- "uv tool install --force <verified-hcom-wheel>"
++	local url expected installed download_dir wheel actual
++	case "$(uname -s)/$(uname -m)" in
++	Darwin/arm64 | Darwin/aarch64) url="${HCOM_DARWIN_ARM64_URL}" expected="${HCOM_DARWIN_ARM64_SHA256}" ;;
++	Darwin/x86_64 | Darwin/amd64) url="${HCOM_DARWIN_AMD64_URL}" expected="${HCOM_DARWIN_AMD64_SHA256}" ;;
++	Linux/x86_64 | Linux/amd64) url="${HCOM_LINUX_AMD64_URL}" expected="${HCOM_LINUX_AMD64_SHA256}" ;;
++	Linux/aarch64 | Linux/arm64) url="${HCOM_LINUX_ARM64_URL}" expected="${HCOM_LINUX_ARM64_SHA256}" ;;
++	*)
++		printf 'Skipping hcom: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
++		return 0
++		;;
++	esac
++	has_command uv || {
++		printf 'Skipping hcom: uv command not found.\n'
++		return 0
++	}
++	section "hcom"
++	installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
++	if [ "${installed}" = "${HCOM_PIN_VERSION}" ]; then
++		printf 'hcom %s is already installed.\n' "${installed}"
++		return 0
++	fi
++	download_dir="$(mktemp -d)" || return
++	trap 'rm -rf "${download_dir}"' EXIT
++	wheel="${download_dir}/${url##*/}"
++	curl -fsSL "${url}" -o "${wheel}" || return
++	actual="$(shasum -a 256 "${wheel}" | awk '{ print $1 }')" || return
++	if [ "${actual}" != "${expected}" ]; then
++		printf 'hcom checksum mismatch: expected %s, got %s.\n' "${expected}" "${actual}" >&2
++		return 1
++	fi
++	uv tool install --force "${wheel}" || return
++	installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
++	if [ "${installed}" != "${HCOM_PIN_VERSION}" ]; then
++		printf 'hcom version mismatch: expected %s, got %s.\n' "${HCOM_PIN_VERSION}" "${installed}" >&2
++		return 1
++	fi
++	manifest_record "update_hcom" installer "${HCOM_PIN_VERSION}" "${HOME}/.local/bin/hcom" -- "uv tool install --force <verified-hcom-wheel>"
+ )
+ 
+ #
+@@ -999,10 +999,10 @@
+ # @description Sync the vendored CompactionDB tree without deleting project runtime state.
+ #
+ function update_compactiondb() {
+-    local source_root
+-    source_root="${DOTFILES_REPO_SOURCE_DIR}/vendor/compactiondb/"
+-    rsync -a --delete --exclude '.claude/contextdb/state/' --exclude '.claude/contextdb/spool/' --exclude '.claude/contextdb/health/' --exclude '.claude/contextdb/contextdb.sqlite3*' "${source_root}" "${HOME}/.agents/compactiondb/" || true
+-    manifest_record "update_compactiondb" rsync "$(awk '/^## / { print $2; exit }' "${source_root}CHANGELOG.md")" "${HOME}/.agents/compactiondb" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${HOME}/.agents/compactiondb/"
++	local source_root
++	source_root="${DOTFILES_REPO_SOURCE_DIR}/vendor/compactiondb/"
++	rsync -a --delete --exclude '.claude/contextdb/state/' --exclude '.claude/contextdb/spool/' --exclude '.claude/contextdb/health/' --exclude '.claude/contextdb/contextdb.sqlite3*' "${source_root}" "${HOME}/.agents/compactiondb/" || true
++	manifest_record "update_compactiondb" rsync "$(awk '/^## / { print $2; exit }' "${source_root}CHANGELOG.md")" "${HOME}/.agents/compactiondb" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${HOME}/.agents/compactiondb/"
+ }
+ 
+ #
+@@ -1011,14 +1011,14 @@
+ # @exitcode 1 If neither tool exists or hashing fails.
+ #
+ function agmsg_sha256() {
+-    if command -v sha256sum > /dev/null 2>&1; then
+-        sha256sum -- "$@"
+-    elif command -v shasum > /dev/null 2>&1; then
+-        shasum -a 256 -- "$@"
+-    else
+-        printf 'agmsg: neither sha256sum nor shasum is available\n' >&2
+-        return 1
+-    fi
++	if command -v sha256sum > /dev/null 2>&1; then
++		sha256sum -- "$@"
++	elif command -v shasum > /dev/null 2>&1; then
++		shasum -a 256 -- "$@"
++	else
++		printf 'agmsg: neither sha256sum nor shasum is available\n' >&2
++		return 1
++	fi
+ }
+ 
+ #
+@@ -1031,33 +1031,33 @@
+ # @exitcode 1 If the paths cannot be listed or hashed completely.
+ #
+ function agmsg_state_snapshot() {
+-    local skill_dir="$1"
+-    local relative list file hashes
+-    local -a paths=() files=()
+-    shift
+-
+-    for relative in "$@"; do
+-        [ ! -e "${skill_dir}/${relative}" ] || paths+=("${skill_dir}/${relative}")
+-    done
+-    ((${#paths[@]})) || return 0
+-    list="$(mktemp)" || return 1
+-    if ! find "${paths[@]}" -type f -print0 > "${list}"; then
+-        rm -f "${list}"
+-        printf 'agmsg: could not list the live state under %s\n' "${skill_dir}" >&2
+-        return 1
+-    fi
+-    while IFS= read -r -d '' file; do
+-        files+=("${file}")
+-    done < "${list}"
+-    rm -f "${list}"
+-    ((${#files[@]})) || return 0
+-    hashes="$(agmsg_sha256 "${files[@]}")" || return 1
+-    # sha256sum/shasum prefix a line with \ when the name needs escaping.
+-    if [ "$(printf '%s\n' "${hashes}" | grep -c '^\\\{0,1\}[0-9a-f]\{64\} ')" -ne "${#files[@]}" ]; then
+-        printf 'agmsg: hashed fewer live-state files than exist under %s\n' "${skill_dir}" >&2
+-        return 1
+-    fi
+-    printf '%s\n' "${hashes}" | LC_ALL=C sort
++	local skill_dir="$1"
++	local relative list file hashes
++	local -a paths=() files=()
++	shift
++
++	for relative in "$@"; do
++		[ ! -e "${skill_dir}/${relative}" ] || paths+=("${skill_dir}/${relative}")
++	done
++	((${#paths[@]})) || return 0
++	list="$(mktemp)" || return 1
++	if ! find "${paths[@]}" -type f -print0 > "${list}"; then
++		rm -f "${list}"
++		printf 'agmsg: could not list the live state under %s\n' "${skill_dir}" >&2
++		return 1
++	fi
++	while IFS= read -r -d '' file; do
++		files+=("${file}")
++	done < "${list}"
++	rm -f "${list}"
++	((${#files[@]})) || return 0
++	hashes="$(agmsg_sha256 "${files[@]}")" || return 1
++	# sha256sum/shasum prefix a line with \ when the name needs escaping.
++	if [ "$(printf '%s\n' "${hashes}" | grep -c '^\\\{0,1\}[0-9a-f]\{64\} ')" -ne "${#files[@]}" ]; then
++		printf 'agmsg: hashed fewer live-state files than exist under %s\n' "${skill_dir}" >&2
++		return 1
++	fi
++	printf '%s\n' "${hashes}" | LC_ALL=C sort
+ }
+ 
+ #
+@@ -1078,80 +1078,80 @@
+ # @exitcode 1 On any failure, with the reason on stderr.
+ #
+ function install_pinned_agmsg() (
+-    local skill_dir="$1"
+-    local fetch_url="https://github.com/fujibee/agmsg/archive/${AGMSG_PIN_COMMIT}.tar.gz"
+-    local tool tarball extract_dir actual before_state after_state before_run after_run changed install_log backup_dir state_dir installed
+-    local -a install_args=(--cmd agmsg --agent-type claude-code)
+-
+-    for tool in curl tar; do
+-        command -v "${tool}" > /dev/null 2>&1 || {
+-            printf 'agmsg: %s not found; nothing was installed\n' "${tool}" >&2
+-            return 1
+-        }
+-    done
+-    before_state="$(agmsg_state_snapshot "${skill_dir}" teams db/messages.db)" || {
+-        printf 'agmsg: could not snapshot the live state under %s; nothing was installed\n' "${skill_dir}" >&2
+-        return 1
+-    }
+-    before_run="$(agmsg_state_snapshot "${skill_dir}" run 2> /dev/null || printf 'unavailable')"
+-    if [ -f "${skill_dir}/.agmsg" ]; then
+-        install_args=(--update "${install_args[@]}")
+-    fi
+-
+-    tarball="$(mktemp)" || return 1
+-    extract_dir="$(mktemp -d)" || return 1
+-    install_log="$(mktemp)" || return 1
+-    trap 'rm -f "${tarball}" "${install_log}"; rm -rf "${extract_dir}"' EXIT
+-    curl -fsSL "${fetch_url}" -o "${tarball}" || {
+-        printf 'agmsg download failed: %s; nothing was installed\n' "${fetch_url}" >&2
+-        return 1
+-    }
+-    actual="$(agmsg_sha256 "${tarball}")" || return 1
+-    [ "${actual%% *}" = "${AGMSG_PIN_SHA256}" ] || {
+-        printf 'agmsg checksum mismatch for %s; nothing was installed\n' "${fetch_url}" >&2
+-        return 1
+-    }
+-    tar xzf "${tarball}" -C "${extract_dir}" --strip-components=1 || {
+-        printf 'agmsg extraction failed for %s; nothing was installed\n' "${fetch_url}" >&2
+-        return 1
+-    }
+-
+-    if [ -d "${skill_dir}" ]; then
+-        backup_dir="${HOME}/.agents/backups/agmsg-state-$(date -u +%Y%m%dT%H%M%SZ)"
+-        mkdir -p "${backup_dir}" || return 1
+-        for state_dir in teams db run agents; do
+-            [ ! -e "${skill_dir}/${state_dir}" ] || cp -Rp "${skill_dir}/${state_dir}" "${backup_dir}/" || {
+-                printf 'agmsg: could not back up %s/%s; nothing was installed\n' "${skill_dir}" "${state_dir}" >&2
+-                return 1
+-            }
+-        done
+-        printf 'agmsg: live state copied to %s before install.sh %s\n' "${backup_dir}" "${install_args[*]}"
+-    fi
+-    if ! bash "${extract_dir}/install.sh" "${install_args[@]}" > "${install_log}" 2>&1; then
+-        cat "${install_log}" >&2
+-        printf 'agmsg: install.sh %s failed; the skill directory may be partially updated%s\n' \
+-            "${install_args[*]}" "${backup_dir:+; pre-install state copy: ${backup_dir}}" >&2
+-        return 1
+-    fi
+-    after_state="$(agmsg_state_snapshot "${skill_dir}" teams db/messages.db)" || {
+-        printf 'agmsg: install.sh %s finished, but the live state could not be re-checked; pre-install state copy: %s\n' \
+-            "${install_args[*]}" "${backup_dir:-none}" >&2
+-        return 1
+-    }
+-    changed="$(LC_ALL=C comm -23 <(printf '%s\n' "${before_state}") <(printf '%s\n' "${after_state}") | sed 's/^[^ ]*  *//')"
+-    if [ -n "${changed}" ]; then
+-        printf 'agmsg: install.sh %s changed or removed existing live state (the installer or a concurrent writer); pre-install state copy: %s\n%s\n' \
+-            "${install_args[*]}" "${backup_dir:-none}" "${changed}" >&2
+-        return 1
+-    fi
+-    after_run="$(agmsg_state_snapshot "${skill_dir}" run 2> /dev/null || printf 'unavailable')"
+-    [ "${before_run}" = "${after_run}" ] ||
+-        printf 'agmsg: note: run/ changed during install.sh %s (watchers and sync engines rewrite it); not treated as a failure\n' "${install_args[*]}"
+-    installed="$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none')"
+-    if ! [ -f "${skill_dir}/.agmsg" ] || [ "${installed}" != "${AGMSG_PIN_VERSION}" ]; then
+-        printf 'agmsg: install.sh %s left VERSION %s (want %s)\n' "${install_args[*]}" "${installed}" "${AGMSG_PIN_VERSION}" >&2
+-        return 1
+-    fi
++	local skill_dir="$1"
++	local fetch_url="https://github.com/fujibee/agmsg/archive/${AGMSG_PIN_COMMIT}.tar.gz"
++	local tool tarball extract_dir actual before_state after_state before_run after_run changed install_log backup_dir state_dir installed
++	local -a install_args=(--cmd agmsg --agent-type claude-code)
++
++	for tool in curl tar; do
++		command -v "${tool}" > /dev/null 2>&1 || {
++			printf 'agmsg: %s not found; nothing was installed\n' "${tool}" >&2
++			return 1
++		}
++	done
++	before_state="$(agmsg_state_snapshot "${skill_dir}" teams db/messages.db)" || {
++		printf 'agmsg: could not snapshot the live state under %s; nothing was installed\n' "${skill_dir}" >&2
++		return 1
++	}
++	before_run="$(agmsg_state_snapshot "${skill_dir}" run 2> /dev/null || printf 'unavailable')"
++	if [ -f "${skill_dir}/.agmsg" ]; then
++		install_args=(--update "${install_args[@]}")
++	fi
++
++	tarball="$(mktemp)" || return 1
++	extract_dir="$(mktemp -d)" || return 1
++	install_log="$(mktemp)" || return 1
++	trap 'rm -f "${tarball}" "${install_log}"; rm -rf "${extract_dir}"' EXIT
++	curl -fsSL "${fetch_url}" -o "${tarball}" || {
++		printf 'agmsg download failed: %s; nothing was installed\n' "${fetch_url}" >&2
++		return 1
++	}
++	actual="$(agmsg_sha256 "${tarball}")" || return 1
++	[ "${actual%% *}" = "${AGMSG_PIN_SHA256}" ] || {
++		printf 'agmsg checksum mismatch for %s; nothing was installed\n' "${fetch_url}" >&2
++		return 1
++	}
++	tar xzf "${tarball}" -C "${extract_dir}" --strip-components=1 || {
++		printf 'agmsg extraction failed for %s; nothing was installed\n' "${fetch_url}" >&2
++		return 1
++	}
++
++	if [ -d "${skill_dir}" ]; then
++		backup_dir="${HOME}/.agents/backups/agmsg-state-$(date -u +%Y%m%dT%H%M%SZ)"
++		mkdir -p "${backup_dir}" || return 1
++		for state_dir in teams db run agents; do
++			[ ! -e "${skill_dir}/${state_dir}" ] || cp -Rp "${skill_dir}/${state_dir}" "${backup_dir}/" || {
++				printf 'agmsg: could not back up %s/%s; nothing was installed\n' "${skill_dir}" "${state_dir}" >&2
++				return 1
++			}
++		done
++		printf 'agmsg: live state copied to %s before install.sh %s\n' "${backup_dir}" "${install_args[*]}"
++	fi
++	if ! bash "${extract_dir}/install.sh" "${install_args[@]}" > "${install_log}" 2>&1; then
++		cat "${install_log}" >&2
++		printf 'agmsg: install.sh %s failed; the skill directory may be partially updated%s\n' \
++			"${install_args[*]}" "${backup_dir:+; pre-install state copy: ${backup_dir}}" >&2
++		return 1
++	fi
++	after_state="$(agmsg_state_snapshot "${skill_dir}" teams db/messages.db)" || {
++		printf 'agmsg: install.sh %s finished, but the live state could not be re-checked; pre-install state copy: %s\n' \
++			"${install_args[*]}" "${backup_dir:-none}" >&2
++		return 1
++	}
++	changed="$(LC_ALL=C comm -23 <(printf '%s\n' "${before_state}") <(printf '%s\n' "${after_state}") | sed 's/^[^ ]*  *//')"
++	if [ -n "${changed}" ]; then
++		printf 'agmsg: install.sh %s changed or removed existing live state (the installer or a concurrent writer); pre-install state copy: %s\n%s\n' \
++			"${install_args[*]}" "${backup_dir:-none}" "${changed}" >&2
++		return 1
++	fi
++	after_run="$(agmsg_state_snapshot "${skill_dir}" run 2> /dev/null || printf 'unavailable')"
++	[ "${before_run}" = "${after_run}" ] ||
++		printf 'agmsg: note: run/ changed during install.sh %s (watchers and sync engines rewrite it); not treated as a failure\n' "${install_args[*]}"
++	installed="$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none')"
++	if ! [ -f "${skill_dir}/.agmsg" ] || [ "${installed}" != "${AGMSG_PIN_VERSION}" ]; then
++		printf 'agmsg: install.sh %s left VERSION %s (want %s)\n' "${install_args[*]}" "${installed}" "${AGMSG_PIN_VERSION}" >&2
++		return 1
++	fi
+ )
+ 
+ #
+@@ -1158,22 +1158,22 @@
+ # @description Install or refresh the pinned upstream agmsg skill in place.
+ #
+ function update_agmsg() {
+-    local skill_dir="${HOME}/.agents/skills/agmsg"
+-    local installed
+-
+-    section "agmsg"
+-    installed="$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none\n')"
+-    if [ "${installed}" != "${AGMSG_PIN_VERSION}" ] || ! [ -f "${skill_dir}/.agmsg" ] || ! [ -x "${skill_dir}/scripts/send.sh" ]; then
+-        install_pinned_agmsg "${skill_dir}" ||
+-            printf 'agmsg installer failed (installed: %s); see the reason above.\n' "${installed}" >&2
+-    fi
+-
+-    manifest_record "update_agmsg" installer \
+-        "$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none\n')" \
+-        "${skill_dir}/SKILL.md" "${skill_dir}/scripts" "${skill_dir}/VERSION" -- \
+-        "curl -fsSL https://github.com/fujibee/agmsg/archive/${AGMSG_PIN_COMMIT}.tar.gz" \
+-        "sha256sum <tarball> (shasum -a 256 on macOS)" \
+-        "bash <extracted>/install.sh [--update when .agmsg exists] --cmd agmsg --agent-type claude-code"
++	local skill_dir="${HOME}/.agents/skills/agmsg"
++	local installed
++
++	section "agmsg"
++	installed="$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none\n')"
++	if [ "${installed}" != "${AGMSG_PIN_VERSION}" ] || ! [ -f "${skill_dir}/.agmsg" ] || ! [ -x "${skill_dir}/scripts/send.sh" ]; then
++		install_pinned_agmsg "${skill_dir}" ||
++			printf 'agmsg installer failed (installed: %s); see the reason above.\n' "${installed}" >&2
++	fi
++
++	manifest_record "update_agmsg" installer \
++		"$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none\n')" \
++		"${skill_dir}/SKILL.md" "${skill_dir}/scripts" "${skill_dir}/VERSION" -- \
++		"curl -fsSL https://github.com/fujibee/agmsg/archive/${AGMSG_PIN_COMMIT}.tar.gz" \
++		"sha256sum <tarball> (shasum -a 256 on macOS)" \
++		"bash <extracted>/install.sh [--update when .agmsg exists] --cmd agmsg --agent-type claude-code"
+ }
+ 
+ #
+@@ -1181,35 +1181,35 @@
+ # @arg $@ string Command-line arguments.
+ #
+ function main() {
+-    if [ "$#" -gt 0 ]; then
+-        printf 'Usage: scripts/update-agent-assets.sh\n' >&2
+-        exit 2
+-    fi
+-
+-    export PATH="${HOME}/.local/share/mise/shims:${PATH}"
+-    remove_node_global_agent_cli_shadows
+-    ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
+-    ensure_mise_npm_agent_cli codex "npm:@openai/codex"
+-    ensure_gh_extensions
+-    update_claude_superpowers
+-    update_claude_crit
+-    update_claude_ponytail
+-    update_claude_understand_anything
+-    update_codex_superpowers
+-    update_codex_crit
+-    update_codex_ponytail
+-    update_codex_understand_anything
+-    update_terminal_code
+-    update_terminal_browser
+-    update_omp
+-    update_hcom
+-    update_compactiondb
+-    update_agmsg
+-    ensure_herdr_integrations
+-    # After every plugin update above, so the trust hashes follow the plugin content of this run.
+-    refresh_codex_hook_trust
++	if [ "$#" -gt 0 ]; then
++		printf 'Usage: scripts/update-agent-assets.sh\n' >&2
++		exit 2
++	fi
++
++	export PATH="${HOME}/.local/share/mise/shims:${PATH}"
++	remove_node_global_agent_cli_shadows
++	ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
++	ensure_mise_npm_agent_cli codex "npm:@openai/codex"
++	ensure_gh_extensions
++	update_claude_superpowers
++	update_claude_crit
++	update_claude_ponytail
++	update_claude_understand_anything
++	update_codex_superpowers
++	update_codex_crit
++	update_codex_ponytail
++	update_codex_understand_anything
++	update_terminal_code
++	update_terminal_browser
++	update_omp
++	update_hcom
++	update_compactiondb
++	update_agmsg
++	ensure_herdr_integrations
++	# After every plugin update above, so the trust hashes follow the plugin content of this run.
++	refresh_codex_hook_trust
+ }
+ 
+ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+-    main "$@"
++	main "$@"
+ fi
+diff scripts/check-tools.sh.orig scripts/check-tools.sh
+--- scripts/check-tools.sh.orig
++++ scripts/check-tools.sh
+@@ -17,7 +17,7 @@
+ # @arg $1 string Heading text.
+ #
+ function section() {
+-    printf '\n==> %s\n' "$1"
++	printf '\n==> %s\n' "$1"
+ }
+ 
+ #
+@@ -26,35 +26,35 @@
+ # @arg $@ string Optional version command arguments.
+ #
+ function check_command() {
+-    local command_name="$1"
+-    shift || true
+-
+-    if ! command -v "${command_name}" > /dev/null 2>&1; then
+-        printf 'required missing: %s\n' "${command_name}" >&2
+-        ((required_failures += 1))
+-        return 0
+-    fi
+-
+-    printf 'found:   %s -> %s\n' "${command_name}" "$(command -v "${command_name}")"
+-
+-    local output first_line
+-
+-    if [ "$#" -gt 0 ]; then
+-        if ! output="$("${command_name}" "$@" 2>&1)"; then
+-            printf 'required failed: %s %s\n' "${command_name}" "$*" >&2
+-            ((required_failures += 1))
+-            return 0
+-        fi
+-    else
+-        if ! output="$("${command_name}" --version 2>&1)"; then
+-            printf 'required failed: %s --version\n' "${command_name}" >&2
+-            ((required_failures += 1))
+-            return 0
+-        fi
+-    fi
+-
+-    IFS= read -r first_line <<< "${output}"
+-    printf '%s\n' "${first_line}"
++	local command_name="$1"
++	shift || true
++
++	if ! command -v "${command_name}" > /dev/null 2>&1; then
++		printf 'required missing: %s\n' "${command_name}" >&2
++		((required_failures += 1))
++		return 0
++	fi
++
++	printf 'found:   %s -> %s\n' "${command_name}" "$(command -v "${command_name}")"
++
++	local output first_line
++
++	if [ "$#" -gt 0 ]; then
++		if ! output="$("${command_name}" "$@" 2>&1)"; then
++			printf 'required failed: %s %s\n' "${command_name}" "$*" >&2
++			((required_failures += 1))
++			return 0
++		fi
++	else
++		if ! output="$("${command_name}" --version 2>&1)"; then
++			printf 'required failed: %s --version\n' "${command_name}" >&2
++			((required_failures += 1))
++			return 0
++		fi
++	fi
++
++	IFS= read -r first_line <<< "${output}"
++	printf '%s\n' "${first_line}"
+ }
+ 
+ #
+@@ -63,13 +63,13 @@
+ # @arg $@ string Doctor command arguments.
+ #
+ function run_required_doctor() {
+-    local command_name="$1"
+-    shift || true
+-
+-    if command -v "${command_name}" > /dev/null 2>&1 && ! "${command_name}" "$@"; then
+-        printf 'required failed: %s %s\n' "${command_name}" "$*" >&2
+-        ((required_failures += 1))
+-    fi
++	local command_name="$1"
++	shift || true
++
++	if command -v "${command_name}" > /dev/null 2>&1 && ! "${command_name}" "$@"; then
++		printf 'required failed: %s %s\n' "${command_name}" "$*" >&2
++		((required_failures += 1))
++	fi
+ }
+ 
+ #
+@@ -77,8 +77,8 @@
+ # @arg $1 string Warning text.
+ #
+ function warn_optional() {
+-    printf 'optional warning: %s\n' "$1" >&2
+-    ((optional_warnings += 1))
++	printf 'optional warning: %s\n' "$1" >&2
++	((optional_warnings += 1))
+ }
+ 
+ #
+@@ -87,14 +87,14 @@
+ #   usePrivate key, matching the owner's existing machines' behavior.
+ #
+ function private_layer_enabled() {
+-    local use_private
+-
+-    if ! command -v chezmoi > /dev/null 2>&1 || ! command -v jq > /dev/null 2>&1; then
+-        return 0
+-    fi
+-
+-    use_private="$(chezmoi data 2> /dev/null | jq -r '.usePrivate' 2> /dev/null)"
+-    [ "${use_private}" != "false" ]
++	local use_private
++
++	if ! command -v chezmoi > /dev/null 2>&1 || ! command -v jq > /dev/null 2>&1; then
++		return 0
++	fi
++
++	use_private="$(chezmoi data 2> /dev/null | jq -r '.usePrivate' 2> /dev/null)"
++	[ "${use_private}" != "false" ]
+ }
+ 
+ #
+@@ -101,27 +101,27 @@
+ # @description Print the configured private chezmoi source state.
+ #
+ function check_private_chezmoi() {
+-    local private_source="${HOME%/}/.local/share/chezmoi-private"
+-    local private_config="${HOME%/}/.config/chezmoi-private/chezmoi.yaml"
+-
+-    if ! private_layer_enabled; then
+-        printf 'not applicable: private layer (usePrivate=false)\n'
+-        return 0
+-    fi
+-
+-    if [ -d "${private_source}" ]; then
+-        printf 'found:   private source -> %s\n' "${private_source}"
+-        if [ -f "${private_config}" ]; then
+-            printf 'found:   private config -> %s\n' "${private_config}"
+-        else
+-            warn_optional "private config is missing: ${private_config}"
+-        fi
+-    else
+-        warn_optional "private source is missing: ${private_source}"
+-        if [ ! -f "${private_config}" ]; then
+-            warn_optional "private config is missing: ${private_config}"
+-        fi
+-    fi
++	local private_source="${HOME%/}/.local/share/chezmoi-private"
++	local private_config="${HOME%/}/.config/chezmoi-private/chezmoi.yaml"
++
++	if ! private_layer_enabled; then
++		printf 'not applicable: private layer (usePrivate=false)\n'
++		return 0
++	fi
++
++	if [ -d "${private_source}" ]; then
++		printf 'found:   private source -> %s\n' "${private_source}"
++		if [ -f "${private_config}" ]; then
++			printf 'found:   private config -> %s\n' "${private_config}"
++		else
++			warn_optional "private config is missing: ${private_config}"
++		fi
++	else
++		warn_optional "private source is missing: ${private_source}"
++		if [ ! -f "${private_config}" ]; then
++			warn_optional "private config is missing: ${private_config}"
++		fi
++	fi
+ }
+ 
+ #
+@@ -128,12 +128,12 @@
+ # @description Require Homebrew on macOS and skip it on other platforms.
+ #
+ function check_homebrew() {
+-    if [ "$(uname)" != "Darwin" ]; then
+-        printf 'not applicable: Homebrew (non-Darwin)\n'
+-        return 0
+-    fi
+-
+-    check_command brew --version
++	if [ "$(uname)" != "Darwin" ]; then
++		printf 'not applicable: Homebrew (non-Darwin)\n'
++		return 0
++	fi
++
++	check_command brew --version
+ }
+ 
+ #
+@@ -140,13 +140,13 @@
+ # @description Print whether the per-machine signing/push SSH key exists.
+ #
+ function check_machine_ssh_key() {
+-    local key_path="${HOME%/}/.ssh/id_ed25519.pub"
+-
+-    if [ -f "${key_path}" ]; then
+-        printf 'found:   machine SSH key -> %s\n' "${key_path}"
+-    else
+-        warn_optional "machine SSH key is missing: ${key_path} (run provision-machine-key)"
+-    fi
++	local key_path="${HOME%/}/.ssh/id_ed25519.pub"
++
++	if [ -f "${key_path}" ]; then
++		printf 'found:   machine SSH key -> %s\n' "${key_path}"
++	else
++		warn_optional "machine SSH key is missing: ${key_path} (run provision-machine-key)"
++	fi
+ }
+ 
+ #
+@@ -155,15 +155,15 @@
+ #   GitHub release on every OS; not required, so a missing binary is not a failure.
+ #
+ function check_crit_cli() {
+-    local target="${HOME%/}/.local/bin/crit"
+-
+-    if [ ! -x "${target}" ]; then
+-        printf 'not applicable: Crit CLI (not installed)\n'
+-        return 0
+-    fi
+-
+-    printf 'found:   crit -> %s (pinned release)\n' "${target}"
+-    "${target}" --version || warn_optional "crit --version failed; the managed binary may be corrupt (try REPAIR=1 make doctor)"
++	local target="${HOME%/}/.local/bin/crit"
++
++	if [ ! -x "${target}" ]; then
++		printf 'not applicable: Crit CLI (not installed)\n'
++		return 0
++	fi
++
++	printf 'found:   crit -> %s (pinned release)\n' "${target}"
++	"${target}" --version || warn_optional "crit --version failed; the managed binary may be corrupt (try REPAIR=1 make doctor)"
+ }
+ 
+ #
+@@ -170,15 +170,15 @@
+ # @description Report omp's installed version beside its manifest pin.
+ #
+ function check_omp() {
+-    local target="${HOME%/}/.local/bin/omp"
+-    if [ ! -x "${target}" ]; then
+-        warn_optional "omp not installed; run make update"
+-        return 0
+-    fi
+-    local pin
+-    pin="$(awk -F'"' '/^OMP_PIN_VERSION=/ { print $2; exit }' "${BASH_SOURCE[0]%/*}/lib/installer-pins.sh" 2> /dev/null || true)"
+-    printf 'found:   omp -> %s (pin %s)\n' "${target}" "${pin:-unknown}"
+-    "${target}" --version || warn_optional "omp --version failed; run make update"
++	local target="${HOME%/}/.local/bin/omp"
++	if [ ! -x "${target}" ]; then
++		warn_optional "omp not installed; run make update"
++		return 0
++	fi
++	local pin
++	pin="$(awk -F'"' '/^OMP_PIN_VERSION=/ { print $2; exit }' "${BASH_SOURCE[0]%/*}/lib/installer-pins.sh" 2> /dev/null || true)"
++	printf 'found:   omp -> %s (pin %s)\n' "${target}" "${pin:-unknown}"
++	"${target}" --version || warn_optional "omp --version failed; run make update"
+ }
+ 
+ #
+@@ -185,15 +185,15 @@
+ # @description Report hcom's installed version beside its manifest pin.
+ #
+ function check_hcom() {
+-    local target="${HOME%/}/.local/bin/hcom"
+-    if [ ! -x "${target}" ]; then
+-        warn_optional "hcom not installed; run make update"
+-        return 0
+-    fi
+-    local pin
+-    pin="$(awk -F'"' '/^HCOM_PIN_VERSION=/ { print $2; exit }' "${BASH_SOURCE[0]%/*}/lib/installer-pins.sh" 2> /dev/null || true)"
+-    printf 'found:   hcom -> %s (pin %s)\n' "${target}" "${pin:-unknown}"
+-    "${target}" --version || warn_optional "hcom --version failed; run make update"
++	local target="${HOME%/}/.local/bin/hcom"
++	if [ ! -x "${target}" ]; then
++		warn_optional "hcom not installed; run make update"
++		return 0
++	fi
++	local pin
++	pin="$(awk -F'"' '/^HCOM_PIN_VERSION=/ { print $2; exit }' "${BASH_SOURCE[0]%/*}/lib/installer-pins.sh" 2> /dev/null || true)"
++	printf 'found:   hcom -> %s (pin %s)\n' "${target}" "${pin:-unknown}"
++	"${target}" --version || warn_optional "hcom --version failed; run make update"
+ }
+ 
+ #
+@@ -201,18 +201,18 @@
+ #   authenticated gh, because a GitHub release attestation is the only verification Zed publishes.
+ #
+ function check_zed() {
+-    local target="${HOME%/}/.local/bin/zed" system
+-    system="$(chezmoi execute-template '{{ .system }}' 2> /dev/null || true)"
+-    if [ "$(uname -s)" != Linux ] || [ "${system}" != client ]; then
+-        printf 'not applicable: Zed (installed on Ubuntu clients only)\n'
+-        return 0
+-    fi
+-    if [ ! -x "${target}" ]; then
+-        warn_optional "zed not installed: run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh"
+-        return 0
+-    fi
+-    printf 'found:   zed -> %s\n' "${target}"
+-    "${target}" --version || warn_optional "zed --version failed; the install may be corrupt"
++	local target="${HOME%/}/.local/bin/zed" system
++	system="$(chezmoi execute-template '{{ .system }}' 2> /dev/null || true)"
++	if [ "$(uname -s)" != Linux ] || [ "${system}" != client ]; then
++		printf 'not applicable: Zed (installed on Ubuntu clients only)\n'
++		return 0
++	fi
++	if [ ! -x "${target}" ]; then
++		warn_optional "zed not installed: run make gh-auth, then make update; its release attestation cannot be verified without an authenticated gh"
++		return 0
++	fi
++	printf 'found:   zed -> %s\n' "${target}"
++	"${target}" --version || warn_optional "zed --version failed; the install may be corrupt"
+ }
+ 
+ #
+@@ -222,33 +222,33 @@
+ #   root-only to list, so an unprivileged bwrap probe is the effective check.
+ #
+ function check_apparmor_userns() {
+-    local restrict="${APPARMOR_USERNS_SYSCTL:-/proc/sys/kernel/apparmor_restrict_unprivileged_userns}"
+-    local bwrap="${APPARMOR_USERNS_BWRAP:-/usr/bin/bwrap}"
+-    local profile="${APPARMOR_USERNS_PROFILE_TARGET:-/etc/apparmor.d/bwrap-userns}"
+-
+-    if [ "$(cat "${restrict}" 2> /dev/null)" != "1" ]; then
+-        printf 'not applicable: AppArmor userns restriction (not enabled)\n'
+-        return 0
+-    fi
+-    if ! command -v codex > /dev/null 2>&1; then
+-        warn_optional "codex is not installed; skipped the bwrap user-namespace probe"
+-        return 0
+-    fi
+-    if [ ! -x "${bwrap}" ]; then
+-        printf 'required failed: %s is missing; sandboxed codex runs need it under the AppArmor userns restriction (install the bubblewrap package)\n' "${bwrap}" >&2
+-        ((required_failures += 1))
+-        return 0
+-    fi
+-    if "${bwrap}" --ro-bind / / true > /dev/null 2>&1; then
+-        printf 'found:   bwrap user namespaces allowed -> %s\n' "${bwrap}"
+-        return 0
+-    fi
+-    if [ -f "${profile}" ]; then
+-        printf 'required failed: bwrap user-namespace probe; %s exists but is not effective (sudo apparmor_parser -r %s)\n' "${profile}" "${profile}" >&2
+-    else
+-        printf 'required failed: bwrap user-namespace probe; AppArmor profile %s is missing, so sandboxed codex runs fail (sudo -v && bash install/ubuntu/common/apparmor_userns.sh)\n' "${profile}" >&2
+-    fi
+-    ((required_failures += 1))
++	local restrict="${APPARMOR_USERNS_SYSCTL:-/proc/sys/kernel/apparmor_restrict_unprivileged_userns}"
++	local bwrap="${APPARMOR_USERNS_BWRAP:-/usr/bin/bwrap}"
++	local profile="${APPARMOR_USERNS_PROFILE_TARGET:-/etc/apparmor.d/bwrap-userns}"
++
++	if [ "$(cat "${restrict}" 2> /dev/null)" != "1" ]; then
++		printf 'not applicable: AppArmor userns restriction (not enabled)\n'
++		return 0
++	fi
++	if ! command -v codex > /dev/null 2>&1; then
++		warn_optional "codex is not installed; skipped the bwrap user-namespace probe"
++		return 0
++	fi
++	if [ ! -x "${bwrap}" ]; then
++		printf 'required failed: %s is missing; sandboxed codex runs need it under the AppArmor userns restriction (install the bubblewrap package)\n' "${bwrap}" >&2
++		((required_failures += 1))
++		return 0
++	fi
++	if "${bwrap}" --ro-bind / / true > /dev/null 2>&1; then
++		printf 'found:   bwrap user namespaces allowed -> %s\n' "${bwrap}"
++		return 0
++	fi
++	if [ -f "${profile}" ]; then
++		printf 'required failed: bwrap user-namespace probe; %s exists but is not effective (sudo apparmor_parser -r %s)\n' "${profile}" "${profile}" >&2
++	else
++		printf 'required failed: bwrap user-namespace probe; AppArmor profile %s is missing, so sandboxed codex runs fail (sudo -v && bash install/ubuntu/common/apparmor_userns.sh)\n' "${profile}" >&2
++	fi
++	((required_failures += 1))
+ }
+ 
+ #
+@@ -255,9 +255,9 @@
+ # @description Print the current GitHub CLI extension state when gh is installed.
+ #
+ function check_gh_extensions() {
+-    if command -v gh > /dev/null 2>&1 && ! gh extension list; then
+-        warn_optional "unable to list installed GitHub CLI extensions"
+-    fi
++	if command -v gh > /dev/null 2>&1 && ! gh extension list; then
++		warn_optional "unable to list installed GitHub CLI extensions"
++	fi
+ }
+ 
+ #
+@@ -267,24 +267,24 @@
+ #   required, so a missing install is not a failure.
+ #
+ function check_agmsg() {
+-    local target="${HOME%/}/.agents/skills/agmsg"
+-    local script_dir pin installed
+-
+-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+-    pin="$(awk -F'"' '/^AGMSG_PIN_VERSION=/ { print $2; exit }' "${script_dir}/update-agent-assets.sh" 2> /dev/null || true)"
+-
+-    if [ ! -f "${target}/VERSION" ]; then
+-        printf 'not applicable: agmsg (not installed)\n'
+-        return 0
+-    fi
+-
+-    installed="$(cat "${target}/VERSION")"
+-    if [ "${installed}" = "${pin:-unknown}" ]; then
+-        printf 'found:   agmsg -> %s (version %s, matches pin)\n' "${target}" "${installed}"
+-    else
+-        printf 'found:   agmsg -> %s (version %s, pin %s)\n' "${target}" "${installed}" "${pin:-unknown}"
+-        warn_optional "agmsg version ${installed} does not match the pinned ${pin:-unknown}; run make update"
+-    fi
++	local target="${HOME%/}/.agents/skills/agmsg"
++	local script_dir pin installed
++
++	script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++	pin="$(awk -F'"' '/^AGMSG_PIN_VERSION=/ { print $2; exit }' "${script_dir}/update-agent-assets.sh" 2> /dev/null || true)"
++
++	if [ ! -f "${target}/VERSION" ]; then
++		printf 'not applicable: agmsg (not installed)\n'
++		return 0
++	fi
++
++	installed="$(cat "${target}/VERSION")"
++	if [ "${installed}" = "${pin:-unknown}" ]; then
++		printf 'found:   agmsg -> %s (version %s, matches pin)\n' "${target}" "${installed}"
++	else
++		printf 'found:   agmsg -> %s (version %s, pin %s)\n' "${target}" "${installed}" "${pin:-unknown}"
++		warn_optional "agmsg version ${installed} does not match the pinned ${pin:-unknown}; run make update"
++	fi
+ }
+ 
+ #
+@@ -293,20 +293,20 @@
+ #   side, so this check has no sysctl or profile logic.
+ #
+ function check_claude_sandbox() {
+-    local command_name
+-
+-    if [ "$(uname)" != "Linux" ]; then
+-        printf 'not applicable: Claude Code sandbox prerequisites (non-Linux; macOS uses Seatbelt)\n'
+-        return 0
+-    fi
+-
+-    for command_name in bwrap socat; do
+-        if command -v "${command_name}" > /dev/null 2>&1; then
+-            printf 'found:   %s -> %s\n' "${command_name}" "$(command -v "${command_name}")"
+-        else
+-            warn_optional "Claude Code sandbox prerequisite is missing: ${command_name} (run make update)"
+-        fi
+-    done
++	local command_name
++
++	if [ "$(uname)" != "Linux" ]; then
++		printf 'not applicable: Claude Code sandbox prerequisites (non-Linux; macOS uses Seatbelt)\n'
++		return 0
++	fi
++
++	for command_name in bwrap socat; do
++		if command -v "${command_name}" > /dev/null 2>&1; then
++			printf 'found:   %s -> %s\n' "${command_name}" "$(command -v "${command_name}")"
++		else
++			warn_optional "Claude Code sandbox prerequisite is missing: ${command_name} (run make update)"
++		fi
++	done
+ }
+ 
+ #
+@@ -313,54 +313,54 @@
+ # @description Run the read-only dotfiles health checks.
+ #
+ function main() {
+-    section "Core commands"
+-    check_command git --version
+-    check_command chezmoi --version
+-    check_command mise --version
+-    check_command uv --version
+-    check_command gh --version
+-
+-    section "Chezmoi"
+-    run_required_doctor chezmoi doctor
+-    check_private_chezmoi
+-
+-    section "Mise"
+-    run_required_doctor mise doctor
+-    run_required_doctor mise ls --current
+-
+-    section "Homebrew"
+-    check_homebrew
+-
+-    section "Crit CLI"
+-    check_crit_cli
+-
+-    section "Agent tools"
+-    check_omp
+-    check_hcom
+-
+-    section "Zed"
+-    check_zed
+-
+-    section "SSH"
+-    check_machine_ssh_key
+-
+-    section "AppArmor"
+-    check_apparmor_userns
+-
+-    section "Claude Code sandbox"
+-    check_claude_sandbox
+-
+-    section "GitHub CLI extensions"
+-    check_gh_extensions
+-
+-    section "agmsg"
+-    check_agmsg
+-
+-    printf '\nTool check summary: required failures: %d; optional warnings: %d\n' \
+-        "${required_failures}" "${optional_warnings}"
+-    [ "${required_failures}" -eq 0 ]
++	section "Core commands"
++	check_command git --version
++	check_command chezmoi --version
++	check_command mise --version
++	check_command uv --version
++	check_command gh --version
++
++	section "Chezmoi"
++	run_required_doctor chezmoi doctor
++	check_private_chezmoi
++
++	section "Mise"
++	run_required_doctor mise doctor
++	run_required_doctor mise ls --current
++
++	section "Homebrew"
++	check_homebrew
++
++	section "Crit CLI"
++	check_crit_cli
++
++	section "Agent tools"
++	check_omp
++	check_hcom
++
++	section "Zed"
++	check_zed
++
++	section "SSH"
++	check_machine_ssh_key
++
++	section "AppArmor"
++	check_apparmor_userns
++
++	section "Claude Code sandbox"
++	check_claude_sandbox
++
++	section "GitHub CLI extensions"
++	check_gh_extensions
++
++	section "agmsg"
++	check_agmsg
++
++	printf '\nTool check summary: required failures: %d; optional warnings: %d\n' \
++		"${required_failures}" "${optional_warnings}"
++	[ "${required_failures}" -eq 0 ]
+ }
+ 
+ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+-    main "$@"
++	main "$@"
+ fi
+(exit 1)
+```
+
+## round3-ruff
+
+```text
+$ uv run --offline --no-project --with ruff ruff check tests/unit/test_update_agent_assets.py
+All checks passed!
+(exit 0)
+```
+
+## round3-connected-green
+
+```text
+$ uv run --offline --no-project --with pyyaml python -m unittest tests.unit.test_update_agent_assets tests.unit.test_runtime_health tests.unit.test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step -v
+<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_runtime_health.py:1383: SyntaxWarning: "\ " is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\ "? A raw string is also an option.
+  upgrade\ *) printf 'brew-env HOMEBREW_VERIFY_ATTESTATIONS=%s HOMEBREW_NO_ASK=%s\n' \
+test_omp_version_check_accepts_the_branded_omp_slash_version_form (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form) ... ok
+test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin) ... ok
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... ok
+test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... ok
+test_agent_asset_update_removes_node_global_shadows_before_agent_commands (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_removes_node_global_shadows_before_agent_commands) ... ok
+test_agent_asset_update_repairs_broken_claude_with_npm_backend (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_repairs_broken_claude_with_npm_backend) ... ok
+test_agent_asset_update_runs_gh_extension_ensure (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_runs_gh_extension_ensure) ... ok
+test_agent_launchers_do_not_hardcode_model_ids (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_launchers_do_not_hardcode_model_ids) ... ok
+test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes) ... ok
+test_agmsg_already_pinned_skips_download (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_already_pinned_skips_download) ... ok
+test_agmsg_checksum_mismatch_fails_closed (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_checksum_mismatch_fails_closed) ... ok
+test_agmsg_fresh_install_populates_skill_and_records_manifest (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_fresh_install_populates_skill_and_records_manifest) ... ok
+test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state) ... ok
+test_agmsg_migration_reports_an_installer_that_mutates_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_migration_reports_an_installer_that_mutates_live_state) ... ok
+test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty) ... ok
+test_agmsg_refuses_to_install_without_tar (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_without_tar) ... ok
+test_agmsg_reports_an_installer_that_leaves_the_wrong_version (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_reports_an_installer_that_leaves_the_wrong_version) ... ok
+test_agmsg_update_aborts_when_install_corrupts_live_state (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_update_aborts_when_install_corrupts_live_state) ... ok
+test_agmsg_update_never_touches_teams_db_run (tests.unit.test_runtime_health.RuntimeHealthTest.test_agmsg_update_never_touches_teams_db_run) ... ok
+test_client_bashrc_treats_private_sources_as_optional (tests.unit.test_runtime_health.RuntimeHealthTest.test_client_bashrc_treats_private_sources_as_optional) ... ok
+test_codex_crit_normalizes_managed_marketplace_mode (tests.unit.test_runtime_health.RuntimeHealthTest.test_codex_crit_normalizes_managed_marketplace_mode) ... ok
+test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing (tests.unit.test_runtime_health.RuntimeHealthTest.test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing) ... ok
+test_crit_fails_without_an_install_when_the_download_fails (tests.unit.test_runtime_health.RuntimeHealthTest.test_crit_fails_without_an_install_when_the_download_fails) ... ok
+test_crit_never_promotes_a_staged_binary_that_prints_the_banner_but_fails (tests.unit.test_runtime_health.RuntimeHealthTest.test_crit_never_promotes_a_staged_binary_that_prints_the_banner_but_fails) ... ok
+test_crit_refuses_a_replaced_release_whose_checksums_txt_matches (tests.unit.test_runtime_health.RuntimeHealthTest.test_crit_refuses_a_replaced_release_whose_checksums_txt_matches) ... ok
+test_crit_replaces_an_installed_binary_that_cannot_report_its_version (tests.unit.test_runtime_health.RuntimeHealthTest.test_crit_replaces_an_installed_binary_that_cannot_report_its_version) ... ok
+test_crit_replaces_an_installed_binary_that_prints_the_banner_but_fails (tests.unit.test_runtime_health.RuntimeHealthTest.test_crit_replaces_an_installed_binary_that_prints_the_banner_but_fails) ... ok
+test_darwin_crit_checksum_failure_preserves_existing_binary (tests.unit.test_runtime_health.RuntimeHealthTest.test_darwin_crit_checksum_failure_preserves_existing_binary) ... ok
+test_darwin_crit_install_is_pinned_atomic_and_recorded (tests.unit.test_runtime_health.RuntimeHealthTest.test_darwin_crit_install_is_pinned_atomic_and_recorded) ... ok
+test_doctor_has_no_github_role_check (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_has_no_github_role_check) ... ok
+test_doctor_reports_claude_sandbox_prerequisites (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_reports_claude_sandbox_prerequisites) ... ok
+test_doctor_required_optional_and_healthy_statuses (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_required_optional_and_healthy_statuses) ... ok
+test_linux_crit_checksum_failure_preserves_existing_binary (tests.unit.test_runtime_health.RuntimeHealthTest.test_linux_crit_checksum_failure_preserves_existing_binary) ... ok
+test_linux_crit_correct_version_is_download_free (tests.unit.test_runtime_health.RuntimeHealthTest.test_linux_crit_correct_version_is_download_free) ... ok
+test_linux_crit_failure_does_not_leak_cleanup_trap (tests.unit.test_runtime_health.RuntimeHealthTest.test_linux_crit_failure_does_not_leak_cleanup_trap) ... ok
+test_linux_crit_install_is_pinned_atomic_and_recorded (tests.unit.test_runtime_health.RuntimeHealthTest.test_linux_crit_install_is_pinned_atomic_and_recorded) ... ok
+test_linux_crit_prefers_pinned_target_over_older_path_binary (tests.unit.test_runtime_health.RuntimeHealthTest.test_linux_crit_prefers_pinned_target_over_older_path_binary) ... ok
+test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing) ... ok
+test_make_doctor_passes_repair_variable_to_runtime_check (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check) ... ok
+test_make_doctor_propagates_runtime_drift_after_tool_checks (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_propagates_runtime_drift_after_tool_checks) ... ok
+test_make_update_pulls_clean_main_before_apply (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_pulls_clean_main_before_apply) ... ok
+test_make_update_reports_unmerged_feature_branch_before_branch_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_feature_branch_before_branch_notice) ... ok
+test_make_update_reports_unmerged_index_before_dirty_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_index_before_dirty_notice) ... ok
+test_make_update_skips_dirty_main_with_manual_pull_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_skips_dirty_main_with_manual_pull_notice) ... ok
+test_upgrade_fails_and_keeps_the_backup_when_a_partial_install_cannot_be_removed (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_fails_and_keeps_the_backup_when_a_partial_install_cannot_be_removed) ... ok
+test_upgrade_fails_when_the_final_install_fails_after_a_rebuild (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_fails_when_the_final_install_fails_after_a_rebuild) ... ok
+test_upgrade_fails_when_the_node_marker_cannot_be_written (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_fails_when_the_node_marker_cannot_be_written) ... ok
+test_upgrade_failure_after_a_successful_install_only_warns (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_failure_after_a_successful_install_only_warns) ... ok
+test_upgrade_homebrew_verifies_attestations_when_gh_is_present (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_homebrew_verifies_attestations_when_gh_is_present) ... ok
+test_upgrade_network_only_phases_warn_and_the_mise_phase_still_runs (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_network_only_phases_warn_and_the_mise_phase_still_runs) ... ok
+test_upgrade_never_restores_an_undeletable_backup_over_a_completed_rebuild (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_never_restores_an_undeletable_backup_over_a_completed_rebuild) ... ok
+test_upgrade_rebuilds_npm_tools_when_the_node_marker_differs (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_rebuilds_npm_tools_when_the_node_marker_differs) ... ok
+test_upgrade_required_failures_are_nonzero_and_independent (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_required_failures_are_nonzero_and_independent) ... ok
+test_upgrade_restores_a_rebuild_backup_left_by_a_killed_run (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_restores_a_rebuild_backup_left_by_a_killed_run) ... ok
+test_upgrade_restores_the_npm_tool_when_the_rebuild_is_interrupted (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_restores_the_npm_tool_when_the_rebuild_is_interrupted) ... ok
+test_upgrade_runs_mise_against_the_applied_host_config_and_edits_no_file (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_runs_mise_against_the_applied_host_config_and_edits_no_file) ... ok
+test_upgrade_self_updates_mise_to_its_latest_release (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_self_updates_mise_to_its_latest_release) ... ok
+test_upgrade_skips_every_phase_when_ci_is_true (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_skips_every_phase_when_ci_is_true) ... ok
+test_upgrade_skips_unavailable_mise_self_update (tests.unit.test_runtime_health.RuntimeHealthTest.test_upgrade_skips_unavailable_mise_self_update) ... ok
+test_updater_has_one_recording_call_for_each_install_step (tests.unit.test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step) ... ok
+
+----------------------------------------------------------------------
+Ran 60 tests in 58.459s
+
+OK
+(exit 0)
+```
+
+## round3-shfmt-repo-style
+
+```text
+$ shfmt -i 4 -sr -d scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh
+(exit 0)
+```
+
+## Current source and task integrity
+
+```text
+$ uv run --offline --no-project --with pyyaml <TMP>/codex-T129-round3-integrity.py
+{
+  "baseline": "35ab0e95a7fe27c501db3478d4f37e69a514d532",
+  "previous_head": "770a123bcfe1b7fb1ae992e5b44e1ace90a826a3",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "e573fdb3a6d3efd769350c00de581c968bfc1a017a2b1497b59bafdd27f2e310",
+    "scripts/check-tools.sh": "45b35994396d1b931ac91750b9d6629237d0c8e936fe727e0cc73fd1b5079224",
+    "scripts/lib/installer-pins.sh": "a6102ac79245c5553bcbb04333e46c7a2e5fc4b63a0216804b2b746f9793a091",
+    "scripts/update-agent-assets.sh": "be031734f71fd1268d23dcc11fd7954899fe03009339278928c957ef6495fb33",
+    "tests/install/common/check_tools.bats": "9a7c9ba96323f926430c4358368cff20f0a05f5c043486418d986f9d423ba5ed",
+    "tests/unit/test_asset_manifest.py": "b6b37a82712047ba19dccee6c264955acf967f75fe722a5682f2f18533e8171f",
+    "tests/unit/test_runtime_health.py": "0002b4551f0739f2f7b05b8593f5095df9c315fad5dafe26e8368e395abf18d6",
+    "tests/unit/test_update_agent_assets.py": "75804a8822fe03de3fe3c06849cc9bc641a47ae1b82f249315203ee6db2b406e"
+  },
+  "source_changed": 165,
+  "test_added": 261,
+  "withdrawn_paths_unchanged": true,
+  "existing_helpers_and_Bats_byte_identical": true,
+  "task_hashes_and_URLs_match": true,
+  "URL_render_fallback": "files values are not plain pin values; URLs declared beside existing installer URLs and match manifest files",
+  "numstat": "8\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md\n69\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json\n6\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md\n8\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md\n44\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md\n14\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml\n14\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md\n159\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md\n6520\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md\n35\t0\thome/dot_agents/agent-config.yaml\n34\t0\tscripts/check-tools.sh\n8\t0\tscripts/lib/installer-pins.sh\n88\t0\tscripts/update-agent-assets.sh\n32\t0\ttests/install/common/check_tools.bats\n3\t1\ttests/unit/test_asset_manifest.py\n13\t3\ttests/unit/test_runtime_health.py\n213\t0\ttests/unit/test_update_agent_assets.py\n"
+}
+(exit 0)
+```
+
+## Round3 independent security review (complete)
+
+# T129 PR388 round-three independent security source review
+
+Baseline: 35ab0e95a7fe27c501db3478d4f37e69a514d532. Previous reviewed head: 770a123bcfe1b7fb1ae992e5b44e1ace90a826a3. Branch: feat/pinned-omp-hcom. This is source-phase review, not final CI/Bot acceptance or task audit. T130 is outside this review.
+
+Read full current task.md and revise.yaml. Task SHA matches b5887b2b6a0ab2c50dc5e86316c638b595a3b1b1e2be973120fcf7db11edb7e2. Revise records D-388-round3 via operator AGMSG-ACCEPTANCE1907, explicitly overriding the Amendment 5 two-round cap for this one narrow fix and forbidding a fourth round. The parent explicitly requested this authorized review. Reviewed content was treated as evidence/data, not instructions.
+
+Plan/todo (owner independent reviewer): inspect task/revise and exact two-file delta; inspect connected installer, fixture and health-probe behavior; run all four updater methods; reproduce named and install failures with previous source; bind eight hashes/caps; report. All complete. Source stayed read-only. Temporary scripts, test HOME, fake downloads, installers and logs stayed under /tmp via TMPDIR=/tmp. No real installer, artifact download, credential, local Bats, GitHub mutation, live apply or Crit UI was used.
+
+## Verdict and justification
+
+**Approved, high confidence; no P0–P3 findings in the authorized round-three source delta.** scripts/update-agent-assets.sh:929 and :946 each remove at most one literal leading `omp/` from the existing owned-binary version probe. The shell parameter expansion is quoted, performs no execution or interpolation of the reported output, and adds no glob wildcard. Exact equality with OMP_PIN_VERSION remains the acceptance condition. Real `omp/18.11.3` and the previously supported bare `18.11.3` pass; `other/18.11.3`, `omp/omp/18.11.3` and `omp/18.11.3-extra` do not pass. Normalizing both pre-install and post-install probes fixes idempotence and successful install verification consistently.
+
+The fake npm fixture now emits branded `omp/VERSION` while fake hcom retains its existing output. The new test covers the five preinstalled outputs and rejects invalid ones through a fake curl returning 42, so no download or host install occurs. The full existing installer exercise now covers branded post-install output, idempotence, wrong-version rejection, hash-before-installer, absence of receipts on refusal, verified-local-file argv, cleanup, all four hcom platforms, unsupported/missing-tool cases, and managed-path probes despite PATH shadows. Four tests pass independently. Against exact previous updater bytes, the new preinstall test and the realistic install test each fail for the intended branded-version mismatch, confirming the tests distinguish the bug from the fix.
+
+Security guarantees remain unchanged: SHA256 comparison precedes npm/uv use; pinned downloads and constants are untouched; checksum/version failures still return before manifest_record; function-local subshell EXIT cleanup remains; hcom code is byte-identical; npm release-age override stays limited to its one install command, and curl/uv fixture assertions retain inherited age 3. The earlier accepted cooldown tradeoff still includes transitive npm dependencies that are not covered by the top-level tarball SHA; this round adds no change to that tradeoff. Owned binary paths continue to prevent PATH-shadow shortcuts. check-tools prints the raw owned binary version beside the pin, so branded output needs no doctor parser change. Other updater helpers are unchanged by the exact two-line source delta.
+
+## Scope and evidence
+
+Compared all eight source files with previous_head via SHA256 of `git show <previous_head>:<path>` versus current Path.read_bytes(); exactly updater and its test module differ. Other six are byte-identical. `git diff --name-only <previous_head> -- home scripts tests` also reports those two only. Caps against original baseline are 165 production changed lines and 261 test additions, within 200/1000. Task and all eight current hashes are below. Reverified source hashes immediately before saving this report.
+
+Parent reports 60 connected methods passed, ShellCheck/Ruff clean and corrected shfmt flags after an initial default-style check. Those are parent-owned claims, not independently repeated here. This review grants source approval only; it makes no future validator/CI/Bot/final-head acceptance claim. The previous rounds' evidence remains historical and has not been overwritten.
+
+## Exact commands and full outputs
+
+Read commands:
+- `cat .orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml`
+- `cat .orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md`
+- `git diff 770a123bcfe1b7fb1ae992e5b44e1ace90a826a3 -- scripts/update-agent-assets.sh tests/unit/test_update_agent_assets.py`
+- `sed -n '1,80p' scripts/update-agent-assets.sh`; `sed -n '910,1035p' scripts/update-agent-assets.sh`; full test module reads; `rg -n -A30 'function check_omp|function check_hcom' scripts/check-tools.sh`
+- `git diff --name-only 770a123bcfe1b7fb1ae992e5b44e1ace90a826a3 -- home scripts tests`
+
+Full independent updater test command:
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -m unittest tests.unit.test_update_agent_assets -v
+```
+Four tests pass in 7.152s. Complete output:
+```text
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+test_omp_version_check_accepts_the_branded_omp_slash_version_form (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form) ... ok
+test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin) ... ok
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... ok
+test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 7.152s
+
+OK
+```
+
+Independent previous-source RED command:
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python /tmp/codex-T129-round3-red-probe.py
+```
+The harness loads the current fake-only tests, patches only the in-memory UPDATER path to an exact git-show copy in /tmp, and uses the unchanged repository helper files via DOTFILES_SOURCE_DIR. Full harness:
+```python
+from pathlib import Path
+import hashlib, importlib.util, os, subprocess, tempfile, unittest
+root = Path.cwd()
+previous = '770a123bcfe1b7fb1ae992e5b44e1ace90a826a3'
+source = subprocess.check_output(['git', 'show', previous + ':scripts/update-agent-assets.sh'])
+print('Previous updater SHA256:', hashlib.sha256(source).hexdigest(), flush=True)
+spec = importlib.util.spec_from_file_location('review_fixture', root / 'tests/unit/test_update_agent_assets.py')
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+with tempfile.TemporaryDirectory(prefix='codex-T129-round3-red-', dir='/tmp') as directory:
+    path = Path(directory) / 'updater.sh'
+    path.write_bytes(source)
+    module.UPDATER = path
+    os.environ['DOTFILES_SOURCE_DIR'] = str(root)
+    suite = unittest.TestSuite(module.UpdateAgentAssetsTest(name) for name in [
+        'test_omp_version_check_accepts_the_branded_omp_slash_version_form',
+        'test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin',
+    ])
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    assert len(result.failures) == 2 and not result.errors, (result.failures, result.errors)
+    assert 'omp/18.11.3' in result.failures[0][0].id()
+    assert 'omp version mismatch' in result.failures[1][1]
+print('Expected RED confirmed: two failures, zero errors; prior updater rejected real branded version.', flush=True)
+```
+Output (harness exit 0 because exactly the two expected test failures were asserted):
+```text
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+Previous updater SHA256: 4a3a399d40489c0f414b0b70c9bdce9aa7c5a967ba797679862d684ccc603622
+test_omp_version_check_accepts_the_branded_omp_slash_version_form (review_fixture.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form) ... 
+  test_omp_version_check_accepts_the_branded_omp_slash_version_form (review_fixture.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form) (output='omp/18.11.3') ... FAIL
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (review_fixture.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... FAIL
+
+======================================================================
+FAIL: test_omp_version_check_accepts_the_branded_omp_slash_version_form (review_fixture.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form) (output='omp/18.11.3')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 200, in test_omp_version_check_accepts_the_branded_omp_slash_version_form
+    self.assertEqual(0 if valid else 42, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 42 : 
+==> omp
+
+
+======================================================================
+FAIL: test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (review_fixture.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 172, in test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin
+    self.exercise_update("omp")
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 114, in exercise_update
+    self.assertEqual(0, installed.returncode, installed.stdout + installed.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : 
+==> omp
+omp version mismatch: expected 18.11.3, got omp/18.11.3.
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.496s
+
+FAILED (failures=2)
+Expected RED confirmed: two failures, zero errors; prior updater rejected real branded version.
+```
+
+Harness note: first execution produced the intended two RED failures but its follow-up diagnostic assertion looked for the subtest parameter in the traceback rather than the subtest id. Corrected that /tmp-only assertion and reran. The corrected full output above confirms two failures and zero errors; no repository edit or unintended test failure was suppressed.
+
+SHA command: Python hashlib.sha256(Path(path).read_bytes()).hexdigest(), compared with hashlib.sha256(subprocess.check_output(["git", "show", previous_head + ":" + path])).hexdigest(). Full snapshot:
+```json
+{
+  "baseline": "35ab0e95a7fe27c501db3478d4f37e69a514d532",
+  "previous_head": "770a123bcfe1b7fb1ae992e5b44e1ace90a826a3",
+  "task_sha256": "b5887b2b6a0ab2c50dc5e86316c638b595a3b1b1e2be973120fcf7db11edb7e2",
+  "revise_sha256": "252702b0ece18d1e65c9c38723157a303b94abb12d7c175c77b080577cd04be8",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "e573fdb3a6d3efd769350c00de581c968bfc1a017a2b1497b59bafdd27f2e310",
+    "scripts/check-tools.sh": "45b35994396d1b931ac91750b9d6629237d0c8e936fe727e0cc73fd1b5079224",
+    "scripts/lib/installer-pins.sh": "a6102ac79245c5553bcbb04333e46c7a2e5fc4b63a0216804b2b746f9793a091",
+    "scripts/update-agent-assets.sh": "be031734f71fd1268d23dcc11fd7954899fe03009339278928c957ef6495fb33",
+    "tests/install/common/check_tools.bats": "9a7c9ba96323f926430c4358368cff20f0a05f5c043486418d986f9d423ba5ed",
+    "tests/unit/test_asset_manifest.py": "b6b37a82712047ba19dccee6c264955acf967f75fe722a5682f2f18533e8171f",
+    "tests/unit/test_runtime_health.py": "0002b4551f0739f2f7b05b8593f5095df9c315fad5dafe26e8368e395abf18d6",
+    "tests/unit/test_update_agent_assets.py": "75804a8822fe03de3fe3c06849cc9bc641a47ae1b82f249315203ee6db2b406e"
+  },
+  "changed_since_previous": [
+    "scripts/update-agent-assets.sh",
+    "tests/unit/test_update_agent_assets.py"
+  ],
+  "production_changed": 165,
+  "test_added": 261
+}
+```
+
+Cap command: `git diff --numstat 35ab0e95a7fe27c501db3478d4f37e69a514d532 -- <eight source paths>`; summed production additions+deletions and test additions. Output:
+```text
+35	0	home/dot_agents/agent-config.yaml
+34	0	scripts/check-tools.sh
+8	0	scripts/lib/installer-pins.sh
+88	0	scripts/update-agent-assets.sh
+32	0	tests/install/common/check_tools.bats
+3	1	tests/unit/test_asset_manifest.py
+13	3	tests/unit/test_runtime_health.py
+213	0	tests/unit/test_update_agent_assets.py
+```
+
+Exact reviewed round-three diff:
+```diff
+diff --git a/scripts/update-agent-assets.sh b/scripts/update-agent-assets.sh
+index 8caccbcd..1a289a54 100755
+--- a/scripts/update-agent-assets.sh
++++ b/scripts/update-agent-assets.sh
+@@ -926,6 +926,7 @@ function update_omp() (
+     }
+     section "omp"
+     installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
++    installed="${installed#omp/}"
+     if [ "${installed}" = "${OMP_PIN_VERSION}" ]; then
+         printf 'omp %s is already installed.\n' "${installed}"
+         return 0
+@@ -942,6 +943,7 @@ function update_omp() (
+     # Allow this reviewed pin before the default three-day cooldown expires.
+     npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" || return
+     installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
++    installed="${installed#omp/}"
+     if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
+         printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
+         return 1
+diff --git a/tests/unit/test_update_agent_assets.py b/tests/unit/test_update_agent_assets.py
+index 10331cca..2687ebb7 100644
+--- a/tests/unit/test_update_agent_assets.py
++++ b/tests/unit/test_update_agent_assets.py
+@@ -34,7 +34,7 @@ else:
+     entry["sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
+     tool = "omp" if name == "npm" else "hcom"
+     target = Path(os.environ["HOME"]) / ".local/bin" / tool
+-    target.write_text("#!/usr/bin/env bash\nprintf '%s\\n' " + shlex.quote(tool + " " + os.environ["FIXTURE_VERSION"]) + "\n")
++    target.write_text("#!/usr/bin/env bash\nprintf '%s\\n' " + shlex.quote(tool + ("/" if tool == "omp" else " ") + os.environ["FIXTURE_VERSION"]) + "\n")
+     target.chmod(0o755)
+ with open(os.environ["CALLS"], "a") as log:
+     log.write(json.dumps(entry) + "\n")
+@@ -171,6 +171,35 @@ class UpdateAgentAssetsTest(unittest.TestCase):
+     def test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin(self):
+         self.exercise_update("omp")
+ 
++    def test_omp_version_check_accepts_the_branded_omp_slash_version_form(self):
++        for output, valid in (
++            ("omp/18.11.3", True),
++            ("18.11.3", True),
++            ("other/18.11.3", False),
++            ("omp/omp/18.11.3", False),
++            ("omp/18.11.3-extra", False),
++        ):
++            with self.subTest(output=output), tempfile.TemporaryDirectory() as directory:
++                target = Path(directory) / ".local/bin/omp"
++                target.parent.mkdir(parents=True)
++                target.write_text(f"#!/bin/sh\nprintf '%s\\n' '{output}'\n")
++                target.chmod(0o755)
++                result = subprocess.run(
++                    [
++                        "bash",
++                        "-c",
++                        'source "$1"; OMP_PIN_VERSION=18.11.3; has_command() { return 0; }; curl() { return 42; }; update_omp',
++                        "bash",
++                        str(UPDATER),
++                    ],
++                    env=os.environ | {"HOME": directory},
++                    capture_output=True,
++                    text=True,
++                    check=False,
++                )
++                self.assertEqual(0 if valid else 42, result.returncode, result.stdout + result.stderr)
++                self.assertEqual(valid, "already installed" in result.stdout)
++
+     def test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin(self):
+         for platform in PLATFORMS:
+             with self.subTest(platform=platform):
+```
+
+Verdict: correct
+
+## Final clean staged-candidate validator
+
+```text
+Candidate snapshot from the staged index; unrelated untracked historical logs are absent. All eight changed source/test hashes equal worker-e.
+$ cd <TMP>/codex-T129-candidate-56u9waox
+$ uv run --offline --no-project --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T129-candidate-56u9waox (expected one)
+WARN: regime-boundary: canonical clone <HOME>/.local/share/chezmoi differs from origin/main under home/, install/ or scripts/: home/dot_claude/modify_private_settings.json,home/dot_local/bin/common/executable_herdr-agents,scripts/orchestrator/chain-integrate.sh,scripts/orchestrator/dispatch.sh,scripts/orchestrator/local-advisory.sh,scripts/orchestrator/local-review.sh,scripts/regime-counters.sh,scripts/require-crit-review.py; nothing but pull and apply runs in the canonical clone; restore a stray diff with git -C <HOME>/.local/share/chezmoi restore -SW --source=origin/main -- <files> and drop its autostash
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## round3-canonical-mask
+
+```text
+$ uv run --offline --no-project --with pyyaml <HOME>/Workspace/dotfiles/scripts/validate-agent-assets.py --mask-secrets .orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml .orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md
+(exit 0)
+```
+
+## round3-code-whitespace
+
+```text
+$ git diff --check -- scripts/update-agent-assets.sh tests/unit/test_update_agent_assets.py
+(exit 0)
+```
+
+## round3-review-gate
+
+```text
+$ env AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+(exit 0)
+```

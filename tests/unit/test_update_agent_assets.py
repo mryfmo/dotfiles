@@ -34,7 +34,7 @@ else:
     entry["sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
     tool = "omp" if name == "npm" else "hcom"
     target = Path(os.environ["HOME"]) / ".local/bin" / tool
-    target.write_text("#!/usr/bin/env bash\nprintf '%s\\n' " + shlex.quote(tool + " " + os.environ["FIXTURE_VERSION"]) + "\n")
+    target.write_text("#!/usr/bin/env bash\nprintf '%s\\n' " + shlex.quote(tool + ("/" if tool == "omp" else " ") + os.environ["FIXTURE_VERSION"]) + "\n")
     target.chmod(0o755)
 with open(os.environ["CALLS"], "a") as log:
     log.write(json.dumps(entry) + "\n")
@@ -170,6 +170,35 @@ class UpdateAgentAssetsTest(unittest.TestCase):
 
     def test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin(self):
         self.exercise_update("omp")
+
+    def test_omp_version_check_accepts_the_branded_omp_slash_version_form(self):
+        for output, valid in (
+            ("omp/18.11.3", True),
+            ("18.11.3", True),
+            ("other/18.11.3", False),
+            ("omp/omp/18.11.3", False),
+            ("omp/18.11.3-extra", False),
+        ):
+            with self.subTest(output=output), tempfile.TemporaryDirectory() as directory:
+                target = Path(directory) / ".local/bin/omp"
+                target.parent.mkdir(parents=True)
+                target.write_text(f"#!/bin/sh\nprintf '%s\\n' '{output}'\n")
+                target.chmod(0o755)
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        'source "$1"; OMP_PIN_VERSION=18.11.3; has_command() { return 0; }; curl() { return 42; }; update_omp',
+                        "bash",
+                        str(UPDATER),
+                    ],
+                    env=os.environ | {"HOME": directory},
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(0 if valid else 42, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(valid, "already installed" in result.stdout)
 
     def test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin(self):
         for platform in PLATFORMS:

@@ -1,12 +1,12 @@
 ---
 task_id: dotfiles-T128-chain-glue-finish-a01
 seat: claude-standard-dot-a002
-code_commit: 968d3439
+code_commit: 60cdac47
 ---
 
 # Validation: dotfiles-T128-chain-glue-finish-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (a pipeline's is its last command's; §4's block shows the mutant script and its output, and each mutant line carries its own `rc`). Captured at `968d3439` (the code `af684dc2`, the Bot P1 fix `968d3439`).
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (a pipeline's is its last command's; §4's block shows the mutant script and its output, and each mutant line carries its own `rc`). Captured at `60cdac47` (the code `af684dc2`, the Bot P1 fix `968d3439`, revise round 1 `60cdac47`).
 
 ## 1. Task file and task copy
 ```console
@@ -24,6 +24,9 @@ dotfiles-T128-chain-glue-finish-a01.md: OK
 ## 2. Branch and the five premises
 ```console
 $ git log --oneline origin/main..HEAD; git rev-parse origin/main
+60cdac47 fix(orchestrator): chain-finish.sh checks each audit-finding line in the gate's grammar (PR #378 thread 4300359437)
+72d0cd07 docs(orchestration): chain-glue finish a01 report: the test file's line count from numstat (169)
+f13fed9f docs(orchestration): chain-glue finish a01 evidence update (the Bot's P1 thread 4300324931, fixed in 968d3439)
 968d3439 fix(orchestrator): chain-finish.sh runs HEAD's pre-merge pr-cost.sh, not the merged head's (PR #378 thread 4300324931)
 a8d975c6 docs(orchestration): chain-glue finish a01 task copy and evidence (af684dc2)
 af684dc2 feat(orchestrator): chain-finish.sh finishes a PR after the audit's dispositions from the main checkout's scripts, logging every step (plan 022 T8, T128 chain-glue finish a01)
@@ -59,6 +62,7 @@ $ git show origin/main:scripts/orchestrator/pr-cost.sh | /usr/bin/grep -c -e "^#
 ## 3. The Check
 ```console
 $ uv run python -m unittest tests/unit/test_chain_glue.py -v
+test_finish_checks_each_audit_finding_line_in_full (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_checks_each_audit_finding_line_in_full) ... ok
 test_finish_prints_the_acceptance_line_and_sends_nothing (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_prints_the_acceptance_line_and_sends_nothing) ... ok
 test_finish_refuses_a_head_that_differs_from_the_audit (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_refuses_a_head_that_differs_from_the_audit) ... ok
 test_finish_requires_an_audit_finding_line_per_incorrect_finding (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_requires_an_audit_finding_line_per_incorrect_finding) ... ok
@@ -78,7 +82,7 @@ test_integrate_runs_the_steps_in_order_and_logs_each (tests.unit.test_chain_glue
 test_integrate_stops_on_a_sandbox_scan_hit (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_stops_on_a_sandbox_scan_hit) ... ok
 
 ----------------------------------------------------------------------
-Ran 17 tests in 33.574s
+Ran 18 tests in 37.695s
 
 OK
 [exit 0]
@@ -101,7 +105,7 @@ All checks passed!
 ```
 ```console
 $ wc -l scripts/orchestrator/chain-finish.sh
-     148 scripts/orchestrator/chain-finish.sh
+     152 scripts/orchestrator/chain-finish.sh
 [exit 0]
 ```
 ## 4. Mutation check (each mutant applied alone with sed, its test run, the file restored with git checkout; then a baseline run)
@@ -130,6 +134,18 @@ run ff-gone '/^step ff-main 0/d' $O
 run sends 's|^echo "${accept}"|agmsg-dispatch x; echo "${accept}"|' $A
 run line-form 's|status=accepted reason=merged-as-|status=accepted reason=merged-|' $A
 run merged-pr-cost 's|^step pr-cost 0 "${BASH}" "${cost}" "${pr}"|step pr-cost 0 "${main}/scripts/orchestrator/pr-cost.sh" "${pr}"|' test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward
+lrun() { # label old new test: as run, with a literal string replacement (python's str.replace, once)
+    python3 -I -c 'import sys; p, a, b = sys.argv[1:]; t = open(p).read(); assert t.count(a) == 1, a; open(p, "w").write(t.replace(a, b))' "$S" "$2" "$3"
+    git diff -U0 -- "$S" | /usr/bin/grep -v -E '^(---|\+\+\+|@@|diff|index)' || echo "(nothing changed)"
+    UV_OFFLINE=1 uv run python -m unittest "$T" -k "$4" > "$TMPDIR/cgf/m.log" 2>&1
+    echo "mutant=$1 test=$4 rc=$? $(tail -1 "$TMPDIR/cgf/m.log")"
+    git checkout -- "$S"
+}
+lrun grammar-off 'refuse 12 "audit finding ${n} of ${sha7}: the line is not not-applicable:<reason of 20 or more characters>; evidence=<command>"' 'true' test_finish_checks_each_audit_finding_line_in_full
+lrun reason-length-off ' && ${#reason} -ge 20' '' test_finish_checks_each_audit_finding_line_in_full
+lrun evidence-text-off ' && ${evidence} =~ [^[:space:]]' '' test_finish_checks_each_audit_finding_line_in_full
+lrun second-delimiter-off ' && ${evidence} != *"; evidence="*' '' test_finish_checks_each_audit_finding_line_in_full
+lrun tab-check-off ' && ${line} != *$'"'"'\t'"'"'*' '' test_finish_checks_each_audit_finding_line_in_full
 UV_OFFLINE=1 uv run python -m unittest "$T" > "$TMPDIR/cgf/m.log" 2>&1; echo "baseline rc=$? $(tail -1 "$TMPDIR/cgf/m.log")"
 git status --short -- scripts/
 --- output
@@ -142,6 +158,7 @@ mutant=gate-input-off test=test_finish_refuses_a_head_that_differs_from_the_audi
 +true || refuse 10 "review worktree is not the canonical one: ${canonical}"
 mutant=canonical-off test=test_finish_refuses_a_head_that_differs_from_the_audit rc=1 FAILED (failures=1)
 -    [ -n "${line}" ] || refuse 12 "audit finding ${n} of ${sha7} has no audit-finding line"
+-        refuse 12 "audit finding ${n} of ${sha7}: the line is not not-applicable:<reason of 20 or more characters>; evidence=<command>"
 mutant=finding-line-off test=test_finish_requires_an_audit_finding_line_per_incorrect_finding rc=1 FAILED (failures=1)
 -[[ ${verdict} == "Verdict: correct" ]] || extra_args=(--audit-dispositions "${dispositions}")
 +true || extra_args=(--audit-dispositions "${dispositions}")
@@ -166,6 +183,21 @@ mutant=line-form test=test_finish_prints_the_acceptance_line_and_sends_nothing r
 -step pr-cost 0 "${BASH}" "${cost}" "${pr}"
 +step pr-cost 0 "${main}/scripts/orchestrator/pr-cost.sh" "${pr}"
 mutant=merged-pr-cost test=test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward rc=1 FAILED (failures=1)
+-        refuse 12 "audit finding ${n} of ${sha7}: the line is not not-applicable:<reason of 20 or more characters>; evidence=<command>"
++        true
+mutant=grammar-off test=test_finish_checks_each_audit_finding_line_in_full rc=1 FAILED (failures=6)
+-    [[ ${body} == *"; evidence="* && ${evidence} != *"; evidence="* && ${evidence} =~ [^[:space:]] && ${#reason} -ge 20 && ${line} != *$'\t'* ]] ||
++    [[ ${body} == *"; evidence="* && ${evidence} != *"; evidence="* && ${evidence} =~ [^[:space:]] && ${line} != *$'\t'* ]] ||
+mutant=reason-length-off test=test_finish_checks_each_audit_finding_line_in_full rc=1 FAILED (failures=3)
+-    [[ ${body} == *"; evidence="* && ${evidence} != *"; evidence="* && ${evidence} =~ [^[:space:]] && ${#reason} -ge 20 && ${line} != *$'\t'* ]] ||
++    [[ ${body} == *"; evidence="* && ${evidence} != *"; evidence="* && ${#reason} -ge 20 && ${line} != *$'\t'* ]] ||
+mutant=evidence-text-off test=test_finish_checks_each_audit_finding_line_in_full rc=1 FAILED (failures=4)
+-    [[ ${body} == *"; evidence="* && ${evidence} != *"; evidence="* && ${evidence} =~ [^[:space:]] && ${#reason} -ge 20 && ${line} != *$'\t'* ]] ||
++    [[ ${body} == *"; evidence="* && ${evidence} =~ [^[:space:]] && ${#reason} -ge 20 && ${line} != *$'\t'* ]] ||
+mutant=second-delimiter-off test=test_finish_checks_each_audit_finding_line_in_full rc=1 FAILED (failures=5)
+-    [[ ${body} == *"; evidence="* && ${evidence} != *"; evidence="* && ${evidence} =~ [^[:space:]] && ${#reason} -ge 20 && ${line} != *$'\t'* ]] ||
++    [[ ${body} == *"; evidence="* && ${evidence} != *"; evidence="* && ${evidence} =~ [^[:space:]] && ${#reason} -ge 20 ]] ||
+mutant=tab-check-off test=test_finish_checks_each_audit_finding_line_in_full rc=1 FAILED (failures=2)
 baseline rc=0 OK
 [exit 0]
 ```
@@ -174,11 +206,11 @@ baseline rc=0 OK
 $ git diff --numstat origin/main...HEAD
 3	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/autoskill.md
 6	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/learning.md
-55	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/report.md
+60	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/report.md
 27	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/sandbox.md
 121	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/task.md
-171	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/validation.md
-148	0	scripts/orchestrator/chain-finish.sh
-169	0	tests/unit/test_chain_glue.py
+184	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/validation.md
+152	0	scripts/orchestrator/chain-finish.sh
+192	0	tests/unit/test_chain_glue.py
 [exit 0]
 ```

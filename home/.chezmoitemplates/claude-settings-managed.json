@@ -71,7 +71,8 @@
   "autoAllowBashIfSandboxed": true,
   "allowUnsandboxedCommands": true,
   "excludedCommands": [
-    "agmsg-dispatch *"
+    "agmsg-dispatch *",
+    "codex-local-review *"
   ],
   "filesystem": {
     "allowWrite": [
@@ -111,6 +112,7 @@
   "allowUnsandboxedCommands": true,
   "excludedCommands": [
     "agmsg-dispatch *",
+    "codex-local-review *",
     "gh *",
     "herdr-agents *",
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *"

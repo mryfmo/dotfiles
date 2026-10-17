@@ -1,0 +1,19 @@
+[
+  {
+    "id": "a5-orchestrator-review-pending",
+    "scope": "review",
+    "body": "D-399-review-path (message2034) explicitly defers independent security review of the pushed A5 head to the orchestrator plus task audit. Worker reviewer content-filter refusal is a tool limit, not a code finding. No approval inferred. Current eight source hashes and functional checks are in raw/amendment5/source-integrity.json. Publication is authorized; review/gate approval remains pending.",
+    "resolved": false,
+    "source_sha256": {
+      "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+      "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+      "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+      "tests/unit/test_generate_agent_configs.py": "0ed6e46d0da10ff15af0fb4658b3aafa8a85bc5acc0b5618ccf840e4854b633f",
+      "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+      "home/dot_local/bin/common/executable_codex-local-review": "a30c2eec2be5bf8a34a9ba06343990eb2782befbe141a187ac7569863460f6cc",
+      "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a",
+      "scripts/generate-agent-configs.py": "e830b5f1135d221a8d0d20e4c5962ed8a2a7e6a94c2b47f4f2376410bcaada9d"
+    },
+    "task_sha256": "e08a2054ee4ee11c5cb15444b7cfe6c762060a24025434f1cd2b013e818c3213"
+  }
+]

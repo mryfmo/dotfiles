@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -1361,6 +1362,14 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         outputs[ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"] = render_codex_plugin(plugin)
     outputs.update(claude_skill_symlink_outputs())
     outputs.update(render_asset_constants(manifest))
+    wrapper = ROOT / "home/dot_local/bin/common/executable_codex-local-review"
+    digest = hashlib.sha256((ROOT / "scripts/orchestrator/local-review.sh").read_bytes()).hexdigest()
+    content, count = re.subn(
+        r"^EXPECTED_SHA256=[a-f0-9]{64}$", f"EXPECTED_SHA256={digest}", wrapper.read_text(), flags=re.MULTILINE
+    )
+    if count != 1:
+        fail("codex-local-review must assign EXPECTED_SHA256 exactly once")
+    outputs[wrapper] = content
     return outputs
 
 

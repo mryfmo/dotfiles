@@ -49,7 +49,6 @@
 ## Owned by dotfiles-T128-model-profiles-xhigh-followup-a01
 
 4289170845	docs-role-efforts
-- the row above is closed by the operator's second commit af7e9105 (the README paragraph; the thread `fixed:af7e9105`), noted 2026-10-17T00:41:57Z; no owner work remains for it.
 
 - 2026-10-15T23:15:39Z Bot review 5540995012 on 429a6c55: one P2 (thread 4289170845, `home/dot_agents/agent-config.yaml:37`): README.md lines 361 to 366 still document the deep Claude orchestrator and the standard Codex worker at `high`. README.md is outside this PR's files, so under plan 020 step 1 and C-50 it is advisory: owned by `dotfiles-T128-model-profiles-xhigh-followup-a01` (its file exists since 23:1xZ and now lists README.md with its row), dispositioned on the thread as `not-applicable:advisory P2 owned by …; evidence=shasum -a 256 <owner task file>`; class `docs-role-efforts` (first row of the class on this artifact).
 - 2026-10-16T01:19:10Z the integration chain started (`integrate-pr.sh … 370 … 370-summary.txt`; `370-extra.tsv` holds the Bot P2's advisory disposition): PR #369 is back in a worker round (amendment 1 pending its pair confirm), so #370 is the one PR in integration now.

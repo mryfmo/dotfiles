@@ -10,7 +10,7 @@ allowed_files:
   - scripts/orchestrator/dispatch.sh
   - tests/unit/test_orchestrator_tools.py
   - .orchestration/dotfiles-T128-orchestrator-tools-followup-a04/**
-after: [dotfiles-T128-orchestrator-tools-followup-a03]
+after: [dotfiles-T128-orchestrator-tools-followup-a03, dotfiles-T128-seat-launch-args-a01]
 threat_table:
   - control: the PR edits scripts/orchestrator/dispatch.sh only within the owned rows (item 1)
     disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the orchestrator's diff review and the task-level audit from main compare the diff against those rows; an edit outside them is an undeclared change the audit fails"
@@ -43,10 +43,10 @@ premises:
     command: 'git cat-file -e origin/main:.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md && echo present || echo absent'
     output: |-
       present
-  - claim: 'the lineage acceptance record''s Owned-by section is on origin/main at dispatch (absent today: it lands with the boundary after PR #374 merges; a dispatch before the section would read no rows)'
+  - claim: 'the lineage acceptance record''s Owned-by section is on origin/main at dispatch (present since boundary (17), PR #384 merged as a0e8b8ad on 2026-10-17)'
     command: 'git show origin/main:.orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md 2>/dev/null | /usr/bin/grep -q "^## Owned by dotfiles-T128-orchestrator-tools-followup-a04" && echo present || echo absent'
     output: |-
-      absent
+      present
 ---
 
 # AGMSG-TASK dotfiles-T128-orchestrator-tools-followup-a04 — the advisory findings of PR #374 (the owner task of the orchestrator-tools lineage; plan 020 step 1, C-51's owner-first rule)
@@ -65,4 +65,17 @@ Written 2026-10-16 by the orchestrator seat before the lineage's integration cha
 
 ## Completion
 
-One PR from a fresh branch off `origin/main` (after PR #374 merges). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more after a P0/P1 fix round), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the outputs above, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 as fixed in a C-50 round or advisory; the orchestrator's audit of the final head is dispositioned finding by finding before the gate. The Bot reviews once, at PR open; its P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=2` (the Bot's review at PR open and its re-review after the fix round), stops the PR and goes to the operator as a decision; a P2 on this PR's own change whose fix stays within allowed_files gets C-50's revise round while INV-6's counts allow it, else it is advisory and recorded under the same heading for the lineage's next owner task. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names per row, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-orchestrator-tools-followup-a04/task.md>` and the evidence paths.
+One PR from a fresh branch off `origin/main` (after the lineage's PR #374 and dotfiles-T128-seat-launch-args-a01 merge). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more on `@codex review` after a P0/P1 fix round: plan 020 step 2), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the Check's outputs, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 thread with the disposition the worker proposes; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot's P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=2` (the Bot's review at PR open and its re-review after the fix round), stops the PR and goes to the operator as a decision; a P2 of the Bot's first review on this PR's own change whose fix stays within `allowed_files` and is small (one flag or a few lines plus one test) is fixed in a revise round the orchestrator sends with a `check=` while INV-6's counts allow it (C-50; the counters count every fix round, before or after the first RESULT); the third finding of one class on this PR stops the rounds until the orchestrator's `re-plan:` line (C-59); a later review's P2 and every P3 are advisory (C-61), as is any other P2, owned by `<lineage>-followup-a01`, which the orchestrator writes when the first advisory P2 appears, before the PR's dispositions (C-51), and recorded under `## Owned by <lineage>-followup-a01` in this task's acceptance record. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-orchestrator-tools-followup-a04/task.md>` and the evidence paths.
+
+## Change (round 1, 2026-10-17T08:20:04Z)
+
+The Codex half's round 1: `after:` names the seat-launch-args task (the C-60:1 row consumes seat-args.sh); the Completion clause is the template's current one (the first review's P2 fixed in-PR, later P2 and every P3 to the next owner, the S1 and C-61 sentences); the owned row audit:4460d52:3 reads 40 hex for previous_head (git SHA-1), corrected in the lineage record; the operator withdrew the template's comparison constraint on 2026-10-17 in favour of lint and tests (the process-hardening lineage), so no constraint sentence is added here. Nothing else changes from `fdac4a8b`.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+dotfiles-T128-orchestrator-tools-followup-a04.md: OK
+premise 1: OK
+premise 2: OK
+masked 0 match(es) in .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04.md
+```

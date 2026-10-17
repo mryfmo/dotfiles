@@ -29,7 +29,7 @@ threat_table:
   - control: in-process effects
     disposition: "residual: the tests run local-advisory.sh as a subprocess with real git in a temporary repository, and import only the standard library; nothing is imported into another process"
   - control: workflow and interpreter or environment inputs
-    disposition: "residual: no workflow or interpreter file is in allowed_files; local-advisory.sh runs git rev-parse, grep, sed, shasum and awk and reads the local-review file and the record as data; nothing from a PR head runs"
+    disposition: "residual: no workflow or interpreter file is in allowed_files; local-advisory.sh runs git rev-parse, grep, sed, shasum and awk and reads the local-review file and the record as data; nothing from a PR head runs; local-advisory.sh also runs head, cut, sort, tr and tail from PATH as today, with no test seam beyond the stub review binary"
   - control: new or renamed scripts
     disposition: "residual: no new or renamed script: the owned rows name edits to the two files the lineage landed; any new or renamed script is an undeclared change the audit fails"
   - control: orchestrator effect merge
@@ -43,10 +43,10 @@ premises:
     command: 'git cat-file -e origin/main:.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a03.md && echo present || echo absent'
     output: |-
       present
-  - claim: 'the lineage acceptance record''s Owned-by section is on origin/main at dispatch (absent today: it lands with the boundary after PR #381 merges; a dispatch before the section would read no rows)'
+  - claim: 'the lineage acceptance record''s Owned-by section is on origin/main at dispatch (present since boundary (17), PR #384 merged as a0e8b8ad on 2026-10-17)'
     command: 'git show origin/main:.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a03.md 2>/dev/null | /usr/bin/grep -q "^## Owned by dotfiles-T128-chain-review-scripts-followup-a04" && echo present || echo absent'
     output: |-
-      absent
+      present
 ---
 
 # AGMSG-TASK dotfiles-T128-chain-review-scripts-followup-a04 — the advisory findings of PR #381 (the owner task of the chain-review-scripts lineage; plan 020 step 1, C-51's owner-first rule)
@@ -55,7 +55,7 @@ Written 2026-10-16 by the orchestrator seat before the lineage's integration cha
 
 ## What to do
 
-1. The owned rows: the `<id>\t<class>` rows under the heading `## Owned by dotfiles-T128-chain-review-scripts-followup-a04` in `.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a03.md` as read from `origin/main`; each row's finding text is in the record (the Bot thread, the local review file or the audit receipt the id names). Implement each, with one test per row named in report.md. A missing or empty section at dispatch makes this task a no-op: report `no owned rows` and stop; the orchestrator dispatches only after both premises replay `present`.
+1. The owned rows: the `<id>\t<class>` rows under the heading `## Owned by dotfiles-T128-chain-review-scripts-followup-a04` in `.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a03.md` as read from `origin/main`; each row's finding text is in the record (the Bot thread, the local review file or the audit receipt the id names). Implement each, with one test per row named in report.md (a row whose content is to keep a form stable and name the consumer rows, such as the classing half of audit:d3e8acf:2, is closed by the report statement and the existing test that pins the form, `test_local_advisory_classes_a_repeat_by_the_earlier_row`, named in report.md). A missing or empty section at dispatch makes this task a no-op: report `no owned rows` and stop; the orchestrator dispatches only after both premises replay `present`.
 2. Nothing else changes: no file outside the owned rows' files, no behaviour the rows do not name (local-advisory.sh still appends advisory rows for a head's local review and refuses a row without an owner task file).
 
 ## Validation
@@ -65,4 +65,25 @@ Written 2026-10-16 by the orchestrator seat before the lineage's integration cha
 
 ## Completion
 
-One PR from a fresh branch off `origin/main` (after PR #381 merges). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more after a P0/P1 fix round), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the outputs above, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 as fixed in a C-50 round or advisory; the orchestrator's audit of the final head is dispositioned finding by finding before the gate. The Bot reviews once, at PR open; its P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=2` (the Bot's review at PR open and its re-review after the fix round), stops the PR and goes to the operator as a decision; a P2 on this PR's own change whose fix stays within allowed_files gets C-50's revise round while INV-6's counts allow it, else it is advisory and recorded under the same heading for the lineage's next owner task. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names per row, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-chain-review-scripts-followup-a04/task.md>` and the evidence paths.
+One PR from a fresh branch off `origin/main` (after the lineage's PR #381 merged). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more on `@codex review` after a P0/P1 fix round: plan 020 step 2), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the Check's outputs, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 thread with the disposition the worker proposes; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot's P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=2` (the Bot's review at PR open and its re-review after the fix round), stops the PR and goes to the operator as a decision; a P2 of the Bot's first review on this PR's own change whose fix stays within `allowed_files` and is small (one flag or a few lines plus one test) is fixed in a revise round the orchestrator sends with a `check=` while INV-6's counts allow it (C-50; every fix round, before or after the first RESULT, counts toward INV-6's cap of two, C-61); the third finding of one class on this PR stops the rounds until the orchestrator's `re-plan:` line (C-59); a later review's P2 and every P3 are advisory (C-61), as is any other P2, owned by `dotfiles-T128-chain-review-scripts-followup-a05`, which the orchestrator writes when the first advisory P2 appears, before the PR's dispositions (C-51), and recorded under `## Owned by dotfiles-T128-chain-review-scripts-followup-a05` in this task's acceptance record. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-chain-review-scripts-followup-a04/task.md>` and the evidence paths.
+
+## Change (round 1, 2026-10-17T08:20:04Z)
+
+The Codex half's round 1: the Completion clause is the template's current one; the workflow row names the script's remaining PATH binaries; no template constraint sentence (withdrawn by the operator on 2026-10-17 in favour of a lint, the process-hardening lineage's a03). Nothing else changes from `6320db25`.
+
+## Change (round 2, 2026-10-17T09:43:39Z)
+
+The review seat's round 1 (a005): the Completion clause's `<lineage>` placeholders are substituted (the next owner is dotfiles-T128-chain-review-scripts-followup-a05) and its counting clause is the rule form (every fix round counts, C-61) rather than a claim about the counters; the report-only row's deliverable is named; the checks block carries the checker and mask lines. Nothing else changes.
+
+## Change (round 3, 2026-10-17T09:48:07Z)
+
+The Codex half's round 3: the next owner reads `dotfiles-T128-chain-review-scripts-followup-a05` in both places (the lineage substitution had doubled `-followup`); the checks block carries the checker and mask lines. Nothing else changes.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+dotfiles-T128-chain-review-scripts-followup-a04.md: OK
+premise 1: OK
+premise 2: OK
+masked 0 match(es) in .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a04.md
+```

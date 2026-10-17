@@ -451,6 +451,20 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
                 )
                 self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], expected)
 
+    def test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path(self) -> None:
+        # audit:ca892e4:1: a quoted or escaped ~ names a literal ~ directory in the shell, not the managed home path.
+        format_hook = {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"}
+        reload_hook = {"type": "command", "command": "~/.claude/hooks/project-map-reload.sh"}
+        managed_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook, reload_hook]}
+        for command in ("'~/.claude/hooks/format-edited-files.py'", "\\~/.claude/hooks/format-edited-files.py"):
+            literal = {"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": command}]}
+            with self.subTest(command=command):
+                output = self.merge(
+                    {"hooks": {"PostToolUse": [managed_entry]}},
+                    json.dumps({"hooks": {"PostToolUse": [literal]}}),
+                )
+                self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], [literal, managed_entry])
+
     def test_managed_hook_object_key_order_is_preserved(self) -> None:
         managed = {
             "enabledPlugins": {},

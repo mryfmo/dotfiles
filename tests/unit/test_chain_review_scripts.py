@@ -6,6 +6,7 @@ working directory, the HEAD there, PATH and its stdin to `<calls>/<name>.log`, p
 `<calls>/status` (0 when absent).
 """
 
+import hashlib
 import os
 import re
 import subprocess
@@ -351,6 +352,7 @@ class ChainReviewScriptsTest(unittest.TestCase):
     def test_local_advisory_records_p2_rows_and_stops_on_p0_p1(self):
         head, owner = "abcdef0" + "1" * 33, "t-followup-a01"
         record = self.write(".orchestration/acceptance/t-a01.md", "# record\n")
+        sha = hashlib.sha256(self.write(f".orchestration/tasks/{owner}.md", "owner\n").read_bytes()).hexdigest()
         heading = f"## Owned by {owner} (advisory P2 of the final head; plan 020 step 1.2; rows id<TAB>class)\n"
         # Numbered in sort order; the second is cut to 120 characters, then loses its backticks.
         first, long = "- [P2] `a.sh:1` first", "- [P2] `b.sh:3` " + "y" * 130
@@ -365,7 +367,7 @@ class ChainReviewScriptsTest(unittest.TestCase):
             text = finding[:120].replace("`", "")
             return (
                 f"local-finding: abcdef0:{n} not-applicable:advisory P2 owned by {owner} ({text}); "
-                f"evidence=git show origin/main:.orchestration/tasks/{owner}.md | grep -n 'item 1'\n"
+                f"evidence=shasum -a 256 .orchestration/tasks/{owner}.md ({sha})\n"
             )
 
         review(long, first)
@@ -410,13 +412,69 @@ class ChainReviewScriptsTest(unittest.TestCase):
         # A dotted owner is no wildcard, and a longer id that starts with the owner is another owner.
         head = "abcdef0" + "1" * 33
         self.write(f".orchestration/validation/t-a01-local-review-{head[:7]}.md", "---\nfindings: 1\n---\n\n- [P2] x\n")
-        near = "# record\n## Owned by t-followupXa01 (x)\n## Owned by t.followup-a01b (x)\n"
+        # tXfollowup-a01 matches t.followup-a01 as a regex, anchored or not (the audit of 40f3be4, finding 2).
+        near = "# record\n## Owned by t-followupXa01 (x)\n## Owned by t.followup-a01b (x)\n## Owned by tXfollowup-a01 (x)\n"
         record = self.write(".orchestration/acceptance/t-a01.md", near)
+        self.write(".orchestration/tasks/t.followup-a01.md", "owner\n")
         self.run_tool("local-advisory.sh", "t-a01", head, "t.followup-a01")
         self.assertEqual(1, record.read_text().count("\n## Owned by t.followup-a01 (advisory P2"))
         self.run_tool("local-advisory.sh", "t-a01", head, "t.followup-a01")
         self.assertEqual(1, record.read_text().count("\n## Owned by t.followup-a01 (advisory P2"))
         self.assertTrue(record.read_text().startswith(near))
+
+    def test_local_advisory_refuses_an_absent_owner_task_and_hashes_the_file(self):
+        # C-51: no row names an owner task that does not exist, and the evidence replays before the boundary.
+        head, owner = "abcdef0" + "1" * 33, "t-followup-a01"
+        self.write(f".orchestration/validation/t-a01-local-review-{head[:7]}.md", "---\nfindings: 1\n---\n\n- [P2] x\n")
+        record = self.write(".orchestration/acceptance/t-a01.md", "# record\n")
+        self.assertIn(
+            f"write the owner task {owner} first", self.run_tool("local-advisory.sh", "t-a01", head, owner, code=2)
+        )
+        self.assertEqual("# record\n", record.read_text())
+        owner_file = self.write(f".orchestration/tasks/{owner}.md", "# the owner task\n")
+        self.run_tool("local-advisory.sh", "t-a01", head, owner)
+        sha = hashlib.sha256(owner_file.read_bytes()).hexdigest()
+        [line] = [line for line in record.read_text().splitlines() if line.startswith("local-finding:")]
+        self.assertTrue(line.endswith(f"; evidence=shasum -a 256 .orchestration/tasks/{owner}.md ({sha})"), line)
+
+    def test_local_advisory_classes_a_repeat_by_the_earlier_row(self):
+        # C-50: a finding found again on a later head takes the class the record gave the earlier finding, so the
+        # three-rows rule can count it; the later head's row wins, and a line range is a token.
+        owner, v = "t-followup-a01", ".orchestration/validation"
+        self.write(f".orchestration/tasks/{owner}.md", "owner\n")
+        self.write(
+            f"{v}/t-a01-local-review-aaaaaa1.md",
+            "---\nfindings: 2\n---\n\n- [P2] scripts/x.sh:12 quoting\n- [P2] scripts/y.sh:3-5 range\n",
+        )
+        self.write(f"{v}/t-a01-local-review-bbbbbb2.md", "---\nfindings: 1\n---\n\n- [P3] scripts/x.sh:12 again\n")
+        rows = "local:aaaaaa1:1\tquoting\nlocal:aaaaaa1:2\trange-case\nlocal:bbbbbb2:1\tenv-s-quoting\n"
+        record = self.write(".orchestration/acceptance/t-a01.md", f"# record\n{rows}")
+        head = "cccccc3" + "1" * 33
+        current = "- [P2] `scripts/x.sh:12` once more\n- [P2] scripts/y.sh:3-5 again\n- [P2] scripts/y.sh:3-9 wider\n- [P2] scripts/z.sh:7 new\n"
+        self.write(f"{v}/t-a01-local-review-cccccc3.md", f"---\nfindings: 4\n---\n\n{current}")
+        self.run_tool("local-advisory.sh", "t-a01", head, owner)
+        text = record.read_text()
+        self.assertEqual(
+            [
+                "local:cccccc3:1\tenv-s-quoting",
+                "local:cccccc3:2\trange-case",
+                "local:cccccc3:3\tadvisory-p2",  # y.sh:3-9 is another token than y.sh:3-5
+                "local:cccccc3:4\tadvisory-p2",
+            ],
+            re.findall(r"^local:cccccc3:\d\t.*$", text, re.MULTILINE),
+        )
+        findings = re.findall(r"^local-finding: cccccc3:(\d) .*$", text, re.MULTILINE)
+        self.assertEqual(["1", "2", "3", "4"], findings)
+        lines = [line for line in text.splitlines() if line.startswith("local-finding: cccccc3:")]
+        self.assertIn("(- [P2] scripts/x.sh:12 once more; repeat of local:bbbbbb2:1)", lines[0])
+        self.assertIn("(- [P2] scripts/y.sh:3-5 again; repeat of local:aaaaaa1:2)", lines[1])
+        self.assertNotIn("repeat of", lines[2] + lines[3])
+        # A review without findings needs no owner file and writes no heading.
+        empty = "dddddd4" + "1" * 33
+        self.write(f"{v}/t-b01-local-review-dddddd4.md", "---\nfindings: 0\n---\n")
+        b = self.write(".orchestration/acceptance/t-b01.md", "# record\n")
+        self.run_tool("local-advisory.sh", "t-b01", empty, "t-nobody-a01")
+        self.assertEqual("# record\n", b.read_text())
 
     def test_sandbox_scan_prints_the_unsandboxed_mutation_calls(self):
         sandboxes = ".orchestration/sandboxes"

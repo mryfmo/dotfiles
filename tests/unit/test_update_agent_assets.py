@@ -34,6 +34,8 @@ else:
     entry["sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
     tool = "omp" if name == "npm" else "hcom"
     target = Path(os.environ["HOME"]) / ".local/bin" / tool
+    if name == "npm" and target.is_symlink():
+        sys.exit("npm error code EEXIST: " + str(target))
     target.write_text("#!/usr/bin/env bash\nprintf '%s\\n' " + shlex.quote(tool + ("/" if tool == "omp" else " ") + os.environ["FIXTURE_VERSION"]) + "\n")
     target.chmod(0o755)
 with open(os.environ["CALLS"], "a") as log:
@@ -170,6 +172,50 @@ class UpdateAgentAssetsTest(unittest.TestCase):
 
     def test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin(self):
         self.exercise_update("omp")
+
+    def test_update_omp_removes_only_a_dangling_symlink_at_the_install_path(self):
+        # The fixture npm fails with EEXIST over any symlink, as npm does over a bin link it does not own.
+        for link in ("dangling", "live", None):
+            with self.subTest(link=link), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                binary = home / ".local/bin"
+                binary.mkdir(parents=True)
+                for name in ("curl", "npm"):
+                    (binary / name).write_text(STUB.replace("@PYTHON@", sys.executable))
+                    (binary / name).chmod(0o755)
+                target, old = binary / "omp", home / "tern/bin/omp"
+                if link == "live":
+                    old.parent.mkdir(parents=True)
+                    old.write_text("#!/bin/sh\necho omp/0.0.1\n")
+                    old.chmod(0o755)
+                if link:
+                    target.symlink_to(old)
+                payload = home / "payload"
+                payload.write_bytes(b"fixture omp tarball\n")
+                result = subprocess.run(
+                    ["bash", "-c", 'source "$1"; OMP_PIN_VERSION=18.11.3; OMP_TARBALL_SHA256="$2"; update_omp']
+                    + ["bash", str(UPDATER), hashlib.sha256(payload.read_bytes()).hexdigest()],
+                    env=os.environ
+                    | {
+                        "HOME": directory,
+                        "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+                        "CALLS": str(home / "calls.jsonl"),
+                        "PAYLOAD": str(payload),
+                        "FIXTURE_VERSION": "18.11.3",
+                    },
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                output = result.stdout + result.stderr
+                self.assertEqual(link == "live", result.returncode != 0, output)
+                self.assertEqual(link == "live", target.is_symlink())
+                self.assertEqual(link == "dangling", str(old) in result.stdout, output)
+                if link == "live":
+                    self.assertIn("EEXIST", output)
+                    self.assertEqual(old, target.readlink())
 
     def test_omp_version_check_accepts_the_branded_omp_slash_version_form(self):
         for output, valid in (

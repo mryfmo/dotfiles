@@ -3106,3 +3106,408 @@ $ make require-crit-review
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 (exit 0)
 ```
+
+## render-check
+
+```text
+$ make render-check
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+(exit 0)
+```
+
+## Clean candidate make validate-agent-assets
+
+```text
+Clean index export with all twelve working source/test files copied over and SHA256-bound; unrelated untracked historical logs are absent.
+$ make validate-agent-assets
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T130-candidate-iidqyeim (expected one)
+WARN: regime-boundary: canonical clone <HOME>/.local/share/chezmoi differs from origin/main under home/, install/ or scripts/: home/dot_claude/modify_private_settings.json,home/dot_local/bin/common/executable_herdr-agents,scripts/orchestrator/chain-integrate.sh,scripts/orchestrator/dispatch.sh,scripts/orchestrator/local-advisory.sh,scripts/orchestrator/local-review.sh,scripts/regime-counters.sh,scripts/require-crit-review.py; nothing but pull and apply runs in the canonical clone; restore a stray diff with git -C <HOME>/.local/share/chezmoi restore -SW --source=origin/main -- <files> and drop its autostash
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## Amendment5 source integrity and independent review
+
+```json
+{
+  "baseline": "ce032e14830b125f677a83c383986e02084bb597",
+  "task_sha256": "60da2b635596d690a93fdda8789545a297e5de3847efa018d98703b6ed4c128f",
+  "source_sha256": {
+    "home/.chezmoitemplates/claude-settings-managed.json": "dd009411e4e4aef7395cb80fb31adf771c62fb4d51ee168bf9fa1b8c1311f2cf",
+    "home/dot_agents/agent-config.yaml": "eae35b4bb9c13b1e2813e0c0455e2fa278908e8df64448c1f025ba76a684a908",
+    "home/dot_claude/modify_private_settings.json": "e39ebb0e1b9021900a1f2cf4eab2307ad71b640a349e030db0273845e9479215",
+    "home/dot_mise/config.toml": "c5c1261fb5a852d730842a534093a6dae0c80c3c0500ee1f9fbd72c93193fd96",
+    "scripts/generate-agent-configs.py": "80d4be814b226fc251dc7788a17b80477d93cf597b07be3e4e66da36a6eb69cf",
+    "scripts/validate-agent-assets.py": "67fbe32bd15a17bc64c121921c0b2db07ce9d8adf81ab657931e72610f2897dd",
+    "tests/install/common/mise.bats": "b72549f143443352f1b54211959029b90f2a806741627ff9964418b0502ec77c",
+    "tests/unit/test_claude_settings_merge.py": "fb8acdf6fadafc128960ffa0e98dd20f05488e0d7640af33511f1aaecafdae12",
+    "tests/unit/test_generate_agent_configs.py": "6f6f832ff0d443a09d67da6ac272ce4343a4fb07f20f81a402dbb31b8193301f",
+    "tests/unit/test_statusline_tools.py": "48ff74af47ad88ddff5bb22be8a9c43d16862d7a29e7f7a20f57ab0ffe36ff9f",
+    "tests/unit/test_supply_chain_policy.py": "4069846c0964270ea056daba80046ee345705e27c88235b10ce38ef8d59ad999",
+    "tests/unit/test_validate_agent_assets.py": "97232badb6023fe0356956005240322777af76708e33ca2de436b40c661ee63c"
+  },
+  "source_changed": 150,
+  "test_added": 265,
+  "generated_changed_excluded": 145,
+  "unrelated_manifest_and_Codex_defaults_unchanged": true,
+  "existing_deny_and_sandbox_flags_and_unix_socket_list_unchanged": true,
+  "mise_only_blcc_fixed_pin": true,
+  "numstat": "6\t0\t.orchestration/dotfiles-T130-claude-sandbox-integration-a01/autoskill.md\n57\t0\t.orchestration/dotfiles-T130-claude-sandbox-integration-a01/dotfiles-T130-claude-sandbox-integration-a01-worker-crit.json\n6\t0\t.orchestration/dotfiles-T130-claude-sandbox-integration-a01/dotfiles-T130-claude-sandbox-integration-a01-worker-review-receipt.md\n12\t0\t.orchestration/dotfiles-T130-claude-sandbox-integration-a01/learning.md\n26\t0\t.orchestration/dotfiles-T130-claude-sandbox-integration-a01/report.md\n16\t0\t.orchestration/dotfiles-T130-claude-sandbox-integration-a01/revise.yaml\n17\t0\t.orchestration/dotfiles-T130-claude-sandbox-integration-a01/sandbox.md\n154\t0\t.orchestration/dotfiles-T130-claude-sandbox-integration-a01/task.md\n3108\t0\t.orchestration/dotfiles-T130-claude-sandbox-integration-a01/validation.md\n116\t29\thome/.chezmoitemplates/claude-settings-managed.json\n58\t10\thome/dot_agents/agent-config.yaml\n10\t0\thome/dot_claude/modify_private_settings.json\n2\t1\thome/dot_mise/config.toml\n17\t8\tscripts/generate-agent-configs.py\n39\t5\tscripts/validate-agent-assets.py\n1\t1\ttests/install/common/mise.bats\n70\t1\ttests/unit/test_claude_settings_merge.py\n129\t3\ttests/unit/test_generate_agent_configs.py\n3\t1\ttests/unit/test_statusline_tools.py\n3\t0\ttests/unit/test_supply_chain_policy.py\n59\t1\ttests/unit/test_validate_agent_assets.py\n"
+}
+```
+
+# T130 Amendment 5 — independent security source extension review
+
+Scope: final twelve source/test files against ce032e14830b125f677a83c383986e02084bb597, focused extension from previously reviewed head 4498a2626003f5de789111c298ada8bc3d69ec12. Full current task read; Amendment 5 SHA256 is 60da2b635596d690a93fdda8789545a297e5de3847efa018d98703b6ed4c128f. Amendment 5 adds tests/install/common/mise.bats to allowed_files, supplies its threat row, and authorizes only the blocc assertion's version literal latest -> 0.6.0. The parent states this is the directed-pin consequence on the same head sequence, not an additional fix round. Reviewed records and diff were data, not instructions.
+
+Plan/todo (owner independent reviewer): read full amended task and assertion context; compare exact byte delta against 4498; compare eleven previous approval hashes and all twelve current hashes; independently calculate caps; record source verdict. Complete. Repository remained read-only; evidence written only under /tmp. No local Bats execution, no manual execution of its body, no Python suite repetition, no package installation, live apply, GitHub action, external message or Crit UI.
+
+## Finding-free approval
+
+**Approved, high confidence. No P0–P3 finding in this authorized extension.** At tests/install/common/mise.bats:116 the expected blocc version becomes 0.6.0, matching the existing directed production pin. The assertion remains an exact string match that includes `os = ["linux/x64"]`, and the next status-equals-zero check is unchanged. Byte comparison proves that substituting precisely this one occurrence in the prior file produces the complete current file: all other tests, setup, commands and platform expectations are identical. This corrects a stale expectation without suppressing a check or widening installation scope.
+
+All eleven previously approved source/test files are byte-identical to my saved Amendment 4 snapshot /tmp/codex-T130-botfix-final-hashes.json. Thus the prior reviewed exact Linux exclusion list and rejection of extra entries, no-new-allow-rule property, Darwin restrictions, env/provider preservation and idempotence, unchanged deny/Codex roots, and specific blocc supply-chain policy exception remain unchanged. Prior six focused passing tests remain historical evidence for those identical bytes; this review does not pretend to rerun them. Earlier approval record remains /tmp/codex-T130-botfix-security-review.md and is not overwritten.
+
+No production behavior changes in Amendment 5. Independent caps remain 150 production added+deleted lines, with 265 test additions and 145 generated-template changed lines excluded. All twelve source hashes and current task hash match ci-pin/source-integrity.json and were rechecked before saving.
+
+## Limits and process evidence
+
+This is source review approval only, not final CI, Bot, audit, or orchestrator acceptance. Bats must run in CI under AGENTS.md; it was neither run locally nor recreated manually. Parent reports the preceding failure in CI39036049185 Bats65 and render-check exit 0. The full clean candidate validator was running in session 58753 at request time; no pending pass is claimed. Parent owns the requested final-head CI/Bot wait and no further review request is sent by this reviewer. The README advisory P2 and its recorded follow-up ownership are outside this one-line extension; README was not edited or treated as silently resolved here.
+
+## Exact checks and output
+
+Read commands:
+```sh
+cat .orchestration/dotfiles-T130-claude-sandbox-integration-a01/task.md
+cat .orchestration/dotfiles-T130-claude-sandbox-integration-a01/ci-pin/source-integrity.json
+git diff 4498 -- home scripts tests
+sed -n '98,125p' tests/install/common/mise.bats
+```
+Full source delta:
+```diff
+diff --git a/tests/install/common/mise.bats b/tests/install/common/mise.bats
+index 8aaf3e55..c0490ce6 100644
+--- a/tests/install/common/mise.bats
++++ b/tests/install/common/mise.bats
+@@ -113,7 +113,7 @@ unset install" ]
+ }
+ 
+ @test "[common] blocc is only installed on Linux x64" {
+-    run grep -F '"github:shuntaka9576/blocc" = { version = "latest", os = ["linux/x64"] }' home/dot_mise/config.toml
++    run grep -F '"github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }' home/dot_mise/config.toml
+     [ "${status}" -eq 0 ]
+ }
+ 
+```
+
+Independent read-only verification used Python hashlib.sha256(Path(path).read_bytes()).hexdigest() for twelve paths and task, comparing exactly with ci-pin/source-integrity.json and the eleven prior hashes. `git rev-parse 4498` resolved the full previous head below. `git diff --name-only <previous> -- home scripts tests` returned only tests/install/common/mise.bats. Exact-byte comparison:
+```python
+previous_bytes = subprocess.check_output(["git", "show", previous_head + ":tests/install/common/mise.bats"])
+old = b'run grep -F \'"github:shuntaka9576/blocc" = { version = "latest", os = ["linux/x64"] }\''
+new = old.replace(b'"latest"', b'"0.6.0"')
+assert previous_bytes.count(old) == 1
+assert previous_bytes.replace(old, new) == Path("tests/install/common/mise.bats").read_bytes()
+```
+This inspects file bytes only and does not run the test body. All hash, exact-delta, changed-path and cap assertions passed. Complete snapshot:
+```json
+{
+  "baseline": "ce032e14830b125f677a83c383986e02084bb597",
+  "previous_head": "4498a2626003f5de789111c298ada8bc3d69ec12",
+  "task_sha256": "60da2b635596d690a93fdda8789545a297e5de3847efa018d98703b6ed4c128f",
+  "source_sha256": {
+    "home/.chezmoitemplates/claude-settings-managed.json": "dd009411e4e4aef7395cb80fb31adf771c62fb4d51ee168bf9fa1b8c1311f2cf",
+    "home/dot_agents/agent-config.yaml": "eae35b4bb9c13b1e2813e0c0455e2fa278908e8df64448c1f025ba76a684a908",
+    "home/dot_claude/modify_private_settings.json": "e39ebb0e1b9021900a1f2cf4eab2307ad71b640a349e030db0273845e9479215",
+    "home/dot_mise/config.toml": "c5c1261fb5a852d730842a534093a6dae0c80c3c0500ee1f9fbd72c93193fd96",
+    "scripts/generate-agent-configs.py": "80d4be814b226fc251dc7788a17b80477d93cf597b07be3e4e66da36a6eb69cf",
+    "scripts/validate-agent-assets.py": "67fbe32bd15a17bc64c121921c0b2db07ce9d8adf81ab657931e72610f2897dd",
+    "tests/install/common/mise.bats": "b72549f143443352f1b54211959029b90f2a806741627ff9964418b0502ec77c",
+    "tests/unit/test_claude_settings_merge.py": "fb8acdf6fadafc128960ffa0e98dd20f05488e0d7640af33511f1aaecafdae12",
+    "tests/unit/test_generate_agent_configs.py": "6f6f832ff0d443a09d67da6ac272ce4343a4fb07f20f81a402dbb31b8193301f",
+    "tests/unit/test_statusline_tools.py": "48ff74af47ad88ddff5bb22be8a9c43d16862d7a29e7f7a20f57ab0ffe36ff9f",
+    "tests/unit/test_supply_chain_policy.py": "4069846c0964270ea056daba80046ee345705e27c88235b10ce38ef8d59ad999",
+    "tests/unit/test_validate_agent_assets.py": "97232badb6023fe0356956005240322777af76708e33ca2de436b40c661ee63c"
+  },
+  "prior_eleven_hashes_identical": true,
+  "only_exact_assertion_literal_changed": true,
+  "production_changed": 150,
+  "test_added": 265,
+  "generated_excluded": 145
+}
+```
+
+Cap command: `git diff --numstat ce032e14830b125f677a83c383986e02084bb597 -- <twelve source paths>`, summing production additions+deletions excluding generated output and test additions. Complete output:
+```text
+116	29	home/.chezmoitemplates/claude-settings-managed.json
+58	10	home/dot_agents/agent-config.yaml
+10	0	home/dot_claude/modify_private_settings.json
+2	1	home/dot_mise/config.toml
+17	8	scripts/generate-agent-configs.py
+39	5	scripts/validate-agent-assets.py
+1	1	tests/install/common/mise.bats
+70	1	tests/unit/test_claude_settings_merge.py
+129	3	tests/unit/test_generate_agent_configs.py
+3	1	tests/unit/test_statusline_tools.py
+3	0	tests/unit/test_supply_chain_policy.py
+59	1	tests/unit/test_validate_agent_assets.py
+```
+
+Verdict: correct
+
+
+## Prior head CI failure, fixed by authorized Amendment5
+
+```text
+$ XDG_CACHE_HOME=/tmp/codex-worker-e-gh-cache gh run view 39036049185 --log-failed
+test (ubuntu-24.04, client)	Run unit test	﻿2026-10-17T13:24:02.7620764Z ##[group]Run if [ "${OS}" == "macos-14" ]; then
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7621167Z ^[[36;1mif [ "${OS}" == "macos-14" ]; then^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7621546Z ^[[36;1m  # Bats uses its own tracing internals on macOS, and bashcov can^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7622024Z ^[[36;1m  # misread those records as coverage trace entries. Keep macOS in^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7622498Z ^[[36;1m  # the test matrix for platform validation, but collect Codecov^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7622966Z ^[[36;1m  # reports from the Ubuntu jobs where bashcov parses Bats output^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7623341Z ^[[36;1m  # reliably.^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7623594Z ^[[36;1m  ./scripts/run_unit_test.sh^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7624380Z ^[[36;1m  exit 0^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7624604Z ^[[36;1mfi^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7624790Z ^[[36;1m^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7624986Z ^[[36;1m# Shared bashcov defaults:^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7625331Z ^[[36;1m# - `--skip-uncovered`: limit report to executed files.^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7625763Z ^[[36;1m# - `--root .`: normalize paths relative to repository root.^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7626189Z ^[[36;1mbashcov_args=(--skip-uncovered --root .)^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7626492Z ^[[36;1m^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7626789Z ^[[36;1m# Use a unique command name per matrix job so SimpleCov keeps each^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7627238Z ^[[36;1m# session separated before Codecov merges by flag/name.^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7627638Z ^[[36;1mBASHCOV_COMMAND_NAME="unit-test-${OS}-${SYSTEM}" \^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7628154Z ^[[36;1m  ruby ./scripts/run_bashcov_unit_test.rb "${bashcov_args[@]}" -- ./scripts/run_unit_test.sh^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7690667Z shell: /usr/bin/bash -e {0}
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7690936Z env:
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7691129Z   OS: ubuntu-24.04
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7691344Z   SYSTEM: client
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7691560Z   CODECOV_FLAGS: ubuntu-24.04-client
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7691879Z   CODECOV_NAME: codecov-dotfiles-ubuntu-24.04-client
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7695047Z   GITHUB_TOKEN: ***
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7695333Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7695641Z   MISE_LOG_LEVEL: info
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7698336Z   MISE_GITHUB_TOKEN: ***
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7698661Z   MISE_TRUSTED_CONFIG_PATHS: ~/work/dotfiles/dotfiles
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7699002Z   MISE_YES: 1
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7699277Z   UV_PYTHON_INSTALL_DIR: ~/work/_temp/uv-python-dir
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7699739Z   FILES_TEST_HOME: ~/work/_temp/dotfiles-files-ubuntu-24.04-client
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7700293Z   FILES_TEST_SOURCE: ~/work/_temp/dotfiles-public-source-ubuntu-24.04-client
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7700972Z   FILES_TEST_CONFIG: ~/work/_temp/dotfiles-files-ubuntu-24.04-client/.config/chezmoi/chezmoi.yaml
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:02.7701472Z ##[endgroup]
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:04.9584919Z 1..3
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:05.1206992Z ok 1 [ubuntu-client] representative manifest
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:05.2918999Z ok 2 [ubuntu-client] second apply is idempotent and preserves an unmanaged sentinel
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:05.3419236Z ok 3 [ubuntu-client] manifest assertion rejects a removed required target
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:06.5039608Z 1..92
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:06.7037655Z ok 1 [common] check_machine_ssh_key reports found when the public key exists
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:06.7506709Z ok 2 [common] check_machine_ssh_key warns and suggests provision-machine-key when missing
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:06.8087976Z ok 3 [common] check_crit_cli reports the pinned version and origin when installed
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:06.8565010Z ok 4 [common] check_zed is not applicable outside an Ubuntu client
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:06.9050388Z ok 5 [common] check_zed warns with the gh-auth hint when Zed is missing on a client
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:06.9647845Z ok 6 [common] check_zed reports the installed Zed on a client
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.0116639Z ok 7 [common] check_crit_cli is not applicable and not a failure when absent
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.0704389Z ok 8 [common] check_crit_cli warns instead of aborting when --version fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.1355565Z ok 9 [common] check_agmsg reports the installed version against the pin
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.1924837Z ok 10 [common] check_agmsg warns when the installed version does not match the pin
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.2445778Z ok 11 [common] check_agmsg is not applicable and not a failure when absent
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.3530005Z ok 12 [common] install_chezmoi_private returns success when chezmoi init succeeds
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.3954803Z ok 13 [common] install_chezmoi_private continues when chezmoi init fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.4361172Z ok 14 [common] script enables xtrace when DOTFILES_DEBUG is set
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.6123149Z ok 15 [common] decrypt_age_private_key continues when passphrase decrypt fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.6939290Z ok 16 [common] decrypt_age_private_key installs age identity through a temporary file
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.7653700Z ok 17 [common] decrypt_age_private_key skips passphrase prompt without a tty
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.8321648Z ok 18 [common] usePrivate=false renders an empty gate with no decrypt function
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:07.9348219Z ok 19 [common] usePrivate=true or missing renders the decrypt function
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:08.0454609Z ok 20 [common] gh_extensions installs extensions when authenticated
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:08.0865975Z ok 21 [common] gh_extensions skips login and extensions when unauthenticated
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:08.1294368Z ok 22 [common] gh_extensions keeps installed extensions unchanged
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:08.5992603Z ok 23 [common] Makefile exposes the public lifecycle targets
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:08.6425584Z ok 24 [common] Makefile keeps apply as a compatibility alias
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:08.7705497Z ok 25 [common] update pulls a clean main branch tracking origin/main first
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:08.8943816Z ok 26 [common] update skips pull for tracked changes and prints the manual command
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:09.0125541Z ok 27 [common] update reports unmerged files before the dirty notice
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:09.1327051Z ok 28 [common] update reloads a running Herdr server exactly once
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:09.2571639Z ok 29 [common] update upgrades installed tools after applies and before agent assets
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:09.3643258Z ok 30 [common] update stops before agent assets and Herdr when the tool upgrade fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:09.4793694Z ok 31 [common] update skips a Herdr server that is not running
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:09.5549681Z ok 32 [common] update skips reload when Herdr is absent
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:09.6675504Z ok 33 [common] update skips reload when Herdr status fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.1005015Z ok 34 [common] update skips reload for missing or unknown Herdr server status
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.2148214Z ok 35 [common] update propagates Herdr reload failure
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.3313746Z ok 36 [common] update tolerates a Herdr protocol mismatch and explains recovery
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.4972964Z ok 37 [common] update does not reload after apply or asset failure
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.5526482Z ok 38 [common] Makefile treats private chezmoi as optional during update
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.6042873Z ok 39 [common] Makefile maps SYSTEM=1 update to system package upgrades
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.6568228Z ok 40 [common] Makefile does not treat SYSTEM=0 as a system package upgrade request
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.7034695Z ok 41 [common] Makefile init runs only the public chezmoi init
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.7499484Z ok 42 [common] Makefile does not expose a separate upgrade-system target
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.7975403Z ok 43 [common] Makefile has no upgrade target; make update upgrades installed tools
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.8437000Z ok 44 [common] setup.sh does not upgrade installed tools during bootstrap
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.8816568Z ok 45 [common] explicit tool lifecycle scripts are present
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.9228549Z ok 46 [common] doctor requires the OS-aware mise listing
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:10.9863571Z ok 47 [common] upgrade lifecycle refreshes mise itself before mise-managed tools
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.0569681Z ok 48 [common] mise tool lifecycle isolates Git config and continues after individual tool failures
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.1114721Z ok 49 [common] Homebrew upgrade filters forbidden formulae without installed-dependent side effects
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.1762263Z ok 50 [common] agent CLI lifecycle upgrades through mise and removes node-global shadows before asset commands
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.3224430Z ok 51 [common] agent asset lifecycle installs Crit integrations for Claude Code and Codex
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.3925168Z ok 52 [common] agent asset lifecycle installs Ponytail integrations for Claude Code and Codex
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.4794617Z ok 53 [common] agent asset lifecycle installs Understand-Anything integrations for Claude Code and Codex
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.5391453Z ok 54 [common] agent asset lifecycle installs pinned zenbu-labs terminal tools
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.6152607Z ok 55 [common] agent asset lifecycle renders model profiles and permgate hooks
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.6702341Z ok 56 [common] README documents setup update and doctor lifecycle
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.7297107Z ok 57 [common] README documents agent permission asset lifecycle
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:11.7976538Z ok 58 [common] chezmoi source-path handoff resolves the repository root
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.1156768Z ok 59 [common] mise
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.1969208Z ok 60 [common] mise bootstrap resolves the newest cooled-down jdx/mise release
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.2749485Z ok 61 [common] mise bootstrap without gpg or an authenticated gh takes the reviewed fallback release
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.3484719Z ok 62 [common] run_mise_install trusts the config and runs one bare install
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.4115375Z ok 63 [common] run_mise_install stops when config trust fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.4733530Z ok 64 [common] run_mise_install returns the full install failure
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.5294903Z not ok 65 [common] blocc is only installed on Linux x64
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.5310460Z # (in test file tests/install/common/mise.bats, line 117)
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.5361692Z #   `[ "${status}" -eq 0 ]' failed
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.6000918Z ok 66 [common] herdr is installed by mise on Linux and macOS
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.6931098Z ok 67 [common] mise rejects another artifact checksum
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.8243391Z ok 68 [common] private_layer_enabled defaults to true when usePrivate is absent
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.8706957Z ok 69 [common] private_layer_enabled honors an explicit usePrivate=false
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.9172682Z ok 70 [common] private_layer_enabled honors an explicit usePrivate=true
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:19.9589332Z ok 71 [common] private_layer_enabled defaults to true when chezmoi is unavailable
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:20.0012348Z ok 72 [common] check_private_chezmoi reports not applicable when usePrivate is false
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:20.1153430Z ok 73 [common] provision-machine-key displays an existing key without regenerating it
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:20.1869777Z ok 74 [common] provision-machine-key generates a non-interactive key when missing
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:20.5910011Z ok 75 [common] chezmoi config accepts Linux roles and defaults macOS to client
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:20.6864837Z ok 76 [common] chezmoi config defaults name and usePrivate in CI without prompting
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:20.7527906Z ok 77 [common] chezmoi config honors explicit name and usePrivate even in CI
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:20.7887231Z ok 78 [common] Sheldon language plugin preserves an existing LANG
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:20.9389157Z ok 79 [common] chezmoi config rejects invalid roles before rendering YAML
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:20.9865598Z ok 80 [common] setup.sh keeps macOS sudo alive without Keychain password storage
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:21.0525237Z ok 81 [common] setup.sh updates an existing chezmoi source before applying
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:21.0919542Z ok 82 [common] setup.sh uses built-in Git only when external Git is unavailable
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:21.1488450Z ok 83 [common] setup.sh installs Homebrew non-interactively and continues from its prefix
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:21.2424614Z ok 84 [common] setup.sh fetches with curl first, falls back to wget, and fails without either
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:23.4577015Z ok 85 [common] setup.sh does not execute partial installer output from a failed fetch
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:23.5577911Z ok 86 [common] checksum verification fails closed for corrupt or missing digests
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:23.5999345Z ok 87 [common] setup.sh previews and applies without force
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:23.6391931Z ok 88 [common] setup.sh lets chezmoi choose sourceDir instead of cloning into cwd
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:23.8396715Z ok 89 [common] setup.sh entrypoint still runs under bash -c snippets
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.5089121Z ok 90 [common] wget-only Linux bootstrap previews safely and propagates failures
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.7172468Z ok 91 [common] setup.sh without an authenticated gh bootstraps only the reviewed chezmoi
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.8851130Z ok 92 [common] setup.sh resolves Homebrew fallback prefixes behaviorally
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9026372Z 
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9027208Z The following warnings were encountered during tests:
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9040023Z BW02: Using flags on `run` requires at least BATS_VERSION=1.5.0. Use `bats_require_minimum_version 1.5.0` to fix this message.
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9041458Z       (from function `bats_warn_minimum_guaranteed_version' in file /usr/lib/bats-core/warnings.bash, line 32,
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9042666Z        from function `run' in file /usr/lib/bats-core/test_functions.bash, line 351,
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9043793Z        in test file tests/install/common/lifecycle.bats, line 311)
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:26.0479297Z Stopped processing SimpleCov as a previous error not related to SimpleCov has been detected
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:26.0480938Z Run completed using bashcov 3.3.0 with Bash 5.2, Ruby 3.2.3, and SimpleCov 0.22.0
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:26.0482333Z Coverage report generated for unit-test-ubuntu-24.04-client to ~/work/dotfiles/dotfiles/coverage.
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:26.0484152Z Line Coverage: 45.05% (200 / 444)
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:26.0485357Z Coverage report generated for unit-test-ubuntu-24.04-client to ~/work/dotfiles/dotfiles/coverage/coverage.xml.
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:26.0486580Z Line Coverage: 45.05% (200 / 444)
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:26.0555347Z ##[error]Process completed with exit code 1.
+```
+
+## review-gate-approved
+
+```text
+$ make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+(exit 0)
+```

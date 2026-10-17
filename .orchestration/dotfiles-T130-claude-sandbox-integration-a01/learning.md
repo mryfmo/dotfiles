@@ -10,3 +10,5 @@ Raw-template consumers include the production modifier and test fixture helpers,
 No rule/skill/AutoSkill or project-memory promotion. These observations are validated task-local learning for orchestrator consolidation.
 
 Exclusion patterns match the submitted top-level command text, not internally invoked scripts. Trace the real caller before treating a child entry as socket access coverage; retain direct script patterns only for their documented direct command form. A pinned tool can also need a narrow existing policy-test exception, while all other latest/cooldown checks remain intact.
+
+Version-pin reference searches must cover CI-only Bats literals as well as Python policy tests, even when local Bats execution is forbidden. Both blocc fixture conflicts were proven by CI; the final Bats change preserves exact Linuxx64 matching and all other tests.

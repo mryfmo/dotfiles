@@ -52,6 +52,28 @@
       "tests/unit/test_statusline_tools.py": "48ff74af47ad88ddff5bb22be8a9c43d16862d7a29e7f7a20f57ab0ffe36ff9f",
       "tests/unit/test_supply_chain_policy.py": "4069846c0964270ea056daba80046ee345705e27c88235b10ce38ef8d59ad999",
       "tests/unit/test_validate_agent_assets.py": "97232badb6023fe0356956005240322777af76708e33ca2de436b40c661ee63c"
+    },
+    "superseded_by": "T130-A5-final-source-approval"
+  },
+  {
+    "id": "T130-A5-final-source-approval",
+    "body": "Independent read-only Amendment5 security extension approves exact twelve hashes/task. Only Bats assertion version literal latest becomes0.6.0, preserving Linuxx64 and every other byte; eleven prior approved source hashes unchanged. No local Bats or body execution, no repeated tests claimed. Prior six focused methods remain evidence for identical bytes. Clean twelve-overlay validator0 and render-check0 separately verified. Parent read full report and all five JSON records. Final CI/Bot wait, audit and acceptance remain separate.",
+    "scope": "review",
+    "resolved": true,
+    "task_sha256": "60da2b635596d690a93fdda8789545a297e5de3847efa018d98703b6ed4c128f",
+    "source_sha256": {
+      "home/.chezmoitemplates/claude-settings-managed.json": "dd009411e4e4aef7395cb80fb31adf771c62fb4d51ee168bf9fa1b8c1311f2cf",
+      "home/dot_agents/agent-config.yaml": "eae35b4bb9c13b1e2813e0c0455e2fa278908e8df64448c1f025ba76a684a908",
+      "home/dot_claude/modify_private_settings.json": "e39ebb0e1b9021900a1f2cf4eab2307ad71b640a349e030db0273845e9479215",
+      "home/dot_mise/config.toml": "c5c1261fb5a852d730842a534093a6dae0c80c3c0500ee1f9fbd72c93193fd96",
+      "scripts/generate-agent-configs.py": "80d4be814b226fc251dc7788a17b80477d93cf597b07be3e4e66da36a6eb69cf",
+      "scripts/validate-agent-assets.py": "67fbe32bd15a17bc64c121921c0b2db07ce9d8adf81ab657931e72610f2897dd",
+      "tests/install/common/mise.bats": "b72549f143443352f1b54211959029b90f2a806741627ff9964418b0502ec77c",
+      "tests/unit/test_claude_settings_merge.py": "fb8acdf6fadafc128960ffa0e98dd20f05488e0d7640af33511f1aaecafdae12",
+      "tests/unit/test_generate_agent_configs.py": "6f6f832ff0d443a09d67da6ac272ce4343a4fb07f20f81a402dbb31b8193301f",
+      "tests/unit/test_statusline_tools.py": "48ff74af47ad88ddff5bb22be8a9c43d16862d7a29e7f7a20f57ab0ffe36ff9f",
+      "tests/unit/test_supply_chain_policy.py": "4069846c0964270ea056daba80046ee345705e27c88235b10ce38ef8d59ad999",
+      "tests/unit/test_validate_agent_assets.py": "97232badb6023fe0356956005240322777af76708e33ca2de436b40c661ee63c"
     }
   }
 ]

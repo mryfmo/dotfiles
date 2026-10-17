@@ -1419,6 +1419,138 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
 
+    def anthropic_route_fixture(self):
+        """One tracked file under home/, install/ and scripts/, and check(rel, line) -> (refused, stderr)."""
+        files = ("home/dot_config/fixture.sh", "install/fixture.sh", "scripts/fixture.sh")
+        for rel in files:
+            self.write_text_file(rel, "")
+        subprocess.run(["git", "init", "-q", str(self.temp_dir)], check=True)
+        subprocess.run(["git", "-C", str(self.temp_dir), "add", *files], check=True)
+
+        def check(rel: str, line: str) -> tuple[bool, str]:
+            self.write_text_file(rel, f"# fixture\n{line}\n")
+            stderr, refused = io.StringIO(), False
+            with contextlib.redirect_stderr(stderr):
+                try:
+                    self.module.validate_anthropic_auth_route()
+                except SystemExit:
+                    refused = True
+            self.write_text_file(rel, "")
+            return refused, stderr.getvalue()
+
+        return files, check
+
+    def test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment(
+        self,
+    ) -> None:
+        # Plan 023 PR D. The names are split so this module passes the committed-secret scan it sits beside.
+        key, oauth = "ANTHROPIC_API_" + "KEY", "ANTHROPIC_OAUTH_" + "TOKEN"
+        files, check = self.anthropic_route_fixture()
+        home, install, scripts = files
+        for rel, line, rule in (
+            (home, f"export {oauth}=x", "R1"),
+            (install, f"export {oauth}=x", "R1"),
+            (home, f'{key}="literal-value"', "R2"),
+            (home, f"{key}: literal", "R2"),
+            (install, f"{key}=literal", "R2"),
+            # Only $NAME and ${NAME} are references: Bash reads $'...' and $"..." as literal data (the Bot's P1).
+            (home, f"{key}=$'literal-value'", "R2"),
+            (home, f'{key}=$"literal-value"', "R2"),
+            (home, f"{key}=$(cat key-file)", "R2"),
+        ):
+            with self.subTest(rel=rel, line=line):
+                refused, stderr = check(rel, line)
+                self.assertTrue(refused)
+                self.assertIn(f"ERROR: {rel}:2: {rule}:", stderr)
+                self.assertNotIn(line, stderr)  # the line may hold a real key; the log names only file, line and rule
+        for rel, line in (
+            (home, f"{key}=${key}"),
+            (home, f"apiKey: {key}"),
+            (home, f"env: {key}"),
+            (home, f"{key}="),
+            (home, f'{key}=""'),
+            (home, f'{key}="${{{key}}}"'),
+            (home, f"{key}= ${key}"),
+            (home, f"{key}: {{{{ .anthropic }}}}"),
+            (scripts, f"export {oauth}=x"),
+        ):
+            with self.subTest(rel=rel, line=line):
+                self.assertEqual((False, ""), check(rel, line))
+        # A tracked symlink is not followed, and a failed listing refuses instead of passing on an empty list.
+        self.write_text_file("outside.txt", f"export {oauth}=x\n")
+        (self.temp_dir / "home/dot_config/link").symlink_to("../../outside.txt")
+        subprocess.run(["git", "-C", str(self.temp_dir), "add", "home/dot_config/link"], check=True)
+        self.assertEqual((False, ""), check(scripts, ""))
+        failed = subprocess.CompletedProcess([], 128, b"", b"fatal: not a git repository")
+        with mock.patch.object(self.module.subprocess, "run", return_value=failed):
+            refused, stderr = check(scripts, "")
+        self.assertTrue(refused)
+        self.assertIn("git ls-files failed", stderr)
+
+    def test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty(self) -> None:
+        # The R2 re-plan (D-389-replan): the whole value is one $NAME or ${NAME} reference, one {{ }} template or
+        # empty, each optionally quoted; a reference prefix no longer exempts the rest (the Bot's P1 4302531070).
+        key = "ANTHROPIC_API_" + "KEY"
+        (home, _, _), check = self.anthropic_route_fixture()
+        for line in (
+            f"{key}=${{DEPLOYED_KEY:-literal-value}}",
+            f"{key}=${{DEPLOYED_KEY}}literal-value",
+            f"{key}=$DEPLOYED_KEY$'literal-value'",
+            f"{key}=$DEPLOYED_KEY#literal-value",
+            f"{key}={{{{ .anthropic }}}}literal-value{{{{ .x }}}}",
+            f"{key}=\"$DEPLOYED_KEY'",
+        ):
+            with self.subTest(line=line):
+                refused, stderr = check(home, line)
+                self.assertTrue(refused)
+                self.assertIn(f"ERROR: {home}:2: R2:", stderr)
+        for line in (
+            f"{key}=$DEPLOYED_KEY",
+            f"{key}=${{DEPLOYED_KEY}}",
+            f'{key}="$DEPLOYED_KEY"',
+            f"{key}='${{DEPLOYED_KEY}}'",
+            f'{key}: "{{{{ .anthropic }}}}"',
+            f"{key}=$DEPLOYED_KEY  # from the environment",
+        ):
+            with self.subTest(line=line):
+                self.assertEqual((False, ""), check(home, line))
+
+    def test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty(self) -> None:
+        # A `#` after whitespace starts a comment in shell and YAML, so the value before it is empty (the Bot's P2
+        # 4302488376); a `#` glued to the `=` is part of a shell word and stays refused.
+        key = "ANTHROPIC_API_" + "KEY"
+        (home, _, _), check = self.anthropic_route_fixture()
+        for line in (f"{key}= # supplied externally", f"{key}: # populated at runtime", f'{key}="" # empty on purpose'):
+            with self.subTest(line=line):
+                self.assertEqual((False, ""), check(home, line))
+        refused, stderr = check(home, f"{key}=#literal-value")
+        self.assertTrue(refused)
+        self.assertIn(f"ERROR: {home}:2: R2:", stderr)
+
+    def test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment(self) -> None:
+        # D-389-round3: a JSON, YAML or TOML key quoted with matching quotes (the Bot's P1 4302702584) and a Bash
+        # `+=` (the Bot's P2 4302702588) are assignments too, and their value is read by the same whole-value grammar.
+        key = "ANTHROPIC_API_" + "KEY"
+        (home, _, _), check = self.anthropic_route_fixture()
+        for line in (
+            f'"{key}": "literal-value"',
+            f'"{key}": literal-value',
+            f"'{key}' = 'literal-value'",
+            f"{key}+=literal-value",
+        ):
+            with self.subTest(line=line):
+                refused, stderr = check(home, line)
+                self.assertTrue(refused)
+                self.assertIn(f"ERROR: {home}:2: R2:", stderr)
+        for line in (
+            f'"{key}": "${{{key}}}"',
+            f'"{key}": "{{{{ .anthropic }}}}"',
+            f"'{key}' = '${{{key}}}'",
+            f"{key}+=${key}",
+        ):
+            with self.subTest(line=line):
+                self.assertEqual((False, ""), check(home, line))
+
     def write_manifest(self, hook_command: str) -> None:
         path = self.temp_dir / "home/dot_agents/agent-config.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)

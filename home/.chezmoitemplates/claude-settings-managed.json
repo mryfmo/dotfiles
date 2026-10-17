@@ -29,37 +29,124 @@
       "Bash(kubectl apply:*)"
     ],
     "defaultMode": "auto",
-    "ask": []
+    "ask": [
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr comment:*)",
+      "Bash(gh pr review:*)",
+      "Bash(gh pr close:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(gh pr update-branch:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh api -X POST:*)",
+      "Bash(gh api --method POST:*)",
+      "Bash(gh api -XPOST:*)",
+      "Bash(gh api --method=POST:*)",
+      "Bash(gh api -X PATCH:*)",
+      "Bash(gh api --method PATCH:*)",
+      "Bash(gh api -XPATCH:*)",
+      "Bash(gh api --method=PATCH:*)",
+      "Bash(gh api -X PUT:*)",
+      "Bash(gh api --method PUT:*)",
+      "Bash(gh api -XPUT:*)",
+      "Bash(gh api --method=PUT:*)",
+      "Bash(gh api -X DELETE:*)",
+      "Bash(gh api --method DELETE:*)",
+      "Bash(gh api -XDELETE:*)",
+      "Bash(gh api --method=DELETE:*)",
+      "Bash(gh api -f:*)",
+      "Bash(gh api -F:*)",
+      "Bash(gh api --raw-field:*)",
+      "Bash(gh api --field:*)",
+      "Bash(gh api -f*)",
+      "Bash(gh api -F*)",
+      "Bash(gh api --raw-field=*)",
+      "Bash(gh api --field=*)"
+    ]
   },
-  "sandbox": {
-    "enabled": true,
-    "failIfUnavailable": false,
-    "autoAllowBashIfSandboxed": true,
-    "allowUnsandboxedCommands": true,
-    "excludedCommands": [
-      "agmsg-dispatch"
+  "sandbox": {{ if eq .chezmoi.os "darwin" }}
+{
+  "enabled": true,
+  "failIfUnavailable": false,
+  "autoAllowBashIfSandboxed": true,
+  "allowUnsandboxedCommands": true,
+  "excludedCommands": [
+    "agmsg-dispatch *"
+  ],
+  "filesystem": {
+    "allowWrite": [
+      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
+      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
+      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
+      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools",
+      "~/.cache/uv",
+      "~/.local/state/mise",
+      "~/.local/share/uv",
+      "~/Library/Caches/mise"
+    ]
+  },
+  "network": {
+    "allowedDomains": [
+      "github.com",
+      "api.github.com",
+      "uploads.github.com",
+      "objects.githubusercontent.com",
+      "codeload.github.com",
+      "pypi.org",
+      "files.pythonhosted.org"
     ],
-    "filesystem": {
-      "allowWrite": [
-        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
-        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
-        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
-        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools",
-        "~/.cache/uv"
-      ]
-    },
-    "network": {
-      "allowedDomains": [
-        "github.com",
-        "api.github.com",
-        "uploads.github.com",
-        "objects.githubusercontent.com",
-        "codeload.github.com"
-      ],
-      "allowUnixSockets": [
-        "~/.config/herdr/herdr.sock"
-      ]
-    }
+    "allowMachLookup": [
+      "com.apple.trustd.agent"
+    ],
+    "allowUnixSockets": [
+      "~/.config/herdr/herdr.sock"
+    ]
+  }
+}
+{{ else }}
+{
+  "enabled": true,
+  "failIfUnavailable": false,
+  "autoAllowBashIfSandboxed": true,
+  "allowUnsandboxedCommands": true,
+  "excludedCommands": [
+    "agmsg-dispatch *",
+    "gh *",
+    "herdr-agents *",
+    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *"
+  ],
+  "filesystem": {
+    "allowWrite": [
+      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
+      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
+      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
+      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools",
+      "~/.cache/uv",
+      "~/.local/state/mise",
+      "~/.local/share/uv"
+    ]
+  },
+  "network": {
+    "allowedDomains": [
+      "github.com",
+      "api.github.com",
+      "uploads.github.com",
+      "objects.githubusercontent.com",
+      "codeload.github.com",
+      "pypi.org",
+      "files.pythonhosted.org"
+    ],
+    "allowUnixSockets": [
+      "~/.config/herdr/herdr.sock"
+    ]
+  }
+}
+{{ end }},
+  "env": {
+    "GH_TELEMETRY": "false",
+    "DO_NOT_TRACK": "1",
+    "CHECKPOINT_DISABLE": "1",
+    "AWS_EC2_METADATA_DISABLED": "true"
   },
   "hooks": {
     "PreToolUse": [

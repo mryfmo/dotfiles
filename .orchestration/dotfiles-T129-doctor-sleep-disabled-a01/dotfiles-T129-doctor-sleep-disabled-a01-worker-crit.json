@@ -1,0 +1,15 @@
+[
+  {
+    "id": "sleep-check-review-approval",
+    "scope": "review",
+    "body": "Independent read-only review (a fresh general-purpose subagent given the diff and the task file) of 550ebb14 (two commits over origin/main 59db77bb): the unit test's five subtests OK; shellcheck -x and shfmt -i 4 -sr -d clean; ruff check and format clean on the test; PR #387's lint-comparisons.py run against both new files, no hit; a real run on this Mac prints `sleep check: SleepDisabled is 1`; stub probes (leading tabs, SleepDisabledX and DisplaySleepDisabled only, pmset with a stderr warning, trailing text after the value, pmset exit 1, empty output, pmset absent from PATH) all behave as the spec says, fail-closed. Messages and exit codes match item 1 byte for byte; the Makefile line is check-tools.sh's verbatim and an earlier failure is never reset; only uname, pmset -g, printf, awk and echo run and no setting changes; the Linux case's exit-99 pmset stub proves pmset is not consulted; red before the script existed holds. `Verdict: correct`. This is local process evidence, not the task-level audit or reviewer authentication.",
+    "resolved": true
+  },
+  {
+    "id": "sleep-check-p3-declared",
+    "scope": "file",
+    "path": "scripts/check-sleep.sh",
+    "body": "Two P3 (low) notes, declared and not changed: line 16's `[[ \"$(uname -s)\" != Darwin ]]` ignores the substitution's status, so a PATH without uname prints the skipped line and exits 0 (make doctor's PATH carries /usr/bin on a Mac); line 26's `printf … | awk '{…; exit}'` could in theory surface a SIGPIPE under pipefail if awk's exit left printf mid-write, unreachable for pmset -g's output size.",
+    "resolved": true
+  }
+]

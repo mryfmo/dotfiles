@@ -162,6 +162,36 @@ statusMessage = "Closing session"
 """
 
 
+def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin") -> dict:
+    result = subprocess.run(
+        [
+            "chezmoi",
+            "--config",
+            str(temp_dir / "chezmoi.toml"),
+            "--source",
+            str(temp_dir),
+            "--cache",
+            str(temp_dir / "cache"),
+            "--persistent-state",
+            str(temp_dir / "state"),
+            "execute-template",
+            "--init",
+            "--override-data",
+            json.dumps({"chezmoi": {"os": os_name, "homeDir": "/render-home"}}),
+        ],
+        input=text,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return json.loads(result.stdout)
+
+
+def load_manifest_fixture(temp_dir: Path) -> dict:
+    text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+    return render_claude_template("{{ fromYaml " + json.dumps(text) + " | toJson }}", temp_dir)
+
+
 class GenerateAgentConfigsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.module = load_generator()
@@ -172,6 +202,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
+
+    def render_claude_template(self, text: str, os_name: str = "darwin") -> dict:
+        return render_claude_template(text, self.temp_dir, os_name)
 
     def write_asset_fixture(self) -> dict:
         pins = self.temp_dir / "scripts/lib/installer-pins.sh"
@@ -657,6 +690,107 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest["claude"]["sandbox"]["filesystem"] = {"extra_allow_write": ["~/.cache/uv"]}
         extended = self.module.render_claude_sandbox(manifest)
         self.assertEqual(["/root-a", "~/.cache/uv"], extended["filesystem"]["allowWrite"])
+
+    def test_claude_sandbox_renders_per_os_from_the_manifest(self) -> None:
+        manifest = load_manifest_fixture(self.temp_dir)
+        expected_ask = [
+            f"Bash(gh {command}:*)"
+            for command in (
+                "pr merge",
+                "pr create",
+                "pr comment",
+                "pr review",
+                "pr close",
+                "pr edit",
+                "pr update-branch",
+                "issue",
+                "api -X POST",
+                "api --method POST",
+                "api -XPOST",
+                "api --method=POST",
+                "api -X PATCH",
+                "api --method PATCH",
+                "api -XPATCH",
+                "api --method=PATCH",
+                "api -X PUT",
+                "api --method PUT",
+                "api -XPUT",
+                "api --method=PUT",
+                "api -X DELETE",
+                "api --method DELETE",
+                "api -XDELETE",
+                "api --method=DELETE",
+                "api -f",
+                "api -F",
+                "api --raw-field",
+                "api --field",
+            )
+        ] + ["Bash(gh api -f*)", "Bash(gh api -F*)", "Bash(gh api --raw-field=*)", "Bash(gh api --field=*)"]
+        template = self.module.render_claude_settings(manifest)
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os=os_name):
+                settings = self.render_claude_template(template, os_name)
+                sandbox = settings["sandbox"]
+                self.assertEqual(
+                    ["com.apple.trustd.agent"] if os_name == "darwin" else [],
+                    sandbox["network"].get("allowMachLookup", []),
+                )
+                roots = [
+                    path.replace("{{ .chezmoi.homeDir }}", "/render-home")
+                    for path in manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
+                ]
+                extras = ["~/.cache/uv", "~/.local/state/mise", "~/.local/share/uv"]
+                self.assertEqual(
+                    roots + extras + (["~/Library/Caches/mise"] if os_name == "darwin" else []),
+                    sandbox["filesystem"]["allowWrite"],
+                )
+                self.assertEqual(
+                    [
+                        "github.com",
+                        "api.github.com",
+                        "uploads.github.com",
+                        "objects.githubusercontent.com",
+                        "codeload.github.com",
+                        "pypi.org",
+                        "files.pythonhosted.org",
+                    ],
+                    sandbox["network"]["allowedDomains"],
+                )
+                self.assertEqual(
+                    ["agmsg-dispatch *"]
+                    + (
+                        ["gh *", "herdr-agents *", "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *"]
+                        if os_name == "linux"
+                        else []
+                    ),
+                    sandbox["excludedCommands"],
+                )
+                self.assertEqual(expected_ask, settings["permissions"]["ask"])
+                self.assertEqual(manifest["claude"]["permissions"]["deny"], settings["permissions"]["deny"])
+                self.assertEqual(
+                    {
+                        "GH_TELEMETRY": "false",
+                        "DO_NOT_TRACK": "1",
+                        "CHECKPOINT_DISABLE": "1",
+                        "AWS_EC2_METADATA_DISABLED": "true",
+                    },
+                    settings["env"],
+                )
+                self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
+
+    def test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation(self) -> None:
+        manifest = load_manifest_fixture(self.temp_dir)
+        settings = self.render_claude_template(self.module.render_claude_settings(manifest), "linux")
+        self.assertEqual(
+            [
+                "agmsg-dispatch *",
+                "gh *",
+                "herdr-agents *",
+                "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *",
+            ],
+            settings["sandbox"]["excludedCommands"],
+        )
+        self.assertEqual(["Bash(agmsg-dispatch:*)"], settings["permissions"]["allow"])
 
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()
@@ -1299,12 +1433,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(handler["timeout"], timeout)
 
     def test_managed_claude_sandbox_excludes_agmsg_dispatch(self) -> None:
-        claude = json.loads((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
+        claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
 
-        self.assertIn("agmsg-dispatch", claude["sandbox"]["excludedCommands"])
+        self.assertIn("agmsg-dispatch *", claude["sandbox"]["excludedCommands"])
         self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
         self.assertEqual("auto", claude["permissions"]["defaultMode"])
-        self.assertEqual([], claude["permissions"]["ask"])
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.assertEqual(manifest["claude"]["permissions"]["ask"], claude["permissions"]["ask"])
         self.assertEqual(
             [
                 "Bash(gh release:*)",
@@ -1550,9 +1685,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             jq = shutil.which("jq")
             self.assertIsNotNone(jq)
             (root / "jq").symlink_to(jq)
+            (root / "python3").symlink_to(sys.executable)
             jq_only = root / "jq-only"
             jq_only.mkdir()
             (jq_only / "jq").symlink_to(jq)
+            (jq_only / "python3").symlink_to(sys.executable)
             map_path = str(root / ".project-map/index.html")
             map_tab = {
                 "id": 7,
@@ -1584,7 +1721,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "project-map-reload",
                 "--pin-tab",
                 "eval",
-                'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()',
+                f"if (location.href === new URL({json.dumps('file://' + map_path)}).href) location.reload()",
             ]
             cases = [
                 ("Write", {"file_path": map_path}, listing, {}, 2, True),
@@ -1704,6 +1841,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             jq = shutil.which("jq")
             self.assertIsNotNone(jq)
             (root / "jq").symlink_to(jq)
+            (root / "python3").symlink_to(sys.executable)
             map_path = str(root / "map with spaces/.project-map/index.html")
             no_map = {
                 "self": {},
@@ -1782,14 +1920,275 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                                 "project-map-reload",
                                 "--pin-tab",
                                 "eval",
-                                'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()',
+                                f"if (location.href === new URL({json.dumps('file://' + map_path)}).href) location.reload()",
                             ],
                         ]
                         if reloaded
                         else [],
                     )
 
-    def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False):
+    def _run_project_map_reload_listing(
+        self, map_path: str, listing: dict, *, cwd: Path | None = None, home: Path | None = None
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            browser = root / "terminal-browser"
+            browser.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys\n"
+                "with open(os.environ['BROWSER_CALLS'], 'a') as out:\n"
+                "    out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                "if sys.argv[1:] == ['ls', '--all', '--json']:\n"
+                "    print(os.environ['BROWSER_LISTING'])\n"
+            )
+            browser.chmod(0o755)
+            agent = root / "agent-browser"
+            agent.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys\n"
+                "with open(os.environ['AGENT_CALLS'], 'a') as out:\n"
+                "    out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+            )
+            agent.chmod(0o755)
+            (root / "jq").symlink_to(shutil.which("jq"))
+            (root / "python3").symlink_to(sys.executable)
+            result = subprocess.run(
+                ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
+                input=json.dumps({"tool_input": {"file_path": map_path}}),
+                text=True,
+                capture_output=True,
+                cwd=cwd,
+                env={
+                    **os.environ,
+                    **({"PWD": str(cwd)} if cwd is not None else {}),
+                    **({"HOME": str(home)} if home is not None else {}),
+                    "PATH": str(root),
+                    "BROWSER_LISTING": json.dumps(listing),
+                    "BROWSER_CALLS": str(root / "browser-calls"),
+                    "AGENT_CALLS": str(root / "agent-calls"),
+                    "TERMINAL_BROWSER_AGENT": str(agent),
+                },
+                check=False,
+            )
+            self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+            return tuple(
+                [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+                for path in (root / "browser-calls", root / "agent-calls")
+            )
+
+    def test_project_map_reload_hook_selects_the_event_map_among_two_repositories(self) -> None:
+        target_id = "4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3"
+        for map_path in (
+            "/repo/.project-map/index.html",
+            "/repo with spaces/./.project-map/index.html",
+            "/repo/unused/../.project-map/index.html",
+            "/repo_日本%#?'x/.project-map/index.html",
+        ):
+            with self.subTest(map_path=map_path):
+                browser, agent = self._run_project_map_reload_listing(
+                    map_path,
+                    {
+                        "browsers": [
+                            {
+                                "cdpPort": 9222,
+                                "tabs": [{"url": "file:///other/.project-map/index.html", "targetId": "A" * 32}],
+                            },
+                            {
+                                "cdpPort": 9333,
+                                "tabs": [{"url": Path(os.path.normpath(map_path)).as_uri(), "targetId": target_id}],
+                            },
+                        ]
+                    },
+                )
+                self.assertEqual(browser, [["ls", "--all", "--json"]])
+                self.assertEqual(len(agent), 2)
+                self.assertEqual(
+                    agent[0], ["--cdp", "9333", "--session", "project-map-reload", "--pin-tab", "tab", target_id]
+                )
+                self.assertEqual(agent[1][:-1], agent[0][:-2] + ["eval"])
+
+    def test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open(self) -> None:
+        map_path = "/repo/.project-map/index.html"
+        browser, agent = self._run_project_map_reload_listing(
+            map_path,
+            {
+                "browsers": [
+                    {
+                        "cdpPort": 9222,
+                        "tabs": [{"url": "file:///repo-other/.project-map/index.html", "targetId": "A" * 32}],
+                    }
+                ]
+            },
+        )
+        self.assertEqual(
+            browser,
+            [["ls", "--all", "--json"], ["open", map_path, "--split", "right", "--size", "0.5", "--no-merge"]],
+        )
+        self.assertEqual(agent, [])
+
+    def test_project_map_reload_hook_matches_percent_encoded_tilde(self) -> None:
+        for directory, url_directory in (
+            ("repo~name", "repo%7Ename"),
+            ("repo~name", "repo%7ename"),
+            ("repo~name", "repo~name"),
+            ("repo%7Ename", "repo%257Ename"),
+        ):
+            with self.subTest(directory=directory, url_directory=url_directory):
+                browser, agent = self._run_project_map_reload_listing(
+                    f"/{directory}/.project-map/index.html",
+                    {
+                        "browsers": [
+                            {
+                                "cdpPort": 9222,
+                                "tabs": [
+                                    {"url": f"file:///{url_directory}/.project-map/index.html", "targetId": "A" * 32}
+                                ],
+                            }
+                        ]
+                    },
+                )
+                self.assertEqual(browser, [["ls", "--all", "--json"]])
+                self.assertEqual(len(agent), 2)
+                self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+
+    def test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            physical = root / "physical repo"
+            physical.mkdir()
+            logical = root / "logical repo"
+            logical.symlink_to(physical, target_is_directory=True)
+            browser, agent = self._run_project_map_reload_listing(
+                "./.project-map/index.html",
+                {
+                    "browsers": [
+                        {
+                            "cdpPort": 9222,
+                            "tabs": [{"url": (physical / ".project-map/index.html").as_uri(), "targetId": "A" * 32}],
+                        }
+                    ]
+                },
+                cwd=logical,
+            )
+            self.assertEqual(browser, [["ls", "--all", "--json"]])
+            self.assertEqual(len(agent), 2)
+            self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+
+    def test_project_map_reload_hook_compares_canonical_paths_for_every_path_form(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            home = root / "home"
+            repo = home / "repo"
+            map_path = repo / ".project-map/index.html"
+            map_path.parent.mkdir(parents=True)
+            map_path.write_text("map")
+            (repo / "unused").mkdir()
+            tilde_map = home / "repo~name/.project-map/index.html"
+            tilde_map.parent.mkdir(parents=True)
+            tilde_map.write_text("map")
+            logical = root / "logical repo"
+            logical.symlink_to(repo, target_is_directory=True)
+            encoded_tilde = tilde_map.as_uri().replace("~", "%7E")
+            for form, event, url, cwd in (
+                ("home", "~/repo/.project-map/index.html", map_path.as_uri(), root),
+                ("encoded tab URL", str(tilde_map), encoded_tilde, root),
+                ("encoded event URL", encoded_tilde, tilde_map.as_uri(), root),
+                ("symlinked cwd", "./.project-map/index.html", map_path.as_uri(), logical),
+                (
+                    "dot and parent segments",
+                    str(repo) + "/./unused/../.project-map/index.html",
+                    repo.as_uri() + "/./unused/../.project-map/index.html",
+                    root,
+                ),
+                ("event trailing slash", str(map_path) + "/", map_path.as_uri(), root),
+                ("tab trailing slash", str(map_path), map_path.as_uri() + "/", root),
+                ("event symlink", str(logical / ".project-map/index.html"), map_path.as_uri(), root),
+                ("tab symlink", str(map_path), (logical / ".project-map/index.html").as_uri(), root),
+                (
+                    "quoted URL query",
+                    str(map_path),
+                    map_path.as_uri() + '?q=";globalThis.injected=true;//\u2028',
+                    root,
+                ),
+            ):
+                with self.subTest(form=form):
+                    browser, agent = self._run_project_map_reload_listing(
+                        event,
+                        {
+                            "browsers": [
+                                {
+                                    "cdpPort": 9222,
+                                    "tabs": [{"url": url, "targetId": "A" * 32}],
+                                }
+                            ]
+                        },
+                        cwd=cwd,
+                        home=home,
+                    )
+                    self.assertEqual(browser, [["ls", "--all", "--json"]])
+                    self.assertEqual(len(agent), 2)
+                    self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+                    result = subprocess.run(
+                        [
+                            "node",
+                            "-e",
+                            (
+                                "const assert = require('node:assert/strict'); let reloads = 0; "
+                                f"const location = new URL({json.dumps(url)}); "
+                                "location.reload = () => reloads++; "
+                                f"{agent[1][-1]}; assert.equal(reloads, 1); "
+                                "assert.equal(globalThis.injected, undefined);"
+                            ),
+                        ],
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""), result.stderr)
+
+    def test_project_map_reload_hook_rejects_percent_encoded_path_separators(self) -> None:
+        map_path = "/repo/.project-map/index.html"
+        valid = {"url": "file://" + map_path, "targetId": "B" * 32}
+        for encoded in ("%2F", "%2f"):
+            invalid_url = f"file:///repo{encoded}.project-map/index.html"
+            for fallback in (False, True):
+                with self.subTest(encoded=encoded, fallback=fallback):
+                    tabs = [{"url": invalid_url, "targetId": "A" * 32}] + ([valid] if fallback else [])
+                    browser, agent = self._run_project_map_reload_listing(
+                        map_path, {"browsers": [{"cdpPort": 9222, "tabs": tabs}]}
+                    )
+                    self.assertEqual(
+                        browser,
+                        [["ls", "--all", "--json"]]
+                        + ([] if fallback else [["open", map_path, "--split", "right", "--size", "0.5", "--no-merge"]]),
+                    )
+                    if fallback:
+                        self.assertEqual(len(agent), 2)
+                        self.assertEqual(agent[0][-2:], ["tab", "B" * 32])
+                    else:
+                        self.assertEqual(agent, [])
+            with self.subTest(encoded_event=encoded):
+                self.assertEqual(
+                    self._run_project_map_reload_listing(
+                        invalid_url, {"browsers": [{"cdpPort": 9222, "tabs": [valid]}]}
+                    ),
+                    ([], []),
+                )
+        for path, url in (
+            ("/repo%2Fname/.project-map/index.html", "file:///repo%252Fname/.project-map/index.html"),
+            ("/repo%2fname/.project-map/index.html", "file:///repo%252fname/.project-map/index.html"),
+            (map_path, "file://" + map_path + "?q=%2F"),
+        ):
+            with self.subTest(literal_percent_or_query=url):
+                browser, agent = self._run_project_map_reload_listing(
+                    path,
+                    {"browsers": [{"cdpPort": 9222, "tabs": [{"url": url, "targetId": "A" * 32}]}]},
+                )
+                self.assertEqual(browser, [["ls", "--all", "--json"]])
+                self.assertEqual(len(agent), 2)
+                self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+
+    def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False, map_path: str | None = None):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             browser = root / "terminal-browser"
@@ -1810,7 +2209,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             )
             agent.chmod(0o755)
             (root / "jq").symlink_to(shutil.which("jq"))
-            map_path = str(root / ".project-map/index.html")
+            (root / "python3").symlink_to(sys.executable)
+            map_path = map_path or str(root / ".project-map/index.html")
             result = subprocess.run(
                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
                 input=json.dumps({"tool_input": {"file_path": map_path}}),
@@ -1842,18 +2242,24 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             )
 
     def test_project_map_reload_hook_guards_against_a_tab_navigating_away(self) -> None:
-        calls, _ = self._run_project_map_reload_case("4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3")
+        calls, _ = self._run_project_map_reload_case(
+            "4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3", map_path="/repo/.project-map/index.html"
+        )
         self.assertEqual(len(calls), 2)
         script = calls[-1][-1]
-        for pathname, expected in (("/repo/.project-map/index.html", 1), ("/unsaved-form", 0)):
-            with self.subTest(pathname=pathname):
+        for url, expected in (
+            ("file:///repo/.project-map/index.html", 1),
+            ("file:///unsaved-form", 0),
+            ("file:///other/.project-map/index.html", 0),
+        ):
+            with self.subTest(url=url):
                 result = subprocess.run(
                     [
                         "node",
                         "-e",
                         (
                             "const assert = require('node:assert/strict'); let reloads = 0; "
-                            f"const location = {{pathname: {json.dumps(pathname)}, reload() {{ reloads++; }} }}; "
+                            f"const location = new URL({json.dumps(url)}); location.reload = () => reloads++; "
                             f"{script}; assert.equal(reloads, {expected});"
                         ),
                     ],

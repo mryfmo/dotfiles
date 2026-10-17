@@ -85,12 +85,18 @@ def load_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
-def render_template_text(path: Path) -> str:
+def render_template_text(path: Path, os_name: str = "darwin") -> str:
     text = path.read_text()
     # This repository uses .chezmoiroot=home, so .chezmoi.sourceDir resolves
     # to the chezmoi source root that contains dot_agents/, dot_codex/, etc.
     text = text.replace("{{ .chezmoi.sourceDir }}", str(ROOT / "home"))
     text = re.sub(r"\{\{/\*.*?\*/\}\}", "", text, flags=re.DOTALL)
+    text = re.sub(
+        r'\{\{ if eq \.chezmoi\.os "darwin" \}\}(.*?)\{\{ else \}\}(.*?)\{\{ end \}\}',
+        lambda match: match[1] if os_name == "darwin" else match[2],
+        text,
+        flags=re.DOTALL,
+    )
     return text
 
 
@@ -294,7 +300,7 @@ def validate_codex_agmsg_writable_roots(sandbox_workspace_write: dict[str, Any],
 SANDBOX_HOSTNAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)+")
 
 
-def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str) -> None:
+def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str, os_name: str = "darwin") -> None:
     """Require the confined, prompt-free Claude sandbox that mirrors the Codex one."""
     if not isinstance(sandbox, dict):
         fail(f"{label} must define the sandbox object")
@@ -322,6 +328,31 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str)
     invalid = [domain for domain in domains if not isinstance(domain, str) or not SANDBOX_HOSTNAME.fullmatch(domain)]
     if invalid:
         fail(f"{label}.network.allowedDomains must contain only hostnames: {invalid}")
+    forbidden = {"cafe.github.com", "datadoghq.com", "checkpoint-api.hashicorp.com", "api.anthropic.com"}
+    if any(domain in forbidden or domain.endswith(".datadoghq.com") for domain in domains):
+        fail(f"{label} must not allow telemetry or metadata domains")
+    network = sandbox.get("network", {})
+    mach = network.get("allowMachLookup", [])
+    if not isinstance(mach, list) or any(
+        service != "com.apple.trustd.agent" or os_name != "darwin" for service in mach
+    ):
+        fail(f"{label} Mach services must stay within the macOS trustd allowlist")
+    if network.get("allowAllUnixSockets") is True:
+        fail(f"{label}.network.allowAllUnixSockets must not be true")
+    exclusions = sandbox.get("excludedCommands", [])
+    if not isinstance(exclusions, list) or not all(isinstance(entry, str) and entry.strip() for entry in exclusions):
+        fail(f"{label}.excludedCommands must be a list of non-empty patterns")
+    if os_name == "darwin" and any(
+        fnmatch.fnmatchcase("gh", entry.split()[0].rsplit("/", 1)[-1]) for entry in exclusions
+    ):
+        fail(f"{label} macOS must not exclude gh")
+    if os_name == "linux" and exclusions != [
+        "agmsg-dispatch *",
+        "gh *",
+        "herdr-agents *",
+        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *",
+    ]:
+        fail(f"{label} Linux excludedCommands must match the exact seat-tool list")
     sockets = sandbox.get("network", {}).get("allowUnixSockets", [])
     if not isinstance(sockets, list):
         fail(f"{label}.network.allowUnixSockets must be a list")
@@ -340,9 +371,9 @@ def validate_claude_permissions_allow(permissions: Any, label: str) -> None:
         fail(f"{label}.allow must be a list of non-empty permission rules")
 
 
-def validate_claude_settings(manifest: dict[str, Any]) -> None:
+def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") -> None:
     settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
-    settings = json.loads(render_template_text(settings_path))
+    settings = json.loads(render_template_text(settings_path, os_name))
     if settings.get("$schema") != "https://json.schemastore.org/claude-code-settings.json":
         fail(f"{settings_path} must declare the Claude Code settings schema")
     interactive = manifest.get("model_profiles", {}).get(manifest.get("interactive_profile"), {}).get("claude", {})
@@ -362,7 +393,8 @@ def validate_claude_settings(manifest: dict[str, Any]) -> None:
     validate_claude_sandbox(
         settings.get("sandbox"),
         manifest.get("codex", {}).get("sandbox_workspace_write", {}).get("writable_roots", []),
-        f"{settings_path} sandbox",
+        f"{settings_path} {os_name} sandbox",
+        os_name,
     )
     enabled_plugins = settings.get("enabledPlugins", {})
     if enabled_plugins:
@@ -370,6 +402,8 @@ def validate_claude_settings(manifest: dict[str, Any]) -> None:
     crit_rule = ROOT / "home/dot_config/claude/rules/crit-review.md"
     if not crit_rule.exists() or "/crit" not in crit_rule.read_text():
         fail("Claude Code Crit review rule must require /crit")
+    if os_name == "darwin":
+        validate_claude_settings(manifest, "linux")
 
 
 # The HooksToml event properties of https://developers.openai.com/codex/config-schema.json.

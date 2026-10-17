@@ -7,6 +7,7 @@
 #   Pin tab selection and guard reloads against navigation away from a project map.
 #   Match the event file path before choosing an existing map tab.
 #   Canonicalize event paths and file URLs with the installed isolated Python stdlib.
+#   Reject encoded URL separators before decoding them into filesystem paths.
 #   Bind the reload guard to the canonical-matched URL, encoded as a JSON string.
 #   Open a separate right split using half the width when the parsed listing yields no map tab.
 #   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.
@@ -24,7 +25,7 @@ from urllib.parse import unquote, urlsplit
 path = sys.argv[1]
 if path.startswith("file://"):
     url = urlsplit(path)
-    if url.netloc not in ("", "localhost"):
+    if url.netloc not in ("", "localhost") or "%2f" in url.path.lower():
         sys.exit(1)
     path = unquote(url.path, errors="strict")
 if path == "~" or path.startswith("~/"):

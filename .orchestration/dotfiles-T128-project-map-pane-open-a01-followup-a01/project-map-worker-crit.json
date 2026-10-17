@@ -28,5 +28,11 @@
     "scope": "review",
     "body": "Independent read-only security-profile Codex review of the same-round guard correction againstba0bf354 approved canonical-selected-URL binding, jq JSON to JavaScript data encoding, Node-executed reload/injection rows and navigation-away controls, with no findings. Parent read the entire focused transcript and all five resolved records. The amended task remains SHA256 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9. Source/test final hashes and exact reviewer checks are preserved in validation.md. Live browser E2E and final-head integration audit remain orchestrator-owned.",
     "resolved": true
+  },
+  {
+    "id": "project-map-encoded-separator-review-approval",
+    "scope": "review",
+    "body": "Independent read-only security-profile Codex approved the bounded encoded-slash correction against40d18027: nine named regression subcases and eleven additional controls pass, eleven prior method ASTs unchanged, no introduced finding. Parent read all319 transcript lines and all six resolved records. Pre-existing malformed-percent differential local:separator-review:1 is an advisory P2 candidate with low browser-impact confidence, not fixed; full transcript/baseline proof preserved for orchestrator audit under the explicit last-correction instruction. Task hash remains 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9.",
+    "resolved": true
   }
 ]

@@ -3,6 +3,740 @@ task_id: dotfiles-T128-project-map-pane-open-a01-followup-a01
 status: final
 ---
 
+Current last same-round encoded-separator correction against40d18027; task SHA256 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9. This phase binds local tests/review to the source hashes in source-integrity below. Final publishing head/future CI/Bot observations follow in RESULT/raw round3-separators/. Further P2 is proposed advisory under explicit authorization. Actual HOME/temp prefixes redacted; outputs/whitespace otherwise preserved.
+
+## Last-correction same-round authorization
+
+```text
+AGMSG-ACCEPTANCE received2026-10-17T07:28:36Z from claude-deep-dot task_id=dotfiles-T128-project-map-pane-open-a01-followup-a01 round=3 status=pending-integration.4301888204 authorized within round3 as correction of own canonicalizer: encoded separator must never become separator; reject percent2F case-insensitively in URL path before decoding; literal percent252F stays valid; named test. Last correction within round3: after it send RESULTround3 whatever next Bot review says, listing further P2 as proposed advisory for orchestrator audit; push/Bot re-review; RESULT names4301859324,4301888204,audit:8607a87:1 fixed:<sha>.
+```
+
+## Previous40d18027 Bot review/inline4301888204/completed summary (historical trigger)
+
+```text
+{
+  "head": "40d18027d5953c31ff57bcd7bbc250c6bb357bbc",
+  "reviews": [
+    {
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### \ud83d\udca1 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `40d18027d5`\n    \n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with \ud83d\udc4d.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "commit_id": "40d18027d5953c31ff57bcd7bbc250c6bb357bbc",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/379#pullrequestreview-5556831600",
+      "id": 5556831600,
+      "state": "COMMENTED",
+      "submitted_at": "2026-10-17T07:26:00Z"
+    }
+  ],
+  "inline": [
+    {
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject encoded separators in file URLs**\n\nWhen the listing contains a URL such as `file:///repo%2F.project-map/index.html` for the event path `/repo/.project-map/index.html`, `unquote()` turns the encoded slash into a path separator and incorrectly treats the two as the same file. Browsers preserve encoded separators in the URL, and standard file-URL-to-path conversion rejects them, so the hook pins and reloads a distinct or failed tab instead of opening the actual map; reject encoded `/` separators before decoding the URL path.\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/379#discussion_r4301888204",
+      "id": 4301888204,
+      "line": 29,
+      "original_commit_id": "40d18027d5953c31ff57bcd7bbc250c6bb357bbc",
+      "path": "home/dot_claude/hooks/executable_project-map-reload.sh"
+    }
+  ],
+  "issue_comments": [
+    {
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"40d18027d5953c31ff57bcd7bbc250c6bb357bbc\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"64df31ea7c7c52ca30e9f1e1b33246c3a44bb3a0\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"64df31ea7c7c52ca30e9f1e1b33246c3a44bb3a0\",\"mergeGateEnabled\":false,\"pullRequestNumber\":379,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| \ud83d\udcdd **Code Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-17T07:26:02.755823Z\">2026-10-17T07:26:02.755823Z</relative-time> | `40d1802` | Manual request |\n| \ud83d\udd12 **Security Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-17T00:25:42.845517Z\">2026-10-17T00:25:42.845517Z</relative-time> | `64df31e` | Draft marked ready |\n\n\n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with \ud83d\udc40 while any review is running, comments if it has suggestions, and reacts with \ud83d\udc4d once all reviews finish with no findings.\n\n</details>",
+      "created_at": "2026-10-17T00:23:27Z",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/379#issuecomment-6227284829",
+      "id": 6227284829,
+      "updated_at": "2026-10-17T07:26:05Z"
+    }
+  ]
+}
+```
+
+## Node fileURLToPath encoded-separator/literal controls (exit0)
+
+```text
+PASS fileURLToPath rejects encoded separator %2F
+PASS fileURLToPath rejects encoded separator %2f
+PASS once-encoded percent remains literal for %252F and %252f filenames
+```
+
+## Expected RED named separator method before fix (exit1; six failures)
+
+```text
+test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) ... 
+  test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded='%2F', fallback=False) ... FAIL
+  test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded='%2F', fallback=True) ... FAIL
+  test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded_event='%2F') ... FAIL
+  test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded='%2f', fallback=False) ... FAIL
+  test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded='%2f', fallback=True) ... FAIL
+  test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded_event='%2f') ... FAIL
+
+======================================================================
+FAIL: test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded='%2F', fallback=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 2025, in test_project_map_reload_hook_rejects_percent_encoded_path_separators
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser,
+        ^^^^^^^^
+        [["ls", "--all", "--json"]]
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        + ([] if fallback else [["open", map_path, "--split", "right", "--size", "0.5", "--no-merge"]]),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: [['ls[16 chars]son']] != [['ls[16 chars]son'], ['open', '/repo/.project-map/index.html[49 chars]ge']]
+
+Second list contains 1 additional elements.
+First extra element 1:
+['open', '/repo/.project-map/index.html', '--split', 'right', '--size', '0.5', '--no-merge']
+
+- [['ls', '--all', '--json']]
+?                           ^
+
++ [['ls', '--all', '--json'],
+?                           ^
+
++  ['open',
++   '/repo/.project-map/index.html',
++   '--split',
++   'right',
++   '--size',
++   '0.5',
++   '--no-merge']]
+
+======================================================================
+FAIL: test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded='%2F', fallback=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 2032, in test_project_map_reload_hook_rejects_percent_encoded_path_separators
+    self.assertEqual(agent[0][-2:], ["tab", "B" * 32])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['tab', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'] != ['tab', 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB']
+
+First differing element 1:
+'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'
+
+- ['tab', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA']
++ ['tab', 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB']
+
+======================================================================
+FAIL: test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded_event='%2F')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 2036, in test_project_map_reload_hook_rejects_percent_encoded_path_separators
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        self._run_project_map_reload_listing(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ([], []),
+        ^^^^^^^^^
+    )
+    ^
+AssertionError: Tuples differ: ([['ls', '--all', '--json']], [['--cdp', '9[265 chars])']]) != ([], [])
+
+First differing element 0:
+[['ls', '--all', '--json']]
+[]
+
++ ([], [])
+- ([['ls', '--all', '--json']],
+-  [['--cdp',
+-    '9222',
+-    '--session',
+-    'project-map-reload',
+-    '--pin-tab',
+-    'tab',
+-    'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'],
+-   ['--cdp',
+-    '9222',
+-    '--session',
+-    'project-map-reload',
+-    '--pin-tab',
+-    'eval',
+-    'if (location.href === new '
+-    'URL("file:///repo/.project-map/index.html").href) location.reload()']])
+
+======================================================================
+FAIL: test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded='%2f', fallback=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 2025, in test_project_map_reload_hook_rejects_percent_encoded_path_separators
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        browser,
+        ^^^^^^^^
+        [["ls", "--all", "--json"]]
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        + ([] if fallback else [["open", map_path, "--split", "right", "--size", "0.5", "--no-merge"]]),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: [['ls[16 chars]son']] != [['ls[16 chars]son'], ['open', '/repo/.project-map/index.html[49 chars]ge']]
+
+Second list contains 1 additional elements.
+First extra element 1:
+['open', '/repo/.project-map/index.html', '--split', 'right', '--size', '0.5', '--no-merge']
+
+- [['ls', '--all', '--json']]
+?                           ^
+
++ [['ls', '--all', '--json'],
+?                           ^
+
++  ['open',
++   '/repo/.project-map/index.html',
++   '--split',
++   'right',
++   '--size',
++   '0.5',
++   '--no-merge']]
+
+======================================================================
+FAIL: test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded='%2f', fallback=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 2032, in test_project_map_reload_hook_rejects_percent_encoded_path_separators
+    self.assertEqual(agent[0][-2:], ["tab", "B" * 32])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['tab', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'] != ['tab', 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB']
+
+First differing element 1:
+'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'
+
+- ['tab', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA']
++ ['tab', 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB']
+
+======================================================================
+FAIL: test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) (encoded_event='%2f')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 2036, in test_project_map_reload_hook_rejects_percent_encoded_path_separators
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        self._run_project_map_reload_listing(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ([], []),
+        ^^^^^^^^^
+    )
+    ^
+AssertionError: Tuples differ: ([['ls', '--all', '--json']], [['--cdp', '9[265 chars])']]) != ([], [])
+
+First differing element 0:
+[['ls', '--all', '--json']]
+[]
+
++ ([], [])
+- ([['ls', '--all', '--json']],
+-  [['--cdp',
+-    '9222',
+-    '--session',
+-    'project-map-reload',
+-    '--pin-tab',
+-    'tab',
+-    'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'],
+-   ['--cdp',
+-    '9222',
+-    '--session',
+-    'project-map-reload',
+-    '--pin-tab',
+-    'eval',
+-    'if (location.href === new '
+-    'URL("file:///repo/.project-map/index.html").href) location.reload()']])
+
+----------------------------------------------------------------------
+Ran 1 test in 2.577s
+
+FAILED (failures=6)
+```
+
+## UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python -m unittest tests.unit.test_generate_agent_configs -k project_map_reload -v (exit0)
+
+```text
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_matches_percent_encoded_tilde (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_matches_percent_encoded_tilde) ... ok
+test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd) ... ok
+test_project_map_reload_hook_selects_the_event_map_among_two_repositories (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_selects_the_event_map_among_two_repositories) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 12.627s
+
+OK
+```
+
+## shellcheck hook (exit0)
+
+```text
+```
+
+## make render-check through uv pyyaml (exit0)
+
+```text
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+```
+
+## Ruff format apply (exit0; before full12-method GREEN)
+
+```text
+1 file left unchanged
+```
+
+## Ruff format final check (exit0)
+
+```text
+1 file already formatted
+```
+
+## git diff --check -- hook test (exit0)
+
+```text
+```
+
+## Working source/test numstat againstaf4f1e99 (exit0)
+
+```text
+41	5	home/dot_claude/hooks/executable_project-map-reload.sh
+279	8	tests/unit/test_generate_agent_configs.py
+```
+
+## git diff --numstat origin/main...HEAD at previous40d18027 (historical, exit0)
+
+```text
+6	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/autoskill.md
+8	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/learning.md
+32	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-crit.json
+8	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md
+31	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/report.md
+26	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/revise.yaml
+10	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/sandbox.md
+86	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+4226	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/validation.md
+40	5	home/dot_claude/hooks/executable_project-map-reload.sh
+237	8	tests/unit/test_generate_agent_configs.py
+```
+
+## Source/hash/cap and prior11 method integrity assertions (exit0)
+
+```text
+{
+  "round3_initial_head": "8607a87c71cce2cebfaf0a7747e11de0451fc98e",
+  "separator_previous_head": "40d18027d5953c31ff57bcd7bbc250c6bb357bbc",
+  "task_sha256": "24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9",
+  "source_sha256": {
+    "home/dot_claude/hooks/executable_project-map-reload.sh": "50cf5472022d10be0e21d842af25077a016c7d3bad1ec31eaf4496020053e6e3",
+    "tests/unit/test_generate_agent_configs.py": "56d2c13ea44f1aed1bd2041b3ea3028c3f12eea4341f30235503ad612f0bbf77"
+  },
+  "source_changed": 46,
+  "test_added": 279,
+  "source_limit": 200,
+  "test_limit": 1000,
+  "focused_methods": 12,
+  "test_seconds": "12.627",
+  "new_subcases": 9,
+  "RED_failures": 6,
+  "all11_prior_methods_AST_identical": true
+}
+```
+
+## crit status --json (exit0; missing data)
+
+```text
+{
+  "branch": "fix/project-map-owned-followups",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "<HOME>/.crit/reviews/626e56928309/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}
+```
+
+## Initial make require-crit-review (exit2; evidence required)
+
+```text
+Native agent review required before completion.
+- review-sensitive path changed: .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/crit-status.json
+- broad diff touches 428 files
+- broad diff changes 24032 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+```
+
+## Full independent separator review, including advisory candidate
+
+# Independent encoded-separator correction review
+
+Scope: pending diff against 40d18027d5953c31ff57bcd7bbc250c6bb357bbc, limited to home/dot_claude/hooks/executable_project-map-reload.sh and tests/unit/test_generate_agent_configs.py. Parent reports Bot P2 4301888204 and orchestrator authorization at 07:28:36Z for the last same-round correction: reject case-insensitive percent-encoded slash before URL decoding; preserve literal double-encoded percent. Any new P2 is advisory for RESULT, not permission for more implementation. No repo writes, broad tests, Bats, agmsg, live probes, config edits or integration actions. Parent owns repo worklogs.
+
+Reference reads: git diff 40d18027 -- [the two scoped files]; sed -n '1,80p' home/dot_claude/hooks/executable_project-map-reload.sh; sed -n '/def test_project_map_reload_hook_rejects_percent_encoded_path_separators/,/def _run_project_map_reload_case/p' tests/unit/test_generate_agent_configs.py. Applicable repository/skill instructions were read in earlier review turns; no unchanged documentation dump.
+
+Plan/TODO: inspect placement before decoding and input scope; run named regression test and small independent runtime controls; capture evidence, hashes and justified assessment. No edits to product files.
+
+## Exact focused checks and outputs
+
+$ git rev-parse HEAD
+```text
+40d18027d5953c31ff57bcd7bbc250c6bb357bbc
+
+exit=0
+```
+
+$ git diff 40d18027 -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+diff --git a/home/dot_claude/hooks/executable_project-map-reload.sh b/home/dot_claude/hooks/executable_project-map-reload.sh
+index 0557bef5..f957811a 100755
+--- a/home/dot_claude/hooks/executable_project-map-reload.sh
++++ b/home/dot_claude/hooks/executable_project-map-reload.sh
+@@ -7,6 +7,7 @@
+ #   Pin tab selection and guard reloads against navigation away from a project map.
+ #   Match the event file path before choosing an existing map tab.
+ #   Canonicalize event paths and file URLs with the installed isolated Python stdlib.
++#   Reject encoded URL separators before decoding them into filesystem paths.
+ #   Bind the reload guard to the canonical-matched URL, encoded as a JSON string.
+ #   Open a separate right split using half the width when the parsed listing yields no map tab.
+ #   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.
+@@ -24,7 +25,7 @@ from urllib.parse import unquote, urlsplit
+ path = sys.argv[1]
+ if path.startswith("file://"):
+     url = urlsplit(path)
+-    if url.netloc not in ("", "localhost"):
++    if url.netloc not in ("", "localhost") or "%2f" in url.path.lower():
+         sys.exit(1)
+     path = unquote(url.path, errors="strict")
+ if path == "~" or path.startswith("~/"):
+diff --git a/tests/unit/test_generate_agent_configs.py b/tests/unit/test_generate_agent_configs.py
+index 15d9ddb0..0b866504 100644
+--- a/tests/unit/test_generate_agent_configs.py
++++ b/tests/unit/test_generate_agent_configs.py
+@@ -2011,6 +2011,48 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                     )
+                     self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""), result.stderr)
+ 
++    def test_project_map_reload_hook_rejects_percent_encoded_path_separators(self) -> None:
++        map_path = "/repo/.project-map/index.html"
++        valid = {"url": "file://" + map_path, "targetId": "B" * 32}
++        for encoded in ("%2F", "%2f"):
++            invalid_url = f"file:///repo{encoded}.project-map/index.html"
++            for fallback in (False, True):
++                with self.subTest(encoded=encoded, fallback=fallback):
++                    tabs = [{"url": invalid_url, "targetId": "A" * 32}] + ([valid] if fallback else [])
++                    browser, agent = self._run_project_map_reload_listing(
++                        map_path, {"browsers": [{"cdpPort": 9222, "tabs": tabs}]}
++                    )
++                    self.assertEqual(
++                        browser,
++                        [["ls", "--all", "--json"]]
++                        + ([] if fallback else [["open", map_path, "--split", "right", "--size", "0.5", "--no-merge"]]),
++                    )
++                    if fallback:
++                        self.assertEqual(len(agent), 2)
++                        self.assertEqual(agent[0][-2:], ["tab", "B" * 32])
++                    else:
++                        self.assertEqual(agent, [])
++            with self.subTest(encoded_event=encoded):
++                self.assertEqual(
++                    self._run_project_map_reload_listing(
++                        invalid_url, {"browsers": [{"cdpPort": 9222, "tabs": [valid]}]}
++                    ),
++                    ([], []),
++                )
++        for path, url in (
++            ("/repo%2Fname/.project-map/index.html", "file:///repo%252Fname/.project-map/index.html"),
++            ("/repo%2fname/.project-map/index.html", "file:///repo%252fname/.project-map/index.html"),
++            (map_path, "file://" + map_path + "?q=%2F"),
++        ):
++            with self.subTest(literal_percent_or_query=url):
++                browser, agent = self._run_project_map_reload_listing(
++                    path,
++                    {"browsers": [{"cdpPort": 9222, "tabs": [{"url": url, "targetId": "A" * 32}]}]},
++                )
++                self.assertEqual(browser, [["ls", "--all", "--json"]])
++                self.assertEqual(len(agent), 2)
++                self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
++
+     def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False, map_path: str | None = None):
+         with tempfile.TemporaryDirectory() as tmp:
+             root = Path(tmp)
+
+exit=0
+```
+
+$ shasum -a 256 .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9  .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+50cf5472022d10be0e21d842af25077a016c7d3bad1ec31eaf4496020053e6e3  home/dot_claude/hooks/executable_project-map-reload.sh
+56d2c13ea44f1aed1bd2041b3ea3028c3f12eea4341f30235503ad612f0bbf77  tests/unit/test_generate_agent_configs.py
+
+exit=0
+```
+
+$ /bin/bash -n home/dot_claude/hooks/executable_project-map-reload.sh
+```text
+
+exit=0
+```
+
+$ shellcheck home/dot_claude/hooks/executable_project-map-reload.sh
+```text
+
+exit=0
+```
+
+$ git diff --check -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+
+exit=0
+```
+
+$ env UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators -v
+```text
+test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.073s
+
+OK
+
+exit=0
+```
+
+$ python3 /tmp/codex-project-map-separator-extra.py
+```text
+PASS 'file://<TMP>/separator-review-gh8xumi8/repo%2F.project-map/index.html' accepted=False agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-gh8xumi8/repo%2f.project-map/index.html' accepted=False agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-gh8xumi8/repo/.project-map%2Findex.html' accepted=False agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-gh8xumi8/repo/.project-map/index.html%2f' accepted=False agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-gh8xumi8/repo%2\nF.project-map/index.html' accepted=False agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-gh8xumi8/repo%252Fname/.project-map/index.html' accepted=True agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-gh8xumi8/repo%252fname/.project-map/index.html' accepted=True agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-gh8xumi8/repo%25252Fname/.project-map/index.html' accepted=True agrees with Node fileURLToPath
+Traceback (most recent call last):
+  File "/tmp/codex-project-map-separator-extra.py", line 31, in <module>
+    assert node['ok'] == accepted, (url, node)
+           ^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('file://<TMP>/separator-review-gh8xumi8/repo%2%46name/.project-map/index.html', {'ok': False})
+
+exit=1
+```
+
+## Initial extra-fixture expectation failure
+
+The additional fixture initially classified malformed repo%2%46name as a Node-accepted valid URL. That expectation was false: fileURLToPath throws URIError. The failed check is retained above and its exact initial fixture follows. This does not establish browser behavior. The corrected fixture separates valid encoded-slash controls from the malformed-escape differential and explicitly checks the prior hook baseline.
+
+```python
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+repo = Path('<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e')
+prefix = (repo / 'home/dot_claude/hooks/executable_project-map-reload.sh').read_text().split('file_path=$(jq', 1)[0]
+with tempfile.TemporaryDirectory(prefix='separator-review-') as temporary:
+    root = Path(temporary).resolve()
+    base = root.as_uri()
+    urls = [
+        (base + '/repo%2F.project-map/index.html', False),
+        (base + '/repo%2f.project-map/index.html', False),
+        (base + '/repo/.project-map%2Findex.html', False),
+        (base + '/repo/.project-map/index.html%2f', False),
+        (base + '/repo%2\nF.project-map/index.html', False),
+        (base + '/repo%252Fname/.project-map/index.html', True),
+        (base + '/repo%252fname/.project-map/index.html', True),
+        (base + '/repo%25252Fname/.project-map/index.html', True),
+        (base + '/repo%2%46name/.project-map/index.html', True),
+        (base + '/repo/.project-map/index.html?q=%2F', True),
+        (base + '/repo/.project-map/index.html#%2f', True),
+    ]
+    program = 'const {fileURLToPath}=require("node:url");console.log(JSON.stringify(JSON.parse(process.argv[1]).map(url=>{try{return {ok:true,path:fileURLToPath(url)}}catch(error){return {ok:false,code:error.code}}})))'
+    control = subprocess.run(['node', '-e', program, json.dumps([url for url, _ in urls])], text=True, capture_output=True)
+    assert control.returncode == 0 and control.stderr == '', control
+    decoded = json.loads(control.stdout)
+    for (url, accepted), node in zip(urls, decoded):
+        actual = subprocess.run(['/bin/bash', '-c', prefix + '\ncanonical_path "$1"', 'review', url], text=True, capture_output=True)
+        assert node['ok'] == accepted, (url, node)
+        if accepted:
+            expected = os.path.realpath(node['path'])
+            assert (actual.returncode, actual.stdout, actual.stderr) == (0, expected + '\n', ''), (url, actual, expected)
+        else:
+            assert node['code'] == 'ERR_INVALID_FILE_URL_PATH', (url, node)
+            assert actual.returncode != 0 and actual.stdout == actual.stderr == '', (url, actual)
+        print('PASS', repr(url), 'accepted=' + str(accepted), 'agrees with Node fileURLToPath')
+    literal = str(root / 'repo%2Fname/.project-map/index.html')
+    actual = subprocess.run(['/bin/bash', '-c', prefix + '\ncanonical_path "$1"', 'review', literal], text=True, capture_output=True)
+    assert (actual.returncode, actual.stdout, actual.stderr) == (0, literal + '\n', ''), actual
+    print('PASS bare filesystem percent2F remains literal')
+print('PASS 11 URL comparisons and 1 bare-path control; no browser or daemon')
+```
+
+$ python3 /tmp/codex-project-map-separator-extra.py
+```text
+PASS 'file://<TMP>/separator-review-n2zzz32k/repo%2F.project-map/index.html' accepted=False agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-n2zzz32k/repo%2f.project-map/index.html' accepted=False agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-n2zzz32k/repo/.project-map%2Findex.html' accepted=False agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-n2zzz32k/repo/.project-map/index.html%2f' accepted=False agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-n2zzz32k/repo%2\nF.project-map/index.html' accepted=False agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-n2zzz32k/repo%252Fname/.project-map/index.html' accepted=True agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-n2zzz32k/repo%252fname/.project-map/index.html' accepted=True agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-n2zzz32k/repo%25252Fname/.project-map/index.html' accepted=True agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-n2zzz32k/repo/.project-map/index.html?q=%2F' accepted=True agrees with Node fileURLToPath
+PASS 'file://<TMP>/separator-review-n2zzz32k/repo/.project-map/index.html#%2f' accepted=True agrees with Node fileURLToPath
+OBSERVATION malformed percent2-percent46: baseline and current both accept literal percent2F; Node fileURLToPath throws URIError; unchanged by this diff; browser behavior not verified
+PASS bare filesystem percent2F remains literal
+PASS 10 valid/encoded-slash URL comparisons and 1 bare-path control; one baseline/current malformed-escape differential recorded; no browser or daemon
+
+exit=0
+```
+
+## Corrected extra-fixture source
+
+```python
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+repo = Path('<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e')
+prefix = (repo / 'home/dot_claude/hooks/executable_project-map-reload.sh').read_text().split('file_path=$(jq', 1)[0]
+with tempfile.TemporaryDirectory(prefix='separator-review-') as temporary:
+    root = Path(temporary).resolve()
+    base = root.as_uri()
+    urls = [
+        (base + '/repo%2F.project-map/index.html', False),
+        (base + '/repo%2f.project-map/index.html', False),
+        (base + '/repo/.project-map%2Findex.html', False),
+        (base + '/repo/.project-map/index.html%2f', False),
+        (base + '/repo%2\nF.project-map/index.html', False),
+        (base + '/repo%252Fname/.project-map/index.html', True),
+        (base + '/repo%252fname/.project-map/index.html', True),
+        (base + '/repo%25252Fname/.project-map/index.html', True),
+        (base + '/repo/.project-map/index.html?q=%2F', True),
+        (base + '/repo/.project-map/index.html#%2f', True),
+    ]
+    program = 'const {fileURLToPath}=require("node:url");console.log(JSON.stringify(JSON.parse(process.argv[1]).map(url=>{try{return {ok:true,path:fileURLToPath(url)}}catch(error){return {ok:false,code:error.code}}})))'
+    control = subprocess.run(['node', '-e', program, json.dumps([url for url, _ in urls])], text=True, capture_output=True)
+    assert control.returncode == 0 and control.stderr == '', control
+    decoded = json.loads(control.stdout)
+    for (url, accepted), node in zip(urls, decoded):
+        actual = subprocess.run(['/bin/bash', '-c', prefix + '\ncanonical_path "$1"', 'review', url], text=True, capture_output=True)
+        assert node['ok'] == accepted, (url, node)
+        if accepted:
+            expected = os.path.realpath(node['path'])
+            assert (actual.returncode, actual.stdout, actual.stderr) == (0, expected + '\n', ''), (url, actual, expected)
+        else:
+            assert node['code'] == 'ERR_INVALID_FILE_URL_PATH', (url, node)
+            assert actual.returncode != 0 and actual.stdout == actual.stderr == '', (url, actual)
+        print('PASS', repr(url), 'accepted=' + str(accepted), 'agrees with Node fileURLToPath')
+    malformed = base + '/repo%2%46name/.project-map/index.html'
+    before = subprocess.check_output(['git', 'show', '40d18027:home/dot_claude/hooks/executable_project-map-reload.sh'], cwd=repo, text=True).split('file_path=$(jq', 1)[0]
+    results = [subprocess.run(['/bin/bash', '-c', source + '\ncanonical_path "$1"', 'review', malformed], text=True, capture_output=True) for source in [before, prefix]]
+    expected = str(root / 'repo%2Fname/.project-map/index.html') + '\n'
+    assert all((r.returncode, r.stdout, r.stderr) == (0, expected, '') for r in results)
+    control = subprocess.run(['node', '-e', 'try { require("node:url").fileURLToPath(process.argv[1]); process.exit(1); } catch (e) { console.log(e.name); }', malformed], text=True, capture_output=True)
+    assert (control.returncode, control.stdout, control.stderr) == (0, 'URIError\n', '')
+    print('OBSERVATION malformed percent2-percent46: baseline and current both accept literal percent2F; Node fileURLToPath throws URIError; unchanged by this diff; browser behavior not verified')
+    literal = str(root / 'repo%2Fname/.project-map/index.html')
+    actual = subprocess.run(['/bin/bash', '-c', prefix + '\ncanonical_path "$1"', 'review', literal], text=True, capture_output=True)
+    assert (actual.returncode, actual.stdout, actual.stderr) == (0, literal + '\n', ''), actual
+    print('PASS bare filesystem percent2F remains literal')
+print('PASS 10 valid/encoded-slash URL comparisons and 1 bare-path control; one baseline/current malformed-escape differential recorded; no browser or daemon')
+```
+
+AST preservation check: parsed git show 40d18027:tests/unit/test_generate_agent_configs.py and current file; compared ast.dump for every pre-existing test_project_map_reload method, asserting all 11 equal and exactly one new method.
+```text
+PASS all 11 prior method ASTs unchanged; one new separator method
+exit=0
+```
+
+$ shasum -a 256 .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9  .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+50cf5472022d10be0e21d842af25077a016c7d3bad1ec31eaf4496020053e6e3  home/dot_claude/hooks/executable_project-map-reload.sh
+56d2c13ea44f1aed1bd2041b3ea3028c3f12eea4341f30235503ad612f0bbf77  tests/unit/test_generate_agent_configs.py
+
+exit=0
+```
+
+$ git diff --numstat 40d18027 -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+2	1	home/dot_claude/hooks/executable_project-map-reload.sh
+42	0	tests/unit/test_generate_agent_configs.py
+
+exit=0
+```
+
+## Final focused assessment
+
+No finding introduced by the bounded encoded-slash correction. Justified approval: the single added condition operates on the parsed URL path before unquote, uses case-insensitive comparison, and rejects encoded slash anywhere in the path. Both event and candidate sides inherit it through the same canonicalizer. Invalid event URLs exit silently before listing; invalid candidates are skipped so a later valid candidate remains selectable or the original real map path is opened. The condition does not inspect query/fragment text, alter bare local percent-containing paths, or decode a double-encoded percent twice. The existing authority check, -I -S isolation, guard encoding, target/port checks and first-match behavior are unchanged.
+
+Independent evidence: the new named test passes all nine subcases. Ten valid/encoded-slash URL controls agree with Node fileURLToPath, including uppercase/lowercase encoded slash, separator in different path positions, a URL-parser-stripped newline within the escape, double/triple percent encoding, query and fragment text. A bare local percent2F control remains literal. Bash syntax, ShellCheck and scoped whitespace pass. All eleven prior focused test methods are independently AST-identical to 40d18027. Source SHA256 is 50cf5472022d10be0e21d842af25077a016c7d3bad1ec31eaf4496020053e6e3; tests SHA256 is 56d2c13ea44f1aed1bd2041b3ea3028c3f12eea4341f30235503ad612f0bbf77; task SHA256 remains 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9. Parent's 12-method full-suite, RED evidence, render/Ruff and whole-PR caps are reported by the parent, not independently rerun here.
+
+## Advisory candidate for the full-PR auditor (not an introduced finding)
+
+[P2 candidate] low confidence of user-visible impact; high confidence of runtime differential; home/dot_claude/hooks/executable_project-map-reload.sh:30 — malformed file URL path `repo%2%46name/.project-map/index.html` becomes literal `repo%2Fname/.project-map/index.html` under Python unquote, while Node fileURLToPath throws URIError; this could identify a URL the loader cannot use, but actual browser behavior is unverified.
+
+The baseline 40d18027 and current exact canonicalizer were both executed on that input and return the same literal path; this is pre-existing behavior, not caused or fixed by the added `%2f` rejection. The initial extra fixture wrongly expected Node to accept that malformed sequence; its failed output and exact source are retained above. The corrected fixture records the difference explicitly rather than treating it as a passing equivalence case. No live browser/terminal-browser loader evidence establishes a wrong reload, so this is an advisory limitation/candidate, not a confirmed browser failure. The parent will carry it to RESULT/full-PR audit under the last-correction instruction; no additional implementation was made or requested.
+
+Plan/TODO: bounded review complete. No integration authority exercised.
+
+Skipped: broad suite repetition, Bats, CI, live browser/pane/daemon and fresh/persisted E2E. Remaining uncertainty: browser treatment of the recorded pre-existing malformed-escape differential, plus the already assigned post-merge E2E observation.
+
+Verdict: correct
+
+
+## Current canonical mask and worker gate
+
+Actual HOME/temp prefixes redacted and dispatched task bytes unchanged. Broad gate counts include preserved untracked other-task logs, which are not staged.
+
+### uv validate-agent-assets.py --mask-secrets all9canonicalrecords (exit0)
+
+```text
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/revise.yaml
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md
+```
+
+### AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md make require-crit-review (exit0)
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+## Historical validation through40d18027 (superseded for current encoded-separator claims)
+
+---
+task_id: dotfiles-T128-project-map-pane-open-a01-followup-a01
+status: final
+---
+
 Current same-round guard correction againstba0bf354; task SHA256 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9. Source/test hashes below bind this committed phase to the tested code. Future publishing-head CI/Bot observations follow in RESULT-round3/raw round3-guard/. HOME/temp prefixes are redacted; command output and historical whitespace otherwise preserved. Earlier checkpoint sections are labeled historical.
 
 - home/dot_claude/hooks/executable_project-map-reload.sh: a3a2dcf0b0c13ce264a6f062309469e72744a2a8a14fc9b925a1b5c87b69154d

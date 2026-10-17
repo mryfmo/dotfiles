@@ -24,3 +24,10 @@ guard_correction:
   authorization: '2026-10-17T07:16:28Z explicit same-round re-plan interpretation, not a new round'
   check: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
   behavior: 'canonical selected URL bound to live href; ten Node-executed rows assert reload and no injection'
+separator_correction:
+  previous_head: 40d18027d5953c31ff57bcd7bbc250c6bb357bbc
+  finding: 4301888204
+  round: 3
+  authorization: '2026-10-17T07:28:36Z last correction within round3; further P2 proposed advisory'
+  check: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_project_map_reload_hook_rejects_percent_encoded_path_separators
+  advisory_candidate: 'local:separator-review:1 malformed-percent Node differential; browser impact unverified, not fixed'

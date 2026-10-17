@@ -2011,6 +2011,48 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     )
                     self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""), result.stderr)
 
+    def test_project_map_reload_hook_rejects_percent_encoded_path_separators(self) -> None:
+        map_path = "/repo/.project-map/index.html"
+        valid = {"url": "file://" + map_path, "targetId": "B" * 32}
+        for encoded in ("%2F", "%2f"):
+            invalid_url = f"file:///repo{encoded}.project-map/index.html"
+            for fallback in (False, True):
+                with self.subTest(encoded=encoded, fallback=fallback):
+                    tabs = [{"url": invalid_url, "targetId": "A" * 32}] + ([valid] if fallback else [])
+                    browser, agent = self._run_project_map_reload_listing(
+                        map_path, {"browsers": [{"cdpPort": 9222, "tabs": tabs}]}
+                    )
+                    self.assertEqual(
+                        browser,
+                        [["ls", "--all", "--json"]]
+                        + ([] if fallback else [["open", map_path, "--split", "right", "--size", "0.5", "--no-merge"]]),
+                    )
+                    if fallback:
+                        self.assertEqual(len(agent), 2)
+                        self.assertEqual(agent[0][-2:], ["tab", "B" * 32])
+                    else:
+                        self.assertEqual(agent, [])
+            with self.subTest(encoded_event=encoded):
+                self.assertEqual(
+                    self._run_project_map_reload_listing(
+                        invalid_url, {"browsers": [{"cdpPort": 9222, "tabs": [valid]}]}
+                    ),
+                    ([], []),
+                )
+        for path, url in (
+            ("/repo%2Fname/.project-map/index.html", "file:///repo%252Fname/.project-map/index.html"),
+            ("/repo%2fname/.project-map/index.html", "file:///repo%252fname/.project-map/index.html"),
+            (map_path, "file://" + map_path + "?q=%2F"),
+        ):
+            with self.subTest(literal_percent_or_query=url):
+                browser, agent = self._run_project_map_reload_listing(
+                    path,
+                    {"browsers": [{"cdpPort": 9222, "tabs": [{"url": url, "targetId": "A" * 32}]}]},
+                )
+                self.assertEqual(browser, [["ls", "--all", "--json"]])
+                self.assertEqual(len(agent), 2)
+                self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+
     def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False, map_path: str | None = None):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

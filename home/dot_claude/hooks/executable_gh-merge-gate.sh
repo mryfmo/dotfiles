@@ -24,11 +24,6 @@
 #   is pushed. Then: with --draft any non-default head passes (task branches open drafts); otherwise, from the main
 #   checkout only, the head must be an `orchestration/` branch whose diff against the base touches only
 #   `.orchestration/` (boundary records), or its pushed tip must have an acceptance record as in 5 above.
-#   A `gh api graphql` mutation (or a query read from a file or --input) asks, except exactly
-#   `gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_…"}) { thread { isResolved } } }'`
-#   from the main checkout for a thread on an open PR of this repository whose head has an accepted record (5 above)
-#   and whose task sweep JSON `.orchestration/validation/<task>-pr-feedback.json`, pinned to that head and PR, gives the
-#   thread's first comment a `fixed:` or `not-applicable:` disposition.
 # @stdin json The PreToolUse payload.
 # @stdout json A hookSpecificOutput permission decision, or nothing for unrelated commands.
 # @set ${XDG_STATE_HOME:-~/.local/state}/claude/gh-merge-gate.log One line per decision (UTC time, decision, reason).
@@ -55,39 +50,9 @@ input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"${input}" 2>/dev/null) || ask "unreadable payload"
 cwd=$(jq -r '.cwd // empty' <<<"${input}" 2>/dev/null) || ask "unreadable payload"
 
-# Resolve one review thread: the only GraphQL mutation that can pass, in one literal form. Every other mutation asks.
-gate_resolve() {
-  local re tid nwo info num head cid task sweep
-  re="^gh api graphql -f query='mutation \{ resolveReviewThread\(input: \{threadId: \"(PRRT_[A-Za-z0-9_-]+)\"\}\) \{ thread \{ isResolved \} \} \}'$"
-  [[ ${cmd} =~ ${re} ]] || ask "graphql mutation outside the gated resolveReviewThread form"
-  tid=${BASH_REMATCH[1]}
-  main_checkout "resolve"
-  nwo=$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null) || ask "gh repo view failed"
-  # shellcheck disable=SC2016 # $id is GraphQL's variable
-  info=$(gh api graphql -f id="${tid}" -f query='query($id: ID!) { node(id: $id) { ... on PullRequestReviewThread { isResolved pullRequest { number headRefOid state repository { nameWithOwner } } comments(first: 1) { nodes { databaseId } } } } }' --jq '.data.node' 2>/dev/null) || ask "cannot read thread ${tid}"
-  [[ $(jq -r '.pullRequest.repository.nameWithOwner' <<<"${info}") == "${nwo}" ]] || ask "thread ${tid} is not on ${nwo}"
-  [[ $(jq -r '.pullRequest.state' <<<"${info}") == OPEN ]] || ask "thread ${tid} is not on an open PR"
-  num=$(jq -r '.pullRequest.number' <<<"${info}")
-  head=$(jq -r '.pullRequest.headRefOid' <<<"${info}")
-  cid=$(jq -r '.comments.nodes[0].databaseId' <<<"${info}")
-  [[ ${num} =~ ^[0-9]+$ && ${head} =~ ^[0-9a-f]{40}$ && ${cid} =~ ^[0-9]+$ ]] || ask "thread ${tid} has no PR head or first comment"
-  require_accepted "${head}"
-  task=${accepted##*/}
-  task=${task%.md}
-  sweep="${top}/.orchestration/validation/${task}-pr-feedback.json"
-  [[ -f ${sweep} && ! -L ${sweep} ]] || ask "no sweep JSON for ${task}"
-  jq -e --arg h "${head}" --argjson pr "${num}" --arg suffix "_r${cid}" \
-    '.head_sha == $h and .pr == $pr and any(.items[]; ((.url // "") | endswith($suffix)) and ((.disposition // "") | test("^(fixed|not-applicable):")))' \
-    "${sweep}" >/dev/null 2>&1 || ask "the sweep of ${head:0:12} gives comment ${cid} no fixed or not-applicable disposition"
-  decide allow "resolve thread ${tid} of PR ${num}: accepted head ${head:0:12} dispositions comment ${cid}"
-}
-if grep -Eq '(^|[^[:alnum:]_.-])gh[[:space:]]+api[[:space:]]+graphql([^[:alnum:]_-]|$)' <<<"${cmd}" && grep -Eqi 'mutation|=@|--input' <<<"${cmd}"; then
-  gate_resolve_pending=1
-fi
-
 # A gh invocation of a gated verb (any wrapper, substitution or -c string still contains it), or an API merge path.
 shape='(^|[^[:alnum:]_.-])gh([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+pr[[:space:]]+(merge|update-branch|create)([^[:alnum:]_-]|$)|pulls/[^[:space:]]*/(merge|update-branch)([^[:alnum:]_-]|$)'
-[[ -n ${gate_resolve_pending:-} ]] || grep -Eq "${shape}" <<<"${cmd}" || exit 0
+grep -Eq "${shape}" <<<"${cmd}" || exit 0
 matched=$(grep -Eo "${shape}" <<<"${cmd}" | head -n 1 | cut -c1-80)
 
 # Require the payload's cwd to be the repository's main checkout; sets top.
@@ -184,7 +149,6 @@ sys.stdout.write("".join(word + "\0" for word in words))
 }
 
 [[ ${cmd} =~ ^gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$) ]] && gate_create
-[[ -n ${gate_resolve_pending:-} ]] && gate_resolve
 
 case "${cmd}" in
   *[\;\&\|\<\>\`\$\(\)\{\}\'\"\\]* | *$'\n'*) ask "not a single simple command around: ${matched}" ;;

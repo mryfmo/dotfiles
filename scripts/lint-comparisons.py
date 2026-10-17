@@ -41,6 +41,7 @@ PS = re.compile(
 PGREP = re.compile(r"\bpgrep\s+-\w*f\w*(\s+-\S+)*\s+\S*\$")
 GREP = re.compile(r"\b(e?grep)((?:\s+-\S+)*)\s+(\"[^\"]*\"|'[^']*'|\S+)")
 PY_NORM = re.compile(r"^(realpath|normpath|abspath|resolve|urlsplit|urlparse|unquote|canonical_path|normali[sz]e_\w+)$")
+OPS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)
 
 
 def operand(tok):
@@ -125,15 +126,14 @@ def python_hits(text):
         return
     for node in ast.walk(tree):
         call = isinstance(node, ast.Call)
-        if isinstance(node, ast.Compare) and any(
-            isinstance(o, (ast.Eq, ast.NotEq, ast.In, ast.NotIn)) for o in node.ops
-        ):
+        if isinstance(node, ast.Compare) and any(isinstance(o, OPS) for o in node.ops):
             parts = [node.left, *node.comparators]
         elif call and isinstance(node.func, ast.Attribute) and node.func.attr in ("startswith", "endswith"):
             parts = [node.func.value, *node.args]
         elif (
             call
             and py_name(node.func) in ("compile", "search", "match", "fullmatch")
+            and py_name(getattr(node.func, "value", None)) == "re"
             and node.args
             and isinstance(node.args[0], ast.JoinedStr)
         ):

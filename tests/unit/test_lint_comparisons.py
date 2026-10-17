@@ -37,7 +37,7 @@ TABLE = {
         "r2.sh",
         'case "$url" in file://*) ;; esac\n',
         {
-            name: form.replace("[[ ", "case ").replace(" == */x ]]", " in file://*) ;; esac")
+            name: form.replace("[[ ", "case ").replace('" == */x ]]', '/x" in /*) ;; esac')
             for name, form in SHELL_NORMALISERS.items()
         },
     ),

@@ -1,8 +1,15 @@
-previous_head: a250b1cb2035c879893865cf7b8ca4f7904ca46a
-round: 1
-check: tests/unit/test_chain_github_scripts.py::test_resolve_threads_skips_comment_rows_during_preflight
-operator_decision: D-S2-375-A
-audit_followup:
-  previous_head: 59eca2afbd834132ba187c98e88afbe57be5b5dd
-  check: tests/unit/test_chain_github_scripts.py::test_resolve_threads_refuses_backticks_when_tsv_id_is_empty
-  operator_decision: D-S2-375-2-A
+task_id: dotfiles-T128-chain-github-scripts-followup-a02
+round: 4
+previous_head: 5ef1c902db85ef4517d05ef8289a53fd46159148
+check: tests/unit/test_chain_github_scripts.py::test_resolve_threads_refuses_backticks_when_tsv_id_is_empty
+operator_decision: D-S2-375-3-A
+reason: the audit of 5ef1c902 (audit:5ef1c90:1, class stale-evidence-on-branch) found the branch's validation.md stopped at seven tests and the final report absent from the audited tree; an evidence-only round (no source or test change, taken over from codex-standard-dot-a004 by claude-standard-dot-a007) commits the check's results before and after its fix and the full module run at 5ef1c902
+earlier:
+  - label: audit_followup
+    previous_head: 59eca2afbd834132ba187c98e88afbe57be5b5dd
+    check: tests/unit/test_chain_github_scripts.py::test_resolve_threads_refuses_backticks_when_tsv_id_is_empty
+    operator_decision: D-S2-375-2-A
+  - round: 1
+    previous_head: a250b1cb2035c879893865cf7b8ca4f7904ca46a
+    check: tests/unit/test_chain_github_scripts.py::test_resolve_threads_skips_comment_rows_during_preflight
+    operator_decision: D-S2-375-A

@@ -35,8 +35,8 @@
 #   writable directory, or whose `task` is not the line's `task_id`, is refused
 #   before the send, and nothing is sent.
 #   An AGMSG-TASK line whose `task_file=` fails `task-consistency-check.py`
-#   (beside this script, run as `python -I` through the Makefile's `UV_PYYAML`
-#   uv form with `--no-config`, `--no-project` and a pinned `--python`, from the root, under `env -i` with only
+#   (beside this script, run as `python -I` through `uv run --offline`, PyYAML from the pinned cache only,
+#   with `--no-config`, `--no-project` and a pinned `--python`, from the root, under `env -i` with only
 #   `PATH`, `HOME` (the script owner's passwd home), `UV_CACHE_DIR` (under it), `LANG`, `LC_ALL` and the `AGMSG_*`
 #   variables) is refused with the checker's output, and nothing is sent (C-52).
 #   Only a review brief is exempt: a front matter (the text between the first
@@ -67,7 +67,8 @@
 # @env BUS_READ_WINDOW The newest rows each history read takes (default 200, a positive integer).
 # @exitcode 0 Sent, and recorded when a record was given (agmsg-dispatch's own status otherwise).
 # @exitcode 1 A field check failed, the task file fails the task-consistency check, the record is malformed, or the sent line was not recorded.
-# @exitcode 2 Usage error, or the file is not one AGMSG-TASK, AGMSG-ACCEPTANCE or AGMSG-PING v1 line.
+# @exitcode 2 Usage error, the file is not one AGMSG-TASK, AGMSG-ACCEPTANCE or AGMSG-PING v1 line, or PyYAML is not in
+#   the pinned uv cache (run `make validate-agent-assets` to warm it).
 # @example
 #   scripts/orchestrator/dispatch.sh dotfiles-conformance claude-deep-dot claude-standard-dot-a003 w5:pA \
 #     "$TMPDIR/task-line.txt" .orchestration/acceptance/dotfiles-T128-orchestrator-tools-a01.md
@@ -199,8 +200,8 @@ for t in "${tokens[@]}"; do
 done
 if [[ ${tokens[0]} == AGMSG-TASK ]]; then
     tf="$(value_of task_file)" && [[ ${tf} == /* ]] || tf="${root}/${tf}"
-    # The Makefile's UV_PYYAML: offline when the cache holds PyYAML, else through the index. --no-project: a
-    # pyproject.toml in the caller's directory is never discovered, synced or built (the Bot's P1 4292675906).
+    # Offline only: PyYAML comes from the pinned cache the validator recipes warm, and a cold cache stops the send,
+    # never a fetch. --no-project: a pyproject.toml in the caller's directory is never discovered, synced or built.
     # The interpreter is named, python3 as mise answers it under env -i at the root, else python3 on PATH, and uv
     # runs under env -i with an allowlist, so no VIRTUAL_ENV, CONDA_PREFIX, UV_* or PYTHON* variable reaches it
     # (local:9df6b0c:1, C-57, the Bot's P1 4300102967).
@@ -213,7 +214,10 @@ if [[ ${tokens[0]} == AGMSG-TASK ]]; then
     here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
     # Run from the trusted root, so a caller's .python-version or virtual environment picks no interpreter (4299651928).
     uvr() { (cd -- "${root}" && "${clean[@]}" "${uvy[@]}" "$@"); }
-    uvr python -I -c 'import yaml' > /dev/null 2>&1 || uvy=(uv run --no-config --no-project --python "${py}" --with pyyaml)
+    uvr python -I -c 'import yaml' > /dev/null 2>&1 || {
+        echo "dispatch: PyYAML is not in the uv cache ${home}/.cache/uv; run make validate-agent-assets to warm it" >&2
+        exit 2
+    }
     read -r -d '' brief << 'PY' || true
 import sys, yaml
 def unique(loader, node, deep=False):

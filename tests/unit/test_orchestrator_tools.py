@@ -421,17 +421,22 @@ class OrchestratorToolsTest(unittest.TestCase):
             "if f'.orchestration/{tid}/**' in open(f).read():\n    sys.exit(print(f'{f}: OK'))\n"
             "print(f'{f}: FAIL')\nprint(f'  C2 allowed_files lacks .orchestration/{tid}/**')\nsys.exit(1)\n",
         )
-        # The fake records its argv, its directory and the name of every variable it inherits; uv runs under env -i,
-        # so the calls directory is written into it.
+        # The fake records each call's exact argv, directory and environment, then runs the real uv next on PATH; uv
+        # runs under env -i, so the calls directory is written into it. Python adds no variable of its own.
         (self.temp / "bin/uv").unlink()
         fake = self.temp / "fake-uv/uv"
         fake.parent.mkdir()
         fake.write_text(
-            f'#!/usr/bin/env bash\necho "$*" >> "{self.calls}/uv.log"\npwd -P >> "{self.calls}/uv-cwd.log"\n'
-            f'/usr/bin/env | /usr/bin/sed -n "s/^\\([A-Za-z_][A-Za-z0-9_]*\\)=.*/\\1/p" >> "{self.calls}/uv-env.log"\n'
-            f'echo "HOME=$HOME UV_CACHE_DIR=${{UV_CACHE_DIR:-}}" >> "{self.calls}/uv-home.log"\n'
-            'here="$(cd "$(dirname "$0")" && pwd -P)"\n'
-            'p=":${PATH}:" && p=${p//:${here}:/:}\nexec "$(PATH=${p} command -v uv)" "$@"\n'
+            "#!/usr/bin/env python3\nimport json, os, shutil, sys\n"
+            f"calls = {str(self.calls)!r}\n"
+            "with open(os.path.join(calls, 'uv.log'), 'a') as f:\n    f.write(' '.join(sys.argv[1:]) + '\\n')\n"
+            "record = {'argv': sys.argv[1:], 'cwd': os.getcwd(), 'env': dict(os.environ)}\n"
+            "with open(os.path.join(calls, 'uv-calls.jsonl'), 'a') as f:\n    f.write(json.dumps(record) + '\\n')\n"
+            # uv-cold stands for a cache without PyYAML: the offline probe fails as uv --offline would.
+            "if os.path.exists(os.path.join(calls, 'uv-cold')) and sys.argv[-1] == 'import yaml':\n    sys.exit(1)\n"
+            "here = os.path.dirname(os.path.realpath(__file__))\n"
+            "path = os.pathsep.join(p for p in os.environ['PATH'].split(os.pathsep) if os.path.realpath(p) != here)\n"
+            "real = shutil.which('uv', path=path)\nos.execv(real, [real, *sys.argv[1:]])\n"
         )
         fake.chmod(0o755)
         env = {"PATH": f"{fake.parent}{os.pathsep}{self.env['PATH']}"}
@@ -443,7 +448,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         def send(front, code, cwd=None, extra=None):
             text = self.write(rel, f"---\nformat: 2\ntask_id: t\n{front}---\n\nBody.\n").read_text()
             line = self.write("line.txt", f"AGMSG-TASK v1 task_id=t task_file={rel} task_sha256={sha(text)}\n")
-            for name in ("uv.log", "uv-cwd.log", "uv-env.log", "uv-home.log"):
+            for name in ("uv.log", "uv-calls.jsonl"):
                 (self.calls / name).unlink(missing_ok=True)
             args = ["team", "orch", "worker", "w5:pA", line, record]
             result = self.run_tool("dispatch.sh", *args, code=code, env={**env, **(extra or {})}, cwd=cwd)
@@ -465,6 +470,14 @@ class OrchestratorToolsTest(unittest.TestCase):
                 self.assertIn(f"task-consistency-check.py --root {self.repo} {self.repo / rel}", log)
                 self.assertIsNone(self.call("agmsg-dispatch"))
                 self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
+        # A cold cache stops the send with exit 2 and the warming command, never a fetch through the index.
+        (self.calls / "uv-cold").write_text("")
+        result, log = send("kind: code\n" + lacking, 2)
+        self.assertIn("PyYAML is not in the uv cache", result.stderr)
+        self.assertIn("make validate-agent-assets", result.stderr)
+        self.assertEqual(1, log.count("run "))
+        self.assertIsNone(self.call("agmsg-dispatch"))
+        (self.calls / "uv-cold").unlink()
         _, log = send("kind: review\n", 0)
         # The Makefile's UV_PYYAML probe comes first, then the brief parse in the form it chose.
         self.assertRegex(
@@ -499,25 +512,46 @@ class OrchestratorToolsTest(unittest.TestCase):
         other = self.temp / "other"
         subprocess.run(["git", "init", "-q", str(other)], check=True)
         state |= {"HOME": str(caller / "home"), "GIT_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)}
-        _, log = send("kind: review\n", 0, cwd=caller, extra=state)
+        _, _ = send("kind: review\n", 0, cwd=caller, extra=state)
         self.assertFalse((self.calls / "pwned").exists())
-        self.assertEqual({str(self.repo)}, set((self.calls / "uv-cwd.log").read_text().splitlines()))
-        # The allowlist (PATH, HOME, LANG, LC_ALL, AGMSG_*), plus what bash itself sets in the fake.
-        names = set((self.calls / "uv-env.log").read_text().split())
-        others = {n for n in names if not n.startswith("AGMSG_")}
-        self.assertLessEqual(others, {"PATH", "HOME", "UV_CACHE_DIR", "LANG", "LC_ALL", "PWD", "SHLVL", "_", "OLDPWD"})
-        self.assertLessEqual({"PATH", "HOME", "UV_CACHE_DIR", "AGMSG_STORAGE_PATH"}, names)
-        # HOME is the script owner's passwd home and the cache sits under it, whatever the caller's HOME.
+        # Positive identity: the exact argv and the exact environment of every uv call, so no other input can reach it.
         home = pwd.getpwuid((self.repo / "scripts/orchestrator/dispatch.sh").stat().st_uid).pw_dir
-        seen = set((self.calls / "uv-home.log").read_text().splitlines())
-        self.assertEqual({f"HOME={home} UV_CACHE_DIR={home}/.cache/uv"}, seen)
-        # Each call starts a "run" line; the brief script it passes with -c spans the lines after it.
-        calls = [line for line in log.splitlines() if line.startswith("run ")]
+        path = f"{self.temp / 'fake-uv'}{os.pathsep}{self.env['PATH']}"
+        found = subprocess.run(
+            ["env", "-i", f"PATH={path}", f"HOME={home}", "mise", "which", "python3"],
+            cwd=self.repo,
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+        python = found if found.startswith("/") else shutil.which("python3", path=path)
+        given = {**self.env, **state}
+        expected_env = {"PATH": path, "HOME": home, "UV_CACHE_DIR": f"{home}/.cache/uv"}
+        expected_env |= {k: v for k, v in given.items() if k in ("LANG", "LC_ALL") and v}
+        expected_env |= {k: v for k, v in given.items() if k.startswith("AGMSG_")}
+        head = [
+            "run",
+            "--no-config",
+            "--no-project",
+            "--offline",
+            "--python",
+            python,
+            "--with",
+            "pyyaml",
+            "python",
+            "-I",
+        ]
+        task = str(self.repo / ".orchestration/tasks/t.md")
+        calls = [json.loads(line) for line in (self.calls / "uv-calls.jsonl").read_text().splitlines()]
         self.assertEqual(2, len(calls))  # the probe and the brief parse; a brief runs no checker
-        self.assertTrue(all(call.startswith("run --no-config --no-project ") for call in calls), calls)
-        pinned = {re.search(r" --python (/\S+) ", call)[1] for call in calls}
-        self.assertEqual(1, len(pinned))
-        self.assertNotEqual(str(pwn), pinned.pop())
+        self.assertEqual([*head, "-c", "import yaml"], calls[0]["argv"])
+        self.assertEqual([*head, "-c", task], [*calls[1]["argv"][:11], calls[1]["argv"][12]])
+        self.assertEqual(13, len(calls[1]["argv"]))
+        for call in calls:
+            # macOS adds __CF_USER_TEXT_ENCODING to every process, after env -i too; it is no input the script passes.
+            call["env"].pop("__CF_USER_TEXT_ENCODING", None)
+            self.assertEqual(expected_env, call["env"])
+            self.assertEqual(str(self.repo), call["cwd"])
         self.assertEqual(1, len(self.gate_block(record)[0]["dispatch"]))
 
     def test_dispatch_resolves_its_root_without_inherited_git_variables(self):

@@ -355,11 +355,11 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
             self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
             self.git("pull", "-q", "--ff-only")
 
-        def pr_head(first, edit=False):
+        def pr_head(first, edit=None):
             self.git("checkout", "-q", "--detach", first, cwd=self.seed)
             self.git("merge", "-q", "--no-ff", "--no-edit", "--no-commit", "origin/main", cwd=self.seed)
             if edit:
-                (self.seed / "b.txt").write_text("b, edited in the merge\n")
+                (self.seed / "b.txt").write_text(edit)
                 self.git("add", "b.txt", cwd=self.seed)
             self.git("commit", "-q", "--no-edit", cwd=self.seed)
             self.git("push", "-q", "origin", "+HEAD:refs/pull/7/head", cwd=self.seed)
@@ -367,7 +367,7 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
             return self.git("rev-parse", "HEAD", cwd=self.seed)
 
         def patch_id(rev):
-            command = 'git diff-tree -p "$(git merge-base origin/main "$1")" "$1" | git patch-id --stable'
+            command = 'git diff-tree -p "$(git merge-base origin/main "$1")" "$1" | git patch-id --verbatim'
             return subprocess.run(
                 ["bash", "-c", command, "-", rev], cwd=self.seed, capture_output=True, text=True, check=True
             ).stdout.split()[0]
@@ -384,16 +384,22 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.assertIn(f" audit rc=0: audit inherited from {p7}", self.log(merged))
         self.assertEqual(f"chain-integrate: {TASK} {merged} Verdict: correct", out.splitlines()[-1])
         # The same two parents, the merge also editing b.txt: another patch, so the audit runs and nothing is inherited.
-        edited = pr_head(self.head, edit=True)
+        edited = pr_head(self.head, edit="b, edited in the merge\n")
         self.assertNotEqual(patch_id(self.head), patch_id(edited))
         self.chain()
         self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-audit"))
         self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{edited[:7]}.md*")))
+        # PR #390 thread 4302490292: a merge that changes only whitespace (b.txt indented) is a new patch too.
+        spaced = pr_head(self.head, edit="  b.txt\n")
+        self.assertNotEqual(patch_id(self.head), patch_id(spaced))
+        self.chain()
+        self.assertEqual(2, len(self.calls_of("orch-audit")))
+        self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{spaced[:7]}.md*")))
         # A head that inherited passes its marker on unchanged, so the ids stay the head the audit ran on.
         move_main("d.txt")
         again = pr_head(merged)
         self.chain()
-        self.assertEqual(1, len(self.calls_of("orch-audit")))
+        self.assertEqual(2, len(self.calls_of("orch-audit")))
         self.assertEqual(
             f"inherited-from: {p7}\n{summary}", (self.v / f"{TASK}-audit-{again[:7]}.md.last.md").read_text()
         )

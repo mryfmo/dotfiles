@@ -177,7 +177,8 @@ step record 0 "${uv}" run --no-project python -I "${main}/scripts/orchestrator/a
 rm -f -- "${tsv}"
 # C-61 (plan 023 F1): an update-branch-only head, a merge of main into the audited head whose PR patch is unchanged,
 # inherits that head's audit under its own names; the first line names the head the audit ran on, whose ids it keeps.
-patch() { "${git}" -C "${main}" diff-tree -p "$("${git}" -C "${main}" merge-base origin/main "$1")" "$1" | "${git}" -C "${main}" patch-id --stable; }
+# --verbatim keeps whitespace in the id, so a whitespace-only change is a new patch (PR #390 thread 4302490292).
+patch() { "${git}" -C "${main}" diff-tree -p "$("${git}" -C "${main}" merge-base origin/main "$1")" "$1" | "${git}" -C "${main}" patch-id --verbatim; }
 parent=$("${git}" -C "${main}" rev-parse -q --verify "${head}^1" || true) old='' new=''
 from=${v}/${task}-audit-${parent:0:7}
 if [[ -n ${parent} && -f ${from}.md && -f ${from}.md.last.md ]] && "${git}" -C "${main}" merge-base --is-ancestor "${head}^2" origin/main 2> /dev/null; then

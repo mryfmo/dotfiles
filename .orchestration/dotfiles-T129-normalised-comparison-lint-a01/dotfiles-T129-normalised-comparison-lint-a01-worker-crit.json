@@ -78,5 +78,11 @@
     "scope": "review",
     "body": "Round 3 of the independent read-only review approved head e88f8f05 (`Verdict: correct`): tree lint exit 0 silent, 3 unittests OK, ruff check and format pass, script 200 lines, baseline 85 rows with 0 duplicates; the earlier P1 repros still hit, the R2 forms and the `re` receiver confirmed by fixture; no P0 to P2 remains. This is local process evidence, not the task-level audit or reviewer authentication.",
     "resolved": true
+  },
+  {
+    "id": "round2-delta-review",
+    "scope": "review",
+    "body": "Round 4 of the independent read-only review, on the revise round's delta 4b843ce9..df8055ce (the three structural checks; the Bot's three P2 4302545078, 4302545082 and 4302545085): `Verdict: correct`, no P0 to P2; confirmed by fixture that a baseline row is consumed once (one row per hit, surplus rows stale), that normalisers match by the qualified callee (`str(Path(x).resolve())` accepted through the nested call, `fake.realpath` and `fake.escape` hits), and that the jq def is required on each operand side. Three P3: `pathlib.Path(x).resolve()` had regressed to a hit (fixed in 12d5d771 with a test form); `from os.path import realpath; realpath(path)` is a hit by the instruction's letter (declared); two different defs, one per jq side, are refused (declared).",
+    "resolved": true
   }
 ]

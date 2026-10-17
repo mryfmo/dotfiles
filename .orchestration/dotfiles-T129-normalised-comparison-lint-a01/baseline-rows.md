@@ -1,6 +1,6 @@
 # The baseline's rows: every hit of the lint on origin/main 35ab0e95 after Amendment 1 (per file, with the source line)
 
-Generated from `scripts/lint-comparisons.py` run with no baseline over the default file set at 2026-10-17T11:25:33Z (after the worker review's fixes: the test word anywhere on the line, jq programs anchored at the `jq` word); the committed `scripts/lint-comparisons-baseline.tsv` holds one content-hashed row per line below. Rows in files an in-flight task owns are that lineage's; the rest are for the orchestrator to assign owners at acceptance (Amendment 1).
+Generated from `scripts/lint-comparisons.py` run with no baseline over the default file set at 2026-10-17T11:25:33Z (after the worker review's fixes: the test word anywhere on the line, jq programs anchored at the `jq` word); the committed `scripts/lint-comparisons-baseline.tsv` holds one content-hashed row per line below (one row per hit since round 2: remove-agent-asset's two identical lines are two rows). Rows in files an in-flight task owns are that lineage's; the rest are for the orchestrator to assign owners at acceptance (Amendment 1).
 
 ## Rows per rule
 

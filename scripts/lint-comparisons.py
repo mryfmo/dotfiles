@@ -2,8 +2,7 @@
 """Refuse string-form comparisons of paths, URLs and processes (C-61 rule 6; plan 023 PR F2).
 python3 -I scripts/lint-comparisons.py [--list-rules] [--baseline <tsv>] [<file>...] prints each hit as `<file>:<line>:
 <rule id> <rule text>` and exits 1 when a hit is outside the baseline or a baseline row matches no hit (a normaliser in
-the statement, or `# lint-comparisons: allow <reason>` on the line, accepts; repo-relative paths as git ls-files prints).
-"""
+the statement, or `# lint-comparisons: allow <reason>` on the line, accepts; paths as git ls-files prints)."""
 
 import argparse
 import ast
@@ -36,6 +35,8 @@ SH_NORM = re.compile(
 )
 JQ_DEF = re.compile(r"\bdef (canonical_path|normali[sz]e_\w+)\b")
 JQ_OP = re.compile(r"==|!=|\b(?:startswith|endswith|ltrimstr|rtrimstr|test)\(")
+JQ_WORD = re.compile(r"""(?:[ \t]|\\\n)+((?:"[^"]*"|[^\s'"])*('[^']*')?(?:'[^']*'|"[^"]*"|[^\s'"])*)""")
+JQ_ARGS = {"--arg": 2, "--argjson": 2, "--slurpfile": 2, "--rawfile": 2, "--indent": 1, "-L": 1, "--library-path": 1}
 PS = re.compile(
     r"(?:^|[|;&(!]|\$\(|\b(?:if|elif|while|until|then|do|else)\b)\s*ps\s(?!-o\s+\S+=\s+-p\s)[^|]*\|\s*(?:grep|awk|cut|sed)\b"
 )
@@ -66,10 +67,11 @@ def words(line):
 
 def programs(code):
     for m in re.finditer(r"\bjq\b", code):
-        start = m.end() + re.match(r"(?:\\\n|[^'\n])*", code[m.end() :]).end()
-        end = code.find("'", start + 1)
-        if start < len(code) and code[start] == "'" and end > 0:
-            yield start, code[start : end + 1]
+        w, owed = JQ_WORD.match(code, m.end()), 0
+        while w and (owed or w[1].startswith("-")):
+            w, owed = JQ_WORD.match(code, w.end()), owed - 1 if owed else JQ_ARGS.get(w[1], 0)
+        if w and w[2]:  # the first single-quoted run of the program word
+            yield w.start(2), w[2]
 
 
 def span(prog, p, fn):
@@ -109,10 +111,9 @@ def shell_hits(text):
             expr, sides = prog[lo:hi], (prog[lo : op.start()], prog[op.start() : hi])
             hit = re.search(r"\.(url|path)\b", expr) or any(map(TOKEN.search, re.findall(r"\$(\w+)", expr)))
             if hit or any(map(LITERAL.search, re.findall(r'"([^"]*)"', expr))):
-                ok = any(all(d in side for side in sides) for d in JQ_DEF.findall(prog)) or MARKER.search(
-                    lines[first - 1]
-                )
-                yield first + prog.count("\n", 0, op.start()), "R3", ok
+                bare = [re.sub(r'"(?:[^"\\]|\\.)*"', "", side) for side in sides]  # a name in a string applies nothing
+                ok = any(all(d in re.findall(r"(?<![\w.$])\w+", s) for s in bare) for d in JQ_DEF.findall(prog))
+                yield first + prog.count("\n", 0, op.start()), "R3", ok or MARKER.search(lines[first - 1])
 
 
 def python_hits(text):
@@ -141,7 +142,7 @@ def python_hits(text):
             parts = [node.func.value, *node.args]
         elif call and dotted(node.func) in RE_FUNCS and node.args and isinstance(node.args[0], ast.JoinedStr):
             values = [v.value for v in node.args[0].values if isinstance(v, ast.FormattedValue)]
-            yield node.lineno, "R6", py_calls(values, lambda name: name == "re.escape")
+            yield node.lineno, "R6", bool(values) and all(py_calls([v], "re.escape".__eq__) for v in values)
             continue
         else:
             continue

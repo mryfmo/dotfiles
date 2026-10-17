@@ -4,7 +4,8 @@
 # @description
 #   Plan 023 F4 item 2. `run <task> <pr> <head>` (the worker) writes `.orchestration/<task>/precheck-<sha7>.md`: (a) the
 #   task copy vs the TASK line, (b) files vs allowed_files, (c) the Check's caps, (d) its commands in the validation file,
-#   (e) CI, (f) the Bot's review, (g) each Bot thread as `<id>:<P>:<disposition>` in the report, (h) the local review, (i) the
+#   (e) CI, (f) the Bot's review, (g) each Bot thread as `<id>:<P>:<disposition>` and each Bot review body with a badge as
+#   `review-<id>:<P>:<disposition>` in the report, (h) the local review, (i) the
 #   audit dry run: each `ok`, `missing` or (h, i) `unavailable (<reason>)`; exit 1 on a `missing`. `verify <task> <RESULT>`
 #   finds the receipt by `precheck=` in the tree of `head=` and refuses one without nine statuses, a `missing` or later code.
 # @exitcode 0 Every check ok.
@@ -84,12 +85,17 @@ check_f() {
         /usr/bin/grep -E "bot: none.*${head:0:7}|${head:0:7}.*bot: none" "${d}/report.md"
 }
 check_g() {
-    gh api --paginate "repos/{owner}/{repo}/pulls/${pr}/comments" --jq ".[] | ${bot} | select(.in_reply_to_id == null) | \"\(.id) \(.body | capture(\"(?<p>P[0-3]) Badge\").p // \"P3\")\"" |
+    {
+        gh api --paginate "repos/{owner}/{repo}/pulls/${pr}/comments" --jq ".[] | ${bot} | select(.in_reply_to_id == null) | \"\(.id) \(.body | capture(\"(?<p>P[0-3]) Badge\").p // \"P3\")\""
+        # A review body with a P0 to P3 badge is a finding too (Worker Playbook step 15), named review-<id>, its top badge.
+        gh api --paginate "repos/{owner}/{repo}/pulls/${pr}/reviews" --jq ".[] | ${bot} | {id, p: [.body // \"\" | scan(\"P([0-3]) Badge\") | .[0]]} | select(.p | length > 0) | \"review-\(.id) P\(.p | min)\""
+    } |
         {
             bad=0
             while read -r id p; do # the RESULT's thread token: <id>:P0|P1:fixed:<sha> or open:, <id>:P2|P3:<any>
                 echo "${id} ${p}"
-                /usr/bin/grep -q -E "${id}:${p}:$([[ ${p} == P[01] ]] && echo '(fixed:[0-9a-f]{7}|open:)')" "${d}/report.md" || bad=1
+                # Bounded on the left: a thread id must not match inside review-<id> or a longer number.
+                /usr/bin/grep -q -E "(^|[^0-9-])${id}:${p}:$([[ ${p} == P[01] ]] && echo '(fixed:[0-9a-f]{7}|open:)')" "${d}/report.md" || bad=1
             done
             exit "${bad}"
         }

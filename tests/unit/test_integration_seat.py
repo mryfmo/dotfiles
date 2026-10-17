@@ -392,6 +392,43 @@ class IntegrationSeatTest(unittest.TestCase):
 
     # Fix round 3 (D-F4-round3): the defects the first use of item 2 found on PR #393.
 
+    def test_result_precheck_reads_the_bot_review_bodies_as_findings(self) -> None:
+        # The Bot's 4302959629: a P0 to P3 badge in a review body is a finding (Worker Playbook step 15), so (g) needs
+        # its review-<id> token in the report; a review body without a badge names none.
+        d = self.precheck_ready()
+        reviews = [
+            {"id": 9, "user": BOT, "commit_id": self.head},
+            {"id": 5550000001, "user": BOT, "commit_id": self.head, "body": "**![P1 Badge](x)** a body finding"},
+            {"id": 5550000002, "user": BOT, "commit_id": self.head, "body": "### 💡 Codex Review\n\nno badge here"},
+            # Two badges in one body: the token carries the top one.
+            {
+                "id": 5550000003,
+                "user": BOT,
+                "commit_id": self.head,
+                "body": "**![P2 Badge](x)** a\n**![P1 Badge](x)** b",
+            },
+        ]
+        (self.calls / "reviews.json").write_text(json.dumps(reviews))
+        inline = "4300000001:P1:fixed:abcdef1;4300000002:P2:proposed(advisory);review-5550000003:P1:open:"
+        collision = "threads=review-4300000001:P1:fixed:abcdef1;4300000002:P2:x;review-5550000001:P1:open:;"
+        collision += "review-5550000003:P1:open:\n"
+        for report, status in (
+            (f"threads={inline}\n", "missing"),
+            (f"threads={inline};review-5550000001:P1:proposed(x)\n", "missing"),
+            (f"threads={inline};review-5550000001:P1:fixed:abcdef1\n", "ok"),
+            (f"threads={inline};review-5550000001:P1:open:\n", "ok"),
+            # A thread id is read whole: review-4300000001 is not the inline thread 4300000001.
+            (collision, "missing"),
+        ):
+            with self.subTest(report=report):
+                (d / "report.md").write_text(report)
+                _, receipt = self.precheck(0 if status == "ok" else 1)
+                self.assertIn(f"- g {status}: ", receipt)
+                self.assertIn("review-5550000001 P1", receipt)
+                self.assertIn("review-5550000003 P1", receipt)
+                self.assertNotIn("review-5550000002", receipt)
+                self.assertNotIn("review-9 ", receipt)
+
     def test_result_precheck_reads_the_task_sha_of_an_amended_task_line(self) -> None:
         # An amended TASK line names previous_task_sha256= before task_sha256=; (a) reads the latter only.
         d = self.precheck_ready()

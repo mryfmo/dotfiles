@@ -4,7 +4,7 @@ seat: claude-standard-dot-a007
 branch: tools/assets-hcom-receipt
 base: f32c02b81f788d04916b27840006e1409a7d1bcb (origin/main after PR #388 merged; the branch started from #388's head b49da6dd and was rebased)
 task_sha256: abd85d3295bfc03b738c765409aaea695ce51c8cb4f9ebbc758eddad5f398777
-code_commit: 457984c9 (ad57e280 before the rebase)
+code_commit: 1537863d (revise round 2; 457984c9 the first round, ad57e280 before the rebase)
 ---
 
 # Report: dotfiles-T129-assets-omp-hcom-followup-a01
@@ -43,13 +43,19 @@ code_commit: 457984c9 (ad57e280 before the rebase)
 - For the updater tests, an evidence-run `mktemp` shim (pasted in the validation file, not in the repository) gives the two template-less forms a TMPDIR template, and the same tests then run in the sandbox.
 - `shellcheck -x scripts/update-agent-assets.sh` (as CI runs it), `shfmt -i 4 -sr -d` and Ruff on the test module are clean (validation §6).
 
+## Revise round 2 (C-50, the Bot's P2 4303212227)
+
+- `fixed:1537863d6a77893bce52156fe6c5ca3902896bf5`. An hcom installed at the pin before the wheel was kept passed the version guard, so its receipt, which names a deleted temporary wheel, was never repaired. The guard now also requires the retained wheel; otherwise the verified wheel is fetched, kept and installed again.
+- Test: `test_update_hcom_reinstalls_a_pinned_install_without_its_retained_wheel`. A pinned hcom without the retained wheel is reinstalled and the wheel kept; then, with the wheel in place, the run skips with `already installed` and calls nothing. It failed on ee035dd4 (the run skipped) and passes at 1537863d (validation §8).
+- The Bot's other P2, 4303212235 (`remove-agent-asset` does not run `uv tool uninstall`), lies outside `allowed_files` and is advisory under `dotfiles-T129-assets-omp-hcom-followup-a02`.
+
 ## Limits
 
 - An older pinned wheel left in the managed directory after a pin change is not removed. Only the current one is referenced by uv's receipt and the manifest.
 
 ## Caps and what follows
 
-- Against origin/main after the rebase (validation §7): 11 changed lines outside `tests/` and `.orchestration/` (<= 120); 19 added under `tests/` (<= 400).
+- Against origin/main after revise round 2 (validation §8): 14 changed lines outside `tests/` and `.orchestration/` (<= 120); 61 added under `tests/` (<= 400).
 - `task_copy=abd85d3295bfc03b738c765409aaea695ce51c8cb4f9ebbc758eddad5f398777`.
 - After the rebase: the Check re-run on the rebased head (validation §7), the PR, CI and the Bot wait; the RESULT names their outcome. The worker replies to and resolves no thread, and does not merge. No new durable decision was made, so no CompactionDB memory was added. AutoSkill was not used. The Understand-Anything graph was not touched.
 

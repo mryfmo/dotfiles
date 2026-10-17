@@ -1829,7 +1829,7 @@ if [[ ${add_worker_mode} == true ]]; then
     fi
     # worker_cap from the deployed manifest: a seat is a .claude/worktrees/ worktree holding an agmsg identity, as
     # the Stop checklist counts them; re-seating a seated worktree adds none.
-    seat_cap="$(sed -n 's/^worker_cap:[[:space:]]*\([1-9][0-9]*\)[[:space:]]*$/\1/p' "${HOME}/.agents/agent-config.yaml" 2> /dev/null | head -n 1)"
+    seat_cap="$(sed -n 's/^worker_cap:[[:space:]]*\([1-9][0-9]*\)[[:space:]]*$/\1/p' "${HOME}/.agents/agent-config.yaml" 2> /dev/null | head -n 1)" || seat_cap=''
     if [[ -z ${seat_cap} ]]; then
         printf 'herdr-agents: no worker_cap in %s; no cap enforced.\n' "${HOME}/.agents/agent-config.yaml" >&2
     else

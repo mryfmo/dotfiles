@@ -2162,8 +2162,15 @@ exit {despawn_exit}
         # Plan 023 F4 item 3: worker_cap in the deployed manifest bounds the seats, the worktrees with an identity.
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()
-        (self.home_dir / ".agents/agent-config.yaml").write_text("worker_kind: claude\nworker_cap: 4\n")
         scripts, main = self.home_dir / ".agents/skills/agmsg/scripts", self.workdir.resolve()
+        # No deployed manifest (an older host): no cap, one line saying so, and the seat goes on.
+        result = self.run_helper("--add-worker", ".claude/worktrees/s0")
+        self.assertIn(
+            f"herdr-agents: no worker_cap in {self.home_dir}/.agents/agent-config.yaml; no cap enforced.", result.stderr
+        )
+        self.assertIn(f"workspace create --cwd {main}/.claude/worktrees/s0 ", self.calls_path.read_text())
+        self.calls_path.write_text("")
+        (self.home_dir / ".agents/agent-config.yaml").write_text("worker_kind: claude\nworker_cap: 4\n")
         rows = []
         for n in range(1, 5):
             path = main / f".claude/worktrees/s{n}"

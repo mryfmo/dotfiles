@@ -743,6 +743,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4170,6 +4181,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4198,12 +4220,16 @@
 
 
 <h1 id="homedot_claudehooksexecutable_project-map-reloadsh">home/dot_claude/hooks/executable_project-map-reload.sh<a class="headerlink" href="#homedot_claudehooksexecutable_project-map-reloadsh" title="Permanent link">&para;</a></h1>
-<p>Pass CDP on both calls to avoid terminal-browser issue 60. Pin tab selection and guard reloads against navigation away from a project map. Open a separate right split using half the width when the parsed listing yields no map tab. shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.</p>
+<p>Pass CDP on both calls to avoid terminal-browser issue 60. Pin tab selection and guard reloads against navigation away from a project map. Match the event file path before choosing an existing map tab. Canonicalize event paths and file URLs with the installed isolated Python stdlib. Reject encoded URL separators before decoding them into filesystem paths. Bind the reload guard to the canonical-matched URL, encoded as a JSON string. Open a separate right split using half the width when the parsed listing yields no map tab. shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_claude/hooks/executable_project-map-reload.sh</code></li>
 <li>Category: Claude hook</li>
 <li>Renderer: <code>shell-fallback</code></li>
+</ul>
+<h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>canonical_path</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash</span>
@@ -4213,23 +4239,59 @@
 <span class="c1"># @description</span>
 <span class="c1">#   Pass CDP on both calls to avoid terminal-browser issue 60.</span>
 <span class="c1">#   Pin tab selection and guard reloads against navigation away from a project map.</span>
+<span class="c1">#   Match the event file path before choosing an existing map tab.</span>
+<span class="c1">#   Canonicalize event paths and file URLs with the installed isolated Python stdlib.</span>
+<span class="c1">#   Reject encoded URL separators before decoding them into filesystem paths.</span>
+<span class="c1">#   Bind the reload guard to the canonical-matched URL, encoded as a JSON string.</span>
 <span class="c1">#   Open a separate right split using half the width when the parsed listing yields no map tab.</span>
 <span class="c1">#   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.</span>
 <span class="c1"># @exitcode 0 Always, including unavailable tools or browsers.</span>
 
+<span class="c1"># @description Return the physical absolute path of a local path or file URL.</span>
+<span class="c1"># @arg $1 path Event path or file URL, including home and relative forms.</span>
+<span class="c1"># @stdout Canonical path.</span>
+canonical_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span>-S<span class="w"> </span>-c<span class="w"> </span><span class="s1">'</span>
+<span class="s1">import os</span>
+<span class="s1">import sys</span>
+<span class="s1">from urllib.parse import unquote, urlsplit</span>
+
+<span class="s1">path = sys.argv[1]</span>
+<span class="s1">if path.startswith("file://"):</span>
+<span class="s1">    url = urlsplit(path)</span>
+<span class="s1">    if url.netloc not in ("", "localhost") or "%2f" in url.path.lower():</span>
+<span class="s1">        sys.exit(1)</span>
+<span class="s1">    path = unquote(url.path, errors="strict")</span>
+<span class="s1">if path == "~" or path.startswith("~/"):</span>
+<span class="s1">    path = os.path.expanduser("~") + path[1:]</span>
+<span class="s1">print(os.path.realpath(path))</span>
+<span class="s1">'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null
+<span class="o">}</span>
+
 <span class="nv">file_path</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.tool_input.file_path // empty'</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
-<span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$file_path</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*/.project-map/index.html<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="nv">$file_path</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="nv">event_path</span><span class="o">=</span><span class="k">$(</span>canonical_path<span class="w"> </span><span class="s2">"</span><span class="nv">$file_path</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$event_path</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*/.project-map/index.html<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 
 <span class="nv">listing</span><span class="o">=</span><span class="k">$(</span>terminal-browser<span class="w"> </span>ls<span class="w"> </span>--all<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
-<span class="nv">selection</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'</span>
+<span class="nv">candidates</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-c<span class="w"> </span><span class="s1">'</span>
 <span class="s1">    [.browsers[]? | .cdpPort as $port</span>
 <span class="s1">     | select($port | type == "number")</span>
 <span class="s1">     | select($port &gt;= 1 and $port &lt;= 65535 and $port == ($port | floor))</span>
 <span class="s1">     | .tabs[]?</span>
-<span class="s1">     | select(.url | strings | endswith("/.project-map/index.html"))</span>
+<span class="s1">     | select(.url | strings | startswith("file://"))</span>
 <span class="s1">     | select(.targetId | strings | test("^[A-Fa-f0-9]{32}\\z"))</span>
-<span class="s1">     | [$port, .targetId]] | .[0] // empty | @tsv</span>
+<span class="s1">     | [$port, .targetId, .url]][]</span>
 <span class="s1">'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$listing</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="nv">selection</span><span class="o">=</span><span class="s2">""</span>
+<span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>candidate<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="nv">$candidate</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">    </span><span class="nv">tab_path</span><span class="o">=</span><span class="k">$(</span>canonical_path<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.[2]'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$candidate</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$tab_path</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="nv">$event_path</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">    </span><span class="nv">selection</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.[0:2] | @tsv'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$candidate</span><span class="s2">"</span><span class="k">)</span>
+<span class="w">    </span><span class="nv">selected_url</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-c<span class="w"> </span><span class="s1">'.[2]'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$candidate</span><span class="s2">"</span><span class="k">)</span>
+<span class="w">    </span><span class="k">break</span>
+<span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$candidates</span><span class="s2">"</span>
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="nv">$selection</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>terminal-browser<span class="w"> </span>open<span class="w"> </span><span class="s2">"</span><span class="nv">$file_path</span><span class="s2">"</span><span class="w"> </span>--split<span class="w"> </span>right<span class="w"> </span>--size<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--no-merge<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
@@ -4238,7 +4300,7 @@
 
 <span class="nv">agent</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_BROWSER_AGENT</span><span class="k">:-</span><span class="nv">$HOME</span><span class="p">/.local/share/terminal-browser/app/agent-browser/bin/agent-browser</span><span class="si">}</span><span class="s2">"</span>
 <span class="s2">"</span><span class="nv">$agent</span><span class="s2">"</span><span class="w"> </span>--cdp<span class="w"> </span><span class="s2">"</span><span class="nv">$port</span><span class="s2">"</span><span class="w"> </span>--session<span class="w"> </span>project-map-reload<span class="w"> </span>--pin-tab<span class="w"> </span>tab<span class="w"> </span><span class="s2">"</span><span class="nv">$target_id</span><span class="s2">"</span><span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
-<span class="s2">"</span><span class="nv">$agent</span><span class="s2">"</span><span class="w"> </span>--cdp<span class="w"> </span><span class="s2">"</span><span class="nv">$port</span><span class="s2">"</span><span class="w"> </span>--session<span class="w"> </span>project-map-reload<span class="w"> </span>--pin-tab<span class="w"> </span><span class="nb">eval</span><span class="w"> </span><span class="s1">'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()'</span><span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="s2">"</span><span class="nv">$agent</span><span class="s2">"</span><span class="w"> </span>--cdp<span class="w"> </span><span class="s2">"</span><span class="nv">$port</span><span class="s2">"</span><span class="w"> </span>--session<span class="w"> </span>project-map-reload<span class="w"> </span>--pin-tab<span class="w"> </span><span class="nb">eval</span><span class="w"> </span><span class="s2">"if (location.href === new URL(</span><span class="nv">$selected_url</span><span class="s2">).href) location.reload()"</span><span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
 <span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 </code></pre></div>
 

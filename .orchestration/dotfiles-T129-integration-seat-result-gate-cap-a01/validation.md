@@ -902,3 +902,11 @@ task_sha256=626823fbf25a2a48bad0ae1e05792e6ea5f25ea4d1e4c710e973da64b62d1864
 4. (i) ran `codex exec --sandbox read-only` and pasted its last three lines: `Verdict: incorrect`, seven issues; the findings themselves are not in the receipt (`tail -n 3`), and the dry run could not reach gh.
 
 The receipt, `precheck-2d61e22.md` (sha256 `57900e173ef5e9112bfe61d37f7cf4678c75636448f9bd76c720ac97c3282b8e`), is committed unchanged in the records-only commit after `2d61e227`.
+
+5. `verify` on the records-only head `2cd30323`, as the orchestrator runs it: the receipt is found by its sha256, only `.orchestration/<task>/` changed after it, and its (a) `missing` is refused:
+
+```console
+$ scripts/orchestrator/result-precheck.sh verify dotfiles-T129-integration-seat-result-gate-cap-a01 "AGMSG-RESULT v1 task_id=dotfiles-T129-integration-seat-result-gate-cap-a01 head=2cd30323 precheck=57900e173ef5e9112bfe61d37f7cf4678c75636448f9bd76c720ac97c3282b8e"
+AGMSG-ACCEPTANCE v1 task_id=dotfiles-T129-integration-seat-result-gate-cap-a01 status=revise reason=precheck:a next_action=run-result-precheck-and-resend
+[exit 1]
+```

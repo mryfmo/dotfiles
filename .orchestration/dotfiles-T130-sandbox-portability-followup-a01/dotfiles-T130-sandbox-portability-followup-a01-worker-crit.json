@@ -1,0 +1,14 @@
+[
+  {
+    "id": "quoted-span-scanner-review-approval",
+    "scope": "review",
+    "body": "Independent read-only review (a fresh general-purpose subagent given the diff 5992fac5...a666ac42, the task file, the Bot row and the re-plan, not the worker's conclusions): red confirmed on 3887df89 (the old code() reported the quoted lines 6 and 7 and missed 2 to 5), green at the head (five tests, both checkout sweeps); ruff format and check clean; numstat 62 added and 32 removed in the one test file, nothing outside; a 49-fixture old-versus-new harness: the quoted pipe, semicolon, ampersand, the escaped quote with a quoted hash and an adjacent-span 'it'\"|\"'s' are now refused and echo \"a\\\" # /tmp\" is tmp-refused, while quoted data such as diff 'x <(a)' b and echo \"diff\" <(a) is no longer refused; a /usr/bin/grep of the tracked roots finds zero lines of the two newly accepted shapes; the predicate move is the four byte-identical closures with the signature the mechanism forces, judged within 'no other change'. Verdict: correct. This is local process evidence, not the task-level audit or reviewer authentication.",
+    "resolved": true
+  },
+  {
+    "id": "quoted-span-scanner-p3-fixed-and-declared",
+    "scope": "tests/unit/test_sandbox_portability.py",
+    "body": "Three P3 notes. Fixed in 0b72f4c8: the scan() docstring said the continuation is read from the syntax view while logical_lines() reads the code view (the right choice: a backslash before the newline continues inside double quotes too, where the syntax view is blanked); the docstring now says so. Declared, not changed (outside D-S1-395's three quote kinds; zero tracked lines use either): ANSI-C quoting $'a\\'b' is read as a plain single-quoted span, so the escaped quote closes it and the rest of the line is blanked (echo $'a\\'b' | diff <(a) <(b) is accepted); a quoted command word ('diff' <(a) <(b)) is blanked and accepted although bash runs diff. Noted as unchanged behaviour: an unclosed quote suppresses the comment cut to the end of the line; a naive quote toggle leaves the inner operator of \"$(cmd \"x|y\")\" visible; echo a\\ # /tmp is cut at the hash in both versions.",
+    "resolved": true
+  }
+]

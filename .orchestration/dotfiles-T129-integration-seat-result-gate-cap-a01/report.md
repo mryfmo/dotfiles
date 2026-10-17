@@ -58,6 +58,8 @@ The precheck's first run on `2d61e227` found three defects in this PR's own scri
 2. **The team-wide history read does not finish.** `history.sh <team> "" 100000`, in check (a) and in `integrate-seat.sh`'s reader, is super-linear (200 rows 4.1 s, 2000 rows past 120 s) and waits on a terminal stdin. Fix: read with `< /dev/null`, and bound the read. The precheck can read the worker's own rows (`history.sh <team> <me> <n>`), where its TASK lines are. `integrate-seat.sh` needs the task's worker RESULT, which a bounded team read (the newest few hundred rows) or the orchestrator's rows hold. `bus-read.sh` reads the same way.
 3. **(i) keeps only codex's last three lines**, so its findings are lost; it should keep the whole final message (`codex exec -o`).
 
+The dry run's own result, `Verdict: incorrect` with seven issues, is informational: item 2 asks for its verdict pasted, not judged. Its findings were not captured (defect 3), and the orchestrator's task-level audit of the final head is the authority on the PR's findings.
+
 The receipt was made with `AGMSG_SCRIPTS` pointing at a bounded wrapper (this seat's 300 rows), the scripts' own seam, declared here. Its (a) is `missing` for defect 1, so `verify` refuses it (§12). The task copy itself is the dispatched one: sha256 `626823fb…`, amendment 3.
 
 ## Readings, declared

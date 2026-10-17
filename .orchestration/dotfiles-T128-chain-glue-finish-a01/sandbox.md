@@ -1,6 +1,7 @@
 ---
 task_id: dotfiles-T128-chain-glue-finish-a01
-seat: claude-standard-dot-a002
+seat: claude-standard-dot-a006
+earlier_seat: claude-standard-dot-a002
 permission_gated_commands: see the table
 ---
 
@@ -25,3 +26,18 @@ Calls outside the sandbox: `gh` through the permission gate (`dangerouslyDisable
 | 5 | `gh api` reads of the Bot's review and comments on the head | `gh` |
 | 6 | after a P0/P1 fix round only: the push, then `gh pr comment <pr> --body '@codex review'` and the same Bot wait for the re-review (`bot_rounds=2`) | `gh` |
 | 7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-glue-finish-a01 …` | `agmsg-dispatch` |
+
+## Revise round 3 (`claude-standard-dot-a006`)
+
+- Period: from the ACCEPTANCE round 3 `status=revise` (bus 2026-10-17T07:34:11Z) to the RESULT round 4.
+- Inside the sandbox, as above, ran: the fast-forward to `f20826e2`, the HTTPS `git fetch`, the commits, every test, lint and mutant run, the evidence, and the CompactionDB `memory add` in the worktree's own database.
+- Calls outside the sandbox, planned in advance:
+
+| # | Command | Step 4 case |
+|--:|---|---|
+| 8 | `agmsg-dispatch dotfiles-conformance claude-standard-dot-a006 claude-deep-dot wA:p1 'AGMSG-PONG v1 task_id=bringup-1792217366-40124 status=alive …'` (the bring-up PING, before this round) | `agmsg-dispatch` |
+| 9 | `gh pr view 378 --repo mryfmo/dotfiles --json isDraft,headRefOid,state,url` (a read, before the push) | `gh` |
+| 10 | `git push origin tools/chain-glue-finish`: the sandboxed attempt failed with exit 128 (`This proxy requires authentication, and this client did not offer an authentication method`; the push URL is SSH), so the push ran through the permission gate | `git push` |
+| 11 | `gh pr checks 378 --repo mryfmo/dotfiles --watch` (background, exit status joined) | `gh` |
+| 12 | the Bot wait: `gh api` reads of the Bot's reviews and top-level comments on the new head, at most every 30 seconds up to 15 minutes, and `gh pr comment 378 --repo mryfmo/dotfiles --body '@codex review'` only at 10 minutes without a review | `gh` |
+| 13 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-glue-finish-a01 round=4 …` | `agmsg-dispatch` |

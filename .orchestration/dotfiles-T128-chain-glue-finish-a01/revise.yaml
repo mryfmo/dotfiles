@@ -1,0 +1,17 @@
+task_id: dotfiles-T128-chain-glue-finish-a01
+round: 3
+previous_head: f20826e2ee67e9006ef4d4d2dd32462b9639193b
+check: tests/unit/test_chain_glue.py::test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head
+reason: the local review's P1 on f20826e (local:f20826e:1, class sweep-head-binding); chain-finish.sh resolved the Bot threads from the input sweep before binding that sweep to the audited head, so a sweep of an earlier head of the same PR could post and resolve stale dispositions that fill_sweep.py then imported as current-head evidence
+# Rounds 1 and 2 were not recorded here by claude-standard-dot-a002; claude-standard-dot-a006 backfilled them from
+# the ACCEPTANCE lines in the acceptance record's dispatch list.
+earlier:
+  - round: 2
+    previous_head: f4d86ee5c061cf329480fa8ccff239897d29faeb
+    check:
+      - tests/unit/test_chain_glue.py::test_finish_runs_pr_cost_with_a_path_of_resolved_links
+      - tests/unit/test_chain_glue.py::test_finish_reads_the_last_nonblank_line_as_the_verdict
+      - tests/unit/test_chain_glue.py::test_finish_counts_the_trimmed_reason
+  - round: 1
+    previous_head: 72d0cd074ebd805cee9f343c849206b16137b650
+    check: tests/unit/test_chain_glue.py::test_finish_checks_each_audit_finding_line_in_full

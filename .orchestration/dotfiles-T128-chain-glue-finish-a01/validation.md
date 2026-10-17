@@ -1,12 +1,13 @@
 ---
 task_id: dotfiles-T128-chain-glue-finish-a01
-seat: claude-standard-dot-a002
-code_commit: 14033382
+seat: claude-standard-dot-a006
+earlier_seat: claude-standard-dot-a002
+code_commit: 4d4e3b22
 ---
 
 # Validation: dotfiles-T128-chain-glue-finish-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (a pipeline's is its last command's; §4's block shows the mutant script and its output, and each mutant line carries its own `rc`). Captured at `14033382` (the code `af684dc2`, the Bot P1 fix `968d3439`, revise round 1 `60cdac47`, the orchestrator's update-branch merge `f4d86ee5`, revise round 2 `2171d927`, the macOS 14 jq fixture `14033382`).
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (a pipeline's is its last command's; §4's block shows the mutant script and its output, and each mutant line carries its own `rc`). §1 to §5 were captured by `claude-standard-dot-a002` at `14033382` (the code `af684dc2`, the Bot P1 fix `968d3439`, revise round 1 `60cdac47`, the orchestrator's update-branch merge `f4d86ee5`, revise round 2 `2171d927`, the macOS 14 jq fixture `14033382`). §6 was captured by `claude-standard-dot-a006` at `4d4e3b22` (revise round 3), each block run by a runner that prints the command, its output and `[exit <status>]`; the two unittest runs piped into `grep` carry `set -o pipefail`, so their status is unittest's.
 
 ## 1. Task file and task copy
 ```console
@@ -236,5 +237,145 @@ $ git diff --numstat origin/main...HEAD
 238	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/validation.md
 164	0	scripts/orchestrator/chain-finish.sh
 227	1	tests/unit/test_chain_glue.py
+[exit 0]
+```
+
+## 6. Revise round 3 (the local review of f20826e, local:f20826e:1), captured at 4d4e3b22
+
+The task copy and the checker; the branch and its base; the new test against `f20826e2`'s script (red), restored; the Check on `4d4e3b22`; the linters; one mutant (the new refusal line deleted), restored; the caps.
+
+```console
+$ shasum -a 256 "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md"; cmp "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md" && echo byte-identical
+8eb760cc25b1e44050b85366ac8baadafedb863eec6dcfa98e3839a512db7272  $MAIN/.orchestration/tasks/dotfiles-T128-chain-glue-finish-a01.md
+8eb760cc25b1e44050b85366ac8baadafedb863eec6dcfa98e3839a512db7272  .orchestration/dotfiles-T128-chain-glue-finish-a01/task.md
+byte-identical
+[exit 0]
+```
+```console
+$ uv run --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py --root "$PWD" "$MAIN/.orchestration/tasks/$T.md"
+dotfiles-T128-chain-glue-finish-a01.md: OK
+[exit 0]
+```
+```console
+$ git log --oneline -2; git merge-base origin/main HEAD; git rev-parse origin/main
+4d4e3b22 fix(orchestrator): chain-finish.sh refuses a sweep whose head is not the audited head before any GitHub write (T128 chain-glue finish a01 revise round 3)
+f20826e2 Merge branch 'main' into tools/chain-glue-finish
+af4f1e997f78119d5994d7d7b1966894d62bbc6a
+af4f1e997f78119d5994d7d7b1966894d62bbc6a
+[exit 0]
+```
+```console
+$ git show f20826e2:scripts/orchestrator/chain-finish.sh > scripts/orchestrator/chain-finish.sh && git diff --stat
+ scripts/orchestrator/chain-finish.sh | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+[exit 0]
+```
+```console
+$ set -o pipefail; uv run python -m unittest tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head 2>&1 | grep -E '^(FAIL|AssertionError|Ran|FAILED|OK)'
+FAIL: test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head)
+AssertionError: 10 != 0 : resolve-threads rc=0
+Ran 1 test in 3.887s
+FAILED (failures=1)
+[exit 1]
+```
+```console
+$ git checkout -- scripts/orchestrator/chain-finish.sh && git diff --quiet && echo restored to $(git rev-parse --short HEAD)
+restored to 4d4e3b22
+[exit 0]
+```
+```console
+$ uv run python -m unittest tests/unit/test_chain_glue.py -v
+test_finish_checks_each_audit_finding_line_in_full (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_checks_each_audit_finding_line_in_full) ... ok
+test_finish_counts_the_trimmed_reason (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_counts_the_trimmed_reason) ... ok
+test_finish_prints_the_acceptance_line_and_sends_nothing (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_prints_the_acceptance_line_and_sends_nothing) ... ok
+test_finish_reads_the_last_nonblank_line_as_the_verdict (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_reads_the_last_nonblank_line_as_the_verdict) ... ok
+test_finish_refuses_a_head_that_differs_from_the_audit (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_refuses_a_head_that_differs_from_the_audit) ... ok
+test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head) ... ok
+test_finish_requires_an_audit_finding_line_per_incorrect_finding (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_requires_an_audit_finding_line_per_incorrect_finding) ... ok
+test_finish_runs_gate_before_merge_and_cost_after (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_runs_gate_before_merge_and_cost_after) ... ok
+test_finish_runs_pr_cost_with_a_path_of_resolved_links (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_runs_pr_cost_with_a_path_of_resolved_links) ... ok
+test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward) ... ok
+test_integrate_refuses_a_main_checkout_script_that_is_not_heads (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_refuses_a_main_checkout_script_that_is_not_heads) ... ok
+test_integrate_refuses_a_stale_main_checkout_after_the_restart (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_refuses_a_stale_main_checkout_after_the_restart) ... ok
+test_integrate_refuses_an_absent_owner_task_before_the_advisory_step (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_refuses_an_absent_owner_task_before_the_advisory_step) ... ok
+test_integrate_refuses_an_extra_tsv_outside_the_main_checkout (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_refuses_an_extra_tsv_outside_the_main_checkout) ... ok
+test_integrate_refuses_when_main_is_not_on_main (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_refuses_when_main_is_not_on_main) ... ok
+test_integrate_resolves_binaries_before_the_checkout (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_resolves_binaries_before_the_checkout) ... ok
+test_integrate_restarts_after_update_branch (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_restarts_after_update_branch) ... ok
+test_integrate_restarts_when_the_base_moves_during_the_waits (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_restarts_when_the_base_moves_during_the_waits) ... ok
+test_integrate_restores_the_review_worktree_after_the_audit (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_restores_the_review_worktree_after_the_audit) ... ok
+test_integrate_runs_gh_without_forced_colour (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_runs_gh_without_forced_colour) ... ok
+test_integrate_runs_the_steps_in_order_and_logs_each (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_runs_the_steps_in_order_and_logs_each) ... ok
+test_integrate_stops_on_a_sandbox_scan_hit (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_stops_on_a_sandbox_scan_hit) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 101.699s
+
+OK
+[exit 0]
+```
+```console
+$ shellcheck scripts/orchestrator/chain-finish.sh && echo clean
+clean
+[exit 0]
+```
+```console
+$ shfmt -i 4 -sr -d scripts/orchestrator/chain-finish.sh && echo clean
+clean
+[exit 0]
+```
+```console
+$ ruff check --config ruff.toml tests/unit/test_chain_glue.py && ruff format --config ruff.toml --check tests/unit/test_chain_glue.py
+All checks passed!
+1 file already formatted
+[exit 0]
+```
+```console
+$ n=$(grep -n 'not the audited head' scripts/orchestrator/chain-finish.sh | cut -d: -f1) && sed -i '' "${n}d" scripts/orchestrator/chain-finish.sh && echo mutant: line $n deleted && git diff --stat
+mutant: line 97 deleted
+ scripts/orchestrator/chain-finish.sh | 1 -
+ 1 file changed, 1 deletion(-)
+[exit 0]
+```
+```console
+$ set -o pipefail; uv run python -m unittest tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head 2>&1 | grep -E '^(FAIL|AssertionError|Ran|FAILED|OK)'
+FAIL: test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head (tests.unit.test_chain_glue.ChainIntegrateTest.test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head)
+AssertionError: 10 != 0 : resolve-threads rc=0
+Ran 1 test in 4.089s
+FAILED (failures=1)
+[exit 1]
+```
+```console
+$ git checkout -- scripts/orchestrator/chain-finish.sh && git diff --quiet && echo restored to $(git rev-parse --short HEAD)
+restored to 4d4e3b22
+[exit 0]
+```
+```console
+$ wc -l scripts/orchestrator/chain-finish.sh
+     166 scripts/orchestrator/chain-finish.sh
+[exit 0]
+```
+```console
+$ git diff --numstat origin/main...HEAD
+3	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/autoskill.md
+6	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/learning.md
+74	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/report.md
+27	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/sandbox.md
+121	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/task.md
+240	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/validation.md
+166	0	scripts/orchestrator/chain-finish.sh
+242	1	tests/unit/test_chain_glue.py
+[exit 0]
+```
+
+The CompactionDB entry, in the worktree's own database (the orchestrator consolidates at acceptance). The add ran as below; its exit status was not captured, since the seat's zsh has no `PIPESTATUS`, so the search that follows shows the entry.
+```console
+$ UV_OFFLINE=1 uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "[memory:decision] chain-finish.sh binds the sweep JSON to the audited head (its head_sha must equal the review worktree's HEAD, exit 10) before resolve-threads.sh posts the sweep's dispositions to GitHub; a local evidence file that drives a GitHub write is checked against the head it was collected for before the write (T128 chain-glue finish a01 revise round 3, local:f20826e:1, fixed:4d4e3b22)" 2>&1 | tail -5
+f7c752e6-7d04-48df-9cba-5eb6e9c13310
+[exit not captured]
+```
+```console
+$ UV_OFFLINE=1 uv run --no-project .claude/hooks/contextdb_cli.py memory search head_sha
+f7c752e6-7d04-48df-9cba-5eb6e9c13310 [project/decision] [memory:decision] chain-finish.sh binds the sweep JSON to the audited head (its head_sha must equal the review worktree's HEAD, exit 10) before resolve-threads.sh posts the sweep's dispositions to GitHub; a local evidence file that drives a GitHub write is checked against the head it was collected for before the write (T128 chain-glue finish a01 revise round 3, local:f20826e:1, fixed:4d4e3b22)
 [exit 0]
 ```

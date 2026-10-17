@@ -22,8 +22,27 @@ TMP = re.compile(r"/tmp(/|\b)")
 
 
 def code(line):
-    """The line without its comment; a whole-line comment reads as empty."""
-    return "" if line.lstrip().startswith("#") else re.split(r"\s#", line, maxsplit=1)[0]
+    """The line before its comment: a `#` at the start or after whitespace, outside quotes; a quoted `#` is code."""
+    quote = ""
+    for i, ch in enumerate(line):
+        if quote:
+            quote = "" if ch == quote else quote
+        elif ch in "'\"":
+            quote = ch
+        elif ch == "#" and (i == 0 or line[i - 1].isspace()):
+            return line[:i]
+    return line  # shortcut: a backslash-escaped quote reads as a quote; upgrade when a tracked line needs it
+
+
+def logical_lines(text):
+    """(first line number, text) per logical line: a backslash before the newline joins the next physical line."""
+    start, parts = 1, []
+    for n, line in enumerate(text.split("\n"), 1):
+        continued = line.endswith("\\") and not line.lstrip().startswith("#")
+        parts.append(line[:-1] if continued else line)
+        if not continued:
+            yield start, "".join(parts)
+            start, parts = n + 1, []
 
 
 def tracked(repo, kinds):
@@ -44,7 +63,7 @@ def hits(repo, kinds, refused):
     return [
         f"{rel}:{n}: {line.strip()}"
         for rel, path in tracked(repo, kinds)
-        for n, line in enumerate(path.read_text(errors="replace").split("\n"), 1)
+        for n, line in logical_lines(path.read_text(errors="replace"))
         if refused(code(line), line)
     ]
 

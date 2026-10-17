@@ -58,6 +58,7 @@ TABLE = {
             "os.path.normpath": 'if os.path.normpath(path) == "/x":\n    pass\n',
             "os.path.abspath": 'if os.path.abspath(path) == "/x":\n    pass\n',
             "Path(...).resolve": 'if Path(path).resolve() == Path("/x"):\n    pass\n',
+            "pathlib.Path(...).resolve": 'if pathlib.Path(path).resolve() == Path("/x"):\n    pass\n',
             "urllib.parse.urlsplit": 'if urllib.parse.urlsplit(url).path == "/x":\n    pass\n',
             "urlparse": 'if urlparse(url).path == "/x":\n    pass\n',
             "unquote": 'if unquote(url) == "/x":\n    pass\n',

@@ -42,7 +42,7 @@ PS = re.compile(
 PGREP = re.compile(r"\bpgrep\s+-\w*f\w*(\s+-\S+)*\s+\S*\$")
 GREP = re.compile(r"\b(e?grep)((?:\s+-\S+)*)\s+(\"[^\"]*\"|'[^']*'|\S+)")
 PY_NORM = re.compile(
-    r"^(os\.path\.(realpath|normpath|abspath)|Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
+    r"^(os\.path\.(realpath|normpath|abspath)|(pathlib\.)?Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
 )
 RE_FUNCS = ("re.compile", "re.search", "re.match", "re.fullmatch")
 OPS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)

@@ -1943,10 +1943,11 @@ if [[ ${remove_worker_mode} == true ]]; then
         done
         # The archive must be usable before leave.sh drops the identity, or the record would stay under spawn.*
         # with no identity to find it by; checked, not created, so a refused run leaves no stale/ (the audit of d3bc745).
+        # A dangling stale symlink is refused too: -e follows it and says no, -L does not (the audit of bf650af).
         for row in "${seat_rows[@]}"; do
             IFS=$'\t' read -r seat_type seat_team seat_name <<< "${row}"
             run_dir="$(dirname -- "$(seat_record_path "${seat_team}" "${seat_name}")")"
-            if [[ (-e ${run_dir}/stale && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
+            if [[ ((-e ${run_dir}/stale || -L ${run_dir}/stale) && ! (-d ${run_dir}/stale && -w ${run_dir}/stale && -x ${run_dir}/stale)) || ! -w ${run_dir} || ! -x ${run_dir} ]]; then
                 printf 'herdr-agents: %s/stale is not a directory, or %s is not writable; nothing retired\n' "${run_dir}" "${run_dir}" >&2
                 exit 1
             fi

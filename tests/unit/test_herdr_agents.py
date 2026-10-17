@@ -3371,6 +3371,13 @@ esac
             finally:
                 (run / "stale").chmod(0o700)
             (run / "stale").rmdir()
+        with self.subTest("run/stale is a dangling symlink"):
+            # The audit of bf650af: -e follows the link and says no, so the check also asks -L.
+            (run / "stale").symlink_to(self.temp_dir / "missing-archive")
+            refused(1, unusable)
+            self.assertTrue((run / "stale").is_symlink())
+            self.assertFalse((self.temp_dir / "missing-archive").exists())
+            (run / "stale").unlink()
         with self.subTest("no identity row for the worktree"):
             scripts = self.home_dir / ".agents/skills/agmsg/scripts"
             (scripts / "at-worktree.txt").write_text("")

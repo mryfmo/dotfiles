@@ -95,17 +95,29 @@ pre "${uv}" run --no-project python -I -c 'import json, sys; print(json.load(ope
 [ "${out}" = "${pr}" ] || refuse 10 "the sweep JSON is PR ${out}'s, not ${pr}'s"
 log=${v}/${task}-chain-${sha7}.log # T7's log, appended; nothing is logged before the head is known
 comments=${v}/${task}-pr-comments.json ledger=${v}/${task}-ledger-${sha7}.tsv dispositions=${v}/${task}-audit-dispositions-${sha7}.tsv
-cost=${v}/${task}-pr-cost-${sha7}.sh
-trap 'rm -f -- "${comments}" "${ledger}" "${dispositions}" "${cost}"' EXIT
+cost=${v}/${task}-pr-cost-${sha7}.sh tools=${v}/${task}-pr-cost-bin-${sha7}
+trap 'rm -f -- "${comments}" "${ledger}" "${dispositions}" "${cost}" && rm -rf -- "${tools}"' EXIT
+# After the fast-forward the main checkout's mise config is the merged head's, so pr-cost.sh runs under env -i
+# with a PATH of links to the tools it calls, resolved here as orch-gate.sh resolves gh and git (local review of f4d86ee5).
+mkdir -p -- "${tools}"
+for name in gh git jq awk date mkdir tr wc tail; do
+    found=$(pick "${name}")
+    [[ ${found} == /* && ${found} != */shims/* ]] || refuse 10 "no ${name} for pr-cost.sh outside a shims directory: ${found:-none}"
+    ln -sf -- "${found}" "${tools}/${name}"
+done
+cost_run() { env -i PATH="${tools}" HOME="${HOME}" "${BASH}" "${cost}" "$1"; } # HOME stays out of the log line
 # (1) Every finding, under either verdict, needs its line: the gate's ledger check adds audit:<sha7>:<n> for each.
-verdict=$(tail -n 1 -- "${summary}")
+# The last non-blank line, trimmed, as the gate's AUDIT_VERDICT reads it (local review of f4d86ee5).
+verdict=$(/usr/bin/grep -v -E '^[[:space:]]*$' "${summary}" | tail -n 1 | sed -E 's/^[[:space:]]+|[[:space:]]+$//g' || true)
 [[ ${verdict} == "Verdict: correct" || ${verdict} == "Verdict: incorrect" ]] || refuse 12 "unexpected audit verdict: ${verdict}"
 findings=$(/usr/bin/grep -c -E '^[[:space:]]*([-*+][[:space:]]+)?\[P[0-3]\]' "${summary}" || true)
 : > "${dispositions}"
 for ((n = 1; n <= findings; n++)); do
     line=$(/usr/bin/grep -m 1 -E "^audit-finding: ${sha7}:${n} not-applicable:" "${record}" || true)
     [ -n "${line}" ] || refuse 12 "audit finding ${n} of ${sha7} has no audit-finding line"
-    body=${line#*not-applicable:} && reason=${body%%; evidence=*} && evidence=${body#*; evidence=}
+    body=${line#*not-applicable:} && evidence=${body#*; evidence=}
+    # Trimmed, as the gate reads it, before its length counts (local review of f4d86ee5).
+    reason=$(printf '%s' "${body%%; evidence=*}" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
     # The gate's grammar, checked whatever the verdict (a correct one passes no dispositions on): one `; evidence=`
     # with a command, a reason of 20 or more characters, and no tab, since the lines become a TSV (PR #378 thread 4300359437).
     [[ ${body} == *"; evidence="* && ${evidence} != *"; evidence="* && ${evidence} =~ [^[:space:]] && ${#reason} -ge 20 && ${line} != *$'\t'* ]] ||
@@ -145,7 +157,7 @@ step merge 0 "${git}" -C "${main}" fetch -q origin main
 step merge 0 "${git}" -C "${main}" rev-parse origin/main
 merged=${out}
 step ff-main 0 "${main}/scripts/orchestrator/ff-main.sh"
-step pr-cost 0 "${BASH}" "${cost}" "${pr}"
+step pr-cost 0 cost_run "${pr}"
 # (9) Printed for the orchestrator to send (C-53); this script sends nothing.
 accept="AGMSG-ACCEPTANCE v1 task_id=${task} status=accepted reason=merged-as-${merged}-pr-${pr}-head-${sha7} next_action=<the orchestrator fills this before sending>"
 say "chain-finish: ${task} ${head} merged as ${merged}"

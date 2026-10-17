@@ -106,7 +106,9 @@ class ChainIntegrateTest(unittest.TestCase):
         self.git("clone", "-q", str(origin), str(self.seed), cwd=self.temp)
         # The stubs are tracked on main, so the main checkout's copies are HEAD's (PR #372 thread 4291474880).
         for rel, name in SCRIPTS.items():
-            self.executable(self.seed / "scripts" / rel, STUB.format(name=name))
+            # The calls directory is baked in as the default, since pr-cost.sh runs under env -i.
+            stub = STUB.format(name=name).replace("$CALLS", f"${{CALLS:-{self.calls}}}")
+            self.executable(self.seed / "scripts" / rel, stub)
         self.git("add", "scripts", cwd=self.seed)
         self.commit(self.seed, "a.txt")
         self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
@@ -540,6 +542,36 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         record.write_text(kept + self.finding(1, good))
         self.finish()
         self.assertEqual(1, len(self.calls_of("resolve-threads")))
+
+    def test_finish_runs_pr_cost_with_a_path_of_resolved_links(self):
+        # The local review of f4d86ee5 (P1): after the fast-forward the main checkout's mise config is the merged
+        # head's, so pr-cost.sh runs under env -i with a PATH of one directory of links resolved before any write.
+        self.finish_ready()
+        self.finish()
+        [path] = re.findall(r"^path: (.*)$", (self.calls / "pr-cost.log").read_text(), re.MULTILINE)
+        self.assertEqual(f"{self.v}/{TASK}-pr-cost-bin-{self.head[:7]}", path)
+        self.assertFalse(Path(path).exists())
+        self.assertNotIn(str(self.temp), self.log())
+        # A tool that resolves only to a shims directory refuses before any GitHub write.
+        shims = self.temp / "shims"
+        self.executable(shims / "jq", "#!/bin/sh\nexit 0\n")
+        result = self.finish(code=10, env={"PATH": f"{shims}{os.pathsep}{self.env['PATH']}"})
+        self.assertIn(f"no jq for pr-cost.sh outside a shims directory: {shims}/jq", result.stderr)
+        self.assertEqual(1, len(self.calls_of("resolve-threads")))
+
+    def test_finish_reads_the_last_nonblank_line_as_the_verdict(self):
+        # The local review of f4d86ee5 (P2): trailing blank lines and spaces do not hide the verdict, as the gate reads it.
+        self.finish_ready("[P2] one\n  Verdict: correct  \n\n \n", self.finding(1))
+        self.finish()
+        self.assertIn("verdict rc=0: Verdict: correct, 1 finding(s)", self.log())
+        self.assertNotIn("--audit-dispositions", self.calls_of("acceptance-front-matter")[0])
+
+    def test_finish_counts_the_trimmed_reason(self):
+        # The local review of f4d86ee5 (P2): spaces around a short reason do not reach the 20-character minimum.
+        sha7 = self.head[:7]
+        self.finish_ready("[P2] one\nVerdict: incorrect\n", self.finding(1, "short" + " " * 30))
+        self.assertIn(f"audit finding 1 of {sha7}: the line is not", self.finish(code=12).stderr)
+        self.assertEqual([], self.calls_of("resolve-threads"))
 
     def test_finish_runs_gate_before_merge_and_cost_after(self):
         self.finish_ready()

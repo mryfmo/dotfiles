@@ -24,7 +24,7 @@ name, args = Path(sys.argv[0]).name, sys.argv[1:]
 if name == "uname":
     print(os.environ["FIXTURE_OS" if args == ["-s"] else "FIXTURE_ARCH"])
     sys.exit(0)
-entry = {"tool": name, "argv": args}
+entry = {"tool": name, "argv": args, "min_release_age": os.environ.get("npm_config_min_release_age")}
 if name == "curl":
     Path(args[args.index("-o") + 1]).write_bytes(Path(os.environ["PAYLOAD"]).read_bytes())
 else:
@@ -97,6 +97,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                         "FIXTURE_VERSION": version,
                         "FIXTURE_OS": platform.split("/")[0],
                         "FIXTURE_ARCH": platform.split("/")[1],
+                        "npm_config_min_release_age": "3",
                     },
                     stdin=subprocess.DEVNULL,
                     capture_output=True,
@@ -117,6 +118,8 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                 return
             records = calls()
             self.assertEqual(["curl", "npm" if tool == "omp" else "uv"], [row["tool"] for row in records])
+            self.assertEqual("3", records[0]["min_release_age"])
+            self.assertEqual("0" if tool == "omp" else "3", records[1]["min_release_age"])
             url = records[0]["argv"][1]
             if tool == "omp":
                 self.assertEqual(

@@ -939,13 +939,14 @@ function update_omp() (
         printf 'omp checksum mismatch: expected %s, got %s.\n' "${OMP_TARBALL_SHA256}" "${actual}" >&2
         return 1
     fi
-    npm install -g --prefix "${HOME}/.local" "${tarball}" || return
+    # Allow this reviewed pin before the default three-day cooldown expires.
+    npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" || return
     installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
         printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
         return 1
     fi
-    manifest_record "update_omp" installer "${OMP_PIN_VERSION}" "${HOME}/.local/bin/omp" -- "npm install -g --prefix ${HOME}/.local <verified-omp-tarball>"
+    manifest_record "update_omp" installer "${OMP_PIN_VERSION}" "${HOME}/.local/bin/omp" -- "npm_config_min_release_age=0 npm install -g --prefix ${HOME}/.local <verified-omp-tarball>"
 )
 
 #

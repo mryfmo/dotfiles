@@ -6050,3 +6050,471 @@ $ env AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T129-assets-omp-h
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 (exit 0)
 ```
+
+## manifest-count-red
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step -v
+test_updater_has_one_recording_call_for_each_install_step (tests.unit.test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step) ... FAIL
+
+======================================================================
+FAIL: test_updater_has_one_recording_call_for_each_install_step (tests.unit.test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_asset_manifest.py", line 221, in test_updater_has_one_recording_call_for_each_install_step
+    self.assertEqual(15, updater.count('manifest_record "'))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 15 != 17
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)
+(exit 1)
+```
+
+## Amendment5 task copy and CI root causes
+
+Full dispatched task read; byte-copy SHA256b5887b2b6a0ab2c50dc5e86316c638b595a3b1b1e2be973120fcf7db11edb7e2 verified. Fix round2 explicitly authorized; no further fix without operator decision. Full external CI logs are preserved raw, with relevant verbatim excerpts below. The bootstrap CI attempted real npm installation; the worker has performed no local real installation.
+
+```text
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5867957Z FAIL: test_updater_has_one_recording_call_for_each_install_step (test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step)
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5869212Z ----------------------------------------------------------------------
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5869760Z Traceback (most recent call last):
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5878263Z   File "~/work/dotfiles/dotfiles/tests/unit/test_asset_manifest.py", line 221, in test_updater_has_one_recording_call_for_each_install_step
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5879502Z     self.assertEqual(15, updater.count('manifest_record "'))
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5880038Z AssertionError: 15 != 17
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5880274Z 
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5880507Z ----------------------------------------------------------------------
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5881025Z Ran 1162 tests in 240.215s
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5881264Z 
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.5881391Z FAILED (failures=1)
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.6062883Z make: *** [Makefile:185: unit-test] Error 1
+test (ubuntu-24.04, client)	Run Python unit tests	2026-10-17T11:33:05.6078685Z ##[error]Process completed with exit code 2.
+(exit 0)
+public-bootstrap (ubuntu-24.04, server)	Bootstrap the checked-out public source	2026-10-17T11:33:51.1081422Z ==> omp
+public-bootstrap (ubuntu-24.04, server)	Bootstrap the checked-out public source	2026-10-17T11:33:56.6853488Z npm error code ETARGET
+public-bootstrap (ubuntu-24.04, server)	Bootstrap the checked-out public source	2026-10-17T11:33:56.6854761Z npm error notarget No matching version found for @oh-my-pi/omp-stats@18.11.3 with a date before 10/14/2026, 8:33:51 PM.
+public-bootstrap (ubuntu-24.04, server)	Bootstrap the checked-out public source	2026-10-17T11:33:56.6856393Z npm error notarget In most cases you or one of your dependencies are requesting a package version that doesn't exist.
+public-bootstrap (ubuntu-24.04, server)	Bootstrap the checked-out public source	2026-10-17T11:33:56.6868961Z npm error A complete log of this run can be found in: ~/work/_temp/dotfiles-home/.npm/_logs/2026-10-17T11_33_51_482Z-debug-0.log
+public-bootstrap (ubuntu-24.04, server)	Bootstrap the checked-out public source	2026-10-17T11:33:56.7022930Z chezmoi: .chezmoiscripts/common/06-install-agent-assets.sh: exit status 1
+public-bootstrap (ubuntu-24.04, server)	Bootstrap the checked-out public source	2026-10-17T11:33:56.7049859Z chezmoi apply failed; completed target operations may remain.
+public-bootstrap (ubuntu-24.04, server)	Bootstrap the checked-out public source	2026-10-17T11:33:56.7152875Z ##[error]Process completed with exit code 1.
+(exit 0)
+```
+
+## omp-cooldown-red
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin -v
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... FAIL
+
+======================================================================
+FAIL: test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 172, in test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin
+    self.exercise_update("omp")
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 122, in exercise_update
+    self.assertEqual("0" if tool == "omp" else "3", records[1]["min_release_age"])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '0' != '3'
+- 0
++ 3
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.407s
+
+FAILED (failures=1)
+(exit 1)
+```
+
+## ci-fix-green-connected
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_update_agent_assets tests.unit.test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_required_optional_and_healthy_statuses tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_reports_claude_sandbox_prerequisites tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_propagates_runtime_drift_after_tool_checks tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_runs_gh_extension_ensure tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_removes_node_global_shadows_before_agent_commands tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_repairs_broken_claude_with_npm_backend -v
+test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin) ... ok
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... ok
+test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... ok
+test_updater_has_one_recording_call_for_each_install_step (tests.unit.test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step) ... ok
+test_doctor_required_optional_and_healthy_statuses (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_required_optional_and_healthy_statuses) ... ok
+test_doctor_reports_claude_sandbox_prerequisites (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_reports_claude_sandbox_prerequisites) ... ok
+test_make_doctor_propagates_runtime_drift_after_tool_checks (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_propagates_runtime_drift_after_tool_checks) ... ok
+test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing) ... ok
+test_make_doctor_passes_repair_variable_to_runtime_check (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check) ... ok
+test_agent_asset_update_runs_gh_extension_ensure (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_runs_gh_extension_ensure) ... ok
+test_agent_asset_update_removes_node_global_shadows_before_agent_commands (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_removes_node_global_shadows_before_agent_commands) ... ok
+test_agent_asset_update_repairs_broken_claude_with_npm_backend (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_repairs_broken_claude_with_npm_backend) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 23.355s
+
+OK
+(exit 0)
+```
+
+## ci-fix-ruff-format
+
+```text
+$ ruff format --check --config ruff.toml tests/unit/test_update_agent_assets.py tests/unit/test_runtime_health.py tests/unit/test_asset_manifest.py
+3 files already formatted
+(exit 0)
+```
+
+## ci-fix-ruff
+
+```text
+$ ruff check --config ruff.toml tests/unit/test_update_agent_assets.py
+All checks passed!
+(exit 0)
+```
+
+## ci-fix-shellcheck
+
+```text
+$ shellcheck -x scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh
+(exit 0)
+```
+
+## ci-fix-shfmt
+
+```text
+$ shfmt -i 4 -sr -d scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh
+(exit 0)
+```
+
+## Current source and task integrity
+
+```text
+$ uv run --offline --no-project --with pyyaml <TMP>/codex-T129-integrity2.py
+{
+  "baseline": "35ab0e95a7fe27c501db3478d4f37e69a514d532",
+  "previous_head": "f9c5e1a54767fa504b0545941a12dfa5a9c37464",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "e573fdb3a6d3efd769350c00de581c968bfc1a017a2b1497b59bafdd27f2e310",
+    "scripts/check-tools.sh": "45b35994396d1b931ac91750b9d6629237d0c8e936fe727e0cc73fd1b5079224",
+    "scripts/lib/installer-pins.sh": "a6102ac79245c5553bcbb04333e46c7a2e5fc4b63a0216804b2b746f9793a091",
+    "scripts/update-agent-assets.sh": "4a3a399d40489c0f414b0b70c9bdce9aa7c5a967ba797679862d684ccc603622",
+    "tests/install/common/check_tools.bats": "9a7c9ba96323f926430c4358368cff20f0a05f5c043486418d986f9d423ba5ed",
+    "tests/unit/test_asset_manifest.py": "b6b37a82712047ba19dccee6c264955acf967f75fe722a5682f2f18533e8171f",
+    "tests/unit/test_runtime_health.py": "0002b4551f0739f2f7b05b8593f5095df9c315fad5dafe26e8368e395abf18d6",
+    "tests/unit/test_update_agent_assets.py": "ae9b713a9aa894be5c4d94920c58efd68f4f7c400fb85384c8ee608a2029c6f8"
+  },
+  "source_changed": 163,
+  "test_added": 232,
+  "withdrawn_paths_unchanged": true,
+  "existing_helpers_and_Bats_byte_identical": true,
+  "task_hashes_and_URLs_match": true,
+  "URL_render_fallback": "files values are not plain pin values; URLs declared beside existing installer URLs and match manifest files",
+  "numstat": "8\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md\n50\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json\n6\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md\n8\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md\n35\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md\n7\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml\n12\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md\n152\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md\n6052\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md\n35\t0\thome/dot_agents/agent-config.yaml\n34\t0\tscripts/check-tools.sh\n8\t0\tscripts/lib/installer-pins.sh\n86\t0\tscripts/update-agent-assets.sh\n32\t0\ttests/install/common/check_tools.bats\n3\t1\ttests/unit/test_asset_manifest.py\n13\t3\ttests/unit/test_runtime_health.py\n184\t0\ttests/unit/test_update_agent_assets.py\n"
+}
+(exit 0)
+```
+
+## ci-fix-canonical-mask-early
+
+```text
+$ uv run --offline --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets .orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml .orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md
+masked 2 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md
+(exit 0)
+```
+
+## Independent final Amendment5 source approval
+
+# Independent security review — authorized final CI fix
+
+Task: dotfiles-T129-assets-omp-hcom-a01
+Amendment:5; fix round:2
+Task SHA256: b5887b2b6a0ab2c50dc5e86316c638b595a3b1b1e2be973120fcf7db11edb7e2
+Previous head: f9c5e1a54767fa504b0545941a12dfa5a9c37464
+Original baseline:35ab0e95a7fe27c501db3478d4f37e69a514d532
+
+## Explicit source approval
+
+No new actionable finding. The three-file delta implements the dispatched Amendment5 and revise.yaml scope: command-local npm cooldown exception after successful SHA verification, accurate receipt command, environment assertions, and the17-step manifest fixture including omp/hcom. The current candidate is approved for source correctness and security within the explicitly authorized D-omp-cooldown tradeoff; this is not integration acceptance or proof that real CI has passed.
+
+scripts/update-agent-assets.sh:943 places npm_config_min_release_age=0 on the single npm invocation, after the checksum comparison at937-940. It is not a shell-wide export and does not modify global npmrc. Managed-path post-install checking, hash-refusal control flow, function-local EXIT cleanup, error propagation, pins/URLs and hcom installation remain intact. The success receipt at949 now records the exception actually used. No workflow or CI skip was added.
+
+Security impact: the override also removes the waiting period for transitive npm dependencies resolved by this command. The top-level tarball hash does not authenticate or freeze those dependencies. The current task explicitly authorizes the exception and report.md accurately discloses that scope and limitation. Approval does not reinterpret the top-level SHA as complete dependency verification. The report and final integration should retain that disclosure.
+
+The fixture seeds npm_config_min_release_age=3, records it in each fake command's log, asserts curl sees3, asserts the omp npm invocation sees0, and asserts hcom's uv invocation still sees3. Existing hash/managed-path/version/receipt/cleanup assertions remain. The test_asset_manifest fixture adds the two actual IDs and changes15 to17 while retaining the count and per-step exactly-once assertions. This matches the two new manifest_record calls rather than suppressing the test.
+
+## Independent checks and evidence integrity
+
+- Four focused methods pass in7.859s: all three installer methods (46 fake fixture invocations) and the recording-step check.
+- Current omp env assertion independently fails against previous-head updater with0 vs3; the previous-head manifest test independently fails against current source with15 vs17. Both expected RED outcomes are asserted by the reproduction wrapper.
+- All eight source/test SHA256 values match ci-fix/source-integrity.json. Only updater, installer test and manifest test differ from previous_head among those eight paths. Current task hash matches the dispatched hash.
+- home/dot_npmrc remains byte-identical to previous_head and original baseline, containing min-release-age=3. Existing harness exceptions were not changed.
+- ShellCheck-x and project-flag shfmt pass independently. The parent's12-method green run and Ruff success appear in validation.md; no broader independent run is claimed.
+- Read the full current task, revise.yaml, current exact source diff, source-integrity.json, relevant validation sections, report disclosure and saved CI failure excerpts. Excerpts support the actual failures:15 vs17 in1162-method CI run and ETARGET with a date cutoff for omp-stats18.11.3. The focused fixtures prove the environment behavior, not real registry compatibility.
+- Current full validator is parent-owned/pending at assignment; prior validator, source approvals and Bot results are historical. New-head CI/Bot, final audit/gate and acceptance remain separate requirements. No future pass/head is fabricated.
+
+## Boundaries
+
+This review is read-only. No repository edits, real package installation/download, network request, local Bats, GitHub mutation, Crit UI/server, profile/permission change or broad process inventory was performed. Only fake installers and temporary fixtures ran. Real installation remains operator-owned; the refreshed CI must demonstrate the actual bootstrap outcome. No additional fix is authorized by this review.
+
+Plan/todo completed: read Amendment5 and authorization; inspect source and security impact; verify identity/global-policy preservation; reproduce RED and run focused GREEN; record approval. The repository worklog is untouched in this read-only assignment.
+
+## Exact commands and outputs
+
+Current tests:
+
+`PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -m unittest tests.unit.test_update_agent_assets tests.unit.test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step -v`
+
+```text
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin) ... ok
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... ok
+test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... ok
+test_updater_has_one_recording_call_for_each_install_step (tests.unit.test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 7.859s
+
+OK
+```
+Exit0.
+
+Integrity and independent RED reproductions:
+
+`PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python /tmp/codex-T129-ci-fix-checks.py`
+
+Exact script:
+
+```python
+import hashlib, importlib.util, json, os, subprocess, tempfile, unittest
+from pathlib import Path
+import tests.unit.test_update_agent_assets as m
+root=Path.cwd(); prefix=root/'.orchestration/dotfiles-T129-assets-omp-hcom-a01'
+e=json.loads((prefix/'ci-fix/source-integrity.json').read_text());head=e['previous_head']
+for p,h in e['source_sha256'].items():
+ assert hashlib.sha256((root/p).read_bytes()).hexdigest()==h
+ print(p,h)
+assert hashlib.sha256((prefix/'task.md').read_bytes()).hexdigest()=='b5887b2b6a0ab2c50dc5e86316c638b595a3b1b1e2be973120fcf7db11edb7e2'
+print('Task SHA256 verified: b5887b2b6a0ab2c50dc5e86316c638b595a3b1b1e2be973120fcf7db11edb7e2')
+changed=[p for p in e['source_sha256'] if (root/p).read_bytes()!=subprocess.check_output(['git','show',head+':'+p])]
+assert changed==['scripts/update-agent-assets.sh','tests/unit/test_asset_manifest.py','tests/unit/test_update_agent_assets.py'],changed
+print('Only source changes from previous_head:',changed)
+for ref in [head,e['baseline']]:
+ assert (root/'home/dot_npmrc').read_bytes()==subprocess.check_output(['git','show',ref+':home/dot_npmrc'])
+print('Global npmrc unchanged from previous head and task baseline:',(root/'home/dot_npmrc').read_text().strip())
+with tempfile.TemporaryDirectory(dir='/tmp') as td:
+ old=Path(td)/'updater.sh';old.write_bytes(subprocess.check_output(['git','show',head+':scripts/update-agent-assets.sh']))
+ m.UPDATER=old;os.environ['DOTFILES_SOURCE_DIR']=str(root)
+ r=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite([m.UpdateAgentAssetsTest('test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin')]))
+ assert len(r.failures)==1 and not r.errors
+ print('Expected RED: current env assertion rejects previous updater without command-local exception')
+ oldtest=Path(td)/'old_manifest_test.py';oldtest.write_bytes(subprocess.check_output(['git','show',head+':tests/unit/test_asset_manifest.py']))
+ spec=importlib.util.spec_from_file_location('old_manifest_test',oldtest);mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod);mod.UPDATER=root/'scripts/update-agent-assets.sh'
+ r=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite([mod.AssetManifestTest('test_updater_has_one_recording_call_for_each_install_step')]))
+ assert len(r.failures)==1 and not r.errors
+ print('Expected RED: previous manifest test rejects17 actual recording calls with its15-step expectation')
+```
+
+```text
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... FAIL
+
+======================================================================
+FAIL: test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 172, in test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin
+    self.exercise_update("omp")
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 122, in exercise_update
+    self.assertEqual("0" if tool == "omp" else "3", records[1]["min_release_age"])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '0' != '3'
+- 0
++ 3
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.330s
+
+FAILED (failures=1)
+test_updater_has_one_recording_call_for_each_install_step (old_manifest_test.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step) ... FAIL
+
+======================================================================
+FAIL: test_updater_has_one_recording_call_for_each_install_step (old_manifest_test.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmpgqlnn0vj/old_manifest_test.py", line 221, in test_updater_has_one_recording_call_for_each_install_step
+    self.assertEqual(15, updater.count('manifest_record "'))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 15 != 17
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)
+home/dot_agents/agent-config.yaml e573fdb3a6d3efd769350c00de581c968bfc1a017a2b1497b59bafdd27f2e310
+scripts/check-tools.sh 45b35994396d1b931ac91750b9d6629237d0c8e936fe727e0cc73fd1b5079224
+scripts/lib/installer-pins.sh a6102ac79245c5553bcbb04333e46c7a2e5fc4b63a0216804b2b746f9793a091
+scripts/update-agent-assets.sh 4a3a399d40489c0f414b0b70c9bdce9aa7c5a967ba797679862d684ccc603622
+tests/install/common/check_tools.bats 9a7c9ba96323f926430c4358368cff20f0a05f5c043486418d986f9d423ba5ed
+tests/unit/test_asset_manifest.py b6b37a82712047ba19dccee6c264955acf967f75fe722a5682f2f18533e8171f
+tests/unit/test_runtime_health.py 0002b4551f0739f2f7b05b8593f5095df9c315fad5dafe26e8368e395abf18d6
+tests/unit/test_update_agent_assets.py ae9b713a9aa894be5c4d94920c58efd68f4f7c400fb85384c8ee608a2029c6f8
+Task SHA256 verified: b5887b2b6a0ab2c50dc5e86316c638b595a3b1b1e2be973120fcf7db11edb7e2
+Only source changes from previous_head: ['scripts/update-agent-assets.sh', 'tests/unit/test_asset_manifest.py', 'tests/unit/test_update_agent_assets.py']
+Global npmrc unchanged from previous head and task baseline: min-release-age=3
+Expected RED: current env assertion rejects previous updater without command-local exception
+Expected RED: previous manifest test rejects17 actual recording calls with its15-step expectation
+```
+Wrapper exit0 after asserting both intentional single-failure RED outcomes.
+
+`shellcheck -x scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh`: exit0, no diagnostics.
+
+`shfmt -i 4 -sr -d scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh`: exit0, no diff.
+
+Verdict: correct
+
+
+## Final clean staged-candidate validator
+
+```text
+Candidate snapshot from the staged index; unrelated untracked historical logs are absent. All eight changed source/test hashes equal worker-e.
+$ cd <TMP>/codex-T129-candidate-bp2oz4h_
+$ uv run --offline --no-project --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T129-candidate-bp2oz4h_ (expected one)
+WARN: regime-boundary: canonical clone <HOME>/.local/share/chezmoi differs from origin/main under home/, install/ or scripts/: home/dot_claude/modify_private_settings.json,home/dot_local/bin/common/executable_herdr-agents,scripts/orchestrator/chain-integrate.sh,scripts/orchestrator/dispatch.sh,scripts/orchestrator/local-advisory.sh,scripts/orchestrator/local-review.sh,scripts/regime-counters.sh,scripts/require-crit-review.py; nothing but pull and apply runs in the canonical clone; restore a stray diff with git -C <HOME>/.local/share/chezmoi restore -SW --source=origin/main -- <files> and drop its autostash
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## Final Amendment5 source identity
+
+Eight working-tree/index/source-integrity/final-snapshot/independent-approval hashes match, final validator exit0. Taskb5887b2b unchanged; source163/test232. Global npmrc byte-identical at3days. Source unchanged after approval.
+
+## final-canonical-mask
+
+```text
+$ uv run --offline --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets .orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml .orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md
+(exit 0)
+```
+
+## final-code-whitespace
+
+```text
+$ git diff --cached --check -- home/dot_agents/agent-config.yaml scripts/check-tools.sh scripts/lib/installer-pins.sh scripts/update-agent-assets.sh tests/install/common/check_tools.bats tests/unit/test_asset_manifest.py tests/unit/test_runtime_health.py tests/unit/test_update_agent_assets.py
+(exit 0)
+```
+
+## final-review-gate
+
+```text
+$ env AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+(exit 0)
+```

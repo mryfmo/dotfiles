@@ -1586,7 +1586,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "project-map-reload",
                 "--pin-tab",
                 "eval",
-                'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()',
+                f"if (location.href === new URL({json.dumps('file://' + map_path)}).href) location.reload()",
             ]
             cases = [
                 ("Write", {"file_path": map_path}, listing, {}, 2, True),
@@ -1785,7 +1785,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                                 "project-map-reload",
                                 "--pin-tab",
                                 "eval",
-                                'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()',
+                                f"if (location.href === new URL({json.dumps('file://' + map_path)}).href) location.reload()",
                             ],
                         ]
                         if reloaded
@@ -1969,6 +1969,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 ("tab trailing slash", str(map_path), map_path.as_uri() + "/", root),
                 ("event symlink", str(logical / ".project-map/index.html"), map_path.as_uri(), root),
                 ("tab symlink", str(map_path), (logical / ".project-map/index.html").as_uri(), root),
+                (
+                    "quoted URL query",
+                    str(map_path),
+                    map_path.as_uri() + '?q=";globalThis.injected=true;//\u2028',
+                    root,
+                ),
             ):
                 with self.subTest(form=form):
                     browser, agent = self._run_project_map_reload_listing(
@@ -1987,8 +1993,25 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     self.assertEqual(browser, [["ls", "--all", "--json"]])
                     self.assertEqual(len(agent), 2)
                     self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
+                    result = subprocess.run(
+                        [
+                            "node",
+                            "-e",
+                            (
+                                "const assert = require('node:assert/strict'); let reloads = 0; "
+                                f"const location = new URL({json.dumps(url)}); "
+                                "location.reload = () => reloads++; "
+                                f"{agent[1][-1]}; assert.equal(reloads, 1); "
+                                "assert.equal(globalThis.injected, undefined);"
+                            ),
+                        ],
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""), result.stderr)
 
-    def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False):
+    def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False, map_path: str | None = None):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             browser = root / "terminal-browser"
@@ -2010,7 +2033,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             agent.chmod(0o755)
             (root / "jq").symlink_to(shutil.which("jq"))
             (root / "python3").symlink_to(sys.executable)
-            map_path = str(root / ".project-map/index.html")
+            map_path = map_path or str(root / ".project-map/index.html")
             result = subprocess.run(
                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
                 input=json.dumps({"tool_input": {"file_path": map_path}}),
@@ -2042,18 +2065,24 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             )
 
     def test_project_map_reload_hook_guards_against_a_tab_navigating_away(self) -> None:
-        calls, _ = self._run_project_map_reload_case("4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3")
+        calls, _ = self._run_project_map_reload_case(
+            "4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3", map_path="/repo/.project-map/index.html"
+        )
         self.assertEqual(len(calls), 2)
         script = calls[-1][-1]
-        for pathname, expected in (("/repo/.project-map/index.html", 1), ("/unsaved-form", 0)):
-            with self.subTest(pathname=pathname):
+        for url, expected in (
+            ("file:///repo/.project-map/index.html", 1),
+            ("file:///unsaved-form", 0),
+            ("file:///other/.project-map/index.html", 0),
+        ):
+            with self.subTest(url=url):
                 result = subprocess.run(
                     [
                         "node",
                         "-e",
                         (
                             "const assert = require('node:assert/strict'); let reloads = 0; "
-                            f"const location = {{pathname: {json.dumps(pathname)}, reload() {{ reloads++; }} }}; "
+                            f"const location = new URL({json.dumps(url)}); location.reload = () => reloads++; "
                             f"{script}; assert.equal(reloads, {expected});"
                         ),
                     ],

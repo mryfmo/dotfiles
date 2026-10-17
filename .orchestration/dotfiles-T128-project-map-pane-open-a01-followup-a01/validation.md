@@ -3,6 +3,755 @@ task_id: dotfiles-T128-project-map-pane-open-a01-followup-a01
 status: final
 ---
 
+Current same-round guard correction againstba0bf354; task SHA256 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9. Source/test hashes below bind this committed phase to the tested code. Future publishing-head CI/Bot observations follow in RESULT-round3/raw round3-guard/. HOME/temp prefixes are redacted; command output and historical whitespace otherwise preserved. Earlier checkpoint sections are labeled historical.
+
+- home/dot_claude/hooks/executable_project-map-reload.sh: a3a2dcf0b0c13ce264a6f062309469e72744a2a8a14fc9b925a1b5c87b69154d
+- tests/unit/test_generate_agent_configs.py: e4297f6a8e6f6e8c6eeeff83015ab9e64adf2b5914f77940716347c09cd3190b
+
+## Explicit same-round guard authorization
+
+```text
+AGMSG-ACCEPTANCE v1 received2026-10-17T07:16:28Z from claude-deep-dot task_id=dotfiles-T128-project-map-pane-open-a01-followup-a01 round=3 status=pending-integration: answer to question PONG on4301859324 trailing-slash-navigation-guard. Authorized within current round3, not a new round: re-plan comparison rewritten around one normalizer; endsWith(index.html) guard is a second text-form comparison of same path, class path-form-normalisation by identity; guard decides by canonical path too (selected-tab canonical path equals event), table trailing-slash row asserts reload, no other hook change; push/Bot re-review/RESULTround3 names4301859324 fixed:<sha> with audit:8607a87:1.
+```
+
+## Prior ba0bf354 Bot review, inline4301859324 and completed summary (historical trigger)
+
+```text
+{
+  "head": "ba0bf3548b17ec0ad0837a518e338611066daf63",
+  "reviews": [
+    {
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### \ud83d\udca1 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `ba0bf3548b`\n    \n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with \ud83d\udc4d.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "commit_id": "ba0bf3548b17ec0ad0837a518e338611066daf63",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/379#pullrequestreview-5556793163",
+      "id": 5556793163,
+      "state": "COMMENTED",
+      "submitted_at": "2026-10-17T07:14:46Z"
+    }
+  ],
+  "inline": [
+    {
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Align trailing-slash matching with the reload guard**\n\nWhen a listed tab URL ends in `/.project-map/index.html/`, `realpath` removes the trailing slash, so this comparison selects it as matching the event (the new test explicitly covers \u201ctab trailing slash\u201d). The eval on line 66 then checks `location.pathname.endsWith(\"/.project-map/index.html\")`, which is false for that URL, so later writes issue the agent commands but never reload the tab. Either reject this URL form during matching or make the navigation guard accept the same canonical forms.\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/379#discussion_r4301859324",
+      "id": 4301859324,
+      "line": 54,
+      "original_commit_id": "ba0bf3548b17ec0ad0837a518e338611066daf63",
+      "path": "home/dot_claude/hooks/executable_project-map-reload.sh"
+    }
+  ],
+  "issue_comments": [
+    {
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"ba0bf3548b17ec0ad0837a518e338611066daf63\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"64df31ea7c7c52ca30e9f1e1b33246c3a44bb3a0\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"64df31ea7c7c52ca30e9f1e1b33246c3a44bb3a0\",\"mergeGateEnabled\":false,\"pullRequestNumber\":379,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| \ud83d\udcdd **Code Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-17T07:14:49.076610Z\">2026-10-17T07:14:49.076610Z</relative-time> | `ba0bf35` | Manual request |\n| \ud83d\udd12 **Security Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-17T00:25:42.845517Z\">2026-10-17T00:25:42.845517Z</relative-time> | `64df31e` | Draft marked ready |\n\n\n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with \ud83d\udc40 while any review is running, comments if it has suggestions, and reacts with \ud83d\udc4d once all reviews finish with no findings.\n\n</details>",
+      "created_at": "2026-10-17T00:23:27Z",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/379#issuecomment-6227284829",
+      "id": 6227284829,
+      "updated_at": "2026-10-17T07:14:49Z"
+    }
+  ]
+}
+```
+
+## Expected RED before guard fix: named table, exit1, trailing slash reload actual0 expected1
+
+```text
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... 
+  test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='tab trailing slash') ... FAIL
+
+======================================================================
+FAIL: test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='tab trailing slash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 2012, in test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+    self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""), result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (1, '', "node:internal/assert/utils:146\n [647 chars]1\n") != (0, '', '')
+
+First differing element 0:
+1
+0
+
+Diff is 861 characters long. Set self.maxDiff to None to see it. : node:internal/assert/utils:146
+  throw error;
+  ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+0 !== 1
+
+    at [eval]:1:325
+    at runScriptInThisContext (node:internal/vm:219:10)
+    at node:internal/process/execution:485:12
+    at [eval]-wrapper:6:24
+    at runScriptInContext (node:internal/process/execution:483:60)
+    at evalFunction (node:internal/process/execution:317:30)
+    at evalTypeScript (node:internal/process/execution:329:3)
+    at node:internal/main/eval_string:71:3 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 0,
+  expected: 1,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.11.1
+
+
+----------------------------------------------------------------------
+Ran 1 test in 3.004s
+
+FAILED (failures=1)
+```
+
+## UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python -m unittest tests.unit.test_generate_agent_configs -k project_map_reload -v (exit0)
+
+```text
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_matches_percent_encoded_tilde (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_matches_percent_encoded_tilde) ... ok
+test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd) ... ok
+test_project_map_reload_hook_selects_the_event_map_among_two_repositories (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_selects_the_event_map_among_two_repositories) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 10.776s
+
+OK
+```
+
+## shellcheck hook (exit0)
+
+```text
+```
+
+## make render-check through uv pyyaml (exit0)
+
+```text
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+```
+
+## Ruff format initial diagnostic (exit1)
+
+```text
+Downloading ruff (8.8MiB)
+ Downloaded ruff
+Installed 1 package in 1ms
+unformatted: File would be reformatted
+    --> tests/unit/test_generate_agent_configs.py:1589:18
+     |
+1588 |                 "eval",
+     -                 f'if (location.href === new URL({json.dumps("file://" + map_path)}).href) location.reload()',
+1589 +                 f"if (location.href === new URL({json.dumps('file://' + map_path)}).href) location.reload()",
+1590 |             ]
+--------------------------------------------------------------------------------
+1787 |                                 "eval",
+     -                                 f'if (location.href === new URL({json.dumps("file://" + map_path)}).href) location.reload()',
+1788 +                                 f"if (location.href === new URL({json.dumps('file://' + map_path)}).href) location.reload()",
+1789 |                             ],
+     |
+
+1 file would be reformatted
+```
+
+## Ruff format apply (exit0)
+
+```text
+1 file reformatted
+```
+
+## Ruff format final check (exit0)
+
+```text
+1 file already formatted
+```
+
+## Complete module AST comparison after quote-only format (exit0)
+
+```text
+PASS formatting changes quote style only; complete unit-module AST unchanged from passing11-method run. No test rerun needed.
+```
+
+## git diff --check -- hook test (exit0)
+
+```text
+```
+
+## Working source/test numstat againstaf4f1e99 (exit0)
+
+```text
+40	5	home/dot_claude/hooks/executable_project-map-reload.sh
+237	8	tests/unit/test_generate_agent_configs.py
+```
+
+## git diff --numstat origin/main...HEAD at previousba0bf354 (historical, exit0)
+
+```text
+7	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/autoskill.md
+9	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/learning.md
+26	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-crit.json
+8	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md
+34	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/report.md
+19	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/revise.yaml
+11	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/sandbox.md
+86	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+3477	0	.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/validation.md
+37	4	home/dot_claude/hooks/executable_project-map-reload.sh
+200	0	tests/unit/test_generate_agent_configs.py
+```
+
+## Source hashes, caps and original-regression integrity assertions (exit0)
+
+```text
+{
+  "original_round3_head": "8607a87c71cce2cebfaf0a7747e11de0451fc98e",
+  "guard_previous_head": "ba0bf3548b17ec0ad0837a518e338611066daf63",
+  "task_sha256": "24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9",
+  "source_sha256": {
+    "home/dot_claude/hooks/executable_project-map-reload.sh": "a3a2dcf0b0c13ce264a6f062309469e72744a2a8a14fc9b925a1b5c87b69154d",
+    "tests/unit/test_generate_agent_configs.py": "e4297f6a8e6f6e8c6eeeff83015ab9e64adf2b5914f77940716347c09cd3190b"
+  },
+  "source_changed": 45,
+  "test_added": 237,
+  "source_limit": 200,
+  "test_limit": 1000,
+  "focused_methods": 11,
+  "path_forms": 9,
+  "additional_injection_row": 1,
+  "test_seconds": "10.776",
+  "entirely_unchanged_original_methods": [
+    "test_project_map_reload_hook_renders_into_post_tool_use",
+    "test_project_map_reload_hook_selects_the_event_map_among_two_repositories",
+    "test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open",
+    "test_project_map_reload_hook_matches_percent_encoded_tilde",
+    "test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd",
+    "test_project_map_reload_hook_pins_the_bound_tab_when_it_closes",
+    "test_project_map_reload_hook_accepts_only_cdp_target_ids"
+  ],
+  "updated_original_methods": [
+    "test_project_map_reload_hook_acts_only_on_the_map_and_never_fails",
+    "test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map",
+    "test_project_map_reload_hook_guards_against_a_tab_navigating_away"
+  ],
+  "format_only_ast_equal": true
+}
+```
+
+## crit status --json (exit0; no review file)
+
+```text
+{
+  "branch": "fix/project-map-owned-followups",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "<HOME>/.crit/reviews/626e56928309/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}
+```
+
+## Initial make require-crit-review (exit2; review evidence required)
+
+```text
+Native agent review required before completion.
+- review-sensitive path changed: .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/crit-status.json
+- broad diff touches 398 files
+- broad diff changes 23665 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+```
+
+## Complete independent read-only guard review
+
+# Incremental independent project-map reload guard review
+
+Scope: pending hook and focused unit-test diff against ba0bf3548b17ec0ad0837a518e338611066daf63. Parent reports Bot P2 4301859324 and same-round orchestrator authorization at 07:16:28Z for binding the reload guard to the canonical-selected URL and checking actual reload behavior. Reviewed source only; no agmsg, repository writes, live browser/pane/daemon probes, Bats, configuration edits or integration authority. Parent owns repository worklogs.
+
+Reference reads: git diff ba0bf354 -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py; cat home/dot_claude/hooks/executable_project-map-reload.sh; sed -n '1930,2135p' tests/unit/test_generate_agent_configs.py. Existing skill/repository instructions from the earlier review remain applicable; no unchanged documentation dump is included.
+
+Plan: inspect all changed callsites/expected argv and exact guard; run the named table/navigation tests plus focused quote/control/shell-looking payloads; record hashes, outputs and assessment. No product edits.
+
+## Exact checks and outputs
+
+$ git rev-parse HEAD
+```text
+ba0bf3548b17ec0ad0837a518e338611066daf63
+
+exit=0
+```
+
+$ git diff ba0bf354 -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+diff --git a/home/dot_claude/hooks/executable_project-map-reload.sh b/home/dot_claude/hooks/executable_project-map-reload.sh
+index 91292b77..0557bef5 100755
+--- a/home/dot_claude/hooks/executable_project-map-reload.sh
++++ b/home/dot_claude/hooks/executable_project-map-reload.sh
+@@ -7,6 +7,7 @@
+ #   Pin tab selection and guard reloads against navigation away from a project map.
+ #   Match the event file path before choosing an existing map tab.
+ #   Canonicalize event paths and file URLs with the installed isolated Python stdlib.
++#   Bind the reload guard to the canonical-matched URL, encoded as a JSON string.
+ #   Open a separate right split using half the width when the parsed listing yields no map tab.
+ #   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.
+ # @exitcode 0 Always, including unavailable tools or browsers.
+@@ -53,6 +54,7 @@ while IFS= read -r candidate; do
+     tab_path=$(canonical_path "$(jq -r '.[2]' <<< "$candidate")") || continue
+     [[ "$tab_path" == "$event_path" ]] || continue
+     selection=$(jq -r '.[0:2] | @tsv' <<< "$candidate")
++    selected_url=$(jq -c '.[2]' <<< "$candidate")
+     break
+ done <<< "$candidates"
+ if [[ -z "$selection" ]]; then
+@@ -63,5 +65,5 @@ IFS=$'\t' read -r port target_id <<< "$selection"
+ 
+ agent="${TERMINAL_BROWSER_AGENT:-$HOME/.local/share/terminal-browser/app/agent-browser/bin/agent-browser}"
+ "$agent" --cdp "$port" --session project-map-reload --pin-tab tab "$target_id" >/dev/null 2>&1 || exit 0
+-"$agent" --cdp "$port" --session project-map-reload --pin-tab eval 'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()' >/dev/null 2>&1
++"$agent" --cdp "$port" --session project-map-reload --pin-tab eval "if (location.href === new URL($selected_url).href) location.reload()" >/dev/null 2>&1
+ exit 0
+diff --git a/tests/unit/test_generate_agent_configs.py b/tests/unit/test_generate_agent_configs.py
+index 802170f6..3ab261c9 100644
+--- a/tests/unit/test_generate_agent_configs.py
++++ b/tests/unit/test_generate_agent_configs.py
+@@ -1586,7 +1586,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 "project-map-reload",
+                 "--pin-tab",
+                 "eval",
+-                'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()',
++                f'if (location.href === new URL({json.dumps("file://" + map_path)}).href) location.reload()',
+             ]
+             cases = [
+                 ("Write", {"file_path": map_path}, listing, {}, 2, True),
+@@ -1785,7 +1785,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                                 "project-map-reload",
+                                 "--pin-tab",
+                                 "eval",
+-                                'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()',
++                                f'if (location.href === new URL({json.dumps("file://" + map_path)}).href) location.reload()',
+                             ],
+                         ]
+                         if reloaded
+@@ -1969,6 +1969,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 ("tab trailing slash", str(map_path), map_path.as_uri() + "/", root),
+                 ("event symlink", str(logical / ".project-map/index.html"), map_path.as_uri(), root),
+                 ("tab symlink", str(map_path), (logical / ".project-map/index.html").as_uri(), root),
++                (
++                    "quoted URL query",
++                    str(map_path),
++                    map_path.as_uri() + '?q=";globalThis.injected=true;//\u2028',
++                    root,
++                ),
+             ):
+                 with self.subTest(form=form):
+                     browser, agent = self._run_project_map_reload_listing(
+@@ -1987,8 +1993,25 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                     self.assertEqual(browser, [["ls", "--all", "--json"]])
+                     self.assertEqual(len(agent), 2)
+                     self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
++                    result = subprocess.run(
++                        [
++                            "node",
++                            "-e",
++                            (
++                                "const assert = require('node:assert/strict'); let reloads = 0; "
++                                f"const location = new URL({json.dumps(url)}); "
++                                "location.reload = () => reloads++; "
++                                f"{agent[1][-1]}; assert.equal(reloads, 1); "
++                                "assert.equal(globalThis.injected, undefined);"
++                            ),
++                        ],
++                        text=True,
++                        capture_output=True,
++                        check=False,
++                    )
++                    self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""), result.stderr)
+ 
+-    def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False):
++    def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False, map_path: str | None = None):
+         with tempfile.TemporaryDirectory() as tmp:
+             root = Path(tmp)
+             browser = root / "terminal-browser"
+@@ -2010,7 +2033,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             agent.chmod(0o755)
+             (root / "jq").symlink_to(shutil.which("jq"))
+             (root / "python3").symlink_to(sys.executable)
+-            map_path = str(root / ".project-map/index.html")
++            map_path = map_path or str(root / ".project-map/index.html")
+             result = subprocess.run(
+                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
+                 input=json.dumps({"tool_input": {"file_path": map_path}}),
+@@ -2042,18 +2065,24 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             )
+ 
+     def test_project_map_reload_hook_guards_against_a_tab_navigating_away(self) -> None:
+-        calls, _ = self._run_project_map_reload_case("4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3")
++        calls, _ = self._run_project_map_reload_case(
++            "4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3", map_path="/repo/.project-map/index.html"
++        )
+         self.assertEqual(len(calls), 2)
+         script = calls[-1][-1]
+-        for pathname, expected in (("/repo/.project-map/index.html", 1), ("/unsaved-form", 0)):
+-            with self.subTest(pathname=pathname):
++        for url, expected in (
++            ("file:///repo/.project-map/index.html", 1),
++            ("file:///unsaved-form", 0),
++            ("file:///other/.project-map/index.html", 0),
++        ):
++            with self.subTest(url=url):
+                 result = subprocess.run(
+                     [
+                         "node",
+                         "-e",
+                         (
+                             "const assert = require('node:assert/strict'); let reloads = 0; "
+-                            f"const location = {{pathname: {json.dumps(pathname)}, reload() {{ reloads++; }} }}; "
++                            f"const location = new URL({json.dumps(url)}); location.reload = () => reloads++; "
+                             f"{script}; assert.equal(reloads, {expected});"
+                         ),
+                     ],
+
+exit=0
+```
+
+$ shasum -a 256 .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9  .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+a3a2dcf0b0c13ce264a6f062309469e72744a2a8a14fc9b925a1b5c87b69154d  home/dot_claude/hooks/executable_project-map-reload.sh
+090ec0ff6fe0a1a300b173775f8fabf38bcc7964fe8141564ae8c9da80da63c9  tests/unit/test_generate_agent_configs.py
+
+exit=0
+```
+
+$ /bin/bash -n home/dot_claude/hooks/executable_project-map-reload.sh
+```text
+
+exit=0
+```
+
+$ shellcheck home/dot_claude/hooks/executable_project-map-reload.sh
+```text
+
+exit=0
+```
+
+$ git diff --check -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+
+exit=0
+```
+
+$ env UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away -v
+```text
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.737s
+
+OK
+
+exit=0
+```
+
+$ env UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml python /tmp/codex-project-map-guard-extra.py
+```text
+PASS double quote : same URL reloads; another map and https do not; no injection
+PASS single quote : same URL reloads; another map and https do not; no injection
+PASS backslash : same URL reloads; another map and https do not; no injection
+PASS template interpolation : same URL reloads; another map and https do not; no injection
+PASS shell substitution : same URL reloads; another map and https do not; no injection
+PASS line separators : same URL reloads; another map and https do not; no injection
+PASS newlines : same URL reloads; another map and https do not; no injection
+PASS fragment query delimiters : same URL reloads; another map and https do not; no injection
+PASS encoded closing quote : same URL reloads; another map and https do not; no injection
+PASS html-looking string : same URL reloads; another map and https do not; no injection
+PASS localhost canonical href : same URL reloads; another map and https do not; no injection
+PASS selected trailing slash : same URL reloads; another map and https do not; no injection
+PASS changed query/fragment skips reload
+PASS 38 JavaScript assertions across 13 stub-only hook cases; no real browser or daemon
+
+exit=0
+```
+
+## Temporary adversarial fixture source
+
+$ cat /tmp/codex-project-map-guard-extra.py
+```python
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+repo = Path('<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e')
+sys.path.insert(0, str(repo))
+from tests.unit.test_generate_agent_configs import GenerateAgentConfigsTest
+
+case = GenerateAgentConfigsTest()
+with tempfile.TemporaryDirectory(prefix='guard-review-') as temporary:
+    root = Path(temporary).resolve()
+    marker = root / 'shell-injected'
+    event = str(root / 'repo/.project-map/index.html')
+    base = Path(event).as_uri()
+    payloads = [
+        ('double quote', '?q=");globalThis.injected=true;//'),
+        ('single quote', "?q=');globalThis.injected=true;//"),
+        ('backslash', '?q=\\");globalThis.injected=true;//'),
+        ('template interpolation', '?q=`${globalThis.injected=true}`'),
+        ('shell substitution', '?q=$(touch ' + str(marker) + ')`touch ' + str(marker) + '`'),
+        ('line separators', '?q=\u2028\u2029";globalThis.injected=true;//'),
+        ('newlines', '?q=\n\r\t";globalThis.injected=true;//'),
+        ('fragment query delimiters', '#?q=";globalThis.injected=true;//'),
+        ('encoded closing quote', '?q=%22%29%3BglobalThis.injected%3Dtrue%3B'),
+        ('html-looking string', '?q=</script><script>globalThis.injected=true</script>'),
+    ]
+    cases = [(name, base + payload) for name, payload in payloads]
+    cases += [('localhost canonical href', base.replace('file://', 'file://localhost')), ('selected trailing slash', base + '/')]
+    checked = 0
+    for label, selected in cases:
+        browser, agent = case._run_project_map_reload_listing(event, {'browsers': [{'cdpPort': 9222, 'tabs': [{'url': selected, 'targetId': 'A' * 32}]}]})
+        assert browser == [['ls', '--all', '--json']], (label, browser)
+        assert len(agent) == 2, (label, agent)
+        script = agent[-1][-1]
+        for current, expected in [(selected, 1), ('file:///another/.project-map/index.html', 0), ('https://example.com/.project-map/index.html', 0)]:
+            program = 'const assert=require("node:assert/strict");let reloads=0;const location=new URL(' + json.dumps(current) + ');location.reload=()=>reloads++;' + script + ';assert.equal(reloads,' + str(expected) + ');assert.equal(globalThis.injected,undefined);'
+            result = subprocess.run(['node', '-e', program], text=True, capture_output=True)
+            assert (result.returncode, result.stdout, result.stderr) == (0, '', ''), (label, current, result)
+            checked += 1
+        assert not marker.exists(), label
+        print('PASS', label, ': same URL reloads; another map and https do not; no injection')
+    # The guard deliberately requires current full href identity, including query/fragment.
+    browser, agent = case._run_project_map_reload_listing(event, {'browsers': [{'cdpPort': 9222, 'tabs': [{'url': base + '?version=1#one', 'targetId': 'A' * 32}]}]})
+    for current in [base + '?version=2#one', base + '?version=1#two']:
+        program = 'let reloads=0;const location=new URL(' + json.dumps(current) + ');location.reload=()=>reloads++;' + agent[-1][-1] + ';require("node:assert/strict").equal(reloads,0);'
+        result = subprocess.run(['node', '-e', program], text=True, capture_output=True)
+        assert (result.returncode, result.stdout, result.stderr) == (0, '', ''), result
+        checked += 1
+    print('PASS changed query/fragment skips reload')
+    print(f'PASS {checked} JavaScript assertions across 13 stub-only hook cases; no real browser or daemon')
+```
+
+## Final formatter-only adjustment and integrity checks
+
+While focused checks ran, parent normalized the quote style of two expected-script f-strings. Independently compared the initial captured bounded diff and final diff: after replacing exactly those two lines and ignoring Git index blob identifiers, the entire diff is identical. Independently parsed each old/new f-string expression and compared its AST: both pairs are equal. No semantic test or hook change occurred, so no redundant rerun was necessary.
+
+```text
+PASS two expected-script f-string AST pairs equal; complete bounded diff otherwise identical
+exit=0
+```
+
+$ git diff ba0bf354 -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+diff --git a/home/dot_claude/hooks/executable_project-map-reload.sh b/home/dot_claude/hooks/executable_project-map-reload.sh
+index 91292b77..0557bef5 100755
+--- a/home/dot_claude/hooks/executable_project-map-reload.sh
++++ b/home/dot_claude/hooks/executable_project-map-reload.sh
+@@ -7,6 +7,7 @@
+ #   Pin tab selection and guard reloads against navigation away from a project map.
+ #   Match the event file path before choosing an existing map tab.
+ #   Canonicalize event paths and file URLs with the installed isolated Python stdlib.
++#   Bind the reload guard to the canonical-matched URL, encoded as a JSON string.
+ #   Open a separate right split using half the width when the parsed listing yields no map tab.
+ #   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.
+ # @exitcode 0 Always, including unavailable tools or browsers.
+@@ -53,6 +54,7 @@ while IFS= read -r candidate; do
+     tab_path=$(canonical_path "$(jq -r '.[2]' <<< "$candidate")") || continue
+     [[ "$tab_path" == "$event_path" ]] || continue
+     selection=$(jq -r '.[0:2] | @tsv' <<< "$candidate")
++    selected_url=$(jq -c '.[2]' <<< "$candidate")
+     break
+ done <<< "$candidates"
+ if [[ -z "$selection" ]]; then
+@@ -63,5 +65,5 @@ IFS=$'\t' read -r port target_id <<< "$selection"
+ 
+ agent="${TERMINAL_BROWSER_AGENT:-$HOME/.local/share/terminal-browser/app/agent-browser/bin/agent-browser}"
+ "$agent" --cdp "$port" --session project-map-reload --pin-tab tab "$target_id" >/dev/null 2>&1 || exit 0
+-"$agent" --cdp "$port" --session project-map-reload --pin-tab eval 'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()' >/dev/null 2>&1
++"$agent" --cdp "$port" --session project-map-reload --pin-tab eval "if (location.href === new URL($selected_url).href) location.reload()" >/dev/null 2>&1
+ exit 0
+diff --git a/tests/unit/test_generate_agent_configs.py b/tests/unit/test_generate_agent_configs.py
+index 802170f6..15d9ddb0 100644
+--- a/tests/unit/test_generate_agent_configs.py
++++ b/tests/unit/test_generate_agent_configs.py
+@@ -1586,7 +1586,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 "project-map-reload",
+                 "--pin-tab",
+                 "eval",
+-                'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()',
++                f"if (location.href === new URL({json.dumps('file://' + map_path)}).href) location.reload()",
+             ]
+             cases = [
+                 ("Write", {"file_path": map_path}, listing, {}, 2, True),
+@@ -1785,7 +1785,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                                 "project-map-reload",
+                                 "--pin-tab",
+                                 "eval",
+-                                'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()',
++                                f"if (location.href === new URL({json.dumps('file://' + map_path)}).href) location.reload()",
+                             ],
+                         ]
+                         if reloaded
+@@ -1969,6 +1969,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 ("tab trailing slash", str(map_path), map_path.as_uri() + "/", root),
+                 ("event symlink", str(logical / ".project-map/index.html"), map_path.as_uri(), root),
+                 ("tab symlink", str(map_path), (logical / ".project-map/index.html").as_uri(), root),
++                (
++                    "quoted URL query",
++                    str(map_path),
++                    map_path.as_uri() + '?q=";globalThis.injected=true;//\u2028',
++                    root,
++                ),
+             ):
+                 with self.subTest(form=form):
+                     browser, agent = self._run_project_map_reload_listing(
+@@ -1987,8 +1993,25 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                     self.assertEqual(browser, [["ls", "--all", "--json"]])
+                     self.assertEqual(len(agent), 2)
+                     self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
++                    result = subprocess.run(
++                        [
++                            "node",
++                            "-e",
++                            (
++                                "const assert = require('node:assert/strict'); let reloads = 0; "
++                                f"const location = new URL({json.dumps(url)}); "
++                                "location.reload = () => reloads++; "
++                                f"{agent[1][-1]}; assert.equal(reloads, 1); "
++                                "assert.equal(globalThis.injected, undefined);"
++                            ),
++                        ],
++                        text=True,
++                        capture_output=True,
++                        check=False,
++                    )
++                    self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""), result.stderr)
+ 
+-    def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False):
++    def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False, map_path: str | None = None):
+         with tempfile.TemporaryDirectory() as tmp:
+             root = Path(tmp)
+             browser = root / "terminal-browser"
+@@ -2010,7 +2033,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             agent.chmod(0o755)
+             (root / "jq").symlink_to(shutil.which("jq"))
+             (root / "python3").symlink_to(sys.executable)
+-            map_path = str(root / ".project-map/index.html")
++            map_path = map_path or str(root / ".project-map/index.html")
+             result = subprocess.run(
+                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
+                 input=json.dumps({"tool_input": {"file_path": map_path}}),
+@@ -2042,18 +2065,24 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             )
+ 
+     def test_project_map_reload_hook_guards_against_a_tab_navigating_away(self) -> None:
+-        calls, _ = self._run_project_map_reload_case("4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3")
++        calls, _ = self._run_project_map_reload_case(
++            "4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3", map_path="/repo/.project-map/index.html"
++        )
+         self.assertEqual(len(calls), 2)
+         script = calls[-1][-1]
+-        for pathname, expected in (("/repo/.project-map/index.html", 1), ("/unsaved-form", 0)):
+-            with self.subTest(pathname=pathname):
++        for url, expected in (
++            ("file:///repo/.project-map/index.html", 1),
++            ("file:///unsaved-form", 0),
++            ("file:///other/.project-map/index.html", 0),
++        ):
++            with self.subTest(url=url):
+                 result = subprocess.run(
+                     [
+                         "node",
+                         "-e",
+                         (
+                             "const assert = require('node:assert/strict'); let reloads = 0; "
+-                            f"const location = {{pathname: {json.dumps(pathname)}, reload() {{ reloads++; }} }}; "
++                            f"const location = new URL({json.dumps(url)}); location.reload = () => reloads++; "
+                             f"{script}; assert.equal(reloads, {expected});"
+                         ),
+                     ],
+
+exit=0
+```
+
+$ shasum -a 256 .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9  .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+a3a2dcf0b0c13ce264a6f062309469e72744a2a8a14fc9b925a1b5c87b69154d  home/dot_claude/hooks/executable_project-map-reload.sh
+e4297f6a8e6f6e8c6eeeff83015ab9e64adf2b5914f77940716347c09cd3190b  tests/unit/test_generate_agent_configs.py
+
+exit=0
+```
+
+$ git diff --check -- home/dot_claude/hooks/executable_project-map-reload.sh tests/unit/test_generate_agent_configs.py
+```text
+
+exit=0
+```
+
+## Final focused assessment
+
+No findings. Justified approval of this bounded guard correction:
+
+- Correctness: the Python normalizer still proves the candidate file path equals the event's physical path before selection. The hook captures that same candidate URL in the same loop iteration, so target, port and proved URL remain associated. The guard then compares the browser's current serialized href to the captured URL's browser serialization. This removes the second suffix test that rejected selected trailing-slash URLs while retaining navigation-away protection, including navigation to another repository's project-map page. Filesystem normalization is not duplicated in JavaScript.
+- Injection boundary: jq -c emits the candidate as a JSON string literal, not raw source. Its expansion occurs inside a quoted Bash argument, so shell-looking content is not reparsed as a command, and its JavaScript quotes/backslashes/control characters remain string data. U+2028/U+2029 work in the modern JavaScript runtime used by these tests. The added quote/U+2028 test and independent 38 JavaScript assertions exercise quote escaping, backslashes, template-looking text, shell substitution text, line separators, newlines, fragment/query delimiters, encoded quote text and HTML-looking text without any injected statement or shell marker.
+- Regression scope: port/target validation, isolated Python flags, physical-path comparison, first-candidate choice, no-match open command, original event argument, CDP/session/pin-tab behavior and silent failures are unchanged. Two expected argv strings were necessarily updated. The strengthened table executes the returned script and asserts one actual reload for all nine prior forms plus the quoted query case; the navigation test asserts one reload only for the selected href and zero for unsaved/other-map URLs. It no longer treats merely dispatching eval as proof that reload happened.
+- Guard semantics: query and fragment are part of the selected full href. A subsequent query/fragment change conservatively skips reload, as independently checked. A same-physical-file navigation to a different textual URL likewise need not reload: this guard protects the captured selected URL against navigation, while initial file equivalence remains the common normalizer's job. No broader equivalence implementation is added.
+- Evidence: independently ran the two named tests, 13 temporary stub-only hook cases with 38 Node assertions, Bash syntax, ShellCheck and whitespace checks. The amended task hash remains 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9. Final hook hash is a3a2dcf0b0c13ce264a6f062309469e72744a2a8a14fc9b925a1b5c87b69154d and test hash e4297f6a8e6f6e8c6eeeff83015ab9e64adf2b5914f77940716347c09cd3190b. Parent-reported full 11-test pass, RED proof, render-check, Ruff and caps were not independently rerun; this report does not recast those as independently observed results.
+
+Plan/TODO: all bounded review steps complete. This review makes no integration decision and does not substitute for the final-head task audit.
+
+Skipped: Bats, live browser/daemon and fresh/persisted E2E, CI refresh and redundant full-suite testing. Remaining operational limitation: post-merge live browser verification remains the orchestrator's responsibility.
+
+Verdict: correct
+
+
+## Current record masking and worker review gate
+
+Actual HOME/temp prefixes redacted; byte-identical task preserved. Broad gate counts include preserved untracked task logs; those are not staged.
+
+### UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets all9canonicalfiles (exit0)
+
+```text
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/task.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/revise.yaml
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md
+```
+
+### AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md make require-crit-review (exit0)
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+## Historical canonicalizer/runtime validation throughba0bf354 (superseded for current guard claims)
+
+---
+task_id: dotfiles-T128-project-map-pane-open-a01-followup-a01
+status: final
+---
+
 Current C59 canonical-path revision against8607a87. Task-copy SHA256 24521a833348cc3c822c262b3e3c2388d89e70d01b86156c6a28290c456ed3d9. Commands below are worker-local unless explicitly labeled independent or previous-head. Paths are redacted as <HOME> and <TMP>; outputs otherwise retain their original bytes/whitespace, including historical diagnostics. The publishing head and future CI/Bot observations are reported after push in RESULT-round3/raw round3-canonical/. The historical appendix does not validate the current source.
 
 Source SHA256:

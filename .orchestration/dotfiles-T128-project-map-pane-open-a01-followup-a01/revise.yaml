@@ -17,3 +17,10 @@ historical_revisions:
     round: 2
     findings: [4300561777, 'audit:990b607:1', 'audit:990b607:3']
     fixed: 02fdf0618be46c9eba11c05cd189846f3e871704
+guard_correction:
+  previous_head: ba0bf3548b17ec0ad0837a518e338611066daf63
+  finding: 4301859324
+  round: 3
+  authorization: '2026-10-17T07:16:28Z explicit same-round re-plan interpretation, not a new round'
+  check: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_project_map_reload_hook_compares_canonical_paths_for_every_path_form
+  behavior: 'canonical selected URL bound to live href; ten Node-executed rows assert reload and no injection'

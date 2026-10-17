@@ -7,6 +7,7 @@
 #   Pin tab selection and guard reloads against navigation away from a project map.
 #   Match the event file path before choosing an existing map tab.
 #   Canonicalize event paths and file URLs with the installed isolated Python stdlib.
+#   Bind the reload guard to the canonical-matched URL, encoded as a JSON string.
 #   Open a separate right split using half the width when the parsed listing yields no map tab.
 #   shortcut: rejected map metadata or racing writes can open another pane; tighten selection in the hook follow-up.
 # @exitcode 0 Always, including unavailable tools or browsers.
@@ -53,6 +54,7 @@ while IFS= read -r candidate; do
     tab_path=$(canonical_path "$(jq -r '.[2]' <<< "$candidate")") || continue
     [[ "$tab_path" == "$event_path" ]] || continue
     selection=$(jq -r '.[0:2] | @tsv' <<< "$candidate")
+    selected_url=$(jq -c '.[2]' <<< "$candidate")
     break
 done <<< "$candidates"
 if [[ -z "$selection" ]]; then
@@ -63,5 +65,5 @@ IFS=$'\t' read -r port target_id <<< "$selection"
 
 agent="${TERMINAL_BROWSER_AGENT:-$HOME/.local/share/terminal-browser/app/agent-browser/bin/agent-browser}"
 "$agent" --cdp "$port" --session project-map-reload --pin-tab tab "$target_id" >/dev/null 2>&1 || exit 0
-"$agent" --cdp "$port" --session project-map-reload --pin-tab eval 'if (location.pathname.endsWith("/.project-map/index.html")) location.reload()' >/dev/null 2>&1
+"$agent" --cdp "$port" --session project-map-reload --pin-tab eval "if (location.href === new URL($selected_url).href) location.reload()" >/dev/null 2>&1
 exit 0

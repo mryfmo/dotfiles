@@ -1572,39 +1572,149 @@ def validate_no_obvious_secrets() -> None:
             )
 
 
-# R2: an assignment (`=`, `:` or Bash's `+=`, the name bare or in matching quotes as a JSON, YAML or TOML key) whose
-# whole value, up to the end of the line or a `#` comment after whitespace, is not one `$NAME`/`${NAME}` reference,
-# one `{{ }}` template or empty, each optionally quoted. Anything else is a literal Bash could assign: `$'...'`,
-# `$"..."`, `$(...)`, `${NAME:-...}`, or a reference with more after it.
+# R2 on text (shell, templates, chezmoi scripts): an assignment (`=`, `:` or Bash's `+=`, the name bare or in matching
+# quotes) whose whole value, up to the end of the line or a `#` comment after whitespace, is not one `$NAME`/`${NAME}`
+# reference (bare or double-quoted: Bash expands nothing inside single quotes), one `{{ }}` template (optionally
+# quoted) or empty. Anything else is a literal Bash could assign: `$'...'`, `$"..."`, `$(...)`, `${NAME:-...}`, or a
+# reference with more after it.
 ANTHROPIC_API_KEY_LITERAL = re.compile(
     r"""(?P<k>["']?)ANTHROPIC_API_KEY(?P=k)\s*(?:\+?=|:)(?!\s*(?:"""
-    r"""(?P<q>["']?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})(?P=q)"""
+    r"""(?P<q>"?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})(?P=q)"""
     r"""|(?P<t>["']?)\{\{(?:(?!\}\}).)*\}\}(?P=t)|""|'')?\s*(?:(?<=\s)#.*)?$)"""
 )
+# R2 on parsed data, where the value is already unquoted: one reference, one template, or empty.
+ANTHROPIC_API_KEY_DATA = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})|\{\{(?:(?!\}\}).)*\}\}|")
+CHEZMOI_FILE_ATTRIBUTES = frozenset(
+    {
+        *("after", "before", "create", "dot", "empty", "encrypted", "executable", "literal"),
+        *("modify", "once", "onchange", "private", "readonly", "remove", "run", "symlink"),
+    }
+)
+# A chezmoi source with one of these holds a script, a link target or ciphertext, not the target's data.
+CHEZMOI_NOT_DATA = frozenset({"encrypted", "modify", "run", "symlink"})
+PARSED_SUFFIXES = {".json": "json", ".toml": "toml", ".yaml": "yaml", ".yml": "yaml"}
+
+
+class JsonPairs(list):
+    """A JSON object as its (key, value) pairs, so a duplicate key cannot hide behind the last one."""
+
+
+def applied_file_format(name: str) -> str | None:
+    """`json`, `toml` or `yaml` for an applied file the check parses; None for text, as its chezmoi name decides."""
+    base = name.rsplit("/", 1)[-1]
+    while "_" in base and (attribute := base.split("_", 1)[0]) in CHEZMOI_FILE_ATTRIBUTES:
+        if attribute in CHEZMOI_NOT_DATA:
+            return None
+        base = base.split("_", 1)[1]
+        if attribute == "literal":
+            break
+    return PARSED_SUFFIXES.get(Path(base).suffix)
+
+
+def parsed_entry(node: Any) -> tuple[str, Any]:
+    """A JSON or TOML value, or a YAML node, as ("map", pairs), ("seq", items), ("str", text), ("null"|"other", None)."""
+    if yaml is not None and isinstance(node, yaml.Node):
+        if isinstance(node, yaml.MappingNode):
+            return "map", [(key.value if isinstance(key, yaml.ScalarNode) else "", value) for key, value in node.value]
+        if isinstance(node, yaml.SequenceNode):
+            return "seq", node.value
+        tag = node.tag.rsplit(":", 1)[-1]
+        return ("str", node.value) if tag == "str" else ("null" if tag == "null" else "other", None)
+    if isinstance(node, JsonPairs):
+        return "map", list(node)
+    if isinstance(node, dict):
+        return "map", list(node.items())
+    if isinstance(node, list):
+        return "seq", node
+    if isinstance(node, str):
+        return "str", node
+    return ("null" if node is None else "other"), None
+
+
+def anthropic_text_findings(text: str, where: str) -> list[tuple[str, str, str]]:
+    """R1 and the text form of R2 on one decoded key or string (a string may hold an env line or embedded shell)."""
+    found = []
+    if "ANTHROPIC_OAUTH_TOKEN" in text:
+        found.append(("R1", where, "names ANTHROPIC_OAUTH_TOKEN; Anthropic is reached by API key only"))
+    if any(ANTHROPIC_API_KEY_LITERAL.search(line) for line in text.splitlines()):
+        found.append(("R2", where, "a string assigns ANTHROPIC_API_KEY a literal; reference the environment"))
+    return found
+
+
+def anthropic_parsed_findings(rel: str, fmt: str, text: str) -> list[tuple[str, str, str]]:
+    """(rule, key path, reason) for each refusal in a parsed applied file; a file that does not parse is refused."""
+    if fmt == "yaml" and yaml is None:
+        fail("PyYAML is required")
+    errors = (ValueError, RecursionError) + ((yaml.YAMLError,) if yaml is not None else ())
+    try:
+        if fmt == "json":
+            roots = [json.loads(text, object_pairs_hook=JsonPairs)]
+        elif fmt == "toml":
+            roots = [tomllib.loads(text)]
+        else:
+            roots = list(yaml.compose_all(text, Loader=yaml.SafeLoader))
+    except errors as error:
+        # The type only: a parser's message can quote the file, and the file may hold a key.
+        fail(f"{rel}: cannot be parsed as {fmt} ({type(error).__name__}); the Anthropic auth route check refuses it")
+    found, seen, stack = [], set(), [(root, "") for root in roots]
+    while stack:
+        node, where = stack.pop()
+        kind, payload = parsed_entry(node)
+        if kind in ("map", "seq"):
+            # Each container once: a YAML alias shares its node, so anchors cannot multiply the walk.
+            if id(node) in seen:
+                continue
+            seen.add(id(node))
+        if kind == "map":
+            for key, child in payload:
+                here = f"{where}.{key}" if where else str(key)
+                found += anthropic_text_findings(str(key), here)
+                child_kind, child_text = parsed_entry(child)
+                # Only null or an allowed string passes: a number, a boolean, a mapping or a list is no reference.
+                allowed = child_kind == "null" or (
+                    child_kind == "str" and ANTHROPIC_API_KEY_DATA.fullmatch(child_text) is not None
+                )
+                if str(key).endswith("ANTHROPIC_API_KEY") and not allowed:
+                    found.append(("R2", here, "assigns ANTHROPIC_API_KEY a literal; reference the environment"))
+                stack.append((child, here))
+        elif kind == "seq":
+            stack.extend((child, f"{where}[{index}]") for index, child in enumerate(payload))
+        elif kind == "str":
+            found += anthropic_text_findings(payload, where)
+    return found
 
 
 def validate_anthropic_auth_route() -> None:
-    """Plan 023 PR D: the applied files reach Anthropic through ANTHROPIC_API_KEY from the environment only."""
+    """Plan 023 PR D: the applied files reach Anthropic through ANTHROPIC_API_KEY from the environment only.
+
+    JSON, TOML and YAML are read through their parsers, so a key name is decoded and a value is data; every other file
+    (shell, templates, chezmoi scripts) is read line by line.
+    """
     listed = subprocess.run(
         ["git", "-C", str(ROOT), "ls-files", "-z", "--", "home", "install"], capture_output=True, check=False
     )
     if listed.returncode != 0:
         fail(f"git ls-files failed, so the Anthropic auth route check cannot run: {os.fsdecode(listed.stderr).strip()}")
     for name in filter(None, listed.stdout.split(b"\0")):
-        path = ROOT / os.fsdecode(name)
+        rel = os.fsdecode(name)
+        path = ROOT / rel
         # A tracked symlink is not followed: on a PR checkout it could point at a device and hang the run.
         if path.is_symlink() or not path.is_file():
             continue
-        for number, line in enumerate(path.read_bytes().decode("utf-8", errors="replace").splitlines(), 1):
+        text = path.read_bytes().decode("utf-8", errors="replace")
+        parsed = applied_file_format(rel)
+        for number, line in enumerate(text.splitlines(), 1):
             # The file, the line number and the rule only: the line itself may hold a real key, and CI logs are public.
             if "ANTHROPIC_OAUTH_TOKEN" in line:
-                fail(
-                    f"{os.fsdecode(name)}:{number}: R1: names ANTHROPIC_OAUTH_TOKEN; Anthropic is reached by API key only"
-                )
-            if ANTHROPIC_API_KEY_LITERAL.search(line):
-                fail(
-                    f"{os.fsdecode(name)}:{number}: R2: assigns ANTHROPIC_API_KEY a literal; reference the environment"
-                )
+                fail(f"{rel}:{number}: R1: names ANTHROPIC_OAUTH_TOKEN; Anthropic is reached by API key only")
+            # A parsed file reads R2 from its data below, where quotes, escapes and delimiters are syntax.
+            if parsed is None and ANTHROPIC_API_KEY_LITERAL.search(line):
+                fail(f"{rel}:{number}: R2: assigns ANTHROPIC_API_KEY a literal; reference the environment")
+        if parsed is not None:
+            # The key path names where, escaped: a key is PR text, and a newline in it could forge a CI log line
+            # or a workflow command. A value is never printed.
+            for rule, where, reason in anthropic_parsed_findings(rel, parsed, text):
+                fail(f"{rel}: {rule}: {where.encode('unicode_escape').decode('ascii')}: {reason}")
 
 
 def validate_compactiondb_project_copy() -> None:

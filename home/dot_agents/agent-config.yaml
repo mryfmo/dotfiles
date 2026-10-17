@@ -203,9 +203,7 @@ claude:
     # It does not authorise chains: "Claude Code is aware of shell operators,
     # so a rule like `Bash(safe-cmd *)` won't give it permission to run the
     # command `safe-cmd && other-cmd`. ... A rule must match each subcommand
-    # independently." (code.claude.com/docs/en/permissions) excludedCommands
-    # matches the first word only; the allow rule still requires every
-    # subcommand to match, so a chained command prompts.
+    # independently." (code.claude.com/docs/en/permissions)
     allow:
       - Bash(agmsg-dispatch:*)
     deny:
@@ -224,7 +222,45 @@ claude:
       - Bash(uv publish:*)
       - Bash(terraform apply:*)
       - Bash(kubectl apply:*)
-    ask: []
+    # shortcut: flags after the API path escape prefix rules; the integration gate remains authoritative.
+    ask:
+      - Bash(gh pr merge:*)
+      - Bash(gh pr create:*)
+      - Bash(gh pr comment:*)
+      - Bash(gh pr review:*)
+      - Bash(gh pr close:*)
+      - Bash(gh pr edit:*)
+      - Bash(gh pr update-branch:*)
+      - Bash(gh issue:*)
+      - Bash(gh api -X POST:*)
+      - Bash(gh api --method POST:*)
+      - Bash(gh api -XPOST:*)
+      - Bash(gh api --method=POST:*)
+      - Bash(gh api -X PATCH:*)
+      - Bash(gh api --method PATCH:*)
+      - Bash(gh api -XPATCH:*)
+      - Bash(gh api --method=PATCH:*)
+      - Bash(gh api -X PUT:*)
+      - Bash(gh api --method PUT:*)
+      - Bash(gh api -XPUT:*)
+      - Bash(gh api --method=PUT:*)
+      - Bash(gh api -X DELETE:*)
+      - Bash(gh api --method DELETE:*)
+      - Bash(gh api -XDELETE:*)
+      - Bash(gh api --method=DELETE:*)
+      - Bash(gh api -f:*)
+      - Bash(gh api -F:*)
+      - Bash(gh api --raw-field:*)
+      - Bash(gh api --field:*)
+      - Bash(gh api -f*)
+      - Bash(gh api -F*)
+      - Bash(gh api --raw-field=*)
+      - Bash(gh api --field=*)
+  env:
+    GH_TELEMETRY: "false"
+    DO_NOT_TRACK: "1"
+    CHECKPOINT_DISABLE: "1"
+    AWS_EC2_METADATA_DISABLED: "true"
   # Claude Code Bash sandbox, the counterpart of codex.sandbox_workspace_write:
   # commands may write only the working directory, the session TMPDIR, and
   # filesystem.allowWrite. The generator renders allowWrite from
@@ -241,17 +277,18 @@ claude:
     failIfUnavailable: false
     autoAllowBashIfSandboxed: true
     allowUnsandboxedCommands: true
-    # Add entries only with E2E evidence, one comment per entry. Claude Code
-    # matches an entry against the command's first word (a command name, no
-    # patterns; for compound commands and pipes only the first word is
-    # checked), and an excluded command still needs a permission allow rule or
-    # a normal permission prompt.
+    # Patterns need a trailing wildcard for arguments; every chained command must match.
+    # Exclusion retains the normal permission flow (sandboxing docs, T130).
     excludedCommands:
       # agmsg-dispatch: inserts one agmsg row and sends a herdr wake. From
       # sandboxed Bash the herdr socket is PermissionDenied (T39 leg 1);
       # outside the sandbox it delivered msgs 545-577 with read_at within
       # seconds (T49 E2E, 2026-10-01).
-      - agmsg-dispatch
+      - agmsg-dispatch *
+    # Linux's socket isolation blocks gh's keyring and the seat claim's herdr socket.
+    linux_excluded_commands:
+      - gh *
+      - "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *"
     filesystem:
       # Rendered into sandbox.filesystem.allowWrite after the Codex writable
       # roots. ~/.cache/uv: every `uv run` target (make unit-test,
@@ -259,6 +296,10 @@ claude:
       # filesystem relaxation limited to that directory (T39 live E2E leg 1).
       extra_allow_write:
         - ~/.cache/uv
+        - ~/.local/state/mise
+        - ~/.local/share/uv
+      darwin_extra_allow_write:
+        - ~/Library/Caches/mise
     network:
       allowedDomains:
         - github.com
@@ -266,6 +307,11 @@ claude:
         - uploads.github.com
         - objects.githubusercontent.com
         - codeload.github.com
+        - pypi.org
+        - files.pythonhosted.org
+      # macOS certificate validation; the generator omits Mach services on Linux.
+      allowMachLookup:
+        - com.apple.trustd.agent
       # macOS only: Claude Code ignores this list on Linux and WSL2, where the
       # seccomp filter can't inspect socket paths. The Claude messaging socket
       # (CLAUDE_CODE_MESSAGING_SOCKET, a per-process path set at runtime) cannot

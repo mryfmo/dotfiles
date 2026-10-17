@@ -39,7 +39,7 @@ ruff = "latest"
 "github:d-kuro/gwq" = "latest"
 "github:cli/cli" = "latest"
 "github:ogulcancelik/herdr" = "latest"
-"github:shuntaka9576/blocc" = { version = "latest", os = ["linux/x64"] }
+"github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }
 
 "cargo:pueue" = "latest"
 

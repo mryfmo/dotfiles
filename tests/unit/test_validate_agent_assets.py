@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 import importlib.util
 import io
 import json
@@ -330,7 +331,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def update_json_hook_source(self, relative_path: str, event: str, groups: list[dict]) -> None:
         path = self.temp_dir / relative_path
-        data = json.loads(path.read_text())
+        data = json.loads(self.module.render_template_text(path))
         data["hooks"][event] = groups
         path.write_text(json.dumps(data))
 
@@ -1070,6 +1071,58 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_claude_sandbox_accepts_manifest_symmetric_settings(self) -> None:
         self.module.validate_claude_sandbox(self.valid_claude_sandbox(), self.required_agmsg_writable_roots, "sandbox")
+
+    def test_claude_sandbox_validator_refuses_each_forbidden_form(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "generate_agent_configs", ROOT / "scripts/generate-agent-configs.py"
+        )
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        manifest = generator.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
+        cases = [
+            ("macOS gh exclusion", lambda sandbox: sandbox["excludedCommands"].append("gh *"), "macOS.*gh"),
+            (
+                "Mach allowlist",
+                lambda sandbox: sandbox["network"].update(allowMachLookup=["com.apple.sysmond"]),
+                "Mach",
+            ),
+            (
+                "all Unix sockets",
+                lambda sandbox: sandbox["network"].update(allowAllUnixSockets=True),
+                "allowAllUnixSockets",
+            ),
+        ]
+        for domain in (
+            "cafe.github.com",
+            "datadoghq.com",
+            "api.datadoghq.com",
+            "checkpoint-api.hashicorp.com",
+            "api.anthropic.com",
+        ):
+            cases.append(
+                (domain, lambda sandbox, domain=domain: sandbox["network"]["allowedDomains"].append(domain), "domain")
+            )
+        for name, mutate, message in cases:
+            with self.subTest(form=name):
+                candidate = copy.deepcopy(manifest)
+                mutate(candidate["claude"]["sandbox"])
+                self.write_text_file(
+                    "home/.chezmoitemplates/claude-settings-managed.json", generator.render_claude_settings(candidate)
+                )
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_claude_settings(candidate)
+                self.assertRegex(stderr.getvalue(), message)
+
+        template = generator.render_claude_settings(manifest)
+        darwin, linux = template.split("{{ else }}", 1)
+        linux = linux.replace('"allowedDomains": [', '"allowedDomains": ["cafe.github.com",', 1)
+        self.write_text_file("home/.chezmoitemplates/claude-settings-managed.json", darwin + "{{ else }}" + linux)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_claude_settings(manifest)
+        self.assertIn("linux sandbox", stderr.getvalue())
 
     def test_claude_sandbox_rejects_each_broken_rule(self) -> None:
         def disabled(sandbox: dict, key: str) -> None:

@@ -457,41 +457,76 @@ content means a plugin upgrade by `make update` is trusted by the same
 
 `claude.sandbox` in `home/dot_agents/agent-config.yaml` renders the `sandbox`
 block of the managed Claude settings, the counterpart of the Codex
-`workspace-write` sandbox. Bash commands, their child processes, and subagent
+`workspace-write` sandbox. `scripts/generate-agent-configs.py` renders it once
+per OS into `home/.chezmoitemplates/claude-settings-managed.json`, and
+`scripts/validate-agent-assets.py` fails a rendering that allows a telemetry or
+metadata host, lists a Mach service other than the one below or lists one on
+Linux, sets `allowAllUnixSockets`, excludes `gh` on macOS, or renders a Linux
+exclusion list other than the seat-tool list below. Bash commands, their child processes, and subagent
 Bash calls may write only the working directory, the session `$TMPDIR`, and
 `sandbox.filesystem.allowWrite`, which the generator renders from
 `codex.sandbox_workspace_write.writable_roots` so both agents share one list of
 agmsg store directories, followed by `claude.sandbox.filesystem.extra_allow_write`
-(currently only `~/.cache/uv`, so `uv run` targets such as `make unit-test`
-work from sandboxed Bash). Network access from sandboxed commands is limited to
-the GitHub hosts in `sandbox.network.allowedDomains`; other hosts prompt.
+(`~/.cache/uv`, `~/.local/state/mise` and `~/.local/share/uv`: the uv cache and
+data directories and the mise state directory that `uv run` targets such as
+`make unit-test` write from sandboxed Bash) and, on macOS only,
+`darwin_extra_allow_write` (`~/Library/Caches/mise`). Network access from
+sandboxed commands is limited to the hosts in `sandbox.network.allowedDomains`:
+the GitHub hosts (`github.com`, `api.github.com`, `uploads.github.com`,
+`objects.githubusercontent.com`, `codeload.github.com`) and the PyPI hosts
+(`pypi.org`, `files.pythonhosted.org`). The managed `permissions.defaultMode`
+is `auto`, so a connection to any other host is refused unless the command
+listed that host and the classifier approved the list. On macOS,
+`sandbox.network.allowMachLookup` lists the one Mach service sandboxed commands
+may look up, `com.apple.trustd.agent`, which macOS certificate validation
+needs; the generator omits the key from the Linux rendering.
 `sandbox.network.allowUnixSockets` lists the herdr socket
 (`~/.config/herdr/herdr.sock`). Claude Code honours that list only on macOS and
-ignores it on Linux and WSL2. The Claude messaging socket is a per-process path
-set at runtime (`CLAUDE_CODE_MESSAGING_SOCKET`), so it cannot be listed.
-Because Linux and WSL2 ignore that list (the seccomp filter cannot inspect
-socket paths), `herdr`, `herdr-agents` and `gh` (which reads its token from
-the keyring over D-Bus) run through the normal unsandboxed retry prompt on
-Linux. `sandbox.excludedCommands` lists only `agmsg-dispatch`, which inserts one
-agmsg row and sends a herdr wake: from sandboxed Bash the herdr socket is
-denied, and outside the sandbox it delivered the T49 messages within seconds, so
-a Claude worker wakes a herdr-paned orchestrator without a failed sandboxed run.
-Claude Code matches an excluded entry against the command's first word and still
-applies its permission rules to it, so the managed settings also allow
-`Bash(agmsg-dispatch:*)` and the dispatch runs without a prompt. That is the
+ignores it on Linux and WSL2, where the seccomp filter cannot inspect socket
+paths. The Claude messaging socket is a per-process path set at runtime
+(`CLAUDE_CODE_MESSAGING_SOCKET`), so it cannot be listed.
+`sandbox.excludedCommands` is rendered per OS. On macOS it holds only
+`agmsg-dispatch *`, which inserts one agmsg row and sends a herdr wake: from
+sandboxed Bash the herdr socket is denied, and outside the sandbox it delivered
+the T49 messages within seconds, so a Claude worker wakes a herdr-paned
+orchestrator without a failed sandboxed run. On Linux, where bubblewrap closes
+Unix sockets and D-Bus (the `gh` keyring read and the herdr socket), the list
+adds `gh *`, `herdr-agents *` and `actas-claim.sh *` by its absolute path under
+`~/.agents/skills/agmsg/scripts/`, so these run outside the sandbox instead of
+failing inside it. An entry uses the syntax of a `Bash(...)` permission rule:
+`agmsg-dispatch *` matches `agmsg-dispatch` with or without arguments, every
+command in a chained call must match for the call to leave the sandbox, and
+Claude Code matches the text of the call, so a script that runs `gh` internally
+does not match (which is why the top-level `herdr-agents` is listed, and the
+`actas-claim.sh` entry covers only a direct call by that absolute path). An
+excluded command still goes through the normal permission flow: a command an
+allow rule covers runs without a prompt, the classifier reviews the rest under
+`auto`, and an ask rule prompts. The managed settings allow
+`Bash(agmsg-dispatch:*)`, so the dispatch runs without a prompt. That is the
 first and only managed `permissions.allow` entry: every Claude session using the
-managed settings can run `agmsg-dispatch` without confirmation. Codex workers
-run under Codex's own sandbox and are not affected. `sandbox.network.allowAllUnixSockets` is deliberately not
-used: on a workstation with a `docker`-group user or a reachable
-`systemd --user` bus it turns the auto-approved sandbox into an escape (see the
-upstream [security limitations](https://code.claude.com/docs/en/sandboxing#security-limitations)).
+managed settings can run `agmsg-dispatch` without confirmation.
+`claude.permissions.ask` lists gh's write operations as prefix rules:
+`gh pr merge`, `gh pr create`, `gh pr comment`, `gh pr review`, `gh pr close`,
+`gh pr edit`, `gh pr update-branch`, `gh issue`, and `gh api` with `-X` or
+`--method` `POST`, `PATCH`, `PUT` or `DELETE`, or with `-f`, `-F`, `--field` or
+`--raw-field`, in every prefix form a rule can express. Each prompts a human on
+both OSes, sandboxed or not; a flag placed after the API path escapes a prefix
+rule, so the integration gate, not these rules, remains the authority on what
+reaches GitHub. The managed `env` sets `GH_TELEMETRY=false`, `DO_NOT_TRACK=1`,
+`CHECKPOINT_DISABLE=1` and `AWS_EC2_METADATA_DISABLED=true` for every Claude
+session. Codex workers run under Codex's own sandbox and are not affected.
+`sandbox.network.allowAllUnixSockets` is deliberately not used: on a
+workstation with a `docker`-group user or a reachable `systemd --user` bus it
+turns the auto-approved sandbox into an escape (see the upstream
+[security limitations](https://code.claude.com/docs/en/sandboxing#security-limitations)).
 `failIfUnavailable` is `false` for the first rollout stage: when the sandbox
 cannot start, Claude Code warns and runs commands unsandboxed. A later change
 flips it to `true` after live end-to-end verification.
-`autoAllowBashIfSandboxed` skips the bare Bash prompt for sandboxed
-commands, while deny rules and content-scoped ask rules such as
-`Bash(git push:*)` still apply. A command that fails under the sandbox can
-still be retried unsandboxed through the normal permission prompt.
+`autoAllowBashIfSandboxed` skips the bare Bash prompt for sandboxed commands,
+while deny rules and the content-scoped ask rules above still apply.
+`allowUnsandboxedCommands` is `true`: a command the sandbox blocks can still be
+retried unsandboxed through the normal permission prompt (with `false`, the
+exclusion list would be the only way out of the sandbox).
 
 On Ubuntu, `make update` installs `bubblewrap` and `socat`. On Ubuntu 24.04
 and later, the user-namespace restriction is handled by the `bwrap-userns`
@@ -502,12 +537,17 @@ needs nothing because the sandbox uses Seatbelt.
 
 Operator-visible effect: after the next `make update`, Claude Code Bash
 commands run confined to the working directory, the session `$TMPDIR`, and
-`allowWrite` (the agmsg store directories and the uv cache). On Linux,
-commands that need a local Unix socket (herdr, the `gh` keyring) fail inside
-the sandbox and go through the unsandboxed retry prompt. Network hosts
-other than the listed GitHub domains prompt. A command that fails inside the
-sandbox may be retried unsandboxed after a normal permission prompt. Missing
-`bwrap` or `socat` only warns while `failIfUnavailable` is `false`.
+`allowWrite` (the agmsg store directories, the uv cache and data directories,
+the mise state directory and, on macOS, the mise cache). On Linux, `gh`,
+`herdr-agents` and a direct `actas-claim.sh` call run outside the sandbox
+through the exclusion list, under the normal permission rules; any other
+command that needs a local Unix socket fails inside the sandbox and goes
+through the unsandboxed retry prompt. A connection to a host other than the
+listed GitHub and PyPI hosts is refused unless the command listed it and the
+classifier approved. A command that fails inside the sandbox may be retried
+unsandboxed after a normal permission prompt. The gh write operations in the
+ask list prompt a human on both OSes. Missing `bwrap` or `socat` only warns
+while `failIfUnavailable` is `false`.
 
 Nested worktrees under `.claude/worktrees/` stay writable. From the main
 checkout they are subdirectories of the working directory and are not among

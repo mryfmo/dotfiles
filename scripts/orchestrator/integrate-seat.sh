@@ -23,17 +23,16 @@ main=$(cd -- "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pw
 git fetch -q origin main
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || die "this worktree is not at origin/main"
 for type in claude-code codex; do
-    who=$(AGMSG_RESOLVE_PROJECT=0 "${a}/whoami.sh" "${PWD}" "${type}" 2> /dev/null) || who=''
+    who=$(AGMSG_RESOLVE_PROJECT=0 "${a}/whoami.sh" "${PWD}" "${type}" 2> /dev/null < /dev/null) || who=''
     [[ ${who} =~ ^agent=([^ ]+)\ teams=([^ ,]+) ]] && me=${BASH_REMATCH[1]} team=${BASH_REMATCH[2]} && break
 done
 [ -n "${me:-}" ] || die "no agmsg identity registered at ${PWD}"
-history=$("${a}/history.sh" "${team}" "" 100000)
+history=$("${a}/history.sh" "${team}" "" 300 < /dev/null) # the newest rows: a team-wide read is super-linear
 line() { /usr/bin/grep -F "$1 v1 task_id=${task} " <<< "${history}" | /usr/bin/grep -F -- "${2:-}" | tail -n 1 || true; }
-[[ $(line AGMSG-TASK) =~ \]\ ([^ ]+)\ →\  ]] || die "no AGMSG-TASK for ${task} on ${team}"
-orch=${BASH_REMATCH[1]}
-[[ $(line AGMSG-RESULT ' threads=') =~ \ threads=([^ ]*) ]] # the worker's, never a kind=integration one (thread 4302959624) || die "no AGMSG-RESULT with threads= for ${task}"
-threads=${BASH_REMATCH[1]}
-pane=$("${a}/team.sh" "${team}" --json | jq -r --arg m "${orch}" '.[] | select(.member == $m) | .pane // empty')
+# The worker's newest RESULT with threads=, never a kind=integration one (thread 4302959624), sent to the orchestrator.
+[[ $(line AGMSG-RESULT ' threads=') =~ →\ ([^ :]+):\ .*\ threads=([^ ]*) ]] || die "no AGMSG-RESULT with threads= for ${task} in the newest 300 rows"
+orch=${BASH_REMATCH[1]} threads=${BASH_REMATCH[2]}
+pane=$("${a}/team.sh" "${team}" --json < /dev/null | jq -r --arg m "${orch}" '.[] | select(.member == $m) | .pane // empty')
 pane=${pane#"${pane%:*:*}":} # <socket>:<workspace>:<pane> -> <workspace>:<pane>, agmsg-dispatch's form
 v=.orchestration/validation review=$(mktemp -d "${TMPDIR:-/tmp}/integrate-seat.XXXXXX")
 trap 'git worktree remove --force "${review}" 2> /dev/null || true' EXIT

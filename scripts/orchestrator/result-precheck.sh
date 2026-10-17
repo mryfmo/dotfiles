@@ -45,10 +45,10 @@ check() { # <letter> <command…>: ok, missing, or `unavailable (<reason>)` on e
     ((rc != 3)) || r="unavailable (${o#*unavailable (}"
     printf -- '- %s %s: `%s`\n\n```\n%s\n```\n\n' "$1" "${r}" "${*:2}" "${o}" >> "${out}"
 }
-check_a() {
-    for type in claude-code codex; do [[ $(AGMSG_RESOLVE_PROJECT=0 "${a}/whoami.sh" "${PWD}" "${type}" 2> /dev/null) =~ teams=([^ ,]+) ]] && break; done
-    want=$("${a}/history.sh" "${BASH_REMATCH[1]:?no agmsg team}" "" 100000 | /usr/bin/grep -F "AGMSG-TASK v1 task_id=${task} " | tail -n 1 | /usr/bin/grep -o -E 'task_sha256=[0-9a-f]{64}')
-    shasum -a 256 "${d}/task.md" && [ "${want#task_sha256=}" = "$(shasum -a 256 < "${d}/task.md" | cut -d' ' -f1)" ]
+check_a() { # the worker's own newest rows hold its TASK lines; ' task_sha256=' never matches previous_task_sha256=
+    for type in claude-code codex; do [[ $(AGMSG_RESOLVE_PROJECT=0 "${a}/whoami.sh" "${PWD}" "${type}" 2> /dev/null < /dev/null) =~ agent=([^ ]+)\ teams=([^ ,]+) ]] && break; done
+    want=$("${a}/history.sh" "${BASH_REMATCH[2]:?no agmsg team}" "${BASH_REMATCH[1]}" 300 < /dev/null | /usr/bin/grep -F "AGMSG-TASK v1 task_id=${task} " | tail -n 1 | /usr/bin/grep -o -E ' task_sha256=[0-9a-f]{64}')
+    shasum -a 256 "${d}/task.md" && [ "${want#*=}" = "$(shasum -a 256 < "${d}/task.md" | cut -d' ' -f1)" ]
 }
 check_b() {
     local bad=0 allowed=() # plain items, as C1 to C10 check them; bash 3.2 has no mapfile
@@ -98,11 +98,12 @@ check_h() {
     lr=$(ls ".orchestration/validation/${task}-local-review-${head:0:7}.md" 2> /dev/null) || { echo "local-review: unavailable (no local review of ${head:0:7} here; a Claude seat cannot run codex review)" && return 3; }
     ! /usr/bin/grep -E '^\s*(- )?\[P[01]\]' "${lr}"
 }
-check_i() { # a codex that is absent or fails (unreachable from this seat) is unavailable, not missing
-    if command -v codex > /dev/null; then
-        codex exec --sandbox read-only -C . "Audit git diff origin/main...${head} for task ${task} by AGENTS.md's Audit section; end with one Verdict line." < /dev/null 2>&1 | tail -n 3 && return
+check_i() { # its whole final message; a codex that is absent or fails (unreachable from this seat) is unavailable
+    local m="${TMPDIR:-/tmp}/precheck-audit-$$.md"
+    if command -v codex > /dev/null && codex exec --sandbox read-only -C . -o "${m}" "Audit git diff origin/main...${head} for task ${task} by AGENTS.md's Audit section; end with one Verdict line." < /dev/null > /dev/null 2>&1; then
+        cat -- "${m}" && rm -f -- "${m}" && return
     fi
-    echo "audit-dry-run: unavailable (codex is not on PATH or not reachable from this seat)" && return 3
+    rm -f -- "${m}" && echo "audit-dry-run: unavailable (codex is not on PATH or not reachable from this seat)" && return 3
 }
 for x in a b c d; do check "${x}" "check_${x}"; done
 check_e() { [ "$(gh pr view "${pr}" --json headRefOid --jq .headRefOid)" = "${head}" ] && gh pr checks "${pr}" --required; }

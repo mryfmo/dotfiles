@@ -68,6 +68,8 @@ shift 2
 exec "$@"
 """
 BOT = {"login": "chatgpt-codex-connector[bot]"}
+# Each agmsg stub logs its arguments and whether its stdin was closed (EOF) or still open (fix round 3).
+READ = 'printf "%s %s stdin=%s\\n" "$(basename "$0")" "$*" "$(read -r x && echo open || echo closed)" >> "$CALLS/agmsg.log"\n'
 # Inline threads by comment id, review-body findings as review-<id> (the Message Contract's open:review-<id> form).
 THREADS = "4300000001:P1:fixed:abcdef1;4300000002:P2:proposed(advisory);review-5550000001:P1:fixed:abcdef1;review-5550000002:P2:proposed(x)"
 
@@ -111,11 +113,11 @@ class IntegrationSeatTest(unittest.TestCase):
         self.executable(self.bin / "agmsg-dispatch", '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$CALLS/dispatch.log"\n')
         self.executable(
             agmsg / "whoami.sh",
-            f'#!/bin/sh\n[ "$2" = claude-code ] && echo "agent={ME} teams={TEAM} type=claude-code project=$1"\n',
+            f'#!/bin/sh\n{READ}[ "$2" = claude-code ] && echo "agent={ME} teams={TEAM} type=claude-code project=$1"\n',
         )
-        self.executable(agmsg / "history.sh", '#!/bin/sh\ncat "$CALLS/history.txt"\n')
+        self.executable(agmsg / "history.sh", f'#!/bin/sh\n{READ}cat "$CALLS/history.txt"\n')
         team = json.dumps([{"member": ORCH, "pane": f"{self.temp}/herdr.sock:wA:p1"}])
-        self.executable(agmsg / "team.sh", f"#!/bin/sh\necho '{team}'\n")
+        self.executable(agmsg / "team.sh", f"#!/bin/sh\n{READ}echo '{team}'\n")
         (self.calls / "head").write_text(self.head + "\n")
         (self.calls / "reviews.json").write_text(json.dumps([{"id": 9, "user": BOT, "commit_id": self.head}]))
         (self.calls / "issues.json").write_text("[]")
@@ -140,13 +142,16 @@ class IntegrationSeatTest(unittest.TestCase):
         path.write_text(text)
         path.chmod(0o755)
 
-    def bus(self, threads: str, task_sha: str = "0" * 64) -> None:
+    def bus(self, threads: str, task_sha: str = "0" * 64, previous: str | None = None) -> None:
+        amended = f"amendment=2 previous_task_sha256={previous} " if previous else ""
         (self.calls / "history.txt").write_text(
-            f"  ○ [2026-10-17T10:00:00Z] {ORCH} → claude-x-a001: AGMSG-TASK v1 task_id={TASK} round=1 task_sha256={task_sha}\n"
+            f"  ○ [2026-10-17T10:00:00Z] {ORCH} → claude-x-a001: AGMSG-TASK v1 task_id={TASK} round=1 {amended}task_sha256={task_sha}\n"
             f"  ○ [2026-10-17T11:00:00Z] claude-x-a001 → {ORCH}: AGMSG-RESULT v1 task_id={TASK} status=done threads={threads}\n"
         )
 
-    def run_script(self, script: Path, *args: str, cwd: Path, code: int, env: dict | None = None):
+    def run_script(
+        self, script: Path, *args: str, cwd: Path, code: int, env: dict | None = None, stdin: str | None = None
+    ):
         result = subprocess.run(
             ["bash", str(script), *args],
             cwd=cwd,
@@ -154,6 +159,7 @@ class IntegrationSeatTest(unittest.TestCase):
             capture_output=True,
             text=True,
             check=False,
+            **({"input": stdin} if stdin is not None else {"stdin": subprocess.DEVNULL}),
         )
         self.assertEqual(code, result.returncode, result.stdout + result.stderr)
         return result
@@ -251,7 +257,7 @@ class IntegrationSeatTest(unittest.TestCase):
         for args, message in ((("a/b", "7"), "invalid id"), ((TASK, "x"), "invalid PR number")):
             self.assertIn(message, self.run_script(SEAT, *args, cwd=self.seat, code=2).stderr)
         (self.calls / "history.txt").write_text("")
-        self.assertIn("no AGMSG-TASK", self.run_script(SEAT, TASK, "7", cwd=self.seat, code=2).stderr)
+        self.assertIn("no AGMSG-RESULT with threads=", self.run_script(SEAT, TASK, "7", cwd=self.seat, code=2).stderr)
         self.assertEqual([], self.logged("order") + self.logged("dispatch"))
 
     def test_integrate_seat_reads_plain_gh_output_under_clicolor_force(self) -> None:
@@ -383,6 +389,43 @@ class IntegrationSeatTest(unittest.TestCase):
             ("verify", TASK, "no fields"),
         ):
             self.run_script(PRECHECK, *args, cwd=self.seed, code=2)
+
+    # Fix round 3 (D-F4-round3): the defects the first use of item 2 found on PR #393.
+
+    def test_result_precheck_reads_the_task_sha_of_an_amended_task_line(self) -> None:
+        # An amended TASK line names previous_task_sha256= before task_sha256=; (a) reads the latter only.
+        d = self.precheck_ready()
+        self.bus("-", hashlib.sha256((d / "task.md").read_bytes()).hexdigest(), previous="1" * 64)
+        self.assertIn("- a ok: ", self.precheck(0)[1])
+
+    def test_result_precheck_and_integrate_seat_read_the_bus_bounded_with_stdin_closed(self) -> None:
+        # history.sh is super-linear team-wide and waits on an open stdin: the precheck reads the worker's own newest
+        # rows, the seat the team's newest rows, and every agmsg call runs with stdin from /dev/null.
+        held_open = "x\n" * 1000
+        self.run_script(SEAT, TASK, "7", "--owner", OWNER, cwd=self.seat, code=0, stdin=held_open)
+        seat_reads = self.logged("agmsg")
+        self.precheck_ready()
+        (self.calls / "agmsg.log").unlink()
+        self.run_script(PRECHECK, "run", TASK, "7", self.head, cwd=self.seed, code=0, stdin=held_open)
+        precheck_reads = self.logged("agmsg")
+        for reads in (seat_reads, precheck_reads):
+            self.assertTrue(reads)
+            self.assertEqual([], [read for read in reads if not read.endswith(" stdin=closed")], reads)
+        self.assertIn(f"history.sh {TEAM}  300 stdin=closed", seat_reads)
+        self.assertIn(f"history.sh {TEAM} {ME} 300 stdin=closed", precheck_reads)
+
+    def test_result_precheck_keeps_the_whole_audit_dry_run_message(self) -> None:
+        # (i) pastes codex's whole final message (its -o file), never the last lines of its transcript.
+        self.precheck_ready()
+        message = "".join(f"- [P{n % 4}] finding {n} at a.sh:{n}\n" for n in range(1, 7)) + "Verdict: incorrect\n"
+        self.executable(
+            self.bin / "codex",
+            f'#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" != -o ] || out=$2; shift; done\n'
+            f"cat > \"$out\" <<'EOF'\n{message}EOF\necho transcript noise; echo more noise\n",
+        )
+        block = self.precheck(0)[1].split("- i ok: ", 1)[1]
+        self.assertIn(message, block)
+        self.assertNotIn("noise", block)
 
 
 if __name__ == "__main__":

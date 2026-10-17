@@ -141,6 +141,10 @@ a004's blocked PONG (13:13:05Z): CI run 39034585900 fails `tests/unit/test_suppl
 
 a004's blocked PONG (13:26:25Z): CI run 39036049185 (ubuntu client job, Bats 65 at line 117) fails `tests/install/common/mise.bats::blocc is only installed on Linux x64`, a second existing fixture that reads the blocc version as `latest`, outside `allowed_files`. As with Amendment 4, the directed exact pin wins: the file joins `allowed_files` for that one assertion value, with its threat row; item 3 says so. Bats is not run locally (AGENTS.md Test Policy); CI is the check. The sole P1 fix round continues on the same head sequence.
 
+## Amendment 6 (round 1, 2026-10-17T14:0xZ)
+
+a004's blocked PONG (14:03:13Z): CI run 39038517286 (the macOS unit-test job) fails four new tests (generator lines 686, 773, 1432; validator 1081) because `make unit-test` runs under `uv run` without PyYAML there and the new tests import it. Authorized, a004's proposal: the new tests load their fixtures through the already-required chezmoi `fromYaml`/`toJson` under the existing isolated temporary render helper, every real-manifest assertion retained, no skip, no new dependency, no CI or runtime change. The third CI fixture failure of one class is classified before this push as a004 asked: the record of this task carries the class ungrounded-ci-fixture, its three rows and the re-plan line (D-S1-T130-grounding: the grounding is the orchestrator's pre-send step, not the worker's); the push that follows is the same sole P1 round continued, not a new fix round. No further `@codex review`; CI and the 10-minute review listing as Amendment 5 says.
+
 ## Checks (pasted by the orchestrator before each send)
 
 ```

@@ -19,6 +19,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from tests.unit.test_generate_agent_configs import load_manifest_fixture
+
 sys.dont_write_bytecode = True
 
 
@@ -1078,7 +1080,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         )
         generator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(generator)
-        manifest = generator.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        manifest = load_manifest_fixture(self.temp_dir)
         self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
         cases = [
             ("macOS gh exclusion", lambda sandbox: sandbox["excludedCommands"].append("gh *"), "macOS.*gh"),

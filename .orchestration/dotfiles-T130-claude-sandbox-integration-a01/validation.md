@@ -29,10 +29,10 @@ The exclusions rule says: "where a pattern with no wildcard is an exact match." 
 
 ```text
 $ uv run --offline --no-project --with pyyaml python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form -v
-test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... 
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ...
   test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) (os='darwin') ... FAIL
   test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) (os='linux') ... FAIL
-test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... 
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ...
   test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) (form='macOS gh exclusion') ... FAIL
   test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) (form='Mach allowlist') ... FAIL
   test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) (form='all Unix sockets') ... FAIL
@@ -205,7 +205,7 @@ generated agent configs updated
 
 ```text
 $ uv run --offline --no-project --with pyyaml python -m unittest tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging -v
-test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... 
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ...
   test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) (os='Darwin') ... ERROR
   test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) (os='Linux') ... ERROR
 
@@ -248,7 +248,7 @@ FAILED (errors=2)
 
 ```text
 $ uv run --offline --no-project --with pyyaml python -m unittest tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging -v
-test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... 
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ...
   test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) (os='Darwin') ... FAIL
   test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) (os='Linux') ... FAIL
 
@@ -2078,7 +2078,7 @@ Exact test delta against previously reviewed source (prior text reconstructed fr
 +++ current/tests/unit/test_claude_settings_merge.py
 @@ -77,6 +77,25 @@
          )
- 
+
          self.assertEqual(json.loads(output)["runtimeOnly"], {"kept": True})
 +
 +    def test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win(self) -> None:
@@ -2099,7 +2099,7 @@ Exact test delta against previously reviewed source (prior text reconstructed fr
 +        once = self.merge(managed, json.dumps({"env": existing}))
 +        self.assertEqual(existing | managed["env"], json.loads(once)["env"])
 +        self.assertEqual(once, self.merge(managed, once))
- 
+
      def test_empty_stdin_outputs_managed(self) -> None:
          managed = {"model": "managed", "enabledPlugins": {}}
 @@ -542,7 +561,13 @@
@@ -2332,7 +2332,7 @@ FAILED (errors=2)
 ```text
 $ uv run --offline --no-project --with pyyaml python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form -v
 test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... FAIL
-test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... 
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ...
   test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) (form='Linux extra exclusion') ... FAIL
 
 ======================================================================
@@ -2980,7 +2980,7 @@ index 0c979309..2a22a7e6 100644
  "github:ogulcancelik/herdr" = "latest"
 +# Fixed pin avoids the sandbox's blocked version-registry query.
  "github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }
- 
+
  "cargo:pueue" = "latest"
 diff --git a/scripts/validate-agent-assets.py b/scripts/validate-agent-assets.py
 index 3c71ddd3..ae0eb9ac 100644
@@ -3029,7 +3029,7 @@ index d6883a74..df8b2032 100644
 @@ -769,6 +769,20 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                  )
                  self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
- 
+
 +    def test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation(self) -> None:
 +        manifest = self.module.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
 +        settings = self.render_claude_template(self.module.render_claude_settings(manifest), "linux")
@@ -3285,13 +3285,13 @@ index 8aaf3e55..c0490ce6 100644
 +++ b/tests/install/common/mise.bats
 @@ -113,7 +113,7 @@ unset install" ]
  }
- 
+
  @test "[common] blocc is only installed on Linux x64" {
 -    run grep -F '"github:shuntaka9576/blocc" = { version = "latest", os = ["linux/x64"] }' home/dot_mise/config.toml
 +    run grep -F '"github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }' home/dot_mise/config.toml
      [ "${status}" -eq 0 ]
  }
- 
+
 ```
 
 Independent read-only verification used Python hashlib.sha256(Path(path).read_bytes()).hexdigest() for twelve paths and task, comparing exactly with ci-pin/source-integrity.json and the eleven prior hashes. `git rev-parse 4498` resolved the full previous head below. `git diff --name-only <previous> -- home scripts tests` returned only tests/install/common/mise.bats. Exact-byte comparison:
@@ -3489,7 +3489,7 @@ test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:23.8396715Z ok 89 [co
 test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.5089121Z ok 90 [common] wget-only Linux bootstrap previews safely and propagates failures
 test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.7172468Z ok 91 [common] setup.sh without an authenticated gh bootstraps only the reviewed chezmoi
 test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.8851130Z ok 92 [common] setup.sh resolves Homebrew fallback prefixes behaviorally
-test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9026372Z 
+test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9026372Z
 test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9027208Z The following warnings were encountered during tests:
 test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9040023Z BW02: Using flags on `run` requires at least BATS_VERSION=1.5.0. Use `bats_require_minimum_version 1.5.0` to fix this message.
 test (ubuntu-24.04, client)	Run unit test	2026-10-17T13:24:25.9041458Z       (from function `bats_warn_minimum_guaranteed_version' in file /usr/lib/bats-core/warnings.bash, line 32,
@@ -3511,3 +3511,1227 @@ $ make require-crit-review
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 (exit 0)
 ```
+
+## green-four-without-pyyaml
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form -v
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.238s
+
+OK
+(exit 0)
+```
+
+## render-check
+
+```text
+$ make render-check
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+(exit 0)
+```
+
+## green-connected-without-pyyaml
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_claude_settings_merge tests.unit.test_statusline_tools -v
+test_a_declare_r_assignment_must_appear_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver) ... ok
+test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+test_asset_constant_must_be_assigned_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_command_hooks_render_after_permission_request_in_manifest_order (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_command_hooks_render_after_permission_request_in_manifest_order) ... ok
+test_codex_config_renders_permgate_permission_request (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_empty_or_missing_codex_command_hooks_render_no_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_empty_or_missing_codex_command_hooks_render_no_table) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_hook_trust_hash_reproduces_codex_current_hashes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_hook_trust_hash_reproduces_codex_current_hashes) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb) ... ok
+test_managed_codex_path_includes_installed_common_bin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_orchestrator_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_orchestrator_kind) ... ok
+test_model_profiles_env_renders_worker_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_env_selects_no_github_store (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_selects_no_github_store) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_orchestrator_kind_defaults_to_claude (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_orchestrator_kind_defaults_to_claude) ... ok
+test_plugin_versions_order_build_metadata_like_the_semver_crate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_plugin_versions_order_build_metadata_like_the_semver_crate) ... ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_handle_table_headers_with_trailing_comments (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_handle_table_headers_with_trailing_comments) ... ok
+test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin) ... ok
+test_profile_modify_scripts_hash_the_plugin_version_codex_loads (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_the_plugin_version_codex_loads) ... ok
+test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings) ... ok
+test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_replace_a_single_quoted_declared_entry (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_a_single_quoted_declared_entry) ... ok
+test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root) ... ok
+test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared) ... ok
+test_profile_modify_scripts_replace_inline_table_and_dotted_forms (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_inline_table_and_dotted_forms) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_reaches_the_fallback_pin_and_its_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_reaches_the_fallback_pin_and_its_checksums) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_orchestrator_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_orchestrator_kind_fails) ... ok
+test_unknown_worker_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+test_codex_command_hooks_accept_the_declared_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/validate-agent-assets-test-bwsjgfap/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+test_current_only_key_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path) ... ok
+test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... ok
+test_managed_session_start_replacement_keeps_hook_order (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_runtime_enabled_plugins_survive_a_managed_file_without_the_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_runtime_enabled_plugins_survive_a_managed_file_without_the_key) ... ok
+test_trailing_newline (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+test_ci_smokes_statusline_tools_with_network_denied (tests.unit.test_statusline_tools.StatuslineToolsTest.test_ci_smokes_statusline_tools_with_network_denied) ... ok
+test_direct_commands_use_offline_path_binaries (tests.unit.test_statusline_tools.StatuslineToolsTest.test_direct_commands_use_offline_path_binaries) ... ok
+test_generated_commands_are_direct_and_static (tests.unit.test_statusline_tools.StatuslineToolsTest.test_generated_commands_are_direct_and_static) ... ok
+test_mise_config_declares_the_statusline_tools_behind_the_cooldown (tests.unit.test_statusline_tools.StatuslineToolsTest.test_mise_config_declares_the_statusline_tools_behind_the_cooldown) ... ok
+test_missing_binary_fails_immediately (tests.unit.test_statusline_tools.StatuslineToolsTest.test_missing_binary_fails_immediately) ... ok
+
+----------------------------------------------------------------------
+Ran 208 tests in 14.005s
+
+OK
+(exit 0)
+```
+
+## Ruff baseline comparison
+
+```text
+$ uv run --offline --no-project /tmp/codex-T130-botfix-ruff-compare.py
+{
+  "baseline_diagnostics": 31,
+  "current_diagnostics": 31,
+  "introduced": [],
+  "removed": []
+}
+```
+
+## final-connected-without-pyyaml
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_claude_settings_merge tests.unit.test_statusline_tools -v
+test_a_declare_r_assignment_must_appear_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver) ... ok
+test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+test_asset_constant_must_be_assigned_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_command_hooks_render_after_permission_request_in_manifest_order (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_command_hooks_render_after_permission_request_in_manifest_order) ... ok
+test_codex_config_renders_permgate_permission_request (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_empty_or_missing_codex_command_hooks_render_no_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_empty_or_missing_codex_command_hooks_render_no_table) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_hook_trust_hash_reproduces_codex_current_hashes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_hook_trust_hash_reproduces_codex_current_hashes) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb) ... ok
+test_managed_codex_path_includes_installed_common_bin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_orchestrator_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_orchestrator_kind) ... ok
+test_model_profiles_env_renders_worker_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_env_selects_no_github_store (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_selects_no_github_store) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_orchestrator_kind_defaults_to_claude (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_orchestrator_kind_defaults_to_claude) ... ok
+test_plugin_versions_order_build_metadata_like_the_semver_crate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_plugin_versions_order_build_metadata_like_the_semver_crate) ... ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_handle_table_headers_with_trailing_comments (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_handle_table_headers_with_trailing_comments) ... ok
+test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin) ... ok
+test_profile_modify_scripts_hash_the_plugin_version_codex_loads (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_the_plugin_version_codex_loads) ... ok
+test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings) ... ok
+test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_replace_a_single_quoted_declared_entry (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_a_single_quoted_declared_entry) ... ok
+test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root) ... ok
+test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared) ... ok
+test_profile_modify_scripts_replace_inline_table_and_dotted_forms (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_inline_table_and_dotted_forms) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_reaches_the_fallback_pin_and_its_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_reaches_the_fallback_pin_and_its_checksums) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_orchestrator_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_orchestrator_kind_fails) ... ok
+test_unknown_worker_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+test_codex_command_hooks_accept_the_declared_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/validate-agent-assets-test-0wqonqou/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+test_current_only_key_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path) ... ok
+test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... ok
+test_managed_session_start_replacement_keeps_hook_order (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_runtime_enabled_plugins_survive_a_managed_file_without_the_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_runtime_enabled_plugins_survive_a_managed_file_without_the_key) ... ok
+test_trailing_newline (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+test_ci_smokes_statusline_tools_with_network_denied (tests.unit.test_statusline_tools.StatuslineToolsTest.test_ci_smokes_statusline_tools_with_network_denied) ... ok
+test_direct_commands_use_offline_path_binaries (tests.unit.test_statusline_tools.StatuslineToolsTest.test_direct_commands_use_offline_path_binaries) ... ok
+test_generated_commands_are_direct_and_static (tests.unit.test_statusline_tools.StatuslineToolsTest.test_generated_commands_are_direct_and_static) ... ok
+test_mise_config_declares_the_statusline_tools_behind_the_cooldown (tests.unit.test_statusline_tools.StatuslineToolsTest.test_mise_config_declares_the_statusline_tools_behind_the_cooldown) ... ok
+test_missing_binary_fails_immediately (tests.unit.test_statusline_tools.StatuslineToolsTest.test_missing_binary_fails_immediately) ... ok
+
+----------------------------------------------------------------------
+Ran 208 tests in 11.212s
+
+OK
+(exit 0)
+```
+
+## final-python-format
+
+```text
+$ uv run --offline --no-project --with ruff ruff format --check scripts/generate-agent-configs.py scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py tests/unit/test_statusline_tools.py tests/unit/test_supply_chain_policy.py
+7 files already formatted
+(exit 0)
+```
+
+## Clean candidate make validate-agent-assets
+
+```text
+Clean index export with all twelve working source/test files copied over and SHA256-bound; unrelated untracked historical logs are absent.
+$ make validate-agent-assets
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T130-candidate-p7mobn7k (expected one)
+WARN: regime-boundary: canonical clone <HOME>/.local/share/chezmoi differs from origin/main under home/, install/ or scripts/: home/dot_claude/modify_private_settings.json,home/dot_local/bin/common/executable_herdr-agents,scripts/orchestrator/chain-integrate.sh,scripts/orchestrator/dispatch.sh,scripts/orchestrator/local-advisory.sh,scripts/orchestrator/local-review.sh,scripts/regime-counters.sh,scripts/require-crit-review.py; nothing but pull and apply runs in the canonical clone; restore a stray diff with git -C <HOME>/.local/share/chezmoi restore -SW --source=origin/main -- <files> and drop its autostash
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+The preceding candidate validator pass used the snapshot before the final import-order adjustment. Its raw snapshot and log are retained with pre-import-order prefixes; the following run supersedes that source binding.
+
+## Amendment6 independent final-source security review — complete transcript
+
+# T130 Amendment 6 — independent security fixture review
+
+Scope: final twelve source/test paths against baseline ce032e14830b125f677a83c383986e02084bb597, focused delta from a0342876aa895ddadb44296837a70bb96b50d440. Task Amendment 6 SHA256: 43daecc1f8d242bec913fc673852a6daedabc7ef98022854e3c16c8ac574f3eb. Read the new amendment and full task delta against the previously fully read Amendment 5 task: the only task change is the Amendment 6 paragraph. It authorizes using existing isolated chezmoi rendering to load YAML fixtures without a new Python dependency, retaining all real-manifest assertions. The C59 third-fixture-class re-plan and D-S1-T130-grounding classification are explicit; this reviewer does not independently grant another fix round.
+
+Plan/todo (owner independent security reviewer): inspect moved helper and four call sites; verify quoting and temporary isolation; run four affected tests with PyYAML unavailable; run both affected modules using discovery like CI; compare twelve hashes/caps and previous security controls; record verdict. Complete. Source remained read-only. Artifacts and test temporary roots were under /tmp with TMPDIR=/tmp. No Bats or Bats body, package installation, live apply/restart, GitHub mutation, external message or Crit UI was run.
+
+## Explicit approval
+
+**Approved, high confidence; no P0–P3 finding in this authorized test-only delta.** The previously isolated render helper moves to module scope with unchanged subprocess flags, input transport, checked return status, JSON decoding, and temporary config/source/cache/persistent-state paths; the class wrapper delegates without changing behavior. load_manifest_fixture passes the manifest as a JSON-quoted string argument to chezmoi fromYaml, then serializes with toJson. It does not concatenate unquoted YAML as template code or request recursive template evaluation.
+
+I independently supplied template-looking payloads, quote/closing-brace sequences, backslashes and newline data through the actual helper in a temporary fixture. They round-trip literally; the embedded `fail` template actions were not evaluated. The probe uses only benign fail directives, no system command or real secret. Arguments use subprocess lists with stdin text, not shell interpolation. The renderer's existing cache/state/config isolation is retained and both test classes provide temporary directories that are removed by tearDown.
+
+All four real-manifest sites now call the shared fixture loader. Their renderer/validator assertions remain; no skip, mocked success, dependency declaration, runtime parser, CI workflow or production behavior changes. The change tests production render/validation logic with data supplied by already-required chezmoi; it does not claim to test PyYAML parsing. Existing Makefile deliberately uses plain uv for unit-test and supplies PyYAML separately for render/validation commands; avoiding a new test-only PyYAML dependency is consistent with that execution model. Explicit probe confirms PyYAML is unavailable, so the passing tests do not rely on accidental installed yaml modules.
+
+The shared import resolves under CI-style discovery names: 82 generator tests and 98 validator tests pass independently with `python -m unittest discover -s tests/unit -p ...`. Importing the helper under tests.unit does not add executable setup at import time; test fixtures still run under their own setUp. All production and other ten source/test hashes exactly match my prior approved snapshot. Therefore the bounded Linux exclusion, Darwin restrictions, forbidden forms, unchanged allow/deny and Codex roots, env/provider preservation, exact blocc pin and Bats expectation retain prior review support. No earlier security approval is expanded into a claim of live sandbox validation.
+
+## Evidence boundaries
+
+Independent focused tests: 4 passing in 0.236s with PyYAML unavailable. Independent discovery: generator 82 passing in 6.188s, validator 98 passing in 1.844s. Complete outputs follow. The parent reports connected 208 methods and Ruff baseline parity; those broader claims are parent-owned. The full validator started before the import-only adjustment is expressly not final-source hash proof; the parent plans an exact-final-snapshot rerun. No pending validator, CI, final Bot, audit or acceptance result is claimed here. The six-test security results from prior unchanged bytes remain historical evidence, not newly rerun results. Parent/orchestrator retain acceptance authority.
+
+Hash checks confirm only the two test modules changed; the other ten files match /tmp/codex-T130-ci-pin-hashes.json. All twelve match yaml-fixture/source-integrity.json. Caps are 150 production changed lines, 276 test additions, generated-template 145 excluded. No source edits occurred while final hashes were checked immediately before this record.
+
+## Commands and full outputs
+
+Read-only commands:
+```sh
+git diff a0342876 -- home scripts tests
+cat .orchestration/dotfiles-T130-claude-sandbox-integration-a01/yaml-fixture/source-integrity.json
+tail -45 .orchestration/dotfiles-T130-claude-sandbox-integration-a01/task.md
+git diff a0342876 -- .orchestration/dotfiles-T130-claude-sandbox-integration-a01/task.md
+sed -n '1,120p' tests/unit/test_generate_agent_configs.py
+sed -n '1,70p' tests/unit/test_validate_agent_assets.py
+sed -n '190,215p' tests/unit/test_generate_agent_configs.py
+rg -n -A16 '^    def setUp' tests/unit/test_validate_agent_assets.py
+rg -n -A8 '^unit-test|unittest discover' Makefile .github/workflows
+```
+Dependency probe:
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -c 'import importlib.util; print("PyYAML available:", importlib.util.find_spec("yaml") is not None)'
+```
+Output: `PyYAML available: False` (exit 0, alongside the existing mise version-resolution warning).
+
+Focused command:
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form -v
+```
+Complete output:
+```text
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.236s
+
+OK
+```
+
+Discovery command:
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -m unittest discover -s tests/unit -p test_generate_agent_configs.py -v
+```
+Complete output:
+```text
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+test_a_declare_r_assignment_must_appear_exactly_once (test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver (test_generate_agent_configs.GenerateAgentConfigsTest.test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver) ... ok
+test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+test_asset_constant_must_be_assigned_exactly_once (test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_sandbox_renders_per_os_from_the_manifest (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_command_hooks_render_after_permission_request_in_manifest_order (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_command_hooks_render_after_permission_request_in_manifest_order) ... ok
+test_codex_config_renders_permgate_permission_request (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_empty_or_missing_codex_command_hooks_render_no_table (test_generate_agent_configs.GenerateAgentConfigsTest.test_empty_or_missing_codex_command_hooks_render_no_table) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_hook_trust_hash_reproduces_codex_current_hashes (test_generate_agent_configs.GenerateAgentConfigsTest.test_hook_trust_hash_reproduces_codex_current_hashes) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb) ... ok
+test_managed_codex_path_includes_installed_common_bin (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_orchestrator_kind (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_orchestrator_kind) ... ok
+test_model_profiles_env_renders_worker_kind (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_env_selects_no_github_store (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_selects_no_github_store) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_orchestrator_kind_defaults_to_claude (test_generate_agent_configs.GenerateAgentConfigsTest.test_orchestrator_kind_defaults_to_claude) ... ok
+test_plugin_versions_order_build_metadata_like_the_semver_crate (test_generate_agent_configs.GenerateAgentConfigsTest.test_plugin_versions_order_build_metadata_like_the_semver_crate) ... ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_handle_table_headers_with_trailing_comments (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_handle_table_headers_with_trailing_comments) ... ok
+test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin) ... ok
+test_profile_modify_scripts_hash_the_plugin_version_codex_loads (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_the_plugin_version_codex_loads) ... ok
+test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings) ... ok
+test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_replace_a_single_quoted_declared_entry (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_a_single_quoted_declared_entry) ... ok
+test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root) ... ok
+test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared) ... ok
+test_profile_modify_scripts_replace_inline_table_and_dotted_forms (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_inline_table_and_dotted_forms) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_project_map_reload_hook_accepts_only_cdp_target_ids (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_reaches_the_fallback_pin_and_its_checksums (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_reaches_the_fallback_pin_and_its_checksums) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_orchestrator_kind_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_orchestrator_kind_fails) ... ok
+test_unknown_worker_kind_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+
+----------------------------------------------------------------------
+Ran 82 tests in 6.188s
+
+OK
+```
+
+Discovery command:
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -m unittest discover -s tests/unit -p test_validate_agent_assets.py -v
+```
+Complete output:
+```text
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+test_codex_command_hooks_accept_the_declared_tables (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-zl6iudz5/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+
+----------------------------------------------------------------------
+Ran 98 tests in 1.844s
+
+OK
+```
+
+Quoting probe command:
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python /tmp/codex-T130-yaml-fixture-quoting.py
+```
+Exact probe:
+```python
+import importlib.util
+import json
+from pathlib import Path
+import tempfile
+from unittest import mock
+from tests.unit import test_generate_agent_configs as fixture
+assert importlib.util.find_spec('yaml') is None
+payload = {'payload': ['{{ fail "must_not_execute" }}', '" }} {{ fail "must_not_execute" }} {{ "', 'quoted "value" and backslash \\ and newline\nnext']}
+with tempfile.TemporaryDirectory(prefix='codex-T130-yaml-data-', dir='/tmp') as directory:
+    root = Path(directory)
+    path = root / 'home/dot_agents/agent-config.yaml'
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(payload))
+    with mock.patch.object(fixture, 'ROOT', root):
+        result = fixture.load_manifest_fixture(root)
+    assert result == payload, result
+    print(json.dumps({'PyYAML_available': False, 'fixture_template_text_remained_literal': True, 'result': result}))
+```
+Complete output:
+```text
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+{"PyYAML_available": false, "fixture_template_text_remained_literal": true, "result": {"payload": ["{{ fail \"must_not_execute\" }}", "\" }} {{ fail \"must_not_execute\" }} {{ \"", "quoted \"value\" and backslash \\ and newline\nnext"]}}
+```
+
+Hash command: Python hashlib.sha256(Path(path).read_bytes()).hexdigest(), exact equality against yaml-fixture/source-integrity.json and ten unchanged prior hashes; task SHA checked separately. `git diff --name-only a0342876 -- home scripts tests` yields only the two changed modules. Snapshot:
+```json
+{
+  "baseline": "ce032e14830b125f677a83c383986e02084bb597",
+  "previous_head": "a0342876aa895ddadb44296837a70bb96b50d440",
+  "task_sha256": "43daecc1f8d242bec913fc673852a6daedabc7ef98022854e3c16c8ac574f3eb",
+  "source_sha256": {
+    "home/.chezmoitemplates/claude-settings-managed.json": "dd009411e4e4aef7395cb80fb31adf771c62fb4d51ee168bf9fa1b8c1311f2cf",
+    "home/dot_agents/agent-config.yaml": "eae35b4bb9c13b1e2813e0c0455e2fa278908e8df64448c1f025ba76a684a908",
+    "home/dot_claude/modify_private_settings.json": "e39ebb0e1b9021900a1f2cf4eab2307ad71b640a349e030db0273845e9479215",
+    "home/dot_mise/config.toml": "c5c1261fb5a852d730842a534093a6dae0c80c3c0500ee1f9fbd72c93193fd96",
+    "scripts/generate-agent-configs.py": "80d4be814b226fc251dc7788a17b80477d93cf597b07be3e4e66da36a6eb69cf",
+    "scripts/validate-agent-assets.py": "67fbe32bd15a17bc64c121921c0b2db07ce9d8adf81ab657931e72610f2897dd",
+    "tests/install/common/mise.bats": "b72549f143443352f1b54211959029b90f2a806741627ff9964418b0502ec77c",
+    "tests/unit/test_claude_settings_merge.py": "fb8acdf6fadafc128960ffa0e98dd20f05488e0d7640af33511f1aaecafdae12",
+    "tests/unit/test_generate_agent_configs.py": "3c7793e928d5e5724ef8a8f0a7a49c993eb4c74058552f6293650c393612dfd2",
+    "tests/unit/test_statusline_tools.py": "48ff74af47ad88ddff5bb22be8a9c43d16862d7a29e7f7a20f57ab0ffe36ff9f",
+    "tests/unit/test_supply_chain_policy.py": "4069846c0964270ea056daba80046ee345705e27c88235b10ce38ef8d59ad999",
+    "tests/unit/test_validate_agent_assets.py": "9e02e16b3a74a8dee2fc3fbf602e64446553e72c82f78bd8b9bfb7610dfe3503"
+  },
+  "changed_since_prior": [
+    "tests/unit/test_generate_agent_configs.py",
+    "tests/unit/test_validate_agent_assets.py"
+  ],
+  "other_ten_hashes_identical": true,
+  "production_changed": 150,
+  "test_added": 276,
+  "generated_excluded": 145
+}
+```
+
+Cap command: `git diff --numstat ce032e14830b125f677a83c383986e02084bb597 -- <twelve paths>`. Full output:
+```text
+116	29	home/.chezmoitemplates/claude-settings-managed.json
+58	10	home/dot_agents/agent-config.yaml
+10	0	home/dot_claude/modify_private_settings.json
+2	1	home/dot_mise/config.toml
+17	8	scripts/generate-agent-configs.py
+39	5	scripts/validate-agent-assets.py
+1	1	tests/install/common/mise.bats
+70	1	tests/unit/test_claude_settings_merge.py
+138	3	tests/unit/test_generate_agent_configs.py
+3	1	tests/unit/test_statusline_tools.py
+3	0	tests/unit/test_supply_chain_policy.py
+61	1	tests/unit/test_validate_agent_assets.py
+```
+
+Exact reviewed source delta:
+```diff
+diff --git a/tests/unit/test_generate_agent_configs.py b/tests/unit/test_generate_agent_configs.py
+index df8b2032..842e98aa 100644
+--- a/tests/unit/test_generate_agent_configs.py
++++ b/tests/unit/test_generate_agent_configs.py
+@@ -162,6 +162,36 @@ statusMessage = "Closing session"
+ """
+
+
++def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin") -> dict:
++    result = subprocess.run(
++        [
++            "chezmoi",
++            "--config",
++            str(temp_dir / "chezmoi.toml"),
++            "--source",
++            str(temp_dir),
++            "--cache",
++            str(temp_dir / "cache"),
++            "--persistent-state",
++            str(temp_dir / "state"),
++            "execute-template",
++            "--init",
++            "--override-data",
++            json.dumps({"chezmoi": {"os": os_name, "homeDir": "/render-home"}}),
++        ],
++        input=text,
++        text=True,
++        capture_output=True,
++        check=True,
++    )
++    return json.loads(result.stdout)
++
++
++def load_manifest_fixture(temp_dir: Path) -> dict:
++    text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
++    return render_claude_template("{{ fromYaml " + json.dumps(text) + " | toJson }}", temp_dir)
++
++
+ class GenerateAgentConfigsTest(unittest.TestCase):
+     def setUp(self) -> None:
+         self.module = load_generator()
+@@ -174,28 +204,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+         shutil.rmtree(self.temp_dir)
+
+     def render_claude_template(self, text: str, os_name: str = "darwin") -> dict:
+-        result = subprocess.run(
+-            [
+-                "chezmoi",
+-                "--config",
+-                str(self.temp_dir / "chezmoi.toml"),
+-                "--source",
+-                str(self.temp_dir),
+-                "--cache",
+-                str(self.temp_dir / "cache"),
+-                "--persistent-state",
+-                str(self.temp_dir / "state"),
+-                "execute-template",
+-                "--init",
+-                "--override-data",
+-                json.dumps({"chezmoi": {"os": os_name, "homeDir": "/render-home"}}),
+-            ],
+-            input=text,
+-            text=True,
+-            capture_output=True,
+-            check=True,
+-        )
+-        return json.loads(result.stdout)
++        return render_claude_template(text, self.temp_dir, os_name)
+
+     def write_asset_fixture(self) -> dict:
+         pins = self.temp_dir / "scripts/lib/installer-pins.sh"
+@@ -683,7 +692,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+         self.assertEqual(["/root-a", "~/.cache/uv"], extended["filesystem"]["allowWrite"])
+
+     def test_claude_sandbox_renders_per_os_from_the_manifest(self) -> None:
+-        manifest = self.module.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
++        manifest = load_manifest_fixture(self.temp_dir)
+         expected_ask = [
+             f"Bash(gh {command}:*)"
+             for command in (
+@@ -770,7 +779,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
+
+     def test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation(self) -> None:
+-        manifest = self.module.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
++        manifest = load_manifest_fixture(self.temp_dir)
+         settings = self.render_claude_template(self.module.render_claude_settings(manifest), "linux")
+         self.assertEqual(
+             [
+@@ -1429,7 +1438,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+         self.assertIn("agmsg-dispatch *", claude["sandbox"]["excludedCommands"])
+         self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
+         self.assertEqual("auto", claude["permissions"]["defaultMode"])
+-        manifest = self.module.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
++        manifest = load_manifest_fixture(self.temp_dir)
+         self.assertEqual(manifest["claude"]["permissions"]["ask"], claude["permissions"]["ask"])
+         self.assertEqual(
+             [
+diff --git a/tests/unit/test_validate_agent_assets.py b/tests/unit/test_validate_agent_assets.py
+index adf49f7f..f6212f23 100644
+--- a/tests/unit/test_validate_agent_assets.py
++++ b/tests/unit/test_validate_agent_assets.py
+@@ -19,6 +19,8 @@ import unittest
+ from pathlib import Path
+ from unittest import mock
+
++from tests.unit.test_generate_agent_configs import load_manifest_fixture
++
+ sys.dont_write_bytecode = True
+
+
+@@ -1078,7 +1080,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
+         )
+         generator = importlib.util.module_from_spec(spec)
+         spec.loader.exec_module(generator)
+-        manifest = generator.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
++        manifest = load_manifest_fixture(self.temp_dir)
+         self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
+         cases = [
+             ("macOS gh exclusion", lambda sandbox: sandbox["excludedCommands"].append("gh *"), "macOS.*gh"),
+```
+
+Verdict: correct
+
+
+## Clean candidate make validate-agent-assets
+
+```text
+Clean index export with all twelve working source/test files copied over and SHA256-bound; unrelated untracked historical logs are absent.
+$ make validate-agent-assets
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T130-candidate-slwyrfb7 (expected one)
+WARN: regime-boundary: canonical clone <HOME>/.local/share/chezmoi differs from origin/main under home/, install/ or scripts/: home/dot_claude/modify_private_settings.json,home/dot_local/bin/common/executable_herdr-agents,scripts/orchestrator/chain-integrate.sh,scripts/orchestrator/dispatch.sh,scripts/orchestrator/local-advisory.sh,scripts/orchestrator/local-review.sh,scripts/regime-counters.sh,scripts/require-crit-review.py; nothing but pull and apply runs in the canonical clone; restore a stray diff with git -C <HOME>/.local/share/chezmoi restore -SW --source=origin/main -- <files> and drop its autostash
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## Final A6 source review gate
+
+```text
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T130-claude-sandbox-integration-a01/dotfiles-T130-claude-sandbox-integration-a01-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+(exit 0)
+```
+
+The canonical independent transcript normalizes trailing spaces on blank diff lines; the raw independent-security-review.md retains the exact original transcript. No source or result text changed.

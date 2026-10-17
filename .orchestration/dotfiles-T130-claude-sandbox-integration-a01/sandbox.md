@@ -1,10 +1,10 @@
 ---
 task_id: dotfiles-T130-claude-sandbox-integration-a01
 round: 1
-amendment: 5
+amendment: 6
 ---
 
-Codex workspace-write sandbox and approval-never policy unchanged. The directive explicitly names this standard Codex seat to edit Claude-boundary source; it does not edit the active Codex execution boundary. Source scope is the twelve paths of Amendments1–5 and this task directory. Main-checkout task text is read only and copied byte-identically. No shared git config modification or permission escalation.
+Codex workspace-write sandbox and approval-never policy unchanged. The directive explicitly names this standard Codex seat to edit Claude-boundary source; it does not edit the active Codex execution boundary. Source scope is the twelve paths of Amendments1–6 and this task directory. Main-checkout task text is read only and copied byte-identically. No shared git config modification or permission escalation.
 
 Fresh branch from origin/main. git switch exited0 but printed existing packed-refs.lock permission warnings; no outside-sandbox retry. gh api releases/latest returned blocc v0.6.0. Official VERIFY uses the web fetch tool; the large reference page and markdown fetch failed, and no shell-fetch workaround was used. The sandboxing page itself lists the exact Mach key and exclusion rules.
 

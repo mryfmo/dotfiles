@@ -162,6 +162,36 @@ statusMessage = "Closing session"
 """
 
 
+def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin") -> dict:
+    result = subprocess.run(
+        [
+            "chezmoi",
+            "--config",
+            str(temp_dir / "chezmoi.toml"),
+            "--source",
+            str(temp_dir),
+            "--cache",
+            str(temp_dir / "cache"),
+            "--persistent-state",
+            str(temp_dir / "state"),
+            "execute-template",
+            "--init",
+            "--override-data",
+            json.dumps({"chezmoi": {"os": os_name, "homeDir": "/render-home"}}),
+        ],
+        input=text,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return json.loads(result.stdout)
+
+
+def load_manifest_fixture(temp_dir: Path) -> dict:
+    text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+    return render_claude_template("{{ fromYaml " + json.dumps(text) + " | toJson }}", temp_dir)
+
+
 class GenerateAgentConfigsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.module = load_generator()
@@ -174,28 +204,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def render_claude_template(self, text: str, os_name: str = "darwin") -> dict:
-        result = subprocess.run(
-            [
-                "chezmoi",
-                "--config",
-                str(self.temp_dir / "chezmoi.toml"),
-                "--source",
-                str(self.temp_dir),
-                "--cache",
-                str(self.temp_dir / "cache"),
-                "--persistent-state",
-                str(self.temp_dir / "state"),
-                "execute-template",
-                "--init",
-                "--override-data",
-                json.dumps({"chezmoi": {"os": os_name, "homeDir": "/render-home"}}),
-            ],
-            input=text,
-            text=True,
-            capture_output=True,
-            check=True,
-        )
-        return json.loads(result.stdout)
+        return render_claude_template(text, self.temp_dir, os_name)
 
     def write_asset_fixture(self) -> dict:
         pins = self.temp_dir / "scripts/lib/installer-pins.sh"
@@ -683,7 +692,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(["/root-a", "~/.cache/uv"], extended["filesystem"]["allowWrite"])
 
     def test_claude_sandbox_renders_per_os_from_the_manifest(self) -> None:
-        manifest = self.module.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        manifest = load_manifest_fixture(self.temp_dir)
         expected_ask = [
             f"Bash(gh {command}:*)"
             for command in (
@@ -770,7 +779,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
 
     def test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation(self) -> None:
-        manifest = self.module.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        manifest = load_manifest_fixture(self.temp_dir)
         settings = self.render_claude_template(self.module.render_claude_settings(manifest), "linux")
         self.assertEqual(
             [
@@ -1429,7 +1438,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn("agmsg-dispatch *", claude["sandbox"]["excludedCommands"])
         self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
         self.assertEqual("auto", claude["permissions"]["defaultMode"])
-        manifest = self.module.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        manifest = load_manifest_fixture(self.temp_dir)
         self.assertEqual(manifest["claude"]["permissions"]["ask"], claude["permissions"]["ask"])
         self.assertEqual(
             [

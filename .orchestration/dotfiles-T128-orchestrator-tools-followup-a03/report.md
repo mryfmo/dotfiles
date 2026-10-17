@@ -62,3 +62,13 @@
 - **Checks.** 55 tests pass; thirteen mutants, all killed (validation §10).
 - **Size after the round.** 124 changed lines outside `tests/` and `.orchestration/` (of 200), 153 added under `tests/` (of 1000), 2 files.
 - **The Bot.** Its re-review is asked with `@codex review` on this round's head.
+
+## Revise round 5 (`f77185dd`)
+
+- **The P1.** The audit of `ef74eaea`, `audit:ef74eae:1` (`dispatch.sh:219`): the root discovery (`git rev-parse --show-toplevel`) ran under the inherited environment, so `GIT_DIR` or `GIT_WORK_TREE` redirected the root the checker trusts, and C6 accepted a stale receipt. The fifth finding of the class; the operator's decision D-S2-374-4 A: one round.
+- **The fix.** `fixed:f77185dd`. The `env -i` allowlist is built first and used for the root discovery, the one `git` call `dispatch.sh` makes, as well as the uv calls.
+- **The test.** `test_dispatch_resolves_its_root_without_inherited_git_variables`: `GIT_DIR` and `GIT_WORK_TREE` name another tree, and a task file named by an absolute path has a receipt that is stale under the real root; the C6 refusal happens, and the root and the checker path are the script's checkout (validation §12).
+- **The audit's other findings.** Its two P2s on the history window stay advisory, owned by a04, with no change here; its two orchestration findings concern the orchestrator's record.
+- **Checks.** 56 tests pass; fourteen mutants, all killed (validation §12).
+- **Size after the round.** 130 changed lines outside `tests/` and `.orchestration/` (of 200), 187 added under `tests/` (of 1000), 2 files.
+- **The Bot.** Its re-review is asked with `@codex review` on this round's head.

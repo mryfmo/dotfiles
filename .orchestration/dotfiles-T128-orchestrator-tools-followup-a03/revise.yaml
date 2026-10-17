@@ -1,9 +1,12 @@
 task_id: dotfiles-T128-orchestrator-tools-followup-a03
-round: 4
-previous_head: 6ae8cf75df74bb54eb3b724ea7c94e16b70759ef
-check: tests/unit/test_orchestrator_tools.py::test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
-reason: the Bot's P1 4300102967 on 6ae8cf75, the operator's decision D-S2-374-3 A; the import yaml probe ran without -I, so an inherited PYTHONPATH could load a caller's yaml.py, the fourth finding of the class; both uv forms now run under an env -i allowlist and the probe with -I
+round: 5
+previous_head: ef74eaea9a94bff388b7c1027551a57797407b2f
+check: tests/unit/test_orchestrator_tools.py::test_dispatch_resolves_its_root_without_inherited_git_variables
+reason: the audit of ef74eaea (audit:ef74eae:1), the operator's decision D-S2-374-4 A; git rev-parse --show-toplevel ran under the inherited environment, so GIT_DIR or GIT_WORK_TREE redirected the root the checker trusted and C6 accepted a stale receipt; the root discovery now runs under the same env -i allowlist as the uv calls
 earlier:
+  - round: 4
+    previous_head: 6ae8cf75df74bb54eb3b724ea7c94e16b70759ef
+    check: tests/unit/test_orchestrator_tools.py::test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
   - round: 3
     previous_head: 9df6b0c7594cef7f42e9a43faa3e08d0f035e329
     check: tests/unit/test_orchestrator_tools.py::test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state

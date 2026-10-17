@@ -1,0 +1,290 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 372,
+  "head_sha": "23d9af37b135faad5d5a63094eae37ad14c56fff",
+  "base_ref": "main",
+  "base_sha": "1d41812678366506151579ce3e2ac96b20e8d4b5",
+  "generated_at": "2026-10-16T23:10:05+00:00",
+  "checks": [
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270471/job/117226356556"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270335/job/117226355805"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270335/job/117226355666"
+    },
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270335/job/117226355527"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270293/job/117226355423"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270293/job/117226355350"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270293/job/117226355333"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270293/job/117226355319"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270335/job/117226355293"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270293/job/117226355177"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270293/job/117226355103"
+    },
+    {
+      "name": "GitGuardian Security Checks",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/runs/117226348251"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary><strong>⚙️ Run configuration</strong></summary>\n> <dl>\n> <dd>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `4e01685f-d335-4e39-add3-6fe61cf352ef`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autofix</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=372)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary><strong>❤️ Share</strong></summary>\n<dl>\n<dd>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</dd>\n</dl>\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#issuecomment-6209288291",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#issuecomment-6209288291\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"5ed27e921249a345b3caeb3b203167559cc4a383\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"9f1cee1c1c0ef6e84ba8125f95b197ce3333b4ac\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"9f1cee1c1c0ef6e84ba8125f95b197ce3333b4ac\",\"mergeGateEnabled\":false,\"pullRequestNumber\":372,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-16T06:21:45.045260Z\">2026-10-16T06:21:45.045260Z</relative-time> | `5ed27e9` | Manual request |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-16T06:20:03.159373Z\">2026-10-16T06:20:03.159373Z</relative-time> | `9f1cee1` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#issuecomment-6209289694",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#issuecomment-6209289694\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "@codex review",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#issuecomment-6209403583",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#issuecomment-6209403583\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Breezy!\n\n**Reviewed commit:** `5ed27e9212`\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#issuecomment-6209443752",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#issuecomment-6209443752\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `9f1cee1c1c`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#pullrequestreview-5543747032",
+      "commit": "9f1cee1c1c0ef6e84ba8125f95b197ce3333b4ac",
+      "disposition": "not-applicable:review object; its findings are the inline threads, each dispositioned on its own; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#pullrequestreview-5543747032\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#pullrequestreview-5554591785",
+      "commit": "23d9af37b135faad5d5a63094eae37ad14c56fff",
+      "disposition": "not-applicable:review object without a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#pullrequestreview-5554591785\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#pullrequestreview-5554592001",
+      "commit": "23d9af37b135faad5d5a63094eae37ad14c56fff",
+      "disposition": "not-applicable:review object without a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#pullrequestreview-5554592001\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#pullrequestreview-5554592185",
+      "commit": "23d9af37b135faad5d5a63094eae37ad14c56fff",
+      "disposition": "not-applicable:review object without a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#pullrequestreview-5554592185\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/chain-integrate.sh",
+      "line": 83,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Refuse modified main-checkout scripts**\n\nWhen the main checkout has an unstaged replacement for any invoked repository script, this verifies only that `HEAD` equals `origin/main`; it never verifies that the working-tree copies are tracked and unchanged. The chain will therefore execute locally modified `sandbox-scan.sh`, `local-review.sh`, `pr-feedback.py`, or audit tooling with the orchestrator's credentials, and the new tests actually rely on untracked script stubs so they do not cover this boundary. Validate each executable against `HEAD` before running it, and add the missing main-worktree-content control to the threat table.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/9f1cee1c1c0ef6e84ba8125f95b197ce3333b4ac/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#discussion_r4291474880",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:d8bc67d4808cf95f3fde9aec0901ae983b8aebee"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/chain-integrate.sh",
+      "line": 125,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Recheck origin/main after the waits**\n\nWhen `origin/main` advances after this ancestry check—for example during the required-check or 15-minute Bot wait—the chain never fetches or checks the base again and proceeds through the local review and audit using the now-behind head. The threat table marks “the base moving under the PR while the chain runs” closed, but its cited test advances main before invocation rather than after this check, so it does not close this race; refetch and restart before the review/audit boundary, or classify and control the residual race explicitly.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/9f1cee1c1c0ef6e84ba8125f95b197ce3333b4ac/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#discussion_r4291474885",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:d23cb50cf3de4023ded7eef9406c5a0409f96941"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/chain-integrate.sh",
+      "line": 156,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Redact external disposition paths from the log**\n\nWhen the documented optional TSV is supplied from `/tmp`, `$HOME`, or another location outside the checkout, `step` records this argument verbatim because its path scrubbing only handles the `main` prefix. That puts a local-only absolute path into the repo-local chain evidence despite the script's guarantee that logs contain repository paths only; either require the TSV to be under `main` or redact/render this argument before logging.\n\nAGENTS.md reference: [AGENTS.md:L72-L72](https://github.com/mryfmo/dotfiles/blob/9f1cee1c1c0ef6e84ba8125f95b197ce3333b4ac/AGENTS.md#L72-L72)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#discussion_r4291474891",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:d23cb50cf3de4023ded7eef9406c5a0409f96941"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/orchestrator/chain-integrate.sh",
+      "line": 83,
+      "body": "Disposition (orchestrator): `fixed:d8bc67d4808cf95f3fde9aec0901ae983b8aebee`. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#discussion_r4300128563",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#discussion_r4300128563\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/orchestrator/chain-integrate.sh",
+      "line": 125,
+      "body": "Disposition (orchestrator): `fixed:d23cb50cf3de4023ded7eef9406c5a0409f96941`. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#discussion_r4300128745",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#discussion_r4300128745\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/orchestrator/chain-integrate.sh",
+      "line": 156,
+      "body": "Disposition (orchestrator): `fixed:d23cb50cf3de4023ded7eef9406c5a0409f96941`. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/372#discussion_r4300128881",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/372#discussion_r4300128881\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270335/job/117226355666",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/38976270335/job/117226355666\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270293/job/117226355423",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/38976270293/job/117226355423\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/38976270293/job/117226355333",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/38976270293/job/117226355333\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CI status, no finding; evidence=jq --argjson s '\"status\"' --argjson c '\"CodeRabbit\"' '.items[] | select(.source == $s and .check == $c)' .orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-pr-feedback.json"
+    }
+  ]
+}

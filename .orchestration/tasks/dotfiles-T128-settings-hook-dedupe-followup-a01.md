@@ -25,7 +25,7 @@ threat_table:
   - control: metadata separators (the --- lines that bound the front matter of the task copy and of every evidence record)
     disposition: "residual: PyYAML splits on the first document only and the byte comparison covers the whole file"
   - control: in-process effects
-    disposition: "residual: the tests of the lineage's module import only the standard library and the module under test; nothing is imported into another process"
+    disposition: "residual: the test module runs home/dot_claude/modify_private_settings.json as a python3 subprocess (uv run python) with CHEZMOI_SOURCE_DIR set to a temporary source tree it writes, and imports only the standard library; nothing is imported into another process"
   - control: workflow and interpreter or environment inputs
     disposition: "residual: no workflow or interpreter file is in allowed_files; the owned rows name edits to files the lineage landed, run by the same interpreters and seams as the lineage's task states; a PR checkout as cwd chooses nothing new"
   - control: new or renamed scripts
@@ -37,14 +37,14 @@ threat_table:
   - control: orchestrator effect forced worker removal
     disposition: "residual: none planned; herdr-agents --remove-worker refuses a dirty worktree without --force, and a forced removal is recorded in the acceptance record with the uncommitted state it discarded"
 premises:
-  - claim: 'the lineage task file is on origin/main at dispatch (absent today: it lands with the next boundary; this task never dispatches before)'
+  - claim: 'the lineage task file is on origin/main at dispatch (present since boundary (16), PR #373 merged as 1d418126 on 2026-10-16)'
     command: 'git cat-file -e origin/main:.orchestration/tasks/dotfiles-T128-settings-hook-dedupe-a01.md && echo present || echo absent'
     output: |-
-      absent
-  - claim: 'the lineage acceptance record''s Owned-by section is on origin/main at dispatch (absent today: a dispatch before the section would read no rows)'
+      present
+  - claim: 'the lineage acceptance record''s Owned-by section is on origin/main at dispatch (present since boundary (16), PR #373 merged as 1d418126 on 2026-10-16: the section holds the row audit:ca892e4:1)'
     command: 'git show origin/main:.orchestration/acceptance/dotfiles-T128-settings-hook-dedupe-a01.md 2>/dev/null | /usr/bin/grep -q "^## Owned by dotfiles-T128-settings-hook-dedupe-followup-a01" && echo present || echo absent'
     output: |-
-      absent
+      present
 ---
 
 # AGMSG-TASK dotfiles-T128-settings-hook-dedupe-followup-a01 — the advisory findings of PR #369 (plan 022 T15) (the owner task of the dotfiles-T128-settings-hook-dedupe lineage; plan 020 step 1, C-51's owner-first rule)
@@ -54,7 +54,7 @@ Written 2026-10-15 by the orchestrator seat before the lineage's integration cha
 ## What to do
 
 1. The owned rows: the `<id>\t<class>` rows under the heading `## Owned by dotfiles-T128-settings-hook-dedupe-followup-a01` in `.orchestration/acceptance/dotfiles-T128-settings-hook-dedupe-a01.md` as read from `origin/main`; each row's finding text is in the record (the Bot thread, the local review file or the audit receipt the id names). Implement each, with one test per row named in report.md. A missing or empty section at dispatch makes this task a no-op: report `no owned rows` and stop; the orchestrator dispatches only after both premises replay `present`.
-2. Nothing else changes: no file outside the owned rows' files, no behaviour the rows do not name.
+2. The tests: `tests/unit/test_claude_settings_merge.py` gains, beside the lineage's cases (which stay as they are), the two preserved cases of the owned row, a quoted tilde path (`'~/.claude/hooks/format-edited-files.py'`) and an escaped one (`\~/.claude/hooks/format-edited-files.py`), both kept as unmanaged with the managed entry appended, one test per row named in report.md. Nothing else changes: no file outside the owned rows' files, no behaviour the rows do not name (the predicate still recognises exactly the two renderings of the managed path).
 
 ## Validation
 
@@ -63,9 +63,17 @@ Written 2026-10-15 by the orchestrator seat before the lineage's integration cha
 
 ## Completion
 
-One PR from a fresh branch off `origin/main` (after the lineage's PR merges). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more on `@codex review` after a P0/P1 fix round: plan 020 step 2), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the outputs above, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 thread with the disposition the worker proposes; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot's P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=1`, stops the PR and goes to the operator as a decision; a P2 on this PR's own change whose fix stays within `allowed_files` and is small is fixed in a revise round the orchestrator sends with a `check=` while INV-6's counts allow it (C-50); any other P2 is advisory, owned by `dotfiles-T128-settings-hook-dedupe-followup-a02`, which the orchestrator writes when the first advisory P2 appears, before the PR's dispositions (C-51), and recorded under `## Owned by dotfiles-T128-settings-hook-dedupe-followup-a02` in this task's acceptance record. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names per row, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-settings-hook-dedupe-followup-a01/task.md>` and the evidence paths.
+One PR from a fresh branch off `origin/main` (after PR #369 merged as 4775f56a and boundary (16), PR #373 merged as 1d418126). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more on `@codex review` after a P0/P1 fix round: plan 020 step 2), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the outputs above, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 thread with the disposition the worker proposes; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot's P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=2` (the Bot's review at PR open and its re-review after the fix round), stops the PR and goes to the operator as a decision; a P2 on this PR's own change whose fix stays within `allowed_files` and is small (one flag or a few lines plus one test) is fixed in a revise round the orchestrator sends with a `check=` while INV-6's counts allow it (C-50); any other P2 is advisory, owned by `dotfiles-T128-settings-hook-dedupe-followup-a02`, which the orchestrator writes when the first advisory P2 appears, before the PR's dispositions (C-51), and recorded under `## Owned by dotfiles-T128-settings-hook-dedupe-followup-a02` in this task's acceptance record. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names per row, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-settings-hook-dedupe-followup-a01/task.md>` and the evidence paths.
 
 ## Owned row (2026-10-16T05:00:09Z)
 
 `audit:ca892e4:1` (advisory P2 of PR #369's final head, the audit of ca892e43): `is_managed_post_tool_use_hook` splits the command with `shlex` before comparing it with the two renderings of the managed path, so a quoted or escaped tilde path (`'~/.claude/hooks/format-edited-files.py'`, `\~/.claude/hooks/format-edited-files.py`: a relative path under a literal `~` directory in a shell) is taken for the managed path and deleted. The fix compares the whole command string (stripped of surrounding whitespace only) with the two renderings and drops `shlex`; the test gains the quoted and the escaped case, both kept (C-55 method 3).
+
+## Change (premises, 2026-10-17T00:00:39Z, before dispatch)
+
+Boundary (16) (PR #373, merged as 1d418126) landed the lineage task file and the record's `## Owned by` section (one row, `audit:ca892e4:1`) on `origin/main`, so both premises record `present` and the Completion clause names the merges. Nothing else changes from `4638b2f3`; pair-reviewed Codex first (C-54) before its first dispatch.
+
+## Change (round 1, 2026-10-17T00:04:29Z)
+
+The Codex half's round 1 (P2, P2, P3): the Completion clause is now the task template's clause of 2026-10-16 (`open:<thread id>` with `bot_rounds=2`, the C-50 revise round, every other P2 advisory and owned by `dotfiles-T128-settings-hook-dedupe-followup-a02`); item 2 names the test module, the two preserved cases and the lineage's cases retained; the in-process row says the tests run the modify script as a subprocess, not an import. Nothing else changes from `f90953d5`.
 

@@ -1,0 +1,29 @@
+15	0	.orchestration/dotfiles-T128-rules-step8-a01/dotfiles-T128-rules-step8-a01-worker-crit.json
+6	0	.orchestration/dotfiles-T128-rules-step8-a01/dotfiles-T128-rules-step8-a01-worker-review-receipt.md
+4	0	.orchestration/dotfiles-T128-rules-step8-a01/revise.yaml
+157	0	.orchestration/dotfiles-T128-rules-step8-a01/task.md
+2	2	AGENTS.md
+20	17	home/dot_agents/skills/agmsg-orchestration/SKILL.md
+1	1	home/dot_config/claude/rules/agmsg-orchestration.md
+2	2	home/dot_config/claude/rules/pr-integration.md
+1	1	tests/fixtures/regime/code-review-orchestration.md
+6	6	tests/fixtures/regime/invariants.md
+1	1	tests/fixtures/regime/message-contract.md
+3	3	tests/fixtures/regime/worker-step-15.md
+56	25	tests/unit/test_agmsg_orchestration_docs.py
+home/dot_agents/skills/agmsg-orchestration/SKILL.md D6= 0 AUDIT_DISPOSITIONS= 0
+AGENTS.md D6= 0 AUDIT_DISPOSITIONS= 0
+rule words: 447
+source changed lines: 47 <=200; test additions: 67 <=1000
+4610a9a7c064a5d93fb72b91df73c42390051a1fcb35703a6cf5aed305ef08a9  .orchestration/dotfiles-T128-rules-step8-a01/task.md
+4610a9a7c064a5d93fb72b91df73c42390051a1fcb35703a6cf5aed305ef08a9  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T128-rules-step8-a01.md
+{
+  "branch": "fix/regime-rules-step8",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "~/.crit/reviews/aa925ad8a1cc/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}

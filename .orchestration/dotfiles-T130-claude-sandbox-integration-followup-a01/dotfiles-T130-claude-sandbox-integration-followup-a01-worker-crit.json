@@ -1,0 +1,14 @@
+[
+  {
+    "id": "sandbox-readme-review-approval",
+    "scope": "review",
+    "body": "Independent read-only review (a fresh general-purpose subagent given the diff, the task file and the upstream quotes, not the worker's conclusions) of 0b226806 (one commit over origin/main a8a747af; README.md only, 71 added and 31 removed lines in the Claude Code sandbox section): every value the section names matches the template and the generator (seven domains; the four agmsg roots plus ~/.cache/uv, ~/.local/state/mise, ~/.local/share/uv and the darwin-only ~/Library/Caches/mise; excludedCommands agmsg-dispatch * on macOS and the four-entry Linux list; the Mach service popped on non-darwin; the herdr socket; the four flags; the four env keys; the one allow rule; the 32 ask rules; defaultMode auto); no stale sentence of the old text remains; the first paragraph and the Operator-visible effect paragraph agree; the upstream pages confirm the matching, the ask-prompt and the sandboxed-or-not claims; every asterisk sits in backticks, prettier clean, and none of the validator's README tokens sits in the removed lines. Verdict: correct. This is local process evidence, not the task-level audit or reviewer authentication.",
+    "resolved": true
+  },
+  {
+    "id": "sandbox-readme-p3-fixed-and-declared",
+    "scope": "README.md",
+    "body": "Four P3 notes. Fixed in bfcb0525 (prettier and the value check re-run, 14 ok): (1) the Linux reason read 'bubblewrap closes Unix sockets and D-Bus' while upstream attributes Unix-socket blocking to the sandbox's seccomp filter, which the section's own socket sentence already names; now 'the sandbox's seccomp filter blocks Unix sockets (the gh keyring read over D-Bus and the herdr socket)'. (2) allowMachLookup lists additional services on top of the sandbox's own set; now 'the one additional Mach service'. (3) 'in every prefix form a rule can express' had no source; now the count ('four spellings per method and four per field flag, 32 rules in all') and the escape generalised to 'a flag order the prefixes do not spell out, such as a method flag after the API path'. Declared, not changed: (4) the sentence naming scripts/validate-agent-assets.py's refusals describes the validator rather than a rendered setting (scope under the Goal's 'no more'); it is accurate against the validator's code and kept because the previous text already described the rendering path and the parent task's goal names the validator as part of it; the orchestrator decides whether it stays. The reviewer's risk note is recorded: on a Linux host without the sandbox runtime's seccomp filter, Unix sockets are not blocked at all, which neither the old nor the new text says.",
+    "resolved": true
+  }
+]

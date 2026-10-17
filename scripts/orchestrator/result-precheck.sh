@@ -2,14 +2,11 @@
 # @file result-precheck.sh
 # @brief Refuse a worker's RESULT whose head is not ready: `run` writes the receipt, `verify` checks a RESULT line.
 # @description
-#   Plan 023 F4 item 2. `run <task> <pr> <head>` (the worker) checks (a) the task copy against the TASK line's
-#   task_sha256, (b) the changed files against allowed_files, (c) the Check's caps, (d) the Check's commands in the
-#   validation file, (e) CI on the head, (f) the Bot's review of the head or `bot: none` in the report, (g) every Bot
-#   thread of the PR in the report as `<id>:<P>:<disposition>` (a P0/P1 `fixed:<sha>` or `open:`), (h) the local review and (i) the audit dry run,
-#   the last two `unavailable (<reason>)` when they cannot run here (amendment 2). It writes `.orchestration/<task>/precheck-<sha7>.md`
-#   and exits 1 naming each `missing`; `unavailable` is no refusal. `verify <task> <RESULT line>` (the orchestrator) finds the receipt whose sha256
-#   is the line's `precheck=` in the tree of its `head=`, past which only `.orchestration/<task>/` may change, and
-#   requires every check `ok`; else it prints the revise line for the orchestrator to send, exit 1. Mechanical only.
+#   Plan 023 F4 item 2. `run <task> <pr> <head>` (the worker) writes `.orchestration/<task>/precheck-<sha7>.md`: (a) the
+#   task copy vs the TASK line, (b) files vs allowed_files, (c) the Check's caps, (d) its commands in the validation file,
+#   (e) CI, (f) the Bot's review, (g) each Bot thread as `<id>:<P>:<disposition>` in the report, (h) the local review, (i) the
+#   audit dry run: each `ok`, `missing` or (h, i) `unavailable (<reason>)`; exit 1 on a `missing`. `verify <task> <RESULT>`
+#   finds the receipt by `precheck=` in the tree of `head=` and refuses one without nine statuses, a `missing` or later code.
 # @exitcode 0 Every check ok.
 # @exitcode 1 A check missing (verify: the AGMSG-ACCEPTANCE revise line printed).
 # @exitcode 2 Usage: a malformed task id, PR number or head.
@@ -31,7 +28,6 @@ if [[ $1 == verify && $# == 3 ]]; then
         [ "$(git show "${head}:${p}" | shasum -a 256 | cut -d' ' -f1)" = "${sum}" ] || continue
         h=$(git show "${head}:${p}" | sed -n 's/^head: \([0-9a-f]\{40\}\)$/\1/p')
         miss=$(git show "${head}:${p}" | sed -n 's/^- \([a-i]\) missing.*/\1/p' | tr '\n' ',')
-        # One status line per check, a to i (PR #393 thread 4302868172): a receipt without them proves nothing.
         all=$(git show "${head}:${p}" | sed -n -E 's/^- ([a-i]) (ok|missing|unavailable \(.*\)): .*/\1/p' | sort | tr -d '\n')
         [ "${all}" = abcdefghi ] || miss+="incomplete-receipt,"
         [ -z "$(git diff --name-only "${h}" "${head}" | /usr/bin/grep -v -F "${d}/" || true)" ] || miss+="code-after-receipt,"

@@ -2,11 +2,9 @@
 # @file integrate-seat.sh
 # @brief Run one PR's integration on the integration seat, from the worker's RESULT up to the audit, never past it.
 # @description
-#   Plan 023 F4 item 1, from the seat's own worktree at origin/main and its scripts: update-branch, CI, the Bot wait
-#   (the one optional step), sweep, local review, the dispositions from the RESULT's `threads=`, thread resolution,
-#   the filled sweep, receipt and record block. Each step goes to `.orchestration/validation/<task>-integration-<sha7>.md`;
-#   the artifacts stay here for the orchestrator to move, and the `kind=integration` RESULT goes to the task's
-#   orchestrator. Never the audit, the gate or the merge; gh needs the machine's credentials, so it runs unsandboxed.
+#   Plan 023 F4 item 1, from the seat's own worktree at origin/main and its scripts, each step logged to
+#   `.orchestration/validation/<task>-integration-<sha7>.md`, the artifacts left here for the orchestrator to move.
+#   Never the audit, the gate or the merge; gh needs the machine's credentials, so it runs unsandboxed.
 # @arg $1 string Task id.
 # @arg $2 int PR number.
 # @option --owner <id> The follow-up task that owns advisory P2 findings.
@@ -41,7 +39,7 @@ v=.orchestration/validation review=$(mktemp -d "${TMPDIR:-/tmp}/integrate-seat.X
 trap 'git worktree remove --force "${review}" 2> /dev/null || true' EXIT
 git fetch -q origin "+pull/${pr}/head:refs/remotes/pr/${pr}"
 head=$(git rev-parse "refs/remotes/pr/${pr}") diff_head=$(git rev-parse "refs/remotes/pr/${pr}")
-rec=${v}/${task}-integration-${head:0:7}.md && mkdir -p "${v}" && printf '# Integration of PR #%s for %s\n\n' "${pr}" "${task}" > "${rec}"
+rec=${v}/${task}-integration-${head:0:7}.md && mkdir -p "${v}" .orchestration/acceptance && printf '# Integration of PR #%s for %s\n\n' "${pr}" "${task}" > "${rec}"
 send() { # <status fields…>: the integration RESULT, by agmsg-dispatch to the orchestrator's pane
     agmsg-dispatch "${team}" "${me}" "${orch}" "${pane}" "AGMSG-RESULT v1 task_id=${task} kind=integration $* record=${rec}"
 }
@@ -72,8 +70,7 @@ for _ in 1 2 3 4 5; do # "no checks reported" right after a push is no CI verdic
     sleep 30
 done
 ((rc == 0)) || step checks 0 false
-bot='select(.user.login == "chatgpt-codex-connector[bot]")' seen=0
-# The diff head's review, or a receipt comment naming it; optional, so it may end absent.
+bot='select(.user.login == "chatgpt-codex-connector[bot]")' seen=0 # the diff head's review or a receipt naming it; optional
 for _ in $(seq 30); do
     seen=$({ gh api --paginate "repos/{owner}/{repo}/pulls/${pr}/reviews" --jq ".[] | ${bot} | select(.commit_id == \"${diff_head}\") | .id" &&
         gh api --paginate "repos/{owner}/{repo}/issues/${pr}/comments" --jq ".[] | ${bot} | select(.body | contains(\"Reviewed commit: \`${diff_head:0:10}\")) | .id"; } | wc -l || true)
@@ -86,7 +83,7 @@ printf -- '- bot review of %s: %s\n\n' "${diff_head:0:7}" "${bot_seen}" >> "${re
 sweep=${v}/${task}-pr-feedback.json
 step sweep 0 uv run --no-project python -I scripts/pr-feedback.py "${pr}" --json "${sweep}"
 git worktree add -q --detach "${review}" "${head}"
-mkdir -p .orchestration/acceptance # the main checkout's live record, copied in before local-advisory.sh adds to it
+# The main checkout's live record, copied in before local-advisory.sh adds to it (PR #393 thread 4302868177).
 step record-copy 0 cp -- "${main}/.orchestration/acceptance/${task}.md" .orchestration/acceptance/
 step local-review 0,3 env ORCH_REVIEW_WORKTREE="${review}" scripts/orchestrator/local-review.sh "${task}" "${head}" "${pr}"
 if ((rc == 3)); then # findings: P2/P3 become the owner's advisory rows, a P0/P1 stops the chain
@@ -98,8 +95,7 @@ IFS=';' read -ra items <<< "${threads}"
 for item in ${items[@]+"${items[@]}"}; do # <id>|review-<id>:<P0-P3>:<fixed:<sha>|…>, the RESULT's thread list
     [[ ${item} =~ ^(review-)?([0-9]+):(P[0-3]):(.*)$ ]] || step thread-format 0 false
     id=${BASH_REMATCH[2]} p=${BASH_REMATCH[3]} d=${BASH_REMATCH[4]} key=${BASH_REMATCH[2]} api=comments/${BASH_REMATCH[2]}
-    # A review-body finding is the sweep's pullrequestreview-<id> item, as fill_sweep.py keys it (PR #393 thread 4302868180).
-    [ -z "${BASH_REMATCH[1]}" ] || key=pullrequestreview-${id} api=${pr}/reviews/${id}
+    [ -z "${BASH_REMATCH[1]}" ] || key=pullrequestreview-${id} api=${pr}/reviews/${id} # fill_sweep.py's key (thread 4302868180)
     if [[ ${d} =~ ^fixed:([0-9a-f]{7,40}) ]]; then
         printf '%s\tfixed:%s\n' "${key}" "${BASH_REMATCH[1]}" >> "${dispositions}"
     elif [[ ${p} == P[23] && -n ${owner} ]]; then

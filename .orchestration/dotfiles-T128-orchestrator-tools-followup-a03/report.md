@@ -81,3 +81,12 @@
 - **Checks.** 56 tests pass; seventeen mutants, all killed (validation §14).
 - **Size after the round.** 143 changed lines outside `tests/` and `.orchestration/` (of 200), 201 added under `tests/` (of 1000), 2 files.
 - **The Bot.** Its re-review is asked with `@codex review` on this round's head.
+
+## Round 6 supplement (`e2b7d2cc`): the re-plan
+
+- **The correction.** The operator's correction at 01:53:21Z: six single-source patches were not the re-plan S1 requires; the round's specification became a design change. The Bot wait on `44088167` was stopped.
+- **Offline only.** Both uv forms run `--offline`; no index is reached. A cold cache exits 2 with the `make validate-agent-assets` guidance.
+- **Positive identity.** The fake uv records each call's exact argv and environment; the test asserts both exactly for every call, with all planted sources in one case, so a new input source fails the test by construction. Only `__CF_USER_TEXT_ENCODING`, which macOS adds to every process, is dropped before the comparison.
+- **The cold cache.** The checker test asserts exit 2, the guidance, and nothing sent.
+- **Checks.** 56 tests pass; eighteen mutants, all killed (validation §15).
+- **Size after the round.** 149 changed lines outside `tests/` and `.orchestration/` (of 200), 235 added under `tests/` (of 1000), 2 files.

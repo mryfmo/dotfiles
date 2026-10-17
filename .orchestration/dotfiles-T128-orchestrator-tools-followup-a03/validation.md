@@ -796,3 +796,121 @@ M16 the inherited HOME kept -> killed by test_dispatch_runs_uv_on_a_pinned_inter
 M17 the uv cache not pinned -> killed by test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
 file restored (git diff --quiet HEAD): True
 ```
+
+## 15. Round 6 supplement (`e2b7d2cc`): offline only, and the test asserts identity
+
+The orchestrator's supplement of 2026-10-17T01:53:21Z, the operator's correction (six single-source patches were not the re-plan S1 requires), replaced §14's specification before its Bot wait; that wait was stopped. Two changes, nothing else:
+
+1. **Offline only.** Both uv forms are `uv run --no-config --no-project --offline --python <pinned> --with pyyaml`; the non-offline fallback is gone. PyYAML comes from the pinned `UV_CACHE_DIR` that the validator recipes warm, and when the probe cannot import it, the script prints `dispatch: PyYAML is not in the uv cache <home>/.cache/uv; run make validate-agent-assets to warm it` and exits 2, never fetching. The checker test's new cold-cache case (the fake fails the probe while `uv-cold` exists) asserts exit 2, the message, one uv call and nothing sent. M18 (the fallback put back) is killed by it.
+2. **Positive identity.** The fake uv is now a Python script, which adds no variable of its own, recording each call's argv, directory and full environment as JSON. `test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state` keeps every planted source in its one case and asserts, for both calls, the exact environment `{PATH, HOME, UV_CACHE_DIR}` plus `LANG`/`LC_ALL` when set and the `AGMSG_*` variables given, with their values. It also asserts the directory (the root) and the exact argv: the probe is `run --no-config --no-project --offline --python <python> --with pyyaml python -I -c "import yaml"`; the brief parse has the same head, `-c`, the brief and the task path. `<python>` is resolved as the script resolves it (`mise which python3` under `env -i` at the root, else `python3` on PATH). The one key dropped before the comparison is `__CF_USER_TEXT_ENCODING`, which macOS adds to every process after `env -i` too; it is no input the script passes. Any other variable, flag or value now fails the test by construction.
+
+```text
+$ shasum -a 256 .orchestration/dotfiles-T128-orchestrator-tools-followup-a03/task.md
+b291ba85f89d46877f74969d4e33ce994ff875f83454df58dbd8037a7d745da7  .orchestration/dotfiles-T128-orchestrator-tools-followup-a03/task.md
+$ git log --oneline -1; git merge-base HEAD origin/main
+e2b7d2cc fix(orchestrator): dispatch.sh runs uv offline only and the test asserts each uv 
+f7847616
+$ the three premises (origin/main)
+1
+0
+52
+$ the same counts on HEAD
+0
+2
+56
+
+$ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false UV_OFFLINE=1 uv run --no-project python -m unittest tests/unit/test_orchestrator_tools.py -v
+(rc=0)
+test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record ... ok
+test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit ... ok
+test_boundary_commits_pushes_and_queues_the_pr ... ok
+test_boundary_deletes_a_deleted_file_and_a_renamed_files_old_path ... ok
+test_boundary_deletes_a_name_with_glob_characters_literally ... ok
+test_boundary_keeps_a_name_with_a_newline_one_path ... ok
+test_boundary_stops_before_commit_when_the_validator_fails ... ok
+test_bus_read_closes_a_task_on_any_non_revise_acceptance ... ok
+test_bus_read_ignores_closers_between_other_endpoints ... ok
+test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event ... ok
+test_bus_read_refuses_a_read_that_reaches_its_limit ... ok
+test_bus_read_skips_and_counts_malformed_rows ... ok
+test_codex_review_closes_stdin_fixes_the_profile_and_needs_the_hash ... ok
+test_design_keydiff_names_the_changed_invariant ... ok
+test_dispatch_line_grammar_table ... ok
+test_dispatch_passes_the_line_byte_identical ... ok
+test_dispatch_reads_a_bounded_history_window ... ok
+test_dispatch_record_path_tokenizes_and_locks ... ok
+test_dispatch_records_the_sent_line_with_its_read_marker ... ok
+test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file ... ok
+test_dispatch_refuses_a_line_without_a_task_id ... ok
+test_dispatch_refuses_a_malformed_record_block_before_sending ... ok
+test_dispatch_refuses_a_tab_separated_task_without_its_hash_fields ... ok
+test_dispatch_refuses_a_task_file_failing_the_checker ... ok
+test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line ... ok
+test_dispatch_refuses_an_unwritable_record_before_sending ... ok
+test_dispatch_refuses_malformed_lines ... ok
+test_dispatch_resolves_its_root_without_inherited_git_variables ... ok
+test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state ... ok
+test_ff_main_keeps_a_local_deletion_across_the_fast_forward ... ok
+test_ff_main_keeps_local_edits_across_the_fast_forward ... ok
+test_fill_sweep_fills_only_a_commented_review ... ok
+test_fill_sweep_fills_only_notice_annotations_and_success_statuses ... ok
+test_fill_sweep_ignores_a_disposition_reply_from_another_login ... ok
+test_fill_sweep_leaves_a_badged_review_body_a_gap ... ok
+test_fill_sweep_quotes_the_url_form_evidence ... ok
+test_fill_sweep_refuses_a_not_applicable_without_evidence ... ok
+test_fill_sweep_refuses_a_shared_url_key_and_takes_an_item_id ... ok
+test_fill_sweep_sees_a_collision_after_the_discussion_r_strip ... ok
+test_fill_sweep_selects_a_null_url_status_by_source_and_check ... ok
+test_orch_audit_refuses_a_ledger_check_that_differs_from_head ... ok
+test_orch_audit_refuses_a_run_that_leaves_no_fresh_receipt ... ok
+test_orch_audit_runs_the_ledger_check_by_default_and_refuses_a_gap ... ok
+test_orch_audit_runs_the_ledger_check_isolated_from_sibling_modules ... ok
+test_orch_gate_leaves_the_review_worktree_as_it_was_on_a_refusal_before_the_checkout ... ok
+test_orch_gate_pins_the_interpreter_before_entering_the_review_worktree ... ok
+test_orch_gate_refuses_a_head_that_tracks_a_symlink_under_orchestration ... ok
+test_orch_gate_refuses_another_prs_sweep_or_a_changed_gate_before_the_review_worktree_moves ... ok
+test_orch_gate_restores_the_review_worktree_when_setup_fails ... ok
+test_orch_gate_returns_the_gate_status_and_restores_the_review_worktree ... ok
+test_orch_gate_runs_the_gate_under_an_explicit_environment ... ok
+test_orch_gate_runs_this_checkouts_gate_on_the_review_worktree_with_the_gate_inputs ... ok
+test_replay_propagates_the_command_status ... ok
+test_three_repeat_prints_body_matches_and_states_a_capped_memory_count ... ok
+test_three_repeat_prints_the_records_search_line ... ok
+test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout ... ok
+Ran 56 tests in 43.550s
+OK
+
+$ shellcheck scripts/orchestrator/dispatch.sh; shfmt --indent 4 --space-redirects -d scripts/orchestrator/dispatch.sh
+(rc=0)
+$ ruff check tests/unit/test_orchestrator_tools.py; ruff format --check tests/unit/test_orchestrator_tools.py
+All checks passed!
+1 file already formatted
+(rc=0)
+
+$ git diff --numstat origin/main...HEAD -- . ':!.orchestration'
+123	26	scripts/orchestrator/dispatch.sh
+235	10	tests/unit/test_orchestrator_tools.py
+files: 2; changed lines outside tests/ and .orchestration/: 149; added under tests/: 235
+```
+
+```text
+M1 the dispatch.sh of origin/main -> killed by test_dispatch_reads_a_bounded_history_window, test_dispatch_refuses_a_task_file_failing_the_checker, test_dispatch_resolves_its_root_without_inherited_git_variables, test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M2 the brief found by a literal kind: review line -> killed by test_dispatch_refuses_a_task_file_failing_the_checker, test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M3 no duplicate-key refusal -> killed by test_dispatch_refuses_a_task_file_failing_the_checker
+M4 the first fitting shift, not a unique one -> killed by test_dispatch_reads_a_bounded_history_window
+M5 the newest new row taken as the send -> killed by test_dispatch_reads_a_bounded_history_window
+M6 the whole bus read again -> killed by test_dispatch_reads_a_bounded_history_window
+M7 no EXIT trap -> killed by test_dispatch_reads_a_bounded_history_window
+M8 uv without --no-project (the Bot's P1) -> killed by test_dispatch_refuses_a_task_file_failing_the_checker, test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M9 uv run from the caller's directory (the Bot's P1 4299651928) -> killed by test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M10 the inherited environment kept (no env -i) -> killed by test_dispatch_resolves_its_root_without_inherited_git_variables, test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M11 the probe without -I (the Bot's P1 4300102967) -> killed by test_dispatch_refuses_a_task_file_failing_the_checker, test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M12 no pinned --python -> killed by test_dispatch_refuses_a_task_file_failing_the_checker, test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M13 PYTHONPATH let through the allowlist -> killed by test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M14 the root found under the inherited environment (audit:ef74eae:1) -> killed by test_dispatch_resolves_its_root_without_inherited_git_variables, test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M15 no --no-config (the Bot's P1 4300738707) -> killed by test_dispatch_refuses_a_task_file_failing_the_checker, test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M16 the inherited HOME kept -> killed by test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M17 the uv cache not pinned -> killed by test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+M18 the network fallback kept for a cold cache -> killed by test_dispatch_refuses_a_task_file_failing_the_checker
+file restored (git diff --quiet HEAD): True
+```

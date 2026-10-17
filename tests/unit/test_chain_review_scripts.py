@@ -496,6 +496,29 @@ class ChainReviewScriptsTest(unittest.TestCase):
         [line] = [line for line in text.splitlines() if line.startswith("local-finding: cccccc3:")]
         self.assertNotIn("repeat of", line)
 
+    def test_local_advisory_reads_the_whole_suffix_after_the_task_prefix(self):
+        # The audit of 000c5c6, finding 1: the guard read the text after the last `-local-review-`, so a file named
+        # t-a01-local-review-notes-local-review-aaaaaa1.md passed as aaaaaa1 and a repeat took that unrelated row's class.
+        owner, v = "t-followup-a01", ".orchestration/validation"
+        self.write(f".orchestration/tasks/{owner}.md", "owner\n")
+        self.write(
+            f"{v}/t-a01-local-review-notes-local-review-aaaaaa1.md",
+            "---\nfindings: 1\n---\n\n- [P2] scripts/x.sh:12 quoting\n",
+        )
+        record = self.write(".orchestration/acceptance/t-a01.md", "# record\nlocal:aaaaaa1:1\tunrelated-class\n")
+        head = "cccccc3" + "1" * 33
+        self.write(f"{v}/t-a01-local-review-cccccc3.md", "---\nfindings: 1\n---\n\n- [P2] scripts/x.sh:12 again\n")
+        self.run_tool("local-advisory.sh", "t-a01", head, owner)
+        text = record.read_text()
+        self.assertEqual(["local:cccccc3:1\tadvisory-p2"], re.findall(r"^local:cccccc3:\d\t.*$", text, re.MULTILINE))
+        [line] = [line for line in text.splitlines() if line.startswith("local-finding: cccccc3:")]
+        self.assertNotIn("repeat of", line)
+        # A real earlier review of the same task still classes the repeat.
+        self.write(f"{v}/t-a01-local-review-aaaaaa1.md", "---\nfindings: 1\n---\n\n- [P2] scripts/x.sh:12 quoting\n")
+        record.write_text("# record\nlocal:aaaaaa1:1\tquoting\n")
+        self.run_tool("local-advisory.sh", "t-a01", head, owner)
+        self.assertIn("local:cccccc3:1\tquoting\n", record.read_text())
+
     def test_sandbox_scan_prints_the_unsandboxed_mutation_calls(self):
         sandboxes = ".orchestration/sandboxes"
         hit = "| 2 | dangerouslyDisableSandbox: git commit -m wip |"

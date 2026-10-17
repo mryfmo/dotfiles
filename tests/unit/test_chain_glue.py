@@ -129,6 +129,8 @@ class ChainIntegrateTest(unittest.TestCase):
         self.executable(bin_dir / "uv", UV)
         self.executable(bin_dir / "codex", STUB.format(name="codex"))
         self.executable(bin_dir / "mise", "#!/bin/sh\nexit 1\n")
+        # chain-finish.sh resolves jq for pr-cost.sh; macOS 14 has none in /usr/bin, so the test's own jq is linked.
+        (bin_dir / "jq").symlink_to(shutil.which("jq") or "/usr/bin/jq")
         for name in ("send.sh", "agmsg-dispatch"):
             self.executable(bin_dir / name, f'#!/bin/sh\necho "{name} $*" >> "$CALLS/send.log"\n')
         bot = {"user": {"login": "chatgpt-codex-connector[bot]"}, "commit_id": self.head}

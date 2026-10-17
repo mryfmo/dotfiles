@@ -1,0 +1,5 @@
+previous_head: 0a84239a0bad3d1335b2ec5b1acfb612faaf422c
+round: 2
+check: "1:commit-the-final-supplements-under-.orchestration/dotfiles-T128-s1-replan-gate-a01-together-with-the-review-JSON-and-the-receipt;no-source-or-test-change"
+finding: final-evidence-not-on-branch
+acceptance_message: 1736

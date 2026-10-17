@@ -7,6 +7,7 @@ code_commit: af684dc2
 fix_commit: 968d3439
 revise_commit: 60cdac47
 revise2_commit: 2171d927
+fixture_commit: 14033382
 pr: 378
 task_sha256: 8eb760cc25b1e44050b85366ac8baadafedb863eec6dcfa98e3839a512db7272
 ---
@@ -22,7 +23,7 @@ task_sha256: 8eb760cc25b1e44050b85366ac8baadafedb863eec6dcfa98e3839a512db7272
 | File | What it does |
 |---|---|
 | `scripts/orchestrator/chain-finish.sh` (new, 164 lines) | Item 1, in its order, with T7's helpers (`say`, `refuse`, `pre`, `step`, `pick`), log form and colour setting. **Preconditions**, each exit 10: the arguments; the binaries; the main checkout on `main` and at `origin/main`; the canonical review worktree, clean, with its own `.git`; the extra TSV a file; the head, the review worktree's `HEAD`, equal to the PR's head with its audit summary present; the record; and the gate inputs (the sweep JSON with `pr` equal to the PR, the audit transcript, the receipt, the crit JSON). **Steps:** (1) the verdict and one `audit-finding: <sha7>:<n> not-applicable:<reason>; evidence=<command>` line per finding, under either verdict, with the incorrect verdict's lines as a TSV; (2) `resolve-threads.sh`, exit 3 → 11; (3) the sweep re-run as T7's, `fill_sweep.py`'s exit 1 → 13; (4) the record block, `--audit-dispositions` only when the verdict is incorrect; (5) `orch-gate.sh`; (6) `gh pr merge --squash --match-head-commit <head> <pr>`, then the merge commit from a fresh `origin/main`; (7) `ff-main.sh`; (8) `pr-cost.sh`, run as `HEAD`'s pre-merge copy (the Bot's P1, below); (9) the AGMSG-ACCEPTANCE line printed. An `EXIT` trap removes the comments JSON and both TSVs. |
-| `tests/unit/test_chain_glue.py` (extended, 225 lines added, 1 changed) | T7's tests are kept. The `SCRIPTS` stubs gain `resolve-threads.sh`, `orch-gate.sh`, `ff-main.sh` and `pr-cost.sh`. Every stub also appends its name to `<calls>/order.log`. The gh stub gains `pr merge` (answering from `<calls>/merge-status`, and logging `gh pr merge` to the order log). The uv stub runs `-c` code with the system `python3 -I`. `send.sh` and `agmsg-dispatch` stubs on PATH log to `<calls>/send.log`. There are four new tests, plus a fifth for the Bot's P1 a sixth for revise round 1 and three for revise round 2, and a `finish_ready` fixture: the review worktree at the PR head, the gate's inputs, and the record lines. |
+| `tests/unit/test_chain_glue.py` (extended, 227 lines added, 1 changed) | T7's tests are kept. The `SCRIPTS` stubs gain `resolve-threads.sh`, `orch-gate.sh`, `ff-main.sh` and `pr-cost.sh`. Every stub also appends its name to `<calls>/order.log`. The gh stub gains `pr merge` (answering from `<calls>/merge-status`, and logging `gh pr merge` to the order log). The uv stub runs `-c` code with the system `python3 -I`. `send.sh` and `agmsg-dispatch` stubs on PATH log to `<calls>/send.log`. There are four new tests, plus a fifth for the Bot's P1 a sixth for revise round 1 and three for revise round 2, and a `finish_ready` fixture: the review worktree at the PR head, the gate's inputs, and the record lines. |
 
 ## The tests, by closed row
 
@@ -51,7 +52,7 @@ Mutation check (validation §4): 22 mutants, each applied alone and each caught 
 
 ## Caps
 
-Validation §5: outside `tests/` and `.orchestration/`, 1 file, 164 added lines (cap 200); under `tests/`, 225 added lines and 1 deleted (cap 1000 added).
+Validation §5: outside `tests/` and `.orchestration/`, 1 file, 164 added lines (cap 200); under `tests/`, 227 added lines and 1 deleted (cap 1000 added).
 
 ## CI and the Bot
 
@@ -63,7 +64,8 @@ Validation §5: outside `tests/` and `.orchestration/`, 1 file, 164 added lines 
   - **P1, lines 147-148:** `fixed:2171d927`. The saved `pr-cost.sh` ran bare `git`, `gh`, `jq` and `date` through the post-merge checkout's mise shims. Now its tools are resolved as `orch-gate.sh` resolves gh and git (`mise which` under `env -i`, else `command -v`; a `shims` path refuses, exit 10). That happens before any GitHub write, into links under `.orchestration/validation/<task>-pr-cost-bin-<sha7>/`, which the exit trap removes. The tools are `gh`, `git`, `jq`, `awk`, `date`, `mkdir`, `tr`, `wc` and `tail`, every command `pr-cost.sh` runs by name; its `grep` is `/usr/bin/grep`. The copy then runs as `env -i PATH=<that directory> HOME=<HOME> bash <copy> <pr>`, inside a `cost_run` function, so HOME stays out of the log line.
   - **P2, lines 101-102:** `fixed:2171d927`. The verdict is the summary's last non-blank line, trimmed, as `require-crit-review.py` reads it (`lines = [line for line in text.splitlines() if line.strip()]`, then `AUDIT_VERDICT.fullmatch` with `\s*` on both sides).
   - **P2, lines 111-112:** `fixed:2171d927`. Each disposition's reason is trimmed before its 20-character minimum counts, under either verdict, before any thread step.
-  - No new Bot wait. CI is in the RESULT.
+  - **CI on `27757afb`:** `test (macos-14, client)` failed, and two `test` jobs were cancelled with it. The macOS 14 runner has no `/usr/bin/jq`, and the tests' PATH is the stub directory, `/usr/bin` and `/bin`, so `jq` resolved to nothing and the finish tests refused with exit 10 (`no jq for pr-cost.sh outside a shims directory: none`). `14033382` links the test process's own `jq` into the stub directory, as the gh stub already uses it. The script is unchanged. The 21 tests and the 22 mutants were re-run on it.
+  - No new Bot wait. CI on the final head is in the RESULT.
 
 ## Not done, or outside scope
 

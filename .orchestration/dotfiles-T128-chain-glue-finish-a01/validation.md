@@ -1,12 +1,12 @@
 ---
 task_id: dotfiles-T128-chain-glue-finish-a01
 seat: claude-standard-dot-a002
-code_commit: 2171d927
+code_commit: 14033382
 ---
 
 # Validation: dotfiles-T128-chain-glue-finish-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (a pipeline's is its last command's; §4's block shows the mutant script and its output, and each mutant line carries its own `rc`). Captured at `2171d927` (the code `af684dc2`, the Bot P1 fix `968d3439`, revise round 1 `60cdac47`, the orchestrator's update-branch merge `f4d86ee5`, revise round 2 `2171d927`).
+Every command ran from the worktree `.claude/worktrees/worker-f`, inside the sandbox; `MAIN` names the main checkout and `T` the task id. `UV_OFFLINE=1` was set for every uv call. The output is verbatim, with the main checkout's path replaced by `$MAIN`, and each block ends with the exit status of the command shown (a pipeline's is its last command's; §4's block shows the mutant script and its output, and each mutant line carries its own `rc`). Captured at `14033382` (the code `af684dc2`, the Bot P1 fix `968d3439`, revise round 1 `60cdac47`, the orchestrator's update-branch merge `f4d86ee5`, revise round 2 `2171d927`, the macOS 14 jq fixture `14033382`).
 
 ## 1. Task file and task copy
 ```console
@@ -24,6 +24,8 @@ dotfiles-T128-chain-glue-finish-a01.md: OK
 ## 2. Branch and the five premises
 ```console
 $ git log --oneline origin/main..HEAD; git rev-parse origin/main
+14033382 test(orchestrator): link the test's jq into the stub directory, since macOS 14 has none in /usr/bin (CI on 27757afb)
+27757afb docs(orchestration): chain-glue finish a01 revise round 2 evidence (2171d927)
 2171d927 fix(orchestrator): chain-finish.sh runs pr-cost.sh with resolved tool links, reads the verdict and the reason as the gate does (T128 chain-glue finish a01 revise round 2)
 f4d86ee5 Merge branch 'main' into tools/chain-glue-finish
 9d5b9d29 docs(orchestration): chain-glue finish a01 revise round 1 evidence (60cdac47)
@@ -88,7 +90,7 @@ test_integrate_runs_the_steps_in_order_and_logs_each (tests.unit.test_chain_glue
 test_integrate_stops_on_a_sandbox_scan_hit (tests.unit.test_chain_glue.ChainIntegrateTest.test_integrate_stops_on_a_sandbox_scan_hit) ... ok
 
 ----------------------------------------------------------------------
-Ran 21 tests in 65.709s
+Ran 21 tests in 60.287s
 
 OK
 [exit 0]
@@ -228,11 +230,11 @@ baseline rc=0 OK
 $ git diff --numstat origin/main...HEAD
 3	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/autoskill.md
 6	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/learning.md
-63	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/report.md
+72	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/report.md
 27	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/sandbox.md
 121	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/task.md
-216	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/validation.md
+238	0	.orchestration/dotfiles-T128-chain-glue-finish-a01/validation.md
 164	0	scripts/orchestrator/chain-finish.sh
-225	1	tests/unit/test_chain_glue.py
+227	1	tests/unit/test_chain_glue.py
 [exit 0]
 ```

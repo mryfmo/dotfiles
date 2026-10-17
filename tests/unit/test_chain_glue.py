@@ -36,7 +36,13 @@ GH = """#!/usr/bin/env bash
 paint() { if [ -z "${NO_COLOR:-}" ] && { [ "${CLICOLOR_FORCE:-0}" != 0 ] || [ -n "${GH_FORCE_TTY:-}" ]; }; then sed $'s/.*/\\e[32m&\\e[0m/'; else cat; fi; }
 jq=; prev=; for a; do [ "$prev" != --jq ] || jq=$a; prev=$a; done
 case "$1 $2" in
-"pr view") if [[ " $* " == *" isDraft "* ]]; then cat "$CALLS/draft" 2> /dev/null || echo false; else cat "$CALLS/head"; fi | paint ;;
+"pr view")
+    if [[ " $* " == *" isDraft "* ]]; then cat "$CALLS/draft" 2> /dev/null || echo false
+    elif [[ " $* " == *" state,mergeCommit "* ]]; then
+        # One JSON object per line, one line per call; the last line repeats.
+        f=$CALLS/merge-views && head -n 1 "$f" | JQ -r "$jq"
+        [ "$(wc -l < "$f")" -le 1 ] || { tail -n +2 "$f" > "$f.next" && mv "$f.next" "$f"; }
+    else cat "$CALLS/head"; fi | paint ;;
 "pr checks")
     [ ! -x "$CALLS/checks-hook" ] || "$CALLS/checks-hook"
     exit "$(cat "$CALLS/checks-status" 2> /dev/null || echo 0)" ;;
@@ -443,6 +449,8 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         (self.v / f"{TASK}-audit-{sha7}.md.last.md").write_text(summary)
         (self.v / f"{TASK}-review-receipt.md").write_text("review_surface: crit-data\n")
         (self.v / f"{TASK}-crit.json").write_text("[]\n")
+        merged = {"state": "MERGED", "mergeCommit": {"oid": self.git("rev-parse", "origin/main")}}
+        (self.calls / "merge-views").write_text(json.dumps(merged) + "\n")
         record = self.main / f".orchestration/acceptance/{TASK}.md"
         record.write_text(record.read_text() + lines)
         self.write(".orchestration/extra.tsv", "")
@@ -633,6 +641,28 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         (self.calls / "orch-gate.status").write_text("3")
         self.assertIn("step gate failed rc=3", self.finish(code=1).stderr)
         self.assertEqual(order[:5], (self.calls / "order.log").read_text().splitlines())
+
+    def test_finish_waits_for_the_merge_to_land_before_reading_main(self):
+        # PR #378 thread 4301998951: under a merge queue gh pr merge can return once the PR is enqueued, so the chain
+        # polls the PR until GitHub reports it merged and takes its merge commit (gh has no `merged` JSON field).
+        self.finish_ready()
+        views, oid = self.calls / "merge-views", "c" * 40
+        pending = json.dumps({"state": "OPEN", "mergeCommit": None})
+        merged = json.dumps({"state": "MERGED", "mergeCommit": {"oid": oid}})
+        views.write_text(f"{pending}\n{pending}\n{merged}\n")
+        last = self.finish().stdout.splitlines()[-1]
+        self.assertIn(f"reason=merged-as-{oid}-pr-7-head-{self.head[:7]} ", last)
+        polls = [c for c in self.calls_of("gh") if c.startswith("pr view 7 --json state,mergeCommit ")]
+        self.assertEqual(3, len(polls))
+        log = self.log()
+        self.assertLess(log.rindex("pr view 7 --json state,mergeCommit"), log.index("fetch -q origin main"))
+        # Never merged within the bound: exit 10, and neither the fast-forward nor the cost line runs.
+        (self.calls / "order.log").unlink()
+        views.write_text(pending + "\n")
+        result = self.finish(code=10, env={"CHAIN_MERGE_WAIT": "2"})
+        self.assertIn("merge enqueued, not landed: PR 7 not merged after 2 polls", result.stderr)
+        self.assertEqual("gh pr merge", (self.calls / "order.log").read_text().splitlines()[-1])
+        self.assertEqual(1, len(self.calls_of("pr-cost")))
 
     def test_finish_runs_the_pre_merge_pr_cost_after_the_fast_forward(self):
         # PR #378 thread 4300324931: the fast-forward puts the merged head's pr-cost.sh in the main checkout; the

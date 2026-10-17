@@ -6,8 +6,9 @@
 #   arguments, the binaries resolved outside shims, the main checkout on main at origin/main with HEAD's scripts,
 #   the canonical clean review worktree at the PR's head, that head's audit summary, the record and every gate
 #   input) it checks one `audit-finding: <sha7>:<n>` line per audit finding, resolves the threads, re-runs the
-#   sweep, writes the record block, runs the gate, merges the audited head with `--match-head-commit`,
-#   fast-forwards the main checkout, appends the cost line and prints the AGMSG-ACCEPTANCE line, which it never
+#   sweep, writes the record block, runs the gate, merges the audited head with `--match-head-commit`, waits until
+#   GitHub reports the PR merged (`CHAIN_MERGE_WAIT` polls, default 40, `CHAIN_POLL_SECONDS` apart, default 15) and
+#   takes its merge commit, fast-forwards the main checkout, appends the cost line and prints the AGMSG-ACCEPTANCE line, which it never
 #   sends. Each command is appended to T7's `.orchestration/validation/<task>-chain-<sha7>.log` as
 #   `<utc> <step> rc=<n>: <command>`, repository paths relative; a refusal before the head is known goes to stderr
 #   only. A refusal before the thread step leaves GitHub as it was; a later failure leaves the resolved threads (and,
@@ -21,7 +22,8 @@
 # @arg $5 path The extra dispositions TSV for resolve-threads.sh and fill_sweep.py, in the main checkout (may be empty).
 # @exitcode 0 Merged, fast-forwarded and costed; the last line is the AGMSG-ACCEPTANCE line to send.
 # @exitcode 1 A step's command failed: `step <name> failed rc=<n>` on stderr and in the log.
-# @exitcode 10 A refused precondition (argument, main checkout, review worktree, head, audit summary, gate input).
+# @exitcode 10 A refused precondition (argument, main checkout, review worktree, head, audit summary, gate input), or a
+#   merge enqueued that did not land within the wait (no fast-forward, no cost line).
 # @exitcode 11 A thread left open.
 # @exitcode 12 An audit finding without its audit-finding line, or an unexpected verdict.
 # @exitcode 13 The sweep has gaps after the replies.
@@ -54,6 +56,8 @@ task=$1 pr=$2
 # The id becomes path segments under .orchestration/ and record content; the leading class excludes . and ..
 [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || refuse 10 "invalid argument: ${task}"
 [[ ${pr} =~ ^[0-9]+$ ]] || refuse 10 "invalid argument: ${pr}"
+polls=${CHAIN_MERGE_WAIT:-40} interval=${CHAIN_POLL_SECONDS:-15} # the merge wait: polls of the PR's state, seconds apart
+[[ ${polls} =~ ^[0-9]+$ && ${interval} =~ ^[0-9]+$ ]] || refuse 10 "invalid argument: CHAIN_MERGE_WAIT=${polls} CHAIN_POLL_SECONDS=${interval}"
 main=$(cd -- "$3" 2> /dev/null && pwd -P) || refuse 10 "invalid argument: $3"
 cd -- "${main}"
 # Resolved before anything else and run by absolute path, as chain-integrate.sh resolves them.
@@ -155,9 +159,17 @@ step gate 0 "${main}/scripts/orchestrator/orch-gate.sh" "${task}" "${review}" "$
 pre "${git}" -C "${main}" show HEAD:scripts/orchestrator/pr-cost.sh
 printf '%s\n' "${out}" > "${cost}"
 step merge 0 "${gh}" pr merge --squash --match-head-commit "${head}" "${pr}"
-step merge 0 "${git}" -C "${main}" fetch -q origin main
-step merge 0 "${git}" -C "${main}" rev-parse origin/main
+# Under a merge queue gh pr merge can return once the PR is enqueued, so the merged sha is GitHub's merge commit, read
+# once the PR has merged (PR #378 thread 4301998951); gh pr view has no `merged` field, so the state decides.
+out=
+for ((n = 0; n < polls; n++)); do
+    step merge 0 "${gh}" pr view "${pr}" --json state,mergeCommit --jq 'select(.state == "MERGED") | .mergeCommit.oid'
+    [[ ! ${out} =~ ^[0-9a-f]{40}$ ]] || break
+    sleep "${interval}"
+done
+[[ ${out} =~ ^[0-9a-f]{40}$ ]] || refuse 10 "merge enqueued, not landed: PR ${pr} not merged after ${polls} polls"
 merged=${out}
+step merge 0 "${git}" -C "${main}" fetch -q origin main
 step ff-main 0 "${main}/scripts/orchestrator/ff-main.sh"
 step pr-cost 0 cost_run "${pr}"
 # (9) Printed for the orchestrator to send (C-53); this script sends nothing.

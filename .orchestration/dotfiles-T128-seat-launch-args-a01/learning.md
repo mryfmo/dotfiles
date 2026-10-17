@@ -1,13 +1,12 @@
-# Learning triage
+---
+task_id: dotfiles-T128-seat-launch-args-a01
+status: final
+revise_round: 5
+result_round: 2
+---
 
-Validated: the launcher session name belongs to one spawn team even when identities.sh lists the name in several teams. Group teams by name/type before probing and accept the exact -n pair from any grouped team; the boundary test logs one probe across two rows. Codex selection needs cwd as well as executable identity; the lower-pid decoy test catches cwd-blind selection. Profile values are plain data: the literal command-substitution fixture creates no file.
+No promotion requested. The approved parent-PID check detects a nonempty list hiding the caller as unknown4 before seat selection; parent-present absence still means unlaunched3. It is a visibility proxy, not proof that arbitrary workers/host namespaces are visible. The code comment and report retain that residual; earlier failed/empty fixes did not close it generally.
 
-No skill/rule/manifest promotion, model change, persistent memory entry or new dependency. Task-local test evidence only.
+Shell command substitution can introduce an intermediate parent. A boundary test fixture must capture PPID immediately before exec of the checker, rather than assuming the outer boundary shell PID is the parent. A temporary exec shim preserves the true relationship without modifying the production checker bytes or querying ps. The full suite caught the wrong fixture and passed after correction.
 
-C50: validate an identity's embedded profile using the generator's existing profile grammar; underscores are legal. The one my_profile regression subcase catches rejecting a valid manifest-derived seat before exact-key lookup. No rule or skill promotion.
-
-Probe executability does not prove visibility: capture ps status and validate a nonempty process snapshot; failed/empty lsof cannot establish cwd. Do not turn unavailable visibility into evidence that a seat is absent. Nonempty namespace filtering requires a trusted host-visible source, beyond this narrow check. No rule/skill promotion.
-
-Per-candidate lookup failure does not establish global probe failure. Save a first diagnostic and finish selection: a successful cwd match decides; no match with unknown candidates stays unknown. The three decoy regressions distinguish correct status from scanning all relevant candidates.
-
-Flattened ps text cannot distinguish a positional prompt containing flag-looking text from actual argv options. Emit only trusted managed names and fixed status markers, never observed values; a value whitelist is insufficient. Check every duplicate occurrence so a later expected value cannot repair an earlier conflict. Preserve first observed name order and append missing names deterministically. No rule/skill/memory promotion.
+Splitting the first equals sign in a managed token preserves the remaining value and all-occurrence mismatch latching. Empty and additional-equals values differ; observed values stay absent from diagnostics, as independently tested with synthetic markers.

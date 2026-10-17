@@ -282,8 +282,18 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         (self.home / ".agents/model-profiles.env").write_text(
             'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model claude-opus-5-5 --effort xhigh --advisor fable"\n'
         )
+        seat_args = self.main / "scripts/orchestrator/seat-args.sh"
+        seat_args.rename(seat_args.with_name("seat-args-real.sh"))
+        seat_args.write_text(
+            "#!/usr/bin/env bash\nexport FIXTURE_PS_CALLER_PID=$PPID\n"
+            'exec bash "${BASH_SOURCE[0]%/*}/seat-args-real.sh" "$@"\n'
+        )
+        seat_args.chmod(0o755)
         ps = self.temp / "fixture-ps"
-        ps.write_text('#!/usr/bin/env bash\nprintf "call\\n" >> "$HOME/ps-calls"\ncat "$HOME/ps-lines"\n')
+        ps.write_text(
+            '#!/usr/bin/env bash\nprintf "call\\n" >> "$HOME/ps-calls"\n'
+            'printf "%s fixture caller\\n" "$FIXTURE_PS_CALLER_PID"\ncat "$HOME/ps-lines"\n'
+        )
         ps.chmod(0o755)
         self.env["SEAT_ARGS_PS"] = str(ps)
         violation = (

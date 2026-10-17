@@ -1,5 +1,12 @@
-# Sandbox record
+---
+task_id: dotfiles-T128-seat-launch-args-a01
+status: final
+revise_round: 5
+result_round: 2
+---
 
-All commands stayed in the worker worktree and managed writable roots, without escalation. New script execution in validation uses only SEAT_ARGS_PS/SEAT_ARGS_LSOF fixture binaries, temporary HOME/profile records and stub identities/storage/GitHub data. No actual ps/lsof, worker process/pane, re-seat, runtime/profile generation, task dispatch, graph update, memory promotion or main-checkout write.
+All revision commands run in the managed workspace-write sandbox without escalation, permission-gated commands or persistent Git configuration changes. Main task/acceptance/audit inputs are read only. Source/test writes stay in the allowed seat script and two test modules; production boundary remains unchanged. Other task branches and untracked evidence are preserved.
 
-UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache on uv commands. Git fixture signing is disabled only in the test process environment. Branch creation is --no-track; no shared Git config changes. Commit uses process-local commit.gpgsign=false because the sandbox cannot read the signing key; push uses the established one-command HTTPS identity rewrite. No approval escalation or classifier bypass. No Plan Mode/Crit server or local Bats.
+uv uses UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache. Tests execute the seat checker with temporary HOME/profile and synthetic ps/lsof data. Fixture parent PIDs come from Python os.getpid or shell PPID passed by an exec shim; no real ps/lsof query is used. The boundary integration test keeps the real copied checker bytes, existing assertions and original boundary invocation. Its initial outer-PID fixture failure is preserved, not hidden.
+
+Fresh read-only security-profile review is the explicit AGENTS.md fallback for missing Crit data. No Crit server/web, human review request, Plan Mode, local Bats, real prompt/secret input, runtime/re-seat change, graph update, AutoSkill or memory promotion. Commit uses a per-command signing override; push uses per-command HTTPS identity rewrite without shared git config writes or -u. Nonfatal packed-refs/credential-store warnings are recorded if emitted. Authorized live writes are branch push and bounded Bot review request; worker never replies/resolves findings or integrates/merges.

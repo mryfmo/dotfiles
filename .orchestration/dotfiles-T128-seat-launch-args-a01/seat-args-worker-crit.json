@@ -63,5 +63,11 @@
     "scope": "review",
     "body": "Independent fresh-context Codex security-tier review (manifest gpt-6-astra/high) approved the final delta against1086570f8a8b20271ba7d7417701e1dff922e149, no new finding. Existing seat module and14 extra synthetic fixture cases passed, covering both runtimes, duplicate orders, identical duplicates, missing/trailing values, marker absence and observed name ordering. Source SHA256b5e9a56bbbe3a81c394402666635baf6a124e694404164fb6b05989356089ad4 and test SHA2569dc5a8f8ee25cd5a9e01577e12f132f7c537c0501e680ca77267d73f9e4277af match parent-tested bytes. Full transcripts are pasted in validation.md; implementation transcript SHA25675ba8059b931cf0c26777285ca57410013e70bd6d8331f56c06560b14384a799, corrected plan SHA256db06d992caaeb34c19181815069b4f5fbad42bf093ad9819cffe76b6aaacf19a. Parent read the complete records. No host visibility/exact argv recovery claim. Verdict: correct.",
     "resolved": true
+  },
+  {
+    "id": "seat-args-parent-visibility-equals-security-approval",
+    "scope": "review",
+    "body": "Fresh independent read-only security-profile review (manifest gpt-6-astra/high) of incremental diff against3345c4d347dfe31ee1cbd59c89fee1e8f806f3c8 found no issue. Exact PPID-column prerequisite precedes selection; equals-form values preserve every-occurrence conflict latch and redacted fixed-state diagnostics. Named seat test, ShellCheck and seven synthetic cases passed. Corrected boundary exec shim captures immediate parent while copied production bytes remain unchanged. Approval implements D-S1-383-A parent-visibility proxy only; it does not prove complete host inventory or eliminate parent-visible/worker-hidden scenarios. Parent read full transcript; full12 suite18.008s/static checks pass; earlier records are historical checkpoint approvals.",
+    "resolved": true
   }
 ]

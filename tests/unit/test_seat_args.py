@@ -20,7 +20,11 @@ class SeatArgsTest(unittest.TestCase):
         self.profiles = self.home / ".agents/model-profiles.env"
         self.profiles.parent.mkdir(parents=True)
         self.ps = self.temp / "ps"
-        self.ps.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$HOME/ps-calls"\ncat "$HOME/ps-lines"\n')
+        self.ps.write_text(
+            '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$HOME/ps-calls"\n'
+            '[[ ${FIXTURE_PS_HIDE_CALLER:-0} == 1 ]] || printf "%s fixture caller\\n" "$FIXTURE_PS_CALLER_PID"\n'
+            'cat "$HOME/ps-lines"\n'
+        )
         self.ps.chmod(0o755)
         self.lsof = self.temp / "lsof"
         self.lsof.write_text(
@@ -53,6 +57,24 @@ class SeatArgsTest(unittest.TestCase):
                 f"200 {low}\n",
                 2,
                 f"process=200 args=differs expected={CLAUDE_ARGS} found=--model:ok --effort:differs --advisor:ok",
+            ),
+            (
+                "equals effort conflict",
+                claude,
+                "claude-code",
+                "t",
+                f"200 {match} --effort=high\n",
+                2,
+                f"process=200 args=differs expected={CLAUDE_ARGS} found=--model:ok --effort:differs --advisor:ok",
+            ),
+            (
+                "equals effort match",
+                claude,
+                "claude-code",
+                "t",
+                f"200 {match.replace('--effort xhigh', '--effort=xhigh')}\n",
+                0,
+                "process=200 args=ok",
             ),
             ("pid order", claude, "claude-code", "t", f"300 {low}\n100 {match}\n", 0, "process=100 args=ok"),
             ("absolute claude", claude, "claude-code", "t", f"200 /opt/bin/{match}\n", 0, "process=200 args=ok"),
@@ -201,6 +223,22 @@ class SeatArgsTest(unittest.TestCase):
         self.assertIn("-a -p 20 -d cwd -Fn", calls)
         self.assertEqual({"-axo pid=,command="}, set((self.home / "ps-calls").read_text().splitlines()))
 
+        seat_pid = os.getpid() + 1_000_000
+        for hidden, processes, code, tail in (
+            (True, f"{seat_pid} {match}\n", 4, "args=unknown-probe"),
+            (True, f"{seat_pid} unrelated\n", 4, "args=unknown-probe"),
+            (False, f"{seat_pid} unrelated\n", 3, "process=none args=unlaunched"),
+            (False, f"{seat_pid} {match}\n", 0, f"process={seat_pid} args=ok"),
+        ):
+            with self.subTest(caller_hidden=hidden, processes=processes):
+                self.profiles.write_text(profiles)
+                result = self.run_probe(
+                    claude, "claude-code", "t", project, processes, FIXTURE_PS_HIDE_CALLER=str(int(hidden))
+                )
+                self.assertEqual(code, result.returncode, result.stderr)
+                self.assertEqual(f"seat {claude} profile=standard kind=claude {tail}\n", result.stdout)
+                self.assertEqual("seat-args: ps hides the caller's own process\n" if hidden else "", result.stderr)
+
         original_ps, original_lsof = self.ps.read_text(), self.lsof.read_text()
         for profile, all_unavailable, code, tail in [
             ("standard", False, 0, "process=20 args=ok"),
@@ -253,6 +291,7 @@ class SeatArgsTest(unittest.TestCase):
                 "HOME": str(self.home),
                 "SEAT_ARGS_PS": str(self.ps),
                 "SEAT_ARGS_LSOF": str(self.lsof),
+                "FIXTURE_PS_CALLER_PID": str(os.getpid()),
                 **seams,
             },
             capture_output=True,

@@ -1,3 +1,8 @@
-# AutoSkill
+---
+task_id: dotfiles-T128-seat-launch-args-a01
+status: final
+revise_round: 5
+result_round: 2
+---
 
-Not used. This task adds a bounded read-only probe and tests; no AutoSkill run, input publication, skill candidate or promotion occurred.
+AutoSkill not used. This is an explicitly bounded C59 re-plan/equals-form fix using the existing shell implementation and fixture helpers. No new skill, rule, plugin, profile, hook installation or runtime configuration is promoted.

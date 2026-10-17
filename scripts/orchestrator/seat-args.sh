@@ -4,6 +4,7 @@
 # @description
 #   Reads profile text and process probes without sourcing, writing or signalling.
 #   SEAT_ARGS_PS and SEAT_ARGS_LSOF replace the absolute probes in tests.
+#   shortcut: parent visibility is a proxy; use a host-side inventory when full visibility must be proved.
 # @arg $1 string Comma-separated teams of the seated identity.
 # @arg $2 string Identity in kind-profile-suffix form.
 # @arg $3 string Agent type, claude-code or codex.
@@ -11,7 +12,7 @@
 # @exitcode 0 Profile pairs match.
 # @exitcode 2 Arguments differ, or identity/profile is unknown.
 # @exitcode 3 No launched process matches.
-# @exitcode 4 A required probe binary is unavailable.
+# @exitcode 4 A required probe is unavailable or cannot establish visibility.
 set -euo pipefail
 
 teams=$1 identity=$2 agent_type=$3 project=$4
@@ -57,6 +58,9 @@ processes="$("${ps_probe}" -axo pid=,command= 2> /dev/null)" || probe_status=$?
 if ((probe_status != 0)); then unknown_probe "ps failed (exit ${probe_status})"; fi
 if ! grep -Eq '^[[:blank:]]*[0-9]+[[:blank:]]+[^[:blank:]]' <<< "${processes}"; then
     unknown_probe 'ps listed no process'
+fi
+if ! grep -Eq "^[[:blank:]]*${PPID}[[:blank:]]" <<< "${processes}"; then
+    unknown_probe "ps hides the caller's own process"
 fi
 
 # @description Find one literal adjacent pair in the current process tokens.
@@ -113,10 +117,13 @@ order=()
 found=()
 ((${#expected_args[@]} % 2 == 0)) || ok=false
 for ((arg_index = 1; arg_index < ${#words[@]}; arg_index++)); do
+    observed=${words[arg_index]}
+    observed_value=${words[arg_index + 1]:-}
+    [[ ${observed} != *=* ]] || observed_value=${observed#*=}
     for ((index = 0; index + 1 < ${#expected_args[@]}; index += 2)); do
-        [[ ${words[arg_index]} == "${expected_args[index]}" ]] || continue
+        [[ ${observed%%=*} == "${expected_args[index]}" ]] || continue
         [[ -n ${states[index]:-} ]] || order+=("${index}")
-        if [[ ${states[index]:-} != differs && ${words[arg_index + 1]:-} == "${expected_args[index + 1]}" ]]; then
+        if [[ ${states[index]:-} != differs && ${observed_value} == "${expected_args[index + 1]}" ]]; then
             states[index]=ok
         else
             states[index]=differs

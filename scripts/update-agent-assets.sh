@@ -952,11 +952,11 @@ function update_omp() (
 )
 
 #
-# @description Verify the pinned platform wheel before uv installs hcom.
+# @description Verify the pinned platform wheel before uv installs hcom, and keep it where uv's receipt points.
 # @exitcode 1 The download checksum or installed version differs from its pin.
 #
 function update_hcom() (
-    local url expected installed download_dir wheel actual
+    local url expected installed download_dir wheel actual wheel_dir
     case "$(uname -s)/$(uname -m)" in
     Darwin/arm64 | Darwin/aarch64) url="${HCOM_DARWIN_ARM64_URL}" expected="${HCOM_DARWIN_ARM64_SHA256}" ;;
     Darwin/x86_64 | Darwin/amd64) url="${HCOM_DARWIN_AMD64_URL}" expected="${HCOM_DARWIN_AMD64_SHA256}" ;;
@@ -986,13 +986,18 @@ function update_hcom() (
         printf 'hcom checksum mismatch: expected %s, got %s.\n' "${expected}" "${actual}" >&2
         return 1
     fi
+    # uv's receipt records this path as hcom's source and `uv tool upgrade` re-reads it, so the verified wheel moves
+    # to a managed path that outlives the run.
+    wheel_dir="${HOME}/.local/share/agent-assets/hcom"
+    mkdir -p "${wheel_dir}" && mv -f "${wheel}" "${wheel_dir}/" || return
+    wheel="${wheel_dir}/${url##*/}"
     uv tool install --force "${wheel}" || return
     installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     if [ "${installed}" != "${HCOM_PIN_VERSION}" ]; then
         printf 'hcom version mismatch: expected %s, got %s.\n' "${HCOM_PIN_VERSION}" "${installed}" >&2
         return 1
     fi
-    manifest_record "update_hcom" installer "${HCOM_PIN_VERSION}" "${HOME}/.local/bin/hcom" -- "uv tool install --force <verified-hcom-wheel>"
+    manifest_record "update_hcom" installer "${HCOM_PIN_VERSION}" "${HOME}/.local/bin/hcom" "${wheel}" -- "uv tool install --force <verified-hcom-wheel>"
 )
 
 #

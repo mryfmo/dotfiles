@@ -342,6 +342,68 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         for name in ("sandbox-scan", "local-review", "orch-audit"):
             self.assertEqual([], self.calls_of(name))
 
+    def test_integrate_inherits_the_audit_across_an_update_branch_only_head(self):
+        # Plan 023 F1 (C-61): a merge of main into the audited head with the same PR patch inherits its audit under the
+        # head's names, the first line naming the head the audit ran on; a merge that also edits the PR side does not.
+        p7, summary = self.head[:7], "[P3] low a.txt:1 nit\nVerdict: correct\n"
+        (self.v / f"{TASK}-audit-{p7}.md").write_text("transcript\n")
+        (self.v / f"{TASK}-audit-{p7}.md.last.md").write_text(summary)
+
+        def move_main(name):  # on origin/main, since the seed's own main also holds the PR commit
+            self.git("checkout", "-q", "--detach", "origin/main", cwd=self.seed)
+            self.commit(self.seed, name)
+            self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
+            self.git("pull", "-q", "--ff-only")
+
+        def pr_head(first, edit=None):
+            self.git("checkout", "-q", "--detach", first, cwd=self.seed)
+            self.git("merge", "-q", "--no-ff", "--no-edit", "--no-commit", "origin/main", cwd=self.seed)
+            if edit:
+                (self.seed / "b.txt").write_text(edit)
+                self.git("add", "b.txt", cwd=self.seed)
+            self.git("commit", "-q", "--no-edit", cwd=self.seed)
+            self.git("push", "-q", "origin", "+HEAD:refs/pull/7/head", cwd=self.seed)
+            (self.calls / "head").write_text(self.git("rev-parse", "HEAD", cwd=self.seed) + "\n")
+            return self.git("rev-parse", "HEAD", cwd=self.seed)
+
+        def patch_id(rev):
+            command = 'git diff-tree -p "$(git merge-base origin/main "$1")" "$1" | git patch-id --verbatim'
+            return subprocess.run(
+                ["bash", "-c", command, "-", rev], cwd=self.seed, capture_output=True, text=True, check=True
+            ).stdout.split()[0]
+
+        move_main("c.txt")
+        merged = pr_head(self.head)
+        self.assertEqual(patch_id(self.head), patch_id(merged))
+        out = self.chain().stdout
+        self.assertEqual([], self.calls_of("orch-audit"))
+        for suffix, text in ((".md", "transcript\n"), (".md.last.md", summary)):
+            self.assertEqual(
+                f"inherited-from: {p7}\n{text}", (self.v / f"{TASK}-audit-{merged[:7]}{suffix}").read_text()
+            )
+        self.assertIn(f" audit rc=0: audit inherited from {p7}", self.log(merged))
+        self.assertEqual(f"chain-integrate: {TASK} {merged} Verdict: correct", out.splitlines()[-1])
+        # The same two parents, the merge also editing b.txt: another patch, so the audit runs and nothing is inherited.
+        edited = pr_head(self.head, edit="b, edited in the merge\n")
+        self.assertNotEqual(patch_id(self.head), patch_id(edited))
+        self.chain()
+        self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-audit"))
+        self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{edited[:7]}.md*")))
+        # PR #390 thread 4302490292: a merge that changes only whitespace (b.txt indented) is a new patch too.
+        spaced = pr_head(self.head, edit="  b.txt\n")
+        self.assertNotEqual(patch_id(self.head), patch_id(spaced))
+        self.chain()
+        self.assertEqual(2, len(self.calls_of("orch-audit")))
+        self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{spaced[:7]}.md*")))
+        # A head that inherited passes its marker on unchanged, so the ids stay the head the audit ran on.
+        move_main("d.txt")
+        again = pr_head(merged)
+        self.chain()
+        self.assertEqual(2, len(self.calls_of("orch-audit")))
+        self.assertEqual(
+            f"inherited-from: {p7}\n{summary}", (self.v / f"{TASK}-audit-{again[:7]}.md.last.md").read_text()
+        )
+
     def test_integrate_restores_the_review_worktree_after_the_audit(self):
         # Revise round 2 (the local review of 2fe135c5, P1): orch-audit.sh leaves the shared review worktree at
         # origin/main; the chain puts it back at the audited head, which the gate reads next.

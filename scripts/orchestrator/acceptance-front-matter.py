@@ -10,8 +10,10 @@ more rows, with the sorted basenames of the mistake records naming it. `audit_fi
 its receipt (`.orchestration/validation/<task>-audit-<sha7>.md.last.md`) ends in `Verdict: incorrect`, refused
 otherwise; the record is written before the audit (the audit reads it) and again after an incorrect one. A record
 that starts with a `---` block is read with the gate module's reader (duplicate keys refused) and keeps its text
-after the block and its `dispatch` list; a prose record gets the block prepended. The gate module's field checks
-run on the new block, and any refusal exits 1 before anything is written.
+after the block and its `dispatch` list; a prose record gets the block prepended. `replans`, the C-59 re-plans
+(`{<class slug>: {specification, design, implementation, verification}}`, each a non-empty string), is kept as found
+and written `{}` when absent; another shape exits 2 naming the key. The gate module's field checks run on the new
+block, and any refusal exits 1 before anything is written.
 """
 
 import argparse
@@ -74,6 +76,12 @@ def main():
             refuse(error)
         lines = text.split("\n")
         rest = "\n".join(lines[lines.index("---", 1) + 1 :])
+    replans, parts = record.get("replans", {}), ", ".join(gate.REPLAN_KEYS)
+    if not isinstance(replans, dict):
+        parser.error(f"replans must be {{<class slug>: {{{parts}}}}}; nothing written")
+    for cls, entry in replans.items():
+        if not gate.CLASS_SLUG.fullmatch(cls) or not gate.replan_complete(entry) or set(entry) != set(gate.REPLAN_KEYS):
+            parser.error(f"replans.{cls} must be {{{parts}}}, each a non-empty string; nothing written")
 
     ledger = list(record.get("ledger", []))
     present = {str(row.get("id")) for row in ledger if isinstance(row, dict)}
@@ -109,7 +117,7 @@ def main():
         searches.append({"class": cls, "records": sorted(found)})
 
     block = {**record, "format": gate.RECORD_FORMAT, "task": args.task, "head": head, "pr": sweep.get("pr")}
-    block.update(ledger=ledger, searches=searches, audit_findings=findings)
+    block.update(ledger=ledger, searches=searches, audit_findings=findings, replans=replans)
     errors = gate.record_field_errors(block, args.task, head, sweep.get("pr"))
     if not errors and incorrect:
         errors = gate.audit_findings_errors(block, len(gate.AUDIT_FINDING.findall(audit)))

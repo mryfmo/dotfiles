@@ -72,3 +72,12 @@
 - **Checks.** 56 tests pass; fourteen mutants, all killed (validation §12).
 - **Size after the round.** 130 changed lines outside `tests/` and `.orchestration/` (of 200), 187 added under `tests/` (of 1000), 2 files.
 - **The Bot.** Its re-review is asked with `@codex review` on this round's head.
+
+## Revise round 6 (`e09f14ca`), the final round of the class
+
+- **The P1.** The Bot's re-review of `9f6c5ceb`, thread 4300738707 (`dispatch.sh:199`): the allowlist kept the inherited `HOME` and uv read `$HOME/.config/uv/uv.toml`, so a caller could redirect the `pyyaml` index. The sixth finding of the class; the operator's decision D-S2-374-5 A: one final round naming every input at once, after which a further finding of the class is advisory under a04.
+- **The fix.** `fixed:e09f14ca`. Both uv forms pass `--no-config`, `--no-project` and the pinned `--python`, from the root, under `env -i` with only `PATH`, `HOME` (the script owner's passwd home), `UV_CACHE_DIR` (under it), `LANG`/`LC_ALL` and `AGMSG_*`; the probe runs `python -I`; the root discovery runs under the same environment.
+- **The test.** `test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state`, extended: every source at once, now with a planted `HOME`/`uv.toml`/index and `GIT_DIR`/`GIT_WORK_TREE`; the fake uv sees only the named inputs (validation §14).
+- **Checks.** 56 tests pass; seventeen mutants, all killed (validation §14).
+- **Size after the round.** 143 changed lines outside `tests/` and `.orchestration/` (of 200), 201 added under `tests/` (of 1000), 2 files.
+- **The Bot.** Its re-review is asked with `@codex review` on this round's head.

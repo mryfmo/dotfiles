@@ -1,9 +1,12 @@
 task_id: dotfiles-T128-orchestrator-tools-followup-a03
-round: 5
-previous_head: ef74eaea9a94bff388b7c1027551a57797407b2f
-check: tests/unit/test_orchestrator_tools.py::test_dispatch_resolves_its_root_without_inherited_git_variables
-reason: the audit of ef74eaea (audit:ef74eae:1), the operator's decision D-S2-374-4 A; git rev-parse --show-toplevel ran under the inherited environment, so GIT_DIR or GIT_WORK_TREE redirected the root the checker trusted and C6 accepted a stale receipt; the root discovery now runs under the same env -i allowlist as the uv calls
+round: 6
+previous_head: 9f6c5cebd23592793f3ad5247a20753aff26f388
+check: tests/unit/test_orchestrator_tools.py::test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state
+reason: the Bot's P1 4300738707 on 9f6c5ceb, the operator's decision D-S2-374-5 A (the final round of the class); a caller-controlled HOME supplied a uv.toml, so every input of the uv invocation is now named at once - --no-config, --no-project, the pinned --python, HOME the script owner's passwd home, UV_CACHE_DIR under it, the env -i allowlist, -I on the probe and the root discovery under the same environment
 earlier:
+  - round: 5
+    previous_head: ef74eaea9a94bff388b7c1027551a57797407b2f
+    check: tests/unit/test_orchestrator_tools.py::test_dispatch_resolves_its_root_without_inherited_git_variables
   - round: 4
     previous_head: 6ae8cf75df74bb54eb3b724ea7c94e16b70759ef
     check: tests/unit/test_orchestrator_tools.py::test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state

@@ -22,4 +22,5 @@ Calls outside the sandbox, through the permission gate (`dangerouslyDisableSandb
 | 5 | the Bot wait: `gh api` reads of the Bot's reviews, top-level comments and issue comments on the head, at most every 30 seconds up to 15 minutes, and `gh pr comment <pr> --repo mryfmo/dotfiles --body '@codex review'` only at 10 minutes without a review | `gh` |
 | 6 | after a P0/P1 fix round only: the push, then `gh pr comment <pr> --body '@codex review'` and the same wait (`bot_rounds=2`) | `gh` |
 | 6a | used: `gh pr comment 390 --repo mryfmo/dotfiles --body '@codex review'` after the fix round's push, and the wait on the new head | `gh` |
+| 6b | revise round 1: the HTTPS push in the documented form (inside the sandbox), `gh pr comment 390 --repo mryfmo/dotfiles --body '@codex review'` once, `gh pr checks 390 --watch` and the Bot wait on the new head, and `gh api` reads of the reviews, comments and the Codex summary comment after the waits (read-only) | `gh` |
 | 7 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T129-audit-inherit-replan-json-a01 …` | `agmsg-dispatch` |

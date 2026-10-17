@@ -15,7 +15,7 @@
 #   and tabs, and every token after `v1` is `<key>=<value>` (exit 2 otherwise,
 #   so a repeated prefix or a value split by a space is refused); the
 #   recorder takes `task_id` from that one parse (thread 4255272793). A relative path is read from the root of
-#   the checkout this script lives in (`git rev-parse --show-toplevel` there),
+#   the checkout this script lives in (`git rev-parse --show-toplevel` there, under the allowlisted environment),
 #   never from the caller's directory. A missing field or file, a malformed value
 #   or a mismatch exits 1 naming the field, and nothing is sent. Otherwise the
 #   line goes to `agmsg-dispatch` as one argument, byte for byte.
@@ -94,7 +94,16 @@ line="$(cat -- "${file}" && printf x)" && line=${line%x} && line=${line%$'\n'}
     echo "dispatch: not an AGMSG-TASK, AGMSG-ACCEPTANCE or AGMSG-PING v1 line" >&2
     exit 2
 }
-root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+# One allowlisted environment for git and uv: no inherited GIT_DIR, GIT_WORK_TREE or other GIT_*, VIRTUAL_ENV, UV_* or
+# PYTHON* variable chooses the root, the interpreter or the code they run (audit:ef74eae:1, C-57).
+clean=(env -i PATH="${PATH}" HOME="${HOME}")
+for v in LANG LC_ALL; do
+    [[ -z ${!v:-} ]] || clean+=("${v}=${!v}")
+done
+while IFS= read -r v; do
+    [[ ${v} != AGMSG_* ]] || clean+=("${v}=${!v}")
+done < <(compgen -e)
+root="$("${clean[@]}" git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 
 read -ra tokens <<< "${line}"
 for t in "${tokens[@]:2}"; do
@@ -187,13 +196,6 @@ if [[ ${tokens[0]} == AGMSG-TASK ]]; then
         echo "dispatch: no python3 interpreter to pin for uv" >&2
         exit 1
     }
-    clean=(env -i PATH="${PATH}" HOME="${HOME}")
-    for v in LANG LC_ALL; do
-        [[ -z ${!v:-} ]] || clean+=("${v}=${!v}")
-    done
-    while IFS= read -r v; do
-        [[ ${v} != AGMSG_* ]] || clean+=("${v}=${!v}")
-    done < <(compgen -e)
     uvy=(uv run --no-project --offline --python "${py}" --with pyyaml)
     here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
     # Run from the trusted root, so a caller's .python-version or virtual environment picks no interpreter (4299651928).

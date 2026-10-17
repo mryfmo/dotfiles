@@ -506,6 +506,41 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.assertNotEqual(str(pwn), pinned.pop())
         self.assertEqual(1, len(self.gate_block(record)[0]["dispatch"]))
 
+    def test_dispatch_resolves_its_root_without_inherited_git_variables(self):
+        # audit:ef74eae:1: an inherited GIT_DIR and GIT_WORK_TREE redirected the root the checker trusts; under it,
+        # C6 found no design file and accepted a stale receipt. The stub checker emulates C6 and prints its root.
+        _, record, _ = self.checker_dispatch()
+        self.write(
+            "scripts/orchestrator/task-consistency-check.py",
+            "import pathlib, re, sys\nroot, f = pathlib.Path(sys.argv[sys.argv.index('--root') + 1]), sys.argv[-1]\n"
+            "print(f'root: {root}')\ntext = open(f).read()\n"
+            "design, receipt = re.search(r'design: (\\S+)', text)[1], re.search(r'receipt: (\\S+)', text)[1]\n"
+            "if (root / design).exists() and f'receipt: {receipt}' not in (root / design).read_text():\n"
+            "    print(f'{f}: FAIL\\n  C6 design_review.receipt is stale')\n    sys.exit(1)\nprint(f'{f}: OK')\n",
+        )
+        self.write("d.md", "design_review:\n  receipt: r2\n")
+        task = self.write(
+            ".orchestration/tasks/t.md",
+            "---\nformat: 2\ntask_id: t\nkind: code\nallowed_files:\n  - .orchestration/t/**\n"
+            "design_review:\n  receipt: r1\n  design: d.md\n---\n\nBody.\n",
+        )
+        line = self.write("line.txt", f"AGMSG-TASK v1 task_id=t task_file={task} task_sha256={sha(task.read_text())}\n")
+        other = self.temp / "other"
+        subprocess.run(["git", "init", "-q", str(other)], check=True)
+        env = {
+            "PATH": f"{self.temp / 'fake-uv'}{os.pathsep}{self.env['PATH']}",
+            "GIT_DIR": str(other / ".git"),
+            "GIT_WORK_TREE": str(other),
+        }
+        args = ["team", "orch", "worker", "w5:pA", line, record]
+        result = self.run_tool("dispatch.sh", *args, code=1, env=env)
+        self.assertIn(f"root: {self.repo}\n", result.stderr)
+        self.assertIn("C6 design_review.receipt is stale", result.stderr)
+        checker = f"{self.repo}/scripts/orchestrator/task-consistency-check.py --root {self.repo} {task}"
+        self.assertIn(checker, (self.calls / "uv.log").read_text())
+        self.assertIsNone(self.call("agmsg-dispatch"))
+        self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
+
     def test_dispatch_reads_a_bounded_history_window(self):
         # C-53: each read answers the window the case writes, window-1 before the send and window-2 after it.
         (self.temp / "agmsg/history.sh").write_text(

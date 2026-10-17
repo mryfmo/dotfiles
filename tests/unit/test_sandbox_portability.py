@@ -70,6 +70,14 @@ def hits(repo, kinds, refused):
     ]
 
 
+def diff_refused(code_line, _line):
+    return bool(DIFF_SUBSTITUTION.search(code_line))
+
+
+def tmp_refused(code_line, line):
+    return bool(TMP.search(code_line)) and "TMPDIR" not in line
+
+
 class SandboxPortabilityTest(unittest.TestCase):
     def repo_with(self, name, text):
         temp = tempfile.TemporaryDirectory()
@@ -92,55 +100,40 @@ class SandboxPortabilityTest(unittest.TestCase):
         return repo
 
     def test_no_process_substitution_in_tracked_scripts(self):
-        def refused(code_line, _line):
-            return bool(DIFF_SUBSTITUTION.search(code_line))
-
         offending = "#!/usr/bin/env bash\n# diff <(a) <(b) in a comment is fine\ndiff <(sort a) <(sort b)\n"
         self.assertEqual(
             ["scripts/bad.sh:3: diff <(sort a) <(sort b)"],
-            hits(self.repo_with("bad.sh", offending), {"shell"}, refused),
+            hits(self.repo_with("bad.sh", offending), {"shell"}, diff_refused),
         )
         accepted = "#!/usr/bin/env bash\nwhile read -r l; do :; done < <(printf 'a\\n')\ncomm -23 <(printf 'a\\n') <(printf 'b\\n')\n"
-        self.assertEqual([], hits(self.repo_with("ok.sh", accepted), {"shell"}, refused))
-        self.assertEqual([], hits(ROOT, {"shell"}, refused))
+        self.assertEqual([], hits(self.repo_with("ok.sh", accepted), {"shell"}, diff_refused))
+        self.assertEqual([], hits(ROOT, {"shell"}, diff_refused))
 
     def test_no_hard_coded_tmp_in_tracked_scripts(self):
-        def refused(code_line, line):
-            return bool(TMP.search(code_line)) and "TMPDIR" not in line
-
         offending = '#!/usr/bin/env bash\n# /tmp in a comment is fine\nout=/tmp/out.txt\nt="${TMPDIR:-/tmp}/x"\n'
         self.assertEqual(
             ["scripts/bad.sh:3: out=/tmp/out.txt"],
-            hits(self.repo_with("bad.sh", offending), {"shell", "python"}, refused),
+            hits(self.repo_with("bad.sh", offending), {"shell", "python"}, tmp_refused),
         )
         self.assertEqual(
-            [], hits(self.repo_with("ok.py", 'd = os.environ.get("TMPDIR", "/tmp")\n'), {"shell", "python"}, refused)
+            [], hits(self.repo_with("ok.py", 'd = os.environ.get("TMPDIR", "/tmp")\n'), {"shell", "python"}, tmp_refused)
         )
-        self.assertEqual([], hits(ROOT, {"shell", "python"}, refused))
+        self.assertEqual([], hits(ROOT, {"shell", "python"}, tmp_refused))
 
     def test_a_continued_diff_command_is_refused(self):
-        def refused(code_line, _line):
-            return bool(DIFF_SUBSTITUTION.search(code_line))
-
         continued = "#!/usr/bin/env bash\ndiff \\\n<(sort a) \\\n<(sort b)\n"
         self.assertEqual(
             ["scripts/bad.sh:2: diff <(sort a) <(sort b)"],
-            hits(self.repo_with("bad.sh", continued), {"shell"}, refused),
+            hits(self.repo_with("bad.sh", continued), {"shell"}, diff_refused),
         )
         trailing = "#!/usr/bin/env bash\nfoo # a comment ending in a backslash \\\ndiff <(a) <(b)\n"
         self.assertEqual(
-            ["scripts/bad.sh:3: diff <(a) <(b)"], hits(self.repo_with("bad.sh", trailing), {"shell"}, refused)
+            ["scripts/bad.sh:3: diff <(a) <(b)"], hits(self.repo_with("bad.sh", trailing), {"shell"}, diff_refused)
         )
         last = "diff <(a) <(b) \\"
-        self.assertEqual(["scripts/bad.sh:1: diff <(a) <(b)"], hits(self.repo_with("bad.sh", last), {"shell"}, refused))
+        self.assertEqual(["scripts/bad.sh:1: diff <(a) <(b)"], hits(self.repo_with("bad.sh", last), {"shell"}, diff_refused))
 
     def test_a_quoted_hash_is_not_a_comment(self):
-        def diff_refused(code_line, _line):
-            return bool(DIFF_SUBSTITUTION.search(code_line))
-
-        def tmp_refused(code_line, line):
-            return bool(TMP.search(code_line)) and "TMPDIR" not in line
-
         quoted = (
             "#!/usr/bin/env bash\n"
             'diff --label "baseline # current" <(sort a) <(sort b)\n'
@@ -153,6 +146,24 @@ class SandboxPortabilityTest(unittest.TestCase):
             hits(repo, {"shell"}, diff_refused),
         )
         self.assertEqual(["scripts/bad.sh:3: printf 'copy # /tmp/out'"], hits(repo, {"shell"}, tmp_refused))
+
+    def test_a_quoted_span_is_never_shell_syntax(self):
+        quoted = (
+            "#!/usr/bin/env bash\n"
+            "diff --label 'old|new' <(sort a) <(sort b)\n"
+            'diff --label "a;b" <(sort a) <(sort b)\n'
+            'diff --label "a&b" <(sort a) <(sort b)\n'
+            'diff --label "a\\"b # c" <(sort a) <(sort b)\n'
+            "echo 'diff <(a) <(b)'\n"
+            'diff "<(a)" b\n'
+            'echo "a\\" # /tmp"\n'
+        )
+        repo = self.repo_with("bad.sh", quoted)
+        self.assertEqual(
+            [f"scripts/bad.sh:{n}: {text}" for n, text in enumerate(quoted.split("\n")[1:5], 2)],
+            hits(repo, {"shell"}, diff_refused),
+        )
+        self.assertEqual(['scripts/bad.sh:8: echo "a\\" # /tmp"'], hits(repo, {"shell"}, tmp_refused))
 
 
 if __name__ == "__main__":

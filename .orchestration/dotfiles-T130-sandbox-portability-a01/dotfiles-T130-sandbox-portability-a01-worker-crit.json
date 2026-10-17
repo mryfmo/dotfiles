@@ -1,0 +1,14 @@
+[
+  {
+    "id": "portability-guards-review-approval",
+    "scope": "review",
+    "body": "Independent read-only review (a fresh general-purpose subagent given the diff and the amended task file, not the worker's conclusions) of 005e6c91 (one commit over origin/main e9bc99d2): the two tests OK; ruff check and ruff format --check clean on both files; numstat 2/2 outside tests and 102 under tests, inside the Check's 20/200; make unit-test's discover picks the file up and no network is used. Each amended wording is met: item 1 refuses only a diff word with a <( or >( argument on the same statement while done < <(...) and comm <(...) stay; item 2 refuses /tmp/ and a bare /tmp unless the line reads TMPDIR; Python files and shebangs join item 2 only; whole-line comments drop and a trailing ' #' is cut; the refused fixture and the accepted checkout are both exercised and the fixtures' comment lines would become hits if comment handling broke. Checkout coverage measured by the reviewer: 267 tracked files under the three roots, 92 shell (28 by shebang only), 25 Python. Probe literals: only .github/workflows/test.yaml invokes the probe, nothing reads the two paths, and the CI command run with the new literals (ccstatusline and ccusage, isolated HOME, no network) exits 0 with byte-identical binary output. Verdict: correct. This is local process evidence, not the task-level audit or reviewer authentication.",
+    "resolved": true
+  },
+  {
+    "id": "portability-guards-p3-declared",
+    "scope": "tests/unit/test_sandbox_portability.py",
+    "body": "Six P3 notes, none a defect against the amended wording, declared in report.md 'Readings, declared' and left to the orchestrator as follow-up input: (1) chezmoi .sh.tmpl scripts whose first line is a template directive (25 tracked, 21 with inline shell) are outside both guards, as the task's own filter text (names .sh/.bash/.zsh or a shebang) has it; (2) the TMPDIR exemption reads the whole line, comment included, so 'export TMPDIR=/tmp' and 'out=/tmp/x # move to TMPDIR later' pass, as 'unless the line also reads TMPDIR' is written; (3) the trailing-comment cut also cuts inside a quoted string ('echo \"n #1\" > /tmp/out' passes), and no fixture exercises that branch; (4) the diff guard is line- and word-scoped: a backslash continuation, $DIFF, colordiff/sdiff/diff3 pass, while a diff after a pipe, &&, a path or 'command' is flagged; (5) the refused fixture is named .sh, so shebang-only classification is exercised only as accepted (a manual probe with a bash shebang and no suffix is flagged); (6) tracked() runs git ls-files with the inherited environment, so an exported GIT_DIR makes the fixture tests error loudly rather than pass. No code change: each is spec-shaped or a test-robustness note, and C-61 routes a P3 to the lineage's follow-up task.",
+    "resolved": true
+  }
+]

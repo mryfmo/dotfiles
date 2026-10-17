@@ -66,7 +66,7 @@ def words(line):
 
 
 def programs(code):
-    for m in re.finditer(r"\bjq\b", code):
+    for m in re.finditer(r"\bjq\b[\"})]*", code):  # also "$jq", "${jq}" and "$(command -v jq)"
         w, owed = JQ_WORD.match(code, m.end()), 0
         while w and (owed or w[1].startswith("-")):
             w, owed = JQ_WORD.match(code, w.end()), owed - 1 if owed else JQ_ARGS.get(w[1], 0)

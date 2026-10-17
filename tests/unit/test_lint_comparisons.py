@@ -214,6 +214,12 @@ class LintComparisonsTest(unittest.TestCase):
         result = self.run_fixture("j.sh", "jq -n \"${defs}\"'select(.url == $p)'\n")
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("j.sh:1: R3 ", result.stdout)
+        # jq named through a variable or a substitution is still followed to its program
+        for call in ('"$jq"', '"${jq}"', '"$(command -v jq)"'):
+            with self.subTest(call=call):
+                result = self.run_fixture("j.sh", call + " -r --arg p '/x' 'select(.url == $p)'\n")
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("j.sh:1: R3 ", result.stdout)
 
     def test_a_jq_normaliser_name_inside_a_string_literal_is_no_application(self):
         # owned row 4302629305: each side must apply the normaliser, not merely contain its name

@@ -151,6 +151,49 @@ class LintComparisonsTest(unittest.TestCase):
         result = self.run_fixture(name, refused, baseline)
         self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
 
+    def test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails(self):
+        name, refused, _ = TABLE["R1"]
+        row = f"{name}\tR1\t{hashlib.sha256(refused.strip().encode()).hexdigest()}\n"
+        baseline = self.temp / "baseline.tsv"
+        baseline.write_text(row)
+        result = self.run_fixture(name, refused * 2, baseline)
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(
+            [f"{name}:2: R1"], [line.rsplit(" ", 1)[0][: len(f"{name}:2: R1")] for line in result.stdout.splitlines()]
+        )
+        baseline.write_text(row * 2)
+        result = self.run_fixture(name, refused * 2, baseline)
+        self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
+
+    def test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails(self):
+        for form, rule in (
+            ('if fake.realpath(path) == "/x":\n    pass\n', "R4"),
+            ('if fake.resolve(path) == "/x":\n    pass\n', "R4"),
+            ('re.search(f"^{fake.escape(name)}$", text)\n', "R6"),
+        ):
+            with self.subTest(form=form):
+                result = self.run_fixture("q.py", form)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"q.py:1: {rule} ", result.stdout)
+        for form in ('if os.path.realpath(path) == "/x":\n    pass\n', 're.search(f"^{re.escape(name)}$", text)\n'):
+            with self.subTest(form=form):
+                result = self.run_fixture("q.py", form)
+                self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
+
+    def test_the_jq_normaliser_is_required_on_each_operand_side(self):
+        refused = (
+            "jq -r 'def canonical_path: .; select((.url | canonical_path | canonical_path) == $path)'\n",
+            "jq -r 'def canonical_path: .; select(.url | endswith($path | canonical_path | canonical_path))'\n",
+        )
+        for form in refused:
+            with self.subTest(form=form):
+                result = self.run_fixture("j.sh", form)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("j.sh:1: R3 ", result.stdout)
+        accepted = "jq -r 'def canonical_path: .; select((.url | canonical_path) | endswith($path | canonical_path))'\n"
+        result = self.run_fixture("j.sh", accepted)
+        self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
+
     def test_the_tracked_tree_is_clean_against_the_baseline(self):
         result = self.lint(cwd=ROOT)
         self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))

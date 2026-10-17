@@ -9,3 +9,5 @@ C50: validate an identity's embedded profile using the generator's existing prof
 Probe executability does not prove visibility: capture ps status and validate a nonempty process snapshot; failed/empty lsof cannot establish cwd. Do not turn unavailable visibility into evidence that a seat is absent. Nonempty namespace filtering requires a trusted host-visible source, beyond this narrow check. No rule/skill promotion.
 
 Per-candidate lookup failure does not establish global probe failure. Save a first diagnostic and finish selection: a successful cwd match decides; no match with unknown candidates stays unknown. The three decoy regressions distinguish correct status from scanning all relevant candidates.
+
+Flattened ps text cannot distinguish a positional prompt containing flag-looking text from actual argv options. Emit only trusted managed names and fixed status markers, never observed values; a value whitelist is insufficient. Check every duplicate occurrence so a later expected value cannot repair an earlier conflict. Preserve first observed name order and append missing names deterministically. No rule/skill/memory promotion.

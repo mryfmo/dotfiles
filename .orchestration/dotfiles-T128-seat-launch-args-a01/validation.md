@@ -2629,3 +2629,1955 @@ masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/seat-arg
 masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/revise.yaml
 exit=0
 ```
+
+## Last pre-RESULT C50: duplicate managed flags and value-free diagnostics
+
+ACCEPTANCE04:34:17Z on previous_head1086570f8a8b20271ba7d7417701e1dff922e149 authorizes4301378546/4301378550; refinement04:35:12Z explicitly replaces actual values with fixed ok/differs/missing markers. This is the last pre-RESULT C50; further P2s are proposed advisory for orchestrator judgment. No actual observed value reaches found or probe stderr. Flattened argv and partial PID visibility remain known limits.
+
+### Prior exact-head Bot review body and both inline findings
+
+```text
+{
+  "head": "1086570f8a8b20271ba7d7417701e1dff922e149",
+  "reviews": [
+    {
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### \ud83d\udca1 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `1086570f8a`\n    \n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with \ud83d\udc4d.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "commit_id": "1086570f8a8b20271ba7d7417701e1dff922e149",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/383#pullrequestreview-5556193099",
+      "id": 5556193099,
+      "state": "COMMENTED",
+      "submitted_at": "2026-10-17T04:31:18Z"
+    }
+  ],
+  "inline": [
+    {
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject conflicting duplicate profile flags**\n\nWhen a process contains each expected pair plus a conflicting duplicate\u2014such as `--model expected --effort xhigh --model wrong`\u2014this loop reports `args=ok` because it only checks that the expected pairs occur somewhere. Such a process does not match the rendered launch configuration and may run under the later override, so the boundary check should reject duplicate managed flags with unexpected values; the closed threat-table case currently has no test for this scenario.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/1086570f8a8b20271ba7d7417701e1dff922e149/AGENTS.md#L78-L78)\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/383#discussion_r4301378546",
+      "id": 4301378546,
+      "line": 114,
+      "original_commit_id": "1086570f8a8b20271ba7d7417701e1dff922e149",
+      "path": "scripts/orchestrator/seat-args.sh"
+    },
+    {
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Redact unrelated worker arguments from diagnostics**\n\nWhen a selected process has mismatched profile arguments, this prints its complete remaining command line. Codex prompts are passed as positional argv elsewhere in the repository (for example `scripts/orchestrator/codex-review.sh:37`), so a mismatched or mistakenly selected Codex process in the worker cwd can expose the full prompt\u2014and potentially embedded credentials or private task data\u2014in boundary output that may be retained as validation evidence; report only the managed flags needed to explain the mismatch.\n\nAGENTS.md reference: [AGENTS.md:L72-L72](https://github.com/mryfmo/dotfiles/blob/1086570f8a8b20271ba7d7417701e1dff922e149/AGENTS.md#L72-L72)\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/383#discussion_r4301378550",
+      "id": 4301378550,
+      "line": 122,
+      "original_commit_id": "1086570f8a8b20271ba7d7417701e1dff922e149",
+      "path": "scripts/orchestrator/seat-args.sh"
+    }
+  ],
+  "issue_comments": [
+    {
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"1086570f8a8b20271ba7d7417701e1dff922e149\",\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":\"running\"},\"security_review\":{\"commit_sha\":\"274257172db0915df34e9f1764c69f572346727f\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"274257172db0915df34e9f1764c69f572346727f\",\"mergeGateEnabled\":false,\"pullRequestNumber\":383,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| \ud83d\udcdd **Code Review** | \ud83d\udd04 **Running** since <relative-time datetime=\"2026-10-17T04:29:17.694537Z\">2026-10-17T04:29:17.694537Z</relative-time> | `1086570` | Manual request |\n| \ud83d\udd12 **Security Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-17T04:05:25.814777Z\">2026-10-17T04:05:25.814777Z</relative-time> | `2742571` | Draft marked ready |\n\n\n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with \ud83d\udc40 while any review is running, comments if it has suggestions, and reacts with \ud83d\udc4d once all reviews finish with no findings.\n\n</details>",
+      "created_at": "2026-10-17T04:00:57Z",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/383#issuecomment-6229380503",
+      "id": 6229380503,
+      "updated_at": "2026-10-17T04:29:20Z"
+    }
+  ]
+}
+
+```
+
+### Both synthetic reproductions on previous source
+
+```text
+{"case": "conflicting duplicate managed flag", "exit": 0, "stdout": "seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=ok\n", "stderr": ""}
+{"case": "synthetic positional prompt marker", "exit": 2, "stdout": "seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile review SYNTHETIC_PRIVATE_PROMPT_MARKER\n", "stderr": ""}
+Both P2s reproduced with fixture stubs and a synthetic marker; no real prompts, secrets or processes read.
+
+```
+
+### Initial new regression RED, exit1 expected
+
+```text
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... 
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='conflicting model') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='conflicting profile') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='private positional prompt') ... FAIL
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='conflicting model')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 121, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(code, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : 
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='conflicting profile')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 121, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(code, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : 
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='private positional prompt')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 134, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertNotIn("SYNTHETIC_PRIVATE_PROMPT_MARKER", result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'SYNTHETIC_PRIVATE_PROMPT_MARKER' unexpectedly found in 'seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile review SYNTHETIC_PRIVATE_PROMPT_MARKER --unmanaged UNMANAGED_MARKER\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 1.620s
+
+FAILED (failures=3)
+
+```
+
+### Updated exact diagnostic assertions RED on old implementation, exit1 expected
+
+```text
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... 
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='different effort') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='codex differs') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='codex resume') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='conflicting model') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='earlier conflicting model') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='conflicting profile') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='private positional prompt', prompt='SYNTHETIC_PRIVATE_PROMPT_MARKER --unmanaged UNMANAGED_MARKER') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='private positional prompt', prompt='SYNTHETIC_PRIVATE_PROMPT_MARKER --profile MANAGED_LOOKING_PRIVATE_MARKER') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='literal substitution') ... FAIL
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (decoy_cwd_unavailable=True, profile='review', all_unavailable=False) ... FAIL
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='different effort')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 104, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(f"seat {identity} profile=standard kind={runtime} {tail}\n", result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'seat[152 chars]model:ok --effort:differs --advisor:ok\n' != 'seat[152 chars]model claude-opus-5-5 --effort high --advisor [71 chars]01\n'
+- seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=differs expected=--model claude-opus-5-5 --effort xhigh --advisor fable found=--model:ok --effort:differs --advisor:ok
++ seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=differs expected=--model claude-opus-5-5 --effort xhigh --advisor fable found=--model claude-opus-5-5 --effort high --advisor fable -n t-claude-standard-dot-a001 /agmsg actas claude-standard-dot-a001
+
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='codex differs')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 104, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(f"seat {identity} profile=standard kind={runtime} {tail}\n", result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'seat[68 chars]=differs expected=--profile standard found=--profile:differs\n' != 'seat[68 chars]=differs expected=--profile standard found=--profile review\n'
+- seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs
+?                                                                                                                             ^^ -- ^^
++ seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile review
+?                                                                                                                             ^^^^  ^
+
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='codex resume')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 104, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(f"seat {identity} profile=standard kind={runtime} {tail}\n", result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'seat[68 chars]=differs expected=--profile standard found=--profile:missing\n' != 'seat[68 chars]=differs expected=--profile standard found=resume abc\n'
+- seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:missing
+?                                                                                                                    --- ---- ^ ^^^^^^
++ seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=resume abc
+?                                                                                                                      ^^ ^^^^^
+
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='conflicting model')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 122, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(code, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : 
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='earlier conflicting model')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 122, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(code, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : 
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='conflicting profile')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 122, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(code, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : 
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='private positional prompt', prompt='SYNTHETIC_PRIVATE_PROMPT_MARKER --unmanaged UNMANAGED_MARKER')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 135, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        f"seat {codex} profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs\n",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        result.stdout,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: 'seat[115 chars]ofile:differs\n' != 'seat[115 chars]ofile review SYNTHETIC_PRIVATE_PROMPT_MARKER -[25 chars]ER\n'
+Diff is 661 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='private positional prompt', prompt='SYNTHETIC_PRIVATE_PROMPT_MARKER --profile MANAGED_LOOKING_PRIVATE_MARKER')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 135, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        f"seat {codex} profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs\n",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        result.stdout,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: 'seat[115 chars]ofile:differs\n' != 'seat[115 chars]ofile review SYNTHETIC_PRIVATE_PROMPT_MARKER -[37 chars]ER\n'
+- seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs
++ seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile review SYNTHETIC_PRIVATE_PROMPT_MARKER --profile MANAGED_LOOKING_PRIVATE_MARKER
+
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='literal substitution')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 182, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(f"seat {identity} {expected}\n", result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'seat[105 chars]ound=$(touch:missing\n' != 'seat[105 chars]ound=--model claude-opus-5-5 --effort xhigh --[79 chars]01\n'
+- seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=differs expected=$(touch pwned) found=$(touch:missing
++ seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=differs expected=$(touch pwned) found=--model claude-opus-5-5 --effort xhigh --advisor fable -n t-claude-standard-dot-a001 /agmsg actas claude-standard-dot-a001
+
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (decoy_cwd_unavailable=True, profile='review', all_unavailable=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 204, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(f"seat {codex} profile=standard kind=codex {tail}\n", result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'seat[68 chars]=differs expected=--profile standard found=--profile:differs\n' != 'seat[68 chars]=differs expected=--profile standard found=--profile review\n'
+- seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs
+?                                                                                                                             ^^ -- ^^
++ seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile review
+?                                                                                                                             ^^^^  ^
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.716s
+
+FAILED (failures=10)
+
+```
+
+### First fixed-marker implementation GREEN before adding observed-order regression,12 tests16.096s,33 seat subcases
+
+```text
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... ok
+test_a_pr_closed_unmerged_is_reported_without_an_anchored_reset_record (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_pr_closed_unmerged_is_reported_without_an_anchored_reset_record) ... ok
+test_a_pr_none_record_silences_only_a_task_whose_results_name_no_pr (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_pr_none_record_silences_only_a_task_whose_results_name_no_pr) ... ok
+test_a_reset_record_naming_an_unrelated_accepted_design_anchors_nothing (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_reset_record_naming_an_unrelated_accepted_design_anchors_nothing) ... ok
+test_a_reset_record_silences_only_when_another_identity_accepted_its_design (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_reset_record_silences_only_when_another_identity_accepted_its_design) ... ok
+test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal) ... ok
+test_a_seated_worker_without_its_profile_arguments_is_a_violation (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_seated_worker_without_its_profile_arguments_is_a_violation) ... ok
+test_a_task_over_a_count_is_reported (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_task_over_a_count_is_reported) ... ok
+test_a_waiver_line_silences_nothing (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_waiver_line_silences_nothing) ... ok
+test_an_accepted_record_silences_only_when_the_tasks_pr_is_merged (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_an_accepted_record_silences_only_when_the_tasks_pr_is_merged) ... ok
+test_each_listed_task_is_counted_and_an_unsafe_id_is_skipped (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_each_listed_task_is_counted_and_an_unsafe_id_is_skipped) ... ok
+test_the_probe_skips_without_the_counters_script_or_a_readable_store (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_the_probe_skips_without_the_counters_script_or_a_readable_store) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 16.096s
+
+OK
+
+```
+
+### Observed managed-name order RED before ordering change, exit1 expected
+
+```text
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... 
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='managed flag order') ... FAIL
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='managed flag order')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 113, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(f"seat {identity} profile=standard kind={runtime} {tail}\n", result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'seat[130 chars]advisor fable found=--effort:differs --advisor:ok --model:ok\n' != 'seat[130 chars]advisor fable found=--model:ok --effort:differs --advisor:ok\n'
+Diff is 760 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 1 test in 2.501s
+
+FAILED (failures=1)
+
+```
+
+### Final requested two-module suite GREEN with process-only cache/signing overrides,12 tests15.667s,34 seat subcases
+
+```text
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... ok
+test_a_pr_closed_unmerged_is_reported_without_an_anchored_reset_record (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_pr_closed_unmerged_is_reported_without_an_anchored_reset_record) ... ok
+test_a_pr_none_record_silences_only_a_task_whose_results_name_no_pr (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_pr_none_record_silences_only_a_task_whose_results_name_no_pr) ... ok
+test_a_reset_record_naming_an_unrelated_accepted_design_anchors_nothing (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_reset_record_naming_an_unrelated_accepted_design_anchors_nothing) ... ok
+test_a_reset_record_silences_only_when_another_identity_accepted_its_design (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_reset_record_silences_only_when_another_identity_accepted_its_design) ... ok
+test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal) ... ok
+test_a_seated_worker_without_its_profile_arguments_is_a_violation (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_seated_worker_without_its_profile_arguments_is_a_violation) ... ok
+test_a_task_over_a_count_is_reported (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_task_over_a_count_is_reported) ... ok
+test_a_waiver_line_silences_nothing (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_waiver_line_silences_nothing) ... ok
+test_an_accepted_record_silences_only_when_the_tasks_pr_is_merged (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_an_accepted_record_silences_only_when_the_tasks_pr_is_merged) ... ok
+test_each_listed_task_is_counted_and_an_unsafe_id_is_skipped (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_each_listed_task_is_counted_and_an_unsafe_id_is_skipped) ... ok
+test_the_probe_skips_without_the_counters_script_or_a_readable_store (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_the_probe_skips_without_the_counters_script_or_a_readable_store) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 15.667s
+
+OK
+
+```
+
+### Previous published head1086570f CI watcher, exited0,13 passing checks; not a future-head claim
+
+```text
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+private-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pass	5m45s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pass	5m45s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (ubuntu-24.04, server)	pass	5m45s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (macos-14, client)	pass	7m32s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, server)	pass	5m45s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+test (ubuntu-26.04, client)	pass	7m18s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+test (macos-14, client)	pass	7m32s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pass	8m2s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+test (ubuntu-24.04, server)	pass	5m45s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+test (ubuntu-26.04, client)	pass	7m18s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+public-bootstrap (ubuntu-24.04, server)	pass	8m13s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pass	7m32s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pass	8m2s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+test (ubuntu-24.04, server)	pass	5m45s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+test (ubuntu-26.04, client)	pass	7m18s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+public-bootstrap (macos-14, client)	pass	8m44s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, server)	pass	8m13s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pass	7m32s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pass	8m2s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+test (ubuntu-24.04, server)	pass	5m45s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+test (ubuntu-26.04, client)	pass	7m18s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+public-bootstrap (macos-14, client)	pass	8m44s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, server)	pass	8m13s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pass	7m32s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pass	8m2s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+test (ubuntu-24.04, server)	pass	5m45s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+test (ubuntu-26.04, client)	pass	7m18s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+public-bootstrap (macos-14, client)	pass	8m44s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pass	9m56s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pass	8m13s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pass	7m32s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pass	8m2s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+test (ubuntu-24.04, server)	pass	5m45s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+test (ubuntu-26.04, client)	pass	7m18s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+private-bootstrap (macos-14, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891886	
+private-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891819	
+private-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891933	
+public-bootstrap (macos-14, client)	pass	8m44s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891928	
+public-bootstrap (ubuntu-24.04, client)	pass	9m56s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891696	
+public-bootstrap (ubuntu-24.04, server)	pass	8m13s	https://github.com/mryfmo/dotfiles/actions/runs/39002735058/job/117308891902	
+test (macos-14, client)	pass	7m32s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891748	
+test (ubuntu-24.04, client)	pass	8m2s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891834	
+test (ubuntu-24.04, server)	pass	5m45s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891700	
+test (ubuntu-26.04, client)	pass	7m18s	https://github.com/mryfmo/dotfiles/actions/runs/39002735081/job/117308891910	
+validate	pass	1m0s	https://github.com/mryfmo/dotfiles/actions/runs/39002735070/job/117308891958	
+
+```
+
+Configured final checks:
+```text
+$ shellcheck scripts/orchestrator/seat-args.sh scripts/check-regime-boundary.sh
+stdout/stderr empty; exit=0
+$ shfmt --indent 4 --space-redirects --diff scripts/orchestrator/seat-args.sh scripts/check-regime-boundary.sh
+stdout/stderr empty; exit=0
+$ UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project ruff format tests/unit/test_seat_args.py
+1 file left unchanged
+exit=0
+$ UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project ruff format --check tests/unit/test_seat_args.py tests/unit/test_check_regime_boundary.py
+2 files already formatted
+exit=0
+$ git diff --check -- scripts tests
+stdout/stderr empty; exit=0
+$ /bin/bash -c <empty-array length and joined default check>; command -v bash
+length=0 joined=<>
+/bin/bash
+exit=0
+$ git diff --numstat b167fe0a76a2e77d262f9f556c69ba6b9f118bbe -- scripts tests
+17	1	scripts/check-regime-boundary.sh
+143	0	scripts/orchestrator/seat-args.sh
+56	0	tests/unit/test_check_regime_boundary.py
+266	0	tests/unit/test_seat_args.py
+exit=0; source161<=200, test additions322<=1000
+$ shasum -a 256 <four source/test files and task copy>
+b5e9a56bbbe3a81c394402666635baf6a124e694404164fb6b05989356089ad4  scripts/orchestrator/seat-args.sh
+eb242b6e7f3ebcdeca2946993324f4012474e30ec85fdf6b418447764123d423  scripts/check-regime-boundary.sh
+9dc5a8f8ee25cd5a9e01577e12f132f7c537c0501e680ca77267d73f9e4277af  tests/unit/test_seat_args.py
+27d86374f82d7f0d069e4896173ff311725dda83b041e4a56d6285246938dfb3  tests/unit/test_check_regime_boundary.py
+148f5dde8795da8a8eeb265fcbbd40be11cb27e2407c979b772dcbcba772bd8f  .orchestration/dotfiles-T128-seat-launch-args-a01/task.md
+```
+
+## Independent security review of the final C50
+
+New context uses manifest model_profiles.security.codex gpt-6-astra/high. Parent read the entire corrected plan transcript and implementation transcript. Corrected plan SHA256db06d992caaeb34c19181815069b4f5fbad42bf093ad9819cffe76b6aaacf19a; implementation SHA25675ba8059b931cf0c26777285ca57410013e70bd6d8331f56c06560b14384a799. The plan's initial clean-tree prose was corrected to match its preserved command output showing concurrent parent test edits; it is a design review, not an implementation approval of that partial fixture. Final hashes match parent-tested source.
+
+# Scoped C50 redaction plan security review
+
+Review basis: parent-supplied final C50 check of 2026-10-17T04:34:17Z and proposed clarification; repository HEAD 1086570f8a8b20271ba7d7417701e1dff922e149. This is a design review of the proposed diagnostic, not approval of the unchanged implementation or PR integration. No real ps/lsof, browser, network, agmsg, source edit, reference mutation, or repository write was performed. Existing untracked evidence was left untouched. Correction after comparing this report with its preserved command transcript: the source script was unchanged at the baseline, while the parent was editing tests/unit/test_seat_args.py concurrently. This review inspected a partial test fixture, not final tests; it does not assert that the tracked tree or both scoped files were clean. Only this /tmp report was written. Parent retains the task worklog; this read-only review's plan/todo is recorded below.
+
+Plan/todo: inspect scoped source, test fixtures, and task input model; reproduce loss of argv boundaries using synthetic in-memory arrays; evaluate redaction proposal; record hashes and verdict. Done: all four. Open question: orchestrator authorization to change the diagnostic contract from observed values to fixed markers.
+
+## Finding and assessment
+
+Known residual P2, high confidence, scripts/orchestrator/seat-args.sh:122 (tokenization at :77): the existing mismatch output prints the whole remaining command text, including private positional prompts (known Bot 4301378550). A whitelist of managed flag/value pairs would still disclose SYNTHETIC_PRIVATE_MARKER when a single prompt argument contains `--profile SYNTHETIC_PRIVATE_MARKER`, because the input is flattened ps command text and the script splits on whitespace. This is evidence extending the already-reported disclosure's remediation requirements, not a new discovery or a new finding class.
+
+Scoped design approval: parent proposal closes copying of unrelated argv values into `found=` if every output element comes only from expected managed flag names and fixed literals `match`, `differs`, and `missing`. Match observed text against the expected managed names; emit the expected name, never the observed token/value. Keep occurrence order for found names; record a fixed missing status for expected flags absent from the scan. Expected rendered pairs may remain in `expected=` because they come from the separately trusted local profile input, not observed process text. No raw observed argv value or raw slice may reach either stdout or stderr, including malformed, empty, duplicate, trailing, prompt-embedded, or unmanaged-option cases.
+
+This is a value-redaction guarantee, not noninterference: names/count/order/status still reveal which managed-looking text occurred and whether it matches expected text. The caller's identity/PID and the trusted expected profile text also remain visible by design. The task's current process model cannot reliably recover actual argument boundaries. It can therefore produce false mismatches or false matches when prompt text resembles flags; marker-only diagnostics remove raw value disclosure without claiming to fix matching semantics. A profile name is not made secret by this proposal because it remains in expected output and identity.
+
+Known residual P2, high confidence, scripts/orchestrator/seat-args.sh:113 (helper :65): existing `has_pair` accepts one matching occurrence even if another occurrence differs (known Bot 4301378546). The planned comparison must require at least one occurrence and every occurrence to have the expected following token; missing/trailing values fail, and both duplicate orders need coverage. Identical duplicates are acceptable under the supplied C50 requirement. Redaction must not depend on whether the mismatch came from this check or another managed flag.
+
+## Required implementation review checks
+
+Update tests/unit/test_seat_args.py's exact diagnostic assertions (including literal-substitution fixture) for the new output contract. Add synthetic markers to positional prompts, unmanaged flag values, managed-looking prompt text, mismatching managed values, and missing/trailing values; assert marker absence in both stdout and stderr. Cover conflicting duplicate occurrences in both orders for Codex and a Claude managed flag, identical duplicates accepted, expected missing flags, and managed names emitted in observed order. Preserve nonexecution of profile substitutions and probe-failure redaction. These cases are required recommendations for the follow-up review, not claims that the current suite runs or contains them.
+
+## Exact validation transcript
+
+The bash reproduction uses the unchanged has_pair function copied directly from the reviewed file, an in-memory synthetic command-text fixture, and illustrative value-whitelist/fixed-marker formatters. It invokes neither a real process probe nor the complete seat-args.sh program. No actual C50 implementation exists yet. Read commands are included to bind the evidence to the inspected source.
+
+```text
+$ argv=["git", "rev-parse", "HEAD"]
+exit=0
+stdout:
+1086570f8a8b20271ba7d7417701e1dff922e149
+
+stderr:
+
+```
+
+```text
+$ argv=["git", "status", "--short", "--untracked-files=no"]
+exit=0
+stdout:
+ M tests/unit/test_seat_args.py
+
+stderr:
+
+```
+
+```text
+$ argv=["git", "diff", "--exit-code", "--", "scripts/orchestrator/seat-args.sh", "tests/unit/test_seat_args.py"]
+exit=1
+stdout:
+diff --git a/tests/unit/test_seat_args.py b/tests/unit/test_seat_args.py
+index 93d928b1..2369ca62 100644
+--- a/tests/unit/test_seat_args.py
++++ b/tests/unit/test_seat_args.py
+@@ -110,6 +110,30 @@ class SeatArgsTest(unittest.TestCase):
+             self.assertEqual(0, result.returncode, result.stderr)
+             self.assertEqual(f"seat {identity} profile=my_profile kind=claude process=200 args=ok\n", result.stdout)
+ 
++        for label, identity, kind, processes, code in [
++            ("conflicting model", claude, "claude-code", f"200 {match} --model wrong\n", 2),
++            ("agreeing model", claude, "claude-code", f"200 {match} --model claude-opus-5-5\n", 0),
++            ("conflicting profile", codex, "codex", "20 codex --profile standard --profile review\n", 2),
++        ]:
++            with self.subTest(label=label):
++                self.profiles.write_text(profiles)
++                result = self.run_probe(identity, kind, "t", project, processes)
++                self.assertEqual(code, result.returncode, result.stderr)
++                self.assertIn("args=differs" if code else "args=ok", result.stdout)
++
++        with self.subTest(label="private positional prompt"):
++            self.profiles.write_text(profiles)
++            result = self.run_probe(
++                codex,
++                "codex",
++                "t",
++                project,
++                "20 codex --profile review SYNTHETIC_PRIVATE_PROMPT_MARKER --unmanaged UNMANAGED_MARKER\n",
++            )
++            self.assertEqual(2, result.returncode, result.stderr)
++            self.assertNotIn("SYNTHETIC_PRIVATE_PROMPT_MARKER", result.stdout + result.stderr)
++            self.assertNotIn("UNMANAGED_MARKER", result.stdout + result.stderr)
++
+         for label, identity, kind, profile_text, seam, expected in [
+             (
+                 "missing key",
+
+stderr:
+
+```
+
+```text
+$ argv=["shasum", "-a", "256", "scripts/orchestrator/seat-args.sh", "tests/unit/test_seat_args.py", ".orchestration/dotfiles-T128-seat-launch-args-a01/task.md"]
+exit=0
+stdout:
+656368a2217a223b4153fa038cbfc1401248dffc7d2a216d798691e21a7821ef  scripts/orchestrator/seat-args.sh
+6645e70232af496e8601d41fffde0292906b7bd4290add4c7bf1127341e4fdc7  tests/unit/test_seat_args.py
+148f5dde8795da8a8eeb265fcbbd40be11cb27e2407c979b772dcbcba772bd8f  .orchestration/dotfiles-T128-seat-launch-args-a01/task.md
+
+stderr:
+
+```
+
+```text
+$ argv=["nl", "-ba", "scripts/orchestrator/seat-args.sh"]
+exit=0
+stdout:
+     1	#!/usr/bin/env bash
+     2	# @file seat-args.sh
+     3	# @brief Compare a seated worker's live arguments with its rendered profile.
+     4	# @description
+     5	#   Reads profile text and process probes without sourcing, writing or signalling.
+     6	#   SEAT_ARGS_PS and SEAT_ARGS_LSOF replace the absolute probes in tests.
+     7	# @arg $1 string Comma-separated teams of the seated identity.
+     8	# @arg $2 string Identity in kind-profile-suffix form.
+     9	# @arg $3 string Agent type, claude-code or codex.
+    10	# @arg $4 path Project cwd used to select a Codex process.
+    11	# @exitcode 0 Profile pairs match.
+    12	# @exitcode 2 Arguments differ, or identity/profile is unknown.
+    13	# @exitcode 3 No launched process matches.
+    14	# @exitcode 4 A required probe binary is unavailable.
+    15	set -euo pipefail
+    16	
+    17	teams=$1 identity=$2 agent_type=$3 project=$4
+    18	if [[ ! ${identity} =~ ^(claude|codex)-([a-z][a-z0-9_]*)-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+    19	    printf 'seat %s args=unknown-identity\n' "${identity}"
+    20	    exit 2
+    21	fi
+    22	kind=${BASH_REMATCH[1]} profile=${BASH_REMATCH[2]}
+    23	if [[ ${kind}:${agent_type} != claude:claude-code && ${kind}:${agent_type} != codex:codex ]]; then
+    24	    printf 'seat %s args=unknown-identity\n' "${identity}"
+    25	    exit 2
+    26	fi
+    27	label="seat ${identity} profile=${profile} kind=${kind}"
+    28	key="MODEL_PROFILE_$(tr '[:lower:]' '[:upper:]' <<< "${profile}_${kind}")_ARGS"
+    29	expected="$(awk -v key="${key}" 'index($0, key "=\"") == 1 && substr($0, length($0), 1) == "\"" {
+    30	    print substr($0, length(key) + 3, length($0) - length(key) - 3); exit
+    31	}' "${HOME}/.agents/model-profiles.env" 2> /dev/null)" || expected=""
+    32	if [[ -z ${expected} ]]; then
+    33	    printf '%s args=unknown-profile\n' "${label}"
+    34	    exit 2
+    35	fi
+    36	[[ ${kind} != codex ]] || expected="--profile ${profile}"
+    37	read -r -a expected_args <<< "${expected}"
+    38	IFS=, read -r -a team_names <<< "${teams}"
+    39	ps_probe=${SEAT_ARGS_PS:-/bin/ps}
+    40	lsof_probe=${SEAT_ARGS_LSOF:-/usr/sbin/lsof}
+    41	[[ -n ${SEAT_ARGS_LSOF+x} || -x ${lsof_probe} ]] || lsof_probe=/usr/bin/lsof
+    42	if [[ ! -x ${ps_probe} ]] || { [[ ${kind} == codex ]] && [[ ! -x ${lsof_probe} ]]; }; then
+    43	    printf '%s args=unknown-probe\n' "${label}"
+    44	    exit 4
+    45	fi
+    46	
+    47	# @description Skip a probe whose result cannot establish process visibility.
+    48	# @arg $1 string Diagnostic without probe output.
+    49	unknown_probe() {
+    50	    printf '%s args=unknown-probe\n' "${label}"
+    51	    printf 'seat-args: %s\n' "$1" >&2
+    52	    exit 4
+    53	}
+    54	
+    55	probe_status=0
+    56	processes="$("${ps_probe}" -axo pid=,command= 2> /dev/null)" || probe_status=$?
+    57	if ((probe_status != 0)); then unknown_probe "ps failed (exit ${probe_status})"; fi
+    58	if ! grep -Eq '^[[:blank:]]*[0-9]+[[:blank:]]+[^[:blank:]]' <<< "${processes}"; then
+    59	    unknown_probe 'ps listed no process'
+    60	fi
+    61	
+    62	# @description Find one literal adjacent pair in the current process tokens.
+    63	# @arg $1 string Flag.
+    64	# @arg $2 string Value.
+    65	has_pair() {
+    66	    local index
+    67	    for ((index = 1; index + 1 < ${#words[@]}; index++)); do
+    68	        [[ ${words[index]} != "$1" || ${words[index + 1]} != "$2" ]] || return 0
+    69	    done
+    70	    return 1
+    71	}
+    72	
+    73	selected_pid="" cwd_diagnostic=""
+    74	while read -r pid process_args; do
+    75	    [[ ${pid} =~ ^[0-9]+$ ]] || continue
+    76	    if [[ -n ${selected_pid} ]] && ((10#${pid} >= 10#${selected_pid})); then continue; fi
+    77	    read -r -a words <<< "${process_args}"
+    78	    program=${words[0]:-}
+    79	    if [[ ${kind} == claude ]]; then
+    80	        [[ ${program##*/} == claude ]] || continue
+    81	        matched=false
+    82	        for team in "${team_names[@]}"; do
+    83	            if has_pair -n "${team}-${identity}"; then
+    84	                matched=true
+    85	                break
+    86	            fi
+    87	        done
+    88	        [[ ${matched} == true ]] || continue
+    89	    else
+    90	        if [[ ${program##*/} != codex ]] &&
+    91	            { [[ ${program##*/} != node ]] || [[ ${words[1]:-} != */codex ]]; }; then continue; fi
+    92	        probe_status=0
+    93	        cwd="$("${lsof_probe}" -a -p "${pid}" -d cwd -Fn 2> /dev/null | sed -n 's/^n//p')" || probe_status=$?
+    94	        if ((probe_status != 0)) || [[ -z ${cwd} ]]; then
+    95	            [[ -n ${cwd_diagnostic} ]] || cwd_diagnostic="lsof failed (exit ${probe_status})"
+    96	            continue
+    97	        fi
+    98	        [[ ${cwd} == "${project}" ]] || continue
+    99	    fi
+   100	    selected_pid=${pid}
+   101	    selected=("${words[@]}")
+   102	done <<< "${processes}"
+   103	
+   104	if [[ -z ${selected_pid} ]]; then
+   105	    [[ -z ${cwd_diagnostic} ]] || unknown_probe "${cwd_diagnostic}"
+   106	    printf '%s process=none args=unlaunched\n' "${label}"
+   107	    exit 3
+   108	fi
+   109	words=("${selected[@]}")
+   110	ok=true
+   111	((${#expected_args[@]} % 2 == 0)) || ok=false
+   112	for ((index = 0; index + 1 < ${#expected_args[@]}; index += 2)); do
+   113	    has_pair "${expected_args[index]}" "${expected_args[index + 1]}" || ok=false
+   114	done
+   115	if [[ ${ok} == true ]]; then
+   116	    printf '%s process=%s args=ok\n' "${label}" "${selected_pid}"
+   117	    exit 0
+   118	fi
+   119	offset=1
+   120	[[ ${words[0]##*/} != node ]] || offset=2
+   121	printf '%s process=%s args=differs expected=%s found=%s\n' \
+   122	    "${label}" "${selected_pid}" "${expected_args[*]}" "${words[*]:offset}"
+   123	exit 2
+
+stderr:
+
+```
+
+```text
+$ argv=["nl", "-ba", "tests/unit/test_seat_args.py"]
+exit=0
+stdout:
+     1	"""Compare profile arguments through fixture ps/lsof probes, never real processes."""
+     2	
+     3	import os
+     4	import subprocess
+     5	import tempfile
+     6	import unittest
+     7	from pathlib import Path
+     8	
+     9	ROOT = Path(__file__).resolve().parents[2]
+    10	SCRIPT = ROOT / "scripts/orchestrator/seat-args.sh"
+    11	CLAUDE_ARGS = "--model claude-opus-5-5 --effort xhigh --advisor fable"
+    12	
+    13	
+    14	class SeatArgsTest(unittest.TestCase):
+    15	    def setUp(self):
+    16	        temp = tempfile.TemporaryDirectory()
+    17	        self.addCleanup(temp.cleanup)
+    18	        self.temp = Path(temp.name)
+    19	        self.home = self.temp / "home"
+    20	        self.profiles = self.home / ".agents/model-profiles.env"
+    21	        self.profiles.parent.mkdir(parents=True)
+    22	        self.ps = self.temp / "ps"
+    23	        self.ps.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$HOME/ps-calls"\ncat "$HOME/ps-lines"\n')
+    24	        self.ps.chmod(0o755)
+    25	        self.lsof = self.temp / "lsof"
+    26	        self.lsof.write_text(
+    27	            '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$HOME/lsof-calls"\n'
+    28	            "while (($#)); do\n  if [[ $1 == -p ]]; then pid=$2; shift; fi\n  shift\ndone\n"
+    29	            'cat "$HOME/cwd-$pid"\n'
+    30	        )
+    31	        self.lsof.chmod(0o755)
+    32	
+    33	    def test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one(self):
+    34	        claude = "claude-standard-dot-a001"
+    35	        codex = "codex-standard-dot-a004"
+    36	        project = str(self.temp / "project with spaces")
+    37	        match = f"claude {CLAUDE_ARGS} -n t-{claude} /agmsg actas {claude}"
+    38	        low = match.replace("--effort xhigh", "--effort high")
+    39	        profiles = (
+    40	            f'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="{CLAUDE_ARGS}"\n'
+    41	            'MODEL_PROFILE_STANDARD_CODEX_ARGS="--profile standard"\n'
+    42	        )
+    43	        cases = [
+    44	            ("claude match", claude, "claude-code", "t", f"200 {match}\n", 0, "process=200 args=ok"),
+    45	            ("second team", claude, "claude-code", "other,t", f"200 {match}\n", 0, "process=200 args=ok"),
+    46	            ("wrong team", claude, "claude-code", "other", f"200 {match}\n", 3, "process=none args=unlaunched"),
+    47	            ("resumed", claude, "claude-code", "t", "100 claude --resume abc\n", 3, "process=none args=unlaunched"),
+    48	            (
+    49	                "different effort",
+    50	                claude,
+    51	                "claude-code",
+    52	                "t",
+    53	                f"200 {low}\n",
+    54	                2,
+    55	                f"process=200 args=differs expected={CLAUDE_ARGS} found={low.removeprefix('claude ')}",
+    56	            ),
+    57	            ("pid order", claude, "claude-code", "t", f"300 {low}\n100 {match}\n", 0, "process=100 args=ok"),
+    58	            ("absolute claude", claude, "claude-code", "t", f"200 /opt/bin/{match}\n", 0, "process=200 args=ok"),
+    59	            (
+    60	                "codex cwd",
+    61	                codex,
+    62	                "codex",
+    63	                "t",
+    64	                "10 codex --profile review\n20 codex --profile standard /agmsg\n",
+    65	                0,
+    66	                "process=20 args=ok",
+    67	            ),
+    68	            (
+    69	                "codex differs",
+    70	                codex,
+    71	                "codex",
+    72	                "t",
+    73	                "10 codex --profile standard\n20 codex --profile review\n",
+    74	                2,
+    75	                "process=20 args=differs expected=--profile standard found=--profile review",
+    76	            ),
+    77	            (
+    78	                "codex resume",
+    79	                codex,
+    80	                "codex",
+    81	                "t",
+    82	                "20 codex resume abc\n",
+    83	                2,
+    84	                "process=20 args=differs expected=--profile standard found=resume abc",
+    85	            ),
+    86	            (
+    87	                "npm wrapper",
+    88	                codex,
+    89	                "codex",
+    90	                "t",
+    91	                "20 node /opt/bin/codex --profile standard\n",
+    92	                0,
+    93	                "process=20 args=ok",
+    94	            ),
+    95	            ("absolute codex", codex, "codex", "t", "20 /opt/bin/codex --profile standard\n", 0, "process=20 args=ok"),
+    96	            ("codex absent", codex, "codex", "t", "10 codex --profile standard\n", 3, "process=none args=unlaunched"),
+    97	        ]
+    98	        for label, identity, kind, teams, processes, code, tail in cases:
+    99	            with self.subTest(label=label):
+   100	                self.profiles.write_text(profiles)
+   101	                result = self.run_probe(identity, kind, teams, project, processes)
+   102	                self.assertEqual(code, result.returncode, result.stderr)
+   103	                runtime = "claude" if kind == "claude-code" else "codex"
+   104	                self.assertEqual(f"seat {identity} profile=standard kind={runtime} {tail}\n", result.stdout)
+   105	
+   106	        with self.subTest(label="underscore profile"):
+   107	            identity = "claude-my_profile-dot-a001"
+   108	            self.profiles.write_text(f'MODEL_PROFILE_MY_PROFILE_CLAUDE_ARGS="{CLAUDE_ARGS}"\n')
+   109	            result = self.run_probe(identity, "claude-code", "t", project, f"200 {match.replace(claude, identity)}\n")
+   110	            self.assertEqual(0, result.returncode, result.stderr)
+   111	            self.assertEqual(f"seat {identity} profile=my_profile kind=claude process=200 args=ok\n", result.stdout)
+   112	
+   113	        for label, identity, kind, processes, code in [
+   114	            ("conflicting model", claude, "claude-code", f"200 {match} --model wrong\n", 2),
+   115	            ("agreeing model", claude, "claude-code", f"200 {match} --model claude-opus-5-5\n", 0),
+   116	            ("conflicting profile", codex, "codex", "20 codex --profile standard --profile review\n", 2),
+   117	        ]:
+   118	            with self.subTest(label=label):
+   119	                self.profiles.write_text(profiles)
+   120	                result = self.run_probe(identity, kind, "t", project, processes)
+   121	                self.assertEqual(code, result.returncode, result.stderr)
+   122	                self.assertIn("args=differs" if code else "args=ok", result.stdout)
+   123	
+   124	        with self.subTest(label="private positional prompt"):
+   125	            self.profiles.write_text(profiles)
+   126	            result = self.run_probe(
+   127	                codex,
+   128	                "codex",
+   129	                "t",
+   130	                project,
+   131	                "20 codex --profile review SYNTHETIC_PRIVATE_PROMPT_MARKER --unmanaged UNMANAGED_MARKER\n",
+   132	            )
+   133	            self.assertEqual(2, result.returncode, result.stderr)
+   134	            self.assertNotIn("SYNTHETIC_PRIVATE_PROMPT_MARKER", result.stdout + result.stderr)
+   135	            self.assertNotIn("UNMANAGED_MARKER", result.stdout + result.stderr)
+   136	
+   137	        for label, identity, kind, profile_text, seam, expected in [
+   138	            (
+   139	                "missing key",
+   140	                claude,
+   141	                "claude-code",
+   142	                'OTHER="x"\n',
+   143	                {},
+   144	                "profile=standard kind=claude args=unknown-profile",
+   145	            ),
+   146	            (
+   147	                "literal substitution",
+   148	                claude,
+   149	                "claude-code",
+   150	                'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="$(touch pwned)"\n',
+   151	                {},
+   152	                f"profile=standard kind=claude process=200 args=differs expected=$(touch pwned) found={match.removeprefix('claude ')}",
+   153	            ),
+   154	            ("unknown identity", "claude-a005", "claude-code", profiles, {}, "args=unknown-identity"),
+   155	            ("kind mismatch", claude, "codex", profiles, {}, "args=unknown-identity"),
+   156	            (
+   157	                "missing ps",
+   158	                claude,
+   159	                "claude-code",
+   160	                profiles,
+   161	                {"SEAT_ARGS_PS": str(self.temp / "absent")},
+   162	                "profile=standard kind=claude args=unknown-probe",
+   163	            ),
+   164	            (
+   165	                "missing lsof",
+   166	                codex,
+   167	                "codex",
+   168	                profiles,
+   169	                {"SEAT_ARGS_LSOF": str(self.temp / "absent")},
+   170	                "profile=standard kind=codex args=unknown-probe",
+   171	            ),
+   172	        ]:
+   173	            with self.subTest(label=label):
+   174	                self.profiles.write_text(profile_text)
+   175	                result = self.run_probe(identity, kind, "t", project, f"200 {match}\n", **seam)
+   176	                self.assertEqual(4 if seam else 2, result.returncode, result.stderr)
+   177	                self.assertEqual(f"seat {identity} {expected}\n", result.stdout)
+   178	                self.assertFalse((self.temp / "pwned").exists())
+   179	        calls = (self.home / "lsof-calls").read_text().splitlines()
+   180	        self.assertIn("-a -p 10 -d cwd -Fn", calls)
+   181	        self.assertIn("-a -p 20 -d cwd -Fn", calls)
+   182	        self.assertEqual({"-axo pid=,command="}, set((self.home / "ps-calls").read_text().splitlines()))
+   183	
+   184	        original_ps, original_lsof = self.ps.read_text(), self.lsof.read_text()
+   185	        for profile, all_unavailable, code, tail in [
+   186	            ("standard", False, 0, "process=20 args=ok"),
+   187	            ("review", False, 2, "process=20 args=differs expected=--profile standard found=--profile review"),
+   188	            ("standard", True, 4, "args=unknown-probe"),
+   189	        ]:
+   190	            with self.subTest(decoy_cwd_unavailable=True, profile=profile, all_unavailable=all_unavailable):
+   191	                lookup = "exit 1" if all_unavailable else '[[ $pid != 10 ]] || exit 1\ncat "$HOME/cwd-$pid"'
+   192	                self.lsof.write_text(original_lsof.replace('cat "$HOME/cwd-$pid"', lookup))
+   193	                (self.home / "lsof-calls").unlink()
+   194	                self.profiles.write_text(profiles)
+   195	                result = self.run_probe(
+   196	                    codex, "codex", "t", project, f"10 codex --profile standard\n20 codex --profile {profile}\n"
+   197	                )
+   198	                self.assertEqual(code, result.returncode)
+   199	                self.assertEqual(f"seat {codex} profile=standard kind=codex {tail}\n", result.stdout)
+   200	                self.assertEqual("seat-args: lsof failed (exit 1)\n" if all_unavailable else "", result.stderr)
+   201	                self.assertEqual(
+   202	                    ["-a -p 10 -d cwd -Fn", "-a -p 20 -d cwd -Fn"],
+   203	                    (self.home / "lsof-calls").read_text().splitlines(),
+   204	                )
+   205	
+   206	        for probe, code, kind, diagnostic in [
+   207	            (self.ps, 1, "claude-code", "ps failed (exit 1)"),
+   208	            (self.ps, 0, "claude-code", "ps listed no process"),
+   209	            (self.lsof, 1, "codex", "lsof failed (exit 1)"),
+   210	            (self.lsof, 0, "codex", "lsof failed (exit 0)"),
+   211	        ]:
+   212	            with self.subTest(probe=probe.name, exit=code):
+   213	                self.ps.write_text(original_ps)
+   214	                self.lsof.write_text(original_lsof)
+   215	                probe.write_text(f"#!/bin/bash\nexit {code}\n")
+   216	                self.profiles.write_text(profiles)
+   217	                identity = claude if kind == "claude-code" else codex
+   218	                result = self.run_probe(identity, kind, "t", project, f"200 {match}\n20 codex --profile standard\n")
+   219	                runtime = "claude" if kind == "claude-code" else "codex"
+   220	                self.assertEqual(4, result.returncode)
+   221	                self.assertEqual(f"seat {identity} profile=standard kind={runtime} args=unknown-probe\n", result.stdout)
+   222	                self.assertEqual(f"seat-args: {diagnostic}\n", result.stderr)
+   223	
+   224	    def run_probe(self, identity, kind, teams, project, processes, **seams):
+   225	        (self.home / "ps-lines").write_text(processes)
+   226	        (self.home / "cwd-10").write_text("p10\nn/another/repository\n")
+   227	        (self.home / "cwd-20").write_text(f"p20\nn{project}\n")
+   228	        return subprocess.run(
+   229	            ["bash", str(SCRIPT), teams, identity, kind, project],
+   230	            cwd=self.temp,
+   231	            env={
+   232	                **os.environ,
+   233	                "HOME": str(self.home),
+   234	                "SEAT_ARGS_PS": str(self.ps),
+   235	                "SEAT_ARGS_LSOF": str(self.lsof),
+   236	                **seams,
+   237	            },
+   238	            capture_output=True,
+   239	            text=True,
+   240	            timeout=10,
+   241	            check=False,
+   242	        )
+   243	
+   244	
+   245	if __name__ == "__main__":
+   246	    unittest.main()
+
+stderr:
+
+```
+
+```text
+$ argv=["bash", "-c", "has_pair() {\n    local index\n    for ((index = 1; index + 1 < ${#words[@]}; index++)); do\n        [[ ${words[index]} != \"$1\" || ${words[index + 1]} != \"$2\" ]] || return 0\n    done\n    return 1\n}\nset -eu\noriginal=(codex --profile review 'Please compare --profile SYNTHETIC_PRIVATE_MARKER')\nother=(codex --profile review Please compare --profile SYNTHETIC_PRIVATE_MARKER)\nprintf 'argv_count_original=%s argv_count_other=%s\\n' \"${#original[@]}\" \"${#other[@]}\"\n[[ ${original[*]} == \"${other[*]}\" ]]\nprintf 'same_flattened_text=yes\\n'\nprocess_args=${original[*]}\nread -r -a words <<< \"${process_args}\"\nfound_values=() found_status=()\nfor ((i=1; i<${#words[@]}; i++)); do\n    [[ ${words[i]} == --profile ]] || continue\n    found_values+=(--profile \"${words[i+1]:-}\")\n    status=differs\n    [[ ${words[i+1]:-} != standard ]] || status=match\n    found_status+=(--profile \"${status}\")\ndone\nprintf 'value_whitelist_found=%s\\n' \"${found_values[*]}\"\nprintf 'fixed_marker_found=%s\\n' \"${found_status[*]}\"\n[[ ${found_values[*]} == *SYNTHETIC_PRIVATE_MARKER* ]]\n[[ ${found_status[*]} != *SYNTHETIC_PRIVATE_MARKER* ]]\nprintf 'marker_redaction_assertions=pass\\n'\nwords=(codex --profile standard --profile review)\nif has_pair --profile standard; then printf 'known_duplicate_standard_then_review=accepted\\n'; fi\nwords=(codex --profile review --profile standard)\nif has_pair --profile standard; then printf 'known_duplicate_review_then_standard=accepted\\n'; fi\n"]
+exit=0
+stdout:
+argv_count_original=4 argv_count_other=7
+same_flattened_text=yes
+value_whitelist_found=--profile review --profile SYNTHETIC_PRIVATE_MARKER
+fixed_marker_found=--profile differs --profile differs
+marker_redaction_assertions=pass
+known_duplicate_standard_then_review=accepted
+known_duplicate_review_then_standard=accepted
+
+stderr:
+
+```
+
+```text
+$ argv=["git", "status", "--short", "--untracked-files=no"]
+exit=0
+stdout:
+ M tests/unit/test_seat_args.py
+
+stderr:
+
+```
+
+```text
+$ argv=["shasum", "-a", "256", "scripts/orchestrator/seat-args.sh", "tests/unit/test_seat_args.py", ".orchestration/dotfiles-T128-seat-launch-args-a01/task.md"]
+exit=0
+stdout:
+656368a2217a223b4153fa038cbfc1401248dffc7d2a216d798691e21a7821ef  scripts/orchestrator/seat-args.sh
+6645e70232af496e8601d41fffde0292906b7bd4290add4c7bf1127341e4fdc7  tests/unit/test_seat_args.py
+148f5dde8795da8a8eeb265fcbbd40be11cb27e2407c979b772dcbcba772bd8f  .orchestration/dotfiles-T128-seat-launch-args-a01/task.md
+
+stderr:
+
+```
+
+Skipped: full tests, CI, integration gate, process probes, other repository files, and final implementation review. Risk: known baseline defects remain pending the C50 change; flattened process text still has matching ambiguity after redaction.
+
+Verdict: correct
+
+
+# Scoped C50 implementation security review
+
+Scope: only scripts/orchestrator/seat-args.sh and tests/unit/test_seat_args.py, working-tree delta against 1086570f8a8b20271ba7d7417701e1dff922e149. Authorization for the diagnostic contract is the parent's supplied orchestrator ACCEPTANCE at 04:35:12Z: managed flag names and fixed ok|differs|missing markers, no observed argv values; expected trusted profile pairs unchanged. No repository source/ref edits, network, agmsg, Crit/browser, or real ps/lsof probes were performed. Tests wrote only temporary fixture files and cleaned them. Evidence report only under /tmp. File hashes before and after checks are identical and recorded below. This is scoped independent agent review, not a task-wide audit or integration authorization.
+
+Plan/todo: inspect the final two-file delta; run the existing scoped suite and independent fixture cases; inspect output provenance and duplicate-state transitions; bind findings to hashes. Done: all four. No open implementation issue within this scope.
+
+## Justified approval
+
+No new concrete findings. scripts/orchestrator/seat-args.sh:135 constructs found entries solely from trusted expected_args names and states assigned fixed literals at :120, :122, and :128. The mismatch printf at :141 prints this projection, not selected raw words. The old full-argv output is deleted. A mismatch locks each managed state to differs, so later expected occurrences cannot restore ok; missing flags are recorded and trailing occurrences fail. Duplicate identical values remain acceptable. First occurrence determines observed managed-name order; absent expected names append in expected order. The selected process PID and kind/profile label are unchanged, and expected pairs remain sourced from the local rendered profile. Probe diagnostics contain fixed descriptions plus numeric status and no captured argv or probe stderr. No eval/source path is introduced.
+
+Known Bot 4301378550 disclosure and 4301378546 conflicting-duplicate defects are addressed by this scoped delta, not counted as new discoveries. Independent fixture checks cover both duplicate orders and agreeing duplicates for both runtimes, missing and trailing values, unmanaged and managed-looking synthetic private text, npm wrapper selection, and missing-name ordering. All check exact expected diagnostics and marker absence from stdout plus stderr. Existing suite also preserves nonexecution of profile substitution text and constant probe-failure diagnostics.
+
+## Remaining limits, not new findings
+
+The flattened ps command-text input still cannot recover actual argv boundaries: prompt text that resembles managed flags may affect matching, order, or fixed status. This output remains a value-redacted diagnostic, not a claim of complete information noninterference; occurrence names/status and the expected profile stay visible. A nonempty but incomplete/hidden PID namespace is not detected as incomplete visibility. Fixture success establishes neither host visibility nor live-process correctness. These limits predate this final C50 and remain outside its authorized narrow repair.
+
+## Validation
+
+Existing test_seat_args.py suite and 14 independent synthetic fixture cases passed. The full boundary suite, CI, integration gate, live ps/lsof, and all other repository files were not independently run/reviewed. Parent-provided full-suite results are not asserted as reviewer-observed evidence. No source changes were needed.
+
+The earlier plan report introduction was corrected without changing its command transcript: the source script was baseline, while tests were being edited concurrently, so it reviewed a partial test fixture and never established a clean tracked tree. Corrected plan report SHA256: db06d992caaeb34c19181815069b4f5fbad42bf093ad9819cffe76b6aaacf19a.
+
+## Exact command/output transcript
+
+All child commands used environment PYTHONDONTWRITEBYTECODE=1 to avoid repository bytecode writes. ps/lsof accesses in tests are the existing temporary fixture binaries, not host tools.
+
+```text
+$ argv=["git", "rev-parse", "HEAD"]
+exit=0
+stdout:
+1086570f8a8b20271ba7d7417701e1dff922e149
+
+stderr:
+
+```
+
+```text
+$ argv=["git", "status", "--short", "--untracked-files=no"]
+exit=0
+stdout:
+ M scripts/orchestrator/seat-args.sh
+ M tests/unit/test_seat_args.py
+
+stderr:
+
+```
+
+```text
+$ argv=["shasum", "-a", "256", "scripts/orchestrator/seat-args.sh", "tests/unit/test_seat_args.py"]
+exit=0
+stdout:
+b5e9a56bbbe3a81c394402666635baf6a124e694404164fb6b05989356089ad4  scripts/orchestrator/seat-args.sh
+9dc5a8f8ee25cd5a9e01577e12f132f7c537c0501e680ca77267d73f9e4277af  tests/unit/test_seat_args.py
+
+stderr:
+
+```
+
+```text
+$ argv=["git", "diff", "1086570f8a8b20271ba7d7417701e1dff922e149", "--", "scripts/orchestrator/seat-args.sh", "tests/unit/test_seat_args.py"]
+exit=0
+stdout:
+diff --git a/scripts/orchestrator/seat-args.sh b/scripts/orchestrator/seat-args.sh
+index 8783ab66..6dff709e 100755
+--- a/scripts/orchestrator/seat-args.sh
++++ b/scripts/orchestrator/seat-args.sh
+@@ -108,16 +108,36 @@ if [[ -z ${selected_pid} ]]; then
+ fi
+ words=("${selected[@]}")
+ ok=true
++states=()
++order=()
++found=()
+ ((${#expected_args[@]} % 2 == 0)) || ok=false
++for ((arg_index = 1; arg_index < ${#words[@]}; arg_index++)); do
++    for ((index = 0; index + 1 < ${#expected_args[@]}; index += 2)); do
++        [[ ${words[arg_index]} == "${expected_args[index]}" ]] || continue
++        [[ -n ${states[index]:-} ]] || order+=("${index}")
++        if [[ ${states[index]:-} != differs && ${words[arg_index + 1]:-} == "${expected_args[index + 1]}" ]]; then
++            states[index]=ok
++        else
++            states[index]=differs
++        fi
++    done
++done
+ for ((index = 0; index + 1 < ${#expected_args[@]}; index += 2)); do
+-    has_pair "${expected_args[index]}" "${expected_args[index + 1]}" || ok=false
++    if [[ -z ${states[index]:-} ]]; then
++        states[index]=missing
++        order+=("${index}")
++    fi
++    [[ ${states[index]} == ok ]] || ok=false
++done
++for ((arg_index = 0; arg_index < ${#order[@]}; arg_index++)); do
++    index=${order[arg_index]}
++    found+=("${expected_args[index]}:${states[index]}")
+ done
+ if [[ ${ok} == true ]]; then
+     printf '%s process=%s args=ok\n' "${label}" "${selected_pid}"
+     exit 0
+ fi
+-offset=1
+-[[ ${words[0]##*/} != node ]] || offset=2
+ printf '%s process=%s args=differs expected=%s found=%s\n' \
+-    "${label}" "${selected_pid}" "${expected_args[*]}" "${words[*]:offset}"
++    "${label}" "${selected_pid}" "${expected_args[*]}" "${found[*]-}"
+ exit 2
+diff --git a/tests/unit/test_seat_args.py b/tests/unit/test_seat_args.py
+index 93d928b1..4822ac8a 100644
+--- a/tests/unit/test_seat_args.py
++++ b/tests/unit/test_seat_args.py
+@@ -52,7 +52,7 @@ class SeatArgsTest(unittest.TestCase):
+                 "t",
+                 f"200 {low}\n",
+                 2,
+-                f"process=200 args=differs expected={CLAUDE_ARGS} found={low.removeprefix('claude ')}",
++                f"process=200 args=differs expected={CLAUDE_ARGS} found=--model:ok --effort:differs --advisor:ok",
+             ),
+             ("pid order", claude, "claude-code", "t", f"300 {low}\n100 {match}\n", 0, "process=100 args=ok"),
+             ("absolute claude", claude, "claude-code", "t", f"200 /opt/bin/{match}\n", 0, "process=200 args=ok"),
+@@ -72,7 +72,7 @@ class SeatArgsTest(unittest.TestCase):
+                 "t",
+                 "10 codex --profile standard\n20 codex --profile review\n",
+                 2,
+-                "process=20 args=differs expected=--profile standard found=--profile review",
++                "process=20 args=differs expected=--profile standard found=--profile:differs",
+             ),
+             (
+                 "codex resume",
+@@ -81,7 +81,7 @@ class SeatArgsTest(unittest.TestCase):
+                 "t",
+                 "20 codex resume abc\n",
+                 2,
+-                "process=20 args=differs expected=--profile standard found=resume abc",
++                "process=20 args=differs expected=--profile standard found=--profile:missing",
+             ),
+             (
+                 "npm wrapper",
+@@ -93,6 +93,15 @@ class SeatArgsTest(unittest.TestCase):
+                 "process=20 args=ok",
+             ),
+             ("absolute codex", codex, "codex", "t", "20 /opt/bin/codex --profile standard\n", 0, "process=20 args=ok"),
++            (
++                "managed flag order",
++                claude,
++                "claude-code",
++                "t",
++                f"200 claude --effort high --advisor fable --model claude-opus-5-5 -n t-{claude}\n",
++                2,
++                f"process=200 args=differs expected={CLAUDE_ARGS} found=--effort:differs --advisor:ok --model:ok",
++            ),
+             ("codex absent", codex, "codex", "t", "10 codex --profile standard\n", 3, "process=none args=unlaunched"),
+         ]
+         for label, identity, kind, teams, processes, code, tail in cases:
+@@ -110,6 +119,41 @@ class SeatArgsTest(unittest.TestCase):
+             self.assertEqual(0, result.returncode, result.stderr)
+             self.assertEqual(f"seat {identity} profile=my_profile kind=claude process=200 args=ok\n", result.stdout)
+ 
++        for label, identity, kind, processes, code in [
++            ("conflicting model", claude, "claude-code", f"200 {match} --model wrong\n", 2),
++            (
++                "earlier conflicting model",
++                claude,
++                "claude-code",
++                f"200 claude --model wrong {CLAUDE_ARGS} -n t-{claude}\n",
++                2,
++            ),
++            ("agreeing model", claude, "claude-code", f"200 {match} --model claude-opus-5-5\n", 0),
++            ("conflicting profile", codex, "codex", "20 codex --profile standard --profile review\n", 2),
++        ]:
++            with self.subTest(label=label):
++                self.profiles.write_text(profiles)
++                result = self.run_probe(identity, kind, "t", project, processes)
++                self.assertEqual(code, result.returncode, result.stderr)
++                self.assertIn("args=differs" if code else "args=ok", result.stdout)
++                if code:
++                    self.assertEqual(1, result.stdout.count("--model:" if kind == "claude-code" else "--profile:"))
++
++        for prompt in (
++            "SYNTHETIC_PRIVATE_PROMPT_MARKER --unmanaged UNMANAGED_MARKER",
++            "SYNTHETIC_PRIVATE_PROMPT_MARKER --profile MANAGED_LOOKING_PRIVATE_MARKER",
++        ):
++            with self.subTest(label="private positional prompt", prompt=prompt):
++                self.profiles.write_text(profiles)
++                result = self.run_probe(codex, "codex", "t", project, f"20 codex --profile review {prompt}\n")
++                self.assertEqual(2, result.returncode, result.stderr)
++                self.assertEqual(
++                    f"seat {codex} profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs\n",
++                    result.stdout,
++                )
++                for marker in ("SYNTHETIC_PRIVATE_PROMPT_MARKER", "UNMANAGED_MARKER", "MANAGED_LOOKING_PRIVATE_MARKER"):
++                    self.assertNotIn(marker, result.stdout + result.stderr)
++
+         for label, identity, kind, profile_text, seam, expected in [
+             (
+                 "missing key",
+@@ -125,7 +169,7 @@ class SeatArgsTest(unittest.TestCase):
+                 "claude-code",
+                 'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="$(touch pwned)"\n',
+                 {},
+-                f"profile=standard kind=claude process=200 args=differs expected=$(touch pwned) found={match.removeprefix('claude ')}",
++                "profile=standard kind=claude process=200 args=differs expected=$(touch pwned) found=$(touch:missing",
+             ),
+             ("unknown identity", "claude-a005", "claude-code", profiles, {}, "args=unknown-identity"),
+             ("kind mismatch", claude, "codex", profiles, {}, "args=unknown-identity"),
+@@ -160,7 +204,7 @@ class SeatArgsTest(unittest.TestCase):
+         original_ps, original_lsof = self.ps.read_text(), self.lsof.read_text()
+         for profile, all_unavailable, code, tail in [
+             ("standard", False, 0, "process=20 args=ok"),
+-            ("review", False, 2, "process=20 args=differs expected=--profile standard found=--profile review"),
++            ("review", False, 2, "process=20 args=differs expected=--profile standard found=--profile:differs"),
+             ("standard", True, 4, "args=unknown-probe"),
+         ]:
+             with self.subTest(decoy_cwd_unavailable=True, profile=profile, all_unavailable=all_unavailable):
+
+stderr:
+
+```
+
+```text
+$ argv=["nl", "-ba", "scripts/orchestrator/seat-args.sh"]
+exit=0
+stdout:
+     1	#!/usr/bin/env bash
+     2	# @file seat-args.sh
+     3	# @brief Compare a seated worker's live arguments with its rendered profile.
+     4	# @description
+     5	#   Reads profile text and process probes without sourcing, writing or signalling.
+     6	#   SEAT_ARGS_PS and SEAT_ARGS_LSOF replace the absolute probes in tests.
+     7	# @arg $1 string Comma-separated teams of the seated identity.
+     8	# @arg $2 string Identity in kind-profile-suffix form.
+     9	# @arg $3 string Agent type, claude-code or codex.
+    10	# @arg $4 path Project cwd used to select a Codex process.
+    11	# @exitcode 0 Profile pairs match.
+    12	# @exitcode 2 Arguments differ, or identity/profile is unknown.
+    13	# @exitcode 3 No launched process matches.
+    14	# @exitcode 4 A required probe binary is unavailable.
+    15	set -euo pipefail
+    16	
+    17	teams=$1 identity=$2 agent_type=$3 project=$4
+    18	if [[ ! ${identity} =~ ^(claude|codex)-([a-z][a-z0-9_]*)-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+    19	    printf 'seat %s args=unknown-identity\n' "${identity}"
+    20	    exit 2
+    21	fi
+    22	kind=${BASH_REMATCH[1]} profile=${BASH_REMATCH[2]}
+    23	if [[ ${kind}:${agent_type} != claude:claude-code && ${kind}:${agent_type} != codex:codex ]]; then
+    24	    printf 'seat %s args=unknown-identity\n' "${identity}"
+    25	    exit 2
+    26	fi
+    27	label="seat ${identity} profile=${profile} kind=${kind}"
+    28	key="MODEL_PROFILE_$(tr '[:lower:]' '[:upper:]' <<< "${profile}_${kind}")_ARGS"
+    29	expected="$(awk -v key="${key}" 'index($0, key "=\"") == 1 && substr($0, length($0), 1) == "\"" {
+    30	    print substr($0, length(key) + 3, length($0) - length(key) - 3); exit
+    31	}' "${HOME}/.agents/model-profiles.env" 2> /dev/null)" || expected=""
+    32	if [[ -z ${expected} ]]; then
+    33	    printf '%s args=unknown-profile\n' "${label}"
+    34	    exit 2
+    35	fi
+    36	[[ ${kind} != codex ]] || expected="--profile ${profile}"
+    37	read -r -a expected_args <<< "${expected}"
+    38	IFS=, read -r -a team_names <<< "${teams}"
+    39	ps_probe=${SEAT_ARGS_PS:-/bin/ps}
+    40	lsof_probe=${SEAT_ARGS_LSOF:-/usr/sbin/lsof}
+    41	[[ -n ${SEAT_ARGS_LSOF+x} || -x ${lsof_probe} ]] || lsof_probe=/usr/bin/lsof
+    42	if [[ ! -x ${ps_probe} ]] || { [[ ${kind} == codex ]] && [[ ! -x ${lsof_probe} ]]; }; then
+    43	    printf '%s args=unknown-probe\n' "${label}"
+    44	    exit 4
+    45	fi
+    46	
+    47	# @description Skip a probe whose result cannot establish process visibility.
+    48	# @arg $1 string Diagnostic without probe output.
+    49	unknown_probe() {
+    50	    printf '%s args=unknown-probe\n' "${label}"
+    51	    printf 'seat-args: %s\n' "$1" >&2
+    52	    exit 4
+    53	}
+    54	
+    55	probe_status=0
+    56	processes="$("${ps_probe}" -axo pid=,command= 2> /dev/null)" || probe_status=$?
+    57	if ((probe_status != 0)); then unknown_probe "ps failed (exit ${probe_status})"; fi
+    58	if ! grep -Eq '^[[:blank:]]*[0-9]+[[:blank:]]+[^[:blank:]]' <<< "${processes}"; then
+    59	    unknown_probe 'ps listed no process'
+    60	fi
+    61	
+    62	# @description Find one literal adjacent pair in the current process tokens.
+    63	# @arg $1 string Flag.
+    64	# @arg $2 string Value.
+    65	has_pair() {
+    66	    local index
+    67	    for ((index = 1; index + 1 < ${#words[@]}; index++)); do
+    68	        [[ ${words[index]} != "$1" || ${words[index + 1]} != "$2" ]] || return 0
+    69	    done
+    70	    return 1
+    71	}
+    72	
+    73	selected_pid="" cwd_diagnostic=""
+    74	while read -r pid process_args; do
+    75	    [[ ${pid} =~ ^[0-9]+$ ]] || continue
+    76	    if [[ -n ${selected_pid} ]] && ((10#${pid} >= 10#${selected_pid})); then continue; fi
+    77	    read -r -a words <<< "${process_args}"
+    78	    program=${words[0]:-}
+    79	    if [[ ${kind} == claude ]]; then
+    80	        [[ ${program##*/} == claude ]] || continue
+    81	        matched=false
+    82	        for team in "${team_names[@]}"; do
+    83	            if has_pair -n "${team}-${identity}"; then
+    84	                matched=true
+    85	                break
+    86	            fi
+    87	        done
+    88	        [[ ${matched} == true ]] || continue
+    89	    else
+    90	        if [[ ${program##*/} != codex ]] &&
+    91	            { [[ ${program##*/} != node ]] || [[ ${words[1]:-} != */codex ]]; }; then continue; fi
+    92	        probe_status=0
+    93	        cwd="$("${lsof_probe}" -a -p "${pid}" -d cwd -Fn 2> /dev/null | sed -n 's/^n//p')" || probe_status=$?
+    94	        if ((probe_status != 0)) || [[ -z ${cwd} ]]; then
+    95	            [[ -n ${cwd_diagnostic} ]] || cwd_diagnostic="lsof failed (exit ${probe_status})"
+    96	            continue
+    97	        fi
+    98	        [[ ${cwd} == "${project}" ]] || continue
+    99	    fi
+   100	    selected_pid=${pid}
+   101	    selected=("${words[@]}")
+   102	done <<< "${processes}"
+   103	
+   104	if [[ -z ${selected_pid} ]]; then
+   105	    [[ -z ${cwd_diagnostic} ]] || unknown_probe "${cwd_diagnostic}"
+   106	    printf '%s process=none args=unlaunched\n' "${label}"
+   107	    exit 3
+   108	fi
+   109	words=("${selected[@]}")
+   110	ok=true
+   111	states=()
+   112	order=()
+   113	found=()
+   114	((${#expected_args[@]} % 2 == 0)) || ok=false
+   115	for ((arg_index = 1; arg_index < ${#words[@]}; arg_index++)); do
+   116	    for ((index = 0; index + 1 < ${#expected_args[@]}; index += 2)); do
+   117	        [[ ${words[arg_index]} == "${expected_args[index]}" ]] || continue
+   118	        [[ -n ${states[index]:-} ]] || order+=("${index}")
+   119	        if [[ ${states[index]:-} != differs && ${words[arg_index + 1]:-} == "${expected_args[index + 1]}" ]]; then
+   120	            states[index]=ok
+   121	        else
+   122	            states[index]=differs
+   123	        fi
+   124	    done
+   125	done
+   126	for ((index = 0; index + 1 < ${#expected_args[@]}; index += 2)); do
+   127	    if [[ -z ${states[index]:-} ]]; then
+   128	        states[index]=missing
+   129	        order+=("${index}")
+   130	    fi
+   131	    [[ ${states[index]} == ok ]] || ok=false
+   132	done
+   133	for ((arg_index = 0; arg_index < ${#order[@]}; arg_index++)); do
+   134	    index=${order[arg_index]}
+   135	    found+=("${expected_args[index]}:${states[index]}")
+   136	done
+   137	if [[ ${ok} == true ]]; then
+   138	    printf '%s process=%s args=ok\n' "${label}" "${selected_pid}"
+   139	    exit 0
+   140	fi
+   141	printf '%s process=%s args=differs expected=%s found=%s\n' \
+   142	    "${label}" "${selected_pid}" "${expected_args[*]}" "${found[*]-}"
+   143	exit 2
+
+stderr:
+
+```
+
+```text
+$ argv=["nl", "-ba", "tests/unit/test_seat_args.py"]
+exit=0
+stdout:
+     1	"""Compare profile arguments through fixture ps/lsof probes, never real processes."""
+     2	
+     3	import os
+     4	import subprocess
+     5	import tempfile
+     6	import unittest
+     7	from pathlib import Path
+     8	
+     9	ROOT = Path(__file__).resolve().parents[2]
+    10	SCRIPT = ROOT / "scripts/orchestrator/seat-args.sh"
+    11	CLAUDE_ARGS = "--model claude-opus-5-5 --effort xhigh --advisor fable"
+    12	
+    13	
+    14	class SeatArgsTest(unittest.TestCase):
+    15	    def setUp(self):
+    16	        temp = tempfile.TemporaryDirectory()
+    17	        self.addCleanup(temp.cleanup)
+    18	        self.temp = Path(temp.name)
+    19	        self.home = self.temp / "home"
+    20	        self.profiles = self.home / ".agents/model-profiles.env"
+    21	        self.profiles.parent.mkdir(parents=True)
+    22	        self.ps = self.temp / "ps"
+    23	        self.ps.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$HOME/ps-calls"\ncat "$HOME/ps-lines"\n')
+    24	        self.ps.chmod(0o755)
+    25	        self.lsof = self.temp / "lsof"
+    26	        self.lsof.write_text(
+    27	            '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$HOME/lsof-calls"\n'
+    28	            "while (($#)); do\n  if [[ $1 == -p ]]; then pid=$2; shift; fi\n  shift\ndone\n"
+    29	            'cat "$HOME/cwd-$pid"\n'
+    30	        )
+    31	        self.lsof.chmod(0o755)
+    32	
+    33	    def test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one(self):
+    34	        claude = "claude-standard-dot-a001"
+    35	        codex = "codex-standard-dot-a004"
+    36	        project = str(self.temp / "project with spaces")
+    37	        match = f"claude {CLAUDE_ARGS} -n t-{claude} /agmsg actas {claude}"
+    38	        low = match.replace("--effort xhigh", "--effort high")
+    39	        profiles = (
+    40	            f'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="{CLAUDE_ARGS}"\n'
+    41	            'MODEL_PROFILE_STANDARD_CODEX_ARGS="--profile standard"\n'
+    42	        )
+    43	        cases = [
+    44	            ("claude match", claude, "claude-code", "t", f"200 {match}\n", 0, "process=200 args=ok"),
+    45	            ("second team", claude, "claude-code", "other,t", f"200 {match}\n", 0, "process=200 args=ok"),
+    46	            ("wrong team", claude, "claude-code", "other", f"200 {match}\n", 3, "process=none args=unlaunched"),
+    47	            ("resumed", claude, "claude-code", "t", "100 claude --resume abc\n", 3, "process=none args=unlaunched"),
+    48	            (
+    49	                "different effort",
+    50	                claude,
+    51	                "claude-code",
+    52	                "t",
+    53	                f"200 {low}\n",
+    54	                2,
+    55	                f"process=200 args=differs expected={CLAUDE_ARGS} found=--model:ok --effort:differs --advisor:ok",
+    56	            ),
+    57	            ("pid order", claude, "claude-code", "t", f"300 {low}\n100 {match}\n", 0, "process=100 args=ok"),
+    58	            ("absolute claude", claude, "claude-code", "t", f"200 /opt/bin/{match}\n", 0, "process=200 args=ok"),
+    59	            (
+    60	                "codex cwd",
+    61	                codex,
+    62	                "codex",
+    63	                "t",
+    64	                "10 codex --profile review\n20 codex --profile standard /agmsg\n",
+    65	                0,
+    66	                "process=20 args=ok",
+    67	            ),
+    68	            (
+    69	                "codex differs",
+    70	                codex,
+    71	                "codex",
+    72	                "t",
+    73	                "10 codex --profile standard\n20 codex --profile review\n",
+    74	                2,
+    75	                "process=20 args=differs expected=--profile standard found=--profile:differs",
+    76	            ),
+    77	            (
+    78	                "codex resume",
+    79	                codex,
+    80	                "codex",
+    81	                "t",
+    82	                "20 codex resume abc\n",
+    83	                2,
+    84	                "process=20 args=differs expected=--profile standard found=--profile:missing",
+    85	            ),
+    86	            (
+    87	                "npm wrapper",
+    88	                codex,
+    89	                "codex",
+    90	                "t",
+    91	                "20 node /opt/bin/codex --profile standard\n",
+    92	                0,
+    93	                "process=20 args=ok",
+    94	            ),
+    95	            ("absolute codex", codex, "codex", "t", "20 /opt/bin/codex --profile standard\n", 0, "process=20 args=ok"),
+    96	            (
+    97	                "managed flag order",
+    98	                claude,
+    99	                "claude-code",
+   100	                "t",
+   101	                f"200 claude --effort high --advisor fable --model claude-opus-5-5 -n t-{claude}\n",
+   102	                2,
+   103	                f"process=200 args=differs expected={CLAUDE_ARGS} found=--effort:differs --advisor:ok --model:ok",
+   104	            ),
+   105	            ("codex absent", codex, "codex", "t", "10 codex --profile standard\n", 3, "process=none args=unlaunched"),
+   106	        ]
+   107	        for label, identity, kind, teams, processes, code, tail in cases:
+   108	            with self.subTest(label=label):
+   109	                self.profiles.write_text(profiles)
+   110	                result = self.run_probe(identity, kind, teams, project, processes)
+   111	                self.assertEqual(code, result.returncode, result.stderr)
+   112	                runtime = "claude" if kind == "claude-code" else "codex"
+   113	                self.assertEqual(f"seat {identity} profile=standard kind={runtime} {tail}\n", result.stdout)
+   114	
+   115	        with self.subTest(label="underscore profile"):
+   116	            identity = "claude-my_profile-dot-a001"
+   117	            self.profiles.write_text(f'MODEL_PROFILE_MY_PROFILE_CLAUDE_ARGS="{CLAUDE_ARGS}"\n')
+   118	            result = self.run_probe(identity, "claude-code", "t", project, f"200 {match.replace(claude, identity)}\n")
+   119	            self.assertEqual(0, result.returncode, result.stderr)
+   120	            self.assertEqual(f"seat {identity} profile=my_profile kind=claude process=200 args=ok\n", result.stdout)
+   121	
+   122	        for label, identity, kind, processes, code in [
+   123	            ("conflicting model", claude, "claude-code", f"200 {match} --model wrong\n", 2),
+   124	            (
+   125	                "earlier conflicting model",
+   126	                claude,
+   127	                "claude-code",
+   128	                f"200 claude --model wrong {CLAUDE_ARGS} -n t-{claude}\n",
+   129	                2,
+   130	            ),
+   131	            ("agreeing model", claude, "claude-code", f"200 {match} --model claude-opus-5-5\n", 0),
+   132	            ("conflicting profile", codex, "codex", "20 codex --profile standard --profile review\n", 2),
+   133	        ]:
+   134	            with self.subTest(label=label):
+   135	                self.profiles.write_text(profiles)
+   136	                result = self.run_probe(identity, kind, "t", project, processes)
+   137	                self.assertEqual(code, result.returncode, result.stderr)
+   138	                self.assertIn("args=differs" if code else "args=ok", result.stdout)
+   139	                if code:
+   140	                    self.assertEqual(1, result.stdout.count("--model:" if kind == "claude-code" else "--profile:"))
+   141	
+   142	        for prompt in (
+   143	            "SYNTHETIC_PRIVATE_PROMPT_MARKER --unmanaged UNMANAGED_MARKER",
+   144	            "SYNTHETIC_PRIVATE_PROMPT_MARKER --profile MANAGED_LOOKING_PRIVATE_MARKER",
+   145	        ):
+   146	            with self.subTest(label="private positional prompt", prompt=prompt):
+   147	                self.profiles.write_text(profiles)
+   148	                result = self.run_probe(codex, "codex", "t", project, f"20 codex --profile review {prompt}\n")
+   149	                self.assertEqual(2, result.returncode, result.stderr)
+   150	                self.assertEqual(
+   151	                    f"seat {codex} profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs\n",
+   152	                    result.stdout,
+   153	                )
+   154	                for marker in ("SYNTHETIC_PRIVATE_PROMPT_MARKER", "UNMANAGED_MARKER", "MANAGED_LOOKING_PRIVATE_MARKER"):
+   155	                    self.assertNotIn(marker, result.stdout + result.stderr)
+   156	
+   157	        for label, identity, kind, profile_text, seam, expected in [
+   158	            (
+   159	                "missing key",
+   160	                claude,
+   161	                "claude-code",
+   162	                'OTHER="x"\n',
+   163	                {},
+   164	                "profile=standard kind=claude args=unknown-profile",
+   165	            ),
+   166	            (
+   167	                "literal substitution",
+   168	                claude,
+   169	                "claude-code",
+   170	                'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="$(touch pwned)"\n',
+   171	                {},
+   172	                "profile=standard kind=claude process=200 args=differs expected=$(touch pwned) found=$(touch:missing",
+   173	            ),
+   174	            ("unknown identity", "claude-a005", "claude-code", profiles, {}, "args=unknown-identity"),
+   175	            ("kind mismatch", claude, "codex", profiles, {}, "args=unknown-identity"),
+   176	            (
+   177	                "missing ps",
+   178	                claude,
+   179	                "claude-code",
+   180	                profiles,
+   181	                {"SEAT_ARGS_PS": str(self.temp / "absent")},
+   182	                "profile=standard kind=claude args=unknown-probe",
+   183	            ),
+   184	            (
+   185	                "missing lsof",
+   186	                codex,
+   187	                "codex",
+   188	                profiles,
+   189	                {"SEAT_ARGS_LSOF": str(self.temp / "absent")},
+   190	                "profile=standard kind=codex args=unknown-probe",
+   191	            ),
+   192	        ]:
+   193	            with self.subTest(label=label):
+   194	                self.profiles.write_text(profile_text)
+   195	                result = self.run_probe(identity, kind, "t", project, f"200 {match}\n", **seam)
+   196	                self.assertEqual(4 if seam else 2, result.returncode, result.stderr)
+   197	                self.assertEqual(f"seat {identity} {expected}\n", result.stdout)
+   198	                self.assertFalse((self.temp / "pwned").exists())
+   199	        calls = (self.home / "lsof-calls").read_text().splitlines()
+   200	        self.assertIn("-a -p 10 -d cwd -Fn", calls)
+   201	        self.assertIn("-a -p 20 -d cwd -Fn", calls)
+   202	        self.assertEqual({"-axo pid=,command="}, set((self.home / "ps-calls").read_text().splitlines()))
+   203	
+   204	        original_ps, original_lsof = self.ps.read_text(), self.lsof.read_text()
+   205	        for profile, all_unavailable, code, tail in [
+   206	            ("standard", False, 0, "process=20 args=ok"),
+   207	            ("review", False, 2, "process=20 args=differs expected=--profile standard found=--profile:differs"),
+   208	            ("standard", True, 4, "args=unknown-probe"),
+   209	        ]:
+   210	            with self.subTest(decoy_cwd_unavailable=True, profile=profile, all_unavailable=all_unavailable):
+   211	                lookup = "exit 1" if all_unavailable else '[[ $pid != 10 ]] || exit 1\ncat "$HOME/cwd-$pid"'
+   212	                self.lsof.write_text(original_lsof.replace('cat "$HOME/cwd-$pid"', lookup))
+   213	                (self.home / "lsof-calls").unlink()
+   214	                self.profiles.write_text(profiles)
+   215	                result = self.run_probe(
+   216	                    codex, "codex", "t", project, f"10 codex --profile standard\n20 codex --profile {profile}\n"
+   217	                )
+   218	                self.assertEqual(code, result.returncode)
+   219	                self.assertEqual(f"seat {codex} profile=standard kind=codex {tail}\n", result.stdout)
+   220	                self.assertEqual("seat-args: lsof failed (exit 1)\n" if all_unavailable else "", result.stderr)
+   221	                self.assertEqual(
+   222	                    ["-a -p 10 -d cwd -Fn", "-a -p 20 -d cwd -Fn"],
+   223	                    (self.home / "lsof-calls").read_text().splitlines(),
+   224	                )
+   225	
+   226	        for probe, code, kind, diagnostic in [
+   227	            (self.ps, 1, "claude-code", "ps failed (exit 1)"),
+   228	            (self.ps, 0, "claude-code", "ps listed no process"),
+   229	            (self.lsof, 1, "codex", "lsof failed (exit 1)"),
+   230	            (self.lsof, 0, "codex", "lsof failed (exit 0)"),
+   231	        ]:
+   232	            with self.subTest(probe=probe.name, exit=code):
+   233	                self.ps.write_text(original_ps)
+   234	                self.lsof.write_text(original_lsof)
+   235	                probe.write_text(f"#!/bin/bash\nexit {code}\n")
+   236	                self.profiles.write_text(profiles)
+   237	                identity = claude if kind == "claude-code" else codex
+   238	                result = self.run_probe(identity, kind, "t", project, f"200 {match}\n20 codex --profile standard\n")
+   239	                runtime = "claude" if kind == "claude-code" else "codex"
+   240	                self.assertEqual(4, result.returncode)
+   241	                self.assertEqual(f"seat {identity} profile=standard kind={runtime} args=unknown-probe\n", result.stdout)
+   242	                self.assertEqual(f"seat-args: {diagnostic}\n", result.stderr)
+   243	
+   244	    def run_probe(self, identity, kind, teams, project, processes, **seams):
+   245	        (self.home / "ps-lines").write_text(processes)
+   246	        (self.home / "cwd-10").write_text("p10\nn/another/repository\n")
+   247	        (self.home / "cwd-20").write_text(f"p20\nn{project}\n")
+   248	        return subprocess.run(
+   249	            ["bash", str(SCRIPT), teams, identity, kind, project],
+   250	            cwd=self.temp,
+   251	            env={
+   252	                **os.environ,
+   253	                "HOME": str(self.home),
+   254	                "SEAT_ARGS_PS": str(self.ps),
+   255	                "SEAT_ARGS_LSOF": str(self.lsof),
+   256	                **seams,
+   257	            },
+   258	            capture_output=True,
+   259	            text=True,
+   260	            timeout=10,
+   261	            check=False,
+   262	        )
+   263	
+   264	
+   265	if __name__ == "__main__":
+   266	    unittest.main()
+
+stderr:
+
+```
+
+```text
+$ argv=["python3", "-B", "-m", "unittest", "tests/unit/test_seat_args.py", "-v"]
+exit=0
+stdout:
+
+stderr:
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.976s
+
+OK
+
+```
+
+```text
+$ argv=["python3", "-B", "-c", "import runpy\nfrom pathlib import Path\nm = runpy.run_path('tests/unit/test_seat_args.py')\nT = m['SeatArgsTest']\nclaude_args = m['CLAUDE_ARGS']\nt = T()\nt.setUp()\ntry:\n    profiles = f'MODEL_PROFILE_STANDARD_CLAUDE_ARGS=\"{claude_args}\"\\nMODEL_PROFILE_STANDARD_CODEX_ARGS=\"--profile standard\"\\n'\n    t.profiles.write_text(profiles)\n    project = str(t.temp / 'synthetic project')\n    claude = 'claude-standard-dot-a001'\n    codex = 'codex-standard-dot-a004'\n    cases = [\n        ('codex bad-last', codex, 'codex', '20 codex --profile standard --profile SYNTHETIC_PRIVATE_MARKER', 2, '--profile:differs'),\n        ('codex bad-first', codex, 'codex', '20 codex --profile SYNTHETIC_PRIVATE_MARKER --profile standard', 2, '--profile:differs'),\n        ('codex agreeing', codex, 'codex', '20 codex --profile standard --profile standard', 0, None),\n        ('codex trailing', codex, 'codex', '20 codex --profile standard SYNTHETIC_PRIVATE_MARKER --profile', 2, '--profile:differs'),\n        ('codex missing', codex, 'codex', '20 codex resume SYNTHETIC_PRIVATE_MARKER --unmanaged SYNTHETIC_PRIVATE_MARKER', 2, '--profile:missing'),\n        ('codex missing value', codex, 'codex', '20 codex SYNTHETIC_PRIVATE_MARKER --profile', 2, '--profile:differs'),\n        ('codex unmanaged flag-looking value', codex, 'codex', '20 codex --profile review --unmanaged --profile SYNTHETIC_PRIVATE_MARKER', 2, '--profile:differs'),\n        ('codex npm wrapper', codex, 'codex', '20 node /opt/bin/codex --profile SYNTHETIC_PRIVATE_MARKER', 2, '--profile:differs'),\n        ('claude bad-last', claude, 'claude-code', f'200 claude {claude_args} -n t-{claude} --effort SYNTHETIC_PRIVATE_MARKER', 2, '--model:ok --effort:differs --advisor:ok'),\n        ('claude bad-first', claude, 'claude-code', f'200 claude --effort SYNTHETIC_PRIVATE_MARKER {claude_args} -n t-{claude}', 2, '--effort:differs --model:ok --advisor:ok'),\n        ('claude agreeing', claude, 'claude-code', f'200 claude {claude_args} -n t-{claude} --effort xhigh', 0, None),\n        ('claude trailing', claude, 'claude-code', f'200 claude {claude_args} -n t-{claude} SYNTHETIC_PRIVATE_MARKER --effort', 2, '--model:ok --effort:differs --advisor:ok'),\n        ('claude missing order', claude, 'claude-code', f'200 claude --advisor fable -n t-{claude} SYNTHETIC_PRIVATE_MARKER', 2, '--advisor:ok --model:missing --effort:missing'),\n        ('claude prompt-like', claude, 'claude-code', f'200 claude {claude_args} -n t-{claude} Please compare --model SYNTHETIC_PRIVATE_MARKER', 2, '--model:differs --effort:ok --advisor:ok'),\n    ]\n    for label, identity, kind, line, code, found in cases:\n        r = t.run_probe(identity, kind, 't', project, line + '\\n')\n        assert r.returncode == code, (label, r.returncode, r.stdout, r.stderr)\n        assert 'SYNTHETIC_PRIVATE_MARKER' not in r.stdout + r.stderr, (label, r.stdout, r.stderr)\n        assert r.stderr == '', (label, r.stderr)\n        runtime = 'claude' if kind == 'claude-code' else 'codex'\n        pid = '200' if runtime == 'claude' else '20'\n        expected = claude_args if runtime == 'claude' else '--profile standard'\n        tail = 'args=ok' if code == 0 else f'args=differs expected={expected} found={found}'\n        assert r.stdout == f'seat {identity} profile=standard kind={runtime} process={pid} {tail}\\n', (label, r.stdout)\n        print(f'{label}: exit={r.returncode} marker_absent=yes stderr_empty=yes stdout={r.stdout.rstrip()}')\n    print(f'extra_cases={len(cases)} passed')\nfinally:\n    t.doCleanups()\n"]
+exit=0
+stdout:
+codex bad-last: exit=2 marker_absent=yes stderr_empty=yes stdout=seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs
+codex bad-first: exit=2 marker_absent=yes stderr_empty=yes stdout=seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs
+codex agreeing: exit=0 marker_absent=yes stderr_empty=yes stdout=seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=ok
+codex trailing: exit=2 marker_absent=yes stderr_empty=yes stdout=seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs
+codex missing: exit=2 marker_absent=yes stderr_empty=yes stdout=seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:missing
+codex missing value: exit=2 marker_absent=yes stderr_empty=yes stdout=seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs
+codex unmanaged flag-looking value: exit=2 marker_absent=yes stderr_empty=yes stdout=seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs
+codex npm wrapper: exit=2 marker_absent=yes stderr_empty=yes stdout=seat codex-standard-dot-a004 profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs
+claude bad-last: exit=2 marker_absent=yes stderr_empty=yes stdout=seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=differs expected=--model claude-opus-5-5 --effort xhigh --advisor fable found=--model:ok --effort:differs --advisor:ok
+claude bad-first: exit=2 marker_absent=yes stderr_empty=yes stdout=seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=differs expected=--model claude-opus-5-5 --effort xhigh --advisor fable found=--effort:differs --model:ok --advisor:ok
+claude agreeing: exit=0 marker_absent=yes stderr_empty=yes stdout=seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=ok
+claude trailing: exit=2 marker_absent=yes stderr_empty=yes stdout=seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=differs expected=--model claude-opus-5-5 --effort xhigh --advisor fable found=--model:ok --effort:differs --advisor:ok
+claude missing order: exit=2 marker_absent=yes stderr_empty=yes stdout=seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=differs expected=--model claude-opus-5-5 --effort xhigh --advisor fable found=--advisor:ok --model:missing --effort:missing
+claude prompt-like: exit=2 marker_absent=yes stderr_empty=yes stdout=seat claude-standard-dot-a001 profile=standard kind=claude process=200 args=differs expected=--model claude-opus-5-5 --effort xhigh --advisor fable found=--model:differs --effort:ok --advisor:ok
+extra_cases=14 passed
+
+stderr:
+
+```
+
+```text
+$ argv=["shasum", "-a", "256", "scripts/orchestrator/seat-args.sh", "tests/unit/test_seat_args.py"]
+exit=0
+stdout:
+b5e9a56bbbe3a81c394402666635baf6a124e694404164fb6b05989356089ad4  scripts/orchestrator/seat-args.sh
+9dc5a8f8ee25cd5a9e01577e12f132f7c537c0501e680ca77267d73f9e4277af  tests/unit/test_seat_args.py
+
+stderr:
+
+```
+
+Skipped: whole-repository review, boundary suite, CI, gate, and host process probes. Risk: pre-existing flattened-argv ambiguity and partial PID visibility remain.
+
+Verdict: correct
+
+Intermediate checks before the observed-order change, preserved as historical outputs:
+```text
+$ UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project ruff format tests/unit/test_seat_args.py
+1 file reformatted
+exit=0
+$ shellcheck scripts/orchestrator/seat-args.sh scripts/check-regime-boundary.sh
+stdout/stderr empty; exit=0
+$ shfmt --indent 4 --space-redirects --diff scripts/orchestrator/seat-args.sh scripts/check-regime-boundary.sh
+stdout/stderr empty; exit=0
+$ UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project ruff format --check tests/unit/test_seat_args.py tests/unit/test_check_regime_boundary.py
+2 files already formatted
+exit=0
+$ git diff --numstat b167fe0a76a2e77d262f9f556c69ba6b9f118bbe -- scripts tests
+17	1	scripts/check-regime-boundary.sh
+132	0	scripts/orchestrator/seat-args.sh
+56	0	tests/unit/test_check_regime_boundary.py
+257	0	tests/unit/test_seat_args.py
+exit=0; historical source150/test313, superseded by final161/322
+```
+
+## Final C50 worker gate and artifact masking
+
+```text
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+exit=0
+$ UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <six changed canonical artifacts>
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/revise.yaml
+exit=0
+```

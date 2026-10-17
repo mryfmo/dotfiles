@@ -108,16 +108,36 @@ if [[ -z ${selected_pid} ]]; then
 fi
 words=("${selected[@]}")
 ok=true
+states=()
+order=()
+found=()
 ((${#expected_args[@]} % 2 == 0)) || ok=false
+for ((arg_index = 1; arg_index < ${#words[@]}; arg_index++)); do
+    for ((index = 0; index + 1 < ${#expected_args[@]}; index += 2)); do
+        [[ ${words[arg_index]} == "${expected_args[index]}" ]] || continue
+        [[ -n ${states[index]:-} ]] || order+=("${index}")
+        if [[ ${states[index]:-} != differs && ${words[arg_index + 1]:-} == "${expected_args[index + 1]}" ]]; then
+            states[index]=ok
+        else
+            states[index]=differs
+        fi
+    done
+done
 for ((index = 0; index + 1 < ${#expected_args[@]}; index += 2)); do
-    has_pair "${expected_args[index]}" "${expected_args[index + 1]}" || ok=false
+    if [[ -z ${states[index]:-} ]]; then
+        states[index]=missing
+        order+=("${index}")
+    fi
+    [[ ${states[index]} == ok ]] || ok=false
+done
+for ((arg_index = 0; arg_index < ${#order[@]}; arg_index++)); do
+    index=${order[arg_index]}
+    found+=("${expected_args[index]}:${states[index]}")
 done
 if [[ ${ok} == true ]]; then
     printf '%s process=%s args=ok\n' "${label}" "${selected_pid}"
     exit 0
 fi
-offset=1
-[[ ${words[0]##*/} != node ]] || offset=2
 printf '%s process=%s args=differs expected=%s found=%s\n' \
-    "${label}" "${selected_pid}" "${expected_args[*]}" "${words[*]:offset}"
+    "${label}" "${selected_pid}" "${expected_args[*]}" "${found[*]-}"
 exit 2

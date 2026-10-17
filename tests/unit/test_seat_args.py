@@ -52,7 +52,7 @@ class SeatArgsTest(unittest.TestCase):
                 "t",
                 f"200 {low}\n",
                 2,
-                f"process=200 args=differs expected={CLAUDE_ARGS} found={low.removeprefix('claude ')}",
+                f"process=200 args=differs expected={CLAUDE_ARGS} found=--model:ok --effort:differs --advisor:ok",
             ),
             ("pid order", claude, "claude-code", "t", f"300 {low}\n100 {match}\n", 0, "process=100 args=ok"),
             ("absolute claude", claude, "claude-code", "t", f"200 /opt/bin/{match}\n", 0, "process=200 args=ok"),
@@ -72,7 +72,7 @@ class SeatArgsTest(unittest.TestCase):
                 "t",
                 "10 codex --profile standard\n20 codex --profile review\n",
                 2,
-                "process=20 args=differs expected=--profile standard found=--profile review",
+                "process=20 args=differs expected=--profile standard found=--profile:differs",
             ),
             (
                 "codex resume",
@@ -81,7 +81,7 @@ class SeatArgsTest(unittest.TestCase):
                 "t",
                 "20 codex resume abc\n",
                 2,
-                "process=20 args=differs expected=--profile standard found=resume abc",
+                "process=20 args=differs expected=--profile standard found=--profile:missing",
             ),
             (
                 "npm wrapper",
@@ -93,6 +93,15 @@ class SeatArgsTest(unittest.TestCase):
                 "process=20 args=ok",
             ),
             ("absolute codex", codex, "codex", "t", "20 /opt/bin/codex --profile standard\n", 0, "process=20 args=ok"),
+            (
+                "managed flag order",
+                claude,
+                "claude-code",
+                "t",
+                f"200 claude --effort high --advisor fable --model claude-opus-5-5 -n t-{claude}\n",
+                2,
+                f"process=200 args=differs expected={CLAUDE_ARGS} found=--effort:differs --advisor:ok --model:ok",
+            ),
             ("codex absent", codex, "codex", "t", "10 codex --profile standard\n", 3, "process=none args=unlaunched"),
         ]
         for label, identity, kind, teams, processes, code, tail in cases:
@@ -110,6 +119,41 @@ class SeatArgsTest(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(f"seat {identity} profile=my_profile kind=claude process=200 args=ok\n", result.stdout)
 
+        for label, identity, kind, processes, code in [
+            ("conflicting model", claude, "claude-code", f"200 {match} --model wrong\n", 2),
+            (
+                "earlier conflicting model",
+                claude,
+                "claude-code",
+                f"200 claude --model wrong {CLAUDE_ARGS} -n t-{claude}\n",
+                2,
+            ),
+            ("agreeing model", claude, "claude-code", f"200 {match} --model claude-opus-5-5\n", 0),
+            ("conflicting profile", codex, "codex", "20 codex --profile standard --profile review\n", 2),
+        ]:
+            with self.subTest(label=label):
+                self.profiles.write_text(profiles)
+                result = self.run_probe(identity, kind, "t", project, processes)
+                self.assertEqual(code, result.returncode, result.stderr)
+                self.assertIn("args=differs" if code else "args=ok", result.stdout)
+                if code:
+                    self.assertEqual(1, result.stdout.count("--model:" if kind == "claude-code" else "--profile:"))
+
+        for prompt in (
+            "SYNTHETIC_PRIVATE_PROMPT_MARKER --unmanaged UNMANAGED_MARKER",
+            "SYNTHETIC_PRIVATE_PROMPT_MARKER --profile MANAGED_LOOKING_PRIVATE_MARKER",
+        ):
+            with self.subTest(label="private positional prompt", prompt=prompt):
+                self.profiles.write_text(profiles)
+                result = self.run_probe(codex, "codex", "t", project, f"20 codex --profile review {prompt}\n")
+                self.assertEqual(2, result.returncode, result.stderr)
+                self.assertEqual(
+                    f"seat {codex} profile=standard kind=codex process=20 args=differs expected=--profile standard found=--profile:differs\n",
+                    result.stdout,
+                )
+                for marker in ("SYNTHETIC_PRIVATE_PROMPT_MARKER", "UNMANAGED_MARKER", "MANAGED_LOOKING_PRIVATE_MARKER"):
+                    self.assertNotIn(marker, result.stdout + result.stderr)
+
         for label, identity, kind, profile_text, seam, expected in [
             (
                 "missing key",
@@ -125,7 +169,7 @@ class SeatArgsTest(unittest.TestCase):
                 "claude-code",
                 'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="$(touch pwned)"\n',
                 {},
-                f"profile=standard kind=claude process=200 args=differs expected=$(touch pwned) found={match.removeprefix('claude ')}",
+                "profile=standard kind=claude process=200 args=differs expected=$(touch pwned) found=$(touch:missing",
             ),
             ("unknown identity", "claude-a005", "claude-code", profiles, {}, "args=unknown-identity"),
             ("kind mismatch", claude, "codex", profiles, {}, "args=unknown-identity"),
@@ -160,7 +204,7 @@ class SeatArgsTest(unittest.TestCase):
         original_ps, original_lsof = self.ps.read_text(), self.lsof.read_text()
         for profile, all_unavailable, code, tail in [
             ("standard", False, 0, "process=20 args=ok"),
-            ("review", False, 2, "process=20 args=differs expected=--profile standard found=--profile review"),
+            ("review", False, 2, "process=20 args=differs expected=--profile standard found=--profile:differs"),
             ("standard", True, 4, "args=unknown-probe"),
         ]:
             with self.subTest(decoy_cwd_unavailable=True, profile=profile, all_unavailable=all_unavailable):

@@ -43,5 +43,25 @@
     "scope": "review",
     "body": "Independent read-only Codex third C50 review againsta428eb5ff31dc8452e22fbea332efa2a5ee9a5e8 approved the amended cwd scan semantics, high confidence, no additional finding. First diagnostic retention, visible matching/differing worker precedence, inspected absence, and minimum visible matching PID all verified. Transcript SHA256621973453945c203a4c3d4c44d37eb87844cac94d8f637104d7e3c7510241035 pasted in validation.md. Nonempty hidden namespace limitation remains. Verdict: correct.",
     "resolved": true
+  },
+  {
+    "id": "bot-4301378546",
+    "scope": "file",
+    "path": "scripts/orchestrator/seat-args.sh",
+    "body": "P2 duplicate-managed-flags occurrence1: the probe accepted an expected pair plus a conflicting occurrence. Addressed by aggregating every occurrence and locking any conflict to differs. Identical duplicates remain accepted; each managed name is rendered once. Both conflicting orders and both runtimes verified by the security reviewer; parent full12 tests passes15.667s,34 seat subcases.",
+    "resolved": true
+  },
+  {
+    "id": "bot-4301378550",
+    "scope": "file",
+    "path": "scripts/orchestrator/seat-args.sh",
+    "body": "P2 argv-diagnostic-disclosure occurrence1: mismatch output copied positional/private process text. Under explicit04:35:12Z refinement, found now projects only expected managed flag names and fixed ok/differs/missing markers, never observed values. Probe stderr uses fixed descriptions/status only. Synthetic positional, unmanaged and managed-looking private markers are absent from stdout+stderr. Flattened matching ambiguity remains separate and explicitly reported.",
+    "resolved": true
+  },
+  {
+    "id": "seat-args-final-security-approval",
+    "scope": "review",
+    "body": "Independent fresh-context Codex security-tier review (manifest gpt-6-astra/high) approved the final delta against1086570f8a8b20271ba7d7417701e1dff922e149, no new finding. Existing seat module and14 extra synthetic fixture cases passed, covering both runtimes, duplicate orders, identical duplicates, missing/trailing values, marker absence and observed name ordering. Source SHA256b5e9a56bbbe3a81c394402666635baf6a124e694404164fb6b05989356089ad4 and test SHA2569dc5a8f8ee25cd5a9e01577e12f132f7c537c0501e680ca77267d73f9e4277af match parent-tested bytes. Full transcripts are pasted in validation.md; implementation transcript SHA25675ba8059b931cf0c26777285ca57410013e70bd6d8331f56c06560b14384a799, corrected plan SHA256db06d992caaeb34c19181815069b4f5fbad42bf093ad9819cffe76b6aaacf19a. Parent read the complete records. No host visibility/exact argv recovery claim. Verdict: correct.",
+    "resolved": true
   }
 ]

@@ -22,3 +22,14 @@ cwd_scan_revision:
   class_count: 2
   check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
   scope: Save the first failed cwd diagnostic and continue; a visible cwd match decides, otherwise failures skip4 and only fully inspected absence is unlaunched3.
+
+final_diagnostic_revision:
+  round: 4
+  previous_head: 1086570f8a8b20271ba7d7417701e1dff922e149
+  findings: [4301378546, 4301378550]
+  finding_classes: [duplicate-managed-flags, argv-diagnostic-disclosure]
+  check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+  diagnostic_refinement: 2026-10-17T04:35:12Z
+  scope: All managed occurrences must agree; found contains only expected flag names and fixed ok/differs/missing markers, once per managed flag in observed order, never observed argv values.
+  last_pre_result_c50: true
+  further_p2: Proposed advisory for the orchestrator audit to judge, under ACCEPTANCE2026-10-17T04:34:17Z.

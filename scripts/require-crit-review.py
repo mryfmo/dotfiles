@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Require native agent review for meaningful repository changes."""
+# S1 words are exact ASCII letter runs; the twin tokenizer is scripts/regime-counters.sh.
 
 from __future__ import annotations
 
@@ -935,7 +936,7 @@ def acceptance_errors(
         if cls != "advisory-p2":
             prefix = f"re-plan: {cls} -> "
             if not any(
-                line.startswith(prefix) and required_words.issubset(re.findall(r"\w+", line[len(prefix) :]))
+                line.startswith(prefix) and required_words.issubset(re.findall(r"[A-Za-z]+", line[len(prefix) :]))
                 for line in body
             ):
                 errors.append(f"S1: {cls} at {count} rows without a re-plan line (C-59)")

@@ -1365,6 +1365,25 @@ class ReviewGuardTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn("S1: class-count-scope at 3 rows without a re-plan line (C-59)", result.stdout)
 
+    def test_s1_replan_words_are_ascii_letter_runs(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-s6-present.md")
+        path = self.temp_dir / record
+        block = path.read_text().partition("\n---\n")[0] + "\n---\n"
+        for words, expected in (
+            ("specification design\u1c89 implementation verification", 0),
+            ("specification design\u1c89 implementation", 1),
+        ):
+            with self.subTest(words=words):
+                path.write_text(block + f"re-plan: class-count-scope -> {words}\n")
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+                self.assertEqual(result.returncode, expected, result.stdout)
+                if expected:
+                    self.assertIn("S1: class-count-scope at 3 rows without a re-plan line (C-59)", result.stdout)
+                else:
+                    self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
+
     def test_s6_class_at_three_without_a_searches_entry_is_refused(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])

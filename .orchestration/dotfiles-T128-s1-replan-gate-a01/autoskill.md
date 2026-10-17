@@ -1,6 +1,6 @@
 ---
 task_id: dotfiles-T128-s1-replan-gate-a01
-status: pre_push_checkpoint
+status: final
 ---
 
-AutoSkill not used. This bounded task reuses the existing parser, S6 class counts and unit fixtures. No skill, rule, plugin, model or hook configuration is created or promoted.
+AutoSkill not used. This is an explicitly scoped C-59 re-plan using existing tokenizers and fixtures. No skill, rule, model, plugin, hook or runtime configuration is created or promoted.

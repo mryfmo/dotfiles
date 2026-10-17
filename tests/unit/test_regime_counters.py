@@ -512,6 +512,17 @@ class RegimeCountersTest(unittest.TestCase):
     def test_s1_excludes_advisory_p2_at_three_rows(self):
         self.assertEqual(self.s1_record_lines("advisory-p2", ""), [])
 
+    def test_s1_replan_words_are_ascii_letter_runs(self):
+        for words, expected in (
+            ("specification design\u1c89 implementation verification", "present"),
+            ("specification design\u1c89 implementation", "missing"),
+        ):
+            with self.subTest(words=words):
+                self.assertEqual(
+                    self.s1_record_lines("bookkeeping", f"re-plan: bookkeeping -> {words}\n"),
+                    [f"S1: class=bookkeeping count=3 re-plan={expected} source=record"],
+                )
+
     def test_s1_reads_the_ledger_classes_of_the_acceptance_record(self):
         repo = self.temp / "repo"
         (repo / "scripts").mkdir(parents=True)

@@ -23,7 +23,7 @@
 #   every non-advisory-p2 class with three or more rows prints `S1: class=<slug>
 #   count=<n> re-plan=present|missing source=record`. A matching body line starts
 #   `re-plan: <slug> -> ` and contains specification, design, implementation and
-#   verification as Unicode letter/number/underscore tokens, matching Python.
+#   verification as exact ASCII letter runs; its twin is scripts/require-crit-review.py.
 #   Without such a record (none, or a prose one), Codex Bot
 #   thread titles grouped by their first three words (badge stripped,
 #   lower-cased) seen three or more times on the PR print `S1: candidate
@@ -174,7 +174,7 @@ jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" -
       elif $rec.rec != null then [$rec.rec.ledger[].class | select(. != "advisory-p2")] | group_by(.)[] | select(length >= 3)
         | .[0] as $class | any($rec.body | split("\n")[];
             startswith("re-plan: \($class) -> ") and (ltrimstr("re-plan: \($class) -> ")
-              | (["specification", "design", "implementation", "verification"] - [scan("[\\p{L}\\p{N}_]+")])
+              | (["specification", "design", "implementation", "verification"] - [scan("[A-Za-z]+")])
               | length == 0)) as $replan
         | "S1: class=\($class) count=\(length) re-plan=\(if $replan then "present" else "missing" end) source=record"
       elif $state == "ok" then [$gh.comments[] | select(codex and .in_reply_to_id == null) | title

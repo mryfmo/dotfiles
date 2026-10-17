@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T129-integration-seat-result-gate-cap-a01
 seat: claude-standard-dot-a006
-code_commit: cb09181f
+code_commit: 03ec08c6
 ---
 
 # Validation: dotfiles-T129-integration-seat-result-gate-cap-a01
@@ -909,4 +909,111 @@ The receipt, `precheck-2d61e22.md` (sha256 `57900e173ef5e9112bfe61d37f7cf4678c75
 $ scripts/orchestrator/result-precheck.sh verify dotfiles-T129-integration-seat-result-gate-cap-a01 "AGMSG-RESULT v1 task_id=dotfiles-T129-integration-seat-result-gate-cap-a01 head=2cd30323 precheck=57900e173ef5e9112bfe61d37f7cf4678c75636448f9bd76c720ac97c3282b8e"
 AGMSG-ACCEPTANCE v1 task_id=dotfiles-T129-integration-seat-result-gate-cap-a01 status=revise reason=precheck:a next_action=run-result-precheck-and-resend
 [exit 1]
+```
+
+## 13. Fix round 3 (ACCEPTANCE revise, D-F4-round3), captured at 03ec08c6
+
+`03ec08c6` fixes the three defects of §12, each with the test the ACCEPTANCE names, and restores `integrate-seat.sh`'s missing-RESULT refusal, which a trailing comment had disabled since `cb09181f` (the `|| die` sat after the `#`). Below: the task copy; the branch; the three tests against `30514d54`'s scripts (red), restored; the module; the linters; the mutants, mutant 14 updated to the new comparison and four added; the caps. The environment is §1's.
+
+```console
+$ shasum -a 256 "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md"; cmp "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md" && echo byte-identical
+626823fbf25a2a48bad0ae1e05792e6ea5f25ea4d1e4c710e973da64b62d1864  $MAIN/.orchestration/tasks/dotfiles-T129-integration-seat-result-gate-cap-a01.md
+626823fbf25a2a48bad0ae1e05792e6ea5f25ea4d1e4c710e973da64b62d1864  .orchestration/dotfiles-T129-integration-seat-result-gate-cap-a01/task.md
+byte-identical
+[exit 0]
+```
+```console
+$ git log --oneline -3; git merge-base origin/main HEAD
+03ec08c6 fix(orchestrator): the precheck reads an amended TASK line, every agmsg read is bounded with stdin closed, and (i) keeps codex's whole message (T129 F4 fix round 3, D-F4-round3)
+30514d54 docs(orchestration): T129 integration-seat result-gate cap a01: the dry run's verdict is informational
+446aec6f docs(orchestration): T129 integration-seat result-gate cap a01: verify on the receipt head 2cd30323
+59db77bbab7fe19377bc2b94adc6ec5c576f3ebb
+[exit 0]
+```
+```console
+$ for f in scripts/orchestrator/integrate-seat.sh scripts/orchestrator/result-precheck.sh; do git show 30514d54:$f > $f; done && git diff --stat
+ scripts/orchestrator/integrate-seat.sh  | 13 +++++++------
+ scripts/orchestrator/result-precheck.sh | 17 ++++++++---------
+ 2 files changed, 15 insertions(+), 15 deletions(-)
+[exit 0]
+```
+```console
+$ set -o pipefail; uv run python -m unittest tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_reads_the_task_sha_of_an_amended_task_line tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_and_integrate_seat_read_the_bus_bounded_with_stdin_closed tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_keeps_the_whole_audit_dry_run_message 2>&1 | /usr/bin/grep -E '^(FAIL|ERROR):|^Ran|^FAILED|^OK'
+FAIL: test_result_precheck_reads_the_task_sha_of_an_amended_task_line (tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_reads_the_task_sha_of_an_amended_task_line)
+FAIL: test_result_precheck_and_integrate_seat_read_the_bus_bounded_with_stdin_closed (tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_and_integrate_seat_read_the_bus_bounded_with_stdin_closed)
+FAIL: test_result_precheck_keeps_the_whole_audit_dry_run_message (tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_keeps_the_whole_audit_dry_run_message)
+Ran 3 tests in 5.614s
+FAILED (failures=3)
+[exit 1]
+```
+```console
+$ git checkout -- scripts && git diff --quiet && echo restored to $(git rev-parse --short HEAD)
+restored to 03ec08c6
+[exit 0]
+```
+```console
+$ uv run python -m unittest tests/unit/test_integration_seat.py -v
+test_integrate_seat_reads_plain_gh_output_under_clicolor_force (tests.unit.test_integration_seat.IntegrationSeatTest.test_integrate_seat_reads_plain_gh_output_under_clicolor_force) ... ok
+test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges (tests.unit.test_integration_seat.IntegrationSeatTest.test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges) ... ok
+test_result_precheck_and_integrate_seat_read_the_bus_bounded_with_stdin_closed (tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_and_integrate_seat_read_the_bus_bounded_with_stdin_closed) ... ok
+test_result_precheck_keeps_the_whole_audit_dry_run_message (tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_keeps_the_whole_audit_dry_run_message) ... ok
+test_result_precheck_reads_the_task_sha_of_an_amended_task_line (tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_reads_the_task_sha_of_an_amended_task_line) ... ok
+test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt (tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 23.706s
+
+OK
+[exit 0]
+```
+```console
+$ shellcheck scripts/orchestrator/integrate-seat.sh scripts/orchestrator/result-precheck.sh home/dot_local/bin/common/executable_herdr-agents && shfmt -d -i 4 -sr scripts/orchestrator/integrate-seat.sh scripts/orchestrator/result-precheck.sh && echo clean
+clean
+[exit 0]
+```
+```console
+$ ruff format --config ruff.toml --check tests/unit/test_integration_seat.py
+1 file already formatted
+[exit 0]
+```
+```console
+$ uv run python "$S/mutate-f4.py"
+mutant 1 rc=1 home/dot_local/bin/common/executable_herdr-agents: the cap check dropped (test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap)
+mutant 2 rc=1 home/dot_local/bin/common/executable_herdr-agents: the cap off by one (test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap)
+mutant 3 rc=1 home/dot_agents/skills/agmsg-orchestration/SKILL.md: a seat count out of step (test_the_skill_and_the_rule_name_the_manifest_worker_cap_and_the_integration_seat)
+mutant 4 rc=1 home/dot_config/claude/rules/agmsg-orchestration.md: the Delegation bullet without the integration seat (test_the_skill_and_the_rule_name_the_manifest_worker_cap_and_the_integration_seat)
+mutant 5 rc=1 scripts/orchestrator/integrate-seat.sh: CLICOLOR_FORCE inherited (test_integrate_seat_reads_plain_gh_output_under_clicolor_force)
+mutant 6 rc=1 scripts/orchestrator/integrate-seat.sh: a failing step does not block (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 7 rc=1 scripts/orchestrator/integrate-seat.sh: an unfixed P0/P1 made advisory (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 8 rc=1 scripts/orchestrator/result-precheck.sh: (b) takes any file (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 9 rc=1 scripts/orchestrator/result-precheck.sh: (c) ignores the caps (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 10 rc=1 scripts/orchestrator/result-precheck.sh: (d) ignores the validation file (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 11 rc=1 scripts/orchestrator/result-precheck.sh: (e) not bound to the head (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 12 rc=1 scripts/orchestrator/result-precheck.sh: (g) takes any mention of the id (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 13 rc=1 scripts/orchestrator/result-precheck.sh: verify takes code after the receipt (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 14 rc=1 scripts/orchestrator/result-precheck.sh: (a) takes any task copy (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 15 rc=1 scripts/orchestrator/result-precheck.sh: verify takes a receipt without its status lines (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 16 rc=1 scripts/orchestrator/integrate-seat.sh: a review-body finding keyed by its bare id (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 17 rc=1 scripts/orchestrator/integrate-seat.sh: the record copied in after local-advisory.sh (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 18 rc=1 scripts/orchestrator/integrate-seat.sh: a retry reads the kind=integration RESULT (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 19 rc=1 scripts/orchestrator/result-precheck.sh: (a) matches inside previous_task_sha256= (test_result_precheck_reads_the_task_sha_of_an_amended_task_line)
+mutant 20 rc=1 scripts/orchestrator/result-precheck.sh: the precheck's bus read keeps stdin open (test_result_precheck_and_integrate_seat_read_the_bus_bounded_with_stdin_closed)
+mutant 21 rc=1 scripts/orchestrator/integrate-seat.sh: the seat's bus read unbounded with stdin open (test_result_precheck_and_integrate_seat_read_the_bus_bounded_with_stdin_closed)
+mutant 22 rc=1 scripts/orchestrator/result-precheck.sh: (i) keeps the last lines only (test_result_precheck_keeps_the_whole_audit_dry_run_message)
+baseline rc=0: the 8 tests on the unmutated tree
+[exit 0]
+```
+```console
+$ git status --porcelain -- scripts tests home; git diff --numstat origin/main...HEAD -- home scripts tests
+3	0	home/dot_agents/agent-config.yaml
+6	6	home/dot_agents/skills/agmsg-orchestration/SKILL.md
+2	2	home/dot_config/claude/rules/agmsg-orchestration.md
+18	0	home/dot_local/bin/common/executable_herdr-agents
+122	0	scripts/orchestrator/integrate-seat.sh
+114	0	scripts/orchestrator/result-precheck.sh
+1	1	tests/fixtures/regime/worker-step-15.md
+1	1	tests/unit/test_agmsg_orchestration_docs.py
+76	0	tests/unit/test_herdr_agents.py
+432	0	tests/unit/test_integration_seat.py
+[exit 0]
 ```

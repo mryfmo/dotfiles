@@ -4,7 +4,7 @@ seat: claude-standard-dot-a006
 branch: tools/integration-seat-result-gate-cap
 base: 59db77bb
 code_commits: [6c994f2c, e260d89b, 522cc4b8, ec4a300d]
-fix_commits: [ff9bb7c1, 1c29ec0d, cb09181f]
+fix_commits: [ff9bb7c1, 1c29ec0d, cb09181f, 03ec08c6]
 task_sha256_amendment_3: 626823fbf25a2a48bad0ae1e05792e6ea5f25ea4d1e4c710e973da64b62d1864
 task_sha256: 4e00bf122f578a9dbbde8ac36feb025d68cb828009a2e9f009606ad760879081
 ---
@@ -35,7 +35,7 @@ Both new scripts export `CLICOLOR_FORCE=0 FORCE_COLOR=0 NO_COLOR=1` after `set -
 | integrate-seat.sh | `test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges`: the exact script order, the RESULT line, the dispositions TSV, the record's steps, the record block on the copied main record, the receipt; no merge call and no audit, gate or merge command in the script text; a failing CI, a failing `resolve-threads.sh` and an unfixed P1 each send `status=blocked step=<name>` and stop before the record; malformed arguments and a missing TASK refuse with exit 2 and run nothing. `test_integrate_seat_reads_plain_gh_output_under_clicolor_force` (amendment 1): with `CLICOLOR_FORCE=1` inherited and a stub gh that colours its output then, the comments JSON the sweep fill reads parses and the RESULT is ready_for_audit. |
 | result-precheck.sh, its inputs | `test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt`: all ok (seven ok, (h) and (i) unavailable); verify accepts the receipt committed after the head and refuses a wrong sha256 (`receipt`), a code change after the receipt (`code-after-receipt`) and a receipt naming a missing check; each of (a), (c), (d), (e), (e) with another head on GitHub, (f), (g), (h) broken alone is the one `missing`; (b) with a file outside `allowed_files`; malformed task id, PR number, head and RESULT line exit 2. |
 
-Red: the two herdr tests fail on `origin/main`'s four files, the integration-seat module without the two scripts (validation §4), and the fix round's cases on `194e0bde`'s scripts (§10). Mutants: 18, each caught by its test, then a passing baseline (§6, §10, §11). The `CLICOLOR_FORCE` export of `result-precheck.sh` has no test of its own; the amendment's one test is `integrate-seat.sh`'s.
+Red: the two herdr tests fail on `origin/main`'s four files, the integration-seat module without the two scripts (validation §4), and the fix round's cases on `194e0bde`'s scripts (§10). Mutants: 22, each caught by its test, then a passing baseline (§6, §10, §11, §13). The `CLICOLOR_FORCE` export of `result-precheck.sh` has no test of its own; the amendment's one test is `integrate-seat.sh`'s.
 
 ## CI and the Bot
 
@@ -52,11 +52,11 @@ Red: the two herdr tests fail on `origin/main`'s four files, the integration-sea
 
 ## The first use of item 2, on this PR (validation §12)
 
-The precheck's first run on `2d61e227` found three defects in this PR's own scripts. The fix rounds of INV-6 are spent, so they are reported, not fixed:
+The precheck's first run on `2d61e227` found three defects in this PR's own scripts. They were reported in the round-1 RESULT; the ACCEPTANCE of 15:29Z authorized one third round (D-F4-round3), and `03ec08c6` fixes all three, each with its named test (validation §13):
 
-1. **(a) misreads an amended TASK line.** `grep -o -E 'task_sha256=[0-9a-f]{64}'` also matches inside `previous_task_sha256=`, so every amended task's (a) is `missing` (this one's included). The fix is one anchor, `(^| )task_sha256=`, and one test with an amended TASK line.
-2. **The team-wide history read does not finish.** `history.sh <team> "" 100000`, in check (a) and in `integrate-seat.sh`'s reader, is super-linear (200 rows 4.1 s, 2000 rows past 120 s) and waits on a terminal stdin. Fix: read with `< /dev/null`, and bound the read. The precheck can read the worker's own rows (`history.sh <team> <me> <n>`), where its TASK lines are. `integrate-seat.sh` needs the task's worker RESULT, which a bounded team read (the newest few hundred rows) or the orchestrator's rows hold. `bus-read.sh` reads the same way.
-3. **(i) keeps only codex's last three lines**, so its findings are lost; it should keep the whole final message (`codex exec -o`).
+1. **(a) misreads an amended TASK line.** `grep -o -E 'task_sha256=[0-9a-f]{64}'` also matches inside `previous_task_sha256=`, so every amended task's (a) is `missing` (this one's included). Fixed: the read matches ` task_sha256=`, which `previous_task_sha256=` never contains (`test_result_precheck_reads_the_task_sha_of_an_amended_task_line`).
+2. **The team-wide history read does not finish.** `history.sh <team> "" 100000`, in check (a) and in `integrate-seat.sh`'s reader, is super-linear (200 rows 4.1 s, 2000 rows past 120 s) and waits on a terminal stdin. Fix: read with `< /dev/null`, and bound the read. The precheck can read the worker's own rows (`history.sh <team> <me> <n>`), where its TASK lines are. `integrate-seat.sh` needs the task's worker RESULT, which a bounded team read (the newest few hundred rows) or the orchestrator's rows hold. `bus-read.sh` reads the same way. Fixed: the precheck reads the worker's own 300 newest rows (`history.sh <team> <me> 300`), `integrate-seat.sh` the team's 300 newest (5.2 s here) and takes the orchestrator from the worker RESULT's recipient, so it no longer reads the TASK line, and every agmsg call in both scripts runs with stdin from `/dev/null` (`test_result_precheck_and_integrate_seat_read_the_bus_bounded_with_stdin_closed`). The same commit restores `integrate-seat.sh`'s missing-RESULT refusal (a `|| die` after a trailing comment since `cb09181f`).
+3. **(i) keeps only codex's last three lines**, so its findings are lost. Fixed: it pastes codex's whole final message from `codex exec -o` (`test_result_precheck_keeps_the_whole_audit_dry_run_message`).
 
 The dry run's own result, `Verdict: incorrect` with seven issues, is informational: item 2 asks for its verdict pasted, not judged. Its findings were not captured (defect 3), and the orchestrator's task-level audit of the final head is the authority on the PR's findings.
 

@@ -226,6 +226,9 @@ class LintComparisonsTest(unittest.TestCase):
             "\"$jq\" -r 'select(.url == $p)'\n",
             "\"${jq}\" -r 'select(.url == $p)'\n",
             "\"$(command -v jq)\" -r 'select(.url == $p)'\n",
+            "\"$(command -v jq 2>/dev/null)\" -r 'select(.url == $p)'\n",
+            "\"${tools[jq]}\" -r 'select(.url == $p)'\n",
+            "\"$bin/jq.exe\" -r 'select(.url == $p)'\n",
         ):
             with self.subTest(form=form):
                 result = self.run_fixture("j.sh", form)

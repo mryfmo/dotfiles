@@ -14,7 +14,8 @@
 #     3. the PR is open, not a draft, targets the repository's default branch, and its head is exactly that sha;
 #     4. the default branch's rules require status checks, and every required context is `success` on that sha;
 #     5. the main checkout holds an orchestrator acceptance record `.orchestration/acceptance/*.md` whose front matter
-#        `"head"` is that sha, and the audit of that head `.orchestration/validation/*-audit-<sha7>.md` exists.
+#        `"head"` is that sha and whose latest `AGMSG-ACCEPTANCE v1` line says `status=accepted`, and the audit of that
+#        head `.orchestration/validation/*-audit-<sha7>.md` exists.
 #   GitHub's ruleset still enforces 3 and 4 on its side; this hook adds 1, 2 and 5 before the call is made.
 # @stdin json The PreToolUse payload.
 # @stdout json A hookSpecificOutput permission decision, or nothing for unrelated commands.
@@ -107,6 +108,8 @@ for record in "${top}"/.orchestration/acceptance/*.md; do
   if grep -Eq "^[[:space:]]*\"head\":[[:space:]]*\"${sha}\"" "${record}"; then accepted=${record}; break; fi
 done
 [[ -n ${accepted} ]] || ask "no acceptance record pins head ${sha:0:12}"
+verdict=$(grep -Eo 'AGMSG-ACCEPTANCE v1 task_id=[^[:space:]]+ status=[a-z-]+' "${accepted}" | tail -n 1 | sed 's/.*status=//')
+[[ ${verdict} == accepted ]] || ask "the latest acceptance status in ${accepted##*/} is ${verdict:-missing} not accepted"
 audits=("${top}"/.orchestration/validation/*-audit-"${sha:0:7}".md)
 ((${#audits[@]} > 0)) || ask "no audit of ${sha:0:7}"
 

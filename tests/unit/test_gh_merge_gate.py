@@ -40,11 +40,15 @@ class GhMergeGateTest(unittest.TestCase):
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
         (self.repo / ".orchestration/acceptance").mkdir(parents=True)
         (self.repo / ".orchestration/validation").mkdir(parents=True)
-        (self.repo / ".orchestration/acceptance/t.md").write_text(f'{{\n  "head": "{SHA}"\n}}\n---\n')
+        self.write_record(SHA, "accepted")
         (self.repo / f".orchestration/validation/t-audit-{SHA[:7]}.md").write_text("audit\n")
         self.write_pr(SHA)
         (self.tmp / "required.txt").write_text("validate\ntest\n")
         (self.tmp / "runs.txt").write_text("validate\ntest\nCodeRabbit\n")
+
+    def write_record(self, head: str, *statuses: str) -> None:
+        lines = "".join(f"- AGMSG-ACCEPTANCE v1 task_id=t status={status} reason=r\n" for status in statuses)
+        (self.repo / ".orchestration/acceptance/t.md").write_text(f'{{\n  "head": "{head}"\n}}\n---\n{lines}')
 
     def write_pr(self, head: str, base: str = "main", state: str = "OPEN") -> None:
         pr = {"headRefOid": head, "baseRefName": base, "state": state, "isDraft": False}
@@ -116,7 +120,13 @@ class GhMergeGateTest(unittest.TestCase):
         (self.repo / f".orchestration/validation/t-audit-{SHA[:7]}.md").unlink()
         self.assertIn("no audit", self.decide(self.pinned())[1])
         (self.repo / f".orchestration/validation/t-audit-{SHA[:7]}.md").write_text("audit\n")
-        (self.repo / ".orchestration/acceptance/t.md").write_text('{\n  "head": "' + "e" * 40 + '"\n}\n')
+        self.write_record(SHA, "accepted", "revise")
+        self.assertIn("is revise not accepted", self.decide(self.pinned())[1])
+        self.write_record(SHA)
+        self.assertIn("is missing not accepted", self.decide(self.pinned())[1])
+        self.write_record(SHA, "revise", "accepted")
+        self.assertEqual("allow", self.decide(self.pinned())[0])
+        self.write_record("e" * 40, "accepted")
         self.assertIn("no acceptance record", self.decide(self.pinned())[1])
 
     def test_linked_worktree_asks(self) -> None:

@@ -1558,3 +1558,514 @@ $ git diff --numstat origin/main...4880c1ea15402f916fd35efe31e306e605296478 -- s
 108	0	tests/unit/test_validate_agent_assets.py
 (exit 0)
 ```
+
+## 11. Revise round 3: the key side of R2 (D-389-round3), the code at f5921767
+
+The Bot's review 5557820069 of a13645d8 (2026-10-17T12:46:36Z) raised P1 4302702584: a key in quotes, as JSON, YAML or TOML write it, was not reached by R2, so a quoted literal passed (the form amendment 1 had left out). It also raised P2 4302702588: Bash's `+=` was not an assignment to R2. The operator's directive (D-389-round3, the ACCEPTANCE `revise` of 12:57:29Z) authorizes one grammar change on the key side and no fourth round. The name now may sit in matching quotes and `+=` joins `=` and `:`. The value grammar is round 2's, with its groups named so the new key group does not shift the backreferences. `revise.yaml` records the round: previous_head a13645d8 and the check. One limit stays, outside the key-side change: a reference followed by a JSON `,` or `}` is not a whole value, so `"ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",` is refused (the table's `n/a` row).
+
+### 11.1 The check against a13645d8's regex
+
+```console
+$ git diff --stat   # the new test only; scripts/validate-agent-assets.py as at a13645d8
+ tests/unit/test_validate_agent_assets.py | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+(exit 0)
+$ uv run python -m unittest tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment
+FAIL: (line='"ANTHROPIC_API_KEY": "literal-value"')
+AssertionError: False is not true
+FAIL: (line='"ANTHROPIC_API_KEY": literal-value')
+AssertionError: False is not true
+FAIL: (line="'ANTHROPIC_API_KEY' = 'literal-value'")
+AssertionError: False is not true
+FAIL: (line='ANTHROPIC_API_KEY+=literal-value')
+AssertionError: False is not true
+Ran 1 test in 0.429s
+FAILED (failures=4)
+(exit 1)
+```
+
+### 11.2 The diff of the round
+
+```console
+$ git diff a13645d8e13f0efad9d586470f99edd817892109 -- scripts tests   # revise round 3
+diff --git a/scripts/validate-agent-assets.py b/scripts/validate-agent-assets.py
+index 10c6c280..6fbdfdd3 100644
+--- a/scripts/validate-agent-assets.py
++++ b/scripts/validate-agent-assets.py
+@@ -1572,12 +1572,14 @@ def validate_no_obvious_secrets() -> None:
+             )
+ 
+ 
+-# R2: an assignment whose whole value, up to the end of the line or a `#` comment after whitespace, is not one
+-# `$NAME`/`${NAME}` reference, one `{{ }}` template or empty, each optionally quoted. Anything else is a literal Bash
+-# could assign: `$'...'`, `$"..."`, `$(...)`, `${NAME:-...}`, or a reference with more after it.
++# R2: an assignment (`=`, `:` or Bash's `+=`, the name bare or in matching quotes as a JSON, YAML or TOML key) whose
++# whole value, up to the end of the line or a `#` comment after whitespace, is not one `$NAME`/`${NAME}` reference,
++# one `{{ }}` template or empty, each optionally quoted. Anything else is a literal Bash could assign: `$'...'`,
++# `$"..."`, `$(...)`, `${NAME:-...}`, or a reference with more after it.
+ ANTHROPIC_API_KEY_LITERAL = re.compile(
+-    r"""ANTHROPIC_API_KEY\s*[:=](?!\s*(?:(["']?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})\1"""
+-    r"""|(["']?)\{\{(?:(?!\}\}).)*\}\}\2|""|'')?\s*(?:(?<=\s)#.*)?$)"""
++    r"""(?P<k>["']?)ANTHROPIC_API_KEY(?P=k)\s*(?:\+?=|:)(?!\s*(?:"""
++    r"""(?P<q>["']?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})(?P=q)"""
++    r"""|(?P<t>["']?)\{\{(?:(?!\}\}).)*\}\}(?P=t)|""|'')?\s*(?:(?<=\s)#.*)?$)"""
+ )
+ 
+ 
+diff --git a/tests/unit/test_validate_agent_assets.py b/tests/unit/test_validate_agent_assets.py
+index e5d7eb97..a9bee6e7 100644
+--- a/tests/unit/test_validate_agent_assets.py
++++ b/tests/unit/test_validate_agent_assets.py
+@@ -1527,6 +1527,30 @@ class ValidateAgentAssetsTest(unittest.TestCase):
+         self.assertTrue(refused)
+         self.assertIn(f"ERROR: {home}:2: R2:", stderr)
+ 
++    def test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment(self) -> None:
++        # D-389-round3: a JSON, YAML or TOML key quoted with matching quotes (the Bot's P1 4302702584) and a Bash
++        # `+=` (the Bot's P2 4302702588) are assignments too, and their value is read by the same whole-value grammar.
++        key = "ANTHROPIC_API_" + "KEY"
++        (home, _, _), check = self.anthropic_route_fixture()
++        for line in (
++            f'"{key}": "literal-value"',
++            f'"{key}": literal-value',
++            f"'{key}' = 'literal-value'",
++            f"{key}+=literal-value",
++        ):
++            with self.subTest(line=line):
++                refused, stderr = check(home, line)
++                self.assertTrue(refused)
++                self.assertIn(f"ERROR: {home}:2: R2:", stderr)
++        for line in (
++            f'"{key}": "${{{key}}}"',
++            f'"{key}": "{{{{ .anthropic }}}}"',
++            f"'{key}' = '${{{key}}}'",
++            f"{key}+=${key}",
++        ):
++            with self.subTest(line=line):
++                self.assertEqual((False, ""), check(home, line))
++
+     def write_manifest(self, hook_command: str) -> None:
+         path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+         path.parent.mkdir(parents=True, exist_ok=True)
+(exit 0)
+```
+
+### 11.3 After the change: the four route tests, the regex table and the mutants
+
+```console
+$ uv run python -m unittest tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment -v
+test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.221s
+
+OK
+(exit 0)
+$ uv run python -m unittest tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty -v
+test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.267s
+
+OK
+(exit 0)
+$ uv run python -m unittest tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty -v
+test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.151s
+
+OK
+(exit 0)
+$ uv run python -m unittest tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment -v
+test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.406s
+
+OK
+(exit 0)
+```
+
+```python
+"""R2 as first written in the task against the branch's ANTHROPIC_API_KEY_LITERAL, on item 2's lines and five more."""
+
+import importlib.util
+import re
+
+spec = importlib.util.spec_from_file_location(
+    "validate_agent_assets", "scripts/validate-agent-assets.py"
+)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+branch = module.ANTHROPIC_API_KEY_LITERAL
+task = re.compile(r"""ANTHROPIC_API_KEY\s*[:=]\s*(["']?)(?!\$|\{\{|\1\s*$)""")
+K = "ANTHROPIC_API_" + "KEY"
+cases = [  # (line, expected): True refuses, False passes, None is out of scope (the JSON key form, question 2)
+    (f'{K}="literal-value"', True),
+    (f"{K}: literal", True),
+    (f"{K}=literal", True),
+    (f"{K}=${K}", False),
+    (f"apiKey: {K}", False),
+    (f"env: {K}", False),
+    (f"{K}=", False),
+    (f'{K}=""', False),
+    (f'{K}="${{{K}}}"', False),
+    (f"{K}= ${K}", False),
+    (f"{K}: {{{{ .anthropic }}}}", False),
+    (f"export {K}=$(op read x)", True),  # not a $NAME or ${NAME} reference (the Bot's P1)
+    (f"{K}=$'literal-value'", True),
+    (f'{K}=$"literal-value"', True),
+    (f"{K}=${{DEPLOYED_KEY:-literal-value}}", True),  # the three of the Bot's P1 4302531070 (round 2)
+    (f"{K}=${{DEPLOYED_KEY}}literal-value", True),
+    (f"{K}=$DEPLOYED_KEY$'literal-value'", True),
+    (f"{K}= # supplied externally", False),  # the Bot's P2 4302488376 (round 2)
+    (f"{K}: # populated at runtime", False),
+    (f"{K}=#literal-value", True),
+    (f'"{K}": "literal-value",', True),  # round 3: a quoted key is an assignment (the Bot's P1 4302702584)
+    (f'"{K}": "${{{K}}}"', False),
+    (f'"{K}": "{{{{ .anthropic }}}}"', False),
+    (f"{K}+=literal-value", True),  # round 3: Bash's += (the Bot's P2 4302702588)
+    (f"{K}+=${K}", False),
+    (f'"{K}": "${{{K}}}",', None),  # a trailing comma after a reference: not whole, outside round 3's key-side change
+]
+for line, expected in cases:
+    t, b = bool(task.search(line)), bool(branch.search(line))
+    want = {True: "refuse", False: "pass  ", None: "n/a   "}[expected]
+    marks = (
+        ""
+        if expected is None
+        else ("" if b == expected else "BRANCH-WRONG ")
+        + ("" if t == expected else "TASK-WRONG")
+    )
+    print(
+        f"want={want} task={'refuse' if t else 'pass  '} branch={'refuse' if b else 'pass  '} {marks:<24} {line}"
+    )
+```
+
+```console
+$ uv run --offline --no-project python -I r2table.py   # from the worktree root; the script is pasted above
+want=refuse task=refuse branch=refuse                          ANTHROPIC_<redacted:secret-pattern>
+want=refuse task=refuse branch=refuse                          ANTHROPIC_API_KEY: literal
+want=refuse task=refuse branch=refuse                          ANTHROPIC_API_KEY=literal
+want=pass   task=pass   branch=pass                            ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
+want=pass   task=pass   branch=pass                            apiKey: ANTHROPIC_API_KEY
+want=pass   task=pass   branch=pass                            env: ANTHROPIC_API_KEY
+want=pass   task=pass   branch=pass                            ANTHROPIC_API_KEY=
+want=pass   task=refuse branch=pass   TASK-WRONG               ANTHROPIC_API_KEY=""
+want=pass   task=refuse branch=pass   TASK-WRONG               ANTHROPIC_<redacted:secret-pattern>
+want=pass   task=refuse branch=pass   TASK-WRONG               ANTHROPIC_API_KEY= $ANTHROPIC_API_KEY
+want=pass   task=refuse branch=pass   TASK-WRONG               ANTHROPIC_API_KEY: {{ .anthropic }}
+want=refuse task=pass   branch=refuse TASK-WRONG               export ANTHROPIC_API_KEY=$(op read x)
+want=refuse task=pass   branch=refuse TASK-WRONG               ANTHROPIC_API_KEY=$'literal-value'
+want=refuse task=pass   branch=refuse TASK-WRONG               ANTHROPIC_API_KEY=$"literal-value"
+want=refuse task=pass   branch=refuse TASK-WRONG               ANTHROPIC_API_KEY=${DEPLOYED_KEY:-literal-value}
+want=refuse task=pass   branch=refuse TASK-WRONG               ANTHROPIC_API_KEY=${DEPLOYED_KEY}literal-value
+want=refuse task=pass   branch=refuse TASK-WRONG               ANTHROPIC_API_KEY=$DEPLOYED_KEY$'literal-value'
+want=pass   task=refuse branch=pass   TASK-WRONG               ANTHROPIC_API_KEY= # supplied externally
+want=pass   task=refuse branch=pass   TASK-WRONG               ANTHROPIC_API_KEY: # populated at runtime
+want=refuse task=refuse branch=refuse                          ANTHROPIC_API_KEY=#literal-value
+want=refuse task=pass   branch=refuse TASK-WRONG               "ANTHROPIC_API_KEY": "literal-value",
+want=pass   task=pass   branch=pass                            "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}"
+want=pass   task=pass   branch=pass                            "ANTHROPIC_API_KEY": "{{ .anthropic }}"
+want=refuse task=pass   branch=refuse TASK-WRONG               ANTHROPIC_API_KEY+=literal-value
+want=pass   task=pass   branch=pass                            ANTHROPIC_API_KEY+=$ANTHROPIC_API_KEY
+want=n/a    task=pass   branch=refuse                          "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+(exit 0)
+```
+
+```python
+"""Revise round 3: run the four route tests against a13645d8's regex and one mutant per part of R2 and the function.
+
+Each variant is written over scripts/validate-agent-assets.py, the tests run, and the branch file is written back and
+compared byte for byte. Mutants are literal string replacements asserted to match once.
+"""
+
+import re
+import subprocess
+from pathlib import Path
+
+script = Path("scripts/validate-agent-assets.py")
+fixed = script.read_text()
+prefix = "tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest."
+tests = [
+    prefix
+    + "test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment",
+    prefix
+    + "test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty",
+    prefix + "test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty",
+    prefix
+    + "test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment",
+]
+BRANCH = '''    r"""(?P<k>["']?)ANTHROPIC_API_KEY(?P=k)\\s*(?:\\+?=|:)(?!\\s*(?:"""
+    r"""(?P<q>["']?)\\$(?:[A-Za-z_][A-Za-z0-9_]*|\\{[A-Za-z_][A-Za-z0-9_]*\\})(?P=q)"""
+    r"""|(?P<t>["']?)\\{\\{(?:(?!\\}\\}).)*\\}\\}(?P=t)|""|'')?\\s*(?:(?<=\\s)#.*)?$)"""
+'''
+ROUND2 = '''    r"""ANTHROPIC_API_KEY\\s*[:=](?!\\s*(?:(["']?)\\$(?:[A-Za-z_][A-Za-z0-9_]*|\\{[A-Za-z_][A-Za-z0-9_]*\\})\\1"""
+    r"""|(["']?)\\{\\{(?:(?!\\}\\}).)*\\}\\}\\2|""|'')?\\s*(?:(?<=\\s)#.*)?$)"""
+'''
+
+
+def mutate(old, new):
+    assert fixed.count(old) == 1, old
+    return fixed.replace(old, new)
+
+
+variants = [
+    ("a13645d8's regex (round 2)", mutate(BRANCH, ROUND2)),
+    (
+        "mutant: the key may not be quoted",
+        mutate(r"""(?P<k>["']?)ANTHROPIC_API_KEY(?P=k)""", "ANTHROPIC_API_KEY"),
+    ),
+    ("mutant: no += assignment", mutate(r"(?:\+?=|:)", r"(?:=|:)")),
+    (
+        "mutant: a template body may hold }}",
+        mutate(r"\{\{(?:(?!\}\}).)*\}\}", r"\{\{.*\}\}"),
+    ),
+    (
+        "mutant: a # without whitespace before it starts a comment",
+        mutate(r"(?:(?<=\s)#.*)?", r"(?:#.*)?"),
+    ),
+    (
+        "mutant: the value's closing quote need not pair",
+        mutate(r"\})(?P=q)", r"""\})["']?"""),
+    ),
+    ("mutant: R1 removed", mutate('if "ANTHROPIC_OAUTH_TOKEN" in line:', "if False:")),
+    (
+        "mutant: R2 removed",
+        mutate("if ANTHROPIC_API_KEY_LITERAL.search(line):", "if False:"),
+    ),
+    (
+        "mutant: symlinks followed",
+        mutate("if path.is_symlink() or not path.is_file():", "if not path.is_file():"),
+    ),
+    (
+        "mutant: a failed listing passes",
+        mutate("if listed.returncode != 0:", "if False:"),
+    ),
+]
+try:
+    for name, body in variants:
+        script.write_text(body)
+        result = subprocess.run(
+            ["uv", "run", "python", "-m", "unittest", *tests],
+            capture_output=True,
+            text=True,
+        )
+        failing = sorted(
+            {
+                m.group(1) + " " + (m.group(2) or "")
+                for m in re.finditer(
+                    r"^FAIL: (test_\w+) .*?(\(line=.*\)|\(rel=.*\))?$",
+                    result.stderr,
+                    re.M,
+                )
+            }
+        )
+        tail = [x for x in result.stderr.splitlines() if x.startswith(("OK", "FAILED"))]
+        print(f"{name}: rc={result.returncode} {' | '.join(tail)}")
+        for f in failing:
+            print(f"    failing: {f}")
+finally:
+    script.write_text(fixed)
+print("restored byte-identical:", script.read_text() == fixed)
+```
+
+```console
+$ uv run --offline --no-project python -I t129_mutants_r3.py   # from the worktree root; the script is pasted above
+a13645d8's regex (round 2): rc=1 FAILED (failures=4)
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line="'ANTHROPIC_API_KEY' = 'literal-value'")
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line='"ANTHROPIC_API_KEY": "literal-value"')
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line='"ANTHROPIC_API_KEY": literal-value')
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line='ANTHROPIC_API_KEY+=literal-value')
+mutant: the key may not be quoted: rc=1 FAILED (failures=3)
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line="'ANTHROPIC_API_KEY' = 'literal-value'")
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line='"ANTHROPIC_API_KEY": "literal-value"')
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line='"ANTHROPIC_API_KEY": literal-value')
+mutant: no += assignment: rc=1 FAILED (failures=1)
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line='ANTHROPIC_API_KEY+=literal-value')
+mutant: a template body may hold }}: rc=1 FAILED (failures=1)
+    failing: test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (line='ANTHROPIC_API_KEY={{ .anthropic }}literal-value{{ .x }}')
+mutant: a # without whitespace before it starts a comment: rc=1 FAILED (failures=2)
+    failing: test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (line='ANTHROPIC_API_KEY=$DEPLOYED_KEY#literal-value')
+    failing: test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty 
+mutant: the value's closing quote need not pair: rc=1 FAILED (failures=1)
+    failing: test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (line='ANTHROPIC_<redacted:secret-pattern>')
+mutant: R1 removed: rc=1 FAILED (failures=2)
+    failing: test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (rel='home/dot_config/fixture.sh', line='export ANTHROPIC_OAUTH_TOKEN=x')
+    failing: test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (rel='install/fixture.sh', line='export ANTHROPIC_OAUTH_TOKEN=x')
+mutant: R2 removed: rc=1 FAILED (failures=17)
+    failing: test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (line="ANTHROPIC_API_KEY=$DEPLOYED_KEY$'literal-value'")
+    failing: test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (line='ANTHROPIC_<redacted:secret-pattern>')
+    failing: test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (line='ANTHROPIC_API_KEY=$DEPLOYED_KEY#literal-value')
+    failing: test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (line='ANTHROPIC_API_KEY=${DEPLOYED_KEY:-literal-value}')
+    failing: test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (line='ANTHROPIC_API_KEY=${DEPLOYED_KEY}literal-value')
+    failing: test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (line='ANTHROPIC_API_KEY={{ .anthropic }}literal-value{{ .x }}')
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line="'ANTHROPIC_API_KEY' = 'literal-value'")
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line='"ANTHROPIC_API_KEY": "literal-value"')
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line='"ANTHROPIC_API_KEY": literal-value')
+    failing: test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (line='ANTHROPIC_API_KEY+=literal-value')
+    failing: test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty 
+    failing: test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (rel='home/dot_config/fixture.sh', line="ANTHROPIC_API_KEY=$'literal-value'")
+    failing: test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (rel='home/dot_config/fixture.sh', line='ANTHROPIC_API_KEY: literal')
+    failing: test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (rel='home/dot_config/fixture.sh', line='ANTHROPIC_<redacted:secret-pattern>')
+    failing: test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (rel='home/dot_config/fixture.sh', line='ANTHROPIC_API_KEY=$"literal-value"')
+    failing: test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (rel='home/dot_config/fixture.sh', line='ANTHROPIC_API_KEY=$(cat key-file)')
+    failing: test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (rel='install/fixture.sh', line='ANTHROPIC_API_KEY=literal')
+mutant: symlinks followed: rc=1 FAILED (failures=1)
+    failing: test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment 
+mutant: a failed listing passes: rc=1 FAILED (failures=1)
+    failing: test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment 
+restored byte-identical: True
+(exit 0)
+```
+
+### 11.4 The module, Ruff, the validator and the caps
+
+```console
+$ uv run python -m unittest tests/unit/test_validate_agent_assets.py -v
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty) ... ok
+test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment) ... ok
+test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty) ... ok
+test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_codex_command_hooks_accept_the_declared_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/claude-501/validate-agent-assets-test-qtk677lw/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+
+----------------------------------------------------------------------
+Ran 101 tests in 1.969s
+
+OK
+(exit 0)
+```
+
+```console
+$ ruff check --config ruff.toml --output-format concise scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py
+scripts/validate-agent-assets.py:1:1: EXE001 Shebang is present but file is not executable
+scripts/validate-agent-assets.py:4:1: I001 [*] Import block is un-sorted or un-formatted
+scripts/validate-agent-assets.py:133:9: SIM102 Use a single `if` statement instead of nested `if` statements
+scripts/validate-agent-assets.py:867:12: C401 Unnecessary generator (rewrite as a set comprehension)
+scripts/validate-agent-assets.py:924:18: UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+tests/unit/test_validate_agent_assets.py:1:1: EXE001 Shebang is present but file is not executable
+tests/unit/test_validate_agent_assets.py:252:13: FLY002 Consider f-string instead of string join
+tests/unit/test_validate_agent_assets.py:1703:41: UP037 [*] Remove quotes from type annotation
+Found 8 errors.
+[*] 2 fixable with `--fix` (3 unsafe fixes available with `--fix --unsafe-fixes`).
+(exit 1)
+$ ruff format --config ruff.toml --check scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py
+2 files already formatted
+(exit 0)
+```
+
+```console
+$ uv run --offline --with pyyaml scripts/validate-agent-assets.py > "$TMPDIR/t129/36-r3-validator.txt" 2>&1; echo "rc=$?"   # 179 s, revise round 3
+rc=0
+$ grep -v "^WARN: regime-boundary:" "$TMPDIR/t129/36-r3-validator.txt"
+agent asset validation ok
+(exit 0)
+$ grep -c "^WARN: regime-boundary:" "$TMPDIR/t129/36-r3-validator.txt"
+865
+(exit 0)
+```
+
+```console
+$ git diff --numstat origin/main...f5921767d4239e6e41ad41615cc078d9805eebf0 -- scripts tests
+36	0	scripts/validate-agent-assets.py
+132	0	tests/unit/test_validate_agent_assets.py
+(exit 0)
+```

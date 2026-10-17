@@ -203,23 +203,34 @@ class LintComparisonsTest(unittest.TestCase):
         self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
 
     def test_a_single_quoted_jq_option_value_is_not_read_as_the_program(self):
-        # owned row 4302629300: the program is the first word after the options and the arguments they take
+        # owned row 4302629300: a single-quoted string that is an option's argument, or sits inside a double-quoted
+        # one, is skipped; the program is the next single-quoted string on the jq word's logical line
         self.assert_refused_and_accepted(
             "j.sh",
             "R3",
             "jq -n --arg p '/x' 'select(.url == $p)'\n",
             "jq -n --arg p '/x' 'def canonical_path: .; select((.url | canonical_path) == ($p | canonical_path))'\n",
         )
-        # a program word that concatenates a double-quoted part and a single-quoted run is still read at the run
-        result = self.run_fixture("j.sh", "jq -n \"${defs}\"'select(.url == $p)'\n")
+        result = self.run_fixture("j.sh", "jq -r --arg m \"${s#*$'\\t'}\" 'select(.url == $m)'\n")
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("j.sh:1: R3 ", result.stdout)
-        # jq named through a variable or a substitution is still followed to its program
-        for call in ('"$jq"', '"${jq}"', '"$(command -v jq)"'):
-            with self.subTest(call=call):
-                result = self.run_fixture("j.sh", call + " -r --arg p '/x' 'select(.url == $p)'\n")
+        # forms the base scan already read stay read: words before the program that are no option, escaped and
+        # nested quotes in an option's argument, a continuation, a concatenated program word, jq through a variable
+        for form in (
+            'jq -r "${opts[@]}" \'select(.url == $u)\' "$f"\n',
+            "jq -er 2>/dev/null 'select(.path == $p)'\n",
+            'jq -n --arg p "a\\"b" \'select(.url == $p)\'\n',
+            'jq -n --arg root "$(cd "$(dirname "$0")/.." && pwd)" \'select(.path == $root)\'\n',
+            "jq -r\\\n  'select(.url == $p)'\n",
+            "jq -n \"${defs}\"'select(.url == $p)'\n",
+            "\"$jq\" -r 'select(.url == $p)'\n",
+            "\"${jq}\" -r 'select(.url == $p)'\n",
+            "\"$(command -v jq)\" -r 'select(.url == $p)'\n",
+        ):
+            with self.subTest(form=form):
+                result = self.run_fixture("j.sh", form)
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-                self.assertIn("j.sh:1: R3 ", result.stdout)
+                self.assertTrue(all(" R3 " in line for line in result.stdout.splitlines()), result.stdout)
 
     def test_a_jq_normaliser_name_inside_a_string_literal_is_no_application(self):
         # owned row 4302629305: each side must apply the normaliser, not merely contain its name
@@ -229,6 +240,12 @@ class LintComparisonsTest(unittest.TestCase):
             "jq -r 'def canonical_path: .; select((.url + \"canonical_path\") == ($path | canonical_path))'\n",
             "jq -r 'def canonical_path: .; select((.url + \"/\" | canonical_path) == ($path | canonical_path))'\n",
         )
+        # nor does a jq comment that names it
+        result = self.run_fixture(
+            "j.sh", "jq -r 'def canonical_path: .;\n  select(.url # canonical_path\n  == ($p | canonical_path))'\n"
+        )
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("j.sh:3: R3 ", result.stdout)
 
     def test_every_f_string_interpolation_in_a_regex_is_escaped(self):
         # owned row 4302629307: one re.escape does not cover the other interpolations of the f-string
@@ -238,6 +255,9 @@ class LintComparisonsTest(unittest.TestCase):
             're.search(f"{re.escape(prefix)}{name}", text)\n',
             're.search(f"{re.escape(prefix)}{re.escape(name)}", text)\n',
         )
+        # re.escape passed to map escapes each element, as the base accepted
+        result = self.run_fixture("r6.py", "re.search(f\"{re.escape(p)}({'|'.join(map(re.escape, names))})\", text)\n")
+        self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
 
     def test_the_tracked_tree_is_clean_against_the_baseline(self):
         result = self.lint(cwd=ROOT)

@@ -95,7 +95,8 @@ function path_is_in_safe_root() {
         "${HOME}/.claude/plugins/cache" \
         "${CODEX_ASSET_ROOT}/plugins/cache" \
         "${CODEX_ASSET_ROOT}/.tmp/plugins/plugins" \
-        "${HOME}/.local/share/mise/installs"; do
+        "${HOME}/.local/share/mise/installs" \
+        "${HOME}/.local/share/agent-assets"; do
         root="$(normalize_root_path "${root}")" || return 1
         if [ "${candidate}" != "${root}" ] && path_has_prefix "${candidate}" "${root}"; then
             return 0
@@ -433,6 +434,25 @@ function load_entry() {
 }
 
 #
+# @description Remove hcom: uv uninstalls its tool environment, receipt and entry point, then the retained wheel goes.
+#
+function remove_hcom() {
+    local path
+    local -a wheels=()
+    for path in "${RECORDED_PATHS[@]}"; do
+        # uv owns the entry point it created; the updater owns the wheel it kept for uv's receipt.
+        [ "${path}" = "${HOME}/.local/bin/hcom" ] || wheels+=("${path}")
+    done
+    has_command uv || {
+        fail "uv is not installed, so hcom's uv tool environment cannot be uninstalled; nothing was removed"
+        return 1
+    }
+    [ "${#wheels[@]}" -eq 0 ] || preflight_deletion_paths "${wheels[@]}"
+    run_operation uv tool uninstall hcom
+    [ "${#wheels[@]}" -eq 0 ] || remove_recorded_paths "${wheels[@]}"
+}
+
+#
 # @description Parse arguments and perform the selected inverse operation.
 # @arg $@ string Command-line arguments.
 #
@@ -463,7 +483,11 @@ function main() {
             fail "manifest step has no removal paths: ${STEP}"
             return 1
         }
-        remove_recorded_paths "${RECORDED_PATHS[@]}"
+        if [ "${STEP}" = "update_hcom" ]; then
+            remove_hcom
+        else
+            remove_recorded_paths "${RECORDED_PATHS[@]}"
+        fi
         ;;
     brew)
         remove_brew

@@ -343,6 +343,38 @@ class RemoveAgentAssetTest(unittest.TestCase):
         )
         self.assertEqual({}, self.manifest()["steps"])
 
+    def test_hcom_removal_uninstalls_the_uv_tool_before_the_kept_wheel(self) -> None:
+        # The Bot's 4303212235: uv owns hcom's tool environment, receipt and entry point, so the removal runs
+        # `uv tool uninstall hcom`, then deletes the wheel the updater kept for uv's receipt; without uv it removes nothing.
+        log = self.temp_dir / "uv.log"
+        hcom = self.home / ".local/bin/hcom"
+        wheel = self.home / ".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-any.whl"
+        for path in (hcom, wheel):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("fixture\n")
+        step = self.step("installer", [hcom, wheel], ["uv tool install --force <verified-hcom-wheel>"])
+
+        self.write_manifest({"update_hcom": step})
+        result = self.run_remover("update_hcom", "--yes")
+        self.assertEqual(1, result.returncode)
+        self.assertIn("uv is not installed", result.stderr)
+        self.assertTrue(wheel.exists())
+        self.assertIn("update_hcom", self.manifest()["steps"])
+
+        self.executable("uv", 'printf "uv %s\\n" "$*" >> "$TEST_LOG"\nrm -f "$HOME/.local/bin/hcom"\n')
+        dry = self.run_remover("update_hcom", env={"TEST_LOG": str(log)})
+        self.assertEqual(0, dry.returncode, dry.stderr)
+        self.assertIn("DRY-RUN: uv tool uninstall hcom", dry.stdout)
+        self.assertFalse(log.exists())
+        self.assertTrue(wheel.exists())
+
+        result = self.run_remover("update_hcom", "--yes", env={"TEST_LOG": str(log)})
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("uv tool uninstall hcom\n", log.read_text())
+        self.assertFalse(wheel.exists())
+        self.assertFalse(hcom.exists())
+        self.assertEqual({}, self.manifest()["steps"])
+
     def executable(self, name: str, body: str) -> None:
         path = self.bin_dir / name
         path.write_text("#!/usr/bin/env bash\n" + textwrap.dedent(body))

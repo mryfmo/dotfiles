@@ -919,7 +919,7 @@ function update_terminal_browser() {
 # @exitcode 1 The download checksum or installed version differs from its pin.
 #
 function update_omp() (
-    local installed download_dir tarball actual
+    local installed download_dir tarball actual entry aside=""
     has_command npm || {
         printf 'Skipping omp: npm command not found.\n'
         return 0
@@ -940,11 +940,25 @@ function update_omp() (
         printf 'omp checksum mismatch: expected %s, got %s.\n' "${OMP_TARBALL_SHA256}" "${actual}" >&2
         return 1
     fi
+    # npm refuses to replace a bin entry it does not own (EEXIST): a standalone executable or a link anywhere but
+    # this package, a dangling one included, moves aside, and comes back if the install does not end at the pin.
+    entry="${HOME}/.local/bin/omp"
+    if { [ -e "${entry}" ] || [ -L "${entry}" ]; } &&
+        [[ "$(readlink "${entry}" 2> /dev/null)" != *lib/node_modules/@oh-my-pi/pi-coding-agent/* ]]; then
+        aside="${download_dir}/omp.previous"
+        mv "${entry}" "${aside}" || return
+        printf 'omp: moved the existing non-npm %s aside for the npm install.\n' "${entry}"
+    fi
     # Allow this reviewed pin before the default three-day cooldown expires.
-    npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" || return
-    installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
-    installed="${installed#omp/}"
+    if npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}"; then
+        installed="$("${entry}" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+        installed="${installed#omp/}"
+    else
+        installed=failed
+    fi
     if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
+        [ -z "${aside}" ] || { rm -f "${entry}" && mv "${aside}" "${entry}"; }
+        [ "${installed}" = failed ] && return 1
         printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
         return 1
     fi
@@ -992,7 +1006,11 @@ function update_hcom() (
     fi
     mkdir -p "${wheel_dir}" && mv -f "${wheel}" "${wheel_dir}/" || return
     wheel="${wheel_dir}/${url##*/}"
-    uv tool install --force "${wheel}" || return
+    # A failed install drops the kept wheel, so the next run retries instead of skipping on it (the Bot's 4303338055).
+    uv tool install --force "${wheel}" || {
+        rm -f "${wheel}"
+        return 1
+    }
     installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     if [ "${installed}" != "${HCOM_PIN_VERSION}" ]; then
         printf 'hcom version mismatch: expected %s, got %s.\n' "${HCOM_PIN_VERSION}" "${installed}" >&2

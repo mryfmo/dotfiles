@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Require native agent review for meaningful repository changes."""
-# S1 words are exact ASCII letter runs; the twin tokenizer is scripts/regime-counters.sh.
+# S1 reads the record block's replans object, as scripts/regime-counters.sh does; no prose line is parsed.
 
 from __future__ import annotations
 
@@ -39,7 +39,9 @@ CLASS_SLUG = re.compile(r"[a-z0-9-]+")
 AUDIT_FINDING_KEYS = {"n", "reason", "evidence"}
 # Every audit_findings field is a non-empty string; n holds the finding number in ASCII digits.
 FINDING_NUMBER = re.compile(r"[1-9][0-9]*")
-RECORD_KEYS = {"format", "task", "head", "pr", "ledger", "searches", "audit_findings", "dispatch"}
+RECORD_KEYS = {"format", "task", "head", "pr", "ledger", "searches", "audit_findings", "dispatch", "replans"}
+# A C-59 re-plan: replans[<class slug>] names the four parts, each a non-empty string.
+REPLAN_KEYS = ("specification", "design", "implementation", "verification")
 # The swept finding ids the ledger must cover: Codex review comments, and Codex review bodies carrying a badge.
 CODEX_BOT = "chatgpt-codex-connector[bot]"
 BADGE_TOKENS = ("![P0 Badge]", "![P1 Badge]", "![P2 Badge]", "![P3 Badge]")
@@ -49,6 +51,8 @@ MISTAKE_RECORDS = ".orchestration/learning/mistakes/"
 AUDIT_NAME = re.compile(r"(?P<task>.+)-audit-(?P<sha>[0-9a-f]{7,40})\.md")
 AUDIT_VERDICT = re.compile(r"\s*Verdict: (correct|incorrect|blocked)\s*")
 AUDIT_FINDING = re.compile(r"^\s*(?:[-*+]\s+)?\[P[0-3]\]", re.M)
+# chain-integrate.sh's first line on an inherited audit: its finding ids stay the audited head's (plan 023 F1).
+INHERITED_FROM = re.compile(r"inherited-from: ([0-9a-f]{7})")
 # Levels whose not-applicable disposition needs a concrete reason: failures and
 # runs that did not finish, so a work-in-progress run cannot be waved through.
 STRICT_REASON_LEVELS = {
@@ -768,6 +772,10 @@ def is_text(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+def replan_complete(entry: object) -> bool:
+    return isinstance(entry, dict) and all(is_text(entry.get(key)) for key in REPLAN_KEYS)
+
+
 def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[str]:
     """Check the identity triple (task, head, pr) first, then format, ledger, searches and audit_findings."""
     errors: list[str] = []
@@ -788,6 +796,11 @@ def record_field_errors(record: dict, task: str, head: str, pr: object) -> list[
         not isinstance(record["dispatch"], list) or not all(isinstance(line, str) for line in record["dispatch"])
     ):
         errors.append("dispatch must be a list of strings")
+    replans = record.get("replans", {})
+    if not isinstance(replans, dict) or not all(
+        CLASS_SLUG.fullmatch(cls) and isinstance(entry, dict) for cls, entry in replans.items()
+    ):
+        errors.append(f"malformed block: replans must be {{<class slug>: {{{', '.join(REPLAN_KEYS)}}}}}: {replans!r}")
     if not is_int(record.get("format")) or record["format"] != RECORD_FORMAT:
         errors.append(f"format must be {RECORD_FORMAT}")
     ledger = record.get("ledger")
@@ -865,7 +878,9 @@ def swept_finding_ids(items: object, audit_summary: str | None, head: str) -> se
         elif item.get("source") == "review" and any(token in body for token in BADGE_TOKENS):
             ids.add(url.rpartition("pullrequestreview-")[2])
     if audit_summary is not None:
-        ids.update(f"audit:{head[:7]}:{n}" for n in range(1, len(AUDIT_FINDING.findall(audit_summary)) + 1))
+        marker = INHERITED_FROM.fullmatch(audit_summary.split("\n", 1)[0])
+        sha7 = marker.group(1) if marker else head[:7]
+        ids.update(f"audit:{sha7}:{n}" for n in range(1, len(AUDIT_FINDING.findall(audit_summary)) + 1))
     return ids
 
 
@@ -922,9 +937,6 @@ def acceptance_errors(
         errors.append(f"S6: ledger lacks {', '.join(sorted(missing))}")
     classes = Counter(row["class"] for row in record["ledger"])
     stated = {entry["class"]: set(entry["records"]) for entry in record["searches"]}
-    lines = path.read_text().split("\n")
-    body = lines[lines.index("---", 1) + 1 :]
-    required_words = {"specification", "design", "implementation", "verification"}
     for cls, count in classes.items():
         if count < S6_CLASS_LIMIT:
             continue
@@ -933,13 +945,8 @@ def acceptance_errors(
             errors.append(f"S6: class {cls} at {count}: {found}")
         elif stated.get(cls) != found:
             errors.append(f"S6: class {cls} at {count} without a matching records search")
-        if cls != "advisory-p2":
-            prefix = f"re-plan: {cls} -> "
-            if not any(
-                line.startswith(prefix) and required_words.issubset(re.findall(r"[A-Za-z]+", line[len(prefix) :]))
-                for line in body
-            ):
-                errors.append(f"S1: {cls} at {count} rows without a re-plan line (C-59)")
+        if cls != "advisory-p2" and not replan_complete(record.get("replans", {}).get(cls)):
+            errors.append(f"S1: {cls} at {count} rows without a re-plan (C-59)")
     return errors, record
 
 

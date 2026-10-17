@@ -477,9 +477,10 @@ the GitHub hosts (`github.com`, `api.github.com`, `uploads.github.com`,
 (`pypi.org`, `files.pythonhosted.org`). The managed `permissions.defaultMode`
 is `auto`, so a connection to any other host is refused unless the command
 listed that host and the classifier approved the list. On macOS,
-`sandbox.network.allowMachLookup` lists the one Mach service sandboxed commands
-may look up, `com.apple.trustd.agent`, which macOS certificate validation
-needs; the generator omits the key from the Linux rendering.
+`sandbox.network.allowMachLookup` lists the one additional Mach service
+sandboxed commands may look up, `com.apple.trustd.agent`, which macOS
+certificate validation needs; the generator omits the key from the Linux
+rendering.
 `sandbox.network.allowUnixSockets` lists the herdr socket
 (`~/.config/herdr/herdr.sock`). Claude Code honours that list only on macOS and
 ignores it on Linux and WSL2, where the seccomp filter cannot inspect socket
@@ -489,11 +490,11 @@ paths. The Claude messaging socket is a per-process path set at runtime
 `agmsg-dispatch *`, which inserts one agmsg row and sends a herdr wake: from
 sandboxed Bash the herdr socket is denied, and outside the sandbox it delivered
 the T49 messages within seconds, so a Claude worker wakes a herdr-paned
-orchestrator without a failed sandboxed run. On Linux, where bubblewrap closes
-Unix sockets and D-Bus (the `gh` keyring read and the herdr socket), the list
-adds `gh *`, `herdr-agents *` and `actas-claim.sh *` by its absolute path under
-`~/.agents/skills/agmsg/scripts/`, so these run outside the sandbox instead of
-failing inside it. An entry uses the syntax of a `Bash(...)` permission rule:
+orchestrator without a failed sandboxed run. On Linux, where the sandbox's
+seccomp filter blocks Unix sockets (the `gh` keyring read over D-Bus and the
+herdr socket), the list adds `gh *`, `herdr-agents *` and `actas-claim.sh *`
+by its absolute path under `~/.agents/skills/agmsg/scripts/`, so these run
+outside the sandbox instead of failing inside it. An entry uses the syntax of a `Bash(...)` permission rule:
 `agmsg-dispatch *` matches `agmsg-dispatch` with or without arguments, every
 command in a chained call must match for the call to leave the sandbox, and
 Claude Code matches the text of the call, so a script that runs `gh` internally
@@ -509,9 +510,10 @@ managed settings can run `agmsg-dispatch` without confirmation.
 `gh pr merge`, `gh pr create`, `gh pr comment`, `gh pr review`, `gh pr close`,
 `gh pr edit`, `gh pr update-branch`, `gh issue`, and `gh api` with `-X` or
 `--method` `POST`, `PATCH`, `PUT` or `DELETE`, or with `-f`, `-F`, `--field` or
-`--raw-field`, in every prefix form a rule can express. Each prompts a human on
-both OSes, sandboxed or not; a flag placed after the API path escapes a prefix
-rule, so the integration gate, not these rules, remains the authority on what
+`--raw-field` (four spellings per method and four per field flag, 32 rules in
+all). Each prompts a human on both OSes, sandboxed or not; a flag order the
+prefixes do not spell out, such as a method flag after the API path, escapes
+them, so the integration gate, not these rules, remains the authority on what
 reaches GitHub. The managed `env` sets `GH_TELEMETRY=false`, `DO_NOT_TRACK=1`,
 `CHECKPOINT_DISABLE=1` and `AWS_EC2_METADATA_DISABLED=true` for every Claude
 session. Codex workers run under Codex's own sandbox and are not affected.

@@ -19,7 +19,9 @@ state=${GATE_STUB_DIR}
 case "$*" in
   "repo view --json nameWithOwner --jq .nameWithOwner") echo o/r ;;
   "repo view o/r --json defaultBranchRef --jq .defaultBranchRef.name") echo main ;;
-  "pr view 7 --json headRefOid,baseRefName,state,isDraft") cat "${state}/pr.json" ;;
+  "pr view 7 --json headRefOid,baseRefName,state,isDraft")
+    [[ ${CLICOLOR_FORCE:-0} == 1 ]] && printf '\033[1;38m'
+    cat "${state}/pr.json" ;;
   api\ repos/o/r/rules/branches/main*) cat "${state}/required.txt" ;;
   api\ --paginate\ repos/o/r/commits/*/check-runs*) cat "${state}/runs.txt" ;;
   api\ repos/o/r/commits/*/status*) : ;;
@@ -91,6 +93,11 @@ class GhMergeGateTest(unittest.TestCase):
         log = (self.tmp / "state/claude/gh-merge-gate.log").read_text().splitlines()
         self.assertEqual("allow", log[-1].split("\t")[1])
         self.assertEqual("allow", self.decide(f"gh pr merge --match-head-commit={SHA} -s 7")[0])
+
+    def test_a_colour_forcing_session_still_reads_plain_json(self) -> None:
+        os.environ["CLICOLOR_FORCE"] = "1"
+        self.addCleanup(os.environ.pop, "CLICOLOR_FORCE", None)
+        self.assertEqual("allow", self.decide(self.pinned())[0])
 
     def test_update_branch_is_allowed(self) -> None:
         self.assertEqual("allow", self.decide("gh pr update-branch 7")[0])

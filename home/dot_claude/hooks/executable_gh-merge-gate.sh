@@ -43,6 +43,9 @@ command -v jq >/dev/null 2>&1 || {
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"gh-merge-gate: jq missing"}}\n'
   exit 0
 }
+# A session that forces colour (CLICOLOR_FORCE=1) makes gh print coloured JSON that jq cannot parse.
+export NO_COLOR=1 CLICOLOR=0 CLICOLOR_FORCE=0 GH_PAGER=cat
+unset GH_FORCE_TTY
 input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"${input}" 2>/dev/null) || ask "unreadable payload"
 cwd=$(jq -r '.cwd // empty' <<<"${input}" 2>/dev/null) || ask "unreadable payload"
